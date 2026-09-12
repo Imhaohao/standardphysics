@@ -18,16 +18,18 @@ Point = tuple[float, float]
 Polygon = list[Point]
 
 
+def rotation_about_z(node: SceneNode) -> tuple[float, float]:
+    """Cosine and sine of the node's rotation about Z, from its transform."""
+    m = node.transform.m
+    scale = math.hypot(m[0], m[4])
+    if scale == 0:
+        return 1.0, 0.0
+    return m[0] / scale, m[4] / scale
+
+
 def footprint(node: SceneNode) -> Polygon:
     """The node's floor rectangle, rotated about Z, in world coordinates."""
-    m = node.transform.m
-    cos_t, sin_t = m[0], m[4]
-    scale = math.hypot(cos_t, sin_t)
-    if scale == 0:
-        cos_t, sin_t = 1.0, 0.0
-    else:
-        cos_t, sin_t = cos_t / scale, sin_t / scale
-
+    cos_t, sin_t = rotation_about_z(node)
     centre = node.transform.position
     half_x, half_y = node.dimensions.x / 2, node.dimensions.y / 2
     corners = [(-half_x, -half_y), (half_x, -half_y), (half_x, half_y), (-half_x, half_y)]

@@ -12,17 +12,18 @@ from uuid import UUID
 
 import numpy as np
 
-from standardphysics_contracts import SceneGraph, SceneNode, Vec3
+from standardphysics_contracts import SceneGraph, SceneNode, Vec3, to_meters
 
 CELL_SIZE = 0.025
 """25 mm. Fine enough that quantisation stays near half an inch."""
 
-BLOCKING_HEIGHT = 0.23
-"""A node blocks the floor when it rises above this.
+BLOCKING_HEIGHT = to_meters(0.25)
+"""A node blocks the floor when its top rises above 1/4 inch.
 
-9 inches is the toe clearance the standard allows beneath an obstruction, so
-anything lower is something a footrest passes over: a floor mat, a threshold,
-a cable cover. Anything taller is in the way.
+ADA 2010 303 allows a vertical change in level of at most 1/4 in without
+treatment and requires a ramp above 1/2 in, so a customer cannot roll over
+anything taller. Toe clearance describes space beneath an element; it does not
+make a solid object on the floor passable.
 """
 
 PASSABLE_KINDS = {"floor", "window", "opening", "door"}

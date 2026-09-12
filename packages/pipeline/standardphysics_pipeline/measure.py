@@ -24,29 +24,40 @@ from standardphysics_contracts import (
     to_meters,
 )
 
-from .footprints import Polygon, footprint, gap_between, gap_between_nodes
+from .footprints import (
+    Polygon,
+    footprint,
+    gap_between,
+    gap_between_nodes,
+    rotation_about_z,
+)
 from .occupancy import CELL_SIZE, Grid, blocks_floor, build_grid
 from .routes import blockers_at, clearance_map, widest_path, world_path
 
 COUNTER_CLEAR_WIDTH = to_meters(48.0)
 COUNTER_CLEAR_DEPTH = to_meters(30.0)
-"""The clear floor space a forward approach needs, ADA 2010 305.3."""
+"""ADA 2010 305.3 clear floor space, laid out for a parallel approach with the
+48 in side running along the counter."""
 
 
 def _signature(graph: SceneGraph) -> tuple:
-    """Cheap identity for a layout, so dragging a chair rebuilds the grid but
-    asking three questions about one layout does not."""
+    """Everything the grid depends on, so moving, turning or resizing any node
+    rebuilds it, and asking three questions about one layout does not."""
     return tuple(
-        (str(node.id), node.transform.m[3], node.transform.m[7], node.transform.m[0])
+        (str(node.id), node.kind, tuple(node.transform.m), node.dimensions.as_tuple())
         for node in graph.nodes
     )
 
 
-def _rectangle(cx: float, cy: float, width: float, depth: float) -> Polygon:
+def _rectangle(
+    centre: Vec3, width: float, depth: float, cos_t: float, sin_t: float
+) -> Polygon:
+    """A width by depth rectangle turned to match the object it sits against."""
     half_w, half_d = width / 2, depth / 2
+    corners = [(-half_w, -half_d), (half_w, -half_d), (half_w, half_d), (-half_w, half_d)]
     return [
-        (cx - half_w, cy - half_d), (cx + half_w, cy - half_d),
-        (cx + half_w, cy + half_d), (cx - half_w, cy + half_d),
+        (centre.x + x * cos_t - y * sin_t, centre.y + x * sin_t + y * cos_t)
+        for x, y in corners
     ]
 
 
@@ -147,7 +158,7 @@ class PipelineMeasurements:
         counter = graph.by_id(counter_id)
         centre = self._approach_centre(counter)
         space = _rectangle(
-            centre.x, centre.y, COUNTER_CLEAR_WIDTH, COUNTER_CLEAR_DEPTH
+            centre, COUNTER_CLEAR_WIDTH, COUNTER_CLEAR_DEPTH, *rotation_about_z(counter)
         )
         intruders = self._intruders(graph, counter_id, space)
         return ClearFloorResult(
@@ -158,12 +169,11 @@ class PipelineMeasurements:
         )
 
     def _approach_centre(self, counter: SceneNode) -> Vec3:
+        """In front of the counter's local minus-Y face, turned with the counter."""
         position = counter.transform.position
-        return Vec3(
-            x=position.x,
-            y=position.y - counter.dimensions.y / 2 - COUNTER_CLEAR_DEPTH / 2,
-            z=0.0,
-        )
+        cos_t, sin_t = rotation_about_z(counter)
+        offset = counter.dimensions.y / 2 + COUNTER_CLEAR_DEPTH / 2
+        return Vec3(x=position.x + offset * sin_t, y=position.y - offset * cos_t, z=0.0)
 
     def _intruders(
         self, graph: SceneGraph, counter_id: UUID, space: Polygon

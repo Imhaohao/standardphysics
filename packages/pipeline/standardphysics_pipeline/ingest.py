@@ -87,9 +87,16 @@ def _identifier(element: dict, fallback: str) -> uuid.UUID:
         raise RoomParseError(f"identifier was not a UUID: {raw!r}") from exc
 
 
+def _quality(element: dict) -> str:
+    """A missing confidence is not a high one."""
+    raw = element.get("confidence")
+    if raw is None:
+        return "needs_another_look"
+    return CONFIDENCE_TO_QUALITY.get(_enum_name(raw, "confidence"), "needs_another_look")
+
+
 def _node(element: dict, kind: str, index: int) -> SceneNode:
     category = _enum_name(element.get("category", kind), "category")
-    confidence = _enum_name(element.get("confidence", "high"), "confidence")
     width, height, depth = _vector(element["dimensions"], "dimensions")
 
     return SceneNode(
@@ -99,7 +106,7 @@ def _node(element: dict, kind: str, index: int) -> SceneNode:
         raw_category=category,
         dimensions=dimensions_to_z_up(width, height, depth),
         transform=transform_from_arkit(_matrix(element["transform"])),
-        quality=CONFIDENCE_TO_QUALITY.get(confidence, "needs_another_look"),
+        quality=_quality(element),
         movable=_is_movable(kind, category),
         labeled_by="roomplan",
     )
