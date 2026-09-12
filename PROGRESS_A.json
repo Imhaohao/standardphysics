@@ -1,6 +1,6 @@
 {
   "lane": "A",
-  "updated": "2026-09-12T22:33:48Z",
+  "updated": "2026-09-12T22:52:40Z",
   "done": [
     "iOS 17 Xcode project builds on the simulator",
     "device support gate and start screen",
@@ -10,21 +10,21 @@
     "2 Hz JPEG and pose recording from RoomPlan ARSession",
     "thermal-aware H.264 walkthrough recording with four-minute cap",
     "USDZ, room JSON, metadata map, poses, frames, and coverage export",
-    "coverage minimap and directional guidance",
+    "coverage minimap with partial observed stretches and nearest-area guidance",
     "on-device USDZ review and saved scan history",
+    "saved scan history with durable upload and server status",
     "resumable checksum upload, finalization, and status polling",
-    "allowlisted authenticated WebView shell and native capture bridge",
+    "allowlisted WebView shell and native capture bridge",
     "native-size simulator visual verification",
-    "signed device build installed on the paired iPhone 17 Pro"
+    "signed device build installed and launched on the paired iPhone 17 Pro"
   ],
-  "in_progress": "launch the installed app on the unlocked phone, then run a physical scan",
-  "blocked_on": null,
+  "in_progress": "run a physical scan and connect Lane D's session handoff when its contract is ready",
+  "blocked_on": "Lane D must provide the web session handoff contract before the workspace can be authenticated",
   "ready_for_others": [
     "Lane A produces room.json and RoomPlan metadata mapping from a real scan",
     "Lane A uploads the services/api/openapi.json artifact contract"
   ],
   "needs_human": [
-    "Unlock the paired iPhone so the installed app can launch",
     "Walk a room with the paired LiDAR phone and compare coverage guidance to the room",
     "Hand the phone to a first-time scanner and watch whether the guidance works"
   ]
