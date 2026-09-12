@@ -13,5 +13,6 @@ jobs:
         with:
           python-version: "3.11"
       - run: python -m pip install --upgrade pip
-      - run: python -m pip install -e . -e packages/contracts -e packages/fixtures pytest
+      - run: python -m pip install -e . -e packages/contracts -e packages/fixtures -e packages/pipeline pytest
+      - run: python -c "import numpy, scipy, pydantic; print('deps ok')"
       - run: python -m pytest

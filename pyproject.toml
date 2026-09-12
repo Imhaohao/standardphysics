@@ -18,6 +18,4 @@ loopforge = "loopforge.cli:main"
 [tool.hatch.build.targets.wheel]
 packages = ["src/loopforge"]
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
 
