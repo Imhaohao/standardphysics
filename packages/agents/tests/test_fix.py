@@ -99,13 +99,13 @@ def _node(name, kind, label, centre, dims, movable):
 
 class TestHardConstraints:
     def test_touching_a_wall_is_not_a_collision(self, graph):
-        """The display cases are built flush against the side walls."""
+        """The shop as built breaks no hard constraint."""
         assert is_allowed(graph, graph)
 
-    def test_the_documented_five_inch_fix_puts_a_case_inside_the_wall(self, graph):
-        """See docs/handoffs/C-to-D.md. The measurement reads 36 in and the
-        arrangement is not one anybody can build."""
-        into_the_wall = apply_moves(
+    def test_the_documented_five_inch_fix_is_a_legal_move(self, graph):
+        """Each display case stops 6 in short of its wall (C-to-D.md item 4), so
+        sliding the east case 5 in toward it breaks no hard constraint."""
+        moved = apply_moves(
             graph,
             [
                 NodeMove(
@@ -116,7 +116,7 @@ class TestHardConstraints:
                 )
             ],
         )
-        assert _kinds(graph, into_the_wall) & {"collided", "left_the_floor"}
+        assert not _kinds(graph, moved) & {"collided", "left_the_floor"}
 
     def test_moving_something_fixed_is_rejected(self, graph):
         shoved = apply_moves(
