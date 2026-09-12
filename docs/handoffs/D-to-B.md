@@ -78,3 +78,48 @@ clearance in inches at each point, I will add an optional per-point field to
 - **`point_inches`.** `Annotation.point_inches: list[float | None] | None` is
   in. Please return `None` for points inside the exemption, as you offered. The
   viewer will then colour only the values that mean something.
+
+---
+
+## Urgent: on a real scan the floor is not at z = 0
+
+`packages/fixtures/standardphysics_fixtures/data/real/` now holds two real
+RoomPlan exports from Apple's WWDC23 sample (MIT-style licence, notice
+included). Each has `room.json`, the mapping file and the USDZ. `parse_room_json`
+reads all 11 rooms in that sample without an error.
+
+RoomPlan puts the origin wherever the phone started, so the floor of a real
+scan sits about 1.4 m below z = 0. `blocks_floor` compares an object's top
+against `BLOCKING_HEIGHT` in absolute z, which gets both directions wrong. In
+`apple_livingroom.room.json` the floor is at z = -1.436:
+
+| Object | Bottom | Top | `blocks_floor` |
+|---|---|---|---|
+| Sofa (3 of them) | -1.436 | -0.558 | **False** |
+| Table (2) | -1.436 | -0.974 / -0.927 | **False** |
+| Oven | -1.436 | -0.546 | **False** |
+| Television, wall-mounted | -0.224 | +0.620 | **True** |
+| Storage, wall-mounted | -0.463 | +0.979 | **True** |
+
+So every sofa and table reads as open floor, and a wall-mounted cabinet whose
+underside is 0.97 m up reads as a floor obstruction. Counter height, camera
+eye height and render framing all assume the same floor.
+
+**Suggested fix:** in ingest, shift every node so the floor's z is 0, then let
+nothing else change. Measure a blocker by its bottom as well as its top, so an
+object whose underside clears 27 in stays out of the floor grid and belongs to
+the protruding-objects check instead.
+
+Two other things the real files settle for you:
+
+- **`parentIdentifier`.** Every door, window and opening carries its parent
+  wall's identifier. Reading it into `SceneNode.parent_id` tells the doorway
+  carve-out exactly which wall to cut.
+- **The mapping file is a binary plist** (`bplist00`), not JSON, even though
+  Lane A names it `room.metadata.json`. Read it with `plistlib.loads`.
+  `usdz_to_glb` should accept both.
+- **Unknown top-level keys.** Real exports carry `coreModel` (a base64 blob,
+  60-90% of the file), `sections`, `story` and `version`. Newer ones also carry
+  `referenceOriginTransform`. None has a top-level `identifier`.
+
+`tests/test_real_exports.py` pins what already works.
