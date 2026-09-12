@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowsOutCardinal, HandGrabbing, ListChecks, SquareHalfBottom } from "@phosphor-icons/react";
+import { ArrowLeft, ArrowsOutCardinal, FileText, HandGrabbing, ListChecks, SquareHalfBottom } from "@phosphor-icons/react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -122,6 +122,13 @@ export function Workspace({ scan, scene, exported, assessment, glbUrl }: Workspa
           <ArrowLeft size={20} weight="bold" />
         </Link>
         <h1 className="min-w-0 flex-1 truncate text-lg font-semibold">{scan.name}</h1>
+        <Link
+          href={`/scans/${scan.id}/report`}
+          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-ink-muted hover:bg-ink/5 hover:text-ink"
+        >
+          <FileText size={16} weight="bold" aria-hidden />
+          Report
+        </Link>
         <div className="flex gap-1 rounded-xl bg-rule/50 p-1" role="group" aria-label="What to do">
           <Button variant="chip" aria-pressed={task === "findings"} onClick={() => switchTask("findings")}>
             <ListChecks size={16} weight="bold" aria-hidden />

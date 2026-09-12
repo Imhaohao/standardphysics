@@ -18,6 +18,7 @@ from standardphysics_contracts import (
     CreateScanRequest,
     LayoutCheckRequest,
     LayoutCheckResult,
+    Report,
     SaveLayoutRequest,
     Scan,
     ScanList,
@@ -31,6 +32,7 @@ from .coverage import parse_coverage
 from .db import Database
 from .errors import ApiProblem
 from .layout import check_layout, save_layout
+from .report import build_report
 from .seed import seed_sample_shop
 from .settings import Settings
 from .stages import Stages, preview_ledger
@@ -86,6 +88,11 @@ def create_app(settings: Settings | None = None, stages: Stages | None = None, r
     _install_upload_routes(app, database, store, worker)
     _install_workspace_routes(app, database, store)
     _install_layout_routes(app, database, stages, worker)
+
+    @app.get("/api/scans/{scan_id}/report", response_model=Report)
+    def report(scan_id: uuid.UUID) -> Report:
+        return build_report(database, stages.ledger_factory(), scan_id)
+
     return app
 
 

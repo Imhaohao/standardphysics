@@ -1,4 +1,4 @@
-import type { Assessment, Scan, ScanList, Scenario, SceneGraph } from "@/types/contracts";
+import type { Assessment, Report, Scan, ScanList, Scenario, SceneGraph } from "@/types/contracts";
 import { API_ORIGIN } from "./api-origin";
 
 export class NotReady extends Error {}
@@ -27,3 +27,4 @@ export const getScenario = (scanId: string) => getOptional<Scenario>(`/api/scans
 export const getAssessment = (scanId: string) => getOptional<Assessment>(`/api/scans/${scanId}/assessment`);
 
 export const sceneGlbUrl = (scanId: string) => `/api/scans/${scanId}/scene.glb`;
+export const getReport = (scanId: string) => getOptional<Report>(`/api/scans/${scanId}/report`);

@@ -6,11 +6,15 @@ against, and the mock server's error bodies.
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel
 
 from .findings import Finding
-from .loop import NodeMove
+from .loop import Assessment, NodeMove
+from .rules import Check
 from .scan import Scan
+from .scene import Scenario, SceneGraph
 
 
 class CreateScanRequest(BaseModel):
@@ -59,3 +63,22 @@ class LayoutCheckResult(BaseModel):
 class SaveLayoutRequest(BaseModel):
     base_revision: int
     moves: list[NodeMove]
+
+
+class ReviewedRule(BaseModel):
+    """A rule that ran, and the person who read its section and confirmed the number."""
+
+    check: Check
+    verified_by: str
+    verified_at: datetime
+    second_check_by: str | None = None
+
+
+class Report(BaseModel):
+    """Everything the printed report shows, in one response."""
+
+    scan: Scan
+    scene: SceneGraph | None
+    scenario: Scenario | None
+    assessment: Assessment | None
+    rules: list[ReviewedRule]

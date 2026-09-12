@@ -262,20 +262,29 @@ export interface Proposal {
   targets: string[];
 }
 /**
+ * Everything the printed report shows, in one response.
+ *
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
- * via the `definition` "RulePack".
+ * via the `definition` "Report".
  */
-export interface RulePack {
-  checks: Check[];
-  version: string;
+export interface Report {
+  assessment: Assessment | null;
+  rules: ReviewedRule[];
+  scan: Scan;
+  scenario: Scenario | null;
+  scene: SceneGraph | null;
 }
 /**
+ * A rule that ran, and the person who read its section and confirmed the number.
+ *
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
- * via the `definition` "SaveLayoutRequest".
+ * via the `definition` "ReviewedRule".
  */
-export interface SaveLayoutRequest {
-  base_revision: number;
-  moves: NodeMove[];
+export interface ReviewedRule {
+  check: Check;
+  second_check_by: string | null;
+  verified_at: string;
+  verified_by: string;
 }
 /**
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
@@ -300,13 +309,6 @@ export interface SurfaceCoverage {
   node_id: string;
   observed_fraction: number;
   viewpoint_count: number;
-}
-/**
- * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
- * via the `definition` "ScanList".
- */
-export interface ScanList {
-  scans: Scan[];
 }
 /**
  * The routine we screen. Legs run between consecutive stops.
@@ -357,6 +359,29 @@ export interface SceneNode {
   quality: "measured" | "needs_another_look" | "confirmed";
   raw_category: string;
   transform: Mat4;
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "RulePack".
+ */
+export interface RulePack {
+  checks: Check[];
+  version: string;
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "SaveLayoutRequest".
+ */
+export interface SaveLayoutRequest {
+  base_revision: number;
+  moves: NodeMove[];
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "ScanList".
+ */
+export interface ScanList {
+  scans: Scan[];
 }
 /**
  * The bottleneck of a route leg, and where it is.

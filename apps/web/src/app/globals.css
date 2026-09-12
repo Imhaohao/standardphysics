@@ -40,3 +40,14 @@
     font-variant-numeric: tabular-nums;
   }
 }
+
+@page {
+  size: letter;
+  margin: 0.6in;
+}
+
+@media print {
+  html {
+    background: white;
+  }
+}

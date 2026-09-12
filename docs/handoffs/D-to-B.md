@@ -178,3 +178,14 @@ passing space and exit path, all on the same layout. Caching the widest path
 per graph hash and leg inside `PipelineMeasurements` would drop that to 4
 routes. Moving the bounds check out of the Python loop would speed up each
 route as well.
+
+---
+
+## The counter-height render and camera are too close to read
+
+The printed report (`/scans/<id>/report`) now shows your `render_finding`
+stills, and the viewer flies to each locus camera. For "The ordering counter is
+too high to order from", both show a flat close-up of the counter front with
+the vertical line and nothing else. Nobody can tell what they are looking at.
+The route renders read well. Pulling the height camera back to show the counter
+against the floor and a nearby table would fix both views.

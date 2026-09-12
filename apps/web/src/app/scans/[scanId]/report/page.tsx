@@ -1,0 +1,182 @@
+import { ArrowLeft } from "@phosphor-icons/react/dist/ssr";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { FloorPlan } from "@/components/FloorPlan";
+import { PrintButton } from "@/components/PrintButton";
+import { getReport } from "@/lib/api";
+import { formatInches, groupFindings } from "@/lib/findings";
+import type { Finding, ReviewedRule, Scenario } from "@/types/contracts";
+
+export const dynamic = "force-dynamic";
+
+const longDate = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" });
+
+function citation(finding: Finding) {
+  const text = `${finding.citation.edition} ${finding.citation.section}`;
+  return finding.citation.url ? <a href={finding.citation.url} className="underline decoration-rule underline-offset-2">{text}</a> : text;
+}
+
+function ProblemBlock({ finding }: { finding: Finding }) {
+  const render = finding.locus?.render_url;
+  return (
+    <article className="grid gap-5 break-inside-avoid border-t border-rule py-8 sm:grid-cols-[minmax(0,15rem)_1fr]">
+      {render ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={render} alt={`The spot where ${finding.title.toLowerCase()}`} className="aspect-[3/2] w-full rounded-lg bg-rule/40 object-cover" />
+      ) : (
+        <div className="hidden sm:block" />
+      )}
+      <div>
+        <div className="flex items-baseline justify-between gap-4">
+          <h3 className="text-xl font-semibold leading-snug">{finding.title}</h3>
+          {finding.measured_inches !== null && (
+            <span className="measurement shrink-0 text-lg">{formatInches(finding.measured_inches)}</span>
+          )}
+        </div>
+        <p className="mt-2 text-ink-muted">{finding.detail}</p>
+        {finding.fix && <p className="mt-4 border-l-2 border-accent pl-3 font-medium">{finding.fix}</p>}
+        <p className="mt-3 text-sm text-ink-faint">{citation(finding)}</p>
+      </div>
+    </article>
+  );
+}
+
+function legs(scenario: Scenario | null): string[] {
+  if (!scenario) return [];
+  return scenario.stops.slice(1).map((stop, index) => `${scenario.stops[index].name} to ${stop.name}`);
+}
+
+function threshold(rule: ReviewedRule): string {
+  const { threshold: value, unit } = rule.check;
+  return unit === "in" ? formatInches(value) : `${value} ${unit}`;
+}
+
+function RulesTable({ rules }: { rules: ReviewedRule[] }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-left text-sm">
+        <thead className="text-ink-muted">
+          <tr>
+            <th className="py-2 pr-4 font-semibold">Section</th>
+            <th className="py-2 pr-4 font-semibold">Check</th>
+            <th className="py-2 pr-4 font-semibold">Standard</th>
+            <th className="py-2 font-semibold">Reviewed by</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rules.map((rule) => (
+            <tr key={rule.check.id} className="border-t border-rule align-top">
+              <td className="measurement py-2 pr-4">{rule.check.citation.section}</td>
+              <td className="py-2 pr-4">{rule.check.title}</td>
+              <td className="measurement py-2 pr-4">{threshold(rule)}</td>
+              <td className="py-2">
+                {rule.verified_by}, {longDate.format(new Date(rule.verified_at))}
+                {rule.second_check_by && <span className="block text-ink-muted">Second check: {rule.second_check_by}</span>}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function WhatWeChecked({ scenario, passes, rules }: { scenario: Scenario | null; passes: Finding[]; rules: ReviewedRule[] }) {
+  const measured = legs(scenario);
+  return (
+    <section className="mt-12 break-inside-avoid">
+      <h2 className="text-2xl font-semibold">What we checked</h2>
+      {measured.length > 0 && (
+        <>
+          <h3 className="mt-6 font-semibold">Paths measured</h3>
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {measured.map((leg) => (
+              <li key={leg} className="rounded-md bg-rule/50 px-2.5 py-1 text-sm">{leg}</li>
+            ))}
+          </ul>
+        </>
+      )}
+      {passes.length > 0 && (
+        <>
+          <h3 className="mt-6 font-semibold">What passes</h3>
+          <ul className="mt-2 flex flex-col gap-1">
+            {passes.map((finding) => (
+              <li key={finding.id}>{finding.title}</li>
+            ))}
+          </ul>
+        </>
+      )}
+      {rules.length > 0 && (
+        <>
+          <h3 className="mt-6 font-semibold">Rules and who reviewed them</h3>
+          <div className="mt-2">
+            <RulesTable rules={rules} />
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+export default async function ReportPage({ params }: PageProps<"/scans/[scanId]/report">) {
+  const { scanId } = await params;
+  const report = await getReport(scanId);
+  if (!report) notFound();
+  const { scan, scene, scenario, assessment, rules } = report;
+  const groups = groupFindings(assessment?.findings ?? []);
+  const checkedOn = assessment ? new Date(assessment.created_at) : new Date(scan.created_at);
+
+  return (
+    <main className="mx-auto max-w-3xl px-5 py-10 print:max-w-none print:p-0">
+      <div className="mb-10 flex items-center justify-between print:hidden">
+        <Link href={`/scans/${scanId}`} className="flex items-center gap-2 rounded-lg p-2 text-ink-muted hover:bg-ink/5 hover:text-ink">
+          <ArrowLeft size={18} weight="bold" aria-hidden />
+          Back to the shop
+        </Link>
+        <PrintButton />
+      </div>
+
+      <header className="grid items-end gap-6 sm:grid-cols-[1fr_9rem]">
+        <div>
+          <h1 className="text-4xl font-bold leading-tight">{scan.name}</h1>
+          <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-ink-muted">
+            <dt>Checked</dt>
+            <dd className="text-ink">{longDate.format(checkedOn)}</dd>
+            <dt>To fix</dt>
+            <dd className="text-ink">{groups.problems.length}</dd>
+            <dt>Photos to send</dt>
+            <dd className="text-ink">{groups.questions.length}</dd>
+          </dl>
+        </div>
+        {scene && <FloorPlan scene={scene} className="hidden aspect-square w-full sm:block" />}
+      </header>
+
+      {groups.problems.length > 0 && (
+        <section className="mt-12">
+          <h2 className="text-2xl font-semibold">What to fix</h2>
+          <div className="mt-4">
+            {groups.problems.map((finding) => (
+              <ProblemBlock key={finding.id} finding={finding} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {groups.questions.length > 0 && (
+        <section className="mt-12 break-inside-avoid">
+          <h2 className="text-2xl font-semibold">Next steps</h2>
+          <ol className="mt-4 flex list-decimal flex-col gap-4 pl-5">
+            {groups.questions.map((finding) => (
+              <li key={finding.id}>
+                <p className="font-semibold">{finding.title}</p>
+                <p className="text-ink-muted">{finding.detail}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
+      <WhatWeChecked scenario={scenario} passes={groups.passes} rules={rules} />
+    </main>
+  );
+}

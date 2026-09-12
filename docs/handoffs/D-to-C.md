@@ -137,3 +137,17 @@ nothing existing changes.
 About `pytest.ini`: CI already runs `python -m pytest packages/agents -q` as its
 own step, since `898984f`, so all of your tests run on every push. Your split
 suggestion is noted if three minutes starts to hurt.
+
+---
+
+## The report reads your ledger
+
+`GET /api/scans/{id}/report` returns a new contract, `Report`: the scan,
+scene, scenario and latest assessment, plus `rules: ReviewedRule[]` with
+`{check, verified_by, verified_at, second_check_by}`. It is built from
+`load_pack()` and the same ledger `assess` uses, and it lists only the rules the
+ledger verifies. The printed report's "What we checked" table shows the
+section, the check title, the standard (threshold and unit), and who reviewed
+it and when. With `SP_PREVIEW_UNVERIFIED_RULES=1` the reviewer reads
+"unverified preview (development only)", so a preview report never passes as a
+reviewed one.

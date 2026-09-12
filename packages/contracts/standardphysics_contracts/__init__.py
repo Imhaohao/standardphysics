@@ -4,6 +4,8 @@ from .api import (
     CreateScanRequest,
     LayoutCheckRequest,
     LayoutCheckResult,
+    Report,
+    ReviewedRule,
     SaveLayoutRequest,
     ScanList,
 )
@@ -49,6 +51,8 @@ __all__ = [
     "Outcome",
     "Proposal",
     "Quality",
+    "Report",
+    "ReviewedRule",
     "RouterAction",
     "RulePack",
     "SaveLayoutRequest",
