@@ -9,11 +9,11 @@ These fix findings in `PROGRESS.md`. Each has a regression test in `tests/test_a
 | A-8 | `measure.py`, `footprints.py` | `counter_approach` places and turns the 30 by 48 in space with the counter, in front of its local minus-Y face. `footprints.rotation_about_z` is the shared helper. |
 | A-11 | `ingest.py` | An element with no `confidence` gets `needs_another_look` instead of `measured`. |
 | A-2 | `check_blender.py` | `blender_path` tries `$BLENDER`, then `blender` on `PATH`, then the macOS app. |
+| A-12 | `tests/test_audit_lane_b.py` | Checks the committed `shop.glb` names every node by ID, and a fresh export where Blender is installed. |
 | A-13 | `locus.py` | `region_locus` takes `rotation` and `circle`. Pass the counter's rotation for its clear floor space and `circle=True` for a turning space. |
 
 ## Still open in your lane
 
 - **A-10:** `turn_clear_width` still returns the route width. Tier 1 needs ADA 2010 403.5.2.
-- **A-12:** GLB export needs a test.
 
 A-6 and A-9 wait on the contract changes in `audit-to-D.md`.

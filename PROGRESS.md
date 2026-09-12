@@ -96,7 +96,7 @@ Medium. `fixed in 77dd362`.
 `ingest._node` reads `element.get("confidence", "high")`, so an element with no confidence becomes `quality="measured"`. The module says the parser raises rather than inventing a value, and the plan treats unverified geometry as needing another look.
 
 ### A-12 GLB export has no automated test
-Low. `open`.
+Low. `fixed in 750045b`. CI has no Blender, so only the committed file is checked there.
 
 `export_glb` and `glb_node_names` have no test, and CI has no Blender. Checked by hand: the committed `shop.glb` has 19 nodes, each named with its SceneGraph node ID.
 
