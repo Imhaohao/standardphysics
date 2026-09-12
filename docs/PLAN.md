@@ -165,9 +165,10 @@ Each pass is one Weave evaluation with retrievable per-check results. The loop s
 | Layer | Stack | Owner |
 |---|---|---|
 | Capture | SwiftUI, RoomPlan, ARKit, AVFoundation | A |
-| 3D pipeline | Python, Blender headless (`bpy`), Astra | B |
+| 3D pipeline | Python, Blender headless (`bpy`), Astra via OpenRouter | B |
 | Agents and rules | Python, Pydantic, TypeSafe, Weave | C |
 | API | FastAPI, SQLite, local artifact store | D |
+| Models | OpenRouter (`openai/gpt-6-astra`) through the OpenAI SDK, called from the server only | D |
 | Web | Next.js, TypeScript, Tailwind, React Three Fiber | D |
 
 ```
@@ -180,6 +181,20 @@ packages/contracts/  Pydantic models, generated TypeScript
 ```
 
 `packages/contracts` is the only source of truth. Pydantic generates JSON Schema, which generates `apps/web/src/types/contracts.ts`. Nobody hand-writes a TypeScript interface mirroring a Python model.
+
+### Credentials
+
+Every key lives in a gitignored `.env` on the API server. The iOS app, the web client, Git, prompts and Weave traces never see one.
+
+| Variable | Used by |
+|---|---|
+| `OPENROUTER_API_KEY` | Astra and every other model call |
+| `WANDB_API_KEY`, `WANDB_ENTITY`, `WANDB_PROJECT` | Weave tracing and evaluation; ARIA uses the same team project |
+| `TYPESAFE_API_KEY` | The router |
+| `APP_SESSION_SECRET` | Signing app sessions and upload tokens, generated locally |
+| `SHOPIFY_STORE_DOMAIN`, `SHOPIFY_STOREFRONT_PRIVATE_TOKEN` | The stretch catalog, only if it gets built |
+
+A key that shows up in chat, an issue, a log or a commit counts as leaked. Rotate it before using it.
 
 **Blender.** Version matters. 4.0.2 does **not** import USDZ. 5.2.1 LTS does — verified here by round-tripping a file through export and import. Install current Blender on every machine and pin the version in `packages/pipeline/README.md`.
 
@@ -241,6 +256,8 @@ Person B owns `packages/pipeline/`.
 
 Import the USDZ headless with `bpy.ops.wm.usd_import`. Measurements come from `room.json`, not from the mesh. Blender is three things: the workbench where agents run spatial queries, the renderer producing per-finding stills, and the GLB exporter for the web viewer.
 
+**Model access.** Every model call goes through [OpenRouter](https://openrouter.ai/openai/gpt-6-astra) using the OpenAI SDK with `base_url="https://openrouter.ai/api/v1"`, `OPENROUTER_API_KEY`, and model `openai/gpt-6-astra`. That covers Astra's label, clean and frame jobs and the fix agent. OpenRouter lists image input, `tools`, `tool_choice` and structured outputs for this model, which is everything the patch interface needs. Require [zero data retention](https://openrouter.ai/docs/guides/features/zdr) on the account and on each request, because scans of a real shop are private. Pin the provider to OpenAI with [provider routing](https://openrouter.ai/docs/docs/routing/provider-selection) so the demo runs on one backend, and store the provider and model OpenRouter reports on every response. Set a credit limit on the key before the first long Blender run.
+
 ### What Astra does
 
 **Label.** Given each node's raw category, dimensions, position relative to walls and doors, and the two or three keyframes whose frustum contains it, decide what the object is and whether it can be moved. A 3.2 m by 0.7 m by 1.1 m box against the back wall, visible in a frame showing a register, is the ordering counter and it does not move. A 0.6 m square at 0.75 m tall in open floor is a cafe table and it does.
@@ -267,7 +284,7 @@ Corrections to the model and proposed changes to the shop are separate events in
 
 **Exports per revision:** `scene.glb` with stable node IDs under 8 MB, `scene_graph.json`, and `finding_<id>.png` per locatable finding. Compression must not break node selection. Reuse unchanged renders instead of blocking every preview on Blender.
 
-**If Astra access doesn't land,** route the same three jobs through any authorized model behind the same patch validator, with no broader permissions. Resolve runtime access in the first working hour.
+**If Astra isn't available on OpenRouter or the credit limit is hit,** route the same three jobs through another OpenRouter model behind the same patch validator, with no broader permissions. Resolve runtime access in the first working hour.
 
 ---
 
@@ -327,7 +344,7 @@ Get credentials and the real quickstart in hour one. Test malformed, contradicto
 
 ### Weave
 
-**Tracing.** `weave.init()` at API startup, `@weave.op` on every agent call, Blender invocation and check. The whole loop reads as one trace tree.
+**Tracing.** `weave.init()` at API startup, `@weave.op` on every agent call, Blender invocation and check. The whole loop reads as one trace tree. Model calls reach Weave through its [OpenRouter integration](https://docs.wandb.ai/weave/guides/integrations/openrouter), so OpenRouter's Broadcast to Weave setting stays off to avoid duplicate traces.
 
 **Evaluation.** A dataset of about 25 labeled cases: real scans plus synthetic `SceneGraph` fixtures spanning clean passes, real violations, ambiguous objects, thin coverage, and cases where the right answer is to ask rather than guess. Scorers: `finding_precision`, `finding_recall`, `measurement_error_in`, `label_accuracy`, `router_action_match`, `fix_resolves_finding`.
 
@@ -433,7 +450,7 @@ Venue closes 9:00 PM Saturday, reopens 9:00 AM Sunday, submissions due 1:00 PM.
 
 | When | Outcome |
 |---|---|
-| Sat 11:15-12:00 | Contracts frozen. Current Blender installed and USDZ import verified on every machine. Hello-world on the LiDAR phone. TypeSafe credentials requested. W&B project live. |
+| Sat 11:15-12:00 | Contracts frozen. Current Blender installed and USDZ import verified on every machine. Hello-world on the LiDAR phone. TypeSafe credentials requested. W&B project live. OpenRouter key in `.env` with zero data retention and a credit limit. |
 | Sat 12:00-14:00 | RoomPlan capture running. USDZ importing headless. Contracts generating TypeScript. Rule pack drafted with citations. Web shell rendering a fixture GLB. |
 | Sat 14:00-16:00 | **First real scan on the server.** `SceneGraph` derived and tape-verified. Coverage engine returning per-wall numbers. Viewer loading a real scan. Astra labeling. |
 | Sat 16:00-18:00 | Route measurement returning a bottleneck and a pinch point. Three checks producing findings. Findings tappable with a working locus. Coverage minimap live on device. |
@@ -455,7 +472,7 @@ Integrate at 14:00, 16:00, 18:00, 21:00, then hourly Sunday. Each lane keeps `PR
 | iOS provisioning stalls | Sat 12:00 | A resolves it or swaps to another LiDAR phone; everyone else runs on fixtures |
 | Frame tap fights RoomPlan's ARSession | Sat 13:00 | Drop to keyframes only at 2 Hz and build the walkthrough video server-side from frames |
 | USDZ import broken after upgrade | Sat 13:00 | Skip Blender for measurement entirely — `room.json` already holds the geometry. Generate GLB from the parametric data and lose only the renders |
-| Astra access unavailable | Sat 14:00 | Same jobs, any authorized model, same patch validator |
+| Astra unavailable on OpenRouter, or credits run out | Sat 14:00, then credit alerts | Same jobs, another OpenRouter model, same patch validator |
 | TypeSafe unavailable | Sat 15:00 | Labeled local policy, drop the track |
 | RoomPlan mislabels the counter | Expected | That is Astra's job. Only a problem if labeling also fails, in which case label the demo scan by hand |
 | Coverage guidance annoys more than it helps | Sat 18:00 | Loosen to 50% and one viewpoint; never block Done |
@@ -476,6 +493,7 @@ Two rules over everything: **a working demo at noon beats a better demo at 12:58
 | Checks | Every threshold traces to a cited section; a fixture with a known 31 in pinch produces exactly that finding |
 | Locate | Every finding frames the right object from a legible angle with a readable measurement |
 | Router | Real TypeSafe output changes behavior; malformed output authorizes nothing |
+| Models | Every model call goes through OpenRouter with zero data retention required; the reported provider and model are stored; `OPENROUTER_API_KEY` never reaches the app, the browser, Git or a trace |
 | Rearrange | Fixed items never move, inventory is preserved, a regression is rejected, an accepted fix clears its finding on re-check |
 | Weave | Evaluation completes with retrievable per-case results and gates acceptance |
 | Copy | Every user-facing string passes section 2. No jargon, no in-place disclaimers, inches everywhere |
