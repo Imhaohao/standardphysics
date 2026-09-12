@@ -1,6 +1,6 @@
 {
   "lane": "D",
-  "updated": "2026-09-12T23:34:25Z",
+  "updated": "2026-09-12T23:54:22Z",
   "done": [
     "contracts and fixture shop (21bbc65)",
     "Stop.anchor_node_id and WidthResult.needs_measurement (audit A-6, A-9)",
@@ -13,9 +13,11 @@
     "apps/web/src/types/contracts.ts generated from Pydantic, drift-checked in CI",
     "services/api: upload contract on :8787, idempotent finalize, job worker running Lane B ingest, Lane C assess, geometry and renders",
     "sample shop seeded after ingest; real Apple RoomPlan export tested through every stage",
-    "web: shops page, /scans/[scanId] viewer, finding callouts (camera flight, fade, outline, dimension label), findings list with keyboard"
+    "web: shops page, /scans/[scanId] viewer, finding callouts (camera flight, fade, outline, dimension label), findings list with keyboard",
+    "rearrange: drag, arrow-key nudge and R to turn movable pieces; layout checks through Lane C's constraints; save as a new revision",
+    "printable report at /scans/<id>/report with renders, fixes, next steps and who reviewed each rule"
   ],
-  "in_progress": "rearrange: drag and rotate movable nodes with layout re-checks under a second",
+  "in_progress": "before and after scrub, then the ask box on Lane C's propose_fix",
   "blocked_on": null,
   "ready_for_others": [
     "python -m standardphysics_api serves the real upload contract on :8787 (Lane A can point API_BASE_URL at the demo machine)",
@@ -23,7 +25,9 @@
     "GET /api/scans/{id}/scene, scene.glb, scenario, assessment, renders/{finding}.png",
     "standardphysics_contracts.graph_hash, ApiError, CreateScanRequest, ScanList",
     "apps/web/src/types/contracts.ts, regenerate with npm run contracts in apps/web",
-    "packages/fixtures/standardphysics_fixtures/data/real: two real RoomPlan exports"
+    "packages/fixtures/standardphysics_fixtures/data/real: two real RoomPlan exports",
+    "POST /api/scans/{id}/layout-checks and /revisions",
+    "GET /api/scans/{id}/report"
   ],
   "needs_human": [
     "Verify the rule pack thresholds (Lane C's cli rules verify). Until then real scans report no findings; SP_PREVIEW_UNVERIFIED_RULES=1 is for development only",
