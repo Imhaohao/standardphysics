@@ -1,15 +1,24 @@
 {
   "lane": "D",
-  "updated": "2026-09-12T22:42:29Z",
+  "updated": "2026-09-12T23:10:26Z",
   "done": [
     "contracts and fixture shop (21bbc65)",
-    "handoffs: D-to-B sealed doorways, D-to-C assess seam, D-to-audit A-6/A-9 approval"
+    "Stop.anchor_node_id and WidthResult.needs_measurement (audit A-6, A-9)",
+    "graph_hash in contracts, matching Lane C's fingerprint",
+    "Check.threshold and Check.unit, contract vocabulary exported (C-to-D)",
+    "Annotation.point_inches for path clearance",
+    "fixture: Seat on open floor, stop anchors, street scenario, cases clear of walls, shop.glb and shop.usdz rebuilt",
+    "real RoomPlan exports from Apple's WWDC23 sample in fixtures/data/real",
+    "apps/web scaffold: Next 16, React 19.2, R3F 9.7, vitest, complexity lint",
+    "apps/web/src/types/contracts.ts generated from Pydantic, drift-checked in CI"
   ],
-  "in_progress": "contract fields A-6 and A-9, graph_hash, fixture scenario anchors",
+  "in_progress": "API on the real path: upload contract, job stages, scene, GLB and assessment endpoints",
   "blocked_on": null,
   "ready_for_others": [
-    "packages/contracts",
-    "packages/fixtures: build_graph, build_scenario, FixtureMeasurements, shop.glb"
+    "standardphysics_contracts.graph_hash",
+    "standardphysics_fixtures.build_street_scenario for doorway regression tests",
+    "packages/fixtures/standardphysics_fixtures/data/real: two real RoomPlan exports with mapping plists and USDZ",
+    "apps/web/src/types/contracts.ts, regenerate with npm run contracts in apps/web"
   ],
   "needs_human": [
     "W&B project created with public visibility settings",
