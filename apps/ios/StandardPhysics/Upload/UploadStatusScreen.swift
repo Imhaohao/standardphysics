@@ -19,13 +19,17 @@ struct UploadStatusScreen: View {
                         .foregroundStyle(AppTheme.mutedInk)
                         .multilineTextAlignment(.center)
                 }
+                if let message = uploadModel.optionalUploadErrorMessage {
+                    Text(message).foregroundStyle(AppTheme.mutedInk)
+                } else if uploadModel.state == .ready && uploadModel.pendingOptionalUploadCount > 0 {
+                    Text("Your photos are still uploading.").foregroundStyle(AppTheme.mutedInk)
+                }
                 Spacer()
                 actions
             }
             .padding(AppTheme.Spacing.page)
         }
         .task { uploadModel.start() }
-        .onDisappear { uploadModel.cancel() }
     }
 
     @ViewBuilder private var statusMark: some View {
@@ -36,6 +40,11 @@ struct UploadStatusScreen: View {
                 .frame(width: AppTheme.Size.statusMark, height: AppTheme.Size.statusMark)
                 .background(AppTheme.accent)
                 .clipShape(Circle())
+                .accessibilityHidden(true)
+        } else if uploadModel.errorMessage != nil || uploadModel.state == .failed {
+            Image(systemName: "arrow.clockwise")
+                .font(AppTheme.Typography.statusSymbol)
+                .foregroundStyle(AppTheme.warning)
                 .accessibilityHidden(true)
         } else {
             ProgressView()
@@ -48,12 +57,16 @@ struct UploadStatusScreen: View {
     @ViewBuilder private var actions: some View {
         if uploadModel.state == .ready, let scanID = uploadModel.scanID {
             Button("Open your shop") { appModel.screen = .workspace(scanID) }
-                .buttonStyle(PrimaryButtonStyle())
+                .buttonStyle(AppButtonStyle())
         } else if uploadModel.errorMessage != nil {
             Button("Try again") { uploadModel.retry() }
-                .buttonStyle(PrimaryButtonStyle())
-            Button("Back to saved scans") { appModel.showStart() }
-                .buttonStyle(SecondaryButtonStyle())
+                .buttonStyle(AppButtonStyle())
         }
+        if uploadModel.optionalUploadErrorMessage != nil {
+            Button("Retry remaining uploads") { uploadModel.retry() }
+                .buttonStyle(AppButtonStyle(.secondary))
+        }
+        Button("Back to saved scans") { appModel.showStart() }
+            .buttonStyle(AppButtonStyle(.secondary))
     }
 }

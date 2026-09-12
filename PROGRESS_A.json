@@ -18,8 +18,15 @@
     "native-size simulator visual verification",
     "signed device build installed and launched on the paired iPhone 17 Pro"
   ],
-  "in_progress": "run a physical scan and connect Lane D's session handoff when its contract is ready",
-  "blocked_on": "Lane D must provide the web session handoff contract before the workspace can be authenticated",
+  "in_progress": "fix audit findings and preserve detailed LiDAR geometry alongside RoomPlan",
+  "repair_plan": [
+    {"task": "coverage geometry, final reconciliation, and guidance", "model_tier": "Terra", "status": "verified"},
+    {"task": "upload ordering, durable resume, UUID validation, and failed-scan recovery", "model_tier": "Terra", "status": "verified"},
+    {"task": "detailed capture, recovery, device configuration, and authenticated workspace boundary", "model_tier": "Fable/Sol", "status": "in_progress"},
+    {"task": "simulator tests, strict concurrency, physical installation, and adversarial review", "model_tier": "Sonnet/Luna", "status": "pending"}
+  ],
+  "repair_validation": {"ios_tests_passed": 45, "strict_concurrency_build": "passed", "device_build": "installed; launch requires unlocking phone", "real_scan": "requested", "detailed_geometry": "raw LiDAR mesh saved locally; upload contract extension needed"},
+  "blocked_on": "Review Lane D's new no-sign-in demo decision with the user; detailed mesh upload needs a contract entry",
   "ready_for_others": [
     "Lane A produces room.json and RoomPlan metadata mapping from a real scan",
     "Lane A uploads the services/api/openapi.json artifact contract"

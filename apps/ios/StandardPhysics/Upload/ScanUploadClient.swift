@@ -19,8 +19,8 @@ enum ScanState: String, Codable, Equatable, Sendable {
     }
 }
 
-struct RemoteScan: Decodable {
-    let id: String
+struct RemoteScan: Decodable, Equatable, Sendable {
+    let id: UUID
     let state: ScanState
 }
 
@@ -38,7 +38,12 @@ struct ScanUploadClient {
     }
 
     let baseURL: URL
-    var session: URLSession = .shared
+    let session: URLSession
+
+    init(baseURL: URL, session: URLSession = .shared) {
+        self.baseURL = baseURL
+        self.session = session
+    }
 
     func createScan(name: String, duration: TimeInterval) async throws -> RemoteScan {
         var request = URLRequest(url: baseURL.appendingPathComponent("api/scans"))
@@ -52,10 +57,10 @@ struct ScanUploadClient {
         return try await send(request, expectedStatus: 201)
     }
 
-    func upload(_ artifact: CaptureArtifact, to scanID: String) async throws {
+    func upload(_ artifact: CaptureArtifact, to scanID: UUID) async throws {
         let url = baseURL
             .appendingPathComponent("api/scans")
-            .appendingPathComponent(scanID)
+            .appendingPathComponent(scanID.uuidString)
             .appendingPathComponent("artifacts")
             .appendingPathComponent(artifact.id)
         var request = URLRequest(url: url)
@@ -66,27 +71,35 @@ struct ScanUploadClient {
         try validate(response, expectedStatus: 200...201)
     }
 
-    func complete(scanID: String) async throws -> RemoteScan {
+    func complete(scanID: UUID) async throws -> RemoteScan {
         var request = URLRequest(
             url: baseURL.appendingPathComponent("api/scans")
-                .appendingPathComponent(scanID)
+                .appendingPathComponent(scanID.uuidString)
                 .appendingPathComponent("complete")
         )
         request.httpMethod = "POST"
-        return try await send(request, expectedStatus: 200)
+        return try await send(request, expectedStatus: 200, expectedScanID: scanID)
     }
 
-    func scan(id: String) async throws -> RemoteScan {
+    func scan(id: UUID) async throws -> RemoteScan {
         let request = URLRequest(
-            url: baseURL.appendingPathComponent("api/scans").appendingPathComponent(id)
+            url: baseURL.appendingPathComponent("api/scans").appendingPathComponent(id.uuidString)
         )
-        return try await send(request, expectedStatus: 200)
+        return try await send(request, expectedStatus: 200, expectedScanID: id)
     }
 
-    private func send(_ request: URLRequest, expectedStatus: Int) async throws -> RemoteScan {
+    private func send(
+        _ request: URLRequest,
+        expectedStatus: Int,
+        expectedScanID: UUID? = nil
+    ) async throws -> RemoteScan {
         let (data, response) = try await session.data(for: request)
         try validate(response, expectedStatus: expectedStatus...expectedStatus)
-        return try JSONDecoder().decode(RemoteScan.self, from: data)
+        let remote = try JSONDecoder().decode(RemoteScan.self, from: data)
+        if let expectedScanID, remote.id != expectedScanID {
+            throw UploadClientError.mismatchedScanIdentifier
+        }
+        return remote
     }
 
     private func validate(_ response: URLResponse, expectedStatus: ClosedRange<Int>) throws {
@@ -109,8 +122,9 @@ enum SHA256Digest {
     }
 }
 
-enum UploadClientError: Error {
+enum UploadClientError: Error, Equatable {
     case unexpectedResponse
+    case mismatchedScanIdentifier
 }
 
 private enum DeviceModel {

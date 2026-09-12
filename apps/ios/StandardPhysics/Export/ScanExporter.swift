@@ -24,17 +24,19 @@ struct CapturedScan: Identifiable, Codable {
     let duration: TimeInterval
     let artifacts: [CaptureArtifact]
     let name: String?
+    var captureNotice: String? = nil
 
-    func renamed(_ name: String) -> CapturedScan {
+    func renamed(_ name: String) throws -> CapturedScan {
         let updated = CapturedScan(
             id: id,
             directory: directory,
             roomURL: roomURL,
             duration: duration,
             artifacts: artifacts,
-            name: name
+            name: name,
+            captureNotice: captureNotice
         )
-        try? JSONEncoder.standardPhysics.encode(updated).write(
+        try JSONEncoder.standardPhysics.encode(updated).write(
             to: directory.appendingPathComponent("capture.json"),
             options: .atomic
         )
@@ -114,7 +116,8 @@ enum ScanExporter {
             roomURL: roomURL,
             duration: recording.duration,
             artifacts: artifacts,
-            name: nil
+            name: nil,
+            captureNotice: recording.videoURL == nil ? "Your room is saved. Scan again to add a walkthrough." : nil
         )
         try JSONEncoder.standardPhysics.encode(scan).write(
             to: directory.appendingPathComponent("capture.json"),

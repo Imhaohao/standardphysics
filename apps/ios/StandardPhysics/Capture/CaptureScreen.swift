@@ -4,6 +4,7 @@ import simd
 struct CaptureScreen: View {
     @ObservedObject var model: AppModel
     @StateObject private var capture = CaptureSessionStore()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ZStack {
@@ -24,6 +25,10 @@ struct CaptureScreen: View {
                 }
                 CoverageMapView(surfaces: capture.surfaces, coverage: capture.coverage)
                     .frame(height: AppTheme.Size.coverageMapHeight)
+                if capture.hasDetailedGeometry && capture.phase == .scanning {
+                    Label("Recording room details", systemImage: "checkmark")
+                        .font(.subheadline).foregroundStyle(AppTheme.onDark)
+                }
                 finishButton
             }
             .padding(.horizontal, AppTheme.Spacing.section)
@@ -33,6 +38,9 @@ struct CaptureScreen: View {
             if phase == .ready, let scan = capture.capturedScan {
                 model.screen = .review(scan)
             }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active { capture.finish() }
         }
     }
 
@@ -72,21 +80,20 @@ struct CaptureScreen: View {
                 .background(AppTheme.captureProgress)
                 .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.control, style: .continuous))
         case .failed(let message):
-            Text(message)
-                .font(.headline)
-                .foregroundStyle(AppTheme.onDark)
-                .frame(maxWidth: .infinity)
-                .padding(AppTheme.Spacing.card)
-                .background(AppTheme.warning)
-                .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.control, style: .continuous))
-        case .scanning:
-            if capture.coverage.isComplete {
-                Button("Done") { capture.finish() }
-                    .buttonStyle(PrimaryButtonStyle())
-            } else {
-                Button("Done") { capture.finish() }
-                    .buttonStyle(EarlyDoneButtonStyle())
+            VStack(spacing: AppTheme.Spacing.small) {
+                Text(message).font(.headline).foregroundStyle(AppTheme.onDark)
+                if capture.canRetrySave {
+                    Button("Save again") { capture.retrySave() }
+                        .buttonStyle(AppButtonStyle(.primary))
+                }
+                Button("Start a new scan") { model.beginCapture() }
+                    .buttonStyle(AppButtonStyle(.capture))
+                Button("Back to saved scans") { model.showStart() }
+                    .buttonStyle(AppButtonStyle(.capture))
             }
+        case .scanning:
+            Button("Done") { capture.finish() }
+                .buttonStyle(AppButtonStyle(capture.coverage.isComplete ? .primary : .capture))
         }
     }
 }

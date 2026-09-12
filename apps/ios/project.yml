@@ -19,6 +19,9 @@ targets:
       properties:
         CFBundleDisplayName: Standard Physics
         NSCameraUsageDescription: Use the camera to measure your shop.
+        NSLocalNetworkUsageDescription: Connect to the workspace on your local network to upload your scans.
+        API_BASE_URL: $(CAPTURE_API_BASE_URL)
+        WORKSPACE_BASE_URL: $(CAPTURE_WORKSPACE_BASE_URL)
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         UILaunchStoryboardName: LaunchScreen
@@ -29,6 +32,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.standardphysics.capture
         TARGETED_DEVICE_FAMILY: "1,2"
+        CAPTURE_API_BASE_URL: ""
+        CAPTURE_WORKSPACE_BASE_URL: ""
     scheme:
       testTargets:
         - StandardPhysicsTests

@@ -16,6 +16,17 @@ struct RecordingResult: Sendable {
     let frameURLs: [URL]
     let posesURL: URL
     let duration: TimeInterval
+
+    static func recovered(from directory: URL?) -> RecordingResult? {
+        guard let directory else { return nil }
+        let posesURL = directory.appendingPathComponent("poses.json")
+        guard let data = try? Data(contentsOf: posesURL),
+              let poses = try? JSONDecoder().decode([PoseRecord].self, from: data) else { return nil }
+        let frames = poses.map { directory.appendingPathComponent($0.image) }
+            .filter { FileManager.default.fileExists(atPath: $0.path) }
+        return RecordingResult(videoURL: nil, frameURLs: frames, posesURL: posesURL,
+            duration: max(0, (poses.last?.timestamp ?? 0) - (poses.first?.timestamp ?? 0)))
+    }
 }
 
 @MainActor
@@ -37,6 +48,7 @@ final class FrameRecorder: NSObject {
     private var hasReachedTimeLimit = false
 
     var onTimeLimit: (() -> Void)?
+    var onObservation: ((ARFrame) -> Void)?
 
     init(session: ARSession, directory: URL) throws {
         self.session = session
@@ -66,19 +78,20 @@ final class FrameRecorder: NSObject {
         let poses = poseRecords
         let completedFrameURLs = frameURLs
         let outputDirectory = directory
-        let failures = recordingFailures
         completionGroup.enter()
         videoRecorder.finish { result in
-            stopResults.setVideoResult(result.map(Optional.some))
+            stopResults.setVideoResult(result)
             completionGroup.leave()
         }
 
         completionGroup.enter()
         imageQueue.async {
             do {
-                if let error = failures.first { throw error }
                 let posesURL = outputDirectory.appendingPathComponent("poses.json")
-                let data = try JSONEncoder.standardPhysics.encode(poses)
+                let savedPoses = poses.filter {
+                    FileManager.default.fileExists(atPath: outputDirectory.appendingPathComponent($0.image).path)
+                }
+                let data = try JSONEncoder.standardPhysics.encode(savedPoses)
                 try data.write(to: posesURL, options: .atomic)
             } catch {
                 stopResults.setRecordingError(error)
@@ -119,6 +132,7 @@ final class FrameRecorder: NSObject {
         }
         if frame.timestamp - lastKeyframeTimestamp >= 0.5 {
             lastKeyframeTimestamp = frame.timestamp
+            onObservation?(frame)
             saveKeyframe(frame)
         }
     }
@@ -189,7 +203,8 @@ private final class RecordingStopResults: @unchecked Sendable {
             return videoResult.map { videoURL in
                 RecordingResult(
                     videoURL: videoURL,
-                    frameURLs: frameURLs.sorted { $0.lastPathComponent < $1.lastPathComponent },
+                    frameURLs: frameURLs.filter { FileManager.default.fileExists(atPath: $0.path) }
+                        .sorted { $0.lastPathComponent < $1.lastPathComponent },
                     posesURL: directory.appendingPathComponent("poses.json"),
                     duration: duration
                 )

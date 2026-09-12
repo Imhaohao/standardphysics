@@ -1,10 +1,16 @@
 import Foundation
+import RoomPlan
 import simd
 
 enum SurfaceConfidence: String, Codable, Sendable {
     case low
     case medium
     case high
+}
+
+enum SurfaceShape: Sendable {
+    case plane(width: Float, height: Float, localU: SIMD3<Float>, localV: SIMD3<Float>, localNormal: SIMD3<Float>)
+    case box(size: SIMD3<Float>)
 }
 
 struct SurfaceSnapshot: Identifiable, Sendable {
@@ -14,26 +20,24 @@ struct SurfaceSnapshot: Identifiable, Sendable {
     let transform: simd_float4x4
     let confidence: SurfaceConfidence
     let isWall: Bool
+    let shape: SurfaceShape
+    let kind: String
+    let name: String?
 
-    init(
-        id: UUID,
-        width: Float,
-        height: Float,
-        transform: simd_float4x4,
-        confidence: SurfaceConfidence,
-        isWall: Bool = true
-    ) {
+    init(id: UUID, width: Float, height: Float, transform: simd_float4x4, confidence: SurfaceConfidence, isWall: Bool = true, shape: SurfaceShape? = nil, kind: String? = nil, name: String? = nil) {
         self.id = id
         self.width = width
         self.height = height
         self.transform = transform
         self.confidence = confidence
         self.isWall = isWall
+        self.shape = shape ?? .plane(width: width, height: height, localU: SIMD3(1, 0, 0), localV: SIMD3(0, 1, 0), localNormal: SIMD3(0, 0, 1))
+        self.kind = kind ?? (isWall ? "wall" : "area")
+        self.name = name
     }
 
-    var center: SIMD3<Float> {
-        SIMD3(transform.columns.3.x, transform.columns.3.y, transform.columns.3.z)
-    }
+    var center: SIMD3<Float> { SIMD3(transform.columns.3.x, transform.columns.3.y, transform.columns.3.z) }
+    var friendlyName: String { name ?? kind }
 }
 
 struct CameraObservation: Sendable {
@@ -41,20 +45,14 @@ struct CameraObservation: Sendable {
     let intrinsics: simd_float3x3
     let imageResolution: SIMD2<Float>
 
-    var position: SIMD3<Float> {
-        SIMD3(transform.columns.3.x, transform.columns.3.y, transform.columns.3.z)
-    }
+    var position: SIMD3<Float> { SIMD3(transform.columns.3.x, transform.columns.3.y, transform.columns.3.z) }
 
     static func lookingStraightAhead(position: SIMD3<Float>) -> CameraObservation {
         var transform = matrix_identity_float4x4
         transform.columns.3 = SIMD4(position, 1)
         return CameraObservation(
             transform: transform,
-            intrinsics: simd_float3x3(
-                SIMD3(500, 0, 0),
-                SIMD3(0, 500, 0),
-                SIMD3(500, 500, 1)
-            ),
+            intrinsics: simd_float3x3(SIMD3(500, 0, 0), SIMD3(0, 500, 0), SIMD3(500, 500, 1)),
             imageResolution: SIMD2(1_000, 1_000)
         )
     }
@@ -73,17 +71,9 @@ struct SurfaceCoverage: Identifiable, Codable, Equatable, Sendable {
         case viewpointCount = "viewpoint_count"
     }
 
-    var isDone: Bool {
-        observedFraction >= 0.70 && viewpointCount >= 2 && highConfidence
-    }
+    var isDone: Bool { observedFraction >= 0.70 && viewpointCount >= 2 && highConfidence }
 
-    init(
-        id: UUID,
-        observedFraction: Double,
-        observedSegments: [Bool] = [],
-        viewpointCount: Int,
-        highConfidence: Bool
-    ) {
+    init(id: UUID, observedFraction: Double, observedSegments: [Bool] = [], viewpointCount: Int, highConfidence: Bool) {
         self.id = id
         self.observedFraction = observedFraction
         self.observedSegments = observedSegments
@@ -104,22 +94,45 @@ struct SurfaceCoverage: Identifiable, Codable, Equatable, Sendable {
 struct CoverageSnapshot: Sendable {
     var surfaces: [SurfaceCoverage] = []
     var unfinishedDirection: CoverageAngle = .zero
+    var instruction = "Turn around slowly"
 
-    var isComplete: Bool {
-        !surfaces.isEmpty && surfaces.allSatisfy(\.isDone)
-    }
+    var isComplete: Bool { !surfaces.isEmpty && surfaces.allSatisfy(\.isDone) }
 }
 
 struct CoverageAngle: Equatable, Sendable {
     let radians: Double
-
     static let zero = CoverageAngle(radians: 0)
 }
 
 struct CoverageEngine {
     private struct ObservationState {
-        var observedCells: Set<Int> = []
+        var observedSamples: Set<Int> = []
         var viewpoints: [SIMD3<Float>] = []
+        var cameras: [CameraObservation] = []
+        var geometry: GeometryFingerprint?
+    }
+
+    private struct GeometryFingerprint: Equatable {
+        let transform: [Float]
+        let shape: ShapeFingerprint
+    }
+
+    private enum ShapeFingerprint: Equatable {
+        case plane(width: Float, height: Float, u: SIMD3<Float>, v: SIMD3<Float>, normal: SIMD3<Float>)
+        case box(size: SIMD3<Float>)
+    }
+
+    private struct SurfaceSample {
+        let index: Int
+        let localPoint: SIMD3<Float>
+        let localNormal: SIMD3<Float>
+        let weight: Float
+        let segment: Int?
+    }
+
+    private struct Guidance {
+        let angle: CoverageAngle
+        let instruction: String
     }
 
     private let gridSize: Int
@@ -137,133 +150,267 @@ struct CoverageEngine {
     }
 
     mutating func update(surfaces: [SurfaceSnapshot], camera: CameraObservation) {
-        for surface in surfaces {
-            observe(surface: surface, from: camera)
-        }
+        for surface in surfaces { observe(surface: surface, from: camera) }
+        snapshot = makeSnapshot(surfaces: surfaces, camera: camera)
+    }
 
-        snapshot.surfaces = surfaces.map { surface in
-            let state = observations[surface.id, default: ObservationState()]
-            return SurfaceCoverage(
-                id: surface.id,
-                observedFraction: Double(state.observedCells.count) / Double(gridSize * gridSize),
-                observedSegments: observedSegments(from: state.observedCells),
-                viewpointCount: state.viewpoints.count,
-                highConfidence: surface.confidence == .high
-            )
+    mutating func reconcile(finalSurfaces: [SurfaceSnapshot]) -> CoverageSnapshot {
+        let finalIDs = Set(finalSurfaces.map(\.id))
+        observations = observations.filter { finalIDs.contains($0.key) }
+        for surface in finalSurfaces {
+            guard let state = observations[surface.id] else { continue }
+            var replayed = replayedState(from: state, on: surface)
+            replayed.geometry = geometryFingerprint(for: surface)
+            observations[surface.id] = replayed
         }
-        snapshot.unfinishedDirection = directionToNearestUnfinishedArea(
-            surfaces: surfaces,
-            camera: camera
-        )
+        snapshot = makeSnapshot(surfaces: finalSurfaces, camera: nil)
+        return snapshot
     }
 
     private mutating func observe(surface: SurfaceSnapshot, from camera: CameraObservation) {
         var state = observations[surface.id, default: ObservationState()]
-        let visibleCells = visibleCellIndices(on: surface, from: camera)
-        guard !visibleCells.isEmpty else { return }
-
-        state.observedCells.formUnion(visibleCells)
-        if state.viewpoints.allSatisfy({ simd_distance($0, camera.position) >= 1 }) {
-            state.viewpoints.append(camera.position)
+        let geometry = geometryFingerprint(for: surface)
+        if state.geometry != geometry {
+            state = replayedState(from: state, on: surface)
+            state.geometry = geometry
         }
+        let visibleSamples = samples(on: surface).filter { isVisible(sample: $0, on: surface, from: camera) }
+        guard !visibleSamples.isEmpty else {
+            observations[surface.id] = state
+            return
+        }
+        state.observedSamples.formUnion(visibleSamples.map(\.index))
+        state.cameras.append(camera)
+        if state.viewpoints.allSatisfy({ simd_distance($0, camera.position) >= 1 }) { state.viewpoints.append(camera.position) }
         observations[surface.id] = state
     }
 
-    private func visibleCellIndices(
-        on surface: SurfaceSnapshot,
-        from camera: CameraObservation
-    ) -> Set<Int> {
-        var visible: Set<Int> = []
-        for row in 0..<gridSize {
-            for column in 0..<gridSize {
-                let localPoint = localPoint(on: surface, row: row, column: column)
-                let worldPoint = surface.transform * localPoint
-                if isVisible(
-                    worldPoint: SIMD3(worldPoint.x, worldPoint.y, worldPoint.z),
-                    surface: surface,
-                    camera: camera
-                ) {
-                    visible.insert(row * gridSize + column)
-                }
+    private func geometryFingerprint(for surface: SurfaceSnapshot) -> GeometryFingerprint {
+        let transform = surface.transform
+        let values = [
+            transform.columns.0.x, transform.columns.0.y, transform.columns.0.z, transform.columns.0.w,
+            transform.columns.1.x, transform.columns.1.y, transform.columns.1.z, transform.columns.1.w,
+            transform.columns.2.x, transform.columns.2.y, transform.columns.2.z, transform.columns.2.w,
+            transform.columns.3.x, transform.columns.3.y, transform.columns.3.z, transform.columns.3.w
+        ]
+        let shape: ShapeFingerprint
+        switch surface.shape {
+        case let .plane(width, height, localU, localV, localNormal):
+            shape = .plane(width: width, height: height, u: localU, v: localV, normal: localNormal)
+        case let .box(size):
+            shape = .box(size: size)
+        }
+        return GeometryFingerprint(transform: values, shape: shape)
+    }
+
+    private func replayedState(from state: ObservationState, on surface: SurfaceSnapshot) -> ObservationState {
+        var replayed = ObservationState()
+        let surfaceSamples = samples(on: surface)
+        for camera in state.cameras {
+            let visibleSamples = surfaceSamples.filter { isVisible(sample: $0, on: surface, from: camera) }
+            guard !visibleSamples.isEmpty else { continue }
+            replayed.observedSamples.formUnion(visibleSamples.map(\.index))
+            replayed.cameras.append(camera)
+            if replayed.viewpoints.allSatisfy({ simd_distance($0, camera.position) >= 1 }) {
+                replayed.viewpoints.append(camera.position)
             }
         }
-        return visible
+        return replayed
     }
 
-    private func localPoint(
-        on surface: SurfaceSnapshot,
-        row: Int,
-        column: Int
-    ) -> SIMD4<Float> {
-        let x = (Float(column) + 0.5) / Float(gridSize) - 0.5
-        let y = (Float(row) + 0.5) / Float(gridSize) - 0.5
-        return SIMD4(x * surface.width, y * surface.height, 0, 1)
+    private func makeSnapshot(surfaces: [SurfaceSnapshot], camera: CameraObservation?) -> CoverageSnapshot {
+        var result = CoverageSnapshot()
+        result.surfaces = surfaces.map(coverage(for:))
+        guard let camera else {
+            result.instruction = result.isComplete ? "You’ve got the whole shop." : "Turn around slowly"
+            return result
+        }
+        let guidance = guidance(for: surfaces, coverage: result.surfaces, camera: camera)
+        result.unfinishedDirection = guidance.angle
+        result.instruction = guidance.instruction
+        return result
     }
 
-    private func observedSegments(from observedCells: Set<Int>) -> [Bool] {
-        (0..<gridSize).map { column in
-            let observedRowCount = (0..<gridSize).filter { row in
-                observedCells.contains(row * gridSize + column)
-            }.count
-            return observedRowCount * 10 >= gridSize * 7
+    private func coverage(for surface: SurfaceSnapshot) -> SurfaceCoverage {
+        let state = observations[surface.id, default: ObservationState()]
+        let samples = samples(on: surface)
+        let totalWeight = samples.reduce(0) { $0 + $1.weight }
+        let observedWeight = samples.filter { state.observedSamples.contains($0.index) }.reduce(0) { $0 + $1.weight }
+        let fraction = totalWeight > 0 ? Double(observedWeight / totalWeight) : 0
+        return SurfaceCoverage(
+            id: surface.id,
+            observedFraction: min(1, fraction),
+            observedSegments: observedSegments(samples: samples, state: state, shape: surface.shape),
+            viewpointCount: state.viewpoints.count,
+            highConfidence: surface.confidence == .high
+        )
+    }
+
+    private func samples(on surface: SurfaceSnapshot) -> [SurfaceSample] {
+        switch surface.shape {
+        case let .plane(width, height, localU, localV, localNormal):
+            return faceSamples(startIndex: 0, center: .zero, width: width, height: height, localU: localU, localV: localV, localNormal: localNormal, area: width * height, segmented: true)
+        case let .box(size):
+            return boxSamples(size: size)
         }
     }
 
-    private func isVisible(
-        worldPoint: SIMD3<Float>,
-        surface: SurfaceSnapshot,
-        camera: CameraObservation
-    ) -> Bool {
+    private func boxSamples(size: SIMD3<Float>) -> [SurfaceSample] {
+        let x = max(size.x, 0)
+        let y = max(size.y, 0)
+        let z = max(size.z, 0)
+        let faces = [
+            (SIMD3<Float>(1, 0, 0), SIMD3<Float>(0, 1, 0), SIMD3<Float>(0, 0, 1), y, z),
+            (SIMD3<Float>(-1, 0, 0), SIMD3<Float>(0, 1, 0), SIMD3<Float>(0, 0, -1), y, z),
+            (SIMD3<Float>(0, 1, 0), SIMD3<Float>(1, 0, 0), SIMD3<Float>(0, 0, -1), x, z),
+            (SIMD3<Float>(0, -1, 0), SIMD3<Float>(1, 0, 0), SIMD3<Float>(0, 0, 1), x, z),
+            (SIMD3<Float>(0, 0, 1), SIMD3<Float>(1, 0, 0), SIMD3<Float>(0, 1, 0), x, y),
+            (SIMD3<Float>(0, 0, -1), SIMD3<Float>(-1, 0, 0), SIMD3<Float>(0, 1, 0), x, y)
+        ]
+        let halfSize = size / 2
+        let samplesPerFace = gridSize * gridSize
+        return faces.enumerated().flatMap { offset, face in
+            faceSamples(startIndex: offset * samplesPerFace, center: face.0 * halfSize, width: face.3, height: face.4, localU: face.1, localV: face.2, localNormal: face.0, area: face.3 * face.4, segmented: false)
+        }
+    }
+
+    private func faceSamples(startIndex: Int, center: SIMD3<Float>, width: Float, height: Float, localU: SIMD3<Float>, localV: SIMD3<Float>, localNormal: SIMD3<Float>, area: Float, segmented: Bool) -> [SurfaceSample] {
+        guard width > 0, height > 0 else { return [] }
+        let count = Float(gridSize * gridSize)
+        return (0..<gridSize).flatMap { row in
+            (0..<gridSize).map { column in
+                let u = (Float(column) + 0.5) / Float(gridSize) - 0.5
+                let v = (Float(row) + 0.5) / Float(gridSize) - 0.5
+                return SurfaceSample(index: startIndex + row * gridSize + column, localPoint: center + localU * (u * width) + localV * (v * height), localNormal: localNormal, weight: area / count, segment: segmented ? column : nil)
+            }
+        }
+    }
+
+    private func observedSegments(samples: [SurfaceSample], state: ObservationState, shape: SurfaceShape) -> [Bool] {
+        guard case .plane = shape else { return [] }
+        return (0..<gridSize).map { segment in
+            let segmentSamples = samples.filter { $0.segment == segment }
+            let total = segmentSamples.reduce(0) { $0 + $1.weight }
+            let observed = segmentSamples.filter { state.observedSamples.contains($0.index) }.reduce(0) { $0 + $1.weight }
+            return total > 0 && observed / total >= 0.70
+        }
+    }
+
+    private func isVisible(sample: SurfaceSample, on surface: SurfaceSnapshot, from camera: CameraObservation) -> Bool {
+        let worldPoint = worldPoint(for: sample, on: surface)
         let pointToCamera = camera.position - worldPoint
         let distance = simd_length(pointToCamera)
-        guard distance <= 5, distance > 0 else { return false }
-
-        let normal = simd_normalize(
-            SIMD3(surface.transform.columns.2.x, surface.transform.columns.2.y, surface.transform.columns.2.z)
-        )
-        guard simd_dot(normal, pointToCamera / distance) >= 0.5 else { return false }
-
+        guard distance > 0, distance <= 5 else { return false }
+        guard simd_dot(normal(sample.localNormal, transformedBy: surface.transform), pointToCamera / distance) > 0.5 else { return false }
         let cameraPoint = simd_inverse(camera.transform) * SIMD4(worldPoint, 1)
         guard cameraPoint.z < 0 else { return false }
-
         let depth = -cameraPoint.z
-        let x = camera.intrinsics.columns.0.x * cameraPoint.x / depth
-            + camera.intrinsics.columns.2.x
-        let y = camera.intrinsics.columns.1.y * cameraPoint.y / depth
-            + camera.intrinsics.columns.2.y
-        return x >= 0 && x <= camera.imageResolution.x
-            && y >= 0 && y <= camera.imageResolution.y
+        let x = camera.intrinsics.columns.0.x * cameraPoint.x / depth + camera.intrinsics.columns.2.x
+        let y = camera.intrinsics.columns.1.y * cameraPoint.y / depth + camera.intrinsics.columns.2.y
+        return x >= 0 && x <= camera.imageResolution.x && y >= 0 && y <= camera.imageResolution.y
     }
 
-    private func directionToNearestUnfinishedArea(
-        surfaces: [SurfaceSnapshot],
-        camera: CameraObservation
-    ) -> CoverageAngle {
-        let coverageByID = Dictionary(uniqueKeysWithValues: snapshot.surfaces.map { ($0.id, $0) })
-        let candidates = surfaces.flatMap { surface -> [SIMD3<Float>] in
+    private func normal(_ localNormal: SIMD3<Float>, transformedBy transform: simd_float4x4) -> SIMD3<Float> {
+        let transformed = simd_transpose(simd_inverse(transform)) * SIMD4(localNormal, 0)
+        return simd_normalize(SIMD3(transformed.x, transformed.y, transformed.z))
+    }
+
+    private func guidance(for surfaces: [SurfaceSnapshot], coverage: [SurfaceCoverage], camera: CameraObservation) -> Guidance {
+        let coverageByID = Dictionary(uniqueKeysWithValues: coverage.map { ($0.id, $0) })
+        let candidates = surfaces.flatMap { surface -> [(SurfaceSnapshot, SurfaceSample)] in
             guard coverageByID[surface.id]?.isDone != true else { return [] }
-            return unfinishedWorldPoints(on: surface)
+            let state = observations[surface.id, default: ObservationState()]
+            let remaining = samples(on: surface).filter { !state.observedSamples.contains($0.index) }
+            if !remaining.isEmpty { return remaining.map { (surface, $0) } }
+            return nearestCenterSample(on: surface).map { [(surface, $0)] } ?? []
         }
-        guard let nearest = candidates.min(by: {
-            simd_distance($0, camera.position) < simd_distance($1, camera.position)
-        }) else { return .zero }
-
-        let worldDirection = nearest - camera.position
-        let cameraDirection = simd_inverse(camera.transform) * SIMD4(worldDirection, 0)
-        return CoverageAngle(radians: Double(atan2(cameraDirection.x, -cameraDirection.z)))
+        guard let target = candidates.min(by: { distance(to: $0.1, on: $0.0, from: camera) < distance(to: $1.1, on: $1.0, from: camera) }) else {
+            return Guidance(angle: .zero, instruction: "You’ve got the whole shop.")
+        }
+        let worldPoint = worldPoint(for: target.1, on: target.0)
+        let cameraDirection = simd_inverse(camera.transform) * SIMD4(worldPoint - camera.position, 0)
+        return Guidance(angle: CoverageAngle(radians: Double(atan2(cameraDirection.x, -cameraDirection.z))), instruction: "Point the phone at the \(target.0.friendlyName).")
     }
 
-    private func unfinishedWorldPoints(on surface: SurfaceSnapshot) -> [SIMD3<Float>] {
-        let observedCells = observations[surface.id]?.observedCells ?? []
-        let unfinishedCells = (0..<(gridSize * gridSize)).filter { !observedCells.contains($0) }
-        guard !unfinishedCells.isEmpty else { return [surface.center] }
-        return unfinishedCells.map { index in
-            let point = surface.transform * localPoint(
-                on: surface,
-                row: index / gridSize,
-                column: index % gridSize
-            )
-            return SIMD3(point.x, point.y, point.z)
+    private func nearestCenterSample(on surface: SurfaceSnapshot) -> SurfaceSample? {
+        samples(on: surface).min { simd_length($0.localPoint) < simd_length($1.localPoint) }
+    }
+
+    private func distance(to sample: SurfaceSample, on surface: SurfaceSnapshot, from camera: CameraObservation) -> Float {
+        simd_distance(worldPoint(for: sample, on: surface), camera.position)
+    }
+
+    private func worldPoint(for sample: SurfaceSample, on surface: SurfaceSnapshot) -> SIMD3<Float> {
+        let point = surface.transform * SIMD4(sample.localPoint, 1)
+        return SIMD3(point.x, point.y, point.z)
+    }
+}
+
+enum RoomCoverage {
+    static func snapshots(from room: CapturedRoom) -> [SurfaceSnapshot] {
+        room.walls.map(wallSnapshot) + room.doors.map { planeSnapshot($0, kind: "door") } + room.windows.map { planeSnapshot($0, kind: "window") } + room.openings.map { planeSnapshot($0, kind: "opening") } + room.floors.map(floorSnapshot) + room.objects.map(objectSnapshot)
+    }
+
+    static func reconcile(_ engine: inout CoverageEngine, finalRoom: CapturedRoom) -> CoverageSnapshot {
+        engine.reconcile(finalSurfaces: snapshots(from: finalRoom))
+    }
+
+    private static func wallSnapshot(_ surface: CapturedRoom.Surface) -> SurfaceSnapshot {
+        planeSnapshot(surface, kind: "wall", isWall: true)
+    }
+
+    private static func planeSnapshot(_ surface: CapturedRoom.Surface, kind: String, isWall: Bool = false) -> SurfaceSnapshot {
+        let shape = planeShape(dimensions: surface.dimensions, transform: surface.transform, isFloor: false)
+        return SurfaceSnapshot(id: surface.identifier, width: shape.width, height: shape.height, transform: surface.transform, confidence: SurfaceConfidence(surface.confidence), isWall: isWall, shape: shape.surfaceShape, kind: kind)
+    }
+
+    private static func floorSnapshot(_ surface: CapturedRoom.Surface) -> SurfaceSnapshot {
+        let shape = planeShape(dimensions: surface.dimensions, transform: surface.transform, isFloor: true)
+        return SurfaceSnapshot(id: surface.identifier, width: shape.width, height: shape.height, transform: surface.transform, confidence: SurfaceConfidence(surface.confidence), isWall: false, shape: shape.surfaceShape, kind: "floor")
+    }
+
+    private static func objectSnapshot(_ object: CapturedRoom.Object) -> SurfaceSnapshot {
+        SurfaceSnapshot(id: object.identifier, width: object.dimensions.x, height: object.dimensions.y, transform: object.transform, confidence: SurfaceConfidence(object.confidence), isWall: false, shape: .box(size: object.dimensions), kind: "object")
+    }
+
+    static func planeShape(dimensions: SIMD3<Float>, transform: simd_float4x4, isFloor: Bool) -> (width: Float, height: Float, surfaceShape: SurfaceShape) {
+        let values = [abs(dimensions.x), abs(dimensions.y), abs(dimensions.z)]
+        let normalAxis = values.indices.min { values[$0] < values[$1] } ?? 2
+        let faceAxes = values.indices.filter { $0 != normalAxis }
+        let localU = axis(faceAxes[0])
+        let localV = axis(faceAxes[1])
+        var localNormal = axis(normalAxis)
+        if isFloor && simd_dot(worldNormal(localNormal, transform: transform), SIMD3<Float>(0, 1, 0)) < 0 {
+            localNormal *= -1
+        }
+        return (
+            values[faceAxes[0]],
+            values[faceAxes[1]],
+            .plane(width: values[faceAxes[0]], height: values[faceAxes[1]], localU: localU, localV: localV, localNormal: localNormal)
+        )
+    }
+
+    private static func axis(_ index: Int) -> SIMD3<Float> {
+        switch index {
+        case 0: SIMD3<Float>(1, 0, 0)
+        case 1: SIMD3<Float>(0, 1, 0)
+        default: SIMD3<Float>(0, 0, 1)
+        }
+    }
+
+    private static func worldNormal(_ localNormal: SIMD3<Float>, transform: simd_float4x4) -> SIMD3<Float> {
+        let transformed = simd_transpose(simd_inverse(transform)) * SIMD4(localNormal, 0)
+        return simd_normalize(SIMD3(transformed.x, transformed.y, transformed.z))
+    }
+}
+
+private extension SurfaceConfidence {
+    init(_ confidence: CapturedRoom.Confidence) {
+        switch confidence {
+        case .low: self = .low
+        case .medium: self = .medium
+        case .high: self = .high
+        @unknown default: self = .low
         }
     }
 }

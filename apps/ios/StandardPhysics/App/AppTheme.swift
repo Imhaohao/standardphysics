@@ -62,38 +62,29 @@ enum AppTheme {
     }
 }
 
-struct PrimaryButtonStyle: ButtonStyle {
+struct AppButtonStyle: ButtonStyle {
+    enum Variant { case primary, secondary, capture }
+    let variant: Variant
+    @Environment(\.isEnabled) private var isEnabled
+
+    init(_ variant: Variant = .primary) { self.variant = variant }
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.headline)
             .frame(maxWidth: .infinity)
             .padding(.vertical, AppTheme.Spacing.control)
-            .foregroundStyle(AppTheme.onDark)
-            .background(configuration.isPressed ? AppTheme.ink.opacity(0.78) : AppTheme.ink)
+            .foregroundStyle(variant == .secondary ? AppTheme.ink : AppTheme.onDark)
+            .background(background(pressed: configuration.isPressed))
             .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.control, style: .continuous))
+            .opacity(isEnabled ? 1 : 0.45)
     }
-}
 
-struct SecondaryButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.headline)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, AppTheme.Spacing.compact)
-            .foregroundStyle(AppTheme.ink)
-            .background(configuration.isPressed ? AppTheme.secondaryPressed : AppTheme.secondaryIdle)
-            .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.field, style: .continuous))
-    }
-}
-
-struct EarlyDoneButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.headline)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, AppTheme.Spacing.control)
-            .foregroundStyle(AppTheme.onDark)
-            .background(configuration.isPressed ? AppTheme.captureProgress : AppTheme.captureChrome)
-            .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.control, style: .continuous))
+    private func background(pressed: Bool) -> Color {
+        switch variant {
+        case .primary: pressed ? AppTheme.ink.opacity(0.78) : AppTheme.ink
+        case .secondary: pressed ? AppTheme.secondaryPressed : AppTheme.secondaryIdle
+        case .capture: pressed ? AppTheme.captureProgress : AppTheme.captureChrome
+        }
     }
 }

@@ -15,16 +15,17 @@ final class ScanUploadClientTests: XCTestCase {
         let artifactURL = directory.appendingPathComponent("room.json")
         try Data("abc".utf8).write(to: artifactURL)
 
+        let scanID = UUID(uuidString: "9771B8AC-1A27-4058-A1B1-10E2A3494B2B")!
         var uploadedRequest: URLRequest?
         URLProtocolStub.handler = { request in
             switch (request.httpMethod, request.url?.path) {
             case ("POST", "/api/scans"):
-                return (201, #"{"id":"scan-123","state":"uploading"}"#.data(using: .utf8)!)
-            case ("PUT", "/api/scans/scan-123/artifacts/room-json"):
+                return (201, #"{"id":"\#(scanID.uuidString)","state":"uploading"}"#.data(using: .utf8)!)
+            case ("PUT", "/api/scans/\(scanID.uuidString)/artifacts/room-json"):
                 uploadedRequest = request
                 return (201, Data("{}".utf8))
-            case ("POST", "/api/scans/scan-123/complete"):
-                return (200, #"{"id":"scan-123","state":"measuring"}"#.data(using: .utf8)!)
+            case ("POST", "/api/scans/\(scanID.uuidString)/complete"):
+                return (200, #"{"id":"\#(scanID.uuidString)","state":"measuring"}"#.data(using: .utf8)!)
             default:
                 XCTFail("Unexpected request: \(request)")
                 return (500, Data())
@@ -50,6 +51,44 @@ final class ScanUploadClientTests: XCTestCase {
             "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
         )
         XCTAssertEqual(completed.state, .measuring)
+    }
+
+    func testRejectsMalformedRemoteIdentifier() async throws {
+        URLProtocolStub.handler = { _ in
+            (201, #"{"id":"not-a-uuid","state":"uploading"}"#.data(using: .utf8)!)
+        }
+
+        let client = makeClient()
+        do {
+            _ = try await client.createScan(name: "Tea House", duration: 30)
+            XCTFail("Expected malformed response identifier to fail decoding")
+        } catch is DecodingError {
+            // The UUID decoder rejects malformed JSON values at the client boundary.
+        }
+    }
+
+    func testRejectsResponseForADifferentScan() async throws {
+        let requestedID = UUID(uuidString: "9771B8AC-1A27-4058-A1B1-10E2A3494B2B")!
+        let returnedID = UUID(uuidString: "16C2D1E9-C757-42F9-B55D-7E4DF4F0E8E9")!
+        URLProtocolStub.handler = { _ in
+            (200, #"{"id":"\#(returnedID.uuidString)","state":"checking"}"#.data(using: .utf8)!)
+        }
+
+        do {
+            _ = try await makeClient().scan(id: requestedID)
+            XCTFail("Expected a mismatched response identifier")
+        } catch let error as UploadClientError {
+            XCTAssertEqual(error, .mismatchedScanIdentifier)
+        }
+    }
+
+    private func makeClient() -> ScanUploadClient {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [URLProtocolStub.self]
+        return ScanUploadClient(
+            baseURL: URL(string: "https://standard.physics")!,
+            session: URLSession(configuration: configuration)
+        )
     }
 }
 

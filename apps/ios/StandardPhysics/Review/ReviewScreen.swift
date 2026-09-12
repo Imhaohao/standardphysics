@@ -5,6 +5,10 @@ struct ReviewScreen: View {
     @ObservedObject var model: AppModel
     let scan: CapturedScan
     @State private var name: String
+    @State private var showDetail = true
+    @State private var roomScene: SCNScene?
+    @State private var detailScene: SCNScene?
+    @State private var saveError: String?
 
     init(model: AppModel, scan: CapturedScan) {
         self.model = model
@@ -18,7 +22,7 @@ struct ReviewScreen: View {
             VStack(spacing: 0) {
                 ZStack(alignment: .topLeading) {
                     SceneView(
-                        scene: try? SCNScene(url: scan.roomURL),
+                        scene: showDetail ? detailScene ?? roomScene : roomScene,
                         options: [.allowsCameraControl, .autoenablesDefaultLighting]
                     )
                     .background(AppTheme.panel)
@@ -42,6 +46,18 @@ struct ReviewScreen: View {
                 }
 
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.card) {
+                    if let notice = scan.captureNotice {
+                        Text(notice).foregroundStyle(AppTheme.mutedInk)
+                        Button("Record another pass") { model.beginCapture() }
+                            .buttonStyle(AppButtonStyle(.secondary))
+                    }
+                    if detailScene != nil {
+                        Picker("Room view", selection: $showDetail) {
+                            Text("Details").tag(true)
+                            Text("Room layout").tag(false)
+                        }.pickerStyle(.segmented)
+                        ShareLink("Share detailed scan", item: scan.directory.appendingPathComponent("lidar-mesh.json"))
+                    }
                     Text("Name this shop")
                         .font(.title2.bold())
                     TextField("Boba shop", text: $name)
@@ -54,14 +70,20 @@ struct ReviewScreen: View {
                                 .stroke(AppTheme.fieldOutline, lineWidth: 1)
                         }
                     Button("Upload scan") {
-                        model.upload(scan: scan.renamed(trimmedName), name: trimmedName)
+                        do {
+                            model.upload(scan: try scan.renamed(trimmedName), name: trimmedName)
+                        } catch { saveError = "Free some space on this phone, then save again." }
                     }
-                    .buttonStyle(PrimaryButtonStyle())
+                    .buttonStyle(AppButtonStyle())
                     .disabled(trimmedName.isEmpty)
-                    .opacity(trimmedName.isEmpty ? 0.45 : 1)
+                    if let saveError { Text(saveError).foregroundStyle(AppTheme.warning) }
                 }
                 .padding(AppTheme.Spacing.section)
             }
+        }
+        .task(id: scan.id) {
+            roomScene = try? SCNScene(url: scan.roomURL)
+            detailScene = try? LidarMesh.load(from: scan.directory).makeScene()
         }
     }
 
