@@ -30,7 +30,7 @@ function applyPose(camera: PerspectiveCamera, controls: OrbitControlsImpl, from:
 }
 
 /** Orbit controls, plus a 700 ms ease-out flight whenever the requested pose changes. */
-export function CameraRig({ pose }: { pose: ViewerPose }) {
+export function CameraRig({ pose, locked = false }: { pose: ViewerPose; locked?: boolean }) {
   const controls = useRef<OrbitControlsImpl>(null);
   const tween = useRef<Tween | null>(null);
   const camera = useThree((state) => state.camera) as PerspectiveCamera;
@@ -57,11 +57,15 @@ export function CameraRig({ pose }: { pose: ViewerPose }) {
     applyPose(camera, orbit, active.from, active.to, t);
     if (t >= 1) {
       tween.current = null;
-      orbit.enabled = true;
+      orbit.enabled = !locked;
       return;
     }
     invalidate();
   });
+
+  useEffect(() => {
+    if (controls.current && !tween.current) controls.current.enabled = !locked;
+  }, [locked]);
 
   return <OrbitControls ref={controls} makeDefault enableDamping={false} maxPolarAngle={Math.PI / 2 - 0.05} />;
 }

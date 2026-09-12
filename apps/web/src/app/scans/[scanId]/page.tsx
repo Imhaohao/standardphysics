@@ -27,5 +27,8 @@ export default async function ShopPage({ params }: PageProps<"/scans/[scanId]">)
     );
   }
 
-  return <Workspace scan={scan} scene={scene} assessment={assessment} glbUrl={hasGlb ? sceneGlbUrl(scanId) : null} />;
+  const exported = scene.revision === 0 ? scene : ((await getScene(scanId, 0)) ?? scene);
+  return (
+    <Workspace scan={scan} scene={scene} exported={exported} assessment={assessment} glbUrl={hasGlb ? sceneGlbUrl(scanId) : null} />
+  );
 }

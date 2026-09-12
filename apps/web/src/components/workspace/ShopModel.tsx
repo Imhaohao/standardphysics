@@ -1,17 +1,27 @@
 "use client";
 
-import { Edges, useGLTF } from "@react-three/drei";
+import { Edges, Html, useGLTF } from "@react-three/drei";
 import { useThree, type ThreeEvent } from "@react-three/fiber";
-import { useEffect, useMemo } from "react";
-import { BoxGeometry, Matrix4, Mesh, type BufferGeometry } from "three";
+import { Lock } from "@phosphor-icons/react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { BoxGeometry, Matrix4, Mesh, Plane, Vector3, type BufferGeometry } from "three";
 import { displayMatrix, toViewerMatrix } from "@/lib/scene-matrix";
 import type { SceneGraph, SceneNode } from "@/types/contracts";
 import { MODEL, nodeColor, WALL_CUT_HEIGHT } from "./palette";
 
 const UNIT_BOX = new BoxGeometry(1, 1, 1);
 const HIDDEN_KINDS = new Set<SceneNode["kind"]>(["door", "window", "opening"]);
+const FLOOR = new Plane(new Vector3(0, 1, 0), 0);
 
 type Placed = { node: SceneNode; geometry: BufferGeometry; matrix: Matrix4 };
+
+export type ArrangeHandlers = {
+  activeId: string | null;
+  blockedIds: Set<string>;
+  onGrab: (nodeId: string) => void;
+  onDrag: (nodeId: string, dx: number, dy: number) => void;
+  onDrop: (nodeId: string) => void;
+};
 
 /** Walls stop at the cut height, like an architect's model, so the room reads from above. */
 function cutWall(node: SceneNode, matrix: Matrix4): Matrix4 {
@@ -53,16 +63,86 @@ type ModelProps = {
   focus: Set<string> | null;
   focusColor: string;
   onSelectNode: (nodeId: string) => void;
+  arrange: ArrangeHandlers | null;
 };
 
-function ModelNode({ placed, focus, focusColor, onSelectNode }: { placed: Placed } & Omit<ModelProps, "shown">) {
+function floorHit(event: ThreeEvent<PointerEvent>): Vector3 | null {
+  return event.ray.intersectPlane(FLOOR, new Vector3());
+}
+
+function setCursor(cursor: string) {
+  document.body.style.cursor = cursor;
+}
+
+function useDrag(node: SceneNode, arrange: ArrangeHandlers | null) {
+  const from = useRef<Vector3 | null>(null);
+  if (!arrange || !node.movable || node.kind !== "object") return {};
+  return {
+    onPointerDown(event: ThreeEvent<PointerEvent>) {
+      event.stopPropagation();
+      (event.target as unknown as Element).setPointerCapture(event.pointerId);
+      from.current = floorHit(event);
+      arrange.onGrab(node.id);
+      setCursor("grabbing");
+    },
+    onPointerMove(event: ThreeEvent<PointerEvent>) {
+      const hit = from.current && floorHit(event);
+      if (!from.current || !hit) return;
+      arrange.onDrag(node.id, hit.x - from.current.x, -(hit.z - from.current.z));
+      from.current = hit;
+    },
+    onPointerUp(event: ThreeEvent<PointerEvent>) {
+      if (!from.current) return;
+      (event.target as unknown as Element).releasePointerCapture(event.pointerId);
+      from.current = null;
+      arrange.onDrop(node.id);
+      setCursor("grab");
+    },
+  };
+}
+
+function edgeColor(node: SceneNode, props: Omit<ModelProps, "shown">): string | null {
+  if (props.arrange?.blockedIds.has(node.id)) return MODEL.problem;
+  if (props.arrange?.activeId === node.id) return MODEL.accent;
+  if (props.focus?.has(node.id)) return props.focusColor;
+  return null;
+}
+
+function LockMark({ node }: { node: SceneNode }) {
+  const top = new Vector3(node.transform.m[3], node.transform.m[11] + node.dimensions.z / 2 + 0.15, -node.transform.m[7]);
+  return (
+    <Html position={top} center style={{ pointerEvents: "none" }}>
+      <span className="grid size-7 place-items-center rounded-full bg-ink text-paper shadow-md">
+        <Lock size={14} weight="bold" aria-label="Fixed in place" />
+      </span>
+    </Html>
+  );
+}
+
+function nodeState(node: SceneNode, props: Omit<ModelProps, "shown">) {
+  return {
+    faded: props.focus !== null && !props.focus.has(node.id),
+    outline: edgeColor(node, props),
+    lockable: props.arrange !== null && node.kind === "object" && !node.movable,
+    selectable: props.focus === null || props.focus.has(node.id) ? props.arrange === null : false,
+  };
+}
+
+function ModelNode({ placed, ...props }: { placed: Placed } & Omit<ModelProps, "shown">) {
   const { node, geometry, matrix } = placed;
-  const faded = focus !== null && !focus.has(node.id);
-  const highlighted = focus?.has(node.id) ?? false;
+  const [hovered, setHovered] = useState(false);
+  const { faded, outline, lockable, selectable } = nodeState(node, props);
+  const drag = useDrag(node, props.arrange);
+  const draggable = "onPointerDown" in drag;
 
   function select(event: ThreeEvent<MouseEvent>) {
     event.stopPropagation();
-    onSelectNode(node.id);
+    props.onSelectNode(node.id);
+  }
+
+  function hover(on: boolean) {
+    setHovered(on);
+    if (draggable) setCursor(on ? "grab" : "auto");
   }
 
   return (
@@ -72,9 +152,12 @@ function ModelNode({ placed, focus, focusColor, onSelectNode }: { placed: Placed
       matrixAutoUpdate={false}
       castShadow={!faded && node.kind !== "floor"}
       receiveShadow
-      onClick={faded ? undefined : select}
+      onClick={selectable ? select : undefined}
+      onPointerOver={() => hover(true)}
+      onPointerOut={() => hover(false)}
       raycast={faded ? () => null : undefined}
       name={node.id}
+      {...drag}
     >
       <meshStandardMaterial
         color={nodeColor(node)}
@@ -83,14 +166,15 @@ function ModelNode({ placed, focus, focusColor, onSelectNode }: { placed: Placed
         opacity={faded ? 0.15 : 1}
         depthWrite={!faded}
       />
-      {highlighted && <Edges threshold={20} lineWidth={3} color={focusColor} renderOrder={5} />}
+      {outline && <Edges threshold={20} lineWidth={3} color={outline} renderOrder={5} />}
+      {lockable && hovered && <LockMark node={node} />}
     </mesh>
   );
 }
 
 function ModelNodes({ placements, ...props }: { placements: Placed[] } & Omit<ModelProps, "shown">) {
   const invalidate = useThree((state) => state.invalidate);
-  useEffect(() => invalidate(), [placements, props.focus, invalidate]);
+  useEffect(() => invalidate(), [placements, props.focus, props.arrange, invalidate]);
   return (
     <group>
       {placements.map((placed) => (
@@ -120,5 +204,3 @@ export function BoxShopModel(props: ModelProps) {
   );
   return <ModelNodes placements={placements} {...props} />;
 }
-
-export const MODEL_GROUND = MODEL.ground;

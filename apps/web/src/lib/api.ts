@@ -21,7 +21,8 @@ async function getOptional<T>(path: string): Promise<T | null> {
 
 export const listScans = async () => (await getJson<ScanList>("/api/scans")).scans;
 export const getScan = (scanId: string) => getOptional<Scan>(`/api/scans/${scanId}`);
-export const getScene = (scanId: string) => getOptional<SceneGraph>(`/api/scans/${scanId}/scene`);
+export const getScene = (scanId: string, revision?: number) =>
+  getOptional<SceneGraph>(`/api/scans/${scanId}/scene${revision === undefined ? "" : `?revision=${revision}`}`);
 export const getScenario = (scanId: string) => getOptional<Scenario>(`/api/scans/${scanId}/scenario`);
 export const getAssessment = (scanId: string) => getOptional<Assessment>(`/api/scans/${scanId}/assessment`);
 

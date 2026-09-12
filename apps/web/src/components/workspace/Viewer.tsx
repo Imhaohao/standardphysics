@@ -8,10 +8,13 @@ import type { Finding, SceneGraph } from "@/types/contracts";
 import { FindingAnnotation } from "./Annotation";
 import { CameraRig } from "./CameraRig";
 import { MODEL, outcomeColor } from "./palette";
-import { BoxShopModel, GlbShopModel } from "./ShopModel";
+import { type ArrangeHandlers, BoxShopModel, GlbShopModel } from "./ShopModel";
 
 type ViewerProps = {
   scene: SceneGraph;
+  exported: SceneGraph;
+  arrange: ArrangeHandlers | null;
+  dragging: boolean;
   glbUrl: string | null;
   pose: ViewerPose;
   selected: Finding | null;
@@ -50,13 +53,14 @@ function Lights() {
   );
 }
 
-export default function Viewer({ scene, glbUrl, pose, selected, onSelectNode, onClearSelection }: ViewerProps) {
+export default function Viewer({ scene, exported, arrange, dragging, glbUrl, pose, selected, onSelectNode, onClearSelection }: ViewerProps) {
   const focus = selected?.locus ? new Set(selected.locus.node_ids) : null;
   const modelProps = {
     shown: scene,
     focus,
     focusColor: selected ? outcomeColor(selected.outcome) : MODEL.accent,
     onSelectNode,
+    arrange,
   };
   const boxes = <BoxShopModel {...modelProps} />;
 
@@ -76,7 +80,7 @@ export default function Viewer({ scene, glbUrl, pose, selected, onSelectNode, on
     >
       <color attach="background" args={["#f6f5f1"]} />
       <Lights />
-      <CameraRig pose={pose} />
+      <CameraRig pose={pose} locked={dragging} />
       <mesh rotation-x={-Math.PI / 2} position-y={-0.002} receiveShadow>
         <planeGeometry args={[80, 80]} />
         <meshStandardMaterial color={MODEL.ground} roughness={1} />
@@ -85,7 +89,7 @@ export default function Viewer({ scene, glbUrl, pose, selected, onSelectNode, on
       {glbUrl ? (
         <GlbFallback fallback={boxes}>
           <Suspense fallback={boxes}>
-            <GlbShopModel url={glbUrl} exported={scene} {...modelProps} />
+            <GlbShopModel url={glbUrl} exported={exported} {...modelProps} />
           </Suspense>
         </GlbFallback>
       ) : (
