@@ -11,11 +11,11 @@ final class UploadViewModel: ObservableObject {
     @Published private(set) var pendingOptionalUploadCount = 0
 
     private static let coreArtifactKinds: [ArtifactKind] = [
-        .roomUSDZ,
-        .roomJSON,
         .roomMetadata,
         .poses,
-        .coverage
+        .coverage,
+        .roomUSDZ,
+        .roomJSON
     ]
 
     private let scan: CapturedScan
@@ -171,7 +171,7 @@ final class UploadViewModel: ObservableObject {
             return
         } catch {
             guard isActive(runID) else { return }
-            optionalUploadErrorMessage = "Some additional scan evidence could not upload."
+            optionalUploadErrorMessage = "Some video or images could not upload."
         }
     }
 

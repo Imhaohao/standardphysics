@@ -73,6 +73,9 @@ enum ScanExporter {
         coverage: CoverageSnapshot,
         directory: URL
     ) throws -> CapturedScan {
+        guard let captureID = UUID(uuidString: directory.lastPathComponent) else {
+            throw ExportError.invalidCaptureDirectory
+        }
         let roomURL = directory.appendingPathComponent("room.usdz")
         let roomJSONURL = directory.appendingPathComponent("room.json")
         let metadataURL = directory.appendingPathComponent("room.metadata.json")
@@ -111,13 +114,14 @@ enum ScanExporter {
         })
 
         let scan = CapturedScan(
-            id: room.identifier,
+            id: captureID,
             directory: directory,
             roomURL: roomURL,
             duration: recording.duration,
             artifacts: artifacts,
             name: nil,
-            captureNotice: recording.videoURL == nil ? "Your room is saved. Scan again to add a walkthrough." : nil
+            captureNotice: recording.captureNotice
+                ?? (recording.videoURL == nil ? "Your room is saved. Scan again to add a walkthrough." : nil)
         )
         try JSONEncoder.standardPhysics.encode(scan).write(
             to: directory.appendingPathComponent("capture.json"),
@@ -125,6 +129,8 @@ enum ScanExporter {
         )
         return scan
     }
+
+    enum ExportError: Error { case invalidCaptureDirectory }
 }
 
 enum CaptureLibrary {

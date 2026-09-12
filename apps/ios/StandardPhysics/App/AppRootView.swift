@@ -15,7 +15,6 @@ final class AppModel: ObservableObject {
     @Published var screen: Screen = .start
     @Published private(set) var savedScans = CaptureLibrary.all()
     @Published private(set) var captureSessionID = UUID()
-    @Published var workspaceSession: WebSession?
     @Published private(set) var recoveryDirectories: [URL] = []
     @Published private(set) var recoveryMessage: String?
     private var uploads: [UUID: UploadViewModel] = [:]
@@ -33,7 +32,6 @@ final class AppModel: ObservableObject {
     func connectionChanged() {
         uploads.values.forEach { $0.cancel() }
         uploads.removeAll()
-        workspaceSession = nil
         showStart()
     }
 

@@ -16,6 +16,7 @@ struct RecordingResult: Sendable {
     let frameURLs: [URL]
     let posesURL: URL
     let duration: TimeInterval
+    var captureNotice: String? = nil
 
     static func recovered(from directory: URL?) -> RecordingResult? {
         guard let directory else { return nil }
@@ -24,8 +25,13 @@ struct RecordingResult: Sendable {
               let poses = try? JSONDecoder().decode([PoseRecord].self, from: data) else { return nil }
         let frames = poses.map { directory.appendingPathComponent($0.image) }
             .filter { FileManager.default.fileExists(atPath: $0.path) }
-        return RecordingResult(videoURL: nil, frameURLs: frames, posesURL: posesURL,
-            duration: max(0, (poses.last?.timestamp ?? 0) - (poses.first?.timestamp ?? 0)))
+        return RecordingResult(
+            videoURL: nil,
+            frameURLs: frames,
+            posesURL: posesURL,
+            duration: max(0, (poses.last?.timestamp ?? 0) - (poses.first?.timestamp ?? 0)),
+            captureNotice: "Your room is saved. Record another pass to add the missing video/images."
+        )
     }
 }
 
@@ -78,6 +84,7 @@ final class FrameRecorder: NSObject {
         let poses = poseRecords
         let completedFrameURLs = frameURLs
         let outputDirectory = directory
+        let failures = recordingFailures
         completionGroup.enter()
         videoRecorder.finish { result in
             stopResults.setVideoResult(result)
@@ -86,6 +93,7 @@ final class FrameRecorder: NSObject {
 
         completionGroup.enter()
         imageQueue.async {
+            let jpegFailure = failures.first
             do {
                 let posesURL = outputDirectory.appendingPathComponent("poses.json")
                 let savedPoses = poses.filter {
@@ -93,6 +101,9 @@ final class FrameRecorder: NSObject {
                 }
                 let data = try JSONEncoder.standardPhysics.encode(savedPoses)
                 try data.write(to: posesURL, options: .atomic)
+                if jpegFailure != nil {
+                    stopResults.setCaptureNotice(FrameRecorderError.degradedCaptureNotice)
+                }
             } catch {
                 stopResults.setRecordingError(error)
             }
@@ -107,6 +118,34 @@ final class FrameRecorder: NSObject {
             )
             MainActor.assumeIsolated {
                 completion(result)
+            }
+        }
+    }
+
+    /// Stops capture without exporting a scan, while preserving the room's
+    /// recovery data and all JPEGs that completed before cancellation.
+    func cancel(completion: @escaping @MainActor (Error?) -> Void = { _ in }) {
+        displayLink?.invalidate()
+        displayLink = nil
+
+        let poses = poseRecords
+        let outputDirectory = directory
+        videoRecorder.cancel()
+        imageQueue.async {
+            let error: Error?
+            do {
+                let posesURL = outputDirectory.appendingPathComponent("poses.json")
+                let savedPoses = poses.filter {
+                    FileManager.default.fileExists(atPath: outputDirectory.appendingPathComponent($0.image).path)
+                }
+                let data = try JSONEncoder.standardPhysics.encode(savedPoses)
+                try data.write(to: posesURL, options: .atomic)
+                error = nil
+            } catch let caughtError {
+                error = caughtError
+            }
+            DispatchQueue.main.async {
+                completion(error)
             }
         }
     }
@@ -184,6 +223,7 @@ private final class RecordingStopResults: @unchecked Sendable {
     private let lock = NSLock()
     private var videoResult: Result<URL?, Error> = .success(nil)
     private var recordingError: Error?
+    private var captureNotice: String?
 
     func setVideoResult(_ result: Result<URL?, Error>) {
         lock.withLock { videoResult = result }
@@ -191,6 +231,10 @@ private final class RecordingStopResults: @unchecked Sendable {
 
     func setRecordingError(_ error: Error) {
         lock.withLock { recordingError = error }
+    }
+
+    func setCaptureNotice(_ notice: String) {
+        lock.withLock { captureNotice = notice }
     }
 
     func makeResult(
@@ -206,7 +250,8 @@ private final class RecordingStopResults: @unchecked Sendable {
                     frameURLs: frameURLs.filter { FileManager.default.fileExists(atPath: $0.path) }
                         .sorted { $0.lastPathComponent < $1.lastPathComponent },
                     posesURL: directory.appendingPathComponent("poses.json"),
-                    duration: duration
+                    duration: duration,
+                    captureNotice: captureNotice
                 )
             }
         }
@@ -215,6 +260,9 @@ private final class RecordingStopResults: @unchecked Sendable {
 
 private enum FrameRecorderError: Error {
     case jpegEncodingFailed
+
+    static let degradedCaptureNotice =
+        "Your room is saved. Record another pass to add the missing images."
 }
 
 private extension ARCamera.TrackingState {

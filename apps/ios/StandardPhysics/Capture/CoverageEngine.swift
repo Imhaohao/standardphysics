@@ -130,9 +130,41 @@ struct CoverageEngine {
         let segment: Int?
     }
 
+    private struct PreparedSurfaceSample {
+        let sample: SurfaceSample
+        let worldPoint: SIMD3<Float>
+        let worldNormal: SIMD3<Float>
+    }
+
+    private struct PreparedCamera {
+        let position: SIMD3<Float>
+        let inverseTransform: simd_float4x4
+        let intrinsics: simd_float3x3
+        let imageResolution: SIMD2<Float>
+
+        init(_ camera: CameraObservation) {
+            position = camera.position
+            inverseTransform = simd_inverse(camera.transform)
+            intrinsics = camera.intrinsics
+            imageResolution = camera.imageResolution
+        }
+    }
+
     private struct Guidance {
         let angle: CoverageAngle
         let instruction: String
+    }
+
+    private enum GuidanceNeed {
+        case point
+        case secondViewpoint
+        case steadierView
+    }
+
+    private struct GuidanceTarget {
+        let surface: SurfaceSnapshot
+        let sample: SurfaceSample
+        let need: GuidanceNeed
     }
 
     private let gridSize: Int
@@ -150,7 +182,10 @@ struct CoverageEngine {
     }
 
     mutating func update(surfaces: [SurfaceSnapshot], camera: CameraObservation) {
-        for surface in surfaces { observe(surface: surface, from: camera) }
+        let preparedCamera = PreparedCamera(camera)
+        for surface in surfaces {
+            observe(surface: surface, from: camera, preparedCamera: preparedCamera)
+        }
         snapshot = makeSnapshot(surfaces: surfaces, camera: camera)
     }
 
@@ -167,14 +202,18 @@ struct CoverageEngine {
         return snapshot
     }
 
-    private mutating func observe(surface: SurfaceSnapshot, from camera: CameraObservation) {
+    private mutating func observe(
+        surface: SurfaceSnapshot,
+        from camera: CameraObservation,
+        preparedCamera: PreparedCamera
+    ) {
         var state = observations[surface.id, default: ObservationState()]
         let geometry = geometryFingerprint(for: surface)
         if state.geometry != geometry {
             state = replayedState(from: state, on: surface)
             state.geometry = geometry
         }
-        let visibleSamples = samples(on: surface).filter { isVisible(sample: $0, on: surface, from: camera) }
+        let visibleSamples = visibleSamples(on: surface, from: preparedCamera)
         guard !visibleSamples.isEmpty else {
             observations[surface.id] = state
             return
@@ -205,9 +244,9 @@ struct CoverageEngine {
 
     private func replayedState(from state: ObservationState, on surface: SurfaceSnapshot) -> ObservationState {
         var replayed = ObservationState()
-        let surfaceSamples = samples(on: surface)
+        let surfaceSamples = preparedSamples(on: surface)
         for camera in state.cameras {
-            let visibleSamples = surfaceSamples.filter { isVisible(sample: $0, on: surface, from: camera) }
+            let visibleSamples = visibleSamples(in: surfaceSamples, from: PreparedCamera(camera))
             guard !visibleSamples.isEmpty else { continue }
             replayed.observedSamples.formUnion(visibleSamples.map(\.index))
             replayed.cameras.append(camera)
@@ -255,6 +294,19 @@ struct CoverageEngine {
         }
     }
 
+    private func preparedSamples(on surface: SurfaceSnapshot) -> [PreparedSurfaceSample] {
+        let normalTransform = simd_transpose(simd_inverse(surface.transform))
+        return samples(on: surface).map { sample in
+            let point = surface.transform * SIMD4(sample.localPoint, 1)
+            let transformedNormal = normalTransform * SIMD4(sample.localNormal, 0)
+            return PreparedSurfaceSample(
+                sample: sample,
+                worldPoint: SIMD3(point.x, point.y, point.z),
+                worldNormal: simd_normalize(SIMD3(transformedNormal.x, transformedNormal.y, transformedNormal.z))
+            )
+        }
+    }
+
     private func boxSamples(size: SIMD3<Float>) -> [SurfaceSample] {
         let x = max(size.x, 0)
         let y = max(size.y, 0)
@@ -296,13 +348,23 @@ struct CoverageEngine {
         }
     }
 
-    private func isVisible(sample: SurfaceSample, on surface: SurfaceSnapshot, from camera: CameraObservation) -> Bool {
-        let worldPoint = worldPoint(for: sample, on: surface)
-        let pointToCamera = camera.position - worldPoint
+    private func visibleSamples(on surface: SurfaceSnapshot, from camera: PreparedCamera) -> [SurfaceSample] {
+        visibleSamples(in: preparedSamples(on: surface), from: camera)
+    }
+
+    private func visibleSamples(
+        in samples: [PreparedSurfaceSample],
+        from camera: PreparedCamera
+    ) -> [SurfaceSample] {
+        samples.filter { isVisible($0, from: camera) }.map(\.sample)
+    }
+
+    private func isVisible(_ sample: PreparedSurfaceSample, from camera: PreparedCamera) -> Bool {
+        let pointToCamera = camera.position - sample.worldPoint
         let distance = simd_length(pointToCamera)
         guard distance > 0, distance <= 5 else { return false }
-        guard simd_dot(normal(sample.localNormal, transformedBy: surface.transform), pointToCamera / distance) > 0.5 else { return false }
-        let cameraPoint = simd_inverse(camera.transform) * SIMD4(worldPoint, 1)
+        guard simd_dot(sample.worldNormal, pointToCamera / distance) > 0.5 else { return false }
+        let cameraPoint = camera.inverseTransform * SIMD4(sample.worldPoint, 1)
         guard cameraPoint.z < 0 else { return false }
         let depth = -cameraPoint.z
         let x = camera.intrinsics.columns.0.x * cameraPoint.x / depth + camera.intrinsics.columns.2.x
@@ -310,26 +372,44 @@ struct CoverageEngine {
         return x >= 0 && x <= camera.imageResolution.x && y >= 0 && y <= camera.imageResolution.y
     }
 
-    private func normal(_ localNormal: SIMD3<Float>, transformedBy transform: simd_float4x4) -> SIMD3<Float> {
-        let transformed = simd_transpose(simd_inverse(transform)) * SIMD4(localNormal, 0)
-        return simd_normalize(SIMD3(transformed.x, transformed.y, transformed.z))
-    }
-
     private func guidance(for surfaces: [SurfaceSnapshot], coverage: [SurfaceCoverage], camera: CameraObservation) -> Guidance {
         let coverageByID = Dictionary(uniqueKeysWithValues: coverage.map { ($0.id, $0) })
-        let candidates = surfaces.flatMap { surface -> [(SurfaceSnapshot, SurfaceSample)] in
-            guard coverageByID[surface.id]?.isDone != true else { return [] }
+        let candidates = surfaces.flatMap { surface -> [GuidanceTarget] in
+            guard let surfaceCoverage = coverageByID[surface.id], !surfaceCoverage.isDone else { return [] }
             let state = observations[surface.id, default: ObservationState()]
             let remaining = samples(on: surface).filter { !state.observedSamples.contains($0.index) }
-            if !remaining.isEmpty { return remaining.map { (surface, $0) } }
-            return nearestCenterSample(on: surface).map { [(surface, $0)] } ?? []
+            if !remaining.isEmpty {
+                return remaining.map { GuidanceTarget(surface: surface, sample: $0, need: .point) }
+            }
+            let need: GuidanceNeed = surfaceCoverage.viewpointCount < 2 ? .secondViewpoint : .steadierView
+            return nearestCenterSample(on: surface).map { [GuidanceTarget(surface: surface, sample: $0, need: need)] } ?? []
         }
-        guard let target = candidates.min(by: { distance(to: $0.1, on: $0.0, from: camera) < distance(to: $1.1, on: $1.0, from: camera) }) else {
+        guard let target = candidates.min(by: { distance(to: $0.sample, on: $0.surface, from: camera) < distance(to: $1.sample, on: $1.surface, from: camera) }) else {
             return Guidance(angle: .zero, instruction: "You’ve got the whole shop.")
         }
-        let worldPoint = worldPoint(for: target.1, on: target.0)
+        let worldPoint = worldPoint(for: target.sample, on: target.surface)
         let cameraDirection = simd_inverse(camera.transform) * SIMD4(worldPoint - camera.position, 0)
-        return Guidance(angle: CoverageAngle(radians: Double(atan2(cameraDirection.x, -cameraDirection.z))), instruction: "Point the phone at the \(target.0.friendlyName).")
+        let angle = CoverageAngle(radians: Double(atan2(cameraDirection.x, -cameraDirection.z)))
+        return Guidance(angle: angle, instruction: instruction(for: target, angle: angle))
+    }
+
+    private func instruction(for target: GuidanceTarget, angle: CoverageAngle) -> String {
+        let targetName = guidanceTargetName(for: target.surface, angle: angle)
+        return switch target.need {
+        case .point: "Point the phone at the \(targetName)."
+        case .secondViewpoint: "Walk to a new spot. Point the phone at the \(targetName)."
+        case .steadierView: "Hold the phone steady on the \(targetName)."
+        }
+    }
+
+    private func guidanceTargetName(for surface: SurfaceSnapshot, angle: CoverageAngle) -> String {
+        guard surface.isWall, surface.name == nil else { return surface.friendlyName }
+        return switch angle.radians {
+        case (-.pi / 4)...(.pi / 4): "wall ahead"
+        case (.pi / 4)...(3 * .pi / 4): "wall to your right"
+        case (-3 * .pi / 4)...(-.pi / 4): "wall to your left"
+        default: "wall behind you"
+        }
     }
 
     private func nearestCenterSample(on surface: SurfaceSnapshot) -> SurfaceSample? {
@@ -370,7 +450,7 @@ enum RoomCoverage {
     }
 
     private static func objectSnapshot(_ object: CapturedRoom.Object) -> SurfaceSnapshot {
-        SurfaceSnapshot(id: object.identifier, width: object.dimensions.x, height: object.dimensions.y, transform: object.transform, confidence: SurfaceConfidence(object.confidence), isWall: false, shape: .box(size: object.dimensions), kind: "object")
+        SurfaceSnapshot(id: object.identifier, width: object.dimensions.x, height: object.dimensions.y, transform: object.transform, confidence: SurfaceConfidence(object.confidence), isWall: false, shape: .box(size: object.dimensions), kind: String(describing: object.category))
     }
 
     static func planeShape(dimensions: SIMD3<Float>, transform: simd_float4x4, isFloor: Bool) -> (width: Float, height: Float, surfaceShape: SurfaceShape) {

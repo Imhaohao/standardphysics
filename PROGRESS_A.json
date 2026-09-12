@@ -1,6 +1,6 @@
 {
   "lane": "A",
-  "updated": "2026-09-12T22:52:40Z",
+  "updated": "2026-09-12T23:46:00Z",
   "done": [
     "iOS 17 Xcode project builds on the simulator",
     "device support gate and start screen",
@@ -18,21 +18,31 @@
     "native-size simulator visual verification",
     "signed device build installed and launched on the paired iPhone 17 Pro"
   ],
-  "in_progress": "fix audit findings and preserve detailed LiDAR geometry alongside RoomPlan",
+  "in_progress": "verify final recovery fixes and connect approved no-sign-in local workspace",
   "repair_plan": [
     {"task": "coverage geometry, final reconciliation, and guidance", "model_tier": "Terra", "status": "verified"},
     {"task": "upload ordering, durable resume, UUID validation, and failed-scan recovery", "model_tier": "Terra", "status": "verified"},
-    {"task": "detailed capture, recovery, device configuration, and authenticated workspace boundary", "model_tier": "Fable/Sol", "status": "in_progress"},
+    {"task": "detailed capture, recovery, device configuration, and approved local workspace", "model_tier": "Fable/Sol", "status": "implemented"},
     {"task": "simulator tests, strict concurrency, physical installation, and adversarial review", "model_tier": "Sonnet/Luna", "status": "pending"}
   ],
-  "repair_validation": {"ios_tests_passed": 45, "strict_concurrency_build": "passed", "device_build": "installed; launch requires unlocking phone", "real_scan": "requested", "detailed_geometry": "raw LiDAR mesh saved locally; upload contract extension needed"},
-  "blocked_on": "Review Lane D's new no-sign-in demo decision with the user; detailed mesh upload needs a contract entry",
+  "repair_validation": {
+    "ios_tests_passed": 45,
+    "latest_suite": "running after final recovery and local workspace changes",
+    "strict_concurrency_build": "prior repair passed; final check pending",
+    "device_build": "capture repair installed; final workspace update pending",
+    "real_scan": "ravida af42f6cd-d228-4dd8-8790-aff0890fee5b ready on real Lane D API; all 290 artifacts uploaded",
+    "video": "AVFoundation playable, 153.84 seconds, 1280x960, 77304881 bytes",
+    "detailed_geometry": "93 parts, 460497 vertices, 819498 triangles; saved locally and shareable",
+    "semantic_objects": "3 tables, 11 chairs, 1 storage unit; no TV recognized",
+    "metadata": "binary plist confirmed; 25 final surface coverage IDs; 284 frame poses"
+  },
+  "blocked_on": "Detailed mesh upload and web display need Lane D contract/viewer support; request in A-to-D",
   "ready_for_others": [
     "Lane A produces room.json and RoomPlan metadata mapping from a real scan",
     "Lane A uploads the services/api/openapi.json artifact contract"
   ],
   "needs_human": [
-    "Walk a room with the paired LiDAR phone and compare coverage guidance to the room",
+    "Confirm ravida Details view captures the desk/TV area adequately",
     "Hand the phone to a first-time scanner and watch whether the guidance works"
   ]
 }

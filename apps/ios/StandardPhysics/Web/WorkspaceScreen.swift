@@ -11,22 +11,22 @@ struct WorkspaceScreen: View {
             Group {
                 if let workspaceURL = AppEnvironment.workspaceBaseURL,
                    let origin = WebOrigin(url: workspaceURL),
-                   let session = appModel.workspaceSession,
-                   session.isValid(for: origin) {
+                   origin.allowsLocalDemo,
+                   message == nil {
                     WorkspaceWebView(
                         url: workspaceURL.appendingPathComponent("scans").appendingPathComponent(scanID.uuidString),
                         allowedOrigin: origin,
-                        session: session,
                         onScanRequested: { appModel.beginCapture() },
-                        onSessionExpired: {
-                            appModel.workspaceSession = nil
-                            message = "Sign in to your workspace to open this shop."
-                        }
+                        onFailure: { message = $0 }
                     )
                 } else {
                     VStack(spacing: AppTheme.Spacing.card) {
-                        Text(message ?? "Connect your workspace to open this shop.")
+                        Text(message ?? "Enter your Mac’s workspace address in Connection. This demo needs no sign-in.")
                             .font(.title2)
+                        if message != nil {
+                            Button("Try again") { message = nil }
+                                .buttonStyle(AppButtonStyle())
+                        }
                         Button("Connection") { appModel.screen = .connection }
                             .buttonStyle(AppButtonStyle())
                     }.padding(AppTheme.Spacing.page)
@@ -47,22 +47,12 @@ struct WorkspaceScreen: View {
 struct WorkspaceWebView: UIViewRepresentable {
     let url: URL
     let allowedOrigin: WebOrigin
-    let session: WebSession
     let onScanRequested: () -> Void
-    let onSessionExpired: () -> Void
-
-    init(url: URL, allowedOrigin: WebOrigin, session: WebSession,
-         onScanRequested: @escaping () -> Void, onSessionExpired: @escaping () -> Void) {
-        self.url = url
-        self.allowedOrigin = allowedOrigin
-        self.session = session
-        self.onScanRequested = onScanRequested
-        self.onSessionExpired = onSessionExpired
-    }
+    let onFailure: (String) -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(allowedOrigin: allowedOrigin, session: session,
-            onScanRequested: onScanRequested, onSessionExpired: onSessionExpired)
+        Coordinator(allowedOrigin: allowedOrigin,
+            onScanRequested: onScanRequested, onFailure: onFailure)
     }
 
     func makeUIView(context: Context) -> WKWebView {
@@ -84,50 +74,46 @@ struct WorkspaceWebView: UIViewRepresentable {
     static func dismantleUIView(_ webView: WKWebView, coordinator: Coordinator) {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "nativeCapture")
         webView.navigationDelegate = nil
-        coordinator.cancel()
+        webView.stopLoading()
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         private let allowedOrigin: WebOrigin
-        private let session: WebSession
         private let onScanRequested: () -> Void
-        private let onSessionExpired: () -> Void
+        private let onFailure: (String) -> Void
         private var requestedURL: URL?
-        private var loadTask: Task<Void, Never>?
 
-        init(allowedOrigin: WebOrigin, session: WebSession,
-             onScanRequested: @escaping () -> Void, onSessionExpired: @escaping () -> Void) {
+        init(allowedOrigin: WebOrigin,
+             onScanRequested: @escaping () -> Void, onFailure: @escaping (String) -> Void) {
             self.allowedOrigin = allowedOrigin
-            self.session = session
             self.onScanRequested = onScanRequested
-            self.onSessionExpired = onSessionExpired
+            self.onFailure = onFailure
         }
 
         func load(_ url: URL, in webView: WKWebView) {
-            guard requestedURL != url, allowedOrigin.contains(url) else { return }
+            guard requestedURL != url, allowedOrigin.allowsLocalDemo, allowedOrigin.contains(url) else { return }
             requestedURL = url
-            loadTask?.cancel()
-            loadTask = Task { @MainActor [weak self, weak webView] in
-                guard let self, let webView else { return }
-                do {
-                    try await session.install(in: webView.configuration.websiteDataStore.httpCookieStore,
-                                              origin: allowedOrigin)
-                    guard !Task.isCancelled else { return }
-                    webView.load(URLRequest(url: url))
-                } catch { onSessionExpired() }
-            }
+            webView.load(URLRequest(url: url))
         }
 
-        func cancel() {
-            loadTask?.cancel()
-            loadTask = nil
+        func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+            report(error)
+        }
+
+        func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+            report(error)
+        }
+
+        private func report(_ error: Error) {
+            guard (error as NSError).code != NSURLErrorCancelled else { return }
+            onFailure("Couldn’t open your shop. Keep your Mac running and connect to the same Wi-Fi.")
         }
 
         func webView(_ webView: WKWebView, decidePolicyFor navigationResponse: WKNavigationResponse)
             async -> WKNavigationResponsePolicy {
             guard let response = navigationResponse.response as? HTTPURLResponse else { return .allow }
-            if response.statusCode == 401 || response.statusCode == 403 {
-                onSessionExpired()
+            if navigationResponse.isForMainFrame && response.statusCode >= 400 {
+                onFailure("The workspace returned an error (\(response.statusCode)). Try again after it is running on your Mac.")
                 return .cancel
             }
             return .allow
@@ -138,10 +124,7 @@ struct WorkspaceWebView: UIViewRepresentable {
             decidePolicyFor navigationAction: WKNavigationAction
         ) async -> WKNavigationActionPolicy {
             guard let target = navigationAction.request.url else { return .cancel }
-            guard session.isValid(for: allowedOrigin) else {
-                onSessionExpired()
-                return .cancel
-            }
+            guard allowedOrigin.allowsLocalDemo else { return .cancel }
             if target.absoluteString == "about:blank" || allowedOrigin.contains(target) {
                 return .allow
             } else {
@@ -151,7 +134,7 @@ struct WorkspaceWebView: UIViewRepresentable {
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             guard message.name == "nativeCapture",
-                  session.isValid(for: allowedOrigin),
+                  allowedOrigin.allowsLocalDemo,
                   message.frameInfo.isMainFrame,
                   let sourceURL = message.frameInfo.request.url,
                   allowedOrigin.contains(sourceURL),
@@ -166,6 +149,8 @@ struct WebOrigin: Equatable, Sendable {
     let scheme: String
     let host: String
     let port: Int?
+
+    var allowsLocalDemo: Bool { ServiceAddress.isLocalHost(host) }
 
     init?(url: URL) {
         guard let scheme = url.scheme?.lowercased(),

@@ -47,17 +47,23 @@ enum ServiceAddress {
 
     static func isLoopback(_ host: String) -> Bool {
         let host = host.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
-        return host == "localhost" || host == "::1" || host.hasPrefix("127.")
+        return host == "localhost" || host == "::1" || ipv4Octets(host)?.first == 127
     }
 
     static func isLocalHost(_ host: String) -> Bool {
         let host = host.lowercased()
         if isLoopback(host) || host.hasSuffix(".local") { return true }
-        let parts = host.split(separator: ".").compactMap { Int($0) }
-        guard parts.count == 4, parts.allSatisfy({ (0...255).contains($0) }) else { return false }
+        guard let parts = ipv4Octets(host) else { return false }
         return parts[0] == 10 || (parts[0] == 192 && parts[1] == 168)
             || (parts[0] == 172 && (16...31).contains(parts[1]))
             || (parts[0] == 169 && parts[1] == 254)
+    }
+
+    private static func ipv4Octets(_ host: String) -> [Int]? {
+        let parts = host.split(separator: ".", omittingEmptySubsequences: false)
+        guard parts.count == 4, parts.allSatisfy({ !$0.isEmpty && $0.allSatisfy { $0.isASCII && $0.isNumber } }) else { return nil }
+        let octets = parts.compactMap { Int($0) }
+        return octets.count == 4 && octets.allSatisfy({ (0...255).contains($0) }) ? octets : nil
     }
 
     enum AddressError: LocalizedError {

@@ -16,10 +16,11 @@ final class RoomCaptureController: UIViewController, RoomCaptureViewDelegate, Ro
     private var isExporting = false
     private var isCancelled = false
     private var hasExported = false
+    private var terminalFailure: String?
     private var processingTimeout: Task<Void, Never>?
     private var coaching: String?
 
-    var canExport: Bool { processedRoom != nil && recording != nil }
+    var canExport: Bool { terminalFailure == nil && processedRoom != nil && recording != nil }
 
     init(store: CaptureSessionStore) {
         self.store = store
@@ -36,9 +37,6 @@ final class RoomCaptureController: UIViewController, RoomCaptureViewDelegate, Ro
         let configuration = ARWorldTrackingConfiguration()
         if ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh) {
             configuration.sceneReconstruction = .mesh
-        }
-        if ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth) {
-            configuration.frameSemantics.insert(.sceneDepth)
         }
         session.run(configuration)
         let captureView = RoomCaptureView(frame: view.bounds, arSession: session)
@@ -67,7 +65,14 @@ final class RoomCaptureController: UIViewController, RoomCaptureViewDelegate, Ro
             switch result {
             case .success(let recording): self.recording = recording
             case .failure:
-                self.recording = RecordingResult.recovered(from: self.directory)
+                guard let recovered = RecordingResult.recovered(from: self.directory) else {
+                    self.recording = nil
+                    self.processingTimeout?.cancel()
+                    self.processingTimeout = nil
+                    self.failCapture("Free some space on this phone. Return to saved scans to recover your room.")
+                    return
+                }
+                self.recording = recovered
             }
             self.exportIfReady()
         }
@@ -79,9 +84,23 @@ final class RoomCaptureController: UIViewController, RoomCaptureViewDelegate, Ro
     }
 
     func cancel() {
-        guard !isCancelled else { return }
+        guard !isCancelled, !hasExported else { return }
         isCancelled = true
-        finish()
+        isFinishing = true
+        processingTimeout?.cancel()
+        processingTimeout = nil
+        saveRecoveryRoom(liveRoom)
+        captureView?.captureSession.stop(pauseARSession: true)
+
+        let recorder = self.recorder
+        self.recorder = nil
+        recorder?.cancel { [weak self] error in
+            guard let self else { return }
+            if error != nil {
+                self.store?.didFail("Free some space on this phone. Return to saved scans to recover your room.")
+            }
+        }
+        detailRecorder = nil
     }
 
     func retryExport() { exportIfReady() }
@@ -110,7 +129,7 @@ final class RoomCaptureController: UIViewController, RoomCaptureViewDelegate, Ro
 
     nonisolated func captureView(didPresent room: CapturedRoom, error: Error?) {
         Task { @MainActor [weak self] in
-            guard let self, !isExporting, !hasExported else { return }
+            guard let self, !isCancelled, !isExporting, !hasExported else { return }
             guard error == nil else { useLiveRoomAfterProcessingFailure(); return }
             processedRoom = room
             saveRecoveryRoom(room)
@@ -152,10 +171,10 @@ final class RoomCaptureController: UIViewController, RoomCaptureViewDelegate, Ro
     }
 
     private func useLiveRoomAfterProcessingFailure() {
-        guard processedRoom == nil else { return }
+        guard !isCancelled, terminalFailure == nil, processedRoom == nil else { return }
         processedRoom = liveRoom
         guard processedRoom != nil else {
-            store?.didFail("Start a new scan and walk around the room.")
+            failCapture("Start a new scan and walk around the room.")
             return
         }
         exportIfReady()
@@ -172,7 +191,8 @@ final class RoomCaptureController: UIViewController, RoomCaptureViewDelegate, Ro
     }
 
     private func exportIfReady() {
-        guard !isExporting, !hasExported, let room = processedRoom, let recording, let directory else { return }
+        guard !isCancelled, terminalFailure == nil, !isExporting, !hasExported,
+              let room = processedRoom, let recording, let directory else { return }
         isExporting = true
         let coverage = coverageEngine.reconcile(finalSurfaces: RoomCoverage.snapshots(from: room))
         let detailRecorder = detailRecorder
@@ -191,6 +211,12 @@ final class RoomCaptureController: UIViewController, RoomCaptureViewDelegate, Ro
             }
         }
     }
+
+    private func failCapture(_ message: String) {
+        guard terminalFailure == nil else { return }
+        terminalFailure = message
+        store?.didFail(message)
+    }
 }
 
 private extension RoomCaptureSession.Instruction {
@@ -200,7 +226,7 @@ private extension RoomCaptureSession.Instruction {
         case .moveAwayFromWall: "Take one step back"
         case .slowDown: "Turn around slowly"
         case .turnOnLight: "Turn on more lights"
-        case .lowTexture: "Point the phone at the wall ahead"
+        case .lowTexture: nil
         case .normal: nil
         @unknown default: nil
         }

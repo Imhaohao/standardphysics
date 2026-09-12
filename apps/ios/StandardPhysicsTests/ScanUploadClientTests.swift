@@ -93,6 +93,18 @@ final class ScanUploadClientTests: XCTestCase {
 }
 
 final class WorkspaceWebViewTests: XCTestCase {
+    func testNoSignInDemoIsRestrictedToLocalWorkspaces() throws {
+        for address in ["http://MacBook-Pro.local:3000", "http://10.20.9.207:3000", "http://localhost:3000"] {
+            let origin = try XCTUnwrap(WebOrigin(url: URL(string: address)!))
+            XCTAssertTrue(origin.allowsLocalDemo)
+            XCTAssertFalse(origin.contains(URL(string: "http://other.local:3000")!))
+        }
+        for address in ["https://workspace.example", "http://127.evil.example", "http://10.a.0.0.1", "http://10..0.1"] {
+            let origin = try XCTUnwrap(WebOrigin(url: URL(string: address)!))
+            XCTAssertFalse(origin.allowsLocalDemo)
+        }
+    }
+
     func testWebOriginRequiresTheSameSchemeHostAndPort() {
         let origin = WebOrigin(url: URL(string: "https://standard.physics:8443/scans")!)
 

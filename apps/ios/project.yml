@@ -42,6 +42,10 @@ targets:
     platform: iOS
     sources:
       - path: StandardPhysicsTests
+      - path: ../../packages/fixtures/standardphysics_fixtures/data/real/apple_bedroom3.room.json
+        buildPhase: resources
+      - path: ../../packages/fixtures/standardphysics_fixtures/data/real/apple_livingroom.room.json
+        buildPhase: resources
     dependencies:
       - target: StandardPhysics
     settings:

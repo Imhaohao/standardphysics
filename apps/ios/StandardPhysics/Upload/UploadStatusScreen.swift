@@ -22,7 +22,7 @@ struct UploadStatusScreen: View {
                 if let message = uploadModel.optionalUploadErrorMessage {
                     Text(message).foregroundStyle(AppTheme.mutedInk)
                 } else if uploadModel.state == .ready && uploadModel.pendingOptionalUploadCount > 0 {
-                    Text("Your photos are still uploading.").foregroundStyle(AppTheme.mutedInk)
+                    Text("Your video and images are still uploading.").foregroundStyle(AppTheme.mutedInk)
                 }
                 Spacer()
                 actions

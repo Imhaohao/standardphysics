@@ -8,13 +8,14 @@
 
 /* Begin PBXBuildFile section */
 		0CBD8766D6CD6A0CCEE98B85 /* ScanUploadClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D815183B48F2D9B575F78EE /* ScanUploadClientTests.swift */; };
-		102EA4798ACF27B30AC4141E /* WebSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A8A2C39D732C37AB9FBB18F /* WebSessionTests.swift */; };
 		1B2955B1B60E069392F0FB5B /* LidarMeshTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B121F5EE270FA52250DEB892 /* LidarMeshTests.swift */; };
 		21CA6D7591146572C7FB7AEF /* ReviewScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6510F54E3E72FFD41662E47A /* ReviewScreen.swift */; };
 		256913A955464CCAEADF9268 /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FEC544C1C55197D7034B7CF /* AppEnvironment.swift */; };
 		29D2538D10668801A37E448A /* FrameRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AA3EF92FB3C776BBFC316A2 /* FrameRecorder.swift */; };
 		31226E685F8615CF36220EF7 /* CaptureSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8A97F1C401D6495E52BD85 /* CaptureSessionStore.swift */; };
+		37DDE23201FC858C742C7F17 /* apple_bedroom3.room.json in Resources */ = {isa = PBXBuildFile; fileRef = 1AA420D8B693B08C38D20603 /* apple_bedroom3.room.json */; };
 		4B4F38D2CE1F5D5BCF4C104C /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 8B47F7A7DD60C5B93AABEAF7 /* LaunchScreen.storyboard */; };
+		507F1F343673600940DE00D1 /* apple_livingroom.room.json in Resources */ = {isa = PBXBuildFile; fileRef = F6A8C1D60ECF23C6304B08D1 /* apple_livingroom.room.json */; };
 		55856F61BF5F62342954D9DF /* ServiceAddressTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C926B3CA63F6EC0109187025 /* ServiceAddressTests.swift */; };
 		58500215EB25C687904FAB73 /* UploadViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1B73E7972ABEBD9BEE9AB14 /* UploadViewModelTests.swift */; };
 		58891452F41E5607AC230AFF /* AppRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB85814D71BB5E268CE101E1 /* AppRootView.swift */; };
@@ -25,7 +26,7 @@
 		66E408F8858728C03CAAAF70 /* CaptureRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = F33989C0129F58DE12C08EB2 /* CaptureRecovery.swift */; };
 		75C17C86ACC84F5A8841278B /* CoverageEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27785166F1CA3E6AACF4C012 /* CoverageEngineTests.swift */; };
 		78589EC893CD951BDC0B4396 /* ResumableUploadStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C6263A656172ADAE5138BF /* ResumableUploadStore.swift */; };
-		877FA2E103705A65FB773342 /* WebSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74CF76606A3893E9F8CAFE64 /* WebSession.swift */; };
+		850EE6F0C14C7ABDB7A9FB7F /* ScanExportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5281D7312D6F754DBC7B8377 /* ScanExportTests.swift */; };
 		95E15EFB23AEA929A41B1EA4 /* CaptureScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD126A7334930ED9E61ADA9A /* CaptureScreen.swift */; };
 		9BF68FA1A07FE744E37BACA9 /* ResumableUploadStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0748121F1E998BBBC5AA865E /* ResumableUploadStoreTests.swift */; };
 		A2AEB73032DA503D659048CD /* ScanExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67DB51144E0AB741AE3E13F8 /* ScanExporter.swift */; };
@@ -53,21 +54,21 @@
 		026FA7F7DA378297C85FA69C /* WalkthroughVideoRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkthroughVideoRecorder.swift; sourceTree = "<group>"; };
 		0748121F1E998BBBC5AA865E /* ResumableUploadStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResumableUploadStoreTests.swift; sourceTree = "<group>"; };
 		0BC02FEB13501BED123058EA /* ConnectionScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionScreen.swift; sourceTree = "<group>"; };
+		1AA420D8B693B08C38D20603 /* apple_bedroom3.room.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = apple_bedroom3.room.json; sourceTree = "<group>"; };
 		23610824E5B44F0425258F9B /* StandardPhysics.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = StandardPhysics.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		27785166F1CA3E6AACF4C012 /* CoverageEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageEngineTests.swift; sourceTree = "<group>"; };
-		2A8A2C39D732C37AB9FBB18F /* WebSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSessionTests.swift; sourceTree = "<group>"; };
 		3C7A6109602F424AC81F4B81 /* ScanUploadClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanUploadClient.swift; sourceTree = "<group>"; };
 		3D0C7028F7E2DE9CE6A5C348 /* CoverageEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageEngine.swift; sourceTree = "<group>"; };
 		3D815183B48F2D9B575F78EE /* ScanUploadClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanUploadClientTests.swift; sourceTree = "<group>"; };
 		40F5DB654E0671D2D4D1ED21 /* WorkspaceScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceScreen.swift; sourceTree = "<group>"; };
 		4443BDB37BB52F3542FBC466 /* StandardPhysicsTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = StandardPhysicsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		4600DB3A7BEEAEF3F23ADC57 /* StandardPhysicsApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandardPhysicsApp.swift; sourceTree = "<group>"; };
+		5281D7312D6F754DBC7B8377 /* ScanExportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanExportTests.swift; sourceTree = "<group>"; };
 		59A92436F4F383797A4976A8 /* UploadViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadViewModel.swift; sourceTree = "<group>"; };
 		6510F54E3E72FFD41662E47A /* ReviewScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewScreen.swift; sourceTree = "<group>"; };
 		67DB51144E0AB741AE3E13F8 /* ScanExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanExporter.swift; sourceTree = "<group>"; };
 		6F7627C4327425119C0A5877 /* UploadStatusScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadStatusScreen.swift; sourceTree = "<group>"; };
 		6FEC544C1C55197D7034B7CF /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
-		74CF76606A3893E9F8CAFE64 /* WebSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSession.swift; sourceTree = "<group>"; };
 		7C86286108BAD9DF536B8F94 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		8B47F7A7DD60C5B93AABEAF7 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		8D8A97F1C401D6495E52BD85 /* CaptureSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureSessionStore.swift; sourceTree = "<group>"; };
@@ -83,6 +84,7 @@
 		DD126A7334930ED9E61ADA9A /* CaptureScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureScreen.swift; sourceTree = "<group>"; };
 		E6F34E396942BEF7BD1CB0CE /* RoomCaptureController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomCaptureController.swift; sourceTree = "<group>"; };
 		F33989C0129F58DE12C08EB2 /* CaptureRecovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureRecovery.swift; sourceTree = "<group>"; };
+		F6A8C1D60ECF23C6304B08D1 /* apple_livingroom.room.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = apple_livingroom.room.json; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -92,11 +94,11 @@
 				27785166F1CA3E6AACF4C012 /* CoverageEngineTests.swift */,
 				B121F5EE270FA52250DEB892 /* LidarMeshTests.swift */,
 				0748121F1E998BBBC5AA865E /* ResumableUploadStoreTests.swift */,
+				5281D7312D6F754DBC7B8377 /* ScanExportTests.swift */,
 				3D815183B48F2D9B575F78EE /* ScanUploadClientTests.swift */,
 				C926B3CA63F6EC0109187025 /* ServiceAddressTests.swift */,
 				C1B73E7972ABEBD9BEE9AB14 /* UploadViewModelTests.swift */,
 				CB0DF9605AC317A7D73BAE94 /* WalkthroughVideoRecorderTests.swift */,
-				2A8A2C39D732C37AB9FBB18F /* WebSessionTests.swift */,
 			);
 			path = StandardPhysicsTests;
 			sourceTree = "<group>";
@@ -112,6 +114,7 @@
 		32975CAD099A76A99A999560 = {
 			isa = PBXGroup;
 			children = (
+				468E0993A2AE6B8324E6E1AD /* real */,
 				B00EB255F7EE7F073A05E827 /* StandardPhysics */,
 				264C5722DDBE54A834C0B27C /* StandardPhysicsTests */,
 				B0317F86AE3F23C064841A64 /* Products */,
@@ -145,6 +148,16 @@
 				67DB51144E0AB741AE3E13F8 /* ScanExporter.swift */,
 			);
 			path = Export;
+			sourceTree = "<group>";
+		};
+		468E0993A2AE6B8324E6E1AD /* real */ = {
+			isa = PBXGroup;
+			children = (
+				1AA420D8B693B08C38D20603 /* apple_bedroom3.room.json */,
+				F6A8C1D60ECF23C6304B08D1 /* apple_livingroom.room.json */,
+			);
+			name = real;
+			path = ../../packages/fixtures/standardphysics_fixtures/data/real;
 			sourceTree = "<group>";
 		};
 		B00EB255F7EE7F073A05E827 /* StandardPhysics */ = {
@@ -185,7 +198,6 @@
 		EADA919E6B22EE13325A04BB /* Web */ = {
 			isa = PBXGroup;
 			children = (
-				74CF76606A3893E9F8CAFE64 /* WebSession.swift */,
 				40F5DB654E0671D2D4D1ED21 /* WorkspaceScreen.swift */,
 			);
 			path = Web;
@@ -213,6 +225,7 @@
 			buildConfigurationList = 9E2C9C327A15CD0B539C36DC /* Build configuration list for PBXNativeTarget "StandardPhysicsTests" */;
 			buildPhases = (
 				75F10CD87F89F402D1516E94 /* Sources */,
+				D055A024BCC77B6067FC41A2 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -284,6 +297,15 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		D055A024BCC77B6067FC41A2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				37DDE23201FC858C742C7F17 /* apple_bedroom3.room.json in Resources */,
+				507F1F343673600940DE00D1 /* apple_livingroom.room.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D569F1E0FBA93147F03CC352 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -318,7 +340,6 @@
 				E77A0675C88B70CE1464835A /* UploadStatusScreen.swift in Sources */,
 				F7E34F881A324ECD9B4E8003 /* UploadViewModel.swift in Sources */,
 				60572FB1AD7B4D2424C5DFFF /* WalkthroughVideoRecorder.swift in Sources */,
-				877FA2E103705A65FB773342 /* WebSession.swift in Sources */,
 				615AF2750FED72C2B7CB9E2E /* WorkspaceScreen.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -330,11 +351,11 @@
 				75C17C86ACC84F5A8841278B /* CoverageEngineTests.swift in Sources */,
 				1B2955B1B60E069392F0FB5B /* LidarMeshTests.swift in Sources */,
 				9BF68FA1A07FE744E37BACA9 /* ResumableUploadStoreTests.swift in Sources */,
+				850EE6F0C14C7ABDB7A9FB7F /* ScanExportTests.swift in Sources */,
 				0CBD8766D6CD6A0CCEE98B85 /* ScanUploadClientTests.swift in Sources */,
 				55856F61BF5F62342954D9DF /* ServiceAddressTests.swift in Sources */,
 				58500215EB25C687904FAB73 /* UploadViewModelTests.swift in Sources */,
 				BF7EDD1670A4CBAA90BDFA4B /* WalkthroughVideoRecorderTests.swift in Sources */,
-				102EA4798ACF27B30AC4141E /* WebSessionTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

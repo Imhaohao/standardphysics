@@ -1,8 +1,48 @@
 import XCTest
+import RoomPlan
 import simd
 @testable import StandardPhysics
 
 final class CoverageEngineTests: XCTestCase {
+    func testBedroomFixtureDecodesAndBuildsFloorAndObjectSnapshots() throws {
+        let room = try roomFixture(named: "apple_bedroom3.room")
+        let snapshots = RoomCoverage.snapshots(from: room)
+        let floor = try XCTUnwrap(room.floors.first)
+        let floorSnapshot = try XCTUnwrap(snapshots.first { $0.id == floor.identifier })
+
+        XCTAssertEqual(floor.dimensions, SIMD3<Float>(3.5544705, 3.3611374, 0))
+        XCTAssertGreaterThan(floor.transform.columns.2.y, 0.99)
+        XCTAssertEqual(floorSnapshot.width, floor.dimensions.x, accuracy: 0.0001)
+        XCTAssertEqual(floorSnapshot.height, floor.dimensions.y, accuracy: 0.0001)
+        XCTAssertFalse(floorSnapshot.isWall)
+        XCTAssertGreaterThan(worldFloorNormal(for: floorSnapshot).y, 0.99)
+        XCTAssertTrue(snapshots.contains { $0.kind == "bed" })
+        XCTAssertTrue(room.objects.allSatisfy { object in
+            guard let snapshot = snapshots.first(where: { $0.id == object.identifier }),
+                  case let .box(size) = snapshot.shape else { return false }
+            return size == object.dimensions
+        })
+    }
+
+    func testRealRoomFixturesReconcileOnlyTheirFinalRoomPlanIDs() throws {
+        for (name, expectedObjectKind) in [
+            ("apple_bedroom3.room", "bed"),
+            ("apple_livingroom.room", "storage")
+        ] {
+            let room = try roomFixture(named: name)
+            let snapshots = RoomCoverage.snapshots(from: room)
+            var engine = CoverageEngine(gridSize: 1)
+            let finalCoverage = RoomCoverage.reconcile(&engine, finalRoom: room)
+
+            XCTAssertEqual(Set(finalCoverage.surfaces.map(\.id)), Set(snapshots.map(\.id)), name)
+            XCTAssertEqual(finalCoverage.surfaces.count, snapshots.count, name)
+            XCTAssertTrue(finalCoverage.surfaces.allSatisfy { $0.observedFraction == 0 && $0.viewpointCount == 0 }, name)
+            XCTAssertEqual(snapshots.filter { $0.kind == "floor" }.count, room.floors.count, name)
+            XCTAssertEqual(snapshots.filter { $0.shape.isBox }.count, room.objects.count, name)
+            XCTAssertTrue(snapshots.contains { $0.kind == expectedObjectKind }, name)
+        }
+    }
+
     func testFloorPlaneUsesItsExplicitUpNormal() {
         var engine = CoverageEngine(gridSize: 1)
         let floor = SurfaceSnapshot(
@@ -256,7 +296,7 @@ final class CoverageEngineTests: XCTestCase {
 
         engine.update(surfaces: [distant, nearby], camera: .lookingStraightAhead(position: .zero))
 
-        XCTAssertEqual(engine.snapshot.instruction, "Point the phone at the back wall.")
+        XCTAssertEqual(engine.snapshot.instruction, "Walk to a new spot. Point the phone at the back wall.")
     }
 
     func testSurfaceNeedsSeparatedViewsAndEnoughObservedArea() {
@@ -308,6 +348,76 @@ final class CoverageEngineTests: XCTestCase {
         )
 
         XCTAssertFalse(engine.snapshot.surfaces[0].isDone)
+    }
+
+    func testFullyObservedWallWithOneViewpointAsksForANewSpot() {
+        var engine = CoverageEngine(gridSize: 1)
+        let wall = SurfaceSnapshot(
+            id: UUID(),
+            width: 1,
+            height: 1,
+            transform: matrix_identity_float4x4,
+            confidence: .high,
+            kind: "wall"
+        )
+
+        engine.update(
+            surfaces: [wall],
+            camera: .lookingStraightAhead(position: SIMD3<Float>(0, 0, 2))
+        )
+
+        let coverage = engine.snapshot.surfaces[0]
+        XCTAssertEqual(coverage.observedFraction, 1, accuracy: 0.001)
+        XCTAssertEqual(coverage.viewpointCount, 1)
+        XCTAssertFalse(coverage.isDone)
+        XCTAssertEqual(engine.snapshot.instruction, "Walk to a new spot. Point the phone at the wall ahead.")
+    }
+
+    func testFullyObservedLowConfidenceWallAsksForASteadierView() {
+        var engine = CoverageEngine(gridSize: 1)
+        let wall = SurfaceSnapshot(
+            id: UUID(),
+            width: 1,
+            height: 1,
+            transform: matrix_identity_float4x4,
+            confidence: .low,
+            kind: "wall"
+        )
+
+        engine.update(
+            surfaces: [wall],
+            camera: .lookingStraightAhead(position: SIMD3<Float>(0, 0, 2))
+        )
+        engine.update(
+            surfaces: [wall],
+            camera: .lookingStraightAhead(position: SIMD3<Float>(1.1, 0, 2))
+        )
+
+        let coverage = engine.snapshot.surfaces[0]
+        XCTAssertEqual(coverage.observedFraction, 1, accuracy: 0.001)
+        XCTAssertEqual(coverage.viewpointCount, 2)
+        XCTAssertFalse(coverage.isDone)
+        XCTAssertEqual(engine.snapshot.instruction, "Hold the phone steady on the wall ahead.")
+    }
+
+    func testUnobservedWallToTheRightUsesCameraRelativeGuidance() {
+        var transform = matrix_identity_float4x4
+        transform.columns.3 = SIMD4(3, 0, -2, 1)
+        let wall = SurfaceSnapshot(
+            id: UUID(),
+            width: 1,
+            height: 1,
+            transform: transform,
+            confidence: .high,
+            kind: "wall"
+        )
+        var engine = CoverageEngine(gridSize: 1)
+
+        engine.update(surfaces: [wall], camera: .lookingStraightAhead(position: .zero))
+
+        XCTAssertEqual(engine.snapshot.surfaces[0].observedFraction, 0, accuracy: 0.001)
+        XCTAssertFalse(engine.snapshot.surfaces[0].isDone)
+        XCTAssertEqual(engine.snapshot.instruction, "Point the phone at the wall to your right.")
     }
 
     func testGuidancePointsToTheNearestUnfinishedCell() {
@@ -436,5 +546,34 @@ final class CoverageEngineTests: XCTestCase {
             ),
             imageResolution: SIMD2(1_000, 1_000)
         )
+    }
+
+    private func roomFixture(named name: String) throws -> CapturedRoom {
+        let bundle = Bundle(for: Self.self)
+        guard let url = bundle.url(forResource: name, withExtension: "json") else {
+            throw FixtureError.missing(name)
+        }
+        return try JSONDecoder().decode(CapturedRoom.self, from: Data(contentsOf: url))
+    }
+
+    private func worldFloorNormal(for surface: SurfaceSnapshot) -> SIMD3<Float> {
+        guard case let .plane(_, _, _, _, localNormal) = surface.shape else {
+            XCTFail("Expected floor plane")
+            return .zero
+        }
+        let normalTransform = simd_transpose(simd_inverse(surface.transform))
+        let transformed = normalTransform * SIMD4(localNormal, 0)
+        return simd_normalize(SIMD3(transformed.x, transformed.y, transformed.z))
+    }
+
+    private enum FixtureError: Error {
+        case missing(String)
+    }
+}
+
+private extension SurfaceShape {
+    var isBox: Bool {
+        guard case .box = self else { return false }
+        return true
     }
 }

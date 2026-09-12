@@ -47,11 +47,11 @@ final class UploadViewModelTests: XCTestCase {
         try await waitUntil { model.state == .ready && model.uploadedCount < model.totalCount }
         XCTAssertEqual(
             completedAfterKinds,
-            [.roomUSDZ, .roomJSON, .roomMetadata, .poses, .coverage]
+            [.roomMetadata, .poses, .coverage, .roomUSDZ, .roomJSON]
         )
 
         try await waitUntil { model.uploadedCount == model.totalCount }
-        XCTAssertEqual(uploadedKinds, [.roomUSDZ, .roomJSON, .roomMetadata, .poses, .coverage, .walkthroughMP4, .frames])
+        XCTAssertEqual(uploadedKinds, [.roomMetadata, .poses, .coverage, .roomUSDZ, .roomJSON, .walkthroughMP4, .frames])
     }
 
     func testRestartUsesPersistedReceiptsWithoutCreatingAnotherRemoteScan() async throws {
@@ -85,7 +85,7 @@ final class UploadViewModelTests: XCTestCase {
         model.start()
         try await waitUntil { model.state == .ready }
 
-        XCTAssertEqual(uploadedArtifactIDs, ["room-json", "room-metadata", "poses", "coverage"])
+        XCTAssertEqual(uploadedArtifactIDs, ["room-metadata", "poses", "coverage", "room-json"])
         XCTAssertEqual(ResumableUploadStore(captureDirectory: directory).completedArtifactIDs, Set(scan.artifacts.map(\.id)))
     }
 
@@ -244,7 +244,7 @@ final class UploadViewModelTests: XCTestCase {
         XCTAssertEqual(model.pendingOptionalUploadCount, 1)
 
         try await waitUntil { model.state == .ready }
-        XCTAssertEqual(model.optionalUploadErrorMessage, "Some additional scan evidence could not upload.")
+        XCTAssertEqual(model.optionalUploadErrorMessage, "Some video or images could not upload.")
         XCTAssertEqual(model.pendingOptionalUploadCount, 1)
 
         model.retry()
