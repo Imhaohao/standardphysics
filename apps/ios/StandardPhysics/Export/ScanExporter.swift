@@ -1,9 +1,19 @@
 import Foundation
 import RoomPlan
 
-struct CaptureArtifact: Identifiable, Codable {
+enum ArtifactKind: String, Codable, Sendable {
+    case roomUSDZ = "room_usdz"
+    case roomJSON = "room_json"
+    case roomMetadata = "room_metadata"
+    case walkthroughMP4 = "walkthrough_mp4"
+    case frames
+    case poses
+    case coverage
+}
+
+struct CaptureArtifact: Identifiable, Codable, Sendable {
     let id: String
-    let kind: String
+    let kind: ArtifactKind
     let fileURL: URL
 }
 
@@ -81,19 +91,19 @@ enum ScanExporter {
         try JSONEncoder.standardPhysics.encode(coverageByID).write(to: coverageURL, options: .atomic)
 
         var artifacts = [
-            CaptureArtifact(id: "room-usdz", kind: "room_usdz", fileURL: roomURL),
-            CaptureArtifact(id: "room-json", kind: "room_json", fileURL: roomJSONURL),
-            CaptureArtifact(id: "room-metadata", kind: "room_metadata", fileURL: metadataURL),
-            CaptureArtifact(id: "poses", kind: "poses", fileURL: recording.posesURL),
-            CaptureArtifact(id: "coverage", kind: "coverage", fileURL: coverageURL)
+            CaptureArtifact(id: "room-usdz", kind: .roomUSDZ, fileURL: roomURL),
+            CaptureArtifact(id: "room-json", kind: .roomJSON, fileURL: roomJSONURL),
+            CaptureArtifact(id: "room-metadata", kind: .roomMetadata, fileURL: metadataURL),
+            CaptureArtifact(id: "poses", kind: .poses, fileURL: recording.posesURL),
+            CaptureArtifact(id: "coverage", kind: .coverage, fileURL: coverageURL)
         ]
         if let videoURL = recording.videoURL {
-            artifacts.append(CaptureArtifact(id: "walkthrough", kind: "walkthrough_mp4", fileURL: videoURL))
+            artifacts.append(CaptureArtifact(id: "walkthrough", kind: .walkthroughMP4, fileURL: videoURL))
         }
         artifacts.append(contentsOf: recording.frameURLs.enumerated().map { index, fileURL in
             CaptureArtifact(
                 id: String(format: "frame-%04d", index),
-                kind: "frames",
+                kind: .frames,
                 fileURL: fileURL
             )
         })

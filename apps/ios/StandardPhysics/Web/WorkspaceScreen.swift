@@ -6,12 +6,13 @@ struct WorkspaceScreen: View {
     let scanID: String
 
     var body: some View {
+        let workspaceURL = AppEnvironment.workspaceBaseURL
         NavigationStack {
             WorkspaceWebView(
-                url: AppEnvironment.workspaceBaseURL
+                url: workspaceURL
                     .appendingPathComponent("scans")
                     .appendingPathComponent(scanID),
-                allowedHosts: [AppEnvironment.workspaceBaseURL.host].compactMap { $0 },
+                allowedOrigin: WebOrigin(url: workspaceURL)!,
                 onScanRequested: { appModel.screen = .capture }
             )
             .ignoresSafeArea(edges: .bottom)
@@ -28,17 +29,17 @@ struct WorkspaceScreen: View {
 
 struct WorkspaceWebView: UIViewRepresentable {
     let url: URL
-    let allowedHosts: Set<String>
+    let allowedOrigin: WebOrigin
     let onScanRequested: () -> Void
 
-    init(url: URL, allowedHosts: [String], onScanRequested: @escaping () -> Void) {
+    init(url: URL, allowedOrigin: WebOrigin, onScanRequested: @escaping () -> Void) {
         self.url = url
-        self.allowedHosts = Set(allowedHosts)
+        self.allowedOrigin = allowedOrigin
         self.onScanRequested = onScanRequested
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(allowedHosts: allowedHosts, onScanRequested: onScanRequested)
+        Coordinator(allowedOrigin: allowedOrigin, onScanRequested: onScanRequested)
     }
 
     func makeUIView(context: Context) -> WKWebView {
@@ -64,11 +65,11 @@ struct WorkspaceWebView: UIViewRepresentable {
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
-        private let allowedHosts: Set<String>
+        private let allowedOrigin: WebOrigin
         private let onScanRequested: () -> Void
 
-        init(allowedHosts: Set<String>, onScanRequested: @escaping () -> Void) {
-            self.allowedHosts = allowedHosts
+        init(allowedOrigin: WebOrigin, onScanRequested: @escaping () -> Void) {
+            self.allowedOrigin = allowedOrigin
             self.onScanRequested = onScanRequested
         }
 
@@ -77,7 +78,7 @@ struct WorkspaceWebView: UIViewRepresentable {
             decidePolicyFor navigationAction: WKNavigationAction
         ) async -> WKNavigationActionPolicy {
             guard let target = navigationAction.request.url else { return .cancel }
-            if target.scheme == "about" || target.host.map(allowedHosts.contains) == true {
+            if target.absoluteString == "about:blank" || allowedOrigin.contains(target) {
                 return .allow
             } else {
                 return .cancel
@@ -86,9 +87,42 @@ struct WorkspaceWebView: UIViewRepresentable {
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             guard message.name == "nativeCapture",
+                  message.frameInfo.isMainFrame,
+                  let sourceURL = message.frameInfo.request.url,
+                  allowedOrigin.contains(sourceURL),
                   let action = message.body as? String,
                   action == "scanShop" else { return }
             DispatchQueue.main.async { self.onScanRequested() }
+        }
+    }
+}
+
+struct WebOrigin: Equatable, Sendable {
+    let scheme: String
+    let host: String
+    let port: Int?
+
+    init?(url: URL) {
+        guard let scheme = url.scheme?.lowercased(),
+              scheme == "http" || scheme == "https",
+              let host = url.host?.lowercased() else { return nil }
+        self.scheme = scheme
+        self.host = host
+        port = Self.effectivePort(for: url)
+    }
+
+    func contains(_ url: URL) -> Bool {
+        url.scheme?.lowercased() == scheme
+            && url.host?.lowercased() == host
+            && Self.effectivePort(for: url) == port
+    }
+
+    private static func effectivePort(for url: URL) -> Int? {
+        if let port = url.port { return port }
+        switch url.scheme?.lowercased() {
+        case "http": return 80
+        case "https": return 443
+        default: return nil
         }
     }
 }

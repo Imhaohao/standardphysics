@@ -63,6 +63,7 @@ struct CameraObservation: Sendable {
 struct SurfaceCoverage: Identifiable, Codable, Equatable, Sendable {
     let id: UUID
     let observedFraction: Double
+    let observedSegments: [Bool]
     let viewpointCount: Int
     let highConfidence: Bool
 
@@ -79,11 +80,13 @@ struct SurfaceCoverage: Identifiable, Codable, Equatable, Sendable {
     init(
         id: UUID,
         observedFraction: Double,
+        observedSegments: [Bool] = [],
         viewpointCount: Int,
         highConfidence: Bool
     ) {
         self.id = id
         self.observedFraction = observedFraction
+        self.observedSegments = observedSegments
         self.viewpointCount = viewpointCount
         self.highConfidence = highConfidence
     }
@@ -92,6 +95,7 @@ struct SurfaceCoverage: Identifiable, Codable, Equatable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
         observedFraction = try container.decode(Double.self, forKey: .observedFraction)
+        observedSegments = []
         viewpointCount = try container.decode(Int.self, forKey: .viewpointCount)
         highConfidence = false
     }
@@ -142,11 +146,12 @@ struct CoverageEngine {
             return SurfaceCoverage(
                 id: surface.id,
                 observedFraction: Double(state.observedCells.count) / Double(gridSize * gridSize),
+                observedSegments: observedSegments(from: state.observedCells),
                 viewpointCount: state.viewpoints.count,
                 highConfidence: surface.confidence == .high
             )
         }
-        snapshot.unfinishedDirection = directionToNearestUnfinishedSurface(
+        snapshot.unfinishedDirection = directionToNearestUnfinishedArea(
             surfaces: surfaces,
             camera: camera
         )
@@ -195,6 +200,15 @@ struct CoverageEngine {
         return SIMD4(x * surface.width, y * surface.height, 0, 1)
     }
 
+    private func observedSegments(from observedCells: Set<Int>) -> [Bool] {
+        (0..<gridSize).map { column in
+            let observedRowCount = (0..<gridSize).filter { row in
+                observedCells.contains(row * gridSize + column)
+            }.count
+            return observedRowCount * 10 >= gridSize * 7
+        }
+    }
+
     private func isVisible(
         worldPoint: SIMD3<Float>,
         surface: SurfaceSnapshot,
@@ -207,7 +221,7 @@ struct CoverageEngine {
         let normal = simd_normalize(
             SIMD3(surface.transform.columns.2.x, surface.transform.columns.2.y, surface.transform.columns.2.z)
         )
-        guard abs(simd_dot(normal, pointToCamera / distance)) >= 0.5 else { return false }
+        guard simd_dot(normal, pointToCamera / distance) >= 0.5 else { return false }
 
         let cameraPoint = simd_inverse(camera.transform) * SIMD4(worldPoint, 1)
         guard cameraPoint.z < 0 else { return false }
@@ -221,18 +235,35 @@ struct CoverageEngine {
             && y >= 0 && y <= camera.imageResolution.y
     }
 
-    private func directionToNearestUnfinishedSurface(
+    private func directionToNearestUnfinishedArea(
         surfaces: [SurfaceSnapshot],
         camera: CameraObservation
     ) -> CoverageAngle {
         let coverageByID = Dictionary(uniqueKeysWithValues: snapshot.surfaces.map { ($0.id, $0) })
-        let nearest = surfaces
-            .filter { coverageByID[$0.id]?.isDone != true }
-            .min { simd_distance($0.center, camera.position) < simd_distance($1.center, camera.position) }
-        guard let nearest else { return .zero }
+        let candidates = surfaces.flatMap { surface -> [SIMD3<Float>] in
+            guard coverageByID[surface.id]?.isDone != true else { return [] }
+            return unfinishedWorldPoints(on: surface)
+        }
+        guard let nearest = candidates.min(by: {
+            simd_distance($0, camera.position) < simd_distance($1, camera.position)
+        }) else { return .zero }
 
-        let worldDirection = nearest.center - camera.position
+        let worldDirection = nearest - camera.position
         let cameraDirection = simd_inverse(camera.transform) * SIMD4(worldDirection, 0)
         return CoverageAngle(radians: Double(atan2(cameraDirection.x, -cameraDirection.z)))
+    }
+
+    private func unfinishedWorldPoints(on surface: SurfaceSnapshot) -> [SIMD3<Float>] {
+        let observedCells = observations[surface.id]?.observedCells ?? []
+        let unfinishedCells = (0..<(gridSize * gridSize)).filter { !observedCells.contains($0) }
+        guard !unfinishedCells.isEmpty else { return [surface.center] }
+        return unfinishedCells.map { index in
+            let point = surface.transform * localPoint(
+                on: surface,
+                row: index / gridSize,
+                column: index % gridSize
+            )
+            return SIMD3(point.x, point.y, point.z)
+        }
     }
 }

@@ -7,11 +7,11 @@ struct UploadStatusScreen: View {
     var body: some View {
         ZStack {
             AppTheme.canvas.ignoresSafeArea()
-            VStack(spacing: 28) {
+            VStack(spacing: AppTheme.Spacing.page) {
                 Spacer()
                 statusMark
                 Text(uploadModel.state.displayText)
-                    .font(.system(size: 38, weight: .bold, design: .rounded))
+                    .font(AppTheme.Typography.status)
                     .multilineTextAlignment(.center)
                 if let message = uploadModel.errorMessage {
                     Text(message)
@@ -22,7 +22,7 @@ struct UploadStatusScreen: View {
                 Spacer()
                 actions
             }
-            .padding(28)
+            .padding(AppTheme.Spacing.page)
         }
         .task { uploadModel.start() }
         .onDisappear { uploadModel.cancel() }
@@ -31,9 +31,9 @@ struct UploadStatusScreen: View {
     @ViewBuilder private var statusMark: some View {
         if uploadModel.state == .ready {
             Image(systemName: "checkmark")
-                .font(.system(size: 38, weight: .bold))
-                .foregroundStyle(.white)
-                .frame(width: 82, height: 82)
+                .font(AppTheme.Typography.statusSymbol)
+                .foregroundStyle(AppTheme.onDark)
+                .frame(width: AppTheme.Size.statusMark, height: AppTheme.Size.statusMark)
                 .background(AppTheme.accent)
                 .clipShape(Circle())
                 .accessibilityHidden(true)
@@ -41,7 +41,7 @@ struct UploadStatusScreen: View {
             ProgressView()
                 .controlSize(.large)
                 .tint(AppTheme.accent)
-                .frame(width: 82, height: 82)
+                .frame(width: AppTheme.Size.statusMark, height: AppTheme.Size.statusMark)
         }
     }
 

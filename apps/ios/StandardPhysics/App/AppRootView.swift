@@ -27,6 +27,23 @@ final class AppModel: ObservableObject {
         )
         screen = .upload(model)
     }
+
+    func refreshSavedScanStates() async {
+        while !Task.isCancelled {
+            var hasPendingScan = false
+            for scan in savedScans {
+                var uploadStore = ResumableUploadStore(captureDirectory: scan.directory)
+                guard uploadStore.shouldPollServer, let scanID = uploadStore.scanID else { continue }
+                if let remote = try? await ScanUploadClient(baseURL: AppEnvironment.apiBaseURL).scan(id: scanID) {
+                    try? uploadStore.record(state: remote.state)
+                }
+                hasPendingScan = hasPendingScan || uploadStore.shouldPollServer
+            }
+            savedScans = CaptureLibrary.all()
+            guard hasPendingScan else { return }
+            try? await Task.sleep(for: .seconds(2))
+        }
+    }
 }
 
 struct AppRootView: View {
@@ -81,14 +98,14 @@ private struct StartView: View {
             ZStack {
                 AppTheme.canvas.ignoresSafeArea()
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 28) {
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.page) {
                         Spacer(minLength: 64)
                         Image(systemName: "viewfinder")
                             .font(.system(size: 54, weight: .light))
                             .foregroundStyle(AppTheme.accent)
                             .accessibilityHidden(true)
                         Text("Measure your shop")
-                            .font(.system(size: 50, weight: .bold, design: .rounded))
+                            .font(AppTheme.Typography.hero)
                             .foregroundStyle(AppTheme.ink)
                         Text("Walk once around the room. We’ll show you where to point.")
                             .font(.title3)
@@ -99,10 +116,11 @@ private struct StartView: View {
                             SavedScansView(scans: model.savedScans) { model.screen = .review($0) }
                         }
                     }
-                    .padding(28)
+                    .padding(AppTheme.Spacing.page)
                 }
             }
             .toolbar(.hidden, for: .navigationBar)
+            .task { await model.refreshSavedScanStates() }
         }
     }
 }
@@ -112,29 +130,34 @@ private struct SavedScansView: View {
     let select: (CapturedScan) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.small) {
             Text("Saved scans")
                 .font(.title2.bold())
             ForEach(scans) { scan in
                 Button { select(scan) } label: {
-                    HStack(spacing: 14) {
+                    HStack(spacing: AppTheme.Spacing.compact) {
                         Image(systemName: "cube.transparent")
                             .font(.title2)
                             .foregroundStyle(AppTheme.accent)
-                        Text(scan.name ?? "Shop scan")
-                            .font(.headline)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(scan.name ?? "Shop scan")
+                                .font(.headline)
+                            Text(ResumableUploadStore(captureDirectory: scan.directory).historyText)
+                                .font(.subheadline)
+                                .foregroundStyle(AppTheme.mutedInk)
+                        }
                         Spacer()
                         Image(systemName: "chevron.right")
                             .foregroundStyle(.secondary)
                     }
-                    .padding(18)
+                    .padding(AppTheme.Spacing.card)
                     .background(AppTheme.panel)
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.control, style: .continuous))
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(.top, 14)
+        .padding(.top, AppTheme.Spacing.compact)
     }
 }
 
@@ -146,7 +169,7 @@ private struct UnsupportedDeviceView: View {
                 .font(.title2.weight(.semibold))
                 .foregroundStyle(AppTheme.ink)
                 .multilineTextAlignment(.center)
-                .padding(32)
+                .padding(AppTheme.Spacing.page)
         }
     }
 }

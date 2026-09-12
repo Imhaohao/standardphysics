@@ -1,7 +1,7 @@
 import CryptoKit
 import Foundation
 
-enum ScanState: String, Codable {
+enum ScanState: String, Codable, Equatable, Sendable {
     case uploading
     case measuring
     case checking
@@ -61,7 +61,7 @@ struct ScanUploadClient {
         var request = URLRequest(url: url)
         request.httpMethod = "PUT"
         request.setValue(try SHA256Digest.hexDigest(of: artifact.fileURL), forHTTPHeaderField: "X-Checksum-SHA256")
-        request.setValue(artifact.kind, forHTTPHeaderField: "X-Artifact-Kind")
+        request.setValue(artifact.kind.rawValue, forHTTPHeaderField: "X-Artifact-Kind")
         let (_, response) = try await session.upload(for: request, fromFile: artifact.fileURL)
         try validate(response, expectedStatus: 200...201)
     }

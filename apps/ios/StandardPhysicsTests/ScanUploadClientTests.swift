@@ -39,7 +39,7 @@ final class ScanUploadClientTests: XCTestCase {
         )
         let remote = try await client.createScan(name: "Tea House", duration: 30)
         try await client.upload(
-            CaptureArtifact(id: "room-json", kind: "room_json", fileURL: artifactURL),
+            CaptureArtifact(id: "room-json", kind: .roomJSON, fileURL: artifactURL),
             to: remote.id
         )
         let completed = try await client.complete(scanID: remote.id)
@@ -50,6 +50,17 @@ final class ScanUploadClientTests: XCTestCase {
             "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
         )
         XCTAssertEqual(completed.state, .measuring)
+    }
+}
+
+final class WorkspaceWebViewTests: XCTestCase {
+    func testWebOriginRequiresTheSameSchemeHostAndPort() {
+        let origin = WebOrigin(url: URL(string: "https://standard.physics:8443/scans")!)
+
+        XCTAssertTrue(origin?.contains(URL(string: "https://standard.physics:8443/scans/123")!) == true)
+        XCTAssertFalse(origin?.contains(URL(string: "http://standard.physics:8443/scans/123")!) == true)
+        XCTAssertFalse(origin?.contains(URL(string: "https://standard.physics/scans/123")!) == true)
+        XCTAssertFalse(origin?.contains(URL(string: "https://other.standard.physics:8443/scans/123")!) == true)
     }
 }
 

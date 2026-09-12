@@ -21,33 +21,37 @@ struct ReviewScreen: View {
                         scene: try? SCNScene(url: scan.roomURL),
                         options: [.allowsCameraControl, .autoenablesDefaultLighting]
                     )
-                    .background(Color.white)
+                    .background(AppTheme.panel)
                     Button {
                         model.showStart()
                     } label: {
                         Image(systemName: "chevron.left")
                             .font(.headline)
-                            .frame(width: 44, height: 44)
+                            .frame(width: AppTheme.Size.touchTarget, height: AppTheme.Size.touchTarget)
                             .background(AppTheme.panel)
                             .clipShape(Circle())
-                            .shadow(color: .black.opacity(0.12), radius: 12, y: 5)
+                            .shadow(
+                                color: AppTheme.Shadow.color,
+                                radius: AppTheme.Shadow.radius,
+                                y: AppTheme.Shadow.y
+                            )
                     }
                     .foregroundStyle(AppTheme.ink)
-                    .padding(18)
+                    .padding(AppTheme.Spacing.card)
                     .accessibilityLabel("Back")
                 }
 
-                VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.card) {
                     Text("Name this shop")
                         .font(.title2.bold())
                     TextField("Boba shop", text: $name)
                         .textInputAutocapitalization(.words)
                         .font(.title3)
-                        .padding(16)
-                        .background(.white)
+                        .padding(AppTheme.Spacing.control)
+                        .background(AppTheme.panel)
                         .overlay {
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .stroke(Color.black.opacity(0.14), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: AppTheme.Radius.field, style: .continuous)
+                                .stroke(AppTheme.fieldOutline, lineWidth: 1)
                         }
                     Button("Upload scan") {
                         model.upload(scan: scan.renamed(trimmedName), name: trimmedName)
@@ -56,7 +60,7 @@ struct ReviewScreen: View {
                     .disabled(trimmedName.isEmpty)
                     .opacity(trimmedName.isEmpty ? 0.45 : 1)
                 }
-                .padding(24)
+                .padding(AppTheme.Spacing.section)
             }
         }
     }

@@ -9,25 +9,25 @@ struct CaptureScreen: View {
         ZStack {
             RoomCaptureContainer(store: capture).ignoresSafeArea()
             LinearGradient(
-                colors: [.black.opacity(0.56), .clear, .black.opacity(0.5)],
+                colors: [AppTheme.captureScrimTop, AppTheme.transparent, AppTheme.captureScrimBottom],
                 startPoint: .top,
                 endPoint: .bottom
             )
             .ignoresSafeArea()
             .allowsHitTesting(false)
 
-            VStack(spacing: 16) {
+            VStack(spacing: AppTheme.Spacing.control) {
                 captureHeader
                 Spacer()
-                if capture.phase == .scanning {
+                if capture.phase == .scanning && !capture.coverage.isComplete {
                     GuidanceArrow(angle: capture.coverage.unfinishedDirection.radians)
                 }
                 CoverageMapView(surfaces: capture.surfaces, coverage: capture.coverage)
-                    .frame(height: 136)
+                    .frame(height: AppTheme.Size.coverageMapHeight)
                 finishButton
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
+            .padding(.horizontal, AppTheme.Spacing.section)
+            .padding(.vertical, AppTheme.Spacing.small)
         }
         .onChange(of: capture.phase) { _, phase in
             if phase == .ready, let scan = capture.capturedScan {
@@ -37,51 +37,56 @@ struct CaptureScreen: View {
     }
 
     private var captureHeader: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: AppTheme.Spacing.compact) {
             Button {
                 capture.cancel()
                 model.showStart()
             } label: {
                 Image(systemName: "xmark")
                     .font(.headline)
-                    .frame(width: 44, height: 44)
-                    .background(.black.opacity(0.58))
+                    .frame(width: AppTheme.Size.touchTarget, height: AppTheme.Size.touchTarget)
+                    .background(AppTheme.captureChrome)
                     .clipShape(Circle())
             }
-            .foregroundStyle(.white)
+            .foregroundStyle(AppTheme.onDark)
             .accessibilityLabel("Cancel scan")
 
             Text(capture.instruction)
                 .font(.headline)
-                .foregroundStyle(.white)
+                .foregroundStyle(AppTheme.onDark)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 18)
+                .padding(.horizontal, AppTheme.Spacing.card)
                 .frame(minHeight: 52)
-                .background(.black.opacity(0.58))
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .background(AppTheme.captureChrome)
+                .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.control, style: .continuous))
         }
     }
 
     @ViewBuilder private var finishButton: some View {
         switch capture.phase {
-        case .processing:
+        case .preparing, .processing, .ready:
             ProgressView()
-                .tint(.white)
+                .tint(AppTheme.onDark)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 18)
-                .background(.black.opacity(0.72))
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .padding(.vertical, AppTheme.Spacing.card)
+                .background(AppTheme.captureProgress)
+                .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.control, style: .continuous))
         case .failed(let message):
             Text(message)
                 .font(.headline)
-                .foregroundStyle(.white)
+                .foregroundStyle(AppTheme.onDark)
                 .frame(maxWidth: .infinity)
-                .padding(18)
+                .padding(AppTheme.Spacing.card)
                 .background(AppTheme.warning)
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        default:
-            Button("Done") { capture.finish() }
-                .buttonStyle(PrimaryButtonStyle())
+                .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.control, style: .continuous))
+        case .scanning:
+            if capture.coverage.isComplete {
+                Button("Done") { capture.finish() }
+                    .buttonStyle(PrimaryButtonStyle())
+            } else {
+                Button("Done") { capture.finish() }
+                    .buttonStyle(EarlyDoneButtonStyle())
+            }
         }
     }
 }
@@ -91,14 +96,14 @@ private struct GuidanceArrow: View {
 
     var body: some View {
         Image(systemName: "arrow.up")
-            .font(.system(size: 34, weight: .bold))
-            .foregroundStyle(.white)
-            .frame(width: 68, height: 68)
+            .font(AppTheme.Typography.guidanceSymbol)
+            .foregroundStyle(AppTheme.onDark)
+            .frame(width: AppTheme.Size.guidanceMark, height: AppTheme.Size.guidanceMark)
             .background(AppTheme.accent.opacity(0.9))
             .clipShape(Circle())
             .rotationEffect(.radians(angle))
-            .animation(.easeOut(duration: 0.25), value: angle)
-            .accessibilityLabel("Turn toward the unfinished wall")
+            .animation(AppTheme.Motion.quick, value: angle)
+            .accessibilityLabel("Turn toward the unfinished area")
     }
 }
 
@@ -117,22 +122,21 @@ private struct CoverageMapView: View {
             for surface in walls {
                 let line = endpoints(surface)
                 guard line.count == 2 else { continue }
-                var path = Path()
-                path.move(to: bounds.project(line[0], into: size))
-                path.addLine(to: bounds.project(line[1], into: size))
-                let isDone = coverageByID[surface.id]?.isDone == true
-                context.stroke(
-                    path,
-                    with: .color(isDone ? AppTheme.scanLine : .white.opacity(pulse ? 0.9 : 0.4)),
-                    style: StrokeStyle(lineWidth: isDone ? 7 : 4, lineCap: .round, dash: isDone ? [] : [7, 7])
+                let observedSegments = displayedSegments(for: coverageByID[surface.id])
+                draw(
+                    observedSegments: observedSegments,
+                    along: line,
+                    bounds: bounds,
+                    size: size,
+                    context: &context
                 )
             }
         }
-        .padding(18)
-        .background(.black.opacity(0.62))
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .padding(AppTheme.Spacing.card)
+        .background(AppTheme.captureMap)
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.map, style: .continuous))
         .onAppear {
-            withAnimation(.easeInOut(duration: 1).repeatForever(autoreverses: true)) { pulse.toggle() }
+            withAnimation(AppTheme.Motion.pulse) { pulse.toggle() }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(coverage.isComplete ? "The room is covered" : "Room coverage map")
@@ -142,6 +146,42 @@ private struct CoverageMapView: View {
         let left = surface.transform * SIMD4(-surface.width / 2, 0, 0, 1)
         let right = surface.transform * SIMD4(surface.width / 2, 0, 0, 1)
         return [SIMD2(left.x, left.z), SIMD2(right.x, right.z)]
+    }
+
+    private func draw(
+        observedSegments: [Bool],
+        along line: [SIMD2<Float>],
+        bounds: MapBounds,
+        size: CGSize,
+        context: inout GraphicsContext
+    ) {
+        for (index, isObserved) in observedSegments.enumerated() {
+            let start = point(on: line, fraction: Float(index) / Float(observedSegments.count))
+            let end = point(on: line, fraction: Float(index + 1) / Float(observedSegments.count))
+            var path = Path()
+            path.move(to: bounds.project(start, into: size))
+            path.addLine(to: bounds.project(end, into: size))
+            context.stroke(
+                path,
+                with: .color(isObserved
+                    ? AppTheme.scanLine
+                    : (pulse ? AppTheme.coveragePendingBright : AppTheme.coveragePendingDim)),
+                style: StrokeStyle(
+                    lineWidth: isObserved ? 7 : 4,
+                    lineCap: .round,
+                    dash: isObserved ? [] : [7, 7]
+                )
+            )
+        }
+    }
+
+    private func point(on line: [SIMD2<Float>], fraction: Float) -> SIMD2<Float> {
+        line[0] + (line[1] - line[0]) * fraction
+    }
+
+    private func displayedSegments(for surfaceCoverage: SurfaceCoverage?) -> [Bool] {
+        let segments = surfaceCoverage?.observedSegments ?? [false]
+        return coverage.isComplete ? Array(repeating: true, count: segments.count) : segments
     }
 }
 

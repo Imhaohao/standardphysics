@@ -5,6 +5,7 @@ struct ResumableUploadStore {
         var scanID: String?
         var completedArtifactIDs: Set<String> = []
         var isFinalized = false
+        var lastServerState: ScanState?
     }
 
     private let stateURL: URL
@@ -13,6 +14,17 @@ struct ResumableUploadStore {
     var scanID: String? { state.scanID }
     var completedArtifactIDs: Set<String> { state.completedArtifactIDs }
     var isFinalized: Bool { state.isFinalized }
+    var shouldPollServer: Bool {
+        state.scanID != nil
+            && state.isFinalized
+            && state.lastServerState != .ready
+            && state.lastServerState != .failed
+    }
+    var historyText: String {
+        if let lastServerState = state.lastServerState { return lastServerState.displayText }
+        if state.scanID != nil { return ScanState.uploading.displayText }
+        return "Saved on this phone"
+    }
 
     init(captureDirectory: URL) {
         stateURL = captureDirectory.appendingPathComponent("upload-state.json")
@@ -42,6 +54,12 @@ struct ResumableUploadStore {
     mutating func recordFinalized() throws {
         guard state.scanID != nil else { throw UploadStoreError.scanNotStarted }
         state.isFinalized = true
+        try persist()
+    }
+
+    mutating func record(state serverState: ScanState) throws {
+        guard state.scanID != nil else { throw UploadStoreError.scanNotStarted }
+        state.lastServerState = serverState
         try persist()
     }
 

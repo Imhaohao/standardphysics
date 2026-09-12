@@ -49,7 +49,7 @@ final class UploadViewModel: ObservableObject {
             let remote = uploadStore.isFinalized
                 ? try await client.scan(id: remoteID)
                 : try await finalize(remoteID)
-            state = remote.state
+            try record(remote.state)
             try await pollUntilFinished(remoteID)
         } catch is CancellationError {
             return
@@ -84,11 +84,16 @@ final class UploadViewModel: ObservableObject {
     private func pollUntilFinished(_ scanID: String) async throws {
         while state != .ready && state != .failed {
             try await Task.sleep(for: .seconds(2))
-            state = try await client.scan(id: scanID).state
+            try record(try await client.scan(id: scanID).state)
         }
         if state == .failed {
             errorMessage = "Open the saved scan and try again."
         }
         task = nil
+    }
+
+    private func record(_ serverState: ScanState) throws {
+        state = serverState
+        try uploadStore.record(state: serverState)
     }
 }
