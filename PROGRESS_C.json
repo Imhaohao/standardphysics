@@ -1,9 +1,31 @@
 {
   "lane": "C",
-  "updated": null,
-  "done": [],
-  "in_progress": null,
+  "updated": "2026-09-12T23:05:00Z",
+  "done": [
+    "rule pack with 17 rules, thresholds in legal units and the source sentence for each",
+    "human verification ledger that binds id, section, threshold and unit",
+    "tier 1 checks: route width, 180 turn, passing space, turning space, door width, counter height, counter approach, exit path",
+    "the five things a scan cannot see, as one specific request each",
+    "owner-facing copy for every finding, section 2 of the plan",
+    "findings with stable ids, dedupe across legs, and needs_another_look downgraded to a request",
+    "assess(): one pass producing an Assessment plus what it could not answer",
+    "Weave tracing that runs with or without an account"
+  ],
+  "in_progress": "TypeSafe router, fix agent, evaluation and the acceptance gate",
   "blocked_on": null,
-  "ready_for_others": [],
-  "needs_human": []
+  "ready_for_others": [
+    "standardphysics_agents.assess(graph, scenario, measure) -> Pass",
+    "standardphysics_agents.load_pack().as_contract_pack(ledger) -> contracts.RulePack",
+    "standardphysics_agents.graph_hash(graph) for Assessment.graph_hash and Proposal.base_graph_hash"
+  ],
+  "needs_human": [
+    "Verify every threshold against primary ADA source text, then run: python -m standardphysics_agents.cli rules verify <id> --by \"<name>\". Until then no check is enabled and the report is empty.",
+    "A second person re-checks each citation: cli rules second-check <id> --by \"<name>\"",
+    "Pin the CBC Chapter 10 egress section for exit_path, and confirm the occupant load for a shop this size",
+    "Confirm Lane B's two disclosed approximations in ADA 403.5.2: the pivot's smaller horizontal extent as the element width, and geometric turn detection at about 122 degrees",
+    "TYPESAFE_API_KEY plus the event quickstart's base URL and request path, into .env",
+    "WANDB_API_KEY, WANDB_ENTITY and WANDB_PROJECT in .env, or tracing and evaluation stay local",
+    "Schedule the accessibility professional",
+    "docs/handoffs/C-to-D.md asks Lane D for two lines in pytest.ini and CI, or Lane C's 98 tests never run on master"
+  ]
 }
