@@ -82,3 +82,43 @@ def gap_between(a: Polygon, b: Polygon) -> float:
 
 def gap_between_nodes(a: SceneNode, b: SceneNode) -> float:
     return gap_between(footprint(a), footprint(b))
+
+
+def _closest_on_segment(point: Point, a: Point, b: Point) -> Point:
+    px, py = point
+    ax, ay = a
+    bx, by = b
+    dx, dy = bx - ax, by - ay
+    length_squared = dx * dx + dy * dy
+    if length_squared == 0:
+        return a
+    t = max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / length_squared))
+    return (ax + t * dx, ay + t * dy)
+
+
+def closest_points(a: Polygon, b: Polygon) -> tuple[Point, Point]:
+    """The two points a dimension line should run between.
+
+    Measuring a gap is not enough to draw it. The label has to sit across the
+    actual facing surfaces, so this returns where on each footprint the
+    shortest distance is realised.
+    """
+    best = None
+    for point in a:
+        candidate = _closest_on_segment(point, *_nearest_edge(point, b))
+        best = _better(best, point, candidate)
+    for point in b:
+        candidate = _closest_on_segment(point, *_nearest_edge(point, a))
+        best = _better(best, candidate, point)
+    return best[1], best[2]
+
+
+def _nearest_edge(point: Point, polygon: Polygon) -> tuple[Point, Point]:
+    return min(_edges(polygon), key=lambda edge: _point_to_segment(point, *edge))
+
+
+def _better(best, first: Point, second: Point):
+    distance = math.hypot(first[0] - second[0], first[1] - second[1])
+    if best is None or distance < best[0]:
+        return (distance, first, second)
+    return best
