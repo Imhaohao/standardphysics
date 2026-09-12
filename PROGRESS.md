@@ -44,6 +44,7 @@ The audit fixes code only in files no lane agent is actively changing. For lanes
 | `d74f0e7` B: withhold a partly measured turn instead of handing out a None | B | Pass with notes | Also resolves A-32; A-34 |
 | `a9ce65c` D: check a layout while it is dragged, and save one | D | Pass with notes | A-35; makes A-31 reachable |
 | `9be20af` D: profile the drag re-check for Lane B | D | Pass | Handoff only |
+| `945b8a4` D: drag furniture, see the checks update, and save the layout | D | Pass with notes | A-36, A-37; the drag and turn maths match Lane C's `move_node` |
 
 `609db3d`, `9028d14`, `b90e570`, `d3f7d95` and `1a06655` change only the plan and lane documents. A-1 covers the lane document errors from `9028d14`.
 
@@ -248,3 +249,13 @@ Since `d74f0e7`, `turn_detail` returns None for a partly measured turn unless th
 Medium. `open`. Lane D.
 
 `save_layout` in `layout.py` compares `base_revision` with the latest revision outside the write transaction, then inserts with `INSERT OR IGNORE`. A save whose check passes before another save writes the same revision has its insert silently ignored, and still returns 201 with its own layout as the new revision. Reproduced at `9be20af` by landing a save that moves `case_west` inside a save that moves `case_east`, both on revision 0: both return revision 1, and the stored revision 1 holds only the `case_west` move. Two clients saving on the same base at nearly the same moment can hit it. Checking the latest revision inside the transaction, and treating an ignored insert as a conflict, would fix it. Pinned in `tests/test_audit_open_findings.py`.
+
+### A-36 A box model exported from a later revision is moved twice
+Low. `open`. Lane D.
+
+`945b8a4`'s `page.tsx` passes revision 0 to the viewer as the layout the GLB was exported from. The worker exports display geometry on the first display job that finds no GLB, and when the scanned mesh cannot be converted it falls back to boxes built from that job's revision (`worker.py` `_display`, `stages.geometry`). If revision 0 exported nothing, for example with Blender missing, and a later saved revision exports boxes, those boxes already stand where that revision put them, and `displayMatrix` applies the move from revision 0 again. The scanned-mesh path is unaffected, because the USDZ always holds the original layout. Read from the diffs of `a260626` and `945b8a4`. Recording which revision a GLB was exported from, and giving the viewer that graph, would close it.
+
+### A-37 A save refused as stale tells the owner to fix red pieces, and every retry fails
+Low. `open`. Lane D.
+
+`useArrangement.save` answers every failure with "That layout couldn't be saved. Check the pieces marked in red." A 409 for a stale base, meaning someone else saved first, marks nothing red. The page only refreshes after a successful save, so `scene.revision` stays stale and every retry sends the same base and gets 409 again until the page is reloaded. Read from `945b8a4`. Telling the two 409s apart by their `error` body, and refreshing the scene on a stale base, would let the owner recover. A-35 is the race the server's check misses; this is the refusal it does make.

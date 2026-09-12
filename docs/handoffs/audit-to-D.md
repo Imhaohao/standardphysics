@@ -36,3 +36,10 @@ The upload contract matches what Lane A's app sends: paths, both headers, snake_
 
 - **A-35, medium, pinned.** `save_layout` checks the base revision outside its write transaction and inserts with `INSERT OR IGNORE`, so a save that loses a race to another save on the same base returns 201 while its layout is dropped. Reproduced at `9be20af`; details in `PROGRESS.md`. Checking the latest revision inside the transaction and treating an ignored insert as a 409 would fix it.
 - **A-31 is now reachable, pinned.** Saved layouts pass revision 9, and after eleven saves on the sample shop the render route serves revision 9's image for a revision 11 assessment. Sorting the revision directories as numbers fixes it.
+
+## Dragging in `945b8a4`
+
+The browser's `moveNode` matches Lane C's `move_node`, pointer deltas reach the floor with the right sign, and stale check answers are dropped by sequence.
+
+- **A-37, low.** A 409 for a stale base shows "Check the pieces marked in red" with nothing red, and with no refresh every retry sends the same stale base. Reading the `error` body and refreshing the scene on a stale base fixes both.
+- **A-36, low.** The viewer treats revision 0 as the layout the GLB came from. If the first GLB is a box export from a later revision, which happens when revision 0 exported nothing, its boxes are moved twice. Recording which revision a GLB was exported from would close it.
