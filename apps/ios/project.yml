@@ -1,0 +1,36 @@
+name: StandardPhysics
+options:
+  bundleIdPrefix: com.standardphysics
+  deploymentTarget:
+    iOS: "17.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+targets:
+  StandardPhysics:
+    type: application
+    platform: iOS
+    sources:
+      - path: StandardPhysics
+    info:
+      path: StandardPhysics/Resources/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.standardphysics.capture
+        TARGETED_DEVICE_FAMILY: "1,2"
+    scheme:
+      testTargets:
+        - StandardPhysicsTests
+  StandardPhysicsTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: StandardPhysicsTests
+    dependencies:
+      - target: StandardPhysics
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.standardphysics.capture.tests
+        GENERATE_INFOPLIST_FILE: YES

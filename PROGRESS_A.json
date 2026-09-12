@@ -1,9 +1,16 @@
 {
   "lane": "A",
-  "updated": null,
-  "done": [],
-  "in_progress": null,
+  "updated": "2026-09-12T22:15:23Z",
+  "done": [
+    "iOS 17 Xcode project builds on the simulator",
+    "device support gate and start screen",
+    "coverage engine with separated-viewpoint tests",
+    "persistent artifact-level upload receipt store"
+  ],
+  "in_progress": "RoomPlan capture, frame and video recording",
   "blocked_on": null,
   "ready_for_others": [],
-  "needs_human": []
+  "needs_human": [
+    "Sign into Xcode, register the LiDAR phone, and trust the developer certificate"
+  ]
 }

@@ -1,0 +1,443 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		58891452F41E5607AC230AFF /* AppRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB85814D71BB5E268CE101E1 /* AppRootView.swift */; };
+		5F7D792A2DD916716749DA38 /* CoverageEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0C7028F7E2DE9CE6A5C348 /* CoverageEngine.swift */; };
+		75C17C86ACC84F5A8841278B /* CoverageEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27785166F1CA3E6AACF4C012 /* CoverageEngineTests.swift */; };
+		78589EC893CD951BDC0B4396 /* ResumableUploadStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C6263A656172ADAE5138BF /* ResumableUploadStore.swift */; };
+		9BF68FA1A07FE744E37BACA9 /* ResumableUploadStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0748121F1E998BBBC5AA865E /* ResumableUploadStoreTests.swift */; };
+		C1869B64E1A0C858F7DD7E75 /* StandardPhysicsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4600DB3A7BEEAEF3F23ADC57 /* StandardPhysicsApp.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		D311119A9424BFA4B72106C4 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C8EE2630362497719E571F05 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9074F9A122414A6C03A2B9E8;
+			remoteInfo = StandardPhysics;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		0748121F1E998BBBC5AA865E /* ResumableUploadStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResumableUploadStoreTests.swift; sourceTree = "<group>"; };
+		23610824E5B44F0425258F9B /* StandardPhysics.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = StandardPhysics.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		27785166F1CA3E6AACF4C012 /* CoverageEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageEngineTests.swift; sourceTree = "<group>"; };
+		3D0C7028F7E2DE9CE6A5C348 /* CoverageEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageEngine.swift; sourceTree = "<group>"; };
+		4443BDB37BB52F3542FBC466 /* StandardPhysicsTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = StandardPhysicsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4600DB3A7BEEAEF3F23ADC57 /* StandardPhysicsApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandardPhysicsApp.swift; sourceTree = "<group>"; };
+		7C86286108BAD9DF536B8F94 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		AB85814D71BB5E268CE101E1 /* AppRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRootView.swift; sourceTree = "<group>"; };
+		D4C6263A656172ADAE5138BF /* ResumableUploadStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResumableUploadStore.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		264C5722DDBE54A834C0B27C /* StandardPhysicsTests */ = {
+			isa = PBXGroup;
+			children = (
+				27785166F1CA3E6AACF4C012 /* CoverageEngineTests.swift */,
+				0748121F1E998BBBC5AA865E /* ResumableUploadStoreTests.swift */,
+			);
+			path = StandardPhysicsTests;
+			sourceTree = "<group>";
+		};
+		32975CAD099A76A99A999560 = {
+			isa = PBXGroup;
+			children = (
+				B00EB255F7EE7F073A05E827 /* StandardPhysics */,
+				264C5722DDBE54A834C0B27C /* StandardPhysicsTests */,
+				B0317F86AE3F23C064841A64 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		356DD6203B30FBE4C418F573 /* Upload */ = {
+			isa = PBXGroup;
+			children = (
+				D4C6263A656172ADAE5138BF /* ResumableUploadStore.swift */,
+			);
+			path = Upload;
+			sourceTree = "<group>";
+		};
+		37FC49868356C76BDE07409F /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				7C86286108BAD9DF536B8F94 /* Info.plist */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		B00EB255F7EE7F073A05E827 /* StandardPhysics */ = {
+			isa = PBXGroup;
+			children = (
+				B958DB951B70571CEC8C0E10 /* App */,
+				EDB77E91128A54CA16D3F9C0 /* Capture */,
+				37FC49868356C76BDE07409F /* Resources */,
+				356DD6203B30FBE4C418F573 /* Upload */,
+			);
+			path = StandardPhysics;
+			sourceTree = "<group>";
+		};
+		B0317F86AE3F23C064841A64 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				23610824E5B44F0425258F9B /* StandardPhysics.app */,
+				4443BDB37BB52F3542FBC466 /* StandardPhysicsTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		B958DB951B70571CEC8C0E10 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				AB85814D71BB5E268CE101E1 /* AppRootView.swift */,
+				4600DB3A7BEEAEF3F23ADC57 /* StandardPhysicsApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		EDB77E91128A54CA16D3F9C0 /* Capture */ = {
+			isa = PBXGroup;
+			children = (
+				3D0C7028F7E2DE9CE6A5C348 /* CoverageEngine.swift */,
+			);
+			path = Capture;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		7B17C7B55F7837EC54D13401 /* StandardPhysicsTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9E2C9C327A15CD0B539C36DC /* Build configuration list for PBXNativeTarget "StandardPhysicsTests" */;
+			buildPhases = (
+				75F10CD87F89F402D1516E94 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				7170CC7663A3F8D7193B8091 /* PBXTargetDependency */,
+			);
+			name = StandardPhysicsTests;
+			packageProductDependencies = (
+			);
+			productName = StandardPhysicsTests;
+			productReference = 4443BDB37BB52F3542FBC466 /* StandardPhysicsTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		9074F9A122414A6C03A2B9E8 /* StandardPhysics */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D1FABEA52AB0242F42C32A94 /* Build configuration list for PBXNativeTarget "StandardPhysics" */;
+			buildPhases = (
+				54886070EABBACF07D357D20 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = StandardPhysics;
+			packageProductDependencies = (
+			);
+			productName = StandardPhysics;
+			productReference = 23610824E5B44F0425258F9B /* StandardPhysics.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		C8EE2630362497719E571F05 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					7B17C7B55F7837EC54D13401 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					9074F9A122414A6C03A2B9E8 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 73CE02EFC858CD47CF457264 /* Build configuration list for PBXProject "StandardPhysics" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 32975CAD099A76A99A999560;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = B0317F86AE3F23C064841A64 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				9074F9A122414A6C03A2B9E8 /* StandardPhysics */,
+				7B17C7B55F7837EC54D13401 /* StandardPhysicsTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		54886070EABBACF07D357D20 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				58891452F41E5607AC230AFF /* AppRootView.swift in Sources */,
+				5F7D792A2DD916716749DA38 /* CoverageEngine.swift in Sources */,
+				78589EC893CD951BDC0B4396 /* ResumableUploadStore.swift in Sources */,
+				C1869B64E1A0C858F7DD7E75 /* StandardPhysicsApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		75F10CD87F89F402D1516E94 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				75C17C86ACC84F5A8841278B /* CoverageEngineTests.swift in Sources */,
+				9BF68FA1A07FE744E37BACA9 /* ResumableUploadStoreTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		7170CC7663A3F8D7193B8091 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9074F9A122414A6C03A2B9E8 /* StandardPhysics */;
+			targetProxy = D311119A9424BFA4B72106C4 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		00DD52C36AFBDC09EE7FE5DC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.standardphysics.capture.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/StandardPhysics.app/StandardPhysics";
+			};
+			name = Debug;
+		};
+		27183EF0D69C21C9C9EA4328 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		682653693A9055077EB068A7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = StandardPhysics/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.standardphysics.capture;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		9FF4EF105AD8B1F0909AA021 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		BF38214C50078AC92535DB7D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = StandardPhysics/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.standardphysics.capture;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		F6C730CE86DB51E00F51455E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.standardphysics.capture.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/StandardPhysics.app/StandardPhysics";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		73CE02EFC858CD47CF457264 /* Build configuration list for PBXProject "StandardPhysics" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				27183EF0D69C21C9C9EA4328 /* Debug */,
+				9FF4EF105AD8B1F0909AA021 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		9E2C9C327A15CD0B539C36DC /* Build configuration list for PBXNativeTarget "StandardPhysicsTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				00DD52C36AFBDC09EE7FE5DC /* Debug */,
+				F6C730CE86DB51E00F51455E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D1FABEA52AB0242F42C32A94 /* Build configuration list for PBXNativeTarget "StandardPhysics" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				682653693A9055077EB068A7 /* Debug */,
+				BF38214C50078AC92535DB7D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = C8EE2630362497719E571F05 /* Project object */;
+}
