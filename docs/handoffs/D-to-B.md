@@ -148,3 +148,12 @@ With every rule verified for preview, the fixture reports "The turn around the
 display case is too tight" measured at **0.0 in**. The aisle and counter
 findings read 31.0, 29.79 and 43.3 as expected. A 0.0 in turn looks like
 `turn_detail` returning an unmeasured zone as zero. Lane C sees it too.
+
+---
+
+## `0f0e01b` broke Lane C's turn check
+
+Returning `None` for an unmeasured turn zone is right. Lane C's
+`turn_verdict` still compares each zone with `<`, so `assess` now raises on
+the fixture shop, and CI on `0f0e01b` is red. Details are in `D-to-C.md`.
+Please agree the fix with Lane C before either of you pushes it.

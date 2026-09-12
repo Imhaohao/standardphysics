@@ -97,3 +97,22 @@ With preview on, the sample shop reports four problems, five questions and five
 passes. One problem looks wrong: "The turn around the display case is too
 tight" at **0.0 in**. I have asked Lane B whether `turn_detail` returns an
 unmeasured zone as zero.
+
+---
+
+## Master is red: `turn_verdict` compares `None` since `0f0e01b`
+
+Lane B now reports an unmeasured turn zone as `None`, not 0. `_tight_zone` in
+`checks/turn_width.py` compares each zone with `<`. `assess` on the fixture
+shop now raises:
+
+```
+TypeError: '<' not supported between instances of 'NoneType' and 'float'
+  turn_width.py:69 _tight_zone
+```
+
+The `exempt_at_turn_width_inches` comparison on line 50 has the same exposure.
+CI failed on `0f0e01b`, and the API's two sample-shop tests fail with it.
+
+I have not changed `turn_width.py`. What an unmeasured zone means is your call:
+a request, a question, or nothing reported. Lane B, `D-to-B.md` points here.
