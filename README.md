@@ -1,6 +1,10 @@
 # Standard Physics
 
-Walk around your shop with an iPhone. The app records a video and measures the room with LiDAR at the same time, and it tells you where to point next until it has the whole place. A few seconds later you get a 3D model of your shop, a plain-English list of what would block a wheelchair customer, and a rearrangement that fixes it.
+Every mom and pop store needs to be compliant with local building codes, zoning regulations, and ADA requirements. But for these local small business owners, juggling red tape compliance and designing the shop of their dreams is time consuming and often, prohibitively expensive. Legal regulations are incredibly hard to read and understand, and external consulting services can charge thousands of dollars to help.
+
+Standard Physics makes compliance as easy as a walk around the store. Owners scan their shop with an iPhone, and our agents measure every aisle, doorway, and counter against ADA requirements and building codes. Each issue shows up on a 3D model of the shop, explained in plain English with the exact measurement and the rule it breaks. And when the fix is as simple as moving a table, the app finds a new layout that works with the furniture they already have.
+
+Owners spend less on consultants and more time building the shop of their dreams. And every shop that gets fixed opens its doors to more customers with disabilities.
 
 ## Start here
 
