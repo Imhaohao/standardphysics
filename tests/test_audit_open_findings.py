@@ -1,0 +1,116 @@
+"""Open audit findings, pinned as strict expected failures.
+
+Each test states what correct behaviour looks like and fails on today's code,
+so CI stays green while the bug exists. `strict=True` turns a fix into a
+failing XPASS, so whoever fixes a finding deletes its marker in the same push
+and the finding closes. Reproductions are in PROGRESS.md. The lane that owns
+the code fixes it; the audit only pins it.
+"""
+
+import json
+import uuid
+from pathlib import Path
+
+import pytest
+
+import standardphysics_fixtures
+from standardphysics_contracts import Mat4, Scenario, SceneGraph, SceneNode, Stop, Vec3, to_meters
+from standardphysics_fixtures import build_graph, build_scenario, node_id
+from standardphysics_pipeline.ingest import parse_room_json
+from standardphysics_pipeline.measure import PipelineMeasurements
+from standardphysics_pipeline.occupancy import blocks_floor
+
+THICKNESS = 0.1
+DEPTH = 4.0
+REAL_EXPORTS = Path(standardphysics_fixtures.__file__).parent / "data" / "real"
+
+
+def _box(name: str, kind: str, centre, dims, movable: bool = False) -> SceneNode:
+    return SceneNode(
+        id=uuid.uuid5(uuid.NAMESPACE_OID, f"audit-open-{name}"),
+        kind=kind,
+        label=name,
+        raw_category=kind,
+        dimensions=Vec3(x=dims[0], y=dims[1], z=dims[2]),
+        transform=Mat4.translation(*centre),
+        movable=movable,
+    )
+
+
+def _turn_room(lane_inches: float, tip_gap_inches: float):
+    """Two lanes split by a thin partition; the only route turns 180 degrees
+    around its tip. Every gap is set exactly, so the widths have known answers."""
+    lane, gap = to_meters(lane_inches), to_meters(tip_gap_inches)
+    inner_width = 2 * lane + THICKNESS
+    tip_y = DEPTH / 2 - THICKNESS / 2 - gap
+    length = tip_y + DEPTH / 2
+    outer = inner_width + 2 * THICKNESS
+    nodes = [
+        _box("south", "wall", (0, -DEPTH / 2, 1.5), (outer, THICKNESS, 3)),
+        _box("north", "wall", (0, DEPTH / 2, 1.5), (outer, THICKNESS, 3)),
+        _box("west", "wall", (-inner_width / 2 - THICKNESS / 2, 0, 1.5), (THICKNESS, DEPTH, 3)),
+        _box("east", "wall", (inner_width / 2 + THICKNESS / 2, 0, 1.5), (THICKNESS, DEPTH, 3)),
+        _box("partition", "object", (0, -DEPTH / 2 + length / 2, 1.0), (THICKNESS, length, 2.0)),
+    ]
+    lane_centre = THICKNESS / 2 + lane / 2
+    scenario = Scenario(
+        stops=[
+            Stop(name="West lane", position=Vec3(x=-lane_centre, y=-1.5, z=0.0)),
+            Stop(name="East lane", position=Vec3(x=lane_centre, y=-1.5, z=0.0)),
+        ]
+    )
+    return SceneGraph(scan_id=uuid.uuid4(), nodes=nodes), scenario
+
+
+@pytest.mark.xfail(strict=True, reason="A-14: turn widths measure the pivot's corner, not the gap")
+def test_a14_a_compliant_turn_measures_its_real_gaps():
+    graph, scenario = _turn_room(lane_inches=43, tip_gap_inches=49)
+    turn = PipelineMeasurements().turn_detail(graph, scenario, 0)
+    widths = (turn.approach_inches, turn.at_turn_inches, turn.leaving_inches)
+    assert widths == pytest.approx((43.0, 49.0, 43.0), abs=0.5)
+
+
+@pytest.mark.xfail(strict=True, reason="A-15: a turn over 60 in is undermeasured, so the exemption cannot apply")
+def test_a15_a_turn_over_sixty_inches_measures_over_sixty():
+    graph, scenario = _turn_room(lane_inches=36, tip_gap_inches=61)
+    turn = PipelineMeasurements().turn_detail(graph, scenario, 0)
+    assert turn.at_turn_inches == pytest.approx(61.0, abs=0.5)
+
+
+@pytest.mark.xfail(strict=True, reason="A-6: everything near a stop is ignored, not only its anchor")
+def test_a6_an_obstruction_just_inside_the_entrance_narrows_the_route():
+    graph, scenario = build_graph(), build_scenario()
+    entrance = scenario.stops[0].position
+    width = 2.5
+    offset = to_meters(20) / 2 + width / 2
+    for x in (entrance.x - offset, entrance.x + offset):
+        graph.nodes.append(
+            _box(f"sign-{x:.2f}", "object", (x, entrance.y + 0.2, 0.6), (width, 0.08, 1.2), movable=True)
+        )
+    result = PipelineMeasurements().route_clear_width(graph, scenario, 0)
+    assert result.inches == pytest.approx(20.0, abs=0.5)
+
+
+@pytest.mark.xfail(strict=True, reason="A-9: a scanned door leaf is not its clear width")
+def test_a9_door_clear_width_asks_for_a_measurement():
+    result = PipelineMeasurements().door_clear_width(build_graph(), node_id("door_front"))
+    assert result.needs_measurement
+
+
+@pytest.mark.xfail(strict=True, reason="A-22: leg 1 is measured between two obstacles the route never passes between")
+def test_a22_leg_one_is_not_the_gap_between_the_counter_and_a_table():
+    result = PipelineMeasurements().route_clear_width(build_graph(), build_scenario(), 1)
+    assert result.inches > 36.0
+
+
+@pytest.mark.xfail(strict=True, reason="A-25: real exports put the floor about 1.4 m below z = 0")
+@pytest.mark.parametrize("room", ["apple_bedroom3", "apple_livingroom"])
+def test_a25_furniture_in_a_real_export_blocks_the_floor(room):
+    export = json.loads((REAL_EXPORTS / f"{room}.room.json").read_text())
+    graph = parse_room_json(export)
+    furniture = [
+        node for node in graph.nodes
+        if node.kind == "object" and node.raw_category in {"bed", "table", "chair", "sofa"}
+    ]
+    assert furniture
+    assert all(blocks_floor(node) for node in furniture)

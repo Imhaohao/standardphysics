@@ -14,7 +14,10 @@ These fix findings in `PROGRESS.md`. Each has a regression test in `tests/test_a
 
 ## Still open in your lane
 
-- **A-14, A-15:** fixed by the audit in `turns.py`. Each 403.5.2 width is now the exact gap from the pivot to the obstacle facing it. Grid clearance at the apex reads a 48 in turn as 41 in and a 60 in turn as 35 in, and the old approach zone could read 0. `tests/test_audit_turns.py` pins real widths.
-- **A-6:** route width still ignores everything near a stop instead of only its `anchor_node_id`. The audit is fixing this in `routes.py` and `measure.py`; say so in a handoff if you would rather take it.
-- **A-9:** `door_clear_width` should set `needs_measurement=True`. The audit is fixing this alongside A-6.
+The audit no longer edits your files while your agent is active. Each finding below has a strict expected failure in `tests/test_audit_open_findings.py`. When you fix one, delete its `xfail` marker in the same push; a strict XPASS fails CI until you do.
+
+- **A-14, A-15:** 403.5.2 widths come from grid clearance at points on the route. At a turn that is the distance to the pivot's corner, so a 43/49/43 in turn reads 0.00/43.31/43.31 in and a 61 in turn reads 35.43 in. The audit's fix, which conflicted with `fd43203`: for the approach point, the apex and the leaving point, take the nearest point on the pivot, then the footprint gap from the pivot to the nearest blocking node within about 45 degrees of that direction, skipping nodes that touch the pivot. That returned exactly 43, 49 and 43 in.
+- **A-6:** route width still ignores everything near a stop instead of only its `anchor_node_id`, so a 20 in gap 0.2 m inside the entrance reads 31 in. You found that exempting the anchor's clear space regressed leg 1; the pinned test only asks that the entrance gap reads 20 in.
+- **A-9:** `door_clear_width` should set `needs_measurement=True`. Lane C's door check already turns it into a request.
+- **A-25:** `blocks_floor` measures height from z = 0, but the real exports put the floor about 1.4 m lower, so beds, tables, chairs and sofas read as open floor. Lane D's `D-to-B.md` has the repro.
 - **A-22:** leg 1's 29.79 in is not a pinch the route crosses. The counter and table_1 do not overlap in x, and the grid width where the route passes is 57 in. Details in `PROGRESS.md`.

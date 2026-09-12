@@ -2,7 +2,9 @@
 
 Every push to `master` is audited against its lane document, the plan's invariants, `packages/contracts`, CI on the pushed commit, path ownership in `docs/AGENT_PROTOCOL.md`, and whether `PROGRESS_<LANE>.json` matches the code. A finding is recorded only after it is reproduced by running code or read directly from the diff.
 
-Status is one of `open`, `fixing`, `fixed in <commit>`, or `blocked` with the person or lane it waits on.
+Status is one of `open`, `fixed in <commit>`, or `blocked` with the person or lane it waits on.
+
+The audit fixes code only in files no lane agent is actively changing. For lanes with an active agent, each open finding is pinned as a strict expected failure in `tests/test_audit_open_findings.py`: CI stays green while the bug exists, and the push that fixes it must delete the marker.
 
 ## Pushes
 
@@ -22,6 +24,14 @@ Status is one of `open`, `fixing`, `fixed in <commit>`, or `blocked` with the pe
 | `b5306c8` D: stop anchors, needs_measurement, graph_hash, street scenario | D | Pass | Resolves A-21; unblocks A-6 and A-9 |
 | `0132fb2` B: cut doorways out of walls, bound the search | B | Pass with notes | Resolves A-20; A-6 still open; handoff misreads A-22 |
 | `898984f` D: rule units, contract vocabulary, Lane C in CI | D | Pass with notes | Resolves A-23 and A-24; A-18 |
+| `2abf6bc` to `29bfb95` A: capture app, export, upload (7 pushes) | A | Not yet audited | Needs an Xcode build and test run |
+| `8a161d1` C: the fix agent and the entrypoint | C | Pass with notes | A-26 |
+| `1414cf4` D: room beside the display cases, point_inches | D | **Fail** | CI red; A-18, A-27 |
+| `fd43203` B: height locus, measured counter approach, run length | B | **Fail** | A-14 and A-15 persist; declines A-6 |
+| `ceaa390` D: the documented five inch fix is a legal move | D | Pass with notes | CI green again; A-18 |
+| `eb56ef4` B: populate point_inches | B | Pass | |
+| `01582fd` D: real RoomPlan exports | D | Pass with notes | Reports A-25 |
+| `f9531f0` Plan: pitch to shop owners | Plan | Not a lane push | |
 
 `609db3d`, `9028d14`, `b90e570`, `d3f7d95` and `1a06655` change only the plan and lane documents. A-1 covers the lane document errors from `9028d14`.
 
@@ -65,7 +75,7 @@ High. `fixed in 77dd362`. Person C still needs to verify the 1/4 in value agains
 Reproduced: a solid 7.9 in tall barrier across leg 0, 1.2 m from the entrance, reports **31.00 in, reachable**.
 
 ### A-6 The endpoint exemption hides obstructions at the entrance
-High. `open`. `Stop.anchor_node_id` landed in `b5306c8`. `0132fb2` made the exemption shrink on short legs but still ignores the anchor.
+High. `open`. `Stop.anchor_node_id` landed in `b5306c8`. `0132fb2` made the exemption shrink on short legs but still ignores the anchor. `fd43203` decided against anchor-based exemption after an attempt regressed leg 1, and said the fix belongs in the scenario. Pinned by `tests/test_audit_open_findings.py`.
 
 `routes.ENDPOINT_EXEMPTION` ignores every cell within 0.75 m of each stop so a counter does not set its own route's bottleneck. The entrance stop sits 0.3 m inside the front wall, so the doorway itself is exempt, and so is anything placed just inside it. The exemption was disclosed in the first `B-to-C.md` and dropped from the rewrite in `d1cd65a`.
 
@@ -86,7 +96,7 @@ High. `fixed in 77dd362`.
 Reproduced: rotate the counter 90 degrees. Its footprint spans x -0.35 to 0.35 and y 2.00 to 5.20, the approach centre lands at (0.00, 2.87) **inside the counter**, and the check returns **fits=True**.
 
 ### A-9 Door clear width reports the door leaf
-Medium. `open`. `WidthResult.needs_measurement` landed in `b5306c8`; at `0132fb2` `door_clear_width` still returns it as false.
+Medium. `open`. `WidthResult.needs_measurement` landed in `b5306c8`; at `01582fd` `door_clear_width` still returns it as false. Lane C's door check in `8a161d1` already turns the flag into a request. Pinned by `tests/test_audit_open_findings.py`.
 
 `door_clear_width` returns the larger dimension of the door node. ADA 2010 404.2.3 measures between the door face and the stop with the door open 90 degrees, which is narrower than the leaf. A door whose leaf is 32 in passes while its clear width fails.
 
@@ -113,19 +123,19 @@ Low. `fixed in 2a5f763`. Callers still have to pass the counter's rotation and `
 `region_locus` draws an axis-aligned rectangle with a camera fixed to look from minus Y. A turning space is a 60 in circle, and a rotated clear floor space draws in the wrong orientation once A-8 is fixed.
 
 ### A-14 Turn widths measure the pivot's corner, not the gap
-High. `fixed` by the audit commit *measure 180 degree turn widths as exact gaps from the pivot*.
+High. `open`. Pinned by `tests/test_audit_open_findings.py`.
 
 `28e64c1` measured each 403.5.2 width as grid clearance times two at points on the route. At a turn that is the distance to the pivot's corner rather than to the wall across from it, and the approach zone can start inside an occupied cell.
 
-Reproduced on a room with 42 in lanes and a 48 in turn, which meets the rule: approaching **0.00**, at the turn **41.34**, leaving **41.34**, and `turn_clear_width` returns **0 in**. In `tests/test_turns.py`'s own U-shaped shop the leaving width reads 37.40 in against a real 149.61 in. The fix measures each width as the exact footprint gap from the pivot to the obstacle facing it; detection and the pivot are unchanged.
+Reproduced on a room with 42 in lanes and a 48 in turn, which meets the rule: approaching **0.00**, at the turn **41.34**, leaving **41.34**, and `turn_clear_width` returns **0 in**. In `tests/test_turns.py`'s own U-shaped shop the leaving width reads 37.40 in against a real 149.61 in. Still reproduced at `01582fd`: a turn with 43 in lanes and 49 in at the turn reads 0.00, 43.31 and 43.31 in. The audit's fix measured each width as the exact footprint gap from the pivot to the obstacle facing it; it conflicted with `fd43203`'s rewrite of `turns.py` and is described in `docs/handoffs/audit-to-B.md` for Lane B to apply.
 
 ### A-15 The 60 inch exemption never applies
-High. `fixed` by the audit commit *measure 180 degree turn widths as exact gaps from the pivot*.
+High. `open`. Pinned by `tests/test_audit_open_findings.py`.
 
-The same undermeasurement reads a 60 in turn as 35.43 in, so 403.5.2's exception cannot trigger. Reproduced on a room with 36 in lanes and a 60 in turn: `in_scope=True`, `passes=False`.
+The same undermeasurement reads a 60 in turn as 35.43 in, so 403.5.2's exception cannot trigger. Reproduced on a room with 36 in lanes and a 60 in turn: `in_scope=True`, `passes=False`. At `01582fd`, after `fd43203` removed those properties, a 61 in turn reads 35.43 in.
 
 ### A-16 The turn tests check no measured width
-Medium. `fixed` by `tests/test_audit_turns.py`.
+Medium. `open`. `fd43203` rewrote `tests/test_turns.py` without checking a measured width. Pinned by `tests/test_audit_open_findings.py` until Lane B's own tests do.
 
 `tests/test_turns.py` asserts only that each width is above zero and that a pivot exists, so A-14 and A-15 shipped with CI green, and `B-to-audit.md` reported A-10 fixed on that basis. Lane C's 105 tests also pass with and without the fix, so nothing downstream caught it either.
 
@@ -137,7 +147,7 @@ Low. `open`.
 ### A-18 Lane D's push edits Lane C's files
 Low. Noted.
 
-`898984f` changes `packages/agents/standardphysics_agents/rules/pack.py` and `packages/agents/tests/test_rulepack.py`. The commit says Lane D's person approved it and asked for the one caller to be fixed in the same push; the protocol asks for a handoff instead.
+`898984f` changes `packages/agents/standardphysics_agents/rules/pack.py` and `packages/agents/tests/test_rulepack.py`. The commit says Lane D's person approved it and asked for the one caller to be fixed in the same push; the protocol asks for a handoff instead. `1414cf4` also edits `tests/test_audit_lane_b.py` and Lane B's `tests/test_measure.py`, and `ceaa390` edits Lane C's `tests/test_fix.py`.
 
 ### A-20 Walls seal their doorways
 High. `fixed in 0132fb2`. Reported by Lane D in `9dd969d`.
@@ -150,9 +160,9 @@ Medium. `fixed in b5306c8`. Reported by Lane D in `9dd969d`.
 Reproduced: Seat sat at (-2.0, -2.4), the centre of table_3, and leg 3 measured 6.89 in from inside the table. It now measures 79.23 in.
 
 ### A-22 A route width is taken from two obstacles the route never passes between
-High. `open`; the audit fix is in progress.
+High. `open`. Pinned by `tests/test_audit_open_findings.py`.
 
-`measure._exact_width` reports the footprint gap between the two obstacles nearest the pinch whether or not the route passes between them. Leg 1, Counter to Pickup, reports **29.79 in** between the counter's corner and table_1. The counter spans x -1.6 to 1.6 and table_1 spans x -2.3 to -1.7, so the walk from x -0.8 to x 0.8 never goes between them, and the grid width at the pinch is **57.09 in** at `0132fb2`. `B-to-D.md` in `0132fb2` calls this a real pinch, and `C-to-B.md` treats it as a second route finding.
+`measure._exact_width` reports the footprint gap between the two obstacles nearest the pinch whether or not the route passes between them. Leg 1, Counter to Pickup, reports **29.79 in** between the counter's corner and table_1. The counter spans x -1.6 to 1.6 and table_1 spans x -2.3 to -1.7, so the walk from x -0.8 to x 0.8 never goes between them, and the grid width at the pinch is **57.09 in** at `0132fb2` and at `01582fd`. `B-to-D.md` in `0132fb2` calls this a real pinch, and `C-to-B.md` treats it as a second route finding.
 
 ### A-23 Two graph hashes disagreed
 High. `fixed in 898984f`.
@@ -163,3 +173,18 @@ At `b5306c8`, `contracts.graph_hash` and Lane C's `hashing.graph_hash` returned 
 Medium. `fixed in 898984f`.
 
 `pytest.ini` collects only `tests/`, and CI did not install `packages/agents`, so `9ced7bc`'s 105 tests never gated `master`. `898984f` installs the package and runs them.
+
+### A-25 Real exports put the floor about 1.4 m below z = 0
+High. `open`. Reported by Lane D in `01582fd`. Pinned by `tests/test_audit_open_findings.py`.
+
+`blocks_floor` compares an object's top with 1/4 in above z = 0, but RoomPlan's origin is wherever the phone started. In Apple's sample exports the floor sits at z = -1.47 m in `apple_bedroom3` and -1.44 m in `apple_livingroom`, so the bed, the table and the chair in the bedroom, and 8 of 13 objects in the living room including both sofas, read as open floor. On a real scan a route would pass straight through furniture.
+
+### A-26 The fix agent lets furniture overlap a wall by up to 1 cm
+Low. `open`.
+
+`fix/constraints.py` shrinks both the moved node and the obstacle by `OVERLAP_TOLERANCE` = 5 mm before testing for a collision, so the effective allowance is 10 mm, not the 5 mm its docstring states. Reproduced at `8a161d1`: sliding `case_east` 9 mm into the east wall reports no violation; 11 mm reports a collision. Re-measurement uses the real footprints, so no width passes on this, but the proposed arrangement cannot be built.
+
+### A-27 CI was red at `1414cf4` and `fd43203`
+Medium. `fixed in ceaa390`.
+
+`1414cf4` shortened the display cases, which made Lane C's `test_the_documented_five_inch_fix_puts_a_case_inside_the_wall` fail on `master`. `fd43203` landed on top of the red build. `ceaa390` flipped the test to assert the move is now legal. `1414cf4` also rewrote the A-7 regression to move `case_east` as well as resize it, so the test no longer isolates a resize; a resize-only seal no longer blocks the route in the new fixture, so it was left as is.
