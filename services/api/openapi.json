@@ -1,0 +1,111 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Standard Physics upload contract",
+    "version": "0.1.0",
+    "description": "Lane A codes against this. Lane D implements it. packages/fixtures/standardphysics_fixtures/mock_api.py serves it locally on :8787. When the mock and this document disagree, this document wins."
+  },
+  "paths": {
+    "/api/scans": {
+      "post": {
+        "summary": "Start a scan session",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "device_model", "duration_seconds"],
+                "properties": {
+                  "name": {"type": "string"},
+                  "device_model": {"type": "string"},
+                  "duration_seconds": {"type": "number"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {"description": "Scan created", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Scan"}}}}
+        }
+      },
+      "get": {
+        "summary": "List scans",
+        "responses": {"200": {"description": "Scans"}}
+      }
+    },
+    "/api/scans/{scan_id}/artifacts/{artifact_id}": {
+      "put": {
+        "summary": "Upload one artifact, idempotently",
+        "description": "Re-uploading the same artifact_id returns 200 with the stored artifact and does not duplicate it. This is artifact-level resume, not byte-range resume.",
+        "parameters": [
+          {"name": "scan_id", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+          {"name": "artifact_id", "in": "path", "required": true, "schema": {"type": "string"}},
+          {"name": "X-Checksum-SHA256", "in": "header", "required": true, "schema": {"type": "string"}},
+          {"name": "X-Artifact-Kind", "in": "header", "required": true, "schema": {"$ref": "#/components/schemas/ArtifactKind"}}
+        ],
+        "requestBody": {"required": true, "content": {"application/octet-stream": {"schema": {"type": "string", "format": "binary"}}}},
+        "responses": {
+          "201": {"description": "Stored"},
+          "200": {"description": "Already stored"},
+          "400": {"description": "Checksum mismatch"}
+        }
+      }
+    },
+    "/api/scans/{scan_id}/complete": {
+      "post": {
+        "summary": "Finalize the upload and queue processing",
+        "description": "Idempotent. Requires room_usdz and room_json. Queues reconstruct, validate, check, evaluate, propose as one job; retrying creates no duplicates.",
+        "parameters": [{"name": "scan_id", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}}],
+        "responses": {
+          "200": {"description": "Queued", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Scan"}}}},
+          "409": {"description": "Missing required artifacts"}
+        }
+      }
+    },
+    "/api/scans/{scan_id}": {
+      "get": {
+        "summary": "Poll scan state",
+        "parameters": [{"name": "scan_id", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}}],
+        "responses": {"200": {"description": "Scan", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Scan"}}}}}
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ArtifactKind": {
+        "type": "string",
+        "enum": ["room_usdz", "room_json", "room_metadata", "walkthrough_mp4", "frames", "poses", "coverage"]
+      },
+      "ScanState": {
+        "type": "string",
+        "enum": ["uploading", "measuring", "checking", "ready", "failed"],
+        "description": "The app shows these as Uploading, Measuring your shop, Checking, Ready."
+      },
+      "Artifact": {
+        "type": "object",
+        "required": ["id", "kind", "sha256", "bytes"],
+        "properties": {
+          "id": {"type": "string"},
+          "kind": {"$ref": "#/components/schemas/ArtifactKind"},
+          "sha256": {"type": "string"},
+          "bytes": {"type": "integer"},
+          "stored_path": {"type": ["string", "null"]}
+        }
+      },
+      "Scan": {
+        "type": "object",
+        "required": ["id", "name", "created_at", "device_model", "duration_seconds", "state"],
+        "properties": {
+          "id": {"type": "string", "format": "uuid"},
+          "name": {"type": "string"},
+          "created_at": {"type": "string", "format": "date-time"},
+          "device_model": {"type": "string"},
+          "duration_seconds": {"type": "number"},
+          "state": {"$ref": "#/components/schemas/ScanState"},
+          "artifacts": {"type": "array", "items": {"$ref": "#/components/schemas/Artifact"}}
+        }
+      }
+    }
+  }
+}
