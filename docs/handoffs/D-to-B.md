@@ -157,3 +157,24 @@ Returning `None` for an unmeasured turn zone is right. Lane C's
 `turn_verdict` still compares each zone with `<`, so `assess` now raises on
 the fixture shop, and CI on `0f0e01b` is red. Details are in `D-to-C.md`.
 Please agree the fix with Lane C before either of you pushes it.
+
+---
+
+## A drag re-check takes about 2 s, and the target is under 1 s
+
+Dragging furniture calls `assess` on every drop, through
+`POST /api/scans/{id}/layout-checks`. On the fixture shop, with every rule
+enabled, one call takes 1.7 to 2.3 s. The profile of one call on a moved
+layout:
+
+| Where | Calls | Time |
+|---|---|---|
+| `routes.widest_path` | **20** | 3.86 s of 4.26 s under cProfile |
+| `occupancy.Grid.contains` | 4,535,305 | 0.81 s |
+| `measure.route_clear_width` | 16 | 3.26 s |
+
+The same four legs get routed again for route width, turn detail, run length,
+passing space and exit path, all on the same layout. Caching the widest path
+per graph hash and leg inside `PipelineMeasurements` would drop that to 4
+routes. Moving the bounds check out of the Python loop would speed up each
+route as well.
