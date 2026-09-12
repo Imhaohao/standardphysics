@@ -20,7 +20,7 @@ from uuid import UUID
 import numpy as np
 from scipy import ndimage
 
-from standardphysics_contracts import Vec3, to_inches
+from standardphysics_contracts import Vec3, to_inches, to_meters
 
 from .occupancy import Grid
 
@@ -102,6 +102,7 @@ def widest_path(
     start: tuple[int, int],
     goal: tuple[int, int],
     endpoint_exemption: float = ENDPOINT_EXEMPTION,
+    extra_exempt: np.ndarray | None = None,
 ) -> PathResult:
     """Bottleneck Dijkstra: maximise the smallest clearance along the route."""
     start = _nearest_free(grid, clearance, start)
@@ -111,6 +112,8 @@ def widest_path(
 
     radius = _exemption_radius(grid, start, goal, endpoint_exemption)
     exempt = _exempt_mask(grid, [start, goal], radius)
+    if extra_exempt is not None:
+        exempt |= extra_exempt
     search_field = np.where(exempt, np.inf, clearance)
 
     rows, cols = grid.shape
@@ -214,3 +217,38 @@ def world_path(grid: Grid, cells: list[tuple[int, int]], step: int = 3) -> list[
     every third sample is 75 mm, so a 180 around a narrow pivot survives.
     """
     return [grid.to_world(row, col) for row, col in sample_cells(cells, step)]
+
+
+def longest_run_below(
+    grid: Grid,
+    clearance: np.ndarray,
+    cells: list[tuple[int, int]],
+    threshold_inches: float,
+) -> float:
+    """The longest unbroken stretch of a route narrower than `threshold_inches`.
+
+    ADA 2010 403.5.1 permits a route to narrow to 32 inches, but only for a run
+    of 24 inches at most. A bottleneck says how tight the route gets and says
+    nothing about how long it stays that way, so the exception cannot be
+    settled without this.
+
+    The threshold is an argument rather than a constant because it belongs to
+    the rule pack, where a person has checked it against the source.
+    """
+    longest = 0.0
+    current = 0.0
+    previous = None
+    limit = to_meters(threshold_inches) / 2
+
+    for cell in cells:
+        below = clearance[cell] < limit
+        if below and previous is not None:
+            current += math.dist(previous, cell) * grid.cell_size
+        elif below:
+            current = 0.0
+        else:
+            longest = max(longest, current)
+            current = 0.0
+        previous = cell if below else None
+
+    return to_inches(max(longest, current))

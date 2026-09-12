@@ -11,12 +11,7 @@ import pytest
 
 from standardphysics_contracts import Mat4, Scenario, SceneGraph, SceneNode, Stop, Vec3
 from standardphysics_pipeline.measure import PipelineMeasurements
-from standardphysics_pipeline.turns import (
-    APPROACH_REQUIRED,
-    AT_TURN_REQUIRED,
-    Turn,
-    find_turn,
-)
+from standardphysics_pipeline.turns import Turn, find_turn
 
 
 def node(name, centre, dims, kind="object", movable=False):
@@ -88,70 +83,9 @@ def test_the_turn_names_what_it_goes_around(narrow_turn):
     assert turn.pivot_id is not None
 
 
-def test_a_wide_turn_is_exempt():
-    """The rule does not apply where there is 60 inches at the turn."""
-    turn = Turn(
-        pivot_id=uuid.uuid4(),
-        pivot_width_inches=12.0,
-        approach_inches=40.0,
-        at_turn_inches=72.0,
-        leaving_inches=40.0,
-        apex=Vec3(x=0, y=0, z=0),
-    )
-    assert not turn.in_scope
-    assert turn.passes
 
 
-def test_a_wide_pivot_is_out_of_scope():
-    """403.5.2 applies around an element narrower than 48 inches."""
-    turn = Turn(
-        pivot_id=uuid.uuid4(),
-        pivot_width_inches=60.0,
-        approach_inches=36.0,
-        at_turn_inches=36.0,
-        leaving_inches=36.0,
-        apex=Vec3(x=0, y=0, z=0),
-    )
-    assert not turn.in_scope
 
-
-def test_a_tight_turn_round_a_narrow_pivot_fails():
-    turn = Turn(
-        pivot_id=uuid.uuid4(),
-        pivot_width_inches=12.0,
-        approach_inches=44.0,
-        at_turn_inches=40.0,
-        leaving_inches=44.0,
-        apex=Vec3(x=0, y=0, z=0),
-    )
-    assert turn.in_scope
-    assert not turn.passes
-
-
-def test_the_binding_measurement_is_the_worst_shortfall():
-    turn = Turn(
-        pivot_id=uuid.uuid4(),
-        pivot_width_inches=12.0,
-        approach_inches=38.0,
-        at_turn_inches=47.0,
-        leaving_inches=44.0,
-        apex=Vec3(x=0, y=0, z=0),
-    )
-    measured, required = turn.binding_measurement
-    assert (measured, required) == (38.0, APPROACH_REQUIRED)
-
-
-def test_a_turn_meeting_every_threshold_passes():
-    turn = Turn(
-        pivot_id=uuid.uuid4(),
-        pivot_width_inches=12.0,
-        approach_inches=APPROACH_REQUIRED,
-        at_turn_inches=AT_TURN_REQUIRED,
-        leaving_inches=APPROACH_REQUIRED,
-        apex=Vec3(x=0, y=0, z=0),
-    )
-    assert turn.in_scope
-    assert turn.passes
 
 
 def test_turn_clear_width_falls_back_on_a_straight_leg():
@@ -162,3 +96,20 @@ def test_turn_clear_width_falls_back_on_a_straight_leg():
     measure = PipelineMeasurements()
     graph, scenario = build_graph(), build_scenario()
     assert measure.turn_clear_width(graph, scenario, 0).inches == pytest.approx(31.0)
+
+
+def test_the_turn_type_carries_no_thresholds():
+    """403.5.2's numbers live in Lane C's rule pack, where a person has checked
+    them against the source. A second copy here could only drift."""
+    import standardphysics_pipeline.turns as turns
+
+    assert not hasattr(Turn, "passes")
+    assert not hasattr(Turn, "in_scope")
+    assert not [name for name in vars(turns) if name.endswith("_REQUIRED")]
+
+
+def test_turn_clear_width_reports_the_width_at_the_turn(narrow_turn):
+    graph, scenario, measure = narrow_turn
+    turn = measure.turn_detail(graph, scenario, 0)
+    result = measure.turn_clear_width(graph, scenario, 0)
+    assert result.inches == pytest.approx(turn.at_turn_inches)

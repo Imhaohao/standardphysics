@@ -43,14 +43,16 @@ ENDPOINT_TRIM = 0.9
 ZONE_LENGTH = to_meters(48.0)
 """How far either side of the turn counts as approaching and leaving."""
 
-PIVOT_WIDTH_TRIGGER = 48.0
-TURN_EXEMPTION = 60.0
-AT_TURN_REQUIRED = 48.0
-APPROACH_REQUIRED = 42.0
-
-
 @dataclass
 class Turn:
+    """What a 180 degree turn measures.
+
+    Measurements only. Whether they pass is Lane C's business: the thresholds
+    in ADA 2010 403.5.2 live in the rule pack, with the quoted sentence and the
+    name of the person who checked it against the source. A second copy here
+    would be a copy nobody verified, free to drift from the one that was.
+    """
+
     pivot_id: UUID | None
     pivot_width_inches: float | None
     approach_inches: float
@@ -58,38 +60,9 @@ class Turn:
     leaving_inches: float
     apex: Vec3
 
-    @property
-    def in_scope(self) -> bool:
-        """The rule bites only around a narrow element, and not at all when
-        there is 60 inches at the turn."""
-        if self.at_turn_inches >= TURN_EXEMPTION:
-            return False
-        if self.pivot_width_inches is None:
-            return False
-        return self.pivot_width_inches < PIVOT_WIDTH_TRIGGER
-
-    @property
-    def passes(self) -> bool:
-        if not self.in_scope:
-            return True
-        return (
-            self.at_turn_inches >= AT_TURN_REQUIRED
-            and self.approach_inches >= APPROACH_REQUIRED
-            and self.leaving_inches >= APPROACH_REQUIRED
-        )
-
-    @property
-    def binding_measurement(self) -> tuple[float, float]:
-        """The worst shortfall, as (measured, required), for the finding text."""
-        candidates = [
-            (self.at_turn_inches, AT_TURN_REQUIRED),
-            (self.approach_inches, APPROACH_REQUIRED),
-            (self.leaving_inches, APPROACH_REQUIRED),
-        ]
-        return min(candidates, key=lambda pair: pair[0] - pair[1])
-
 
 def _resample(points: list[Vec3], spacing: float = 0.2) -> list[Vec3]:
+    """Even out a path so direction estimates are not dominated by cell steps."""
     if len(points) < 2:
         return points
     kept = [points[0]]

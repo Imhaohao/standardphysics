@@ -121,3 +121,41 @@ def test_a_region_matches_the_measured_size():
 def test_a_path_keeps_every_point(pinch):
     graph, result = pinch
     assert len(path_locus(result).annotation.points) == len(result.path)
+
+
+def test_a_height_draws_a_vertical_line():
+    """A counter height is measured up a face, not across the floor."""
+    from standardphysics_pipeline.locus import height_locus
+
+    graph = build_graph()
+    counter = graph.by_id(node_id("counter"))
+    result = PipelineMeasurements().counter_height(graph, node_id("counter"))
+    start, end = height_locus(counter, result).annotation.points
+    assert start.z == pytest.approx(0.0)
+    assert end.z == pytest.approx(
+        counter.transform.position.z + counter.dimensions.z / 2
+    )
+    assert (start.x, start.y) == pytest.approx((end.x, end.y))
+
+
+def test_a_height_line_sits_on_the_front_face():
+    from standardphysics_pipeline.locus import height_locus
+
+    graph = build_graph()
+    counter = graph.by_id(node_id("counter"))
+    result = PipelineMeasurements().counter_height(graph, node_id("counter"))
+    start, _ = height_locus(counter, result).annotation.points
+    front = counter.transform.position.y - counter.dimensions.y / 2
+    assert start.y == pytest.approx(front)
+
+
+def test_a_height_camera_stands_beside_it_not_above():
+    """From overhead a vertical line is a dot."""
+    from standardphysics_pipeline.locus import height_locus
+
+    graph = build_graph()
+    counter = graph.by_id(node_id("counter"))
+    result = PipelineMeasurements().counter_height(graph, node_id("counter"))
+    locus = height_locus(counter, result)
+    top = counter.transform.position.z + counter.dimensions.z / 2
+    assert locus.camera.position.z < top * 2

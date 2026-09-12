@@ -16,8 +16,10 @@ from standardphysics_contracts import (
     Annotation,
     CameraPose,
     ClearFloorResult,
+    HeightResult,
     Locus,
     SceneGraph,
+    SceneNode,
     Vec3,
     WidthResult,
     to_meters,
@@ -257,4 +259,75 @@ def path_locus(result: WidthResult, label: str | None = None) -> Locus:
             label=label or format_inches(result.inches),
         ),
         camera=camera_for(centre, extent / 2, (0.0, -1.0), fov_degrees=70.0),
+    )
+
+
+def height_locus(node: SceneNode, result: HeightResult) -> Locus:
+    """A vertical dimension line, for a counter or a reach range.
+
+    The horizontal version draws across a gap on the floor. A height is
+    measured up the face of something, so the line runs from the floor to the
+    top edge and the camera stands off to the side at eye level rather than
+    looking down: from above, a vertical line is a dot.
+    """
+    top = node.transform.position.z + node.dimensions.z / 2
+    face = _front_face(node)
+    start = Vec3(x=face.x, y=face.y, z=0.0)
+    end = Vec3(x=face.x, y=face.y, z=top)
+    subject = Vec3(x=face.x, y=face.y, z=top / 2)
+
+    outward = _outward_normal(node)
+    radius = max(top, node.dimensions.x / 2, 1.0) * 1.2
+
+    return Locus(
+        point=result.measured_at,
+        bbox_min=Vec3(x=face.x - radius, y=face.y - radius, z=0.0),
+        bbox_max=Vec3(x=face.x + radius, y=face.y + radius, z=top + 0.3),
+        node_ids=[node.id],
+        annotation=Annotation(
+            kind="dimension_line",
+            points=[start, end],
+            label=format_inches(result.inches),
+        ),
+        camera=_side_on_camera(subject, radius, outward),
+    )
+
+
+def _outward_normal(node: SceneNode) -> tuple[float, float]:
+    """The direction a customer stands in, away from the node's local -Y face."""
+    m = node.transform.m
+    cos_t, sin_t = m[0], m[4]
+    length = math.hypot(cos_t, sin_t) or 1.0
+    cos_t, sin_t = cos_t / length, sin_t / length
+    return (sin_t, -cos_t)
+
+
+def _front_face(node: SceneNode) -> Vec3:
+    outward = _outward_normal(node)
+    centre = node.transform.position
+    reach = node.dimensions.y / 2
+    return Vec3(
+        x=centre.x + outward[0] * reach, y=centre.y + outward[1] * reach, z=centre.z
+    )
+
+
+def _side_on_camera(
+    subject: Vec3, radius: float, outward: tuple[float, float]
+) -> CameraPose:
+    """Low and off to one side, so a vertical measurement has length on screen."""
+    half_fov = math.radians(DEFAULT_FOV) / 2
+    distance = max(radius * FRAMING_MARGIN / math.tan(half_fov), MIN_CAMERA_DISTANCE)
+    swing = math.radians(35.0)
+    direction = (
+        outward[0] * math.cos(swing) - outward[1] * math.sin(swing),
+        outward[0] * math.sin(swing) + outward[1] * math.cos(swing),
+    )
+    return CameraPose(
+        position=Vec3(
+            x=subject.x + direction[0] * distance,
+            y=subject.y + direction[1] * distance,
+            z=subject.z + 0.55,
+        ),
+        target=subject,
+        fov_degrees=DEFAULT_FOV,
     )

@@ -183,3 +183,32 @@ def test_widest_path_prefers_the_wide_way_round(shop):
     result = widest_path(grid, clearance, start, goal)
     assert result.reachable
     assert result.clearance_radius > 0
+
+
+def test_a_run_below_a_threshold_is_measured_along_the_route(shop):
+    """403.5.1 permits 32 in for a run of 24 in at most, and a bottleneck says
+    nothing about how long the route stays narrow."""
+    graph, scenario, measure = shop
+    run = measure.route_run_below(graph, scenario, 0, 36.0)
+    assert run > 24.0
+
+
+def test_nothing_runs_below_a_threshold_the_route_never_reaches(shop):
+    graph, scenario, measure = shop
+    assert measure.route_run_below(graph, scenario, 0, 1.0) == 0.0
+
+
+def test_the_threshold_is_an_argument_not_a_constant(shop):
+    """It belongs to the rule pack, where a person checked it against source."""
+    graph, scenario, measure = shop
+    wide = measure.route_run_below(graph, scenario, 0, 36.0)
+    narrow = measure.route_run_below(graph, scenario, 0, 32.0)
+    assert wide >= narrow
+
+
+def test_counter_approach_reports_what_it_measured(shop):
+    """Not a restatement of the 48 by 30 the rule asks for."""
+    graph, _, measure = shop
+    result = measure.counter_approach(graph, node_id("counter"))
+    assert result.inches_wide != 48.0 or result.inches_deep != 30.0
+    assert result.fits

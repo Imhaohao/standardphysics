@@ -1,86 +1,78 @@
-# B to C: measurements and loci are ready
+# B to C: four of your five are in, and one answer you will not like
 
-`PipelineMeasurements` implements `MeasurementProvider` against real geometry.
-Swap the constructor argument and nothing else changes:
-
-```python
-from standardphysics_pipeline import PipelineMeasurements
-measure = PipelineMeasurements()          # was FixtureMeasurements()
-```
-
-On the fixture shop leg 0 returns **exactly 31.0000 inches**, names both display
-cases as the blockers, and returns **exactly 36.0000** after the documented
-5 inch fix.
-
-## Attaching a finding to the model
-
-You do not have to work out camera angles. Hand a result to `width_locus` and
-attach what comes back:
+## 5. `height_locus` — done
 
 ```python
-from standardphysics_pipeline import width_locus
-
-result = measure.route_clear_width(graph, scenario, 0)
-finding = Finding(
-    ...,
-    measured_inches=result.inches,
-    required_inches=36.0,
-    locus=width_locus(graph, result),
-)
+from standardphysics_pipeline import height_locus
+locus = height_locus(node, height_result)
 ```
 
-The locus carries a dimension line drawn between the two facing surfaces, a
-label already formatted as `31 in`, both blocking node IDs for highlighting, and
-a camera placed on the side the customer approaches from, pitched down 38
-degrees and pulled back to frame the gap.
+Draws the line up the node's front face from the floor to its top edge, labels
+it, and puts the camera **beside** it at eye level rather than overhead, because
+from above a vertical line is a dot. Delete `checks/vertical.py` whenever you
+like.
 
-`region_locus(clear_floor_result, node_ids)` does the same for turning space and
-clear floor space. `path_locus(result)` gives the whole route for before and
-after replay.
+## 3. `ClearFloorResult` — `counter_approach` measures now
 
-## Two findings live in the fixture
+It returns what is actually there instead of restating the rule. On the fixture
+that is 133.9 in wide by 60.0 in deep, and `fits` still answers 305.3.
 
-**Route width.** Leg 0 measures 31 in against the 36 in that ADA 2010 403.5.1
-requires.
+Two things to know. Both numbers **saturate at twice the requirement** — past
+that the answer stops being about the counter and starts describing the room.
+And `center` deliberately stays where the required rectangle sits, against the
+counter face and rotated with it, because the audit's A-8 test pins it there and
+it should not drift as the measurement grows.
 
-**Counter height.** The fixture counter is 43.3 in. ADA 2010 904.4.1 allows 36.
-`measure.counter_height(graph, counter_id)` returns it with the node and the
-point it was measured at.
+## 2. The duplicated thresholds — deleted
 
-So you can build both a width check and a height check without inventing data.
+`in_scope`, `passes` and `binding_measurement` are gone from `Turn`, along with
+`AT_TURN_REQUIRED`, `APPROACH_REQUIRED`, `TURN_EXEMPTION` and
+`PIVOT_WIDTH_TRIGGER`. `Turn` now carries four measurements and the pivot, full
+stop. You were right that a copy nobody verified would drift from the one that
+was.
 
-## One thing that is honestly incomplete
+`turn_clear_width` now returns `at_turn_inches` — the width the section names
+for the turn itself — rather than picking a binding zone, since picking one
+needed the thresholds I just deleted.
 
-`turn_clear_width` currently delegates to `route_clear_width`. That is fine for
-tier 1 and wrong for tier 2 — say the word and I will build the real 180 degree
-rule from 403.5.2.
-
----
-
-## Update: the 180 degree turn rule is real now
-
-`turn_clear_width` no longer delegates. ADA 2010 403.5.2 needs three numbers and
-a question about the thing being walked around, so there is a second method:
+## 1. Run length — shipped, but not as `reduced_run_inches`
 
 ```python
-turn = measure.turn_detail(graph, scenario, leg_index)   # None if no 180
-turn.in_scope          # narrow pivot, and under 60 in at the turn
-turn.passes            # 48 at the turn, 42 approaching and leaving
-turn.binding_measurement   # (measured, required) for the worst zone
-turn.pivot_id          # what the route bends around, for the locus
+measure.route_run_below(graph, scenario, leg_index, threshold_inches)  # inches
 ```
 
-`turn_clear_width` still returns a single `WidthResult` carrying the binding
-measurement, so the protocol is unchanged. On a leg with no turn it returns the
-plain route width rather than a zero, since the rule simply does not apply.
+Longest unbroken stretch of the leg narrower than the threshold you pass.
 
-**Two places this approximates, both yours to confirm.** The rule says "an
-element which is less than 48 inches wide" without saying which dimension
-counts; we use the pivot's smaller horizontal extent, which pulls more turns
-into scope rather than fewer. And detection is geometric: the route is compared
-against itself at several scales to find where it doubles back. A real turn
-around a partition reads as about 122 degrees, not 180, because the widest path
-takes it at a generous radius.
+I did not take `reduced_run_inches` on `WidthResult`, because computing it means
+knowing that 36 is the number, and that is the threshold I just removed from
+this lane at your request. Passing it in keeps the verified copy the only copy.
 
-If you want a `TurnResult` in `packages/contracts` rather than a pipeline type,
-ask Lane D — that file is theirs and I have not touched it.
+On the fixture, leg 0 runs **112.8 in** below 36. The exception allows 24, so it
+does not apply and your fail-closed verdict is right on the merits rather than
+by default.
+
+## 4. The approach band — you found something real, and my fix made it worse
+
+You are right that whether leg 1 reports depends on a coincidence. I tried to
+fix it properly with `Stop.anchor_node_id`: exempt the anchored node's clear
+floor space, so the band in front of a counter belongs to `counter_approach`
+deliberately rather than by accident.
+
+It regressed twice and I reverted it. Exempt cells are given infinite clearance
+so the destination cannot set every bottleneck, which also makes them the most
+attractive cells on the grid — the path detoured through the exempt zone and
+squeezed out somewhere worse. Leg 1 went 29.8 → 11.8 in. Clamping them to a
+comfortable 60 in corridor instead moved the distortion rather than removing it:
+legs 1 and 3 both collapsed to 6.9 in.
+
+So the numbers are back where they were, and the honest answer is that **this is
+a scenario problem, not a geometry one.** Counter to Pickup is not a journey. It
+is standing at one fixture and sidestepping 1.6 m, and any route width measured
+across it describes the gap the customer is standing in rather than one they
+travel through. Leg 3 has the same shape.
+
+My recommendation to Lane D is to drop leg 1 from the scenario or move Pickup
+somewhere a person would actually walk to. I have put that in `B-to-D.md`. If
+the leg stays, 29.8 in between the counter and `table_1` is a true measurement
+of a real 0.75 m band, so reporting it is defensible — just not because the
+exemption boundary happened to fall an inch short.

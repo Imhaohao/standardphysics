@@ -32,7 +32,14 @@ from .footprints import (
     rotation_about_z,
 )
 from .occupancy import CELL_SIZE, Grid, blocks_floor, build_grid
-from .routes import blockers_at, clearance_map, path_clearances, widest_path, world_path
+from .routes import (
+    blockers_at,
+    clearance_map,
+    longest_run_below,
+    path_clearances,
+    widest_path,
+    world_path,
+)
 from .turns import Turn, measure_turn  # noqa: F401  (Turn is part of the API)
 
 COUNTER_CLEAR_WIDTH = to_meters(48.0)
@@ -47,6 +54,20 @@ def _signature(graph: SceneGraph) -> tuple:
     return tuple(
         (str(node.id), node.kind, tuple(node.transform.m), node.dimensions.as_tuple())
         for node in graph.nodes
+    )
+
+
+def _outward_normal(node: SceneNode) -> tuple[float, float]:
+    """Which way a customer stands, away from the node's local minus-Y face."""
+    cos_t, sin_t = rotation_about_z(node)
+    return (sin_t, -cos_t)
+
+
+def _front_face_centre(node: SceneNode, outward: tuple[float, float]) -> Vec3:
+    centre = node.transform.position
+    reach = node.dimensions.y / 2
+    return Vec3(
+        x=centre.x + outward[0] * reach, y=centre.y + outward[1] * reach, z=0.0
     )
 
 
@@ -117,11 +138,12 @@ class PipelineMeasurements:
     def turn_clear_width(
         self, graph: SceneGraph, scenario: Scenario, leg_index: int
     ) -> WidthResult:
-        """The binding width for ADA 2010 403.5.2, where the rule applies.
+        """The clear width at a 180 degree turn.
 
-        A 180 degree turn has three requirements, not one, so this reports the
-        zone with the worst shortfall against its own threshold. Call
-        `turn_detail` for all three numbers and the pivot.
+        ADA 2010 403.5.2 sets three requirements, so this reports the one the
+        section names for the turn itself and `turn_detail` carries all three
+        plus the pivot. Deciding whether they pass belongs to the rule pack,
+        not here.
 
         When the leg has no 180 degree turn the rule does not apply, and this
         returns the plain route width so a caller that ignores applicability
@@ -131,14 +153,37 @@ class PipelineMeasurements:
         if turn is None:
             return self.route_clear_width(graph, scenario, leg_index)
 
-        measured, _ = turn.binding_measurement
         return WidthResult(
-            inches=measured,
+            inches=turn.at_turn_inches,
             pinch_point=turn.apex,
             blocking_node_ids=[turn.pivot_id] if turn.pivot_id else [],
             path=self.route_clear_width(graph, scenario, leg_index).path,
             reachable=True,
         )
+
+    def route_run_below(
+        self,
+        graph: SceneGraph,
+        scenario: Scenario,
+        leg_index: int,
+        threshold_inches: float,
+    ) -> float:
+        """Longest unbroken stretch of this leg narrower than the threshold.
+
+        ADA 2010 403.5.1 lets a route narrow to 32 inches for a run of 24
+        inches at most, and a bottleneck alone cannot settle that. Pass the
+        threshold from the rule pack so the number a person verified stays the
+        only copy.
+        """
+        grid, clearance = self._field(graph)
+        start = scenario.stops[leg_index].position
+        goal = scenario.stops[leg_index + 1].position
+        result = widest_path(
+            grid, clearance, grid.to_cell(start.x, start.y), grid.to_cell(goal.x, goal.y)
+        )
+        if not result.reachable:
+            return 0.0
+        return longest_run_below(grid, clearance, result.path, threshold_inches)
 
     def route_path_clearances(
         self, graph: SceneGraph, scenario: Scenario, leg_index: int
@@ -207,25 +252,85 @@ class PipelineMeasurements:
     def counter_approach(
         self, graph: SceneGraph, counter_id: UUID
     ) -> ClearFloorResult:
+        """The clear floor space actually available in front of a counter.
+
+        `inches_wide` and `inches_deep` are measurements of what is there, not
+        restatements of what the rule wants; `fits` says whether they satisfy
+        the 48 by 30 inch forward approach in ADA 2010 305.3.
+
+        Both saturate at twice the requirement. Past that the answer stops
+        being about this counter and starts describing the room, and a check
+        only needs to know the space is ample.
+
+        `center` stays where the required rectangle sits, against the counter
+        face and rotated with it, so it does not move as the measurement grows.
+        """
         counter = graph.by_id(counter_id)
-        centre = self._approach_centre(counter)
-        space = _rectangle(
-            centre, COUNTER_CLEAR_WIDTH, COUNTER_CLEAR_DEPTH, *rotation_about_z(counter)
-        )
-        intruders = self._intruders(graph, counter_id, space)
+        grid, _ = self._field(graph)
+        outward = _outward_normal(counter)
+        along = (-outward[1], outward[0])
+        origin = _front_face_centre(counter, outward)
+
+        depth = self._clear_depth(grid, origin, outward, along)
+        width = self._clear_width(grid, origin, outward, along)
         return ClearFloorResult(
-            inches_wide=to_inches(COUNTER_CLEAR_WIDTH),
-            inches_deep=to_inches(COUNTER_CLEAR_DEPTH),
-            center=centre,
-            fits=not intruders,
+            inches_wide=to_inches(width),
+            inches_deep=to_inches(depth),
+            center=Vec3(
+                x=origin.x + outward[0] * COUNTER_CLEAR_DEPTH / 2,
+                y=origin.y + outward[1] * COUNTER_CLEAR_DEPTH / 2,
+                z=0.0,
+            ),
+            fits=width >= COUNTER_CLEAR_WIDTH and depth >= COUNTER_CLEAR_DEPTH,
         )
 
-    def _approach_centre(self, counter: SceneNode) -> Vec3:
-        """In front of the counter's local minus-Y face, turned with the counter."""
-        position = counter.transform.position
-        cos_t, sin_t = rotation_about_z(counter)
-        offset = counter.dimensions.y / 2 + COUNTER_CLEAR_DEPTH / 2
-        return Vec3(x=position.x + offset * sin_t, y=position.y - offset * cos_t, z=0.0)
+    def _clear_depth(self, grid: Grid, origin: Vec3, outward, along) -> float:
+        """How far out the required-width band stays clear."""
+        step = grid.cell_size
+        half = COUNTER_CLEAR_WIDTH / 2
+        depth = 0.0
+        while depth < COUNTER_CLEAR_DEPTH * 2:
+            if not self._band_clear(grid, origin, outward, along, depth + step, half):
+                break
+            depth += step
+        return depth
+
+    def _clear_width(self, grid: Grid, origin: Vec3, outward, along) -> float:
+        """How wide the band stays clear across the required depth."""
+        step = grid.cell_size
+        half = 0.0
+        while half < COUNTER_CLEAR_WIDTH * 1.5:
+            if not self._band_clear(
+                grid, origin, outward, along, COUNTER_CLEAR_DEPTH, half + step
+            ):
+                break
+            half += step
+        return half * 2
+
+    def _band_clear(self, grid: Grid, origin, outward, along, depth, half) -> bool:
+        steps = max(int(half * 2 / grid.cell_size), 1)
+        for index in range(steps + 1):
+            offset = -half + (index * half * 2 / steps if steps else 0.0)
+            if not self._column_clear(grid, origin, outward, along, offset, depth):
+                return False
+        return True
+
+    def _column_clear(self, grid, origin, outward, along, offset, depth) -> bool:
+        # Start one cell out. The face itself is the counter, which is solid by
+        # definition, so sampling from zero always fails on the object we are
+        # measuring the space in front of.
+        start = grid.cell_size
+        if depth < start:
+            return True
+        rungs = max(int((depth - start) / grid.cell_size), 1)
+        for index in range(rungs + 1):
+            reach = start + (depth - start) * index / rungs
+            x = origin.x + along[0] * offset + outward[0] * reach
+            y = origin.y + along[1] * offset + outward[1] * reach
+            row, col = grid.to_cell(x, y)
+            if not grid.contains(row, col) or grid.occupied[row, col]:
+                return False
+        return True
 
     def _intruders(
         self, graph: SceneGraph, counter_id: UUID, space: Polygon
