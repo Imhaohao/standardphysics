@@ -1,0 +1,13 @@
+{
+  "objective": "Prepare a production-minded submission for CoreWeave Hacks: Agent Loops. Show a self-improving agent loop with observable iterations and a safe live demo.",
+  "required_sections": [
+    "Problem",
+    "Loop Design",
+    "Observability",
+    "Safety",
+    "Evaluation",
+    "Demo"
+  ],
+  "max_iterations": 4
+}
+
