@@ -103,9 +103,9 @@ def test_a22_leg_one_is_not_the_gap_between_the_counter_and_a_table():
     assert result.inches > 36.0
 
 
-@pytest.mark.xfail(strict=True, reason="A-25: real exports put the floor about 1.4 m below z = 0")
 @pytest.mark.parametrize("room", ["apple_bedroom3", "apple_livingroom"])
 def test_a25_furniture_in_a_real_export_blocks_the_floor(room):
+    """Fixed in 5d09e4d, which stands the room on its floor during ingest."""
     export = json.loads((REAL_EXPORTS / f"{room}.room.json").read_text())
     graph = parse_room_json(export)
     furniture = [

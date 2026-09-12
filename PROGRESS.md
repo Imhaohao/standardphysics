@@ -33,6 +33,7 @@ The audit fixes code only in files no lane agent is actively changing. For lanes
 | `01582fd` D: real RoomPlan exports | D | Pass with notes | Reports A-25 |
 | `f9531f0` Plan: pitch to shop owners | Plan | Not a lane push | |
 | `7aa85c8` D: scaffold the web app, generate contract types | D | **Fail** | A-28 |
+| `5d09e4d` B: stand the room on its floor, read both ends of an object | B | Pass | Resolves A-25 |
 
 `609db3d`, `9028d14`, `b90e570`, `d3f7d95` and `1a06655` change only the plan and lane documents. A-1 covers the lane document errors from `9028d14`.
 
@@ -176,9 +177,9 @@ Medium. `fixed in 898984f`.
 `pytest.ini` collects only `tests/`, and CI did not install `packages/agents`, so `9ced7bc`'s 105 tests never gated `master`. `898984f` installs the package and runs them.
 
 ### A-25 Real exports put the floor about 1.4 m below z = 0
-High. `open`. Reported by Lane D in `01582fd`. Pinned by `tests/test_audit_open_findings.py`.
+High. `fixed in 5d09e4d`. Reported by Lane D in `01582fd`.
 
-`blocks_floor` compares an object's top with 1/4 in above z = 0, but RoomPlan's origin is wherever the phone started. In Apple's sample exports the floor sits at z = -1.47 m in `apple_bedroom3` and -1.44 m in `apple_livingroom`, so the bed, the table and the chair in the bedroom, and 8 of 13 objects in the living room including both sofas, read as open floor. On a real scan a route would pass straight through furniture.
+`blocks_floor` compares an object's top with 1/4 in above z = 0, but RoomPlan's origin is wherever the phone started. In Apple's sample exports the floor sits at z = -1.47 m in `apple_bedroom3` and -1.44 m in `apple_livingroom`, so the bed, the table and the chair in the bedroom, and 8 of 13 objects in the living room including both sofas, read as open floor. On a real scan a route would pass straight through furniture. At `5d09e4d` ingest shifts the room so the floor is at z = 0: every object in the bedroom blocks, and the three that do not in the living room hang above 27 in, where ADA 2010 307 treats them as protruding objects.
 
 ### A-26 The fix agent lets furniture overlap a wall by up to 1 cm
 Low. `open`.
