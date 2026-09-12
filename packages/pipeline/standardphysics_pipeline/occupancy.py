@@ -29,6 +29,30 @@ make a solid object on the floor passable.
 PASSABLE_KINDS = {"floor", "window", "opening", "door"}
 """Doors and openings are how you get through a wall, not obstacles."""
 
+CUTS_THROUGH_WALLS = {"door", "opening"}
+"""Leaving a door out of the grid is not enough.
+
+RoomPlan reports a wall at its full length and puts the door inside it as a
+separate surface, so the wall stays solid right across the opening. The door
+has to be subtracted from the wall, not merely skipped, or no route can ever
+leave the room."""
+
+OUTSIDE_MARGIN = 1.5
+"""Metres of ground kept walkable beyond the floor's edge.
+
+Once a doorway is open the search can leave the building, and beyond the floor
+there is nothing to stop it: the padded grid is empty space with excellent
+clearance, so a bottleneck search explores every cell of it before it ever
+reaches the goal. A route from the street needs a little ground outside; it
+does not need a field."""
+
+DOORWAY_BITE = 0.12
+"""Metres the cleared opening extends past the door on its thin axis.
+
+A door panel is often slightly thinner than the wall holding it. Clearing
+exactly the panel's footprint can leave a sliver of wall sealing the gap, and a
+one cell sliver blocks a route as completely as a brick wall."""
+
 
 @dataclass(frozen=True)
 class Grid:
@@ -115,6 +139,11 @@ def build_grid(graph: SceneGraph, cell_size: float = CELL_SIZE) -> Grid:
         node_ids.append(node.id)
         _mark(occupied, owner, len(node_ids) - 1, node, world_x, world_y)
 
+    for node in graph.nodes:
+        if node.kind in CUTS_THROUGH_WALLS:
+            _punch(occupied, owner, node, world_x, world_y)
+
+    _bound_the_world(occupied, graph, world_x, world_y)
     return Grid(min_x, min_y, cell_size, occupied, owner, node_ids)
 
 
@@ -127,13 +156,60 @@ def _mark(
     world_y: np.ndarray,
 ) -> None:
     """Occupy every cell whose centre lies inside this node's oriented box."""
+    inside = _inside_box(node, world_x, world_y)
+    owner[inside & ~occupied] = index
+    occupied |= inside
+
+
+def _inside_box(
+    node: SceneNode,
+    world_x: np.ndarray,
+    world_y: np.ndarray,
+    grow_x: float = 0.0,
+    grow_y: float = 0.0,
+) -> np.ndarray:
     p = node.transform.position
     cos_t, sin_t = _rotation_2d(node)
     dx, dy = world_x - p.x, world_y - p.y
     local_x = dx * cos_t + dy * sin_t
     local_y = -dx * sin_t + dy * cos_t
-    inside = (np.abs(local_x) <= node.dimensions.x / 2) & (
-        np.abs(local_y) <= node.dimensions.y / 2
+    return (np.abs(local_x) <= node.dimensions.x / 2 + grow_x) & (
+        np.abs(local_y) <= node.dimensions.y / 2 + grow_y
     )
-    owner[inside & ~occupied] = index
-    occupied |= inside
+
+
+def _punch(
+    occupied: np.ndarray,
+    owner: np.ndarray,
+    node: SceneNode,
+    world_x: np.ndarray,
+    world_y: np.ndarray,
+) -> None:
+    """Open the doorway back up through whatever wall was drawn across it."""
+    grow_x, grow_y = _bite(node)
+    opening = _inside_box(node, world_x, world_y, grow_x, grow_y)
+    occupied[opening] = False
+    owner[opening] = -1
+
+
+def _bite(node: SceneNode) -> tuple[float, float]:
+    """Grow the cut along the door's thin axis only, never along its width."""
+    if node.dimensions.y <= node.dimensions.x:
+        return 0.0, DOORWAY_BITE
+    return DOORWAY_BITE, 0.0
+
+
+def _bound_the_world(
+    occupied: np.ndarray, graph: SceneGraph, world_x: np.ndarray, world_y: np.ndarray
+) -> None:
+    """Close off everything well outside the building.
+
+    Without this the search wanders across the empty padding beyond the walls,
+    which is both slow and meaningless. Keeps a margin so a route can still
+    start on the pavement outside the front door.
+    """
+    floor = next((node for node in graph.nodes if node.kind == "floor"), None)
+    if floor is None:
+        return
+    walkable = _inside_box(floor, world_x, world_y, OUTSIDE_MARGIN, OUTSIDE_MARGIN)
+    occupied[~walkable] = True

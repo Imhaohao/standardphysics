@@ -13,17 +13,26 @@ corridor width, and the cell where it occurs is the pinch the camera flies to.
 from __future__ import annotations
 
 import heapq
+import math
 from dataclasses import dataclass
 from uuid import UUID
 
 import numpy as np
 from scipy import ndimage
 
-from standardphysics_contracts import Vec3
+from standardphysics_contracts import Vec3, to_inches
 
 from .occupancy import Grid
 
 NEIGHBOURS = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
+
+MAX_EXEMPT_SHARE = 0.35
+"""Most of a leg has to remain measurable.
+
+A fixed exemption swallows a short leg whole. Counter to Pickup is 1.6 m, and
+two 0.75 m circles leave a 0.1 m sliver pressed against the counter, so the
+reported width describes that sliver rather than the route. The exemption
+shrinks on short legs so there is always something real left to measure."""
 
 ENDPOINT_EXEMPTION = 0.75
 """Metres around each stop that do not count toward the route's bottleneck.
@@ -80,6 +89,13 @@ def _exempt_mask(
     return mask
 
 
+def _exemption_radius(
+    grid: Grid, start: tuple[int, int], goal: tuple[int, int], requested: float
+) -> float:
+    separation = math.dist(start, goal) * grid.cell_size
+    return min(requested, separation * MAX_EXEMPT_SHARE)
+
+
 def widest_path(
     grid: Grid,
     clearance: np.ndarray,
@@ -93,7 +109,8 @@ def widest_path(
     if start is None or goal is None:
         return PathResult(0.0, None, [], reachable=False)
 
-    exempt = _exempt_mask(grid, [start, goal], endpoint_exemption)
+    radius = _exemption_radius(grid, start, goal, endpoint_exemption)
+    exempt = _exempt_mask(grid, [start, goal], radius)
     search_field = np.where(exempt, np.inf, clearance)
 
     rows, cols = grid.shape
@@ -170,15 +187,30 @@ def blockers_at(grid: Grid, cell: tuple[int, int], radius_cells: int) -> list[UU
     return found
 
 
+def sample_cells(cells: list[tuple[int, int]], step: int = 3) -> list[tuple[int, int]]:
+    """Which cells become drawable points. One definition, so a path and its
+    per-point clearances cannot drift out of step with each other."""
+    if not cells:
+        return []
+    sampled = cells[::step]
+    if sampled[-1] != cells[-1]:
+        sampled.append(cells[-1])
+    return sampled
+
+
+def path_clearances(
+    grid: Grid, clearance: np.ndarray, cells: list[tuple[int, int]], step: int = 3
+) -> list[float]:
+    """Corridor width in inches at each drawn point, for colouring a route."""
+    return [
+        to_inches(float(clearance[cell]) * 2) for cell in sample_cells(cells, step)
+    ]
+
+
 def world_path(grid: Grid, cells: list[tuple[int, int]], step: int = 3) -> list[Vec3]:
     """Thin the cell path down to something a viewer can draw.
 
     Kept dense enough that turn detection can still see a bend: at 25 mm cells
     every third sample is 75 mm, so a 180 around a narrow pivot survives.
     """
-    if not cells:
-        return []
-    sampled = cells[::step]
-    if sampled[-1] != cells[-1]:
-        sampled.append(cells[-1])
-    return [grid.to_world(row, col) for row, col in sampled]
+    return [grid.to_world(row, col) for row, col in sample_cells(cells, step)]

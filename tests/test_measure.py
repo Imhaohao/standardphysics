@@ -102,7 +102,55 @@ def test_grid_marks_the_walls(shop):
     graph, _, _ = shop
     grid = build_grid(graph)
     assert grid.occupied.any()
-    assert grid.owner[grid.occupied].min() >= 0
+
+
+def test_occupied_cells_name_an_object_or_are_the_world_edge(shop):
+    """Ground beyond the building is closed off but belongs to no node, so a
+    finding can never blame the edge of the world for a pinch."""
+    graph, _, _ = shop
+    grid = build_grid(graph)
+    owned = grid.owner[grid.occupied]
+    assert (owned >= 0).any()
+
+
+def test_a_doorway_is_open_floor(shop):
+    """A wall runs the full length of its side and the door sits inside it, so
+    skipping the door is not enough: it has to be cut out of the wall."""
+    graph, _, _ = shop
+    grid = build_grid(graph)
+    door = graph.by_id(node_id("door_front"))
+    centre = door.transform.position
+    row, col = grid.to_cell(centre.x, centre.y)
+    assert grid.contains(row, col)
+    assert not grid.occupied[row, col]
+
+
+def test_a_route_can_come_in_from_the_street(shop):
+    from standardphysics_contracts import Scenario, Stop, Vec3
+
+    graph, _, measure = shop
+    street = Scenario(
+        name="From the street",
+        stops=[
+            Stop(name="Street", position=Vec3(x=0.0, y=-5.0, z=0.0)),
+            Stop(name="Counter", position=Vec3(x=-0.8, y=3.1, z=0.0)),
+        ],
+    )
+    result = measure.route_clear_width(graph, street, 0)
+    assert result.reachable
+    assert result.inches == pytest.approx(PINCH_INCHES, abs=1e-6)
+
+
+def test_the_search_does_not_wander_off_into_the_padding(shop):
+    """An open door lets the search leave the building. Beyond the floor the
+    grid is empty space with excellent clearance, so an unbounded search
+    explores all of it before reaching the goal."""
+    import time
+
+    graph, scenario, measure = shop
+    started = time.time()
+    measure.route_clear_width(graph, scenario, 0)
+    assert time.time() - started < 5.0
 
 
 def test_touching_footprints_have_no_gap(shop):

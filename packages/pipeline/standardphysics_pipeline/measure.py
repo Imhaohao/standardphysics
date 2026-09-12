@@ -32,7 +32,7 @@ from .footprints import (
     rotation_about_z,
 )
 from .occupancy import CELL_SIZE, Grid, blocks_floor, build_grid
-from .routes import blockers_at, clearance_map, widest_path, world_path
+from .routes import blockers_at, clearance_map, path_clearances, widest_path, world_path
 from .turns import Turn, measure_turn  # noqa: F401  (Turn is part of the API)
 
 COUNTER_CLEAR_WIDTH = to_meters(48.0)
@@ -139,6 +139,25 @@ class PipelineMeasurements:
             path=self.route_clear_width(graph, scenario, leg_index).path,
             reachable=True,
         )
+
+    def route_path_clearances(
+        self, graph: SceneGraph, scenario: Scenario, leg_index: int
+    ) -> list[float]:
+        """Corridor width in inches at each point of the drawn route.
+
+        Runs parallel to `route_clear_width(...).path`, point for point, so a
+        viewer can colour the line by how tight it is there. Both come from the
+        same sampling, so they cannot drift apart.
+        """
+        grid, clearance = self._field(graph)
+        start = scenario.stops[leg_index].position
+        goal = scenario.stops[leg_index + 1].position
+        result = widest_path(
+            grid, clearance, grid.to_cell(start.x, start.y), grid.to_cell(goal.x, goal.y)
+        )
+        if not result.reachable:
+            return []
+        return path_clearances(grid, clearance, result.path)
 
     def turn_detail(
         self, graph: SceneGraph, scenario: Scenario, leg_index: int
