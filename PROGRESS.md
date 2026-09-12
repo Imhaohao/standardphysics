@@ -32,6 +32,7 @@ The audit fixes code only in files no lane agent is actively changing. For lanes
 | `eb56ef4` B: populate point_inches | B | Pass | |
 | `01582fd` D: real RoomPlan exports | D | Pass with notes | Reports A-25 |
 | `f9531f0` Plan: pitch to shop owners | Plan | Not a lane push | |
+| `7aa85c8` D: scaffold the web app, generate contract types | D | **Fail** | A-28 |
 
 `609db3d`, `9028d14`, `b90e570`, `d3f7d95` and `1a06655` change only the plan and lane documents. A-1 covers the lane document errors from `9028d14`.
 
@@ -188,3 +189,8 @@ Low. `open`.
 Medium. `fixed in ceaa390`.
 
 `1414cf4` shortened the display cases, which made Lane C's `test_the_documented_five_inch_fix_puts_a_case_inside_the_wall` fail on `master`. `fd43203` landed on top of the red build. `ceaa390` flipped the test to assert the move is now legal. `1414cf4` also rewrote the A-7 regression to move `case_east` as well as resize it, so the test no longer isolates a resize; a resize-only seal no longer blocks the route in the new fixture, so it was left as is.
+
+### A-28 The new web workflow fails its typecheck
+High. `open`. Lane D.
+
+`7aa85c8` adds the "Web and contracts" workflow, and its first run fails at `npm run typecheck` with `src/app/layout.tsx(9,50): error TS2304: Cannot find name 'LayoutProps'`. `LayoutProps<"/">` is a route type Next.js generates into `.next/types`, and both `.next/` and `next-env.d.ts` are gitignored. The workflow runs `tsc --noEmit` before `next build`, so nothing has generated the type when `tsc` reads it. Generating the route types first, or typechecking after the build, would fix it. The "Generated types match the contracts" job in the same workflow passes.
