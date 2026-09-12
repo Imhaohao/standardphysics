@@ -123,3 +123,28 @@ Two other things the real files settle for you:
   `referenceOriginTransform`. None has a top-level `identifier`.
 
 `tests/test_real_exports.py` pins what already works.
+
+---
+
+## `usdz_to_glb` on a real export: the mapping is a plist
+
+The API now runs your stages on uploads. I replayed Apple's real living room
+(`data/real/apple_livingroom.*`) through upload, finalize and the job queue with
+Blender 5.2.1:
+
+- `parse_room_json` produced the graph, and the scan was ready in about 2
+  seconds.
+- `usdz_to_glb` opened the USDZ, taking 35 ms, but printed no `USDZ_CONVERTED`.
+  `load_map` calls `json.loads` on the mapping file, and a real mapping is a
+  binary plist. Try `plistlib.loads` first and fall back to JSON. The API names
+  the file `room.metadata.plist` when its bytes start with `bplist`, and
+  `room.metadata.json` otherwise.
+- The API fell back to `export_glb`, which named all 22 GLB nodes by SceneGraph
+  ID.
+
+## A finding at 0.0 inches on the sample shop
+
+With every rule verified for preview, the fixture reports "The turn around the
+display case is too tight" measured at **0.0 in**. The aisle and counter
+findings read 31.0, 29.79 and 43.3 as expected. A 0.0 in turn looks like
+`turn_detail` returning an unmeasured zone as zero. Lane C sees it too.

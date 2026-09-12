@@ -1,3 +1,4 @@
+from .api import ApiError, CreateScanRequest, ScanList
 from .findings import Annotation, AnnotationKind, Finding, Locus, Outcome
 from .geometry import CameraPose, Mat4, Vec3, to_inches, to_meters
 from .hashing import graph_hash
@@ -14,6 +15,7 @@ from .scene import LabelSource, NodeKind, Quality, Scenario, SceneGraph, SceneNo
 
 __all__ = [
     "Annotation",
+    "ApiError",
     "AnnotationKind",
     "Artifact",
     "ArtifactKind",
@@ -23,6 +25,7 @@ __all__ = [
     "Check",
     "Citation",
     "ClearFloorResult",
+    "CreateScanRequest",
     "Decision",
     "Finding",
     "HeightResult",
@@ -38,6 +41,7 @@ __all__ = [
     "RouterAction",
     "RulePack",
     "Scan",
+    "ScanList",
     "ScanState",
     "Scenario",
     "SceneGraph",

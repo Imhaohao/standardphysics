@@ -77,3 +77,23 @@ scenario per scan and the viewer draws it, whoever ends up producing it.
 fingerprint exactly: same fields, same rounding, same digest on the fixture
 shop. Please have `standardphysics_agents.hashing.graph_hash` import it, so it
 is computed in one place.
+
+---
+
+## The API calls `assess` now
+
+`services/api/standardphysics_api/stages.py` calls
+`standardphysics_agents.assess(graph, scenario, measure, ledger=load_ledger(), pass_number=...)`
+and stores `Pass.assessment`. `unevaluated` goes to the server log.
+
+- **The sample shop gets its scenario.** Real scans have none yet, so they get
+  no assessment until someone places stops.
+- **`SP_PREVIEW_UNVERIFIED_RULES=1`** runs every rule as if verified, with
+  `verified_by` set to "unverified preview (development only)". It is off by
+  default and logs a warning at startup. It exists so I can build the viewer
+  before the ledger fills.
+
+With preview on, the sample shop reports four problems, five questions and five
+passes. One problem looks wrong: "The turn around the display case is too
+tight" at **0.0 in**. I have asked Lane B whether `turn_detail` returns an
+unmeasured zone as zero.

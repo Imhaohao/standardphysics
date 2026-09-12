@@ -27,6 +27,14 @@ export interface Vec3 {
 }
 /**
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "ApiError".
+ */
+export interface ApiError {
+  error: string;
+  need: string[] | null;
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
  * via the `definition` "Artifact".
  */
 export interface Artifact {
@@ -143,6 +151,15 @@ export interface ClearFloorResult {
 }
 /**
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "CreateScanRequest".
+ */
+export interface CreateScanRequest {
+  device_model: string;
+  duration_seconds: number;
+  name: string;
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
  * via the `definition` "HeightResult".
  */
 export interface HeightResult {
@@ -240,6 +257,13 @@ export interface SurfaceCoverage {
   node_id: string;
   observed_fraction: number;
   viewpoint_count: number;
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "ScanList".
+ */
+export interface ScanList {
+  scans: Scan[];
 }
 /**
  * The routine we screen. Legs run between consecutive stops.
