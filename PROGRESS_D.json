@@ -1,9 +1,21 @@
 {
   "lane": "D",
-  "updated": null,
-  "done": [],
-  "in_progress": null,
+  "updated": "2026-09-12T22:42:29Z",
+  "done": [
+    "contracts and fixture shop (21bbc65)",
+    "handoffs: D-to-B sealed doorways, D-to-C assess seam, D-to-audit A-6/A-9 approval"
+  ],
+  "in_progress": "contract fields A-6 and A-9, graph_hash, fixture scenario anchors",
   "blocked_on": null,
-  "ready_for_others": [],
-  "needs_human": []
+  "ready_for_others": [
+    "packages/contracts",
+    "packages/fixtures: build_graph, build_scenario, FixtureMeasurements, shop.glb"
+  ],
+  "needs_human": [
+    "W&B project created with public visibility settings",
+    "Every key from .env.example in .env on the demo machine; OPENROUTER_API_KEY is blocking Lane B",
+    "Confirm submission deadline and eligibility with organizers",
+    "Keep the demo machine stable and awake",
+    "Blender 5.x on the demo machine: brew install --cask --force blender"
+  ]
 }
