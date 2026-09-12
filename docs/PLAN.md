@@ -53,9 +53,13 @@ Our user runs a boba shop. They are not technical. Every word in the product fol
 
 **Numbers in inches.** Our user thinks in inches, and the ADA standards are written in inches. Show inches. Keep meters internally and convert once, at the display boundary.
 
-**Never say what the app doesn't do where the user is standing.** No "this doesn't check restrooms" under a finding, no "not a legal certification" on a button, no disclaimer bolted onto a screen. Those sentences make a nervous person more nervous and they teach nothing.
+**Only describe what is.** Write what we measured, what we found, and what to do next. Never write a sentence whose job is to deny, disclaim, or point at an absence — not under a finding, not on a button, not in a footer, not in the report.
 
-Scope lives in exactly one place: a **What we checked** section at the end of the report. It is a positive list — the paths we measured, the rules we checked, who reviewed it. A reader learns what they have. Anything we couldn't check appears there as a plain next step ("Measure the door at the back and we'll check it"), never as a warning stuck to an unrelated screen.
+This covers reassurance nobody asked for. "Everything stays on your device, so no outside vendor touches your data" invents a worry and then answers it; the reader wasn't wondering until we brought it up. If a sentence would only land with someone already suspicious, cut it.
+
+It also covers softer forms: "we couldn't check the restroom", "this is not a legal certification", "results are estimates only". Each one describes a hole.
+
+Scope lives in one place, and it is a list of what we did: **What we checked** at the end of the report names the paths measured, the rules checked, and who reviewed it. Next steps are written as actions that get something — "Send a photo of the front door handle and we'll check it" — phrased as the thing to do, never as the thing we lack.
 
 **Name the thing, then give the number.** A finding's title says what's wrong in human terms. The line under it gives the measurement and what's needed. The fix says what to do.
 
