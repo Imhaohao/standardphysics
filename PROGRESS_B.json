@@ -1,12 +1,20 @@
 {
   "lane": "B",
-  "updated": "2026-09-12T15:10:00Z",
-  "done": ["blender check", "coordinate conversion + tests"],
-  "in_progress": "occupancy grid and widest path",
+  "updated": "2026-09-12T15:45:00Z",
+  "done": [
+    "blender check",
+    "coordinate conversion + tests",
+    "occupancy grid with per-cell ownership",
+    "widest path with endpoint exemption",
+    "exact footprint distance",
+    "MeasurementProvider implementation"
+  ],
+  "in_progress": "room.json ingest",
   "blocked_on": null,
   "ready_for_others": [
-    "standardphysics_pipeline.check_blender",
-    "standardphysics_pipeline.coords"
+    "standardphysics_pipeline.PipelineMeasurements implements MeasurementProvider",
+    "standardphysics_pipeline.coords for anyone parsing ARKit transforms",
+    "standardphysics_pipeline.check_blender"
   ],
   "needs_human": [
     "Install Blender 5.x on every machine: brew install --cask --force blender",
