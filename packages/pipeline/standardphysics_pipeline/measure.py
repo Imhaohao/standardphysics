@@ -36,6 +36,7 @@ from .routes import (
     blockers_at,
     clearance_map,
     longest_run_below,
+    what_sealed_the_route,
     path_clearances,
     widest_path,
     world_path,
@@ -112,7 +113,15 @@ class PipelineMeasurements:
         )
         if not result.reachable or result.pinch_cell is None:
             return WidthResult(
-                inches=0.0, pinch_point=goal, blocking_node_ids=[], reachable=False
+                inches=0.0,
+                pinch_point=goal,
+                blocking_node_ids=what_sealed_the_route(
+                    grid,
+                    grid.to_cell(start.x, start.y),
+                    grid.to_cell(goal.x, goal.y),
+                    movable={node.id for node in graph.movable()},
+                ),
+                reachable=False,
             )
 
         radius_cells = int(result.clearance_radius / grid.cell_size)
@@ -183,7 +192,9 @@ class PipelineMeasurements:
         )
         if not result.reachable:
             return 0.0
-        return longest_run_below(grid, clearance, result.path, threshold_inches)
+        return longest_run_below(
+            grid, clearance, result.path, threshold_inches, exempt=result.exempt
+        )
 
     def route_path_clearances(
         self, graph: SceneGraph, scenario: Scenario, leg_index: int

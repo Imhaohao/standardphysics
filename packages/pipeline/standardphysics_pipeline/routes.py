@@ -245,6 +245,7 @@ def longest_run_below(
     clearance: np.ndarray,
     cells: list[tuple[int, int]],
     threshold_inches: float,
+    exempt: np.ndarray | None = None,
 ) -> float:
     """The longest unbroken stretch of a route narrower than `threshold_inches`.
 
@@ -255,6 +256,11 @@ def longest_run_below(
 
     The threshold is an argument rather than a constant because it belongs to
     the rule pack, where a person has checked it against the source.
+
+    Exempt cells are skipped and break the run. Inside the exemption the route
+    wanders and brushes whatever is nearby, so counting those cells reports a
+    long narrow stretch on a leg that was never narrow: on the fixture, 75 of
+    the 124 sub-36 inch cells on leg 2 were exempt ones.
     """
     longest = 0.0
     current = 0.0
@@ -262,6 +268,11 @@ def longest_run_below(
     limit = to_meters(threshold_inches) / 2
 
     for cell in cells:
+        if exempt is not None and exempt[cell]:
+            longest = max(longest, current)
+            current = 0.0
+            previous = None
+            continue
         below = clearance[cell] < limit
         if below and previous is not None:
             current += math.dist(previous, cell) * grid.cell_size
@@ -273,3 +284,90 @@ def longest_run_below(
         previous = cell if below else None
 
     return to_inches(max(longest, current))
+
+
+def what_sealed_the_route(
+    grid: Grid,
+    start: tuple[int, int],
+    goal: tuple[int, int],
+    movable: set[UUID] | None = None,
+) -> list[UUID]:
+    """The objects standing between a start and an unreachable goal.
+
+    A blocked route with no named obstacle is a dead end for everyone
+    downstream: nothing to highlight, nothing to point a camera at, and nothing
+    for the fix agent to try moving. If shelving can be pushed aside the honest
+    answer is a rearrangement, not a question for the owner.
+
+    The seal is what touches **both** sides. Nearest-to-the-goal is not enough:
+    the walls beside a counter are closer to it than the shelving unit across
+    the aisle, and naming those tells nobody anything they can act on.
+    """
+    free = ~grid.occupied
+    if not (grid.contains(*start) and grid.contains(*goal)):
+        return []
+    if not (free[start] and free[goal]):
+        return []
+
+    regions, _ = ndimage.label(free)
+    here, there = regions[start], regions[goal]
+    if here == there or here == 0 or there == 0:
+        return []
+
+    candidates = _owners_touching(grid, regions == here) & _owners_touching(
+        grid, regions == there
+    )
+    opening = [
+        owner for owner in candidates if _would_open(grid, owner, start, goal)
+    ]
+
+    # Walls border both pockets and technically "open" the route, because with
+    # one gone you can step outside and come back in through the front door.
+    # That is true and useless. What the owner needs to hear about is the thing
+    # they could actually move, so furniture is named ahead of structure.
+    return _nearest_owners(grid, opening or candidates, goal, movable or set())
+
+
+def _would_open(
+    grid: Grid, owner: int, start: tuple[int, int], goal: tuple[int, int]
+) -> bool:
+    """Whether taking this one object away reconnects the two sides.
+
+    The exact question a shop owner is asking, and the only way to tell a
+    shelving unit standing across the aisle from the walls that happen to
+    border both halves of the room.
+    """
+    free = ~grid.occupied | (grid.owner == owner)
+    regions, _ = ndimage.label(free)
+    return regions[start] != 0 and regions[start] == regions[goal]
+
+
+def _owners_touching(grid: Grid, region: np.ndarray) -> set[int]:
+    """Which objects this pocket of free space runs into.
+
+    Compared by object rather than by cell. A display case is two dozen cells
+    thick, so the shell of occupied cells around one side of it never meets the
+    shell around the other, and looking for a shared cell finds nothing.
+    """
+    shell = ndimage.binary_dilation(region) & grid.occupied
+    return {owner for owner in grid.owner[shell].tolist() if owner >= 0}
+
+
+def _nearest_owners(
+    grid: Grid,
+    owners,
+    goal: tuple[int, int],
+    movable: set[UUID],
+    limit: int = 2,
+) -> list[UUID]:
+    """Furniture first, then whatever is closest to where they were heading."""
+    ranked = []
+    for owner in owners:
+        cells = np.argwhere(grid.owner == owner)
+        if cells.size == 0:
+            continue
+        distances = (cells[:, 0] - goal[0]) ** 2 + (cells[:, 1] - goal[1]) ** 2
+        node_id = grid.node_ids[owner]
+        ranked.append((node_id not in movable, int(distances.min()), owner))
+    ranked.sort()
+    return [grid.node_ids[owner] for _, _, owner in ranked[:limit]]

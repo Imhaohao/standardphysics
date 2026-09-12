@@ -233,3 +233,51 @@ def test_measured_points_never_fall_below_the_bottleneck(shop):
     result = measure.route_clear_width(graph, scenario, 0)
     measured = [v for v in measure.route_path_clearances(graph, scenario, 0) if v]
     assert min(measured) >= result.inches - 1.0
+
+
+def _seal_the_aisle(graph):
+    case = graph.by_id(node_id("case_east"))
+    case.dimensions.x = 6.0
+    case.transform.m[3] = 0.0
+    return case
+
+
+def test_a_sealed_route_names_what_sealed_it(shop):
+    """A blocked route with no named obstacle is a dead end for everyone
+    downstream: nothing to highlight, nothing to frame, nothing to try moving."""
+    graph, scenario, measure = shop
+    _seal_the_aisle(graph)
+    result = measure.route_clear_width(graph, scenario, 0)
+    assert not result.reachable
+    assert result.blocking_node_ids
+
+
+def test_it_names_furniture_rather_than_the_building(shop):
+    """With a wall gone you could step outside and come back through the front
+    door, so walls technically open the route. The owner needs to hear about
+    what they can move."""
+    graph, scenario, measure = shop
+    _seal_the_aisle(graph)
+    result = measure.route_clear_width(graph, scenario, 0)
+    assert all(graph.by_id(node).movable for node in result.blocking_node_ids)
+
+
+def test_an_open_route_still_names_its_pinch(shop):
+    graph, scenario, measure = shop
+    result = measure.route_clear_width(graph, scenario, 0)
+    assert result.reachable
+    assert len(result.blocking_node_ids) == 2
+
+
+def test_a_run_ignores_the_exempt_stretches(shop):
+    """Inside the exemption the route wanders and brushes whatever is nearby.
+    On leg 2, 75 of the 124 sub-36 inch cells were exempt ones."""
+    graph, scenario, measure = shop
+    assert measure.route_run_below(graph, scenario, 3, 36.0) == 0.0
+
+
+def test_a_leg_that_is_never_narrow_reports_no_run(shop):
+    graph, scenario, measure = shop
+    wide = measure.route_clear_width(graph, scenario, 3).inches
+    assert wide > 36.0
+    assert measure.route_run_below(graph, scenario, 3, 36.0) == 0.0
