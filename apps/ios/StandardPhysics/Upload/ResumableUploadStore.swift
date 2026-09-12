@@ -4,6 +4,7 @@ struct ResumableUploadStore {
     private struct State: Codable {
         var scanID: String?
         var completedArtifactIDs: Set<String> = []
+        var isFinalized = false
     }
 
     private let stateURL: URL
@@ -11,6 +12,7 @@ struct ResumableUploadStore {
 
     var scanID: String? { state.scanID }
     var completedArtifactIDs: Set<String> { state.completedArtifactIDs }
+    var isFinalized: Bool { state.isFinalized }
 
     init(captureDirectory: URL) {
         stateURL = captureDirectory.appendingPathComponent("upload-state.json")
@@ -34,6 +36,12 @@ struct ResumableUploadStore {
     mutating func recordUploaded(artifactID: String) throws {
         guard state.scanID != nil else { throw UploadStoreError.scanNotStarted }
         state.completedArtifactIDs.insert(artifactID)
+        try persist()
+    }
+
+    mutating func recordFinalized() throws {
+        guard state.scanID != nil else { throw UploadStoreError.scanNotStarted }
+        state.isFinalized = true
         try persist()
     }
 

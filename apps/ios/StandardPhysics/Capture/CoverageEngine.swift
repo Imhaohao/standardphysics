@@ -13,6 +13,23 @@ struct SurfaceSnapshot: Identifiable {
     let height: Float
     let transform: simd_float4x4
     let confidence: SurfaceConfidence
+    let isWall: Bool
+
+    init(
+        id: UUID,
+        width: Float,
+        height: Float,
+        transform: simd_float4x4,
+        confidence: SurfaceConfidence,
+        isWall: Bool = true
+    ) {
+        self.id = id
+        self.width = width
+        self.height = height
+        self.transform = transform
+        self.confidence = confidence
+        self.isWall = isWall
+    }
 
     var center: SIMD3<Float> {
         SIMD3(transform.columns.3.x, transform.columns.3.y, transform.columns.3.z)
@@ -82,17 +99,17 @@ struct SurfaceCoverage: Identifiable, Codable, Equatable {
 
 struct CoverageSnapshot {
     var surfaces: [SurfaceCoverage] = []
-    var unfinishedDirection: Angle = .zero
+    var unfinishedDirection: CoverageAngle = .zero
 
     var isComplete: Bool {
         !surfaces.isEmpty && surfaces.allSatisfy(\.isDone)
     }
 }
 
-struct Angle: Equatable {
+struct CoverageAngle: Equatable {
     let radians: Double
 
-    static let zero = Angle(radians: 0)
+    static let zero = CoverageAngle(radians: 0)
 }
 
 struct CoverageEngine {
@@ -207,7 +224,7 @@ struct CoverageEngine {
     private func directionToNearestUnfinishedSurface(
         surfaces: [SurfaceSnapshot],
         camera: CameraObservation
-    ) -> Angle {
+    ) -> CoverageAngle {
         let coverageByID = Dictionary(uniqueKeysWithValues: snapshot.surfaces.map { ($0.id, $0) })
         let nearest = surfaces
             .filter { coverageByID[$0.id]?.isDone != true }
@@ -216,6 +233,6 @@ struct CoverageEngine {
 
         let worldDirection = nearest.center - camera.position
         let cameraDirection = simd_inverse(camera.transform) * SIMD4(worldDirection, 0)
-        return Angle(radians: Double(atan2(cameraDirection.x, -cameraDirection.z)))
+        return CoverageAngle(radians: Double(atan2(cameraDirection.x, -cameraDirection.z)))
     }
 }

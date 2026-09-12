@@ -1,16 +1,28 @@
 {
   "lane": "A",
-  "updated": "2026-09-12T22:15:23Z",
+  "updated": "2026-09-12T22:27:36Z",
   "done": [
     "iOS 17 Xcode project builds on the simulator",
     "device support gate and start screen",
     "coverage engine with separated-viewpoint tests",
-    "persistent artifact-level upload receipt store"
+    "persistent artifact-level upload receipt store",
+    "RoomPlan capture delegates and early Done",
+    "2 Hz JPEG and pose recording from RoomPlan ARSession",
+    "thermal-aware H.264 walkthrough recording with four-minute cap",
+    "USDZ, room JSON, metadata map, poses, frames, and coverage export",
+    "coverage minimap and directional guidance",
+    "on-device USDZ review and saved scan history",
+    "resumable checksum upload, finalization, and status polling",
+    "allowlisted authenticated WebView shell and native capture bridge"
   ],
-  "in_progress": "RoomPlan capture, frame and video recording",
+  "in_progress": "physical-device scan and mock API smoke test",
   "blocked_on": null,
-  "ready_for_others": [],
+  "ready_for_others": [
+    "Lane A produces room.json and RoomPlan metadata mapping from a real scan",
+    "Lane A uploads the services/api/openapi.json artifact contract"
+  ],
   "needs_human": [
-    "Sign into Xcode, register the LiDAR phone, and trust the developer certificate"
+    "Walk a room with the paired LiDAR phone and compare coverage guidance to the room",
+    "Hand the phone to a first-time scanner and watch whether the guidance works"
   ]
 }

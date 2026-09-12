@@ -1,0 +1,140 @@
+import Foundation
+import RoomPlan
+
+struct CaptureArtifact: Identifiable, Codable {
+    let id: String
+    let kind: String
+    let fileURL: URL
+}
+
+struct CapturedScan: Identifiable, Codable {
+    let id: UUID
+    let directory: URL
+    let roomURL: URL
+    let duration: TimeInterval
+    let artifacts: [CaptureArtifact]
+    let name: String?
+
+    func renamed(_ name: String) -> CapturedScan {
+        let updated = CapturedScan(
+            id: id,
+            directory: directory,
+            roomURL: roomURL,
+            duration: duration,
+            artifacts: artifacts,
+            name: name
+        )
+        try? JSONEncoder.standardPhysics.encode(updated).write(
+            to: directory.appendingPathComponent("capture.json"),
+            options: .atomic
+        )
+        return updated
+    }
+}
+
+enum ScanExporter {
+    private struct CoverageValue: Codable {
+        let observedFraction: Double
+        let viewpointCount: Int
+
+        enum CodingKeys: String, CodingKey {
+            case observedFraction = "observed_fraction"
+            case viewpointCount = "viewpoint_count"
+        }
+    }
+
+    static func makeCaptureDirectory(id: UUID = UUID()) throws -> URL {
+        let root = try FileManager.default.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        ).appendingPathComponent("Captures", isDirectory: true)
+        let directory = root.appendingPathComponent(id.uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory
+    }
+
+    static func export(
+        room: CapturedRoom,
+        recording: RecordingResult,
+        coverage: CoverageSnapshot,
+        directory: URL
+    ) throws -> CapturedScan {
+        let roomURL = directory.appendingPathComponent("room.usdz")
+        let roomJSONURL = directory.appendingPathComponent("room.json")
+        let metadataURL = directory.appendingPathComponent("room.metadata.json")
+        let coverageURL = directory.appendingPathComponent("coverage.json")
+
+        try room.export(
+            to: roomURL,
+            metadataURL: metadataURL,
+            exportOptions: [.parametric, .mesh]
+        )
+        try JSONEncoder.standardPhysics.encode(room).write(to: roomJSONURL, options: .atomic)
+        let coverageByID = Dictionary(uniqueKeysWithValues: coverage.surfaces.map {
+            ($0.id.uuidString, CoverageValue(
+                observedFraction: $0.observedFraction,
+                viewpointCount: $0.viewpointCount
+            ))
+        })
+        try JSONEncoder.standardPhysics.encode(coverageByID).write(to: coverageURL, options: .atomic)
+
+        var artifacts = [
+            CaptureArtifact(id: "room-usdz", kind: "room_usdz", fileURL: roomURL),
+            CaptureArtifact(id: "room-json", kind: "room_json", fileURL: roomJSONURL),
+            CaptureArtifact(id: "room-metadata", kind: "room_metadata", fileURL: metadataURL),
+            CaptureArtifact(id: "poses", kind: "poses", fileURL: recording.posesURL),
+            CaptureArtifact(id: "coverage", kind: "coverage", fileURL: coverageURL)
+        ]
+        if let videoURL = recording.videoURL {
+            artifacts.append(CaptureArtifact(id: "walkthrough", kind: "walkthrough_mp4", fileURL: videoURL))
+        }
+        artifacts.append(contentsOf: recording.frameURLs.enumerated().map { index, fileURL in
+            CaptureArtifact(
+                id: String(format: "frame-%04d", index),
+                kind: "frames",
+                fileURL: fileURL
+            )
+        })
+
+        let scan = CapturedScan(
+            id: room.identifier,
+            directory: directory,
+            roomURL: roomURL,
+            duration: recording.duration,
+            artifacts: artifacts,
+            name: nil
+        )
+        try JSONEncoder.standardPhysics.encode(scan).write(
+            to: directory.appendingPathComponent("capture.json"),
+            options: .atomic
+        )
+        return scan
+    }
+}
+
+enum CaptureLibrary {
+    static func all() -> [CapturedScan] {
+        guard let root = try? FileManager.default.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        ).appendingPathComponent("Captures", isDirectory: true),
+        let directories = try? FileManager.default.contentsOfDirectory(
+            at: root,
+            includingPropertiesForKeys: [.contentModificationDateKey],
+            options: .skipsHiddenFiles
+        ) else { return [] }
+
+        return directories.compactMap { directory in
+            let manifest = directory.appendingPathComponent("capture.json")
+            return try? JSONDecoder().decode(CapturedScan.self, from: Data(contentsOf: manifest))
+        }.sorted { left, right in
+            let leftDate = (try? left.directory.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? .distantPast
+            let rightDate = (try? right.directory.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? .distantPast
+            return leftDate > rightDate
+        }
+    }
+}
