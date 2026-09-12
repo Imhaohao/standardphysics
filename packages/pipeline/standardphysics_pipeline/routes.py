@@ -170,8 +170,12 @@ def blockers_at(grid: Grid, cell: tuple[int, int], radius_cells: int) -> list[UU
     return found
 
 
-def world_path(grid: Grid, cells: list[tuple[int, int]], step: int = 8) -> list[Vec3]:
-    """Thin the cell path down to something a viewer can draw."""
+def world_path(grid: Grid, cells: list[tuple[int, int]], step: int = 3) -> list[Vec3]:
+    """Thin the cell path down to something a viewer can draw.
+
+    Kept dense enough that turn detection can still see a bend: at 25 mm cells
+    every third sample is 75 mm, so a 180 around a narrow pivot survives.
+    """
     if not cells:
         return []
     sampled = cells[::step]

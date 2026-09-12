@@ -11,6 +11,7 @@ import json
 import pathlib
 import subprocess
 import tempfile
+from typing import NamedTuple
 
 from standardphysics_contracts import SceneGraph
 
@@ -54,6 +55,59 @@ def export_glb(graph: SceneGraph, out_path: pathlib.Path) -> pathlib.Path:
     if "GLB_WRITTEN" not in output:
         raise BlenderError(f"export did not report success:\n{output[-2000:]}")
     return out_path
+
+
+class ConversionResult(NamedTuple):
+    glb_path: pathlib.Path
+    imported: int
+    renamed: int
+    unmapped_count: int
+    unmapped_sample: list[str]
+    """At most ten names, for a log line. `unmapped_count` is the real number."""
+
+    @property
+    def fully_identified(self) -> bool:
+        """Every mesh ties back to a node a check can reason about."""
+        return self.imported > 0 and self.unmapped_count == 0
+
+
+def usdz_to_glb(
+    usdz_path: pathlib.Path,
+    out_path: pathlib.Path,
+    metadata_path: pathlib.Path | None = None,
+) -> ConversionResult:
+    """Convert a scanned room into display geometry that keeps its identity.
+
+    Falls back to nothing: if the mapping is missing or partial, the result
+    says so rather than shipping a GLB whose meshes cannot be selected. Call
+    `export_glb` on the SceneGraph instead when that happens.
+    """
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    args = ["--usdz", str(usdz_path), "--out", str(out_path)]
+    if metadata_path is not None:
+        args += ["--map", str(metadata_path)]
+
+    output = _run("usdz_to_glb.py", args)
+    summary = next(
+        (line for line in output.splitlines() if line.startswith("USDZ_CONVERTED")),
+        None,
+    )
+    if summary is None:
+        raise BlenderError(f"conversion did not report success:\n{output[-2000:]}")
+
+    fields = dict(part.split("=") for part in summary.split()[1:])
+    unmapped = [
+        line.split(" ", 1)[1]
+        for line in output.splitlines()
+        if line.startswith("UNMAPPED ")
+    ]
+    return ConversionResult(
+        glb_path=out_path,
+        imported=int(fields["imported"]),
+        renamed=int(fields["renamed"]),
+        unmapped_count=int(fields["unmapped"]),
+        unmapped_sample=unmapped,
+    )
 
 
 def glb_node_names(path: pathlib.Path) -> list[str]:

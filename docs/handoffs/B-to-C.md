@@ -54,3 +54,33 @@ So you can build both a width check and a height check without inventing data.
 `turn_clear_width` currently delegates to `route_clear_width`. That is fine for
 tier 1 and wrong for tier 2 — say the word and I will build the real 180 degree
 rule from 403.5.2.
+
+---
+
+## Update: the 180 degree turn rule is real now
+
+`turn_clear_width` no longer delegates. ADA 2010 403.5.2 needs three numbers and
+a question about the thing being walked around, so there is a second method:
+
+```python
+turn = measure.turn_detail(graph, scenario, leg_index)   # None if no 180
+turn.in_scope          # narrow pivot, and under 60 in at the turn
+turn.passes            # 48 at the turn, 42 approaching and leaving
+turn.binding_measurement   # (measured, required) for the worst zone
+turn.pivot_id          # what the route bends around, for the locus
+```
+
+`turn_clear_width` still returns a single `WidthResult` carrying the binding
+measurement, so the protocol is unchanged. On a leg with no turn it returns the
+plain route width rather than a zero, since the rule simply does not apply.
+
+**Two places this approximates, both yours to confirm.** The rule says "an
+element which is less than 48 inches wide" without saying which dimension
+counts; we use the pivot's smaller horizontal extent, which pulls more turns
+into scope rather than fewer. And detection is geometric: the route is compared
+against itself at several scales to find where it doubles back. A real turn
+around a partition reads as about 122 degrees, not 180, because the widest path
+takes it at a generous radius.
+
+If you want a `TurnResult` in `packages/contracts` rather than a pipeline type,
+ask Lane D — that file is theirs and I have not touched it.

@@ -33,6 +33,7 @@ from .footprints import (
 )
 from .occupancy import CELL_SIZE, Grid, blocks_floor, build_grid
 from .routes import blockers_at, clearance_map, widest_path, world_path
+from .turns import Turn, measure_turn  # noqa: F401  (Turn is part of the API)
 
 COUNTER_CLEAR_WIDTH = to_meters(48.0)
 COUNTER_CLEAR_DEPTH = to_meters(30.0)
@@ -116,7 +117,39 @@ class PipelineMeasurements:
     def turn_clear_width(
         self, graph: SceneGraph, scenario: Scenario, leg_index: int
     ) -> WidthResult:
-        return self.route_clear_width(graph, scenario, leg_index)
+        """The binding width for ADA 2010 403.5.2, where the rule applies.
+
+        A 180 degree turn has three requirements, not one, so this reports the
+        zone with the worst shortfall against its own threshold. Call
+        `turn_detail` for all three numbers and the pivot.
+
+        When the leg has no 180 degree turn the rule does not apply, and this
+        returns the plain route width so a caller that ignores applicability
+        still gets a true number rather than a zero.
+        """
+        turn = self.turn_detail(graph, scenario, leg_index)
+        if turn is None:
+            return self.route_clear_width(graph, scenario, leg_index)
+
+        measured, _ = turn.binding_measurement
+        return WidthResult(
+            inches=measured,
+            pinch_point=turn.apex,
+            blocking_node_ids=[turn.pivot_id] if turn.pivot_id else [],
+            path=self.route_clear_width(graph, scenario, leg_index).path,
+            reachable=True,
+        )
+
+    def turn_detail(
+        self, graph: SceneGraph, scenario: Scenario, leg_index: int
+    ) -> Turn | None:
+        """All three widths and the element being turned around, or None when
+        the leg runs through without doubling back."""
+        grid, clearance = self._field(graph)
+        route = self.route_clear_width(graph, scenario, leg_index)
+        if not route.reachable or not route.path:
+            return None
+        return measure_turn(graph, grid, clearance, route.path)
 
     def turning_space(self, graph: SceneGraph, at: Vec3) -> ClearFloorResult:
         _, clearance = self._field(graph)

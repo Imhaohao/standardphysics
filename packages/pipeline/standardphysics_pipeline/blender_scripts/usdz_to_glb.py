@@ -1,0 +1,78 @@
+"""Runs inside Blender. Converts a scanned USDZ into a GLB the viewer can select.
+
+    blender --background --python usdz_to_glb.py -- \
+        --usdz room.usdz --map metadata.json --out scene.glb
+
+The scanned mesh looks like the real room, which box geometry never will. The
+catch is identity: USD prim names cannot hold a UUID, so RoomPlan ships a
+mapping file alongside the export and every object has to be renamed through it
+before the viewer can tie a mesh back to the object a check measured.
+
+Anything the map does not cover keeps its imported name and is reported as
+unmapped rather than quietly renamed to something plausible.
+"""
+
+import argparse
+import json
+import sys
+
+import bpy
+
+
+def parse_args() -> argparse.Namespace:
+    argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--usdz", required=True)
+    parser.add_argument("--map", required=False)
+    parser.add_argument("--out", required=True)
+    return parser.parse_args(argv)
+
+
+def load_map(path):
+    if not path:
+        return {}
+    raw = json.loads(open(path).read())
+    return {str(key): str(value) for key, value in raw.items()}
+
+
+def rename_through(mapping):
+    """Rename in two passes so a target name colliding with a not-yet-renamed
+    object cannot make Blender append .001 and lose the identity."""
+    staged = []
+    for obj in list(bpy.data.objects):
+        target = mapping.get(obj.name)
+        if target:
+            obj.name = "__staged__%d" % len(staged)
+            staged.append((obj, target))
+
+    unmapped = [o.name for o in bpy.data.objects if not o.name.startswith("__staged__")]
+    for obj, target in staged:
+        obj.name = target
+        if obj.data is not None:
+            obj.data.name = target
+    return len(staged), unmapped
+
+
+def main():
+    args = parse_args()
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    bpy.ops.wm.usd_import(filepath=args.usdz)
+
+    imported = len(bpy.data.objects)
+    renamed, unmapped = rename_through(load_map(args.map))
+
+    bpy.ops.export_scene.gltf(
+        filepath=args.out,
+        export_format="GLB",
+        export_apply=True,
+        export_extras=True,
+        export_yup=True,
+    )
+    print("USDZ_CONVERTED imported=%d renamed=%d unmapped=%d"
+          % (imported, renamed, len(unmapped)))
+    for name in unmapped[:10]:
+        print("UNMAPPED %s" % name)
+
+
+if __name__ == "__main__":
+    main()
