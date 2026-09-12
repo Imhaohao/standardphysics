@@ -1,6 +1,6 @@
 # Standard Physics
 
-Capture a space with phone photos, a walkthrough video, or an iPhone LiDAR scan. Get back an editable 3D model, accessibility and building findings pinned to the relevant locations, and proposed changes that address supported findings. The model shows which dimensions are estimated and which are supported by measurements. Owners can drag furniture themselves and try a catalog replacement before opening a Shopify test checkout.
+Record photos/video or import files in the app; LiDAR is optional and browser upload is an alternative. Get an editable, object-separated 3D scene, supported accessibility findings, and layout suggestions that preserve your furniture and respect fixed structures. Ask to rearrange an area or test a new item's fit. Estimated dimensions stay labeled; the app screens selected conditions, not whole-building legal compliance. Shopify test checkout is an optional extra.
 
 Built for CoreWeave Hacks: Agent Loops. Four people, four computers, submission due Sunday 1:00 PM.
 
@@ -8,13 +8,17 @@ Built for CoreWeave Hacks: Agent Loops. Four people, four computers, submission 
 
 ## 1. The product
 
-A shop owner uploads existing photos or a walkthrough video through a mobile browser on iPhone or Android. An optional iOS app captures RoomPlan data on supported LiDAR devices. Both inputs reach the same platform: Astra helps reconstruct or interpret the room, measurement checks establish what the evidence supports, and agents propose changes to movable furniture. Deterministic checks evaluate selected accessible routes, applicable dimensional criteria, and identified exit paths. The system tests modeled conditions, not every route or every wheelchair user.
+A shop owner records photos or a walkthrough video inside the app, imports existing media, or optionally uses LiDAR on a supported device. Capture, upload, the 3D viewer, findings, layout requests, approvals, and reports all work without leaving the app. Browser upload and the same results workspace are an alternative. V1 is a native iOS shell with ordinary camera support on non-LiDAR iPhones and an embedded results workspace; Android users have the browser path, not a promised native Android build.
 
-Confirmed team inputs are existing boba-shop photos/video, no immediate access to measure the shop, and an available accessibility/building professional. Photo/video upload is therefore the first working capture path. Use any newly available LiDAR venue scan as a separate, explicitly named demonstration space. Person C schedules the professional early to identify useful checks and the dimensions needed to support them.
+After upload, Astra proposes an object-separated scene built in server-side Blender. Validated geometry drives automatic accessibility screening and layout proposals. LiDAR, when present, supplies geometric constraints rather than permission for Astra to redraw the room freely. Photos/video alone produce estimates until the relevant dimensions and coverage are supported. Deterministic checks evaluate selected accessible routes, applicable dimensional criteria, and identified exit paths—not every route or every wheelchair user, and not a certificate of ADA compliance.
 
-The owner opens the website and sees their shop in 3D with a findings list. Clicking a supported clearance finding flies the camera to that gap, dims the rest of the room, highlights the objects, and draws its dimension line and evidence status. An uncertain gap instead shows "Confirm this width" with the relevant source image. A finding turns green only after a current evaluation establishes that the candidate meets that checked criterion.
+Confirmed team inputs are existing boba-shop photos/video, no immediate access to measure the shop, and an available accessibility/building professional. In-app import/upload is therefore the first real-shop path; test in-app camera recording on a separately labeled space. Use any newly available LiDAR venue scan as a separate demonstration space. Person C schedules the professional early to identify useful checks and the dimensions needed to support them.
+
+The owner opens the app or website and sees their shop in 3D with a findings list. Clicking a supported clearance finding flies the camera to that gap, dims the rest of the room, highlights the objects, and draws its dimension line and evidence status. An uncertain gap instead shows "Confirm this width" with the relevant source image. A finding turns green only after a current evaluation establishes that the candidate meets that checked criterion.
 
 The owner can switch to rearrange mode and drag permitted furniture across the floor. Each drop previews the affected checks; target a response within a second and display progress when it takes longer. If the bounded move search finds no acceptable proposal, the fix agent can try a smaller replacement from our Shopify catalog. A current accepted candidate can expose a Buy button opening test checkout. Report predictions based on seller-listed dimensions as such; neither a search failure nor a catalog match establishes a complete legal conclusion.
+
+They can also ask “Move the seating area to the back” or “Do I have space for a 97-inch couch?” Requests preserve all existing objects and their dimensions by default. Layout search respects locked walls, fixed counters, partial-height dividers, doors, and other fixtures. If preserve-all attempts fail, show clearly labeled removal/replacement alternatives with item IDs, reasons, and count changes; require approval before applying them. Construction changes to fixed geometry are professional-review suggestions, not automatic repairs.
 
 ### Three capture paths and their measurement limits
 
@@ -32,13 +36,13 @@ Each dimension or geometric region records its source and verification state. St
 
 ### The demo
 
-1. Show the actual boba-shop images/video entering through the browser. If available, demonstrate a LiDAR venue capture as a separately labeled space.
+1. In the app, record a photo and short video of a labeled test space; import/upload the actual boba-shop media separately. Stay in the app to view status and results. Browser upload is an alternate demo; LiDAR is optional.
 2. Open the resulting model with estimated and confirmed dimensions visible. Benchmark processing time before promising a live turnaround; a labeled preprocessed reconstruction is acceptable for the presentation.
 3. Click a finding or measurement request; the camera frames its location and source evidence.
 4. Drag a chair into the route in rearrange mode. The finding turns red, then clears when the chair goes back.
-5. TypeSafe routes the loop to a layout trial. The fix agent proposes a move.
+5. TypeSafe routes the automatic findings loop to a layout trial. Ask “Move the seating area to the back”; show that every chair keeps its identity and dimensions. Show any proposed removals separately, not silently applied.
 6. Weave evaluation runs on the candidate. Before/after replay. The finding clears.
-7. If time permits, show a catalog replacement after the bounded move attempts failed to produce an acceptable layout; evaluate it and open Shopify test checkout.
+7. Ask about a 97-inch couch: request missing depth/height, then test a fully dimensioned candidate without discarding existing furniture. If time permits, evaluate a catalog replacement and open Shopify test checkout.
 8. Export the report with the actual professional review scope and any unresolved findings.
 
 By Saturday 16:00 choose the demonstration evidence: use the real shop if enough dimensions are supported, restrict checks to its measured area if coverage is partial, or demonstrate repair on a labeled dimensioned fixture while the real shop shows measurement requests. Do not claim fixture results belong to the shop. The core presentation is findings → fix → evaluation; checkout is a removable final segment.
@@ -49,9 +53,10 @@ By Saturday 16:00 choose the demonstration evidence: use the real shop if enough
 
 ```mermaid
 flowchart LR
-    Scan["Optional iOS LiDAR scan"] --> Ingest["Immutable source evidence"]
-    Media["Browser photos or video"] --> Ingest
-    Ingest --> Astra["Astra proposes bounded reconstruction edits"]
+    App["App: record photos/video or import files"] --> Ingest["Finalize upload: retain source evidence"]
+    Scan["Optional in-app LiDAR scan"] --> Ingest
+    Media["Alternative: browser upload"] --> Ingest
+    Ingest --> Astra["Automatic Astra + Blender reconstruction:<br/>separate objects, evidence-constrained geometry"]
     Astra --> Validate["Validate geometry and evidence"]
     Dimensions["Documented dimensions and professional review"] --> Validate
     Validate --> Graph["Versioned SceneGraph with uncertainty"]
@@ -59,23 +64,25 @@ flowchart LR
     Checks --> Findings["Findings, each with a 3D locus"]
     Findings --> Weave["Weave Evaluation scores the pass"]
     Weave --> Router["TypeSafe picks the next action"]
-    Router -->|TRY_LAYOUT_CHANGE| Fix["Fix agent moves movable objects"]
+    Router -->|TRY_LAYOUT_CHANGE| Fix["Try layouts: fixed geometry locked,<br/>preserve inventory by default"]
     Router -->|REQUEST_EVIDENCE| Evidence["Request a view, dimension, scan, or document"]
     Evidence --> Ingest
-    Router -->|ESCALATE| Human["Flag for a professional"]
-    Router -->|DONE| Report["Report + 3D viewer"]
+    Router -->|ESCALATE_TO_PROFESSIONAL| Human["Flag for a professional"]
+    Router -->|ACCEPT_AND_REPORT| Report["App or browser: report + 3D viewer"]
     Router -->|TRY_CATALOG_REPLACEMENT| Swap["Fix agent swaps in a catalog product"]
     Catalog["Shopify catalog:<br/>listed dimensions, GLB"] --> Swap
-    Fix --> Candidate["Candidate SceneGraph"]
-    Swap --> Candidate
-    Owner["Owner drags movable objects"] --> Candidate
+    Fix -->|inventory-preserving trial| Candidate["Candidate SceneGraph"]
+    Swap --> Changes
+    Owner["App or browser: drag, layout request,<br/>or dimensioned item-fit question"] --> Fix
+    Fix --> Changes["Optional removal/replacement list:<br/>explicit owner approval before applying"]
+    Changes --> Candidate
     Candidate --> Checks
     Report -->|accepted replacement| Buy["Shopify test checkout"]
 ```
 
-Each assessed candidate is one live Weave evaluation run with retrievable per-check results. Automatic repair consumes the current completed assessment. The loop stops on: all targeted supported findings cleared, three total proposal attempts, no improvement between passes, missing evidence, or a service error. A request for evidence pauses dependent repairs and resumes only after new evidence is ingested and evaluated.
+Each assessed candidate is one live Weave evaluation run with retrievable per-check results. Automatic search consumes the current completed assessment and stops when its declared repair/layout/fit objective is met, after three total proposal attempts for that request, on no improvement, missing evidence, or a service error. A room with no supported failures may still receive a user-requested layout or fit trial. Evidence requests pause dependent work until new evidence is ingested and evaluated. Exhausting the budget never launches an unbounded fallback; an owner-approved relaxation starts a new explicitly scoped, bounded request.
 
-**Invariants the loop cannot break.** Raw evidence and its derived baseline are immutable. Astra may propose reconstruction changes through `GeometryPatch` under section 6; it cannot promote its estimates to verified measurements. Design changes use `Proposal` and can only move approved movable objects or replace them with dimensioned catalog variants. Neither agent nor owner can alter rule thresholds, remove checks, lower evidence requirements, or unlock fixtures through those interfaces. Catalog dimensions are loaded from a versioned listing by the backend, never supplied by the model. Any changed input invalidates the old assessment and review. A Buy button exists only for a current accepted replacement with sufficient evidence for its targeted checks.
+**Invariants the loop cannot break.** Raw evidence and its derived baseline are immutable. Astra may propose reconstruction changes through `GeometryPatch` under section 6; it cannot promote its estimates to verified measurements. Design changes use `Proposal`: approved movable-object moves, explicitly approved removals/replacements, or dimensioned hypothetical additions. Preserve existing inventory unless the owner approves a specific change list. Neither agent nor owner can alter rule thresholds, remove checks, lower evidence requirements, or unlock fixtures through those interfaces. Catalog dimensions are loaded from a versioned listing by the backend, never supplied by the model. Any changed input invalidates the old assessment and review. A Buy button exists only for a current accepted replacement with sufficient evidence for its targeted checks.
 
 ---
 
@@ -83,12 +90,12 @@ Each assessed candidate is one live Weave evaluation run with retrievable per-ch
 
 | Layer | Stack | Owner |
 |---|---|---|
-| Capture | Mobile browser photo/video upload; optional SwiftUI + RoomPlan + ARKit on supported iOS devices | A |
+| Capture | Required SwiftUI iOS app: photo/video recording, import, upload; optional RoomPlan + ARKit; alternate browser upload | A |
 | Ingest & 3D | Python, Blender 4.x headless (`bpy`), Astra agent | B |
 | Agents & rules | Python, Pydantic, TypeSafe, Weave | C |
 | API & persistence | FastAPI, SQLite, local artifact store | D |
 | Commerce | Shopify development store, Storefront API called from the server only | D commerce agent; producer/A handles store setup |
-| Web | Next.js + TypeScript + Tailwind + React Three Fiber | D frontend agent; A owns the capture feature |
+| Results UI | Next.js + TypeScript + Tailwind + React Three Fiber, reused inside the app through authenticated WKWebView and in browsers | D frontend agent; A owns native shell and capture feature |
 
 Repository layout, frozen in the first hour:
 
@@ -132,6 +139,8 @@ class SceneNode(BaseModel):
     measurement_state: Literal["estimated", "partially_verified", "verified"]
     bounds_ref: UUID | None         # supported per-property bounds; not inferred from confidence
     movable: bool
+    group_id: UUID | None           # e.g. seating area; moving a group preserves its members
+    source_parent_id: UUID | None   # lineage for evidence-supported splits
     relabeled_by: Literal["roomplan", "astra", "human"] | None
     catalog_variant_id: str | None  # set when a catalog product replaced the scanned object
 ```
@@ -171,9 +180,15 @@ class Scenario(BaseModel):
 
 The default boba-shop scenario walks entrance → order counter → pickup → accessible seat → exit, adding self-serve and restroom stops when the shop has them. Its not-assessed list starts with the approach from the sidewalk or parking, communication at the counter, and signage. The professional confirms the stops and the list at kickoff. Changing either creates a new scenario version, which invalidates earlier assessments and reviews.
 
-**`Proposal`** — a list of `{node_id, delta_translation, delta_rotation}` moves and `{node_id, catalog_variant_id}` replacements for movable nodes only, plus the base graph hash, the findings it targets, and its author (`fix_agent` or `owner`).
+**`LayoutRequest`** — versioned intent, base graph hash, target group/node IDs and region, hard constraints, and ranked soft preferences. Defaults: preserve every existing item, quantity, and dimension; lock fixed geometry; preserve required scenario stops and assessed coverage. “Back” must resolve to an owner-visible target region; ambiguous group membership or direction prompts confirmation. Store the parsed request and constraints hash; the model cannot weaken them to satisfy its own proposal.
 
-**`Assessment`** — graph, evidence, rule-pack, project-fact, scenario, catalog-snapshot, and evaluator-version hashes; completion status; findings; decision provenance; actual Weave evaluation reference and row-result references; pass number. Preview results cannot stand in for completed live evaluations.
+**`FitRequest`** — base graph hash, a proposed item's full external dimensions and units, dimension source (owner/product listing), permitted orientations, placement region, and required use clearances. A 97-inch length is exactly 2.4638 m, but length alone cannot establish fit: request depth, height, and any operational envelope such as a recliner extension. Store any provisional assumptions explicitly; they cannot support a fit verdict.
+
+**`Proposal`** — base graph/request hashes, targeted findings or requested objective, author (`fix_agent` or `owner`), and explicit operations: `{node_id, delta_translation, delta_rotation}` moves, `{node_id, catalog_variant_id}` replacements, dimensioned hypothetical additions with new IDs, and removals of named movable nodes. Each removal/replacement records its reason, original identity, inventory/seat-count delta, and an authenticated owner approval bound to this proposal hash before application. Keep the immutable baseline and a complete inventory ledger; removed items are absent only from the approved hypothetical revision, never erased from source history. Unapproved alternatives may be evaluated in a clearly labeled preview, not applied or accepted. Geometry cleanup is not an inventory-removal shortcut.
+
+**`FitResult`** — request/graph/assessment hashes, outcome (`FITS_SCREEN`, `NO_FIT_AT_PLACEMENT`, `REVIEW`), tested pose, dimension sources, clearance checks, evidence gaps, and any separately proposed furniture changes. A supported fit needs collision-free placement, usable clearances, and no regression of the applicable route/scenario checks. Search exhaustion returns `REVIEW/SEARCH_LIMIT`, not “cannot fit anywhere.” Delivery through entrances, doors, and turns is `NOT_ASSESSED` unless separately checked; room placement does not prove delivery feasibility.
+
+**`Assessment`** — graph, evidence, rule-pack, project-fact, scenario, request/constraint, inventory/approval, catalog-snapshot, and evaluator-version hashes; completion status; findings; decision provenance; actual Weave evaluation reference and row-result references; pass number. Preview results cannot stand in for completed live evaluations.
 
 **`CatalogProduct`** — Shopify product and variant IDs, listed footprint and height in meters, the GLB source, price, availability, and when it was fetched. Listed dimensions come from the seller, so the report labels them as listed rather than measured.
 
@@ -185,11 +200,11 @@ The default boba-shop scenario walks entrance → order counter → pickup → a
 
 ## 5. Capture with or without LiDAR
 
-Person A owns `apps/ios/` and the isolated browser capture feature. Browser upload is required and works on mobile Safari, Chrome/Android, and desktop. LiDAR is optional; all downstream work starts with contract fixtures while capture is implemented.
+Person A owns `apps/ios/` and the isolated browser capture feature. The native iOS app is required and must support the entire workflow on a non-LiDAR iPhone. Browser upload works as an alternative on mobile Safari, Chrome/Android, and desktop. LiDAR is optional; all downstream work starts with contract fixtures while capture is implemented.
 
-### Browser photos and video
+### Required in-app photos/video; alternative browser upload
 
-Provide file inputs for multiple images or one walkthrough video, an optional measured plan, and an evidence form for known dimensions. Camera capture is an enhancement where supported; selecting an existing file always works. Accept JPEG/PNG/HEIC images and MP4/MOV video, validate actual content, and normalize HEIC/HEVC using a tested server decoder. Return an actionable conversion error if decoding is unsupported. Do not assume browser playback support equals server decoding support.
+In the native app, provide ordinary camera photo and video recording using supported iOS capture APIs, media review/retake, and PhotosPicker/file import for existing media and measured plans. Record and upload without leaving the app. Test camera, microphone, and library permissions, denial recovery, interruptions, and local persistence; a camera-only non-LiDAR phone must work. Provide the same dimension/evidence form in-app. Browser file inputs accept multiple images or one walkthrough video; browser camera capture is an enhancement, not the required recording implementation. Accept JPEG/PNG/HEIC images and MP4/MOV video, validate actual content, and normalize HEIC/HEVC using a tested server decoder. Return an actionable conversion error if decoding is unsupported. Do not assume browser playback support equals server decoding support.
 
 For the demo, cap a collection at 20 images or one video of up to four minutes, and 250 MB total. Preserve originals privately and use reduced-resolution previews. Reject over-limit or malformed input before expensive work. FFmpeg extracts a capped set of up to 40 timestamped frames; select non-blurry, nonduplicate views, and retain their links to the source video. Arbitrary media normally has no camera poses: do not invent them.
 
@@ -197,13 +212,15 @@ Astra builds a coarse parametric draft from visible walls, openings, furniture, 
 
 Calibration binds supplied dimensions to actual endpoints/surfaces. A scale anchor is not proof of perspective correctness throughout a room. Require independent evidence for the dimensions supporting each selected clearance, and leave unsupported areas at `REVIEW`. Photos can also be attached to LiDAR objects for relabeling and coverage checks.
 
-### Optional iOS LiDAR app
+### Required native shell; optional LiDAR mode
 
-**Screens.** Start → capability check → RoomPlan capture on supported devices, or photo/video upload otherwise → review → name and upload → history/status. A non-LiDAR iPhone must reach the media path rather than a dead end.
+**Screens.** Start → record photos/video, import files, or optional RoomPlan capture → review → name and upload → history/status → embedded 3D results → findings/layout requests/item-fit/approvals/report. Capability checks hide only unavailable LiDAR features, not ordinary recording. All evidence follow-ups, including more camera capture, stay in the app.
+
+**Shared results workspace.** Reuse D's responsive results UI in an authenticated `WKWebView` instead of building a second native 3D editor this weekend. A owns session handoff and narrow native capture callbacks; D owns touch-friendly viewer/request/report screens. Allowlist navigation and bridge messages, retain provider keys server-side, and never expose an upload token to arbitrary web content. Report preview/share and session recovery must work without opening Safari. This is an online app, not a promise of offline reconstruction. Optional hosted checkout must also be tested in an in-app web surface; omit commerce if it requires an external-browser workaround.
 
 **Capture.** Use `RoomCaptureView` for the guided interface: its view delegate receives raw data through `captureView(shouldPresent:error:)` and the processed `CapturedRoom` through `captureView(didPresent:error:)`. The distinct custom-session path uses `RoomCaptureSessionDelegate.captureSession(_:didEndWith:error:)`, which returns `CapturedRoomData`, then `RoomBuilder.capturedRoom(from:)` to produce the processed room. Choose the guided-view flow for v1. Capture keyframes from the AR session used by RoomPlan through a supported sharing/integration path; do not start a second competing camera session or replace framework-owned delegates blindly. Save actual intrinsics, camera transforms, orientation, and timestamps when available. Verify this path with the target SDK; use separately uploaded visual media if session-frame integration is not ready.
 
-**Export.** Three artifacts per scan:
+**LiDAR export.** Artifact set for this optional mode; RGB-only collections do not require these files:
 
 | Artifact | How | Why |
 |---|---|---|
@@ -215,7 +232,9 @@ Persist the export metadata and verify its element-to-visual mapping on an actua
 
 **Upload.** Create a session with `POST /api/scans`; upload each manifest artifact with an idempotent `PUT /api/scans/{id}/artifacts/{artifact_id}` including its checksum; finalize with `POST /api/scans/{id}/complete`. Persist completed artifact IDs, show progress, and retry an interrupted artifact without duplicating it. This is artifact-level resume, not byte-range resume. Local captures remain available after failure. Restrict paths and decoder resources; stored filenames come from validated IDs, not arbitrary user paths. Separate project credentials from publicly shareable sanitized artifacts.
 
-**Provisioning.** Verify a development build and compatible device in the first 45 minutes of the optional native work. Use supported local development signing; do not make App Store distribution or push-notification entitlement a dependency. If provisioning/capture stalls, continue browser uploads and use an existing compatible capture app for any LiDAR sample. Evidence requests appear in the app/browser status view through polling.
+**Automatic processing.** Successful finalization idempotently queues reconstruction → geometry/evidence validation → applicable checks → completed Weave assessment → bounded repair suggestions. Show queued/running/needs-evidence/failed/completed states in the app and browser; no separate “scan for ADA” button is required. Missing dimensions pause dependent checks with actionable requests. Preview proposed layout changes, but never auto-apply them to the owner's selected layout. Retrying finalization must not create duplicate jobs or proposals.
+
+**Provisioning.** Verify a development build on a non-LiDAR-capable ordinary camera path in the first 45 minutes. Use supported local development signing; do not make App Store distribution or push notifications a dependency. If signing stalls, A resolves it or selects another provisionable iPhone while B/C/D continue against fixtures/browser uploads. Browser success alone is a core app-only scope shortfall, not completion. Timebox only optional RoomPlan/frame integration; an existing scanning app may supply a labeled LiDAR sample but cannot substitute for our required in-app photo/video capture. Evidence requests appear through polling.
 
 ### A gotcha worth planning around
 
@@ -237,6 +256,10 @@ Person B owns this. Blender 4.1.1 was found at `/Applications/Blender.app/Conten
 
 **Blender's role.** It supplies reconstruction/visual inspection, finding images, and GLB export. Canonical geometry and independent Python measurement functions drive the checker. Render detail and generated meshes do not silently change assessed geometry. Use one checker implementation in live previews, Weave evaluations, and the benchmark.
 
+**Separate objects, not one fused room mesh.** Each identified chair, table, counter, wall, and divider has a stable SceneNode ID and a corresponding logical Blender object (a parent may contain mesh parts). Persist IDs in Blender custom properties and GLB node extras, and test their round trip to viewer selection. Groups reference members rather than merging their geometry. If source capture merged several chairs, keep the unresolved parent occupancy and request confirmation before treating a split as measured fact. Display uncertain counts as uncertain; do not invent hidden furniture or silently lose/duplicate objects during export.
+
+**LiDAR constraints.** Preserve raw scan data, coordinate alignment, confirmed anchors, fixed boundaries, and evidence-supported pose/dimension bounds in the canonical graph. Astra may improve labels and detail or refine estimated properties only through the validated patch interface below. It may not shrink walls or furniture to create clearance. Absent supported bounds, geometric refinements remain drafts; a plausible-looking Blender scene is not automatically an accurate measured model. Partial-height/hip-height dividers remain fixed obstacles with their actual vertical envelope unless evidence and human review correct their classification.
+
 **What Astra does.** Astra interprets source media, proposes structured edits, and drives bounded Blender operations. Generated scripts run without provider credentials or access to authoritative stores; the backend alone validates and commits geometry patches. Fixed trusted scripts serialize evaluated geometry. Three jobs:
 
 1. **Relabel.** Use actual categories, spatial context, and linked images to propose labels. Camera-frustum selection is available only for real camera poses; otherwise use explicit image associations. Treat fixture and movability classifications as suggestions. An owner-approved allowlist controls design edits.
@@ -255,10 +278,11 @@ Person B owns this. Blender 4.1.1 was found at `/Applications/Blender.app/Conten
 | Hide/drop a dubious detection | Hide it from the presentation or propose removing it | Preserve its conservative occupancy until removal is supported and approved; low confidence alone never authorizes clearing space |
 | Move furniture | Translate/rotate an approved movable node through `Proposal` | No resize, fixture movement, floor escape, or violated owner constraint |
 | Replace furniture | Load a current dimensioned catalog variant through `Proposal` | Backend uses listing geometry and provenance; model cannot alter listed dimensions |
+| Propose removal or addition | Preview named movable-item removals or a dimensioned new item | Preserve baseline/inventory lineage; explicit removal approval before application; full reassessment; never resize a requested item to claim fit |
 
 All geometry edits create a candidate revision against a base hash. Validate finite positive extents, valid transforms, floor bounds, evidence references, immutable properties, and operation-specific restrictions. No unconstrained epsilon or global percentage allowance permits shrinking an obstacle until a check passes. Numerical tolerances used by geometric equality tests are not measurement-error claims.
 
-Evidence-driven corrections and hypothetical design changes are separate history events. A supported correction may reveal more failures and must be kept as corrected evidence rather than rejected to preserve a good score. It creates a fresh baseline and invalidates previous assessments/reviews. A design proposal must improve the evaluation without hiding geometry or reducing assessed coverage. Before approval, an occupancy-reducing reconstruction edit remains a draft; dependent checks return `REVIEW` using the unresolved region, not a green result.
+Evidence-driven corrections and hypothetical design changes are separate history events. A supported correction may reveal more failures and must be kept as corrected evidence rather than rejected to preserve a good score. It creates a fresh baseline and invalidates previous assessments/reviews. A design proposal must satisfy its declared repair, layout, or fit objective under section 7's gate without hiding geometry or reducing assessed coverage. Before approval, an occupancy-reducing reconstruction edit remains a draft; dependent checks return `REVIEW` using the unresolved region, not a green result.
 
 Preserve the raw capture and every revision. A professional can approve a reconstruction correction within their documented review scope; the agent cannot approve itself. This allows Astra to do useful geometry work while keeping source evidence, corrections, and proposed shop changes distinguishable.
 
@@ -349,9 +373,26 @@ Use tracing, a labeled benchmark, and live candidate evaluations for their disti
 
 **Live evaluation:** each assessed graph uses a `weave.Evaluation` over its versioned checks/scenarios with named outputs such as `criterion_outcome`, `evidence_sufficient`, `owner_constraints_held`, and `regression_free`. These do not require a labeled answer for a new shop. Use the same deterministic checker as the preview and benchmark. Store actual completed evaluation references and individual row outputs; do not mistake an aggregate score for failure evidence.
 
-**Gate:** a model repair must cite the current completed assessment and consume its per-check results. Validate the graph, evidence, rule, scenario, project-fact, evaluator, and relevant catalog hashes. Missing, stale, mismatched, failed, or unfinished evaluations block automatic repair. A candidate is accepted only if at least one targeted supported failure becomes a supported pass, or a declared geometric deficit strictly decreases, with no new failure, lost coverage, new uncertainty, or owner-constraint violation. Unmeasured visual rearrangements may be saved as drafts but cannot be accepted as verified repairs. Reject all pass-by-deleting-obstacles or pass-by-dropping-checks attempts.
+**Gate:** a model proposal must cite the current completed assessment and consume its per-check results. Validate graph, evidence, rule, scenario, project-fact, request/constraint, inventory/approval, evaluator, and relevant catalog hashes. Missing, stale, mismatched, failed, or unfinished evaluations block automatic proposal acceptance. The backend enforces fixed-object locks, dimensions, inventory accounting, collision/floor bounds, and required stops independently of model output. For every accepted candidate require no new or worsened checked failure, lost coverage, new uncertainty, or owner-constraint violation; enforce sufficient evidence for the specific claim.
+
+- **Violation repair:** at least one targeted supported failure becomes a supported pass, or its declared geometric deficit strictly decreases. Report remaining failures; improvement is not whole-space compliance.
+- **Requested layout:** satisfy the confirmed intent or improve its declared preference objective while holding the common gate. Existing unrelated findings may remain explicitly visible; do not require a previously passing room to invent a violation to rearrange chairs.
+- **Item fit:** the fully dimensioned item at the tested pose meets its supported fit/clearance checks without silently changing existing inventory. Keep the scope “fits at this placement under these conditions.”
+- **Removal/replacement alternative:** evaluated as a hypothetical branch first; application/acceptance also requires explicit owner approval of the exact changed-item list. Approval never waives legal checks or unlocks a fixture. Reevaluate seat-share and other inventory-dependent rules; removing a required scenario destination cannot count as improvement.
+
+Unmeasured visual rearrangements may be saved as drafts but cannot be accepted as verified repairs or supported fit results. Reject hidden deletion and dropped checks; explicit, approved hypothetical removal is not evidence correction and does not claim that an item has physically been removed.
 
 Owner-created arrangements can be saved as versioned drafts even if they worsen findings; saving triggers a complete assessment rather than falsifying improvement. "Assessed" and "accepted repair" are distinct states. Compare automatic improvements only against the current baseline. A source correction produces a new baseline, not a spurious layout-improvement score. Test the gate against missing, stale, cross-graph, and incomplete evaluation references.
+
+### Layout and item-fit requests
+
+Separate hard constraints (fixed walls, full/partial-height dividers, built-in counters, doors/swing envelopes, floor boundary, confirmed object sizes, owner locks, and applicable checked criteria) from soft preferences (seating toward the back, proximity, appearance, number of moves). Movable does not mean disposable: preserving all inventory is a hard default; its placement is adjustable. Search bounded translations/rotations first, using the same checker for automatic fixes, natural-language requests, and manual edits. Show proposed moves before Apply. Never autonomously demolish a wall or alter a built-in counter; offer a professional-review construction note when furniture moves do not address the issue.
+
+For “Move the seating area to the back,” resolve the group and target region, try moving all member items, and show an inventory comparison such as `6 chairs → 6 chairs, 2 tables → 2 tables`. After the total three-attempt budget, say “No arrangement found within this search,” not “impossible.” Offer an explicit relaxation, such as removing two named chairs, only as a separate approval-required alternative; keep required accessible seating and scenario destinations. Failure or missing evidence may instead produce an evidence request or professional escalation.
+
+For “Do I have space for a 97-inch couch?”, ask for depth/height or a product link with verified listing dimensions; do not assume a generic couch depth. Add a separate hypothetical couch node, keep its dimensions fixed, and test candidate placements against obstacles, door sweeps, use clearances, and affected routes. A request can permit rearranging existing furniture, but never silently shrinking the couch or deleting chairs. Show a supported pose, a collision at a specific tested pose, or a precise missing-evidence/search-limit response. Delivery-path feasibility and physical installation remain separate from this room-fit screen.
+
+Required tests: stable per-chair IDs through Blender/GLB; preserve-all success; partial-height locked divider; impossible target placement versus bounded-search exhaustion; unapproved/stale removal rejection; approved removal with seating/scenario rechecks; single-dimension couch returning `REVIEW`; full-dimension fit, collision, route regression, and unknown-scale cases. Use these as additional benchmark cases where labels exist and as deterministic gate tests otherwise.
 
 ---
 
@@ -385,17 +426,19 @@ The before/after replay tweens proposed transforms and cross-fades catalog model
 
 ---
 
-## 9. The website
+## 9. The shared app and browser workspace
 
-Person D's dedicated frontend agent owns the main website, while Person A owns the isolated browser capture/evidence-entry feature. D's backend and commerce agents work in separate modules. Four main screens plus capture, rearrange mode, and test checkout consume the shared contracts.
+Person D's dedicated frontend agent owns the responsive results workspace, reused in A's native app shell and in browsers; A owns native capture and the isolated browser capture/evidence-entry feature. D's backend and commerce agents work in separate modules. Scans, detail, proposals, and report screens plus capture, rearrange, layout/item-fit requests, and optional test checkout consume shared contracts. Every core screen must work inside the app on touch without an external browser.
 
-**Scans.** Spaces with preview, source type, measurement status, date, and findings counts. Empty state offers "Upload photos or video" immediately and optional LiDAR capture guidance. Missing scale and unresolved evidence are visible before opening a space.
+**Scans.** Spaces with preview, source type, processing/measurement status, date, and findings counts. In-app empty state offers “Record photos,” “Record video,” “Import files,” and LiDAR only when supported; the browser offers upload. Missing scale and unresolved evidence are visible before opening a space. Upload completion starts checks automatically.
 
 **Scan detail.** R3F canvas with findings and source-media panels, orbit/pan/zoom, and a top-down toggle. Findings distinguish supported criteria, estimated previews, and evidence requests. A measurement form binds a submitted dimension to named endpoints and a source. Reviewers can inspect the geometry and source together; the screen never calls the entire shop compliant.
 
 **Rearrange mode.** Movable nodes drag on the floor and rotate about Z; fixed nodes stay locked. Dimensions do not change. Each drop sends the base revision and monotonically increasing edit sequence with a draft proposal; discard late preview responses so older results cannot recolor newer geometry. Previews use the same checker, with unevaluated checks visibly pending. Saving persists a draft and runs the full live Weave assessment. Failed owner drafts remain editable; they are not accepted repairs. Apply the same object locks and collision validation to mouse and keyboard controls.
 
-**Proposal.** Before/after with a scrub control, the list of what moved or was replaced, and the evaluation delta. Each accepted replacement shows its product photo, price, listed dimensions, and a Buy button.
+**Requests.** A natural-language input resolves layout intent or item-fit dimensions into a visible structured request. Show target group/region, fixed locks, inventory counts, missing evidence, and the preserved-items default. Couch-fit results show the tested placement and clearance limits, not an unsupported yes/no answer.
+
+**Proposal.** Before/after with a scrub control, every moved/added/replaced/removed item and its reason, count changes, and evaluation delta. Removal/replacement alternatives require explicit confirmation of the exact change list; normal Apply cannot silently approve them. Each accepted catalog replacement shows its product photo, price, listed dimensions, and a Buy button. User approval accepts a hypothetical layout, not a legal certification or confirmation of physical work.
 
 **Report.** Print-ready finding blocks with available renders, source measurements or ranges, citations, proposed changes, and unresolved questions, followed by open evidence requests and the scenario's not-assessed list. Include capture mode, checked area, limitations, actual professional qualifications/scope, reviewed hashes, and review date. Unreviewed or changed versions say pending/stale. A contractor can follow the evidence; a model cannot issue the professional's signature.
 
@@ -408,7 +451,7 @@ The catalog is a Shopify development store labeled as a demo, stocked with 8 to 
 - The API reads products through the Storefront API with a private access token sent in the `Shopify-Storefront-Private-Token` header. The token lives only on the server.
 - Footprint and height live in product metafields. Their definitions need `access.storefront: PUBLIC_READ`, or the Storefront API won't return them.
 - Product 3D models come from Shopify `Model3d` media with a GLB source. When a product has none, Person B builds a simple model in Blender sized to the listed dimensions. Checks always use the listed dimensions, never the mesh.
-- Clicking Buy calls the API, which confirms the proposal is still accepted and current, runs `cartCreate` with the replacement's variants, stores a `Purchase`, and returns the `checkoutUrl`. The browser then opens Shopify's hosted checkout.
+- Clicking Buy calls the API, which confirms the proposal is still accepted and current, runs `cartCreate` with the replacement's variants, stores a `Purchase`, and returns the `checkoutUrl`. The browser opens hosted checkout; the native app uses a tested in-app web surface with a restricted checkout navigation policy. Failure to support app-only checkout removes optional commerce, not the core app workflow.
 
 - Store the listing/variant snapshot used by evaluation, including dimensions, price, and availability. Recheck those facts before cart creation; changed dimensions require reevaluation, and changed price/availability requires an updated user-visible offer. Relative/unsupported geometry cannot authorize a fit-verified Buy action. Use a request idempotency key to avoid duplicate cart creation on retry.
 - Keep checkout in test mode. A generated `checkoutUrl` is a created cart, not a completed purchase; only verified checkout completion may change purchase status. The real product would still require confirmation of seller dimensions and physical fit.
@@ -426,7 +469,7 @@ The event lists these tracks. Prioritize the working Weave and TypeSafe loop; se
 | **Best Loop Design** | Scan → model → check → fix → re-check, with evaluation gating each pass | Core build |
 | **Best Use of Weave** | Tracing plus evaluations that actually gate the loop, on a labeled dataset | Person C, ~4 h |
 | **Best Use of TypeSafe** | Structured router actions driving real control flow, tested against bad output | Person C, ~3 h |
-| **Most Production-Ready** | Evidence provenance, bounded edits, professional review, CI, and a working browser capture path | Requires explicit verification |
+| **Most Production-Ready** | Evidence provenance, bounded edits, inventory preservation, professional review, CI, and complete app-only capture/results with alternate browser upload | Requires explicit verification |
 | **Best Use of ARIA** | Point ARIA at the evaluation experiments; ship one improvement it found | Timeboxed after core integration, before feature freeze |
 | **Best Use of marimo** | Reactive notebook: vary scenario inputs and inspect the same evaluator's results | Timeboxed after the core works |
 | **Best Social Media demo** | Film the scan-to-fix loop in one continuous take | ~1 h, Sunday morning |
@@ -445,27 +488,27 @@ Roughly three agents per person: two writing in separate file trees, one researc
 
 Owns `apps/ios/` and `apps/web/src/features/capture/`. Nobody else touches Swift or the capture feature without coordination. The main frontend agent imports A's feature through a frozen interface.
 
-Agents: A1 (medium) builds browser upload, evidence forms, progress/retry, and non-LiDAR usability. A2 (medium) handles optional iOS provisioning, capability routing, RoomPlan processing/export, and actual frame metadata. A3 (low) tests media formats, mobile browsers, upload interruptions, and unsupported-device fallbacks. Run browser work independently of native work.
+Agents: A1 (medium) owns required native photo/video recording, import, permissions, local persistence, signing, upload/retry, and authenticated embedded-results navigation. A2 (medium) owns the separate browser capture/evidence feature first, then optional RoomPlan export/frame integration in an agreed isolated Swift module; do not edit A1's shell concurrently. A3 (low) tests non-LiDAR app-only journeys, permissions/interruptions, media formats, mobile browsers, and session recovery. A1 and D2 freeze the session/capture callback contract early.
 
 Manual work: collect existing shop media with permission, ask for measured plans or documented dimensions, and coordinate critical evidence requests with C and the professional. No real-shop visit is assumed. If a compatible phone and venue access exist, collect a separately labeled venue scan and measure several relevant dimensions there. The producer handles Shopify store setup; if there is no producer, A handles it while capture agents run.
 
-Hard checkpoint: existing photos/video upload to the server within the first two working hours, independent of iOS. Stop native provisioning after 45 minutes without a working device build; use an existing supported scanning app if available. Do not schedule a custom-client rescue overnight. Lack of a LiDAR phone must not block the demo.
+Hard checkpoint: device build within 45 minutes; in-app recording and existing-media import/upload reach the server within the first two working hours. Resolve signing/device issues immediately; keep backend work moving with browser uploads but flag app-only delivery incomplete until it works. Timebox optional LiDAR, not the native shell. Lack of LiDAR must not block recording, viewing, requests, or the demo. Test the complete app-only journey by the evening integration checkpoint; do not defer it to an overnight rescue.
 
 ### Person B — 3D pipeline
 
-Owns `packages/pipeline/`. B1 (medium) handles media/scan normalization, frame extraction, source mapping, provisional reconstruction, GLB export, and catalog visualization. B2 (high) owns bounded `GeometryPatch` validation, canonical measurements, conservative occupancy, per-leg widest-path recovery for the active `Scenario`, door maneuvering clearance, protrusion and reach-height measurements, and location evidence. B3 (medium) independently tests geometry, scale, unknown regions, prohibited clearance creation, coordinate conversion, and performance. Use existing Blender where installed.
+Owns `packages/pipeline/`. B1 (medium) handles media/scan normalization, frame extraction, source mapping, object-separated Blender reconstruction, stable-ID GLB export, and item/catalog visualization. B2 (high) owns bounded `GeometryPatch` validation, canonical measurements, conservative occupancy including partial-height fixtures, per-leg widest-path recovery for the active `Scenario`, door maneuvering clearance, protrusion and reach-height measurements, and location evidence. B3 (medium) independently tests geometry, scale, unknown regions, prohibited clearance creation, inventory identity round trips, item-fit collision envelopes, coordinate conversion, and performance. Use existing Blender where installed.
 
 Manual work: compare each critical demo measurement with documented or physical evidence where available; identify which local regions remain unsupported. Work with the professional to confirm geometry and owner movability. A single sample match is a limited accuracy observation. Decide the real-shop/partial-shop/labeled-fixture repair path by 16:00 Saturday, or immediately if that checkpoint has passed.
 
 ### Person C — agents, rules, evaluation
 
-Owns `packages/agents/`. C1 (medium) builds cited rule packs, the `Scenario` contract with its default boba-shop version, tiered geometry checks, evidence checks, and reviewer inputs. C2 (high) builds the TypeSafe action adapter, restricted fix-agent and catalog-search flow, owner-constraint enforcement, and acceptance logic. C3 (medium) owns Weave tracing, separate benchmark/live evaluations, result retrieval, and gate tests. Queue a low-effort dataset/source reviewer when one slot is free; do not duplicate B's geometry algorithms.
+Owns `packages/agents/`. C1 (medium) builds cited rule packs, the `Scenario` contract with its default boba-shop version, tiered geometry checks, evidence checks, and reviewer inputs. C2 (high) builds the TypeSafe adapter, restricted repair/layout/item-fit search, intent-to-constraint parsing, inventory preservation, explicit removal alternatives, and objective-specific acceptance gates. C3 (medium) owns Weave tracing, separate benchmark/live evaluations, result retrieval, and gate tests including missing couch dimensions, stale approvals, and inventory regressions. Queue a low-effort dataset/source reviewer when one slot is free; do not duplicate B's geometry algorithms.
 
 Manual work: get TypeSafe credentials and official documentation in the first working hour; verify thresholds and applicability with the available professional; help label the dataset; obtain private parcel/use evidence where possible. Schedule professional sessions at kickoff (checks, scenario stops, not-assessed list, and missing dimensions), after the first findings (geometry/applicability critique), and before feature freeze (review the actual report version). Confirm their expertise and record the scope; unresolved zoning goes to an appropriately qualified reviewer rather than being silently approved.
 
 ### Person D — integration with dedicated backend, frontend, and commerce agents
 
-Owns shared contracts, backend coordination, the main website outside A's capture feature, and CI. D1 (high) freezes contracts in the first working hour, then owns API/persistence, assessment hashes, authenticated review recording, and integration tests. D2 (medium) owns the main frontend, R3F callouts, rearrange previews, and report presentation. D3 (medium) owns only the commerce module and matching product-card/checkout component; it consumes frozen APIs without editing D1/D2 files. After first-hour architecture, D1 can run at medium effort for settled implementation.
+Owns shared contracts, backend coordination, the results workspace outside A's capture feature, and CI. D1 (high) freezes contracts in the first working hour, then owns API/persistence, idempotent automatic processing on upload finalize, assessment/request/inventory hashes, authenticated approvals/review, and integration tests. D2 (medium) owns touch-friendly R3F callouts, rearrange previews, layout/item-fit request UI, inventory/removal confirmations, and reports inside both WKWebView and browsers. D3 (medium) owns only commerce and its product-card/checkout component, consuming frozen APIs without editing D1/D2 files. After first-hour architecture, D1 can run at medium effort for settled implementation.
 
 Manual work: confirm deadline, coordinate contracts and merges, configure team credentials/spending limits, keep the demo machine stable, and submit by noon Sunday. The producer or A creates the Shopify development store, enables test payment, and loads products; D is not also responsible for catalog administration. Prioritize a complete assessment/repair path over optional commerce or additional sponsor work.
 
@@ -479,10 +522,10 @@ Confirm the venue hours and Sunday 13:00 submission deadline with organizers. Th
 
 | When | Outcome |
 |---|---|
-| First working hour | Contracts/fixtures frozen; actual provider access checked; professional kickoff; existing media collected; Blender detected; optional device provisioning timeboxed; producer/A begins test-store setup |
-| First two working hours, latest Sat 16:00 | **Photos/video uploaded and provisional graph in viewer.** Evidence requests visible; optional LiDAR import independently tested; real-shop/partial-shop/fixture choice made; Shopify test-order smoke test if available |
+| First working hour | Contracts/fixtures and app session interface frozen; actual provider access checked; professional kickoff; existing media collected; Blender detected; required native device build; producer/A begins test-store setup |
+| First two working hours, latest Sat 16:00 | **In-app recording/import/upload and provisional object-separated graph in viewer.** Browser upload alternate; automatic job state/evidence requests visible; optional LiDAR import independently tested; real-shop/partial-shop/fixture choice made; Shopify test-order smoke test if available |
 | Sat 16:00–18:00 | Recovered route with defensible clearance evidence; two supported checks and one missing-measurement case; professional reviews first findings; separate benchmark/live evaluation paths run |
-| Sat 18:00–21:00 | Complete upload → findings → TypeSafe action → bounded fix → live evaluation; rearrange preview/save and basic report work; catalog replacement/test checkout integrated if its smoke test passed |
+| Sat 18:00–21:00 | Complete app-only upload → automatic findings → TypeSafe action → bounded fix → live evaluation → report; touch rearrange and preserve-all language request; explicit removal approval; full/missing-dimension couch tests; catalog/test checkout only if core works and smoke test passed |
 | Overnight, only with an assigned owner | Regression tests, benchmark labels/results, performance, and visual polish. No new capture technology or major features. ARIA/marimo only if core is stable and access is already verified |
 | Sun 09:00–10:00 | Final professional review of report version; final benchmark; fix remaining integration defects. Unfinished commerce/sponsor extras leave the live demo |
 | Sun 10:00–12:00 | **Feature freeze.** Clean-clone startup; evidence/privacy checks; three timed rehearsals; final recording. No new native app, checkout, or evaluation system |
@@ -497,7 +540,8 @@ Integrate after the contract freeze, at 16:00, 18:00, 21:00, and at Sunday relea
 
 | Risk | When we know | What we do |
 |---|---|---|
-| No LiDAR phone or iOS provisioning fails | First 45 minutes of native work | Browser photos/video remain the complete capture path; optional existing-app scan only if a supported device becomes available |
+| No LiDAR phone | First device check | Required in-app ordinary photo/video capture remains fully usable; LiDAR integration is optional |
+| Native signing or embedded-results failure | First 45 minutes; complete journey by Sat 21:00 | A resolves signing/selects a provisionable iPhone and tests session/navigation; browser keeps backend work moving, but app-only requirement stays incomplete until fixed |
 | Existing media cannot establish scale/coverage | First reconstruction, latest Sat 16:00 | Preserve partial/relative graph and request evidence; use labeled dimensioned fixture for verified repair if necessary |
 | Video/image decoder unavailable | First upload tests | Return clear conversion instructions and accept supported still images; never label failed extraction as successful |
 | Blender USDZ import misbehaves | First LiDAR fixture | Derive canonical geometry from JSON and build display primitives with stable IDs; benchmark GLB export separately |
@@ -518,9 +562,9 @@ Submit a working version by noon and make no accuracy claim beyond measured evid
 
 | Area | Passes when |
 |---|---|
-| Capture | Browser images and video each produce a source-linked draft or actionable error on non-LiDAR phones; upload retry does not duplicate evidence; optional LiDAR works independently; observed processing latency is reported |
+| Capture | Non-LiDAR iPhone records both photos and video, imports existing files, uploads/retries, receives automatic processing/results, and submits more evidence entirely in-app; alternate browser upload works; no duplicate artifacts/jobs; optional LiDAR is independent; observed latency reported |
 | Measurement evidence | Missing scale, missing bounds, occlusion, and borderline measurements request evidence; one confirmed length cannot verify unrelated dimensions; raw inputs remain immutable |
-| Geometry | Axis/scale/rotation round trips pass; supported measured fixtures retain their dimensions; tested reconstruction errors are reported without a universal sensor tolerance |
+| Geometry | Axis/scale/rotation and SceneNode → Blender → GLB ID round trips pass; individual furniture remains separately selectable with preserved counts/dimensions; partial-height fixtures remain locked; measured fixtures retain dimensions; no universal accuracy claim |
 | Astra edits | In-bounds provisional refinements work; changing confirmed anchors, unauthorized obstacle shrink/drop, occupied-envelope loss on split, stale patches, and fixture unlocks are rejected or held for evidence review |
 | Checks | Exact citations and conditions are reviewed; counter approach variants and route exceptions are tested; unresolved applicability cannot pass; a dimensioned known-gap fixture yields its supported finding; every scenario leg yields a finding or `NOT_ASSESSED` with a reason; blocked latch-side and over-limit protrusion fixtures yield their findings |
 | Evidence checks | Changes in level, door hardware, opening force, floor surface, and restroom stay `REVIEW` until evidence arrives and never pass from scan data alone |
@@ -528,11 +572,12 @@ Submit a working version by noon and make no accuracy claim beyond measured evid
 | Localization | Locatable findings frame the supported region/objects; uncertain locations show uncertainty; unlocated document requests do not fabricate coordinates |
 | Router | Real TypeSafe output changes behavior; malformed output authorizes nothing |
 | Fix | Fixtures and thresholds stay locked; regression/lost coverage rejected; supported correction establishes a new baseline; accepted layout trial improves its declared target without hiding uncertainty |
-| Rearrange | Preview uses latest edit sequence and marks pending checks; keyboard/mouse obey locks; saving assesses a draft; failing drafts never become accepted repairs |
+| Rearrange | Preview uses latest edit sequence and marks pending checks; touch/keyboard/mouse obey locks; saving assesses a draft; language request preserves all item IDs/counts/dimensions; removals/replacements require current explicit approval and scenario/seating rechecks; failing drafts never become accepted repairs |
+| Item fit | 97-inch-only query requests depth/height; fully dimensioned candidate remains separate and unscaled; supported placement checks obstacles/use clearances/routes without hidden removals; missing evidence/search limits return review; room fit does not claim delivery fit |
 | Purchase | If included: current supported replacement and unchanged listing facts required; lines match evaluated variants; retry is idempotent; server-only token; real test checkout completion is verified |
 | Weave | Benchmark metrics require actual labels; live checks run without fictitious ground truth; per-row results retrievable; missing/stale/mismatched/unfinished refs and cached replay block new automatic repair |
 | Review | Real professional scope and reviewed hashes recorded; subsequent relevant change invalidates review; missing review stays pending |
-| Web | Keyboard flow, visible evidence states, printable report, and measured viewer performance meet the demo target; no raw private shop media or secrets in public traces |
+| App and browser | App-only recording/upload/view/findings/layout/fit/approval/report journey passes on a non-LiDAR iPhone without Safari; touch and keyboard flows, session recovery, visible evidence states, and viewer performance tested; no private shop media/secrets in public traces |
 | Release | Clean clone starts with one command; three rehearsals under three minutes |
 
 ### Source references for capture and evaluation
@@ -548,7 +593,7 @@ Submit a working version by noon and make no accuracy claim beyond measured evid
 
 | Person | Low effort | Medium effort | High effort | Human responsibility |
 |---|---|---|---|---|
-| A | A3 capture/browser QA | A1 browser capture; A2 optional iOS | — | Media collection, evidence requests, store setup if no producer |
+| A | A3 app-only/browser QA | A1 native RGB capture/upload/results shell; A2 browser then optional LiDAR | — | Device signing, media collection, evidence requests, store setup if no producer |
 | B | — | B1 ingestion/reconstruction/export; B3 geometry QA | B2 geometry boundaries and routing | Measurement validation and demo evidence choice |
 | C | Queued dataset/source reviewer | C1 rules/reviewer inputs; C3 Weave | C2 router, proposals, and acceptance | Sponsor access, professional sessions, source verification |
 | D | — | D2 frontend; D3 commerce; D1 after contract freeze | D1 contracts/API correctness | Integration, credentials/budget, release/submission |
