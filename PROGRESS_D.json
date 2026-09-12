@@ -1,6 +1,6 @@
 {
   "lane": "D",
-  "updated": "2026-09-12T23:10:26Z",
+  "updated": "2026-09-12T23:34:25Z",
   "done": [
     "contracts and fixture shop (21bbc65)",
     "Stop.anchor_node_id and WidthResult.needs_measurement (audit A-6, A-9)",
@@ -10,21 +10,26 @@
     "fixture: Seat on open floor, stop anchors, street scenario, cases clear of walls, shop.glb and shop.usdz rebuilt",
     "real RoomPlan exports from Apple's WWDC23 sample in fixtures/data/real",
     "apps/web scaffold: Next 16, React 19.2, R3F 9.7, vitest, complexity lint",
-    "apps/web/src/types/contracts.ts generated from Pydantic, drift-checked in CI"
+    "apps/web/src/types/contracts.ts generated from Pydantic, drift-checked in CI",
+    "services/api: upload contract on :8787, idempotent finalize, job worker running Lane B ingest, Lane C assess, geometry and renders",
+    "sample shop seeded after ingest; real Apple RoomPlan export tested through every stage",
+    "web: shops page, /scans/[scanId] viewer, finding callouts (camera flight, fade, outline, dimension label), findings list with keyboard"
   ],
-  "in_progress": "API on the real path: upload contract, job stages, scene, GLB and assessment endpoints",
+  "in_progress": "rearrange: drag and rotate movable nodes with layout re-checks under a second",
   "blocked_on": null,
   "ready_for_others": [
-    "standardphysics_contracts.graph_hash",
-    "standardphysics_fixtures.build_street_scenario for doorway regression tests",
-    "packages/fixtures/standardphysics_fixtures/data/real: two real RoomPlan exports with mapping plists and USDZ",
-    "apps/web/src/types/contracts.ts, regenerate with npm run contracts in apps/web"
+    "python -m standardphysics_api serves the real upload contract on :8787 (Lane A can point API_BASE_URL at the demo machine)",
+    "web workspace at :3000/scans/<scan id>, matching Lane A's WebView URL and nativeCapture bridge",
+    "GET /api/scans/{id}/scene, scene.glb, scenario, assessment, renders/{finding}.png",
+    "standardphysics_contracts.graph_hash, ApiError, CreateScanRequest, ScanList",
+    "apps/web/src/types/contracts.ts, regenerate with npm run contracts in apps/web",
+    "packages/fixtures/standardphysics_fixtures/data/real: two real RoomPlan exports"
   ],
   "needs_human": [
-    "W&B project created with public visibility settings",
+    "Verify the rule pack thresholds (Lane C's cli rules verify). Until then real scans report no findings; SP_PREVIEW_UNVERIFIED_RULES=1 is for development only",
     "Every key from .env.example in .env on the demo machine; OPENROUTER_API_KEY is blocking Lane B",
+    "W&B project created with public visibility settings",
     "Confirm submission deadline and eligibility with organizers",
-    "Keep the demo machine stable and awake",
-    "Blender 5.x on the demo machine: brew install --cask --force blender"
+    "Keep the demo machine stable and awake, with Blender 5.x installed"
   ]
 }
