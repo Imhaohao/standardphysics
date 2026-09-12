@@ -5,12 +5,15 @@ Each test is a case that returned the wrong answer before its fix.
 
 import math
 import uuid
+from pathlib import Path
 
 import pytest
 
+import standardphysics_fixtures
 from standardphysics_contracts import ClearFloorResult, Mat4, SceneNode, Vec3, to_meters
 from standardphysics_fixtures import PINCH_INCHES, build_graph, build_scenario, node_id
 from standardphysics_pipeline import check_blender
+from standardphysics_pipeline.blender import export_glb, glb_node_names
 from standardphysics_pipeline.footprints import footprint
 from standardphysics_pipeline.ingest import parse_room_json
 from standardphysics_pipeline.locus import region_locus
@@ -88,6 +91,24 @@ def test_a11_a_missing_confidence_needs_another_look():
         "category": "table",
     }
     assert parse_room_json({"objects": [element]}).nodes[0].quality == "needs_another_look"
+
+
+def _node_ids() -> set[str]:
+    return {str(node.id) for node in build_graph().nodes}
+
+
+def test_a12_the_committed_glb_names_every_node_by_id():
+    glb = Path(standardphysics_fixtures.__file__).parent / "data" / "shop.glb"
+    assert set(glb_node_names(glb)) == _node_ids()
+
+
+def test_a12_a_fresh_export_names_every_node_by_id(tmp_path):
+    try:
+        check_blender.blender_path()
+    except FileNotFoundError:
+        pytest.skip("needs Blender")
+    out = export_glb(build_graph(), tmp_path / "scene.glb")
+    assert set(glb_node_names(out)) == _node_ids()
 
 
 def test_a13_a_turned_region_turns_its_outline():
