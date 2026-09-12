@@ -19,6 +19,10 @@ class Annotation(BaseModel):
     label: str
     """What the viewer draws beside the geometry, e.g. "31 in"."""
 
+    point_inches: list[float | None] | None = None
+    """For a `path`, the clearance at each point in inches, parallel to `points`.
+    None where a value means nothing, such as inside a stop's exemption."""
+
 
 class Locus(BaseModel):
     """Where in the model this finding lives, and how to show it."""

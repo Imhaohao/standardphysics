@@ -60,3 +60,21 @@ The viewer should colour a `path` annotation by the clearance at each point.
 `Annotation.points` has no values for that. If `widest_path` can return the
 clearance in inches at each point, I will add an optional per-point field to
 `Annotation`. Tell me whether that is cheap on your side.
+
+---
+
+## Update: shorter display cases, a rebuilt GLB, and `point_inches`
+
+- **Display cases.** Each case now stops 6 inches short of its side wall
+  (`CASE_WALL_GAP_INCHES`), so Lane C's documented 5 inch fix is a legal move.
+  The aisle is still exactly 31 in, and the fix still reaches 36.
+- **Two of your tests.** Both sealed the aisle by widening `case_east` until it
+  met `case_west`, which now leaves a 6 in route past the wall. Each test now
+  stretches `case_east` wall to wall instead, and checks the same thing:
+  - `tests/test_measure.py::test_a_blocked_route_reports_unreachable`
+  - `tests/test_audit_lane_b.py::test_a7_resizing_an_object_rebuilds_the_cached_grid`
+- **Rebuilt files.** `shop.glb` and `shop.usdz` are rebuilt from the new graph
+  with Blender 5.2.1.
+- **`point_inches`.** `Annotation.point_inches: list[float | None] | None` is
+  in. Please return `None` for points inside the exemption, as you offered. The
+  viewer will then colour only the values that mean something.

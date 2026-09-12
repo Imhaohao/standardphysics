@@ -97,3 +97,12 @@ def test_the_street_stop_is_outside_the_front_door():
     assert street.anchor_node_id is None
     assert street.position.y < wall.transform.position.y - wall.dimensions.y / 2
     assert abs(street.position.x - door.transform.position.x) < door.dimensions.x / 2
+
+
+def test_the_documented_fix_keeps_the_case_clear_of_the_wall():
+    graph = build_graph()
+    case = graph.by_id(node_id("case_east"))
+    wall = graph.by_id(node_id("wall_east"))
+    moved_face = case.transform.position.x + case.dimensions.x / 2 + to_meters(FIX_SHIFT_INCHES)
+    wall_face = wall.transform.position.x - wall.dimensions.x / 2
+    assert moved_face < wall_face

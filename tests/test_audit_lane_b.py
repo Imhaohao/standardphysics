@@ -11,7 +11,7 @@ import pytest
 
 import standardphysics_fixtures
 from standardphysics_contracts import ClearFloorResult, Mat4, SceneNode, Vec3, to_meters
-from standardphysics_fixtures import PINCH_INCHES, build_graph, build_scenario, node_id
+from standardphysics_fixtures import build_graph, build_scenario, node_id
 from standardphysics_pipeline import check_blender
 from standardphysics_pipeline.blender import export_glb, glb_node_names
 from standardphysics_pipeline.footprints import footprint
@@ -58,7 +58,9 @@ def test_a7_resizing_an_object_rebuilds_the_cached_grid():
     graph, scenario = build_graph(), build_scenario()
     measure = PipelineMeasurements()
     measure.route_clear_width(graph, scenario, 0)
-    graph.by_id(node_id("case_east")).dimensions.x += 2 * to_meters(PINCH_INCHES) + 0.05
+    east = graph.by_id(node_id("case_east"))
+    east.dimensions.x = 6.0
+    east.transform.m[3] = 0.0
     assert not measure.route_clear_width(graph, scenario, 0).reachable
 
 

@@ -38,6 +38,10 @@ CASE_HEIGHT = 0.9
 FIX_SHIFT_INCHES = 5.0
 """Moving the east case this far east opens the gap to 36 inches."""
 
+CASE_WALL_GAP_INCHES = 6.0
+"""Room between each case and its side wall, so the documented fix is a legal
+move rather than one that pushes a case into the wall."""
+
 
 def node_id(name: str) -> uuid.UUID:
     return uuid.uuid5(NAMESPACE, name)
@@ -76,10 +80,10 @@ def _walls() -> list[SceneNode]:
 
 
 def _display_cases() -> list[SceneNode]:
-    """Each runs from a side wall to the edge of the gap."""
+    """Each runs from near a side wall to the edge of the gap."""
     inner_edge = PINCH_METERS / 2
     wall_face = ROOM_WIDTH / 2 - WALL_THICKNESS / 2
-    width = wall_face - inner_edge
+    width = wall_face - to_meters(CASE_WALL_GAP_INCHES) - inner_edge
     center_x = inner_edge + width / 2
     dims = (width, CASE_DEPTH, CASE_HEIGHT)
     return [

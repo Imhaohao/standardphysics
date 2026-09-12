@@ -75,12 +75,12 @@ def test_counter_height_comes_from_the_top_not_the_centre(shop):
 
 
 def test_a_blocked_route_reports_unreachable(shop):
-    """Widen the east case until it meets the west one, sealing the only way
-    through. Sliding it sideways would just open a gap at the other wall."""
+    """Stretch the east case wall to wall, sealing every way through. Each case
+    stops short of its wall, so meeting the west case alone leaves a gap."""
     graph, scenario, measure = shop
     east = graph.by_id(node_id("case_east"))
-    east.dimensions.x += to_meters(PINCH_INCHES)
-    east.transform.m[3] -= to_meters(PINCH_INCHES) / 2
+    east.dimensions.x = 6.0
+    east.transform.m[3] = 0.0
     result = measure.route_clear_width(graph, scenario, 0)
     assert not result.reachable
 
