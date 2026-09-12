@@ -81,17 +81,14 @@ class RuleSpec(BaseModel):
         return self.parameters[name]
 
     def as_check(self) -> Check:
-        """The contract shape Lane D reads. Inches only, for now."""
-        if self.unit != "in":
-            raise ValueError(
-                f"{self.id} is in {self.unit}; Check carries threshold_inches only"
-            )
+        """The contract shape Lane D reads."""
         return Check(
             id=self.id,
             title=self.title,
             citation=self.citation,
             tier=self.tier,
-            threshold_inches=self.threshold,
+            threshold=self.threshold,
+            unit=self.unit,
             applies_to=self.applies_to,
             verified_by_human=False,
         )
@@ -117,11 +114,9 @@ class AgentRulePack(BaseModel):
         return [r for r in self.within_tier(max_tier) if ledger.verifies(r)]
 
     def as_contract_pack(self, ledger) -> RulePack:
-        """Hand Lane D the inch-denominated rules with verification carried over."""
+        """Hand Lane D every rule, in its own unit, with verification carried over."""
         checks = []
         for rule in self.rules:
-            if rule.unit != "in":
-                continue
             check = rule.as_check()
             checks.append(
                 check.model_copy(update={"verified_by_human": ledger.verifies(rule)})

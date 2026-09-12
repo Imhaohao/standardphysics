@@ -166,7 +166,7 @@ def test_the_contract_pack_carries_verification_across(pack, ledger):
     assert {c.id for c in contract.checks} >= TIER_1_CHECKS
 
 
-def test_the_contract_pack_only_carries_inch_thresholds(pack, ledger):
-    ids = {check.id for check in pack.as_contract_pack(ledger).checks}
-    assert "door_opening_force" not in ids
-    assert "route_clear_width" in ids
+def test_the_contract_pack_carries_each_rule_in_its_own_unit(pack, ledger):
+    checks = {check.id: check for check in pack.as_contract_pack(ledger).checks}
+    assert checks["door_opening_force"].unit == "lbf"
+    assert checks["route_clear_width"].unit == "in"

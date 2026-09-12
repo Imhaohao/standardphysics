@@ -1,4 +1,4 @@
-"""Rule packs hold thresholds in their original legal units.
+"""Rule packs hold thresholds in their original legal units, named by `unit`.
 
 Conversion to a display string happens once, at the UI boundary. A rounded
 label never changes an acceptance threshold.
@@ -32,7 +32,11 @@ class Check(BaseModel):
 
     citation: Citation
     tier: Tier = 1
-    threshold_inches: float
+    threshold: float
+    unit: str
+    """The unit the standard is written in: "in" for a width, "lbf" for a door's
+    opening force."""
+
     applies_to: list[str] = []
     verified_by_human: bool = False
     """No check may be enabled until a person has read the source section."""
