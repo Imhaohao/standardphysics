@@ -1,7 +1,7 @@
 import AVFoundation
 import CoreImage
 
-final class WalkthroughVideoRecorder {
+final class WalkthroughVideoRecorder: @unchecked Sendable {
     private let writer: AVAssetWriter
     private let input: AVAssetWriterInput
     private let adaptor: AVAssetWriterInputPixelBufferAdaptor
@@ -42,6 +42,7 @@ final class WalkthroughVideoRecorder {
     }
 
     func append(pixelBuffer: CVPixelBuffer, timestamp: TimeInterval) {
+        let transferableBuffer = SendablePixelBuffer(pixelBuffer)
         queue.async { [self] in
             guard input.isReadyForMoreMediaData else { return }
             if firstTimestamp == nil {
@@ -55,13 +56,13 @@ final class WalkthroughVideoRecorder {
             var outputBuffer: CVPixelBuffer?
             guard CVPixelBufferPoolCreatePixelBuffer(nil, pool, &outputBuffer) == kCVReturnSuccess,
                   let outputBuffer else { return }
-            render(pixelBuffer, into: outputBuffer)
+            render(transferableBuffer.value, into: outputBuffer)
             let presentationTime = CMTime(seconds: timestamp - firstTimestamp, preferredTimescale: 600)
             adaptor.append(outputBuffer, withPresentationTime: presentationTime)
         }
     }
 
-    func finish(completion: @escaping (Result<URL, Error>) -> Void) {
+    func finish(completion: @escaping @Sendable (Result<URL, Error>) -> Void) {
         queue.async { [self] in
             guard firstTimestamp != nil else {
                 DispatchQueue.main.async { completion(.failure(VideoRecorderError.noFrames)) }
@@ -90,6 +91,14 @@ final class WalkthroughVideoRecorder {
             y: (target.height - scaled.extent.height) / 2
         )
         context.render(scaled.transformed(by: offset), to: destination, bounds: target, colorSpace: CGColorSpaceCreateDeviceRGB())
+    }
+}
+
+struct SendablePixelBuffer: @unchecked Sendable {
+    let value: CVPixelBuffer
+
+    init(_ value: CVPixelBuffer) {
+        self.value = value
     }
 }
 
