@@ -43,3 +43,8 @@ The browser's `moveNode` matches Lane C's `move_node`, pointer deltas reach the 
 
 - **A-37, low.** A 409 for a stale base shows "Check the pieces marked in red" with nothing red, and with no refresh every retry sends the same stale base. Reading the `error` body and refreshing the scene on a stale base fixes both.
 - **A-36, low.** The viewer treats revision 0 as the layout the GLB came from. If the first GLB is a box export from a later revision, which happens when revision 0 exported nothing, its boxes are moved twice. Recording which revision a GLB was exported from would close it.
+
+## CI is red from `a9ce65c` (A-38), and the report's verified flag (A-39)
+
+- **A-38, high.** `test_the_documented_fix_clears_the_aisle` asserts a layout check under 3.0 s. CI took 3.42 s at `9be20af`, and CI failed on both `a9ce65c` and `9be20af`. Routing each leg once per layout is the real fix; until then the time limit belongs in a benchmark, not the unit suite.
+- **A-39, medium.** With the preview ledger, `GET /api/scans/{id}/report` returns `verified_by_human: true` for all 17 rules, each reviewed by "unverified preview (development only)". Set the flag from the reviewer, and mark a preview report at the top of the page.

@@ -42,9 +42,11 @@ The audit fixes code only in files no lane agent is actively changing. For lanes
 | `f32018b` D: record the API and viewer as ready for other lanes | D | Pass | Progress file matches the code; CI still red from A-32 |
 | `586f765` C: the router, the fix loop, the labelled dataset and the gate | C | Pass with notes | Resolves A-32; its note that Lane C's tests never run on master is out of date |
 | `d74f0e7` B: withhold a partly measured turn instead of handing out a None | B | Pass with notes | Also resolves A-32; A-34 |
-| `a9ce65c` D: check a layout while it is dragged, and save one | D | Pass with notes | A-35; makes A-31 reachable |
-| `9be20af` D: profile the drag re-check for Lane B | D | Pass | Handoff only |
+| `a9ce65c` D: check a layout while it is dragged, and save one | D | **Fail** | CI red (A-38); A-35; makes A-31 reachable |
+| `9be20af` D: profile the drag re-check for Lane B | D | Pass | Handoff only; CI still red from A-38 |
 | `945b8a4` D: drag furniture, see the checks update, and save the layout | D | Pass with notes | A-36, A-37; the drag and turn maths match Lane C's `move_node` |
+| `52ec453` D: the printable report, with who reviewed each rule | D | Pass with notes | A-39 |
+| `d201984` D: record rearrange and the report as ready | D | Pass | Progress file matches the code |
 
 `609db3d`, `9028d14`, `b90e570`, `d3f7d95` and `1a06655` change only the plan and lane documents. A-1 covers the lane document errors from `9028d14`.
 
@@ -259,3 +261,13 @@ Low. `open`. Lane D.
 Low. `open`. Lane D.
 
 `useArrangement.save` answers every failure with "That layout couldn't be saved. Check the pieces marked in red." A 409 for a stale base, meaning someone else saved first, marks nothing red. The page only refreshes after a successful save, so `scene.revision` stays stale and every retry sends the same base and gets 409 again until the page is reloaded. Read from `945b8a4`. Telling the two 409s apart by their `error` body, and refreshing the scene on a stale base, would let the owner recover. A-35 is the race the server's check misses; this is the refusal it does make.
+
+### A-38 CI is red from `a9ce65c`: a wall-clock limit in the layout test
+High. `open`. Lane D.
+
+`test_the_documented_fix_clears_the_aisle` in `services/api/tests/test_layout.py` asserts that one layout check finishes in under 3.0 s. Lane D's own profile in `9be20af` puts a check at 1.7 to 2.3 s on a development machine, and CI took 3.42 s at `9be20af`, so the API step fails with 1 failed and 28 passed. CI failed on both `a9ce65c` and `9be20af`, every run finished since the test arrived. The speed-up Lane D asked Lane B for, routing each leg once per layout, is the real fix. Until then, a time limit on shared CI runners belongs in a benchmark, not the unit suite.
+
+### A-39 A preview report says a person verified every rule
+Medium. `open`. Lane D.
+
+`report.py` sets `check.verified_by_human = True` on every rule the ledger verifies, and `preview_ledger` records every rule under the reviewer "unverified preview (development only)". Reproduced at `d201984` with the preview ledger: all 17 rules come back with `verified_by_human: true`. The printed table shows the preview reviewer's name, but the contract field says the opposite, and nothing at the top of the printed report marks it as a preview. Setting the flag from whether the reviewer is the preview reviewer, and marking a preview report at the top, would keep the two from disagreeing.
