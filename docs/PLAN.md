@@ -16,7 +16,7 @@ The owner opens the website and sees their shop in 3D. A list of findings sits b
 
 Apple's RoomPlan API doesn't return a point cloud or a mesh you have to interpret. It returns a **parametric, metric room**: walls, doors, windows, and openings as `Surface` objects, furniture as `Object` objects, each with a real-world `dimensions` vector in meters, a 4×4 `transform` placing it in the room, a semantic `category`, a stable `UUID`, and a `confidence` rating. `CapturedRoom` is `Codable`, so it serializes straight to JSON.
 
-This means **measurement is solved before any AI touches it.** The hard problem in every other version of this idea — is that doorway really 32 inches, or does our reconstruction just think so — does not exist. The agents spend their time on judgment (which rule applies, what should move, is this object really a service counter) instead of on guessing at geometry.
+This means **measurement is solved before any AI touches it.** The hard problem in every other version of this idea — is that doorway really 32 inches, or does our reconstruction just think so — collapses into a bounded sensor error we can check against a tape measure, rather than an open question about what a model inferred. The agents spend their time on judgment (which rule applies, what should move, is this object really a service counter) instead of on guessing at geometry.
 
 ### The demo
 
@@ -25,7 +25,9 @@ This means **measurement is solved before any AI touches it.** The hard problem 
 3. Findings populate. Click one, camera flies to it, dimension line draws.
 4. TypeSafe routes the loop to a layout trial. The fix agent proposes a move.
 5. Weave evaluation runs on the candidate. Before/after replay. The finding clears.
-6. Export the report.
+6. Feed the router a malformed action on purpose. It fails closed and authorizes nothing.
+7. Move the real chairs to match the proposal, rescan, and watch the finding clear against new sensor evidence instead of against a prediction.
+8. Export the report.
 
 ---
 
@@ -61,6 +63,7 @@ Each trip around the loop is one Weave evaluation run with retrievable per-check
 | Capture | SwiftUI + RoomPlan + ARKit, iOS 17+ | A |
 | Ingest & 3D | Python, Blender 4.x headless (`bpy`), Astra agent | B |
 | Agents & rules | Python, Pydantic, TypeSafe, Weave | C |
+| Inference | CoreWeave Inference (OpenAI-compatible), Astra for vision | C |
 | API & persistence | FastAPI, SQLite, local artifact store | D |
 | Web | Next.js + TypeScript + Tailwind + React Three Fiber | D |
 
@@ -102,7 +105,7 @@ class SceneNode(BaseModel):
     relabeled_by: Literal["roomplan", "astra", "human"] | None
 ```
 
-Units are meters, Z is up, and the renderer does the Y-up conversion explicitly at one boundary. RoomPlan hands back Y-up; `packages/pipeline/coords.py` converts once, on ingest, with a test.
+Units are meters. RoomPlan and three.js are both Y-up, so the `SceneGraph` stays Y-up and nothing converts on the path the demo depends on. Blender is the only Z-up consumer, so `packages/pipeline/coords.py` converts at the Blender boundary alone, with a test. Converting on ingest instead means converting back for the renderer, which is two chances to ship a transposed room.
 
 **`RulePack`** — versioned checks with authority, edition, section number, the exact threshold, and which node kinds it applies to.
 
@@ -191,6 +194,8 @@ Start with seven checks. Seven that are correct and cited beats twenty that are 
 
 Every threshold gets verified against the primary source text by a human before it ships. Person C writes the citation into the `RulePack` and a second person checks it. Zoning stays out of the automated checks — it needs parcel records we won't have — and appears only as a "needs professional review" item.
 
+These checks cite federal ADA 2010. A Palo Alto business is also subject to California Building Code Chapter 11B, which is stricter than federal ADA on several of these same dimensions, and Palo Alto enforces the 2025 California codes as of January 2026. Implementing 11B is out of scope for the weekend. Naming the standard is not. The report states that it screened against ADA 2010 and that CBC 11B may impose tighter limits, and the `RulePack` carries authority and edition so a second pack drops in later without touching the checks.
+
 ### The route measurement
 
 The one genuinely hard piece of geometry. Given the `SceneGraph`, compute the widest path from the entrance to the service counter, and from the counter to the exit.
@@ -198,6 +203,8 @@ The one genuinely hard piece of geometry. Given the `SceneGraph`, compute the wi
 Rasterize the floor plan to a 25 mm occupancy grid using the XY footprints of every node that touches the floor. Compute the distance transform (distance from each free cell to the nearest obstacle). The widest path between two points is found by binary-searching the clearance threshold: pick a radius, keep only cells whose distance exceeds it, test connectivity with a flood fill, and bisect. The answer is the path's bottleneck width, and the bisection's failing cell is the pinch point — which is exactly the coordinate the 3D callout needs.
 
 This is 60 lines of NumPy and SciPy, it is deterministic, it runs in well under a second on a shop-sized room, and it is far more robust than a search over poses and headings. Do not build a full orientation-aware planner; a 180° turning check against the turn-radius rule covers the case that matters.
+
+The bottleneck width on its own cannot evaluate §403.5.1, because that section permits an 815 mm pinch when it runs no longer than 610 mm. Return the constricted run as well: walk the chosen path, record clearance at each step, and report every segment below 915 mm as a `{start, end, min_width, length}` span. A short pinch passes and cites its length; a long one fails. Reporting only the minimum turns every narrow doorway approach into a false finding, which is the fastest way to lose a judge's trust.
 
 ### TypeSafe as the router
 
@@ -211,6 +218,21 @@ TypeSafe picks the next action from a closed set, and its structured output driv
 | `ACCEPT_AND_REPORT` | Stop; render the report |
 
 Get the event credentials and the real quickstart early. Test malformed, contradictory, and truncated outputs — an invalid action must fail closed and never authorize a change. If TypeSafe is unavailable by 3:00 PM Saturday, run a labeled local policy and drop the claim.
+
+`REQUEST_RESCAN` deserves more than a row in that table, because it is the only action that leaves the computer. The router marks a region low-confidence, the app receives a notification naming the area to re-walk, the owner rescans, and the new capture re-enters the loop as fresh evidence against the same findings. Build this end to end. A loop that closes through the physical world — measure, propose, move the furniture, rescan, confirm the finding cleared — is a different claim from a loop that closes inside a process, and it is the part of this build nobody else will have.
+
+### CoreWeave
+
+Weave and ARIA are CoreWeave products — CoreWeave acquired Weights & Biases in 2025 — so the observability work already runs on the host's own platform. Say that plainly in the pitch instead of presenting them as unrelated sponsors.
+
+The compute belongs there too. CoreWeave Inference serves a curated open-source catalog behind an OpenAI-compatible endpoint, so adopting it costs a `base_url` and a model name rather than an architecture change. Two jobs move onto it:
+
+- **The fix agent.** Proposing furniture deltas is structured reasoning over a `SceneGraph` with no vision requirement, and the loop calls it repeatedly, up to three proposals per targeted finding. It is the heaviest and most repetitive model workload in the system.
+- **A second relabeler.** Run the same relabeling prompt against a CoreWeave-hosted vision model alongside Astra.
+
+The second job is the one that matters, because it turns a sponsor checkbox into evidence. `relabel_accuracy` already exists as a scorer, so run the evaluation across both providers and report the numbers. That gives the Weave submission a real comparison rather than a screenshot of a trace tree, gives ARIA genuine experiments to analyze, and puts a measurement behind the CoreWeave claim. One dataset, three tracks.
+
+Keep Astra for vision relabeling if it wins on the numbers. The point is to measure rather than to pick a favorite in advance.
 
 ### Weave
 
@@ -246,6 +268,8 @@ class Locus(BaseModel):
 
 In the viewer, selecting a finding does five things at once: the camera tweens to `camera` over 700 ms with an ease-out curve, every node not in `node_ids` drops to 15% opacity, the responsible nodes get an outline, the annotation draws with its measurement label facing the camera, and the finding's card in the list expands to show the citation.
 
+**Do not let this depend on GLB node names.** RoomPlan's `metadataURL` does genuinely map USDZ node names to `CapturedRoom` UUIDs, but that mapping holds at the USDZ boundary, and the pipeline round-trips through Blender's USD importer and its GLB exporter, either of which may rename or restructure nodes. So the viewer draws highlights, outlines, and annotations as its own meshes, positioned from `SceneGraph` transforms, and treats the GLB as a backdrop. The callout then works even if every name in the GLB comes out mangled. Verify whether the mapping survives the round trip by 4:00 PM Saturday and treat a surviving mapping as an upgrade, never as a prerequisite.
+
 The measurement label is the part people underestimate. `31 in / 790 mm` rendered legibly in 3D space, next to the actual gap it measures, is the single image that sells this product. Build it properly: an HTML overlay positioned by projecting the 3D midpoint to screen space beats a 3D text mesh for legibility and costs less.
 
 The before/after replay reuses the same machinery. Proposal deltas tween each moved node to its new transform over 1.2 s while the affected `path` annotation recolors from red to green.
@@ -270,17 +294,19 @@ Design follows the repo `CLAUDE.md`. Neutral surfaces, one calm accent, failures
 
 ## 10. Prize strategy
 
-Seven tracks are open and we are positioned for six of them.
+Seven tracks are open and we are positioned for all of them.
 
 | Prize | Our claim | Cost to secure |
 |---|---|---|
 | **Best Loop Design** | Scan → model → check → fix → re-check, with evaluation gating each pass | Core build |
-| **Best Use of Weave** | Tracing plus evaluations that actually gate the loop, on a labeled dataset | Person C, ~4 h |
+| **Best Use of Weave** | Tracing plus evaluations that gate the loop, on a labeled dataset, comparing two inference providers | Person C, ~4 h |
 | **Best Use of TypeSafe** | Structured router actions driving real control flow, tested against bad output | Person C, ~3 h |
 | **Most Production-Ready** | Typed contracts end to end, CI, clean-clone startup, real mobile client | Falls out of the build |
 | **Best Use of ARIA** | Point ARIA at the evaluation experiments; ship one improvement it found | ~1 h, Sunday morning |
 | **Best Use of marimo** | Reactive notebook: drag a threshold, watch findings change across scans | ~1 h, Sunday morning |
 | **Best Social Media demo** | Film the scan-to-fix loop in one continuous take | ~1 h, Sunday morning |
+
+Weave and ARIA are CoreWeave products, and the fix agent runs on CoreWeave Inference, so three of these claims sit on the host's own stack. Confirm whether the event scores CoreWeave usage as its own track — this table was built from the published list and does not include one.
 
 ARIA and marimo are each an hour of work for $1,000 and almost nobody bothers. Do them Sunday morning once the core is frozen, not before.
 
@@ -312,9 +338,13 @@ Owns `packages/agents/`. Rule pack with verified citations, the seven checks aga
 
 Manual work: get TypeSafe credentials in the first hour, verify every threshold against primary source text, and build the labeled dataset by hand. The dataset is unglamorous and it is what the Weave prize is actually judged on.
 
+This is the heaviest lane on the team: seven cited checks, the router, the fix agent, tracing, and a 25-case dataset with six scorers. Hand the dataset to whoever frees up first, which is Person A once scans are landing, or the fifth person if one exists. It is the only deliverable here that someone else can pick up without touching C's code.
+
 ### Person D — backend, web, integration
 
 Owns `packages/contracts/`, `services/api/`, `apps/web/`, and CI. Freeze contracts in hour one. Then the API, SQLite persistence, artifact storage, run polling, the four web screens, the R3F viewer with the callout system, and the report.
+
+CI earns the production-ready claim only if it checks something real: run the geometry tests, typecheck the web app, and regenerate the TypeScript contracts so the build fails when committed types drift from the Pydantic models. A generated-type drift check is the cheapest possible proof that the contracts are genuinely the source of truth. Seed one fixture scan into the repo so a clean clone reaches findings without needing a phone.
 
 Manual work: merge at every checkpoint, keep the demo machine stable, submit a working version by noon Sunday and improve it afterward rather than submitting at 12:58.
 
@@ -347,15 +377,18 @@ Integrate at 14:00, 16:00, 18:00, 21:00, and every hour Sunday. Each lane keeps 
 
 | Risk | When we know | What we do |
 |---|---|---|
-| iOS provisioning fails | Sat 12:00 | Ship scans from Apple's RoomPlan sample app; custom client becomes a nice-to-have |
+| iOS provisioning fails | Sat 12:00 | Ship scans from Apple's RoomPlan sample app; custom client becomes a nice-to-have. The sample app yields no ARKit keyframes, so relabeling loses its visual evidence — shoot stills of the same space by hand and register them approximately |
 | Blender USDZ import misbehaves | Sat 13:00 | Skip Blender for measurement entirely — `room.json` already has the geometry. Use three.js server-side for GLB and drop Blender renders |
 | Astra access unavailable | Sat 14:00 | Same jobs, any available model writing Blender Python; drop the Astra claim |
 | TypeSafe unavailable | Sat 15:00 | Labeled local policy, drop the track |
 | RoomPlan mislabels everything | Sat 16:00 | This is expected; it is what the relabeling agent is for. Only a problem if relabeling also fails, in which case label by hand for the demo scan and say so |
 | Route measurement wrong | Sat 18:00 | Fall back to straight-line clearance between fixed obstacles; drop the turning check |
+| Scan-to-findings slower than 60 s | Sat 18:00 | Measure the pass end to end the first time it runs. Relabeling is the likely cost: send every object in one Astra call rather than one call per object, and cache renders between passes |
 | Conference wifi | Continuously | Everything runs locally on the demo machine. No cloud dependency in the demo path except the sponsor APIs, and those get cached responses as a backstop |
 
-Two rules that override everything: **a working demo at noon beats a better demo at 12:58**, and **nothing in the pitch claims an accuracy we haven't measured.** Saying "RoomPlan's stated tolerance, verified against a tape measure on one doorway" is stronger than a number we made up, and a judge who catches an invented number discounts everything else.
+Two rules that override everything: **a working demo at noon beats a better demo at 12:58**, and **nothing in the pitch claims an accuracy we haven't measured.**
+
+Apple publishes no accuracy figure for RoomPlan, so there is no tolerance to cite and none may be invented. What we can say is what we measured: "we tape-measured a doorway against the `SceneGraph` and it matched within ___ cm." Person B's calibration fills that blank before the pitch. If the calibration never happens, the accuracy claim gets dropped rather than replaced with a plausible-sounding number, because a judge who catches an invented figure discounts everything else we said.
 
 ---
 
@@ -369,6 +402,8 @@ Two rules that override everything: **a working demo at noon beats a better demo
 | Localization | Every finding has a valid locus; clicking it frames the right object from a legible angle |
 | Router | Real TypeSafe output changes behavior; malformed output authorizes nothing |
 | Fix | Immovable nodes never move; a regression is rejected; the accepted fix clears the targeted finding on re-check |
+| Inference | The fix agent runs against CoreWeave Inference; the provider is configurable and every call is traced |
+| Rescan | A rescan taken after the furniture actually moves clears the targeted finding on new sensor evidence |
 | Weave | The evaluation completes with retrievable per-case results and gates acceptance |
 | Web | Full flow works with a keyboard; the report prints; the viewer holds 60 fps on the demo machine |
 | Release | Clean clone starts with one command; three rehearsals under three minutes |
