@@ -12,6 +12,12 @@ across the seam is the measurement and the verdict is taken here. Otherwise
 A provider with no `turn_detail` cannot answer 403.5.2 at all. Reporting a
 route bottleneck as a turn measurement would cite a section we never evaluated,
 so that case reports the gap to the team and stays silent to the owner.
+
+The same goes for a turn detected at the very start or end of a leg, where
+there is no run of route either side of it to measure. That comes back as a
+zone of zero inches, which is not a measurement of anything: nobody built a
+doorway with no width. It is reported as a gap rather than as a finding that
+the turn is infinitely tight.
 """
 
 from __future__ import annotations
@@ -30,6 +36,10 @@ from .result import CheckResult
 RULE_ID = "turn_clear_width"
 
 WAITING_ON = "a provider with turn_detail: FixtureMeasurements does not measure turns"
+
+UNMEASURED_ZONE = (
+    "a turn with route either side of it to measure: one zone came back at zero"
+)
 
 
 @dataclass(frozen=True)
@@ -81,6 +91,18 @@ def binding_zone(turn, rule: RuleSpec) -> tuple[float, float]:
     return min(zones, key=lambda pair: pair[0] - pair[1])
 
 
+def zones_measured(turn) -> bool:
+    """Whether all three of 403.5.2's zones actually got measured.
+
+    Lane B reports an unmeasurable zone as None. A zero would mean the same
+    thing and is still rejected, because the two readings have swapped once
+    already and a check citing a section is not the place to be relaxed about
+    which one arrived.
+    """
+    zones = (turn.approach_inches, turn.at_turn_inches, turn.leaving_inches)
+    return all(zone is not None and zone > 0.0 for zone in zones)
+
+
 def _pivot_width(turn) -> float:
     """An unidentified element cannot be measured against 48 inches.
 
@@ -97,15 +119,18 @@ def turn_clear_width(ctx: CheckContext) -> CheckResult:
         return CheckResult(unevaluated=[Unevaluated(RULE_ID, WAITING_ON)])
 
     rule = ctx.rule(RULE_ID)
-    observations = []
+    observations, gaps = [], []
     for index in ctx.legs():
         turn = detail(ctx.graph, ctx.scenario, index)
         if turn is None:
             continue
+        if not zones_measured(turn):
+            gaps.append(Unevaluated(RULE_ID, UNMEASURED_ZONE))
+            continue
         observation = _at_turn(ctx, rule, index, turn)
         if observation is not None:
             observations.append(observation)
-    return CheckResult(observations=observations)
+    return CheckResult(observations=observations, unevaluated=gaps[:1])
 
 
 def _at_turn(
@@ -122,6 +147,9 @@ def _at_turn(
         return None
 
     measured, required = binding_zone(turn, rule)
+    # One element is one turn. An out and back goes round the same shelf on the
+    # way in and the way out, and the apex lands a few centimetres apart each
+    # time, so keying on where it was would report the same corner twice.
     result = ctx.measure.turn_clear_width(ctx.graph, ctx.scenario, leg_index)
     return Observation(
         rule_id=RULE_ID,
@@ -137,6 +165,6 @@ def _at_turn(
             "at_turn": turn.at_turn_inches,
             "leaving": turn.leaving_inches,
         },
-        dedupe_key=(RULE_ID, str(turn.pivot_id), round(turn.apex.x, 2), round(turn.apex.y, 2)),
+        dedupe_key=(RULE_ID, str(turn.pivot_id)),
         reason=verdict.reason,
     )

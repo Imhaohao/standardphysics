@@ -1,31 +1,45 @@
 {
   "lane": "C",
-  "updated": "2026-09-12T23:05:00Z",
+  "updated": "2026-09-13T01:20:00Z",
   "done": [
-    "rule pack with 17 rules, thresholds in legal units and the source sentence for each",
-    "human verification ledger that binds id, section, threshold and unit",
-    "tier 1 checks: route width, 180 turn, passing space, turning space, door width, counter height, counter approach, exit path",
+    "rule pack: 17 rules, thresholds in the units the standard is written in, the quoted sentence behind each, and every other number the section states",
+    "human verification ledger binding rule id, section, threshold and unit, so editing a threshold switches its check off",
+    "cli rules review: prints the section and asks for the number back",
+    "tier 1 checks against MeasurementProvider: route width, 180 turn, passing space, turning space, door width, counter height, counter approach, exit path",
+    "403.5.1's exception evaluated through Lane B's route_run_below rather than failed closed",
+    "403.5.2 from Lane B's four measurements and the pack's four thresholds",
     "the five things a scan cannot see, as one specific request each",
-    "owner-facing copy for every finding, section 2 of the plan",
-    "findings with stable ids, dedupe across legs, and needs_another_look downgraded to a request",
+    "owner-facing copy for every finding, tested against section 2 of the plan",
+    "findings with stable ids, dedupe across legs, needs_another_look downgraded to a request",
     "assess(): one pass producing an Assessment plus what it could not answer",
-    "Weave tracing that runs with or without an account"
+    "findings_for(graph, scenario): the entrypoint Lane D's assess stage calls",
+    "TypeSafe router: closed action set, schema generated from the contract, fail-closed validation of malformed, contradictory and truncated output",
+    "labelled local policy for when TypeSafe is unavailable",
+    "fix agent: bounded search over slides and quarter turns, hard constraints from plan section 10, one tested relaxation when it runs out",
+    "the loop: one handler per action and no default, so an invalid answer authorizes nothing",
+    "acceptance gate: completes, no lost coverage, no new failures, strictly improves",
+    "32 labelled cases and 7 scorers, with per-case results on disk and in Weave when configured",
+    "Weave tracing that runs with or without an account",
+    "263 tests"
   ],
-  "in_progress": "TypeSafe router, fix agent, evaluation and the acceptance gate",
+  "in_progress": null,
   "blocked_on": null,
   "ready_for_others": [
-    "standardphysics_agents.assess(graph, scenario, measure) -> Pass",
-    "standardphysics_agents.load_pack().as_contract_pack(ledger) -> contracts.RulePack",
-    "standardphysics_agents.graph_hash(graph) for Assessment.graph_hash and Proposal.base_graph_hash"
+    "standardphysics_agents.findings_for(graph, scenario) -> list[Finding], and RULEPACK_VERSION",
+    "standardphysics_agents.assess(graph, scenario, measure) -> Pass, with .problems, .questions and .unevaluated",
+    "standardphysics_agents.propose_fix(...) -> FixOutcome, with the proposal, the gate result and the relaxation",
+    "standardphysics_agents.run_loop(graph, scenario, measure, router) -> list[LoopStep]",
+    "standardphysics_agents.evaluate() -> EvaluationResult, and accepts(before, after) for the gate",
+    "load_pack().as_contract_pack(ledger) -> contracts.RulePack, for Lane D's report"
   ],
   "needs_human": [
-    "Verify every threshold against primary ADA source text, then run: python -m standardphysics_agents.cli rules verify <id> --by \"<name>\". Until then no check is enabled and the report is empty.",
+    "BLOCKING THE WHOLE REPORT: read each rule's section and confirm its number. python -m standardphysics_agents.cli rules review --by \"<name>\". Thirteen tier 1 rules, a few minutes. Until then every check is off and findings_for returns nothing.",
     "A second person re-checks each citation: cli rules second-check <id> --by \"<name>\"",
-    "Pin the CBC Chapter 10 egress section for exit_path, and confirm the occupant load for a shop this size",
-    "Confirm Lane B's two disclosed approximations in ADA 403.5.2: the pivot's smaller horizontal extent as the element width, and geometric turn detection at about 122 degrees",
-    "TYPESAFE_API_KEY plus the event quickstart's base URL and request path, into .env",
+    "Pin the CBC Chapter 10 egress section for exit_path and confirm the occupant load for a shop this size. An accessibility professional or the Palo Alto Building Division.",
+    "Confirm Lane B's two disclosed approximations in ADA 403.5.2: the pivot's smaller horizontal extent read as the element width, and geometric turn detection at about 122 degrees",
+    "TYPESAFE_API_KEY and the quickstart's base URL and request path into .env, as TYPESAFE_BASE_URL. Without them the loop runs the local policy and says so, and the TypeSafe track comes out of the pitch.",
     "WANDB_API_KEY, WANDB_ENTITY and WANDB_PROJECT in .env, or tracing and evaluation stay local",
     "Schedule the accessibility professional",
-    "docs/handoffs/C-to-D.md asks Lane D for two lines in pytest.ini and CI, or Lane C's 98 tests never run on master"
+    "One line in pytest.ini or Lane C's 263 tests never run on master: docs/handoffs/C-to-D.md item 3"
   ]
 }

@@ -143,6 +143,15 @@ def _turn_one(pinch: Pinch) -> list[Candidate]:
 
 FAMILIES = (_split_the_gap, _move_one_aside, _stagger, _turn_one)
 
+PREFERENCE = ("split_the_gap", "move_one_aside", "stagger", "turn_one")
+"""How ties are broken, in order.
+
+Sliding two cases apart by half the shortfall each and sliding one of them the
+whole way disturb the same total distance, so the shortfall alone cannot choose
+between them. Opening a gap from both sides moves each piece less far and is
+what the plan's own example asks for, so it goes first.
+"""
+
 
 def candidates(pinch: Pinch, limit: int = 24) -> list[Candidate]:
     """Every rearrangement worth measuring, least disruptive first."""
@@ -151,5 +160,10 @@ def candidates(pinch: Pinch, limit: int = 24) -> list[Candidate]:
     found: list[Candidate] = []
     for family in FAMILIES:
         found.extend(family(pinch))
-    found.sort(key=lambda candidate: (candidate.disruption, candidate.strategy))
+    found.sort(
+        key=lambda candidate: (
+            candidate.disruption,
+            PREFERENCE.index(candidate.strategy),
+        )
+    )
     return found[:limit]

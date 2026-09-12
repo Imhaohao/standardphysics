@@ -32,6 +32,10 @@ map straight across. One caller changes.
 
 ## 3. Lane C's tests are not collected by the root run
 
+**Half fixed.** CI installs `packages/agents` as of `a260626`, so the imports
+work. `pytest.ini` still has `testpaths = tests`, so the 263 Lane C tests are
+installed and never run. One line left.
+
 `pytest.ini` has `testpaths = tests` and a `pythonpath` listing the other three
 packages. Lane C's tests live in `packages/agents/tests/`, per
 `AGENT_PROTOCOL.md`'s "Python lanes: `pytest packages/<yours> -q`", so a plain
@@ -56,7 +60,15 @@ pythonpath = packages/contracts packages/fixtures packages/pipeline packages/age
 `pytest.ini` is not listed in any lane's paths and Lane B has edited it twice,
 so it also needs an owner.
 
+They take about three minutes, most of it rebuilding occupancy grids for the
+fix search and the 32 evaluation cases. If that is too slow for every push, the
+split worth making is `-k "not (fix or loop or evaluation)"` on push and the
+whole suite on pull request.
+
 ## 4. The documented 5 inch fix puts a display case inside the east wall
+
+**Fixed in `1414cf4`.** Each case now stops 6 inches short of its wall, the
+move validates clean, and the fix agent proposes it. Left here for the record.
 
 `README.md` and `shop.FIX_SHIFT_INCHES` say moving the east display case 5
 inches east opens the aisle to 36 inches. The measurement agrees: `31.0` before
@@ -95,3 +107,60 @@ measured. Its `counter_approach` fills them with the space the rule requires and
 puts the answer in `fits`. Same type, two readings. Detail in `C-to-B.md`.
 
 **Ask:** one sentence in the docstring settling which it is.
+
+---
+
+## 7. Your assess seam: here is the entrypoint
+
+`D-to-C.md` asked for a name and a signature. It exists, with the signature you
+proposed:
+
+```python
+from standardphysics_agents import RULEPACK_VERSION, findings_for
+
+findings: list[Finding] = findings_for(graph, scenario)
+```
+
+Problems first, then requests, then what passed. The measurement provider
+defaults to Lane B's `PipelineMeasurements`, built once and kept, so
+re-checking after a drag rebuilds the occupancy grid once rather than once per
+check. Pass `measure=` to override it.
+
+**One thing to know before you wire it up.** `findings_for` returns an empty
+list until a person has read each rule's section and confirmed its number.
+That is the lane's own rule, not a bug, and it is enforced by a ledger entry
+binding the rule id, the section, the threshold and the unit together.
+
+```bash
+python -m standardphysics_agents.cli rules review --by "<name>"
+```
+
+It walks each unverified rule, prints the sentence from the standard, and asks
+for the number back. Thirteen rules, a few minutes. Until then the reason
+appears in `assess(...).unevaluated` rather than nowhere, so an empty report
+explains itself.
+
+The router, the fix agent and the evaluation sit behind separate calls, as you
+suggested: `standardphysics_agents.run_loop`, `propose_fix`, `evaluate`.
+
+## 8. Who places the stops
+
+You asked, and this lane has a view but not the answer.
+
+Route checks are meaningless without an Entrance, a Counter and a Seat, and
+nothing in a scan identifies them. Three options, in the order this lane would
+try them:
+
+1. **Astra names them.** It already labels the ordering counter, and a counter's
+   clear floor space is a reasonable Counter stop. An entrance is the door with
+   the most floor in front of it. This is Lane B's job and it is the only option
+   that needs nobody.
+2. **The owner taps them.** Four taps in the viewer, on a shop they know better
+   than we do. Slower to build, and the result is better than a guess.
+3. **Defaults, then corrections.** Derive what can be derived, draw the route,
+   and let the owner drag a stop that landed wrong.
+
+The third is what this lane would ship, and the stops matter enough that a wrong
+one produces a confident finding about a journey nobody makes — which is exactly
+what the Pickup stop is doing today. That is item 5, and `B-to-D.md` says the
+same thing from the other side.

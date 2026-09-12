@@ -316,6 +316,16 @@ def no_arrangement(question: str | None) -> str:
     return f"{NO_ARRANGEMENT} {question}" if question else NO_ARRANGEMENT
 
 
+REPORT_READY = "Your report is ready."
+
+
+def escalation_note(count: int) -> str:
+    """What happens next to something furniture cannot fix."""
+    if count == 1:
+        return "An accessibility professional will look at this one."
+    return f"An accessibility professional will look at these {count}."
+
+
 def describe(observation: Observation, rule: RuleSpec) -> FindingCopy:
     if rule.id in QUESTIONS:
         return QUESTIONS[rule.id]

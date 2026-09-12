@@ -11,14 +11,25 @@ from __future__ import annotations
 import argparse
 import math
 import sys
+from pathlib import Path
 from typing import Callable
 
 from .assess import assess
+from .evaluation import evaluate, save
+from .evaluation.scorers import LOWER_IS_BETTER
+from .loop import run_loop
+from .router import LocalPolicyRouter, TypeSafeRouter
 from .rules import RuleSpec, load_ledger, load_pack, save_ledger
+from .tracing import init as init_tracing
+from .tracing import is_live
 
 READ_BACK_TOLERANCE = 1e-9
 
 PROVIDERS = ("stub", "pipeline")
+
+ROUTERS = ("typesafe", "local")
+
+DEFAULT_EVALUATION_PATH = "runs/evaluation.json"
 
 
 def _measurements(name: str):
@@ -161,6 +172,88 @@ def _check(args) -> int:
     return 0
 
 
+def _count(number: int, noun: str) -> str:
+    return f"{number} {noun}" if number == 1 else f"{number} {noun}s"
+
+
+def _router(name: str):
+    """TypeSafe when it is configured, and a labelled local policy when not."""
+    if name == "local":
+        return LocalPolicyRouter()
+    router = TypeSafeRouter()
+    if router.configured:
+        return router
+    print(
+        "TYPESAFE_API_KEY and TYPESAFE_BASE_URL are not set. "
+        "Running the local policy, labelled as one.",
+        file=sys.stderr,
+    )
+    return LocalPolicyRouter()
+
+
+NOTHING_ENABLED = (
+    'No checks are enabled. Run: rules review --by "<name>"'
+)
+
+
+def _nothing_enabled(pack, ledger) -> bool:
+    if pack.enabled(ledger, max_tier=1):
+        return False
+    print(NOTHING_ENABLED, file=sys.stderr)
+    return True
+
+
+def _evaluate(args) -> int:
+    pack, ledger = load_pack(), load_ledger()
+    if _nothing_enabled(pack, ledger):
+        return 1
+    result = evaluate(
+        measure=_measurements(args.provider),
+        rules=pack,
+        ledger=ledger,
+        run_fixes=not args.no_fixes,
+    )
+    print(f"rule pack {result.rulepack_version}, {len(result.outcomes)} cases")
+    print(f"completed: {result.completed}")
+    for name, value in sorted(result.scores.items()):
+        direction = "lower is better" if name in LOWER_IS_BETTER else ""
+        print(f"  {name:24} {value:.4f}  {direction}")
+    for case_id in result.failures:
+        print(f"  failed: {case_id}", file=sys.stderr)
+    written = save(result, Path(args.out))
+    print(f"per-case results: {written}")
+    if result.weave_url:
+        print(f"traces: {result.weave_url}")
+    return 0 if result.completed else 1
+
+
+def _loop(args) -> int:
+    pack, ledger = load_pack(), load_ledger()
+    if _nothing_enabled(pack, ledger):
+        return 1
+    graph, scenario = _fixture_shop()
+    steps = run_loop(
+        graph,
+        scenario,
+        _measurements(args.provider),
+        _router(args.router),
+        rules=pack,
+        ledger=ledger,
+    )
+    for step in steps:
+        action = step.action or f"nothing authorized ({step.rejected})"
+        print(f"pass {step.pass_number}: {action}")
+        print(f"  {_count(len(step.assessment.problems), 'problem')}, "
+              f"{_count(len(step.assessment.questions), 'question')}")
+        if step.message:
+            print(f"  {step.message}")
+        gate = step.result.gate
+        if gate:
+            print(f"  gate: {'accepted' if gate.accepted else 'rejected'}, "
+                  f"{gate.shortfall_before:.1f} in short -> {gate.shortfall_after:.1f}")
+    return 0
+
+
 HANDLERS: dict[str, Callable[[argparse.Namespace], int]] = {
     "rules.list": _list,
     "rules.show": _show,
@@ -168,6 +261,8 @@ HANDLERS: dict[str, Callable[[argparse.Namespace], int]] = {
     "rules.review": _review,
     "rules.second-check": _second_check,
     "check": _check,
+    "evaluate": _evaluate,
+    "loop": _loop,
 }
 
 
@@ -209,11 +304,25 @@ def build_parser() -> argparse.ArgumentParser:
     check = commands.add_parser("check", help="run the checks on the fixture shop")
     check.add_argument("--provider", choices=PROVIDERS, default="pipeline")
     check.add_argument("--tier", type=int, default=1)
+
+    evaluation = commands.add_parser(
+        "evaluate", help="score the checks against the labelled dataset"
+    )
+    evaluation.add_argument("--provider", choices=PROVIDERS, default="pipeline")
+    evaluation.add_argument("--out", default=DEFAULT_EVALUATION_PATH)
+    evaluation.add_argument(
+        "--no-fixes", action="store_true", help="skip the rearrangement cases"
+    )
+
+    loop = commands.add_parser("loop", help="run the whole loop on the fixture shop")
+    loop.add_argument("--provider", choices=PROVIDERS, default="pipeline")
+    loop.add_argument("--router", choices=ROUTERS, default="typesafe")
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    init_tracing()
     key = (
         f"{args.command}.{args.rules_command}"
         if args.command == "rules"

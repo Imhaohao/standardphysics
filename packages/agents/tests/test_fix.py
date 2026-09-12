@@ -103,9 +103,13 @@ class TestHardConstraints:
         assert is_allowed(graph, graph)
 
     def test_the_documented_five_inch_fix_is_a_legal_move(self, graph):
-        """Each display case stops 6 in short of its wall (C-to-D.md item 4), so
-        sliding the east case 5 in toward it breaks no hard constraint."""
-        moved = apply_moves(
+        """It was not, until Lane D left six inches beside each case.
+
+        See docs/handoffs/C-to-D.md. The case used to end flush against the
+        wall, so the one move the demo script called for was the one the room
+        forbade.
+        """
+        shifted = apply_moves(
             graph,
             [
                 NodeMove(
@@ -116,7 +120,19 @@ class TestHardConstraints:
                 )
             ],
         )
-        assert not _kinds(graph, moved) & {"collided", "left_the_floor"}
+        assert violations(graph, shifted) == []
+
+    def test_a_case_shoved_past_its_wall_is_still_rejected(self, graph):
+        past_the_wall = apply_moves(
+            graph,
+            [
+                NodeMove(
+                    node_id=CASE_EAST,
+                    delta_translation=Vec3(x=to_meters(24.0), y=0.0, z=0.0),
+                )
+            ],
+        )
+        assert _kinds(graph, past_the_wall) & {"collided", "left_the_floor"}
 
     def test_moving_something_fixed_is_rejected(self, graph):
         shoved = apply_moves(
@@ -232,7 +248,18 @@ class TestCandidateLadder:
         pinch = pinch_from(_pinch_finding(before)[0], graph)
         ladder = candidates(pinch)
         assert ladder
-        assert ladder == sorted(ladder, key=lambda c: (c.disruption, c.strategy))
+        from standardphysics_agents.fix.strategies import PREFERENCE
+
+        assert ladder == sorted(
+            ladder, key=lambda c: (c.disruption, PREFERENCE.index(c.strategy))
+        )
+
+    def test_opening_a_gap_from_both_sides_is_tried_first(
+        self, graph, scenario, pipeline, ledger, pack
+    ):
+        before = assess(graph, scenario, pipeline, rules=pack, ledger=ledger)
+        pinch = pinch_from(_pinch_finding(before)[0], graph)
+        assert candidates(pinch)[0].strategy == "split_the_gap"
 
     def test_a_pinch_with_nothing_movable_offers_no_candidates(
         self, fixed_shop, pipeline, ledger, pack

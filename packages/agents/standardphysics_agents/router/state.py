@@ -31,7 +31,16 @@ class RouterState:
     """Answers resting on geometry we want another look at."""
 
     unevaluated: tuple[str, ...] = ()
-    last_action: RouterAction | None = None
+    actions_taken: tuple[RouterAction, ...] = ()
+    """What this loop has already done, so it does not do it twice.
+
+    Asking the owner the same question on every pass is not a loop, it is a
+    stutter.
+    """
+
+    @property
+    def last_action(self) -> RouterAction | None:
+        return self.actions_taken[-1] if self.actions_taken else None
 
     @property
     def problems(self) -> list[Finding]:
@@ -52,6 +61,7 @@ class RouterState:
             "fix_attempts": self.fix_attempts,
             "fix_attempts_remaining": self.fix_budget_left,
             "last_action": self.last_action,
+            "actions_taken": list(self.actions_taken),
             "unevaluated_rules": list(self.unevaluated),
             "findings": [self._finding_summary(f) for f in self.findings],
         }
@@ -100,7 +110,7 @@ def state_for(
     pass_number: int = 1,
     fix_attempts: int = 0,
     unevaluated: tuple[str, ...] = (),
-    last_action: RouterAction | None = None,
+    actions_taken: tuple[RouterAction, ...] = (),
 ) -> RouterState:
     return RouterState(
         findings=findings,
@@ -115,5 +125,5 @@ def state_for(
             f.id for f in findings if _wants_another_look(f, rules)
         ),
         unevaluated=unevaluated,
-        last_action=last_action,
+        actions_taken=actions_taken,
     )

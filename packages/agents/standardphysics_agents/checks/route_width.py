@@ -43,15 +43,12 @@ def route_width_verdict(
     return WidthVerdict(False, "reduction_too_long")
 
 
-def reduced_run_inches(result: WidthResult) -> float | None:
-    """How long the narrow stretch runs, once a provider can tell us.
-
-    Reading it off the result rather than requiring it means 403.5.1's
-    exception starts being evaluated the moment Lane B reports the length, with
-    no change here. See docs/handoffs/C-to-B.md.
-    """
-    value = getattr(result, "reduced_run_inches", None)
-    return float(value) if value is not None else None
+def reduced_run_inches(ctx: CheckContext, rule: RuleSpec, leg_index: int) -> float | None:
+    """How far this leg runs below the section's minimum, in inches."""
+    measure_run = getattr(ctx.measure, "route_run_below", None)
+    if measure_run is None:
+        return None
+    return float(measure_run(ctx.graph, ctx.scenario, leg_index, rule.threshold))
 
 
 def dedupe_key(result: WidthResult) -> tuple:
@@ -85,7 +82,9 @@ def _leg(ctx: CheckContext, rule: RuleSpec, index: int) -> Observation:
     if not result.reachable:
         return _blocked(rule, result, facts)
 
-    verdict = route_width_verdict(result.inches, reduced_run_inches(result), rule)
+    verdict = route_width_verdict(
+        result.inches, reduced_run_inches(ctx, rule, index), rule
+    )
     return Observation(
         rule_id=RULE_ID,
         satisfied=verdict.satisfied,
