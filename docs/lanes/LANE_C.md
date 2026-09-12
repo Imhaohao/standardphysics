@@ -23,6 +23,7 @@ docs/handoffs/C-to-*.md
 | What | Why an agent can't | When |
 |---|---|---|
 | TypeSafe event credentials and the real quickstart | Account access, possibly a conversation at a sponsor table | **First hour** |
+| OpenRouter key with zero data retention and a credit limit | Account access and a billing decision | **First hour** |
 | W&B project created, API key in the environment | Account access | **First hour** |
 | Verify every threshold against primary ADA source text | A wrong number invalidates the whole demo and a judge will ask | Before each check ships |
 | A second person re-checks each citation | Same reason | Before feature freeze |
@@ -61,6 +62,12 @@ Follow section 2 of the plan. No jargon, inches not meters, and never a sentence
 **5. TypeSafe router.** A closed set of actions whose structured output drives real control flow: `FIX`, `RESCAN_AREA`, `ASK_OWNER`, `ESCALATE`, `DONE`. Test malformed, contradictory and truncated output — an invalid action fails closed and authorizes nothing. *Done when a real API response changes which branch runs, and a corrupted one changes nothing.*
 
 If TypeSafe is not available by 3:00 PM Saturday, run a labeled local policy behind the same interface and tell your person to drop the track from the pitch.
+
+The fix agent's model calls go through OpenRouter with the OpenAI SDK, the
+same way Lane B calls Astra: `base_url="https://openrouter.ai/api/v1"`,
+`OPENROUTER_API_KEY`, model from `OPENROUTER_MODEL`. Weave picks these up
+through its OpenRouter integration, so leave OpenRouter's Broadcast to Weave
+setting off or every call is traced twice.
 
 **6. Fix agent.** Proposes translations and rotations of movable nodes only. No resize, no fixture movement, no leaving the floor, no shrinking an obstacle. Keeping the owner's furniture is a hard default — placement is adjustable, inventory is not. After three failed attempts say "We couldn't find an arrangement that works" and offer one specific relaxation for the owner to approve.
 

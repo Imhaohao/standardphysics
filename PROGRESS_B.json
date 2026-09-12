@@ -1,24 +1,28 @@
 {
   "lane": "B",
-  "updated": "2026-09-12T15:45:00Z",
+  "updated": "2026-09-12T16:05:00Z",
   "done": [
     "blender check",
     "coordinate conversion + tests",
     "occupancy grid with per-cell ownership",
     "widest path with endpoint exemption",
     "exact footprint distance",
-    "MeasurementProvider implementation"
+    "MeasurementProvider implementation",
+    "room.json ingest (unverified against a real export)",
+    "GLB export with node IDs as glTF names"
   ],
-  "in_progress": "room.json ingest",
+  "in_progress": "Astra label and clean via OpenRouter",
   "blocked_on": null,
   "ready_for_others": [
     "standardphysics_pipeline.PipelineMeasurements implements MeasurementProvider",
-    "standardphysics_pipeline.coords for anyone parsing ARKit transforms",
-    "standardphysics_pipeline.check_blender"
+    "standardphysics_pipeline.blender.export_glb",
+    "packages/fixtures/.../data/shop.glb for Lane D's viewer",
+    "standardphysics_pipeline.coords for anyone parsing ARKit transforms"
   ],
   "needs_human": [
     "Install Blender 5.x on every machine: brew install --cask --force blender",
-    "Confirm Astra runtime access and credentials",
-    "Tape-measure one real doorway once Lane A lands a scan"
+    "OpenRouter key in .env with zero data retention and a credit limit",
+    "One real room.json from Lane A: see docs/handoffs/B-to-A.md",
+    "Tape-measure one real doorway once a scan lands"
   ]
 }

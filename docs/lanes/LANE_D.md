@@ -27,6 +27,7 @@ Contracts and fixtures are already committed, including a synthetic boba shop wi
 | What | Why an agent can't | When |
 |---|---|---|
 | W&B project and public visibility settings | Account access | **First hour** |
+| Every key from `.env.example` present in `.env` on the demo machine | Account access | **First hour** |
 | Confirm submission deadline and eligibility | Organizer conversation | **First hour** |
 | Keep the demo machine stable and awake | Physical machine | Continuous |
 | Submit a working version by noon Sunday | Someone clicks submit | **Sun 12:00** |
@@ -35,6 +36,11 @@ Contracts and fixtures are already committed, including a synthetic boba shop wi
 ## Build order
 
 **1. Contracts frozen.** Confirm `packages/contracts/` matches what the other three lanes need. Generate `apps/web/src/types/contracts.ts` from the Pydantic JSON Schema — nobody hand-writes a TypeScript interface mirroring a Python model. *Done when the generator runs in CI and a contract change breaks the web build loudly.*
+
+**1b. Credentials.** `.env.example` lists every variable the server needs.
+Load them server-side only: the iOS app, the browser, Git, prompts and Weave
+traces never see a key. You own this boundary, and every other lane depends on
+you holding it.
 
 **2. API.** FastAPI with SQLite. Scan creation, idempotent per-artifact upload with checksums, finalize, polling, assessment retrieval, proposals, report. Finalization idempotently queues the pipeline — there is no separate "check my shop" button, and retrying finalize creates no duplicate jobs.
 

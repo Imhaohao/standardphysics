@@ -24,7 +24,7 @@ docs/handoffs/B-to-*.md
 |---|---|---|
 | Install current Blender on each teammate's machine | Installs land outside the repo | **First hour** |
 | Tape-measure one real doorway against the SceneGraph | Someone has to hold a tape measure | Within 30 min of the first real scan |
-| Confirm Astra runtime access and credentials | Account access | **First hour** |
+| OpenRouter key in `.env`, zero data retention on, credit limit set | Account access and a billing decision | **First hour** |
 
 The tape measure check takes five minutes and it is what makes every number downstream defensible. Do not skip it.
 
@@ -64,6 +64,30 @@ Ship that as `packages/pipeline/check_blender.py` so every machine can self-test
 Roughly 60 lines of NumPy and SciPy. Do not build a pose-and-heading search planner. *Done when the fixture returns 31 inches and a pinch point between the two known tables.*
 
 **7. Implement `MeasurementProvider`.** Clear width along a leg, clear width at a 180-degree turn, turning space, door clear width, counter height and approach. Each returns the value, the units, and the locus. Push a handoff to Lane C the moment it is real so they can stop stubbing.
+
+### Calling Astra
+
+Every model call goes through OpenRouter using the OpenAI SDK. Nothing in this
+lane talks to a provider directly, and no key ever leaves the server.
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.environ["OPENROUTER_API_KEY"],
+)
+response = client.chat.completions.create(
+    model=os.environ.get("OPENROUTER_MODEL", "openai/gpt-6-astra"),
+    messages=[...],
+    tools=[...],          # the patch interface, never free-form geometry
+    extra_body={"provider": {"order": ["openai"], "allow_fallbacks": False}},
+)
+```
+
+Pin the provider so the demo runs on one backend, and store the provider and
+model OpenRouter reports on every response. Scans of a real shop are private,
+so zero data retention is required on the account and on each request.
 
 **8. Astra: label.** Given a node's raw category, dimensions, position relative to walls and doors, and the two or three keyframes whose frustum contains it, decide what the object is and whether it moves. Output a structured patch validated against the contract — never free-form geometry. *Done when the fixture's counter is labeled "ordering counter" and marked immovable.*
 
