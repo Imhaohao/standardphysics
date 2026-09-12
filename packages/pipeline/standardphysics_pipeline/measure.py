@@ -211,15 +211,33 @@ class PipelineMeasurements:
         )
 
     def turn_detail(
-        self, graph: SceneGraph, scenario: Scenario, leg_index: int
+        self,
+        graph: SceneGraph,
+        scenario: Scenario,
+        leg_index: int,
+        require_measured: bool = True,
     ) -> Turn | None:
-        """All three widths and the element being turned around, or None when
-        the leg runs through without doubling back."""
+        """All three widths and the element being turned around.
+
+        None when the leg runs through without doubling back, and by default
+        also when a zone ran off the end of the route. A caller comparing three
+        widths against thresholds cannot do anything sensible with a missing
+        one, and handing it a `None` to trip over is worse than saying there is
+        no turn here to assess.
+
+        Pass `require_measured=False` for the partial turn, when you would
+        rather ask the owner about a turn we could not measure than say nothing
+        about it.
+        """
         grid, clearance = self._field(graph)
         route = self.route_clear_width(graph, scenario, leg_index)
         if not route.reachable or not route.path:
             return None
-        return measure_turn(graph, grid, clearance, route.path)
+
+        turn = measure_turn(graph, grid, clearance, route.path)
+        if turn is None or (require_measured and not turn.fully_measured):
+            return None
+        return turn
 
     def turning_space(self, graph: SceneGraph, at: Vec3) -> ClearFloorResult:
         _, clearance = self._field(graph)

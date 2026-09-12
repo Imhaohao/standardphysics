@@ -123,10 +123,21 @@ def test_an_unmeasurable_zone_reports_nothing_not_zero():
 
     measure = PipelineMeasurements()
     graph, scenario = build_graph(), build_scenario()
-    turn = measure.turn_detail(graph, scenario, 1)
+    turn = measure.turn_detail(graph, scenario, 1, require_measured=False)
     assert turn is not None
     assert turn.approach_inches is None
     assert not turn.fully_measured
+
+
+def test_a_partly_measured_turn_is_withheld_by_default():
+    """A caller comparing three widths against thresholds cannot do anything
+    with a missing one, so the default is to say there is no turn to assess
+    rather than hand over a None to trip over."""
+    from standardphysics_fixtures import build_graph, build_scenario
+
+    measure = PipelineMeasurements()
+    graph, scenario = build_graph(), build_scenario()
+    assert measure.turn_detail(graph, scenario, 1) is None
 
 
 def test_a_measured_turn_says_so(narrow_turn):

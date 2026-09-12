@@ -28,3 +28,18 @@ python -m standardphysics_pipeline.check_blender
 | `occupancy.py` | Floor rasterization and the distance transform |
 | `routes.py` | Widest path, bottleneck width, and the pinch point |
 | `measure.py` | The `MeasurementProvider` Lane C calls |
+
+## Before you push
+
+CI runs three suites. `pytest` alone runs only the first, which is how a change
+in this lane turned master red without failing anything locally:
+
+```bash
+PY=packages/contracts:packages/fixtures:packages/pipeline:packages/agents:services/api
+python -m pytest -q
+PYTHONPATH=$PY python -m pytest packages/agents -q
+PYTHONPATH=$PY python -m pytest services/api/tests -q
+```
+
+Lane C consumes this lane's types directly, so a change to a return type here
+breaks their checks and never touches a test in `tests/`.
