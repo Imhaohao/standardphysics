@@ -16,6 +16,15 @@ targets:
       - path: StandardPhysics
     info:
       path: StandardPhysics/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: Standard Physics
+        NSCameraUsageDescription: Use the camera to measure your shop.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        UILaunchStoryboardName: LaunchScreen
+        UIRequiresFullScreen: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.standardphysics.capture
