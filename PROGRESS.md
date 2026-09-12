@@ -31,12 +31,12 @@ Build order tasks 4 (USDZ import), 8 (Astra label), 9 (Astra clean) and 11 (find
 ## Findings
 
 ### A-1 Lane documents point at files that do not exist
-Low. `open`.
+Low. `fixed in 7fb2d22`.
 
 `LANE_A.md` names `packages/fixtures/mock_api.py` and `python -m fixtures.mock_api`; the module is `standardphysics_fixtures.mock_api`, which the README gets right. `LANE_B.md` and `LANE_C.md` name `packages/fixtures/shop.room.json`; no room.json fixture exists, only `data/shop.scene_graph.json`. `LANE_C.md` names `packages/fixtures/stub_measurements.py`; it lives at `packages/fixtures/standardphysics_fixtures/stub_measurements.py`.
 
 ### A-2 The Blender self-test only works on a Mac with Blender in /Applications
-Low. `open`.
+Low. `fixed in 2a5f763`.
 
 `check_blender.BLENDER` is hard-coded to `/Applications/Blender.app/Contents/MacOS/Blender`, with no fallback to `blender` on `PATH`. The lane document asks for a check every machine can run.
 
@@ -101,6 +101,6 @@ Low. `open`.
 `export_glb` and `glb_node_names` have no test, and CI has no Blender. Checked by hand: the committed `shop.glb` has 19 nodes, each named with its SceneGraph node ID.
 
 ### A-13 Region loci are always axis-aligned squares
-Low. `open`.
+Low. `fixed in 2a5f763`. Callers still have to pass the counter's rotation and `circle=True` for a turning space.
 
 `region_locus` draws an axis-aligned rectangle with a camera fixed to look from minus Y. A turning space is a 60 in circle, and a rotated clear floor space draws in the wrong orientation once A-8 is fixed.
