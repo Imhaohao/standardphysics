@@ -165,7 +165,7 @@ Each pass is one Weave evaluation with retrievable per-check results. The loop s
 | Layer | Stack | Owner |
 |---|---|---|
 | Capture | SwiftUI, RoomPlan, ARKit, AVFoundation | A |
-| 3D pipeline | Python, Blender headless (`bpy`), Astra | B |
+| 3D pipeline | Python, Blender headless (`bpy`), Astra via OpenRouter | B |
 | Agents and rules | Python, Pydantic, TypeSafe, Weave | C |
 | API | FastAPI, SQLite, local artifact store | D |
 | Web | Next.js, TypeScript, Tailwind, React Three Fiber | D |
@@ -197,6 +197,28 @@ print('OK' if 'Cube' in bpy.data.objects else 'BROKEN')
 ```
 
 `brew install --cask blender` will not upgrade a Blender that was installed by hand; it reports the cask as not installed and exits clean. Use `--force`.
+
+### Model access
+
+Every model call goes through [OpenRouter](https://openrouter.ai/openai/gpt-6-astra) using the OpenAI SDK: `base_url="https://openrouter.ai/api/v1"`, `OPENROUTER_API_KEY`, model `openai/gpt-6-astra`. That covers Astra's label, clean and frame jobs and the fix agent. The model advertises `tools`, `tool_choice` and `response_format`, which is what the patch interface needs.
+
+Require [zero data retention](https://openrouter.ai/docs/guides/features/zdr) on the account and on each request, because scans of a real shop are private. Pin the provider to OpenAI with [provider routing](https://openrouter.ai/docs/docs/routing/provider-selection) so the demo runs on one backend, and store the provider and model OpenRouter reports on every response. Set a credit limit on the key before the first long Blender run.
+
+Weave picks these up through its [OpenRouter integration](https://docs.wandb.ai/weave/guides/integrations/openrouter), so leave OpenRouter's Broadcast to Weave setting **off** or every call is traced twice and the evaluation numbers drift.
+
+### Credentials
+
+Every key lives in a gitignored `.env` on the API server, listed in `.env.example`. The iOS app, the web client, Git, prompts and Weave traces never see one.
+
+| Variable | Used by |
+|---|---|
+| `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` | Astra and every other model call |
+| `WANDB_API_KEY`, `WANDB_ENTITY`, `WANDB_PROJECT` | Weave tracing and evaluation; ARIA uses the same team project |
+| `TYPESAFE_API_KEY` | The router |
+| `APP_SESSION_SECRET` | Signing app sessions and upload tokens, generated locally |
+| `SHOPIFY_STORE_DOMAIN`, `SHOPIFY_STOREFRONT_PRIVATE_TOKEN` | The stretch catalog, only if it gets built |
+
+A key that shows up in chat, an issue, a log or a commit counts as leaked. Rotate it before using it.
 
 ---
 
@@ -267,7 +289,7 @@ Corrections to the model and proposed changes to the shop are separate events in
 
 **Exports per revision:** `scene.glb` with stable node IDs under 8 MB, `scene_graph.json`, and `finding_<id>.png` per locatable finding. Compression must not break node selection. Reuse unchanged renders instead of blocking every preview on Blender.
 
-**If Astra access doesn't land,** route the same three jobs through any authorized model behind the same patch validator, with no broader permissions. Resolve runtime access in the first working hour.
+**If Astra is unavailable on OpenRouter or credits run out,** route the same three jobs through any authorized model behind the same patch validator, with no broader permissions. Resolve runtime access in the first working hour.
 
 ---
 
