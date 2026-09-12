@@ -51,24 +51,34 @@ class TurnVerdict:
 
 def turn_verdict(
     element_width_inches: float,
-    approaching_inches: float,
-    at_turn_inches: float,
-    leaving_inches: float,
+    approaching_inches: float | None,
+    at_turn_inches: float | None,
+    leaving_inches: float | None,
     rule: RuleSpec,
 ) -> TurnVerdict:
-    """403.5.2 with its exception, with no geometry in the way."""
-    if at_turn_inches >= rule.parameter("exempt_at_turn_width_inches"):
+    """403.5.2 with its exception, with no geometry in the way.
+
+    A zone Lane B could not measure is None. A measured zone that is too tight
+    still fails the turn, but a missing zone never lets it pass.
+    """
+    exempt = rule.parameter("exempt_at_turn_width_inches")
+    if at_turn_inches is not None and at_turn_inches >= exempt:
         return TurnVerdict(False, True, "exempt_wide_turn")
     if element_width_inches >= rule.parameter("element_width_below_inches"):
         return TurnVerdict(False, True, "element_wide_enough")
     tight = _tight_zone(rule, approaching_inches, at_turn_inches, leaving_inches)
-    if tight is None:
-        return TurnVerdict(True, True, "measured")
-    return TurnVerdict(True, False, tight)
+    if tight is not None:
+        return TurnVerdict(True, False, tight)
+    if None in (approaching_inches, at_turn_inches, leaving_inches):
+        return TurnVerdict(False, False, "not_fully_measured")
+    return TurnVerdict(True, True, "measured")
 
 
 def _tight_zone(
-    rule: RuleSpec, approaching: float, at_turn: float, leaving: float
+    rule: RuleSpec,
+    approaching: float | None,
+    at_turn: float | None,
+    leaving: float | None,
 ) -> str | None:
     zones = (
         ("at_turn_too_tight", at_turn, "at_turn_min_inches"),
@@ -76,19 +86,20 @@ def _tight_zone(
         ("leaving_too_tight", leaving, "leaving_min_inches"),
     )
     for reason, value, parameter in zones:
-        if value < rule.parameter(parameter):
+        if value is not None and value < rule.parameter(parameter):
             return reason
     return None
 
 
 def binding_zone(turn, rule: RuleSpec) -> tuple[float, float]:
-    """The zone with the worst shortfall, as (measured, required)."""
+    """The measured zone with the worst shortfall, as (measured, required)."""
     zones = (
         (turn.at_turn_inches, rule.parameter("at_turn_min_inches")),
         (turn.approach_inches, rule.parameter("approaching_min_inches")),
         (turn.leaving_inches, rule.parameter("leaving_min_inches")),
     )
-    return min(zones, key=lambda pair: pair[0] - pair[1])
+    measured = [pair for pair in zones if pair[0] is not None]
+    return min(measured, key=lambda pair: pair[0] - pair[1])
 
 
 def zones_measured(turn) -> bool:

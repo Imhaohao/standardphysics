@@ -36,6 +36,7 @@ The audit fixes code only in files no lane agent is actively changing. For lanes
 | `5d09e4d` B: stand the room on its floor, read both ends of an object | B | Pass | Resolves A-25 |
 | `a260626` D: the API, running every stage a real scan goes through | D | Pass with notes | A-29, A-30, A-31; its web run still failed on A-28 |
 | `0aa64b8` D: generate Next route types before typechecking | D | Pass | Resolves A-28 |
+| `0f0e01b` B: an unmeasured turn zone reports nothing, not zero inches | B | **Fail** | CI red; A-32 |
 
 `609db3d`, `9028d14`, `b90e570`, `d3f7d95` and `1a06655` change only the plan and lane documents. A-1 covers the lane document errors from `9028d14`.
 
@@ -212,3 +213,12 @@ Low. `open`. Lane D.
 Low, not reachable yet. `open`. Lane D.
 
 `GET /api/scans/{id}/renders/{finding}.png` picks `sorted(glob("*/renders/<finding>.png"))[-1]`. The revision directories sort as strings, so revision `9` sorts after `10`, and finding IDs do not include the revision (`findings.py` hashes the scan ID and rule key). Once a scan passes ten revisions, a finding shows its revision 9 image. No endpoint creates a revision yet, so nothing hits this today. The same route answers `not ready` for an unknown scan where every other route says `no scan`.
+
+### A-32 CI is red at `0f0e01b`: Lane C's turn check crashes on an unmeasured zone
+High. `open`. Lane B change, Lane C file.
+
+`0f0e01b` makes `Turn.approach_inches`, `at_turn_inches` and `leaving_inches` `float | None`, so an unmeasured zone no longer reads 0.0 in. That part is right. `checks/turn_width.py` in Lane C still compares every zone with a number, so `assess` raises `TypeError: '<' not supported between instances of 'NoneType' and 'float'` on the fixture shop, whose leg 1 turn now measures None/57.1/78.7 in. CI fails on `pytest packages/agents` (19 failed, 11 errors) and `services/api/tests` (the sample shop's assess job fails, so it never becomes `ready`). The commit message reports 140 tests passing, which is the root suite only.
+
+The audit branch patches `turn_width.py`: a measured zone that is too tight still fails the turn, and a missing zone never lets it pass, so a partly measured turn with no failing zone produces no observation. Regressions are in `tests/test_audit_lane_c.py`. Lane C may prefer to turn that case into an `asks_for` request.
+
+The new 2.5 m minimum route for a turn was checked against a 36 in turn in rooms 2.5 to 4.0 m deep: every room that reported a turn before `0f0e01b` still does, with the same at-turn width.

@@ -20,3 +20,13 @@ The audit no longer edits your files while your agent is active. Each finding be
 - **A-6:** route width still ignores everything near a stop instead of only its `anchor_node_id`, so a 20 in gap 0.2 m inside the entrance reads 31 in. You found that exempting the anchor's clear space regressed leg 1; the pinned test only asks that the entrance gap reads 20 in.
 - **A-9:** `door_clear_width` should set `needs_measurement=True`. Lane C's door check already turns it into a request.
 - **A-22:** leg 1's 29.79 in is not a pinch the route crosses. The counter and table_1 do not overlap in x, and the grid width where the route passes is 57 in. Details in `PROGRESS.md`.
+
+## `0f0e01b` turned CI red (A-32)
+
+Making the zone widths optional was right, but Lane C's `checks/turn_width.py` compares them with numbers and raises on the fixture shop's leg 1. CI runs three suites; run all three before a push that changes a type another lane reads:
+
+```bash
+python -m pytest && python -m pytest packages/agents -q && python -m pytest services/api/tests -q
+```
+
+The audit branch carries the Lane C fix. Nothing in your files changed.
