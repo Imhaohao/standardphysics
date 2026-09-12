@@ -1,0 +1,31 @@
+import { notFound } from "next/navigation";
+import { Workspace } from "@/components/workspace/Workspace";
+import { getAssessment, getScan, getScene, sceneGlbUrl } from "@/lib/api";
+import { API_ORIGIN } from "@/lib/api-origin";
+import { scanStatus } from "@/lib/scan-status";
+
+export const dynamic = "force-dynamic";
+
+async function glbAvailable(scanId: string): Promise<boolean> {
+  const response = await fetch(`${API_ORIGIN}${sceneGlbUrl(scanId)}`, { cache: "no-store" });
+  await response.body?.cancel();
+  return response.ok;
+}
+
+export default async function ShopPage({ params }: PageProps<"/scans/[scanId]">) {
+  const { scanId } = await params;
+  const scan = await getScan(scanId);
+  if (!scan) notFound();
+  const [scene, assessment, hasGlb] = await Promise.all([getScene(scanId), getAssessment(scanId), glbAvailable(scanId)]);
+
+  if (!scene) {
+    return (
+      <main className="mx-auto max-w-2xl px-5 py-20">
+        <h1 className="text-3xl font-bold">{scan.name}</h1>
+        <p className="mt-4 text-lg text-ink-muted">{scanStatus(scan, null)}</p>
+      </main>
+    );
+  }
+
+  return <Workspace scan={scan} scene={scene} assessment={assessment} glbUrl={hasGlb ? sceneGlbUrl(scanId) : null} />;
+}
