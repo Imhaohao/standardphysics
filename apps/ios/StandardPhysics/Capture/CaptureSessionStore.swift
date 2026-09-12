@@ -2,6 +2,7 @@ import ARKit
 import RoomPlan
 import SwiftUI
 
+@MainActor
 final class CaptureSessionStore: ObservableObject {
     enum Phase: Equatable {
         case preparing
@@ -153,44 +154,55 @@ final class RoomCaptureController: UIViewController, RoomCaptureViewDelegate, Ro
         recorder = nil
     }
 
-    func captureView(shouldPresent roomDataForProcessing: CapturedRoomData, error: Error?) -> Bool {
+    nonisolated func captureView(shouldPresent roomDataForProcessing: CapturedRoomData, error: Error?) -> Bool {
         error == nil
     }
 
-    func captureView(didPresent processedResult: CapturedRoom, error: Error?) {
-        guard error == nil else {
-            store.didFinish(.failure(error!))
-            return
+    nonisolated func captureView(didPresent processedResult: CapturedRoom, error: Error?) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            guard error == nil else {
+                store.didFinish(.failure(CaptureProcessingError.failed))
+                return
+            }
+            processedRoom = processedResult
+            exportIfReady()
         }
-        processedRoom = processedResult
-        exportIfReady()
     }
 
-    func captureSession(_ session: RoomCaptureSession, didUpdate room: CapturedRoom) {
-        let surfaces = snapshots(from: room)
+    nonisolated func captureSession(_ session: RoomCaptureSession, didUpdate room: CapturedRoom) {
         guard let frame = session.arSession.currentFrame else { return }
-        coverageEngine.update(
-            surfaces: surfaces,
-            camera: CameraObservation(
-                transform: frame.camera.transform,
-                intrinsics: frame.camera.intrinsics,
-                imageResolution: SIMD2(Float(frame.camera.imageResolution.width), Float(frame.camera.imageResolution.height))
-            )
+        let camera = CameraObservation(
+            transform: frame.camera.transform,
+            intrinsics: frame.camera.intrinsics,
+            imageResolution: SIMD2(Float(frame.camera.imageResolution.width), Float(frame.camera.imageResolution.height))
         )
+        Task { @MainActor [weak self] in self?.handleUpdate(room: room, camera: camera) }
+    }
+
+    nonisolated func captureSession(
+        _ session: RoomCaptureSession,
+        didProvide instruction: RoomCaptureSession.Instruction
+    ) {
+        let text = instruction.friendlyText
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            store.didUpdate(coverage: latestCoverage, surfaces: store.surfaces, instruction: text)
+        }
+    }
+
+    nonisolated func captureSession(_ session: RoomCaptureSession, didEndWith data: CapturedRoomData, error: Error?) {
+        guard error != nil else { return }
+        Task { @MainActor [weak self] in
+            self?.store.didFinish(.failure(CaptureProcessingError.failed))
+        }
+    }
+
+    private func handleUpdate(room: CapturedRoom, camera: CameraObservation) {
+        let surfaces = snapshots(from: room)
+        coverageEngine.update(surfaces: surfaces, camera: camera)
         latestCoverage = coverageEngine.snapshot
         store.didUpdate(coverage: latestCoverage, surfaces: surfaces, instruction: nil)
-    }
-
-    func captureSession(_ session: RoomCaptureSession, didProvide instruction: RoomCaptureSession.Instruction) {
-        store.didUpdate(
-            coverage: latestCoverage,
-            surfaces: store.surfaces,
-            instruction: instruction.friendlyText
-        )
-    }
-
-    func captureSession(_ session: RoomCaptureSession, didEndWith data: CapturedRoomData, error: Error?) {
-        if let error { store.didFinish(.failure(error)) }
     }
 
     private func exportIfReady() {
@@ -247,6 +259,10 @@ final class RoomCaptureController: UIViewController, RoomCaptureViewDelegate, Ro
         }
         return wallSnapshots + otherSurfaceSnapshots + objectSnapshots
     }
+}
+
+private enum CaptureProcessingError: Error {
+    case failed
 }
 
 private extension SurfaceConfidence {

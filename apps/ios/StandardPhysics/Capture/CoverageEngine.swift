@@ -1,13 +1,13 @@
 import Foundation
 import simd
 
-enum SurfaceConfidence: String, Codable {
+enum SurfaceConfidence: String, Codable, Sendable {
     case low
     case medium
     case high
 }
 
-struct SurfaceSnapshot: Identifiable {
+struct SurfaceSnapshot: Identifiable, Sendable {
     let id: UUID
     let width: Float
     let height: Float
@@ -36,7 +36,7 @@ struct SurfaceSnapshot: Identifiable {
     }
 }
 
-struct CameraObservation {
+struct CameraObservation: Sendable {
     let transform: simd_float4x4
     let intrinsics: simd_float3x3
     let imageResolution: SIMD2<Float>
@@ -60,7 +60,7 @@ struct CameraObservation {
     }
 }
 
-struct SurfaceCoverage: Identifiable, Codable, Equatable {
+struct SurfaceCoverage: Identifiable, Codable, Equatable, Sendable {
     let id: UUID
     let observedFraction: Double
     let viewpointCount: Int
@@ -97,7 +97,7 @@ struct SurfaceCoverage: Identifiable, Codable, Equatable {
     }
 }
 
-struct CoverageSnapshot {
+struct CoverageSnapshot: Sendable {
     var surfaces: [SurfaceCoverage] = []
     var unfinishedDirection: CoverageAngle = .zero
 
@@ -106,7 +106,7 @@ struct CoverageSnapshot {
     }
 }
 
-struct CoverageAngle: Equatable {
+struct CoverageAngle: Equatable, Sendable {
     let radians: Double
 
     static let zero = CoverageAngle(radians: 0)

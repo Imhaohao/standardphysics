@@ -74,17 +74,13 @@ struct WorkspaceWebView: UIViewRepresentable {
 
         func webView(
             _ webView: WKWebView,
-            decidePolicyFor navigationAction: WKNavigationAction,
-            decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
-        ) {
-            guard let target = navigationAction.request.url else {
-                decisionHandler(.cancel)
-                return
-            }
+            decidePolicyFor navigationAction: WKNavigationAction
+        ) async -> WKNavigationActionPolicy {
+            guard let target = navigationAction.request.url else { return .cancel }
             if target.scheme == "about" || target.host.map(allowedHosts.contains) == true {
-                decisionHandler(.allow)
+                return .allow
             } else {
-                decisionHandler(.cancel)
+                return .cancel
             }
         }
 
