@@ -12,11 +12,13 @@ from fastapi import FastAPI, Header, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from standardphysics_contracts import (
-    ApiError,
     Artifact,
     ArtifactKind,
     Assessment,
     CreateScanRequest,
+    LayoutCheckRequest,
+    LayoutCheckResult,
+    SaveLayoutRequest,
     Scan,
     ScanList,
     Scenario,
@@ -27,6 +29,8 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from . import repository as repo
 from .coverage import parse_coverage
 from .db import Database
+from .errors import ApiProblem
+from .layout import check_layout, save_layout
 from .seed import seed_sample_shop
 from .settings import Settings
 from .stages import Stages, preview_ledger
@@ -34,11 +38,6 @@ from .store import ArtifactStore, ArtifactTooLarge, InvalidArtifactId
 from .worker import PROCESS, Worker
 
 log = logging.getLogger(__name__)
-
-
-class ApiProblem(Exception):
-    def __init__(self, status: int, error: str, need: list[str] | None = None):
-        self.status, self.body = status, ApiError(error=error, need=need)
 
 
 def _problem_response(exc: ApiProblem) -> JSONResponse:
@@ -86,6 +85,7 @@ def create_app(settings: Settings | None = None, stages: Stages | None = None, r
     _install_scan_routes(app, database)
     _install_upload_routes(app, database, store, worker)
     _install_workspace_routes(app, database, store)
+    _install_layout_routes(app, database, stages, worker)
     return app
 
 
@@ -231,3 +231,13 @@ def _install_workspace_routes(app: FastAPI, database: Database, store: ArtifactS
         directory = store.scan_dir(scan_id) / "revisions"
         matches = sorted(directory.glob(f"*/renders/{finding_id}.png"))
         return _file_or_404(matches[-1] if matches else None, "image/png")
+
+
+def _install_layout_routes(app: FastAPI, database: Database, stages: Stages, worker: Worker) -> None:
+    @app.post("/api/scans/{scan_id}/layout-checks", response_model=LayoutCheckResult)
+    def layout_check(scan_id: uuid.UUID, body: LayoutCheckRequest) -> LayoutCheckResult:
+        return check_layout(database, stages, scan_id, body)
+
+    @app.post("/api/scans/{scan_id}/revisions", response_model=SceneGraph, status_code=201)
+    def save_revision(scan_id: uuid.UUID, body: SaveLayoutRequest) -> SceneGraph:
+        return save_layout(database, worker, scan_id, body)

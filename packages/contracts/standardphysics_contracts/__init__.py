@@ -1,4 +1,12 @@
-from .api import ApiError, CreateScanRequest, ScanList
+from .api import (
+    ApiError,
+    Blocked,
+    CreateScanRequest,
+    LayoutCheckRequest,
+    LayoutCheckResult,
+    SaveLayoutRequest,
+    ScanList,
+)
 from .findings import Annotation, AnnotationKind, Finding, Locus, Outcome
 from .geometry import CameraPose, Mat4, Vec3, to_inches, to_meters
 from .hashing import graph_hash
@@ -21,6 +29,7 @@ __all__ = [
     "ArtifactKind",
     "Assessment",
     "Authority",
+    "Blocked",
     "CameraPose",
     "Check",
     "Citation",
@@ -30,6 +39,8 @@ __all__ = [
     "Finding",
     "HeightResult",
     "LabelSource",
+    "LayoutCheckRequest",
+    "LayoutCheckResult",
     "Locus",
     "Mat4",
     "MeasurementProvider",
@@ -40,6 +51,7 @@ __all__ = [
     "Quality",
     "RouterAction",
     "RulePack",
+    "SaveLayoutRequest",
     "Scan",
     "ScanList",
     "ScanState",

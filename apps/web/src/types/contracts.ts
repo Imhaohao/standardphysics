@@ -126,6 +126,17 @@ export interface CameraPose {
   target: Vec3;
 }
 /**
+ * A hard constraint a layout breaks, from Lane C's fix constraints.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "Blocked".
+ */
+export interface Blocked {
+  detail: string;
+  node_id: string;
+  reason: string;
+}
+/**
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
  * via the `definition` "Check".
  */
@@ -168,6 +179,39 @@ export interface HeightResult {
   node_id: string;
 }
 /**
+ * Every move so far against one saved revision, never just the latest drag.
+ *
+ * `sequence` rises with each drop, so the client can ignore an answer that
+ * arrives after a newer one.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "LayoutCheckRequest".
+ */
+export interface LayoutCheckRequest {
+  base_revision: number;
+  moves: NodeMove[];
+  sequence: number;
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "NodeMove".
+ */
+export interface NodeMove {
+  delta_rotation_z_degrees: number;
+  delta_translation: Vec3;
+  node_id: string;
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "LayoutCheckResult".
+ */
+export interface LayoutCheckResult {
+  blocked: Blocked[];
+  findings: Finding[];
+  graph_hash: string;
+  sequence: number;
+}
+/**
  * Row-major 4x4 transform.
  *
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
@@ -199,15 +243,6 @@ export interface Mat4 {
   ];
 }
 /**
- * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
- * via the `definition` "NodeMove".
- */
-export interface NodeMove {
-  delta_rotation_z_degrees: number;
-  delta_translation: Vec3;
-  node_id: string;
-}
-/**
  * Movable nodes only. No resize, no fixture movement, no leaving the floor.
  *
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
@@ -233,6 +268,14 @@ export interface Proposal {
 export interface RulePack {
   checks: Check[];
   version: string;
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "SaveLayoutRequest".
+ */
+export interface SaveLayoutRequest {
+  base_revision: number;
+  moves: NodeMove[];
 }
 /**
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema

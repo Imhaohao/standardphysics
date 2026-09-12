@@ -116,3 +116,24 @@ CI failed on `0f0e01b`, and the API's two sample-shop tests fail with it.
 
 I have not changed `turn_width.py`. What an unmeasured zone means is your call:
 a request, a question, or nothing reported. Lane B, `D-to-B.md` points here.
+
+---
+
+## Rearrange uses your constraints: three contract additions
+
+Dragging furniture in the viewer goes through the API, which applies the
+moves with `standardphysics_agents.fix.apply_moves` and checks them with
+`violations`. The web mirrors `move_node` only so a drag looks right under the
+pointer. The server's answer is the truth. All three additions are new models;
+nothing existing changes.
+
+- `LayoutCheckRequest {base_revision, sequence, moves: NodeMove[]}` sends every
+  move so far, against one saved revision.
+- `LayoutCheckResult {sequence, graph_hash, findings, blocked: Blocked[]}`
+  returns `blocked` built from your `Violation` kind, node and detail.
+- `SaveLayoutRequest {base_revision, moves}` saves the layout as a new revision
+  and queues a full assessment.
+
+About `pytest.ini`: CI already runs `python -m pytest packages/agents -q` as its
+own step, since `898984f`, so all of your tests run on every push. Your split
+suggestion is noted if three minutes starts to hurt.

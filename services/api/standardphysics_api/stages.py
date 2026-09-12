@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import logging
 import pathlib
+import threading
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
@@ -47,13 +48,15 @@ class Stages:
     export_glb: Callable[[SceneGraph, pathlib.Path], pathlib.Path] = blender.export_glb
     usdz_to_glb: Callable[..., blender.ConversionResult] = blender.usdz_to_glb
     render_finding: Callable[..., pathlib.Path] = blender.render_finding
+    _assess_lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
     def ingest(self, room_json: pathlib.Path, scan_id) -> SceneGraph:
         graph = parse_room_json(json.loads(room_json.read_bytes()), scan_id=scan_id)
         return self.label(graph)
 
     def assess(self, graph: SceneGraph, scenario: Scenario, pass_number: int) -> Assessment:
-        result = assess(graph, scenario, self.measure, ledger=self.ledger_factory(), pass_number=pass_number)
+        with self._assess_lock:
+            result = assess(graph, scenario, self.measure, ledger=self.ledger_factory(), pass_number=pass_number)
         for missing in result.unevaluated:
             log.info("rule %s not evaluated: %s", missing.rule_id, missing.waiting_on)
         return result.assessment
