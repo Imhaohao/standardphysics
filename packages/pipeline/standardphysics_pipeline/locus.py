@@ -153,18 +153,45 @@ def _measurement_endpoints(
     )
 
 
+CIRCLE_SEGMENTS = 32
+
+
+def _rectangle_outline(half_w: float, half_d: float) -> list[tuple[float, float]]:
+    return [(-half_w, -half_d), (half_w, -half_d), (half_w, half_d), (-half_w, half_d)]
+
+
+def _circle_outline(radius: float) -> list[tuple[float, float]]:
+    step = 2 * math.pi / CIRCLE_SEGMENTS
+    return [
+        (radius * math.cos(i * step), radius * math.sin(i * step))
+        for i in range(CIRCLE_SEGMENTS)
+    ]
+
+
 def region_locus(
-    result: ClearFloorResult, node_ids: list, draw_height: float = 0.02
+    result: ClearFloorResult,
+    node_ids: list,
+    draw_height: float = 0.02,
+    rotation: tuple[float, float] = (1.0, 0.0),
+    circle: bool = False,
 ) -> Locus:
-    """A floor patch, for turning space and clear floor space checks."""
+    """A floor patch, for turning space and clear floor space checks.
+
+    `rotation` is the cosine and sine of the object the space sits against, so
+    the patch and the camera turn with it. A turning space passes `circle=True`.
+    """
     half_w = to_meters(result.inches_wide) / 2
     half_d = to_meters(result.inches_deep) / 2
     centre = result.center
+    cos_t, sin_t = rotation
+    outline = _circle_outline(half_w) if circle else _rectangle_outline(half_w, half_d)
     corners = [
-        Vec3(x=centre.x - half_w, y=centre.y - half_d, z=draw_height),
-        Vec3(x=centre.x + half_w, y=centre.y - half_d, z=draw_height),
-        Vec3(x=centre.x + half_w, y=centre.y + half_d, z=draw_height),
-        Vec3(x=centre.x - half_w, y=centre.y + half_d, z=draw_height),
+        Vec3(
+            x=centre.x + x * cos_t - y * sin_t,
+            y=centre.y + x * sin_t + y * cos_t,
+            z=draw_height,
+        )
+        for x, y in outline
     ]
     bbox_min, bbox_max = _bbox(corners, padding=0.4)
     return Locus(
@@ -177,7 +204,7 @@ def region_locus(
             points=corners,
             label=format_inches(min(result.inches_wide, result.inches_deep)),
         ),
-        camera=camera_for(centre, max(half_w, half_d) * 2, (0.0, -1.0)),
+        camera=camera_for(centre, max(half_w, half_d) * 2, (sin_t, -cos_t)),
     )
 
 

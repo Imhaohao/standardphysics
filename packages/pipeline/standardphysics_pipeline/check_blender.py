@@ -7,12 +7,15 @@ a file and read it back.
 
 from __future__ import annotations
 
+import os
 import pathlib
+import shutil
 import subprocess
 import sys
 import tempfile
 
 BLENDER = "/Applications/Blender.app/Contents/MacOS/Blender"
+"""Where the macOS app installs it. `$BLENDER` and `blender` on `PATH` come first."""
 
 SCRIPT = """
 import bpy
@@ -25,10 +28,12 @@ print("USDZ_ROUNDTRIP", "OK" if "Cube" in bpy.data.objects else "BROKEN")
 
 
 def blender_path() -> str:
-    if pathlib.Path(BLENDER).exists():
-        return BLENDER
+    """`$BLENDER`, then `blender` on `PATH`, then the macOS app bundle."""
+    for candidate in (os.environ.get("BLENDER"), shutil.which("blender"), BLENDER):
+        if candidate and pathlib.Path(candidate).exists():
+            return candidate
     raise FileNotFoundError(
-        f"No Blender at {BLENDER}. Install it with:\n"
+        f"No Blender in $BLENDER, on PATH, or at {BLENDER}. Install it with:\n"
         "    brew install --cask --force blender"
     )
 

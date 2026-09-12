@@ -3,14 +3,17 @@
 Each test is a case that returned the wrong answer before its fix.
 """
 
+import math
 import uuid
 
 import pytest
 
-from standardphysics_contracts import Mat4, SceneNode, Vec3, to_meters
+from standardphysics_contracts import ClearFloorResult, Mat4, SceneNode, Vec3, to_meters
 from standardphysics_fixtures import PINCH_INCHES, build_graph, build_scenario, node_id
+from standardphysics_pipeline import check_blender
 from standardphysics_pipeline.footprints import footprint
 from standardphysics_pipeline.ingest import parse_room_json
+from standardphysics_pipeline.locus import region_locus
 from standardphysics_pipeline.measure import PipelineMeasurements
 
 
@@ -25,6 +28,21 @@ def _planter_across_leg_zero(distance_m: float, height_m: float) -> SceneNode:
         transform=Mat4.translation(entrance.x, entrance.y + distance_m, height_m / 2),
         movable=True,
     )
+
+
+def test_a2_blender_from_the_environment_comes_first(monkeypatch, tmp_path):
+    fake = tmp_path / "blender"
+    fake.write_text("")
+    monkeypatch.setenv("BLENDER", str(fake))
+    assert check_blender.blender_path() == str(fake)
+
+
+def test_a2_blender_on_path_is_found(monkeypatch, tmp_path):
+    fake = tmp_path / "blender"
+    fake.write_text("")
+    monkeypatch.delenv("BLENDER", raising=False)
+    monkeypatch.setattr(check_blender.shutil, "which", lambda name: str(fake))
+    assert check_blender.blender_path() == str(fake)
 
 
 def test_a5_a_low_solid_obstruction_blocks_the_route():
@@ -70,3 +88,22 @@ def test_a11_a_missing_confidence_needs_another_look():
         "category": "table",
     }
     assert parse_room_json({"objects": [element]}).nodes[0].quality == "needs_another_look"
+
+
+def test_a13_a_turned_region_turns_its_outline():
+    result = ClearFloorResult(
+        inches_wide=48.0, inches_deep=30.0, center=Vec3(x=0, y=0, z=0), fits=True
+    )
+    corners = region_locus(result, [], rotation=(0.0, 1.0)).annotation.points
+    assert max(p.x for p in corners) - min(p.x for p in corners) == pytest.approx(
+        to_meters(30.0)
+    )
+
+
+def test_a13_a_turning_space_draws_a_circle():
+    result = ClearFloorResult(
+        inches_wide=60.0, inches_deep=60.0, center=Vec3(x=1, y=2, z=0), fits=True
+    )
+    points = region_locus(result, [], circle=True).annotation.points
+    radii = [math.hypot(p.x - 1, p.y - 2) for p in points]
+    assert radii == pytest.approx([to_meters(30.0)] * len(points))
