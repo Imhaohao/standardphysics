@@ -130,14 +130,40 @@ def build_graph() -> SceneGraph:
     return SceneGraph(scan_id=node_id("scan"), revision=0, nodes=nodes)
 
 
+SEAT_POSITION = (-1.3, -2.4)
+"""Open floor beside table_3, where a wheelchair pulls up to the table."""
+
+
 def build_scenario() -> Scenario:
+    front_wall, counter = node_id("wall_south"), node_id("counter")
     return Scenario(
         name="Order a drink",
         stops=[
-            Stop(name="Entrance", position=Vec3(x=0.0, y=-3.7, z=0.0)),
-            Stop(name="Counter", position=Vec3(x=-0.8, y=3.1, z=0.0)),
-            Stop(name="Pickup", position=Vec3(x=0.8, y=3.1, z=0.0)),
-            Stop(name="Seat", position=Vec3(x=-2.0, y=-2.4, z=0.0)),
-            Stop(name="Exit", position=Vec3(x=0.0, y=-3.7, z=0.0)),
+            Stop(name="Entrance", position=Vec3(x=0.0, y=-3.7, z=0.0),
+                 anchor_node_id=front_wall),
+            Stop(name="Counter", position=Vec3(x=-0.8, y=3.1, z=0.0),
+                 anchor_node_id=counter),
+            Stop(name="Pickup", position=Vec3(x=0.8, y=3.1, z=0.0),
+                 anchor_node_id=counter),
+            Stop(name="Seat", position=Vec3(x=SEAT_POSITION[0], y=SEAT_POSITION[1], z=0.0),
+                 anchor_node_id=node_id("table_3")),
+            Stop(name="Exit", position=Vec3(x=0.0, y=-3.7, z=0.0),
+                 anchor_node_id=front_wall),
+        ],
+    )
+
+
+def build_street_scenario() -> Scenario:
+    """From the sidewalk to the counter, so a route has to cross the doorway.
+
+    The street stop has no anchor. Nothing near it may be ignored, so the only
+    way in is through the door opening itself.
+    """
+    return Scenario(
+        name="Walk in from the street",
+        stops=[
+            Stop(name="Street", position=Vec3(x=0.0, y=-ROOM_DEPTH / 2 - 1.0, z=0.0)),
+            Stop(name="Counter", position=Vec3(x=-0.8, y=3.1, z=0.0),
+                 anchor_node_id=node_id("counter")),
         ],
     )

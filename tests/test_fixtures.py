@@ -11,6 +11,7 @@ from standardphysics_fixtures import (
     PINCH_INCHES,
     build_graph,
     build_scenario,
+    build_street_scenario,
     node_id,
 )
 
@@ -64,3 +65,35 @@ def test_overlapping_obstacles_do_not_read_as_a_passage():
     graph, scenario = build_graph(), build_scenario()
     result = FixtureMeasurements().route_clear_width(graph, scenario, 0)
     assert result.inches < 40.0
+
+
+def _inside_footprint(node, x: float, y: float) -> bool:
+    p = node.transform.position
+    return (abs(x - p.x) < node.dimensions.x / 2
+            and abs(y - p.y) < node.dimensions.y / 2)
+
+
+def test_every_stop_stands_on_open_floor():
+    graph = build_graph()
+    solid = [n for n in graph.obstacles() if n.kind not in ("floor", "door")]
+    for stop in build_scenario().stops + build_street_scenario().stops:
+        inside = [n.label for n in solid
+                  if _inside_footprint(n, stop.position.x, stop.position.y)]
+        assert inside == [], f"{stop.name} stands inside {inside}"
+
+
+def test_every_anchor_names_a_node_in_the_shop():
+    graph = build_graph()
+    for stop in build_scenario().stops:
+        assert stop.anchor_node_id is not None
+        graph.by_id(stop.anchor_node_id)
+
+
+def test_the_street_stop_is_outside_the_front_door():
+    graph = build_graph()
+    door = graph.by_id(node_id("door_front"))
+    wall = graph.by_id(node_id("wall_south"))
+    street = build_street_scenario().stops[0]
+    assert street.anchor_node_id is None
+    assert street.position.y < wall.transform.position.y - wall.dimensions.y / 2
+    assert abs(street.position.x - door.transform.position.x) < door.dimensions.x / 2

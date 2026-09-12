@@ -61,6 +61,12 @@ class Stop(BaseModel):
 
     name: str
     position: Vec3
+    anchor_node_id: UUID | None = None
+    """The fixture this stop is at, such as the counter a customer orders from.
+
+    Route width ignores only this node near the stop. A stop with no anchor gets
+    no exemption, so an obstruction beside it still counts.
+    """
 
 
 class Scenario(BaseModel):

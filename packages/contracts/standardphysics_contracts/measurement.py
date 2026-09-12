@@ -24,6 +24,10 @@ class WidthResult(BaseModel):
     blocking_node_ids: list[UUID]
     path: list[Vec3] = []
     reachable: bool = True
+    needs_measurement: bool = False
+    """The scan cannot settle this width, such as a door's clear opening at 90
+    degrees. Checks turn it into a question with a photo request, never a pass.
+    """
 
 
 class ClearFloorResult(BaseModel):

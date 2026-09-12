@@ -1,5 +1,6 @@
 from .findings import Annotation, Finding, Locus
 from .geometry import CameraPose, Mat4, Vec3, to_inches, to_meters
+from .hashing import graph_hash
 from .loop import Assessment, Decision, NodeMove, Proposal
 from .measurement import (
     ClearFloorResult,
@@ -16,5 +17,5 @@ __all__ = [
     "ClearFloorResult", "Decision", "Finding", "HeightResult", "Locus", "Mat4",
     "MeasurementProvider", "NodeMove", "Proposal", "RulePack", "Scan",
     "Scenario", "SceneGraph", "SceneNode", "Stop", "SurfaceCoverage", "Vec3",
-    "WidthResult", "to_inches", "to_meters",
+    "WidthResult", "graph_hash", "to_inches", "to_meters",
 ]
