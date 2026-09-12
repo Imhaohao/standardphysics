@@ -122,3 +122,37 @@ def glb_node_names(path: pathlib.Path) -> list[str]:
     chunk_length = int.from_bytes(data[12:16], "little")
     scene = json.loads(data[20 : 20 + chunk_length].decode("utf-8"))
     return [node.get("name", "") for node in scene.get("nodes", [])]
+
+
+def render_finding(
+    graph: SceneGraph, locus, out_path: pathlib.Path, size: tuple[int, int] = (1200, 800)
+) -> pathlib.Path:
+    """One still of a finding, for the printed report.
+
+    The screen version animates: the camera flies in, everything else fades,
+    the measurement draws. Paper gets one frame, so the render has to carry the
+    same information at once.
+    """
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    graph_file = _write_temp(graph.model_dump_json())
+    locus_file = _write_temp(locus.model_dump_json())
+
+    output = _run(
+        "render_finding.py",
+        [
+            "--graph", graph_file, "--locus", locus_file, "--out", str(out_path),
+            "--width", str(size[0]), "--height", str(size[1]),
+        ],
+    )
+    pathlib.Path(graph_file).unlink(missing_ok=True)
+    pathlib.Path(locus_file).unlink(missing_ok=True)
+
+    if "RENDER_WRITTEN" not in output:
+        raise BlenderError(f"render did not report success:\n{output[-2000:]}")
+    return out_path
+
+
+def _write_temp(payload: str) -> str:
+    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as handle:
+        handle.write(payload)
+        return handle.name

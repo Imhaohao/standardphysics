@@ -25,11 +25,20 @@ from standardphysics_contracts import (
 
 from .footprints import closest_points, footprint
 
-EYE_PITCH_DEGREES = 38.0
-"""Looking down at a floor gap reads better than standing level with it."""
+EYE_PITCH_DEGREES = 55.0
+"""How far above the floor the camera sits, in degrees from horizontal.
 
-FRAMING_MARGIN = 1.45
-"""Leaves air around the subject so the dimension label is not against an edge."""
+Steep, because these are interiors. A low angle puts the near wall between the
+camera and the subject and spends half the frame on the outside of the
+building. From 55 degrees the camera clears a three metre wall and looks down
+into the room."""
+
+FRAMING_MARGIN = 1.15
+"""Air around the subject. Tight enough to keep the camera indoors."""
+
+DEFAULT_FOV = 65.0
+"""A wide lens, so framing a three metre subject does not push the camera ten
+metres back and out through the wall behind it."""
 
 MIN_CAMERA_DISTANCE = 1.2
 MIN_EYE_HEIGHT = 1.1
@@ -70,7 +79,7 @@ def camera_for(
     subject: Vec3,
     radius: float,
     view_direction: tuple[float, float],
-    fov_degrees: float = 50.0,
+    fov_degrees: float = DEFAULT_FOV,
 ) -> CameraPose:
     """Frame a sphere of `radius` around `subject` from the given direction."""
     half_fov = math.radians(fov_degrees) / 2
@@ -112,8 +121,7 @@ def width_locus(
     approach = result.path[0] if result.path else None
     direction = _viewing_side(subject, across, approach)
 
-    span = math.dist((start.x, start.y), (end.x, end.y))
-    radius = max(span, 1.0)
+    radius = _framing_radius(graph, result, subject, span_between=start, and_=end)
 
     return Locus(
         point=result.pinch_point,
@@ -127,6 +135,30 @@ def width_locus(
         ),
         camera=camera_for(subject, radius, direction),
     )
+
+
+CONTEXT_RADIUS = 2.4
+"""Metres of surroundings to keep in shot.
+
+A tight crop on a gap is unreadable: the viewer sees two coloured shapes and no
+shop. The frame has to show enough of what is pinching the route for a person
+to recognise where they are standing.
+"""
+
+
+def _framing_radius(
+    graph: SceneGraph, result: WidthResult, subject: Vec3, span_between: Vec3, and_: Vec3
+) -> float:
+    """Wide enough to show the blockers and the space around them."""
+    reach = math.dist((span_between.x, span_between.y), (and_.x, and_.y)) / 2
+    for node_id in result.blocking_node_ids:
+        try:
+            node = graph.by_id(node_id)
+        except KeyError:
+            continue
+        for corner_x, corner_y in footprint(node):
+            reach = max(reach, math.dist((corner_x, corner_y), (subject.x, subject.y)))
+    return min(max(reach, CONTEXT_RADIUS), 6.0)
 
 
 def _measurement_endpoints(
@@ -224,5 +256,5 @@ def path_locus(result: WidthResult, label: str | None = None) -> Locus:
             points=points,
             label=label or format_inches(result.inches),
         ),
-        camera=camera_for(centre, extent / 2, (0.0, -1.0), fov_degrees=60.0),
+        camera=camera_for(centre, extent / 2, (0.0, -1.0), fov_degrees=70.0),
     )
