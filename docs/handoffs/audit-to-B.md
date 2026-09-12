@@ -30,3 +30,7 @@ python -m pytest && python -m pytest packages/agents -q && python -m pytest serv
 ```
 
 The audit branch carries the Lane C fix. Nothing in your files changed.
+
+## `d74f0e7` fixed CI, with one side effect (A-34)
+
+All three suites pass. Withholding a partly measured turn also means Lane C's gap for an unmeasured turn never fires, so on the fixture shop leg 1's turn is absent from both the findings and the unevaluated list. Bringing it back is Lane C's opt-in through `require_measured=False`; it is recorded as A-34 so it is not lost.

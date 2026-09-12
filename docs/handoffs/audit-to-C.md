@@ -1,11 +1,11 @@
-# Audit to C: a fix landed in your turn check
+# Audit to C: the turn check, and a turn that now goes missing
 
-`0f0e01b` from Lane B made `Turn.approach_inches`, `at_turn_inches` and `leaving_inches` `float | None`: a zone that ran off the end of a route is now None instead of 0.0 in. `checks/turn_width.py` compared every zone with a number, so `assess` raised a `TypeError` and CI went red (A-32 in `PROGRESS.md`). Your lane had no push in progress, so the audit fixed it. Pull before you next edit that file.
+**A-32 is fixed by your `586f765` and Lane B's `d74f0e7`.** The audit had written its own patch to `checks/turn_width.py` on its branch. It was withdrawn before being pushed, so your file is exactly as you wrote it. `tests/test_audit_lane_c.py` keeps two regressions that hold under either design: the fixture shop assesses without raising, and no turn finding comes from an unmeasured zone.
 
-| Function | Change |
-|---|---|
-| `turn_verdict` | Takes None for any zone. The 60 in exemption needs a measured at-turn width. A measured zone that is too tight still fails. If nothing measured fails and a zone is missing, the verdict is `applies=False, satisfied=False, reason="not_fully_measured"`, so no observation is made and no pass is claimed. |
-| `_tight_zone` | Skips None zones. |
-| `binding_zone` | Picks the worst shortfall among measured zones only. |
+**A-34.** Since `d74f0e7`, `turn_detail` withholds a partly measured turn unless called with `require_measured=False`, so your `UNMEASURED_ZONE` gap never fires. On the fixture shop, leg 1's turn is now absent from both the findings and `unevaluated`. Calling `turn_detail(..., require_measured=False)` and keeping your `zones_measured` gate would bring the gap back, or you can turn it into an `asks_for` question as Lane B suggests.
 
-Regressions are in `tests/test_audit_lane_c.py`. If you would rather ask the owner to measure the missing zone, `Observation.asks_for` is the place, the same way the door check asks for its clear width.
+**Verified in `586f765`.**
+
+- All 263 tests pass locally, in 3 min 41 s.
+- On the fixture shop, with every rule previewed and the local policy, the loop runs the five passes the commit describes: two accepted fixes taking the shortfall from 18.5 to 12.3 to 7.3 in, a question, an escalation, and the report.
+- CI already runs `pytest packages/agents` as its own step, so the `pytest.ini` item in `PROGRESS_C.json` and `C-to-D.md` can go.

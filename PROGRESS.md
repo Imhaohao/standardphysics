@@ -40,6 +40,10 @@ The audit fixes code only in files no lane agent is actively changing. For lanes
 | `2fad000` D: the shop viewer, finding callouts and the findings list | D | Pass with notes | A-33; web workflow green |
 | `5897919` D: report the turn check crash that turned master red | D | Pass | Reports A-32 to B and C |
 | `f32018b` D: record the API and viewer as ready for other lanes | D | Pass | Progress file matches the code; CI still red from A-32 |
+| `586f765` C: the router, the fix loop, the labelled dataset and the gate | C | Pass with notes | Resolves A-32; its note that Lane C's tests never run on master is out of date |
+| `d74f0e7` B: withhold a partly measured turn instead of handing out a None | B | Pass with notes | Also resolves A-32; A-34 |
+| `a9ce65c` D: check a layout while it is dragged, and save one | D | Pass with notes | A-35; makes A-31 reachable |
+| `9be20af` D: profile the drag re-check for Lane B | D | Pass | Handoff only |
 
 `609db3d`, `9028d14`, `b90e570`, `d3f7d95` and `1a06655` change only the plan and lane documents. A-1 covers the lane document errors from `9028d14`.
 
@@ -213,18 +217,18 @@ Low. `open`. Lane D.
 `worker.py` says a job runs once even when two API processes share a database, but `Worker.start` requeues every `running` job, including jobs another live process is running. Reproduced at `a260626`: worker A claims the process job, worker B starts, and both run it. `python -m standardphysics_api` starts one process, so this only bites if a second one is started against the same `var/`. A lease with an expiry, or requeueing only jobs owned by this process, would match the docstring.
 
 ### A-31 A finding's render can come from an older revision
-Low, not reachable yet. `open`. Lane D.
+Medium. `open`. Lane D. Reachable since `a9ce65c`.
 
-`GET /api/scans/{id}/renders/{finding}.png` picks `sorted(glob("*/renders/<finding>.png"))[-1]`. The revision directories sort as strings, so revision `9` sorts after `10`, and finding IDs do not include the revision (`findings.py` hashes the scan ID and rule key). Once a scan passes ten revisions, a finding shows its revision 9 image. No endpoint creates a revision yet, so nothing hits this today. The same route answers `not ready` for an unknown scan where every other route says `no scan`.
+`GET /api/scans/{id}/renders/{finding}.png` picks `sorted(glob("*/renders/<finding>.png"))[-1]`. The revision directories sort as strings, so revision `9` sorts after `10`, and finding IDs do not include the revision (`findings.py` hashes the scan ID and rule key). Once a scan passes ten revisions, a finding shows its revision 9 image. When this was found no endpoint created a revision. The same route answers `not ready` for an unknown scan where every other route says `no scan`.
+
+`a9ce65c` adds `POST /api/scans/{id}/revisions`, so revisions now pass 9. Reproduced at `9be20af` on the sample shop: after eleven saved layouts the latest assessment is revision 11, and the render route serves the image rendered for revision 9. Pinned in `tests/test_audit_open_findings.py`.
 
 ### A-32 CI is red at `0f0e01b`: Lane C's turn check crashes on an unmeasured zone
-High. `open`. Lane B change, Lane C file.
+High. `fixed in 586f765` and `d74f0e7`. Lane B change, Lane C file.
 
 `0f0e01b` makes `Turn.approach_inches`, `at_turn_inches` and `leaving_inches` `float | None`, so an unmeasured zone no longer reads 0.0 in. That part is right. `checks/turn_width.py` in Lane C still compares every zone with a number, so `assess` raises `TypeError: '<' not supported between instances of 'NoneType' and 'float'` on the fixture shop, whose leg 1 turn now measures None/57.1/78.7 in. CI fails on `pytest packages/agents` (19 failed, 11 errors) and `services/api/tests` (the sample shop's assess job fails, so it never becomes `ready`). The commit message reports 140 tests passing, which is the root suite only.
 
-The audit branch patches `turn_width.py`: a measured zone that is too tight still fails the turn, and a missing zone never lets it pass, so a partly measured turn with no failing zone produces no observation. Regressions are in `tests/test_audit_lane_c.py`. Lane C may prefer to turn that case into an `asks_for` request.
-
-`5897919` asks Lane B and Lane C to agree the fix before either pushes, and leaves what an unmeasured zone means to Lane C. The audit fix is the conservative reading, nothing reported and nothing passed, so it unblocks CI without deciding that question; Lane C can replace it.
+Both lanes fixed it within two minutes. Lane C's `586f765` skips a turn with a missing or zero zone and records the gap, and Lane B's `d74f0e7` withholds such a turn from `turn_detail` by default. The audit withdrew its own patch to `turn_width.py` before it was pushed and kept two regressions in `tests/test_audit_lane_c.py` that hold under either design: the fixture shop assesses without raising, and no turn finding comes from an unmeasured zone. All three suites pass at `9be20af`.
 
 The new 2.5 m minimum route for a turn was checked against a 36 in turn in rooms 2.5 to 4.0 m deep: every room that reported a turn before `0f0e01b` still does, with the same at-turn width.
 
@@ -234,3 +238,13 @@ Low. `open`. Lane D.
 `Workspace.tsx` shows "Checking your shop" whenever a scan has a scene, no findings, and a state other than `ready`. A scan whose ingest succeeded and whose assess failed is `failed` with a scene, so it reads as in progress forever. That is the sample shop on `master` right now, because of A-32. A `ready` scan with no findings shows "Findings show up here once the shop is checked", which contradicts the shops page's "Everything we checked passes" for the same scan; with no rules verified, every real scan lands there. Read from the diff: the list page uses `scanStatus`, the workspace does not.
 
 The rest of `2fad000` checked out: the web view loads `/scans/<server scan id>` from the upload response, the `nativeCapture` message and `scanShop` action match `WorkspaceScreen.swift`, `Locus.camera` is required by the contract, and the Z-up to Y-up conversion, wall cut and region outline are correct.
+
+### A-34 A turn that could not be fully measured disappears without a trace
+Low. `open`. Lane B and Lane C.
+
+Since `d74f0e7`, `turn_detail` returns None for a partly measured turn unless the caller passes `require_measured=False`. Lane C's `586f765` records such a turn as unevaluated, but only when it receives one, so that path no longer runs. Checked at `d74f0e7` on the fixture shop: leg 1's turn exists with `require_measured=False`, the assessment's unevaluated list holds only `exit_path`, and no turn finding is reported. Neither the owner nor the team is told a turn was seen and not checked, so a turn nobody measured reads the same as no turn. Both lanes' handoffs suggest turning it into a question for the owner.
+
+### A-35 Two saves on the same layout both succeed, and one is lost
+Medium. `open`. Lane D.
+
+`save_layout` in `layout.py` compares `base_revision` with the latest revision outside the write transaction, then inserts with `INSERT OR IGNORE`. A save whose check passes before another save writes the same revision has its insert silently ignored, and still returns 201 with its own layout as the new revision. Reproduced at `9be20af` by landing a save that moves `case_west` inside a save that moves `case_east`, both on revision 0: both return revision 1, and the stored revision 1 holds only the `case_west` move. Two clients saving on the same base at nearly the same moment can hit it. Checking the latest revision inside the transaction, and treating an ignored insert as a conflict, would fix it. Pinned in `tests/test_audit_open_findings.py`.

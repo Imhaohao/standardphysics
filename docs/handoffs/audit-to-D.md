@@ -31,3 +31,8 @@ The upload contract matches what Lane A's app sends: paths, both headers, snake_
 ## The viewer in `2fad000`
 
 - **A-33, low.** `Workspace.tsx` says "Checking your shop" for any scan with a scene and no findings that is not `ready`, so a `failed` scan looks in progress forever. A `ready` scan with no findings says "Findings show up here once the shop is checked", while the shops page says "Everything we checked passes". Using `scanStatus` in the workspace would make the two agree.
+
+## Rearranging in `a9ce65c`
+
+- **A-35, medium, pinned.** `save_layout` checks the base revision outside its write transaction and inserts with `INSERT OR IGNORE`, so a save that loses a race to another save on the same base returns 201 while its layout is dropped. Reproduced at `9be20af`; details in `PROGRESS.md`. Checking the latest revision inside the transaction and treating an ignored insert as a 409 would fix it.
+- **A-31 is now reachable, pinned.** Saved layouts pass revision 9, and after eleven saves on the sample shop the render route serves revision 9's image for a revision 11 assessment. Sorting the revision directories as numbers fixes it.

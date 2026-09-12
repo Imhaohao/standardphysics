@@ -17,10 +17,20 @@ from fastapi.testclient import TestClient
 
 import standardphysics_fixtures
 from standardphysics_agents import VerificationLedger
+from standardphysics_api import layout
 from standardphysics_api.app import create_app
 from standardphysics_api.settings import Settings
 from standardphysics_api.stages import Stages
-from standardphysics_contracts import Mat4, Scenario, SceneGraph, SceneNode, Stop, Vec3, to_meters
+from standardphysics_contracts import (
+    Mat4,
+    SaveLayoutRequest,
+    Scenario,
+    SceneGraph,
+    SceneNode,
+    Stop,
+    Vec3,
+    to_meters,
+)
 from standardphysics_fixtures import build_graph, build_scenario, node_id
 from standardphysics_pipeline import blender
 from standardphysics_pipeline.ingest import parse_room_json
@@ -128,14 +138,26 @@ def _finalize_and_process(client: TestClient, scan_id: str) -> str:
     return client.get(f"/api/scans/{scan_id}").json()["state"]
 
 
-@pytest.mark.xfail(strict=True, reason="A-29: a scan that fails processing can never be processed again")
-def test_a29_a_failed_scan_is_processed_again_once_a_readable_room_arrives(tmp_path):
+def _api_client(tmp_path, seed_sample_shop: bool = False) -> TestClient:
     stages = Stages(
         ledger_factory=VerificationLedger,
         export_glb=_without_blender, usdz_to_glb=_without_blender, render_finding=_without_blender,
     )
-    settings = Settings(data_dir=tmp_path / "var", seed_sample_shop=False)
-    with TestClient(create_app(settings, stages, run_worker=False)) as client:
+    settings = Settings(data_dir=tmp_path / "var", seed_sample_shop=seed_sample_shop)
+    return TestClient(create_app(settings, stages, run_worker=False))
+
+
+def _sample_shop_id(client: TestClient) -> str:
+    return client.get("/api/scans").json()["scans"][0]["id"]
+
+
+def _slide(name: str, dx: float) -> dict:
+    return {"node_id": str(node_id(name)), "delta_translation": {"x": dx, "y": 0.0, "z": 0.0}, "delta_rotation_z_degrees": 0.0}
+
+
+@pytest.mark.xfail(strict=True, reason="A-29: a scan that fails processing can never be processed again")
+def test_a29_a_failed_scan_is_processed_again_once_a_readable_room_arrives(tmp_path):
+    with _api_client(tmp_path) as client:
         body = {"name": "Corner cafe", "device_model": "iPhone17,1", "duration_seconds": 60.0}
         scan_id = client.post("/api/scans", json=body).json()["id"]
         _upload(client, scan_id, "room-json", b"{not json", "room_json")
@@ -144,6 +166,40 @@ def test_a29_a_failed_scan_is_processed_again_once_a_readable_room_arrives(tmp_p
         readable = (REAL_EXPORTS / "apple_bedroom3.room.json").read_bytes()
         _upload(client, scan_id, "room-json-2", readable, "room_json")
         assert _finalize_and_process(client, scan_id) == "ready"
+
+
+@pytest.mark.xfail(
+    strict=True, raises=AssertionError, reason="A-31: renders sort revision directories as text, so 9 beats 10"
+)
+def test_a31_a_render_comes_from_the_newest_revision(tmp_path):
+    with _api_client(tmp_path, seed_sample_shop=True) as client:
+        scan_id = _sample_shop_id(client)
+        finding_id = uuid.uuid4()
+        revisions = client.app.state.store.scan_dir(uuid.UUID(scan_id)) / "revisions"
+        for revision in (9, 10):
+            png = revisions / str(revision) / "renders" / f"{finding_id}.png"
+            png.parent.mkdir(parents=True)
+            png.write_bytes(f"revision {revision}".encode())
+        assert client.get(f"/api/scans/{scan_id}/renders/{finding_id}.png").content == b"revision 10"
+
+
+@pytest.mark.xfail(
+    strict=True, raises=AssertionError, reason="A-35: a save that loses a race on the same base still returns 201"
+)
+def test_a35_a_save_that_loses_the_race_is_refused(tmp_path, monkeypatch):
+    with _api_client(tmp_path, seed_sample_shop=True) as client:
+        scan_id = _sample_shop_id(client)
+        checked = layout._candidate
+
+        def another_save_lands_first(base, moves):
+            monkeypatch.setattr(layout, "_candidate", checked)
+            other = SaveLayoutRequest.model_validate({"base_revision": 0, "moves": [_slide("case_west", -0.05)]})
+            layout.save_layout(client.app.state.database, client.app.state.worker, uuid.UUID(scan_id), other)
+            return checked(base, moves)
+
+        monkeypatch.setattr(layout, "_candidate", another_save_lands_first)
+        mine = {"base_revision": 0, "moves": [_slide("case_east", 0.127)]}
+        assert client.post(f"/api/scans/{scan_id}/revisions", json=mine).status_code == 409
 
 
 @pytest.mark.parametrize("room", ["apple_bedroom3", "apple_livingroom"])
