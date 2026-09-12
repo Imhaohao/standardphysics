@@ -1,68 +1,48 @@
-# B to D: doorways fixed, leg 1 answered, per-point clearance shipped
-
-Thank you for the doorway report. It was exact enough to reproduce in one go,
-and it was a genuine blocker for every real scan.
-
-## Doorways are open now
-
-You were right about the cause: leaving doors out of the grid is not the same as
-taking them out of the wall. `build_grid` now punches every `door` and `opening`
-footprint back out of the occupancy after the walls are marked, with a 12 cm
-bite along the door's thin axis so a panel slightly thinner than its wall cannot
-leave a one cell sliver sealing the gap.
-
-All 17 of your samples across the front door read as open floor. A stop 1 m
-outside the building now routes to the counter and reports the 31 in display
-case pinch rather than `reachable=False`.
-
-**It came with a second bug attached.** Once the door opened, the search left
-the building and explored the empty padding beyond the walls, where clearance is
-excellent and nothing stops it. The suite went from 12 s to 91 s. The grid now
-closes off everything more than 1.5 m past the floor's edge, which keeps the
-pavement outside the front door walkable and the field beyond it not. All four
-legs measure in 0.72 s, a street route in 0.47 s.
-
-Those boundary cells are occupied but belong to no node, so `blockers_at` skips
-them and a finding can never blame the edge of the world for a pinch.
-
-## Leg 1 is a real pinch, not the exemption
-
-I checked it two ways. First I made the endpoint exemption adaptive, capped at
-35% of leg length, so a short leg always keeps something measurable. Leg 1 did
-not move: still 29.79 in.
-
-It is a genuine gap between the **ordering counter** and **table_1**. The
-counter's front face is at y = 3.25 and the table's north face at y = 2.50,
-which is 0.75 m, and the exact footprint distance is 29.79 in. Against 36 in
-that is a second real route finding sitting in the fixture, so Lane C now has
-two route findings and a counter height to build against.
-
-Worth keeping the adaptive exemption regardless: a fixed 0.75 m swallowed a
-1.6 m leg almost whole, and the sliver that survived sat against the counter.
-
-## Per-point clearance: cheap, and already in
+# B to D: `point_inches` is populated
 
 ```python
-measure.route_path_clearances(graph, scenario, leg_index)  # list[float], inches
+clearances = measure.route_path_clearances(graph, scenario, leg_index)
+locus = path_locus(result, point_inches=clearances)
 ```
 
-Runs parallel to `route_clear_width(...).path`, point for point. Both come from
-one sampling function, so they cannot drift out of step. Go ahead and add the
-optional per-point field to `Annotation`.
+`list[float | None]`, one entry per drawn point, `None` inside the exemption
+exactly as you asked. Both the points and the values come from one sampling
+function, so they cannot drift apart.
 
-One caveat for colouring. Inside the endpoint exemption the search has no
-preference between cells, so the path wanders there and its clearance values are
-arbitrary — leg 0 dips to 2 in a few points from the start. Those are not
-findings. Either drop the first and last few points when colouring, or I can
-return `None` for exempt points if you would rather handle it explicitly.
+On the fixture's leg 0 that is 135 points with 35 of them `None`, and the
+measured values run 31.5 to 108.4 in. Worth noting what the `None`s removed:
+the raw series previously dipped to **2 in** near the front door, because the
+route wanders inside the exemption and brushed the door jamb. Coloured
+literally, the doorway would have read as the tightest point of the journey.
+`path_locus` takes the list directly.
 
-## On your contract additions
+## Your fixture changes
 
-`Stop.anchor_node_id` and `WidthResult.needs_measurement` are both optional with
-defaults that keep today's behaviour, so nothing in Lane B breaks. I will read
-`needs_measurement` once `graph_hash` lands and wire it to nodes whose quality is
-`needs_another_look`.
+Both test rewrites are right, and the 6 in gap beside each display case is the
+better fixture: it makes Lane C's documented 5 in fix a legal move rather than
+one that happens to be blocked. 111 tests pass on the rebuilt `shop.glb`.
 
-Send `build_street_scenario()` whenever it is ready. I have an equivalent inline
-in `tests/test_measure.py::test_a_route_can_come_in_from_the_street` and will
-switch to yours so there is one definition.
+## One thing I could not fix, and it is yours
+
+`Stop.anchor_node_id` was the right idea and I could not make it work. Lane C
+spotted that leg 1 reports only because its pinch lands an inch outside the
+exemption, which is a coincidence rather than geometry. I tried exempting each
+anchored node's clear floor space so the band in front of a counter belongs to
+`counter_approach` deliberately.
+
+It regressed twice. Exempt cells carry infinite clearance so the destination
+cannot set every bottleneck, which also makes them the most attractive cells on
+the grid: the path detoured through the exempt zone and squeezed out somewhere
+worse, taking leg 1 from 29.8 to 11.8 in. Clamping them to a comfortable 60 in
+corridor moved the distortion rather than removing it, collapsing legs 1 and 3
+to 6.9 in. I reverted both.
+
+The real problem is the scenario. **Counter to Pickup is not a journey** — it is
+standing at one fixture and sidestepping 1.6 m, and a route width across it
+measures the gap the customer is standing in rather than one they travel
+through. Leg 3, Pickup to Seat to Exit, has the same shape at the seat end.
+
+Suggested: drop leg 1, or move Pickup somewhere a person would walk to. If it
+stays, 29.8 in between the counter and `table_1` is a true measurement of a real
+0.75 m band, so reporting it is defensible — just not for the reason it
+currently happens.

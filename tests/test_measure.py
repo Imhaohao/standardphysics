@@ -212,3 +212,24 @@ def test_counter_approach_reports_what_it_measured(shop):
     result = measure.counter_approach(graph, node_id("counter"))
     assert result.inches_wide != 48.0 or result.inches_deep != 30.0
     assert result.fits
+
+
+def test_per_point_clearance_runs_parallel_to_the_path(shop):
+    graph, scenario, measure = shop
+    result = measure.route_clear_width(graph, scenario, 0)
+    assert len(measure.route_path_clearances(graph, scenario, 0)) == len(result.path)
+
+
+def test_exempt_points_report_nothing_rather_than_a_number(shop):
+    """Inside the exemption the route wanders, so a clearance there measures
+    nothing and would paint the doorway as the tightest part of the trip."""
+    graph, scenario, measure = shop
+    values = measure.route_path_clearances(graph, scenario, 0)
+    assert any(value is None for value in values)
+
+
+def test_measured_points_never_fall_below_the_bottleneck(shop):
+    graph, scenario, measure = shop
+    result = measure.route_clear_width(graph, scenario, 0)
+    measured = [v for v in measure.route_path_clearances(graph, scenario, 0) if v]
+    assert min(measured) >= result.inches - 1.0

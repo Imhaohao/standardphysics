@@ -187,12 +187,16 @@ class PipelineMeasurements:
 
     def route_path_clearances(
         self, graph: SceneGraph, scenario: Scenario, leg_index: int
-    ) -> list[float]:
+    ) -> list[float | None]:
         """Corridor width in inches at each point of the drawn route.
 
         Runs parallel to `route_clear_width(...).path`, point for point, so a
         viewer can colour the line by how tight it is there. Both come from the
         same sampling, so they cannot drift apart.
+
+        `None` marks a point inside the endpoint exemption, where the route
+        wanders and its clearance means nothing. Feed the list straight to
+        `Annotation.point_inches`.
         """
         grid, clearance = self._field(graph)
         start = scenario.stops[leg_index].position
@@ -202,7 +206,9 @@ class PipelineMeasurements:
         )
         if not result.reachable:
             return []
-        return path_clearances(grid, clearance, result.path)
+        return path_clearances(
+            grid, clearance, result.path, exempt=result.exempt
+        )
 
     def turn_detail(
         self, graph: SceneGraph, scenario: Scenario, leg_index: int

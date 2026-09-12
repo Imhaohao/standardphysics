@@ -242,8 +242,16 @@ def region_locus(
     )
 
 
-def path_locus(result: WidthResult, label: str | None = None) -> Locus:
-    """The whole route, for before and after replay."""
+def path_locus(
+    result: WidthResult,
+    label: str | None = None,
+    point_inches: list[float | None] | None = None,
+) -> Locus:
+    """The whole route, for before and after replay.
+
+    Pass `measure.route_path_clearances(...)` as `point_inches` and the viewer
+    can colour the line by how tight the route is at each point.
+    """
     points = result.path or [result.pinch_point]
     bbox_min, bbox_max = _bbox(points, padding=0.5)
     centre = _midpoint(bbox_min, bbox_max)
@@ -257,6 +265,7 @@ def path_locus(result: WidthResult, label: str | None = None) -> Locus:
             kind="path",
             points=points,
             label=label or format_inches(result.inches),
+            point_inches=point_inches,
         ),
         camera=camera_for(centre, extent / 2, (0.0, -1.0), fov_degrees=70.0),
     )

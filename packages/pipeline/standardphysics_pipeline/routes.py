@@ -53,6 +53,12 @@ class PathResult:
     pinch_cell: tuple[int, int] | None
     path: list[tuple[int, int]]
     reachable: bool
+    exempt: np.ndarray | None = None
+    """Which cells were left out of the measurement.
+
+    Inside the exemption the search has no preference between neighbours, so
+    the route wanders and its clearance there describes nothing. Anything
+    reading per-point values needs to know which ones to ignore."""
 
     @property
     def width_meters(self) -> float:
@@ -149,7 +155,9 @@ def widest_path(
     if not measured:
         measured = path
     pinch = min(measured, key=lambda cell: clearance[cell])
-    return PathResult(float(clearance[pinch]), pinch, path, reachable=True)
+    return PathResult(
+        float(clearance[pinch]), pinch, path, reachable=True, exempt=exempt
+    )
 
 
 def _retrace(came_from, start, goal) -> list[tuple[int, int]]:
@@ -202,11 +210,24 @@ def sample_cells(cells: list[tuple[int, int]], step: int = 3) -> list[tuple[int,
 
 
 def path_clearances(
-    grid: Grid, clearance: np.ndarray, cells: list[tuple[int, int]], step: int = 3
-) -> list[float]:
-    """Corridor width in inches at each drawn point, for colouring a route."""
+    grid: Grid,
+    clearance: np.ndarray,
+    cells: list[tuple[int, int]],
+    step: int = 3,
+    exempt: np.ndarray | None = None,
+) -> list[float | None]:
+    """Corridor width in inches at each drawn point, for colouring a route.
+
+    `None` where the point falls inside the endpoint exemption. The route
+    wanders there because every cell looks equally good to the search, so a
+    number would be a measurement of nothing. A viewer should leave those
+    stretches uncoloured rather than paint them as tight.
+    """
     return [
-        to_inches(float(clearance[cell]) * 2) for cell in sample_cells(cells, step)
+        None
+        if exempt is not None and exempt[cell]
+        else to_inches(float(clearance[cell]) * 2)
+        for cell in sample_cells(cells, step)
     ]
 
 
