@@ -37,6 +37,14 @@ around a pivot rather than hugging it, so a genuine turn around a partition end
 measures about 134 degrees at the scale where it reads most strongly. The
 angle alone is a weak signal; `MAX_CHORD_RATIO` does the real separating."""
 
+MIN_TURN_PATH = 2.5
+"""Metres of route needed before looking for a turn at all.
+
+403.5.2 measures approaching, at, and leaving the turn. A leg with less route
+than that cannot supply the zones, and a short one trimmed at both ends leaves
+a stub where noise reads as a reversal. Counter to Pickup is 1.6 m and produced
+exactly that: a turn nobody takes, with an approach zone containing no route."""
+
 ENDPOINT_TRIM = 0.9
 """Metres of route dropped at each end before looking for a turn."""
 
@@ -55,10 +63,19 @@ class Turn:
 
     pivot_id: UUID | None
     pivot_width_inches: float | None
-    approach_inches: float
-    at_turn_inches: float
-    leaving_inches: float
+    approach_inches: float | None
+    at_turn_inches: float | None
+    leaving_inches: float | None
     apex: Vec3
+
+    @property
+    def fully_measured(self) -> bool:
+        """Whether all three zones exist. A zone that ran off the end of the
+        route is `None`, which is a question for the owner rather than a
+        failure to report."""
+        return None not in (
+            self.approach_inches, self.at_turn_inches, self.leaving_inches
+        )
 
 
 def _resample(points: list[Vec3], spacing: float = 0.2) -> list[Vec3]:
@@ -183,15 +200,24 @@ def _span_end(points: list[Vec3], anchor: int, length: float, forward: bool):
     return None
 
 
-def _zone_width(grid: Grid, clearance: np.ndarray, points: list[Vec3]) -> float:
+def _zone_width(
+    grid: Grid, clearance: np.ndarray, points: list[Vec3]
+) -> float | None:
+    """Narrowest point in a zone, or None when the zone has nothing in it.
+
+    A zone runs off the end of a short route and ends up empty. Reporting that
+    as 0.0 inches turns "we could not measure this" into "this is impossibly
+    tight", which is the worst way to be wrong: it reads as the most severe
+    finding in the report.
+    """
     if not points:
-        return 0.0
+        return None
     widths = []
     for point in points:
         row, col = grid.to_cell(point.x, point.y)
         if grid.contains(row, col):
             widths.append(float(clearance[row, col]) * 2)
-    return to_inches(min(widths)) if widths else 0.0
+    return to_inches(min(widths)) if widths else None
 
 
 def _slice_by_length(points: list[Vec3], anchor: int, length: float, forward: bool):
@@ -248,10 +274,20 @@ def trim_endpoints(path: list[Vec3], radius: float) -> list[Vec3]:
     return kept if len(kept) >= 4 else path
 
 
+def _arc_length(points: list[Vec3]) -> float:
+    return sum(
+        math.dist((a.x, a.y), (b.x, b.y)) for a, b in zip(points, points[1:])
+    )
+
+
 def measure_turn(
     graph: SceneGraph, grid: Grid, clearance: np.ndarray, path: list[Vec3]
 ) -> Turn | None:
-    points = _resample(trim_endpoints(path, ENDPOINT_TRIM), spacing=0.3)
+    trimmed = trim_endpoints(path, ENDPOINT_TRIM)
+    if _arc_length(trimmed) < MIN_TURN_PATH:
+        return None
+
+    points = _resample(trimmed, spacing=0.3)
     span = find_turn(points)
     if span is None:
         return None

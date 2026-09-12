@@ -150,7 +150,7 @@ class PipelineMeasurements:
         still gets a true number rather than a zero.
         """
         turn = self.turn_detail(graph, scenario, leg_index)
-        if turn is None:
+        if turn is None or turn.at_turn_inches is None:
             return self.route_clear_width(graph, scenario, leg_index)
 
         return WidthResult(

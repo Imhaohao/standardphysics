@@ -113,3 +113,49 @@ def test_turn_clear_width_reports_the_width_at_the_turn(narrow_turn):
     turn = measure.turn_detail(graph, scenario, 0)
     result = measure.turn_clear_width(graph, scenario, 0)
     assert result.inches == pytest.approx(turn.at_turn_inches)
+
+
+def test_an_unmeasurable_zone_reports_nothing_not_zero():
+    """A zone that runs off the end of the route has no width. Calling that
+    0.0 in turns "we could not measure this" into the most severe finding in
+    the report."""
+    from standardphysics_fixtures import build_graph, build_scenario
+
+    measure = PipelineMeasurements()
+    graph, scenario = build_graph(), build_scenario()
+    turn = measure.turn_detail(graph, scenario, 1)
+    assert turn is not None
+    assert turn.approach_inches is None
+    assert not turn.fully_measured
+
+
+def test_a_measured_turn_says_so(narrow_turn):
+    graph, scenario, measure = narrow_turn
+    assert measure.turn_detail(graph, scenario, 0).fully_measured
+
+
+def test_a_route_too_short_to_hold_a_turn_reports_none():
+    """403.5.2 measures approaching, at, and leaving. Below that much route
+    there are no zones, and a trimmed stub is all noise."""
+    from standardphysics_contracts import Scenario, Stop, Vec3
+    from standardphysics_fixtures import build_graph
+
+    measure = PipelineMeasurements()
+    graph = build_graph()
+    hop = Scenario(
+        name="A step sideways",
+        stops=[
+            Stop(name="Here", position=Vec3(x=-0.4, y=-2.0, z=0.0)),
+            Stop(name="There", position=Vec3(x=0.4, y=-2.0, z=0.0)),
+        ],
+    )
+    assert measure.turn_detail(graph, hop, 0) is None
+
+
+def test_turn_clear_width_falls_back_when_the_turn_was_not_measured():
+    from standardphysics_fixtures import build_graph, build_scenario
+
+    measure = PipelineMeasurements()
+    graph, scenario = build_graph(), build_scenario()
+    result = measure.turn_clear_width(graph, scenario, 1)
+    assert result.inches > 0

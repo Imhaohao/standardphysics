@@ -1,52 +1,54 @@
-# B to D: the floor bug is fixed, and the real exports settled four guesses
+# B to D: the 0.0 in turn is fixed, and the plist already was
 
-That report was exact enough to fix in one pass. Thank you for finding it —
-every measurement this lane produces would have been wrong on real data, and
-nothing in the fixture could have caught it because our floor was already at
-zero.
+## The 0.0 inch finding
 
-## Fixed
+Real bug, thank you. `_zone_width` returned `0.0` when a zone contained no
+route, so "we could not measure this" was reported as "impossibly tight" — the
+most severe reading of a measurement that never happened.
 
-**The room now stands on its floor.** `parse_room_json` shifts every node so
-the floor sits at z = 0, once, on ingest. Nothing downstream needs to know where
-the phone was standing, and heights are heights above the floor everywhere after
-that. `apple_livingroom` comes in at -1.436 and lands at 0.000.
+`Turn.approach_inches`, `at_turn_inches` and `leaving_inches` are now
+`float | None`, and `Turn.fully_measured` says whether all three exist. A zone
+with no route in it is a question for the owner, not a finding.
 
-**`blocks_floor` reads both ends of an object.** A node takes up floor space
-only when its top clears 1/4 in *and* its underside is below 27 in. Above that,
-ADA 2010 307 handles it as a protruding object. On the living room: three sofas,
-two tables and the oven now block; the wall-mounted television at 1.212 m and
-both wall cabinets at 0.97 m do not. Person C has the 27 in for verification
-with the rest of the thresholds.
+`turn_clear_width` falls back to the plain route width when the turn itself
+could not be measured, so nothing downstream sees a zero.
 
-**`parent_id`.** Every door, window and opening now carries its parent wall.
-22 of 22 across both rooms.
+Also added: a leg shorter than 2.5 m of route no longer gets a turn at all.
+403.5.2 measures approaching, at, and leaving; below that much route there are
+no zones, and a short leg trimmed at both ends leaves a stub where noise reads
+as a reversal.
 
-**The mapping file reads either way.** `usdz_to_glb` sniffs for `bplist00` and
-falls back to JSON, so it takes Lane A's `.json` and a real `.plist` without
-being told which it has.
+## The plist fix shipped before your run
 
-## One correction to your numbers
-
-A real USDZ imports more objects than it has meshes. Apple's living room is 37
-objects, of which 19 are geometry and 18 are USD grouping nodes — `Object_grp`,
-`Section_grp`, `new_floorplan`, the room itself. They hold nothing a check could
-reason about and the mapping file rightly ignores them.
-
-`ConversionResult` now counts identity over meshes, and gains a `meshes` field:
+`load_map` sniffs for `bplist00` and falls back to JSON, so it takes either
+without being told which it has. Both real rooms now convert with every mesh
+identified:
 
 | Room | Imported | Meshes | Renamed | Identified |
 |---|---|---|---|---|
 | `apple_livingroom` | 37 | 19 | 19 | yes |
 | `apple_bedroom3` | 26 | 11 | 11 | yes |
 
-Before this, both read as `fully_identified=False` and looked broken when they
-were not.
+A real USDZ imports more objects than it has meshes — 18 of those 37 are USD
+grouping nodes holding no geometry — so `ConversionResult` now counts identity
+over meshes and carries a `meshes` field. Before that both rooms read as
+`fully_identified=False` and looked broken when they were not.
 
-## Still open, and it is still yours
+Naming the file by its magic bytes is the right call. Keep doing that.
 
-The leg 1 scenario question from the last handoff stands: Counter to Pickup is
-not a journey, and no exemption geometry fixes that. Drop the leg or move
-Pickup.
+## Leg 1, a third time, with a number that settles it
 
-`tests/test_real_ingest.py` has 16 tests against both rooms. 136 pass.
+Chasing the 0.0 turn led back to Counter → Pickup. The two stops are **1.6 m
+apart**. The route between them is **5.66 m**, bowing 2.1 m out into the room
+and back.
+
+That is the widest path doing exactly its job: it maximises clearance, and the
+widest way to move 1.6 m along a counter face is to walk out around the tables
+and come back. It is a real 180 degree turn and detecting it is correct. It is
+also not a journey any customer makes.
+
+I am not going to suppress it with a detour heuristic, because a customer forced
+into a long way round is sometimes the finding. The fix is the scenario: drop
+leg 1, or move Pickup somewhere a person would walk to.
+
+140 tests pass.
