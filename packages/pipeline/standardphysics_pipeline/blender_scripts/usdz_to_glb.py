@@ -14,6 +14,7 @@ unmapped rather than quietly renamed to something plausible.
 
 import argparse
 import json
+import plistlib
 import sys
 
 import bpy
@@ -29,9 +30,21 @@ def parse_args() -> argparse.Namespace:
 
 
 def load_map(path):
+    """RoomPlan's mapping file, whichever way it was written.
+
+    Lane A names it `.metadata.json`, but a real export is a **binary plist**:
+    it starts with `bplist00` and json.loads throws on it. Accept either rather
+    than depending on a file extension telling the truth.
+    """
     if not path:
         return {}
-    raw = json.loads(open(path).read())
+    data = open(path, "rb").read()
+    if data[:8] == b"bplist00":
+        raw = plistlib.loads(data)
+    else:
+        raw = json.loads(data.decode("utf-8"))
+    if not isinstance(raw, dict):
+        raise ValueError("mapping file was not a dictionary of names to ids")
     return {str(key): str(value) for key, value in raw.items()}
 
 
@@ -45,7 +58,15 @@ def rename_through(mapping):
             obj.name = "__staged__%d" % len(staged)
             staged.append((obj, target))
 
-    unmapped = [o.name for o in bpy.data.objects if not o.name.startswith("__staged__")]
+    # Only geometry needs identity. A USD scene is full of grouping nodes
+    # (Object_grp, Section_grp, the room itself) that import as empties and
+    # carry nothing a check could ever reason about, so counting them as
+    # unmapped makes a clean conversion look broken.
+    unmapped = [
+        o.name
+        for o in bpy.data.objects
+        if not o.name.startswith("__staged__") and o.type == "MESH"
+    ]
     for obj, target in staged:
         obj.name = target
         if obj.data is not None:
@@ -68,8 +89,9 @@ def main():
         export_extras=True,
         export_yup=True,
     )
-    print("USDZ_CONVERTED imported=%d renamed=%d unmapped=%d"
-          % (imported, renamed, len(unmapped)))
+    meshes = len([o for o in bpy.data.objects if o.type == "MESH"])
+    print("USDZ_CONVERTED imported=%d meshes=%d renamed=%d unmapped=%d"
+          % (imported, meshes, renamed, len(unmapped)))
     for name in unmapped[:10]:
         print("UNMAPPED %s" % name)
 

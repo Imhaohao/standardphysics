@@ -95,6 +95,17 @@ def _quality(element: dict) -> str:
     return CONFIDENCE_TO_QUALITY.get(_enum_name(raw, "confidence"), "needs_another_look")
 
 
+def _parent(element: dict) -> uuid.UUID | None:
+    """Doors, windows and openings carry the wall they were cut into."""
+    raw = element.get("parentIdentifier")
+    if raw is None:
+        return None
+    try:
+        return uuid.UUID(str(raw))
+    except ValueError:
+        return None
+
+
 def _node(element: dict, kind: str, index: int) -> SceneNode:
     category = _enum_name(element.get("category", kind), "category")
     width, height, depth = _vector(element["dimensions"], "dimensions")
@@ -109,6 +120,7 @@ def _node(element: dict, kind: str, index: int) -> SceneNode:
         quality=_quality(element),
         movable=_is_movable(kind, category),
         labeled_by="roomplan",
+        parent_id=_parent(element),
     )
 
 
@@ -137,6 +149,8 @@ def parse_room_json(payload: dict, scan_id: uuid.UUID | None = None) -> SceneGra
     if not nodes:
         raise RoomParseError("no walls, surfaces or objects in the export")
 
+    _stand_on_the_floor(nodes)
+
     return SceneGraph(
         scan_id=scan_id or _identifier(payload, "scan"),
         revision=0,
@@ -160,3 +174,27 @@ def to_arkit_columns(node: SceneNode) -> list[float]:
     result = [[sum(step[r][k] * basis_inv[k][c] for k in range(4)) for c in range(4)]
               for r in range(4)]
     return [result[r][c] for c in range(4) for r in range(4)]
+
+
+def _stand_on_the_floor(nodes: list[SceneNode]) -> None:
+    """Move the whole room so its floor sits at z = 0.
+
+    RoomPlan puts the origin wherever the phone happened to be when the scan
+    started, which is about chest height. On a real capture the floor comes back
+    at roughly z = -1.4, so anything comparing a height against an absolute z
+    gets both directions wrong: sofas and tables read as open floor, while a
+    wall cabinet whose underside is a metre up reads as a floor obstruction.
+
+    Shifting once here means nothing downstream has to know where the phone was
+    standing. Heights are heights above the floor everywhere after this.
+    """
+    floor = next((node for node in nodes if node.kind == "floor"), None)
+    if floor is None:
+        return
+
+    drop = floor.transform.position.z
+    if drop == 0.0:
+        return
+
+    for node in nodes:
+        node.transform.m[11] -= drop

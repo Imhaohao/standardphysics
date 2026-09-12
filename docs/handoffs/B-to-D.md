@@ -1,48 +1,52 @@
-# B to D: `point_inches` is populated
+# B to D: the floor bug is fixed, and the real exports settled four guesses
 
-```python
-clearances = measure.route_path_clearances(graph, scenario, leg_index)
-locus = path_locus(result, point_inches=clearances)
-```
+That report was exact enough to fix in one pass. Thank you for finding it —
+every measurement this lane produces would have been wrong on real data, and
+nothing in the fixture could have caught it because our floor was already at
+zero.
 
-`list[float | None]`, one entry per drawn point, `None` inside the exemption
-exactly as you asked. Both the points and the values come from one sampling
-function, so they cannot drift apart.
+## Fixed
 
-On the fixture's leg 0 that is 135 points with 35 of them `None`, and the
-measured values run 31.5 to 108.4 in. Worth noting what the `None`s removed:
-the raw series previously dipped to **2 in** near the front door, because the
-route wanders inside the exemption and brushed the door jamb. Coloured
-literally, the doorway would have read as the tightest point of the journey.
-`path_locus` takes the list directly.
+**The room now stands on its floor.** `parse_room_json` shifts every node so
+the floor sits at z = 0, once, on ingest. Nothing downstream needs to know where
+the phone was standing, and heights are heights above the floor everywhere after
+that. `apple_livingroom` comes in at -1.436 and lands at 0.000.
 
-## Your fixture changes
+**`blocks_floor` reads both ends of an object.** A node takes up floor space
+only when its top clears 1/4 in *and* its underside is below 27 in. Above that,
+ADA 2010 307 handles it as a protruding object. On the living room: three sofas,
+two tables and the oven now block; the wall-mounted television at 1.212 m and
+both wall cabinets at 0.97 m do not. Person C has the 27 in for verification
+with the rest of the thresholds.
 
-Both test rewrites are right, and the 6 in gap beside each display case is the
-better fixture: it makes Lane C's documented 5 in fix a legal move rather than
-one that happens to be blocked. 111 tests pass on the rebuilt `shop.glb`.
+**`parent_id`.** Every door, window and opening now carries its parent wall.
+22 of 22 across both rooms.
 
-## One thing I could not fix, and it is yours
+**The mapping file reads either way.** `usdz_to_glb` sniffs for `bplist00` and
+falls back to JSON, so it takes Lane A's `.json` and a real `.plist` without
+being told which it has.
 
-`Stop.anchor_node_id` was the right idea and I could not make it work. Lane C
-spotted that leg 1 reports only because its pinch lands an inch outside the
-exemption, which is a coincidence rather than geometry. I tried exempting each
-anchored node's clear floor space so the band in front of a counter belongs to
-`counter_approach` deliberately.
+## One correction to your numbers
 
-It regressed twice. Exempt cells carry infinite clearance so the destination
-cannot set every bottleneck, which also makes them the most attractive cells on
-the grid: the path detoured through the exempt zone and squeezed out somewhere
-worse, taking leg 1 from 29.8 to 11.8 in. Clamping them to a comfortable 60 in
-corridor moved the distortion rather than removing it, collapsing legs 1 and 3
-to 6.9 in. I reverted both.
+A real USDZ imports more objects than it has meshes. Apple's living room is 37
+objects, of which 19 are geometry and 18 are USD grouping nodes — `Object_grp`,
+`Section_grp`, `new_floorplan`, the room itself. They hold nothing a check could
+reason about and the mapping file rightly ignores them.
 
-The real problem is the scenario. **Counter to Pickup is not a journey** — it is
-standing at one fixture and sidestepping 1.6 m, and a route width across it
-measures the gap the customer is standing in rather than one they travel
-through. Leg 3, Pickup to Seat to Exit, has the same shape at the seat end.
+`ConversionResult` now counts identity over meshes, and gains a `meshes` field:
 
-Suggested: drop leg 1, or move Pickup somewhere a person would walk to. If it
-stays, 29.8 in between the counter and `table_1` is a true measurement of a real
-0.75 m band, so reporting it is defensible — just not for the reason it
-currently happens.
+| Room | Imported | Meshes | Renamed | Identified |
+|---|---|---|---|---|
+| `apple_livingroom` | 37 | 19 | 19 | yes |
+| `apple_bedroom3` | 26 | 11 | 11 | yes |
+
+Before this, both read as `fully_identified=False` and looked broken when they
+were not.
+
+## Still open, and it is still yours
+
+The leg 1 scenario question from the last handoff stands: Counter to Pickup is
+not a journey, and no exemption geometry fixes that. Drop the leg or move
+Pickup.
+
+`tests/test_real_ingest.py` has 16 tests against both rooms. 136 pass.

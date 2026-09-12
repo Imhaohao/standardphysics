@@ -60,6 +60,7 @@ def export_glb(graph: SceneGraph, out_path: pathlib.Path) -> pathlib.Path:
 class ConversionResult(NamedTuple):
     glb_path: pathlib.Path
     imported: int
+    meshes: int
     renamed: int
     unmapped_count: int
     unmapped_sample: list[str]
@@ -67,8 +68,12 @@ class ConversionResult(NamedTuple):
 
     @property
     def fully_identified(self) -> bool:
-        """Every mesh ties back to a node a check can reason about."""
-        return self.imported > 0 and self.unmapped_count == 0
+        """Every mesh ties back to a node a check can reason about.
+
+        Counted over meshes, not over everything imported: a USD scene carries
+        grouping nodes that hold no geometry and need no identity.
+        """
+        return self.meshes > 0 and self.unmapped_count == 0
 
 
 def usdz_to_glb(
@@ -104,6 +109,7 @@ def usdz_to_glb(
     return ConversionResult(
         glb_path=out_path,
         imported=int(fields["imported"]),
+        meshes=int(fields.get("meshes", fields["imported"])),
         renamed=int(fields["renamed"]),
         unmapped_count=int(fields["unmapped"]),
         unmapped_sample=unmapped,

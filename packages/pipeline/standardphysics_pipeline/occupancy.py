@@ -12,7 +12,7 @@ from uuid import UUID
 
 import numpy as np
 
-from standardphysics_contracts import SceneGraph, SceneNode, Vec3, to_meters
+from standardphysics_contracts import SceneGraph, SceneNode, Vec3, to_meters, to_meters
 
 CELL_SIZE = 0.025
 """25 mm. Fine enough that quantisation stays near half an inch."""
@@ -45,6 +45,17 @@ there is nothing to stop it: the padded grid is empty space with excellent
 clearance, so a bottleneck search explores every cell of it before it ever
 reaches the goal. A route from the street needs a little ground outside; it
 does not need a field."""
+
+CANE_DETECTABLE = to_meters(27.0)
+"""Height below which an object counts as being in the way.
+
+ADA 2010 307.2 treats leading edges above 27 inches as protruding objects with
+their own rule, and anything below that as detectable at floor level. So an
+object whose underside clears 27 inches is not a floor obstruction, and one
+whose underside is below it is, however high its top reaches.
+
+Person C should confirm this against the source with the other thresholds.
+"""
 
 DOORWAY_BITE = 0.12
 """Metres the cleared opening extends past the door on its thin axis.
@@ -95,10 +106,19 @@ class Grid:
 
 
 def blocks_floor(node: SceneNode) -> bool:
+    """Whether this node takes up floor space a customer has to get around.
+
+    Needs both ends of the object, not just the top. A wall-mounted cabinet
+    whose underside is a metre up has a high top and blocks nothing on the
+    floor; ADA 2010 307 handles it as a protruding object instead. A floor mat
+    has a low top and blocks nothing either.
+    """
     if node.kind in PASSABLE_KINDS:
         return False
-    top = node.transform.position.z + node.dimensions.z / 2
-    return top > BLOCKING_HEIGHT
+    centre = node.transform.position.z
+    top = centre + node.dimensions.z / 2
+    bottom = centre - node.dimensions.z / 2
+    return top > BLOCKING_HEIGHT and bottom < CANE_DETECTABLE
 
 
 def _rotation_2d(node: SceneNode) -> tuple[float, float]:
