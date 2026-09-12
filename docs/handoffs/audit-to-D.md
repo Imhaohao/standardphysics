@@ -27,3 +27,7 @@ The upload contract matches what Lane A's app sends: paths, both headers, snake_
 - **A-29, medium.** A scan that fails processing stays `failed` for good. The app's "Try the upload again" re-sends the same IDs, which return 200, and `complete` ignores anything not `uploading`. A corrected `room.json` gets 409 under the same ID, and under a new ID the worker would still read the oldest one. Pinned as a strict expected failure in `tests/test_audit_open_findings.py` using the new ID path. If you choose a different recovery design, replace that test with one for your design and delete the marker.
 - **A-30, low.** `Worker.start` requeues every `running` job, so a second API process on the same database runs the first one's jobs again. That contradicts the docstring in `worker.py`.
 - **A-31, low, not reachable yet.** The render route sorts revision directories as strings, so `9` beats `10`. It bites once an edit endpoint creates revisions.
+
+## The viewer in `2fad000`
+
+- **A-33, low.** `Workspace.tsx` says "Checking your shop" for any scan with a scene and no findings that is not `ready`, so a `failed` scan looks in progress forever. A `ready` scan with no findings says "Findings show up here once the shop is checked", while the shops page says "Everything we checked passes". Using `scanStatus` in the workspace would make the two agree.

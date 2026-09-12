@@ -37,6 +37,9 @@ The audit fixes code only in files no lane agent is actively changing. For lanes
 | `a260626` D: the API, running every stage a real scan goes through | D | Pass with notes | A-29, A-30, A-31; its web run still failed on A-28 |
 | `0aa64b8` D: generate Next route types before typechecking | D | Pass | Resolves A-28 |
 | `0f0e01b` B: an unmeasured turn zone reports nothing, not zero inches | B | **Fail** | CI red; A-32 |
+| `2fad000` D: the shop viewer, finding callouts and the findings list | D | Pass with notes | A-33; web workflow green |
+| `5897919` D: report the turn check crash that turned master red | D | Pass | Reports A-32 to B and C |
+| `f32018b` D: record the API and viewer as ready for other lanes | D | Pass | Progress file matches the code; CI still red from A-32 |
 
 `609db3d`, `9028d14`, `b90e570`, `d3f7d95` and `1a06655` change only the plan and lane documents. A-1 covers the lane document errors from `9028d14`.
 
@@ -221,4 +224,13 @@ High. `open`. Lane B change, Lane C file.
 
 The audit branch patches `turn_width.py`: a measured zone that is too tight still fails the turn, and a missing zone never lets it pass, so a partly measured turn with no failing zone produces no observation. Regressions are in `tests/test_audit_lane_c.py`. Lane C may prefer to turn that case into an `asks_for` request.
 
+`5897919` asks Lane B and Lane C to agree the fix before either pushes, and leaves what an unmeasured zone means to Lane C. The audit fix is the conservative reading, nothing reported and nothing passed, so it unblocks CI without deciding that question; Lane C can replace it.
+
 The new 2.5 m minimum route for a turn was checked against a 36 in turn in rooms 2.5 to 4.0 m deep: every room that reported a turn before `0f0e01b` still does, with the same at-turn width.
+
+### A-33 The viewer says a failed scan is still being checked
+Low. `open`. Lane D.
+
+`Workspace.tsx` shows "Checking your shop" whenever a scan has a scene, no findings, and a state other than `ready`. A scan whose ingest succeeded and whose assess failed is `failed` with a scene, so it reads as in progress forever. That is the sample shop on `master` right now, because of A-32. A `ready` scan with no findings shows "Findings show up here once the shop is checked", which contradicts the shops page's "Everything we checked passes" for the same scan; with no rules verified, every real scan lands there. Read from the diff: the list page uses `scanStatus`, the workspace does not.
+
+The rest of `2fad000` checked out: the web view loads `/scans/<server scan id>` from the upload response, the `nativeCapture` message and `scanShop` action match `WorkspaceScreen.swift`, `Locus.camera` is required by the contract, and the Z-up to Y-up conversion, wall cut and region outline are correct.
