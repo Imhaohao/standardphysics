@@ -1,9 +1,16 @@
 {
   "lane": "B",
-  "updated": null,
-  "done": [],
-  "in_progress": null,
+  "updated": "2026-09-12T15:10:00Z",
+  "done": ["blender check", "coordinate conversion + tests"],
+  "in_progress": "occupancy grid and widest path",
   "blocked_on": null,
-  "ready_for_others": [],
-  "needs_human": []
+  "ready_for_others": [
+    "standardphysics_pipeline.check_blender",
+    "standardphysics_pipeline.coords"
+  ],
+  "needs_human": [
+    "Install Blender 5.x on every machine: brew install --cask --force blender",
+    "Confirm Astra runtime access and credentials",
+    "Tape-measure one real doorway once Lane A lands a scan"
+  ]
 }

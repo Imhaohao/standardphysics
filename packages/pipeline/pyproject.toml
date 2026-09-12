@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "standardphysics-pipeline"
+version = "0.1.0"
+description = "Scan to measured model. Lane B."
+requires-python = ">=3.11"
+dependencies = [
+  "standardphysics-contracts",
+  "numpy>=1.26",
+  "scipy>=1.11",
+  "pydantic>=2.7",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["standardphysics_pipeline"]

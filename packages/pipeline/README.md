@@ -1,0 +1,30 @@
+# Lane B — model and measurement
+
+Turns a scan into a measured model other agents can query.
+
+## Blender
+
+**Pinned: 5.2.1 LTS or newer.** 4.0.2 cannot import USDZ.
+
+```bash
+brew install --cask --force blender
+```
+
+The `--force` matters. A plain `brew install --cask blender` over a hand-installed Blender reports the cask as not installed, exits 0, and changes nothing.
+
+Verify with a real round trip, not by reading `filter_glob` — that property reads `*.usd` on both the working and the broken version:
+
+```bash
+python -m standardphysics_pipeline.check_blender
+```
+
+## Layout
+
+| File | Does |
+|---|---|
+| `check_blender.py` | Proves this machine can import USDZ |
+| `coords.py` | RoomPlan's Y-up meters to our Z-up meters, once, on ingest |
+| `ingest.py` | `room.json` to `SceneGraph` |
+| `occupancy.py` | Floor rasterization and the distance transform |
+| `routes.py` | Widest path, bottleneck width, and the pinch point |
+| `measure.py` | The `MeasurementProvider` Lane C calls |
