@@ -51,35 +51,35 @@ High. `fixed in d2a982a`.
 CI never installed `packages/pipeline`, so `numpy` was missing and `test_coords.py`, `test_ingest.py` and `test_measure.py` failed to import. Five pushes landed on a red `master`. `d2a982a` adds the package; CI is green on `d2a982a` and `d1cd65a`, and 54 tests pass in a clean environment.
 
 ### A-5 Solid obstructions under 9 inches are treated as open floor
-High. `fixing`. The replacement threshold needs Person C to verify it against the source.
+High. `fixed in 77dd362`. Person C still needs to verify the 1/4 in value against the source.
 
 `occupancy.BLOCKING_HEIGHT = 0.23` lets anything lower than 9 in be rolled over, citing toe clearance. Toe clearance is space beneath an element; it does not make a solid object passable. ADA 2010 303 allows at most 1/4 in of vertical change untreated and requires a ramp above 1/2 in. This breaks the lane rule that no allowance may shrink an obstacle.
 
 Reproduced: a solid 7.9 in tall barrier across leg 0, 1.2 m from the entrance, reports **31.00 in, reachable**.
 
 ### A-6 The endpoint exemption hides obstructions at the entrance
-High. `fixing`.
+High. `blocked` on Lane D and a person approving `Stop.anchor_node_id`; see `docs/handoffs/audit-to-D.md`.
 
 `routes.ENDPOINT_EXEMPTION` ignores every cell within 0.75 m of each stop so a counter does not set its own route's bottleneck. The entrance stop sits 0.3 m inside the front wall, so the doorway itself is exempt, and so is anything placed just inside it. The exemption was disclosed in the first `B-to-C.md` and dropped from the rewrite in `d1cd65a`.
 
 Reproduced: a 20 in gap 0.2 m inside the entrance reports **31.00 in**. The same gap 1.2 m inside reports 20.00 in.
 
 ### A-7 The measurement cache ignores object size
-Medium. `fixing`.
+Medium. `fixed in 77dd362`.
 
 `measure._signature` keys the cached grid on node ID, `m[3]`, `m[7]` and `m[0]`. Resizing an object reuses the old grid, and so does any rotation that leaves `m[0]` unchanged, such as the same angle in the other direction.
 
 Reproduced: seal the aisle by widening `case_east` without moving it. The provider that already measured the shop returns **reachable=True, 0.00 in**; a fresh provider returns reachable=False.
 
 ### A-8 The counter approach ignores the counter's rotation
-High. `fixing`.
+High. `fixed in 77dd362`.
 
 `counter_approach` always places the 48 by 30 in clear floor space on the counter's minus-Y side, using the unrotated depth. The code calls this a forward approach, but a 48 in side running along the counter is the parallel-approach orientation.
 
 Reproduced: rotate the counter 90 degrees. Its footprint spans x -0.35 to 0.35 and y 2.00 to 5.20, the approach centre lands at (0.00, 2.87) **inside the counter**, and the check returns **fits=True**.
 
 ### A-9 Door clear width reports the door leaf
-Medium. `blocked` on Lane D. The result needs a way to ask for a measurement instead of passing.
+Medium. `blocked` on Lane D and a person approving `WidthResult.needs_measurement`; see `docs/handoffs/audit-to-D.md`.
 
 `door_clear_width` returns the larger dimension of the door node. ADA 2010 404.2.3 measures between the door face and the stop with the door open 90 degrees, which is narrower than the leaf. A door whose leaf is 32 in passes while its clear width fails.
 
@@ -91,7 +91,7 @@ Medium. `open`.
 Build task 7 requires clear width at a 180 degree turn, which is a tier 1 check in `LANE_C.md` (ADA 2010 403.5.2). `turn_clear_width` returns `route_clear_width`. `B-to-C.md` discloses this, but `PROGRESS_B.json` marks the provider done.
 
 ### A-11 Ingest invents a confidence when the export has none
-Medium. `fixing`.
+Medium. `fixed in 77dd362`.
 
 `ingest._node` reads `element.get("confidence", "high")`, so an element with no confidence becomes `quality="measured"`. The module says the parser raises rather than inventing a value, and the plan treats unverified geometry as needing another look.
 
