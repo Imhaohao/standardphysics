@@ -15,8 +15,8 @@ docs/handoffs/C-to-*.md
 ## You can rely on today
 
 - `packages/contracts/` — `RulePack`, `Finding`, `Locus`, `Proposal`, `Assessment`, and the `MeasurementProvider` protocol
-- `packages/fixtures/stub_measurements.py` — a working `MeasurementProvider` returning known values from the fixture shop, including the 31-inch pinch. Build every check against this. Swap to Lane B's real implementation when their `PROGRESS_B.json` lists it in `ready_for_others`; nothing in your code changes but the constructor argument.
-- `packages/fixtures/shop.room.json` — the same synthetic shop
+- `packages/fixtures/standardphysics_fixtures/stub_measurements.py` — a working `MeasurementProvider` returning known values from the fixture shop, including the 31-inch pinch. Build every check against this. Swap to Lane B's real implementation when their `PROGRESS_B.json` lists it in `ready_for_others`; nothing in your code changes but the constructor argument.
+- `packages/fixtures/standardphysics_fixtures/data/shop.scene_graph.json` — the same synthetic shop
 
 ## Human tasks — flag these to your person
 

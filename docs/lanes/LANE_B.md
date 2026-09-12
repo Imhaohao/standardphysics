@@ -15,7 +15,7 @@ docs/handoffs/B-to-*.md
 ## You can rely on today
 
 - `packages/contracts/` — `SceneGraph`, `SceneNode`, `MeasurementProvider`
-- `packages/fixtures/shop.room.json` and `shop.usdz` — a synthetic boba shop with a deliberate 31-inch pinch between two tables. You do not wait for Lane A to start.
+- `packages/fixtures/standardphysics_fixtures/data/shop.scene_graph.json` and `shop.usdz` — a synthetic boba shop with a deliberate 31-inch pinch between two display cases. You do not wait for Lane A to start.
 - Lane C codes against the `MeasurementProvider` protocol in contracts. **Implement that interface exactly.** It is the seam between your lane and theirs.
 
 ## Human tasks — flag these to your person
@@ -45,7 +45,7 @@ print('OK' if 'Cube' in bpy.data.objects else 'BROKEN')
 "
 ```
 
-Ship that as `packages/pipeline/check_blender.py` so every machine can self-test.
+Ship that as `packages/pipeline/standardphysics_pipeline/check_blender.py` so every machine can self-test.
 
 ## Build order
 

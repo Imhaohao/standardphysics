@@ -18,7 +18,7 @@ Nothing else. The results screens inside the app are Lane D's web build in a Web
 
 - `packages/contracts/` — the JSON shapes you upload
 - `services/api/openapi.json` — the upload endpoints, as a contract, before D implements them
-- `packages/fixtures/mock_api.py` — a local mock server. `python -m fixtures.mock_api` serves the real upload contract on `:8787` so you are never blocked on Lane D.
+- `packages/fixtures/standardphysics_fixtures/mock_api.py` — a local mock server. `python -m standardphysics_fixtures.mock_api` serves the real upload contract on `:8787` so you are never blocked on Lane D.
 
 ## Human tasks — flag these to your person immediately
 
