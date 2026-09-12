@@ -34,6 +34,8 @@ The audit fixes code only in files no lane agent is actively changing. For lanes
 | `f9531f0` Plan: pitch to shop owners | Plan | Not a lane push | |
 | `7aa85c8` D: scaffold the web app, generate contract types | D | **Fail** | A-28 |
 | `5d09e4d` B: stand the room on its floor, read both ends of an object | B | Pass | Resolves A-25 |
+| `a260626` D: the API, running every stage a real scan goes through | D | Pass with notes | A-29, A-30, A-31; its web run still failed on A-28 |
+| `0aa64b8` D: generate Next route types before typechecking | D | Pass | Resolves A-28 |
 
 `609db3d`, `9028d14`, `b90e570`, `d3f7d95` and `1a06655` change only the plan and lane documents. A-1 covers the lane document errors from `9028d14`.
 
@@ -192,6 +194,21 @@ Medium. `fixed in ceaa390`.
 `1414cf4` shortened the display cases, which made Lane C's `test_the_documented_five_inch_fix_puts_a_case_inside_the_wall` fail on `master`. `fd43203` landed on top of the red build. `ceaa390` flipped the test to assert the move is now legal. `1414cf4` also rewrote the A-7 regression to move `case_east` as well as resize it, so the test no longer isolates a resize; a resize-only seal no longer blocks the route in the new fixture, so it was left as is.
 
 ### A-28 The new web workflow fails its typecheck
-High. `open`. Lane D.
+High. `fixed in 0aa64b8`. Lane D.
 
-`7aa85c8` adds the "Web and contracts" workflow, and its first run fails at `npm run typecheck` with `src/app/layout.tsx(9,50): error TS2304: Cannot find name 'LayoutProps'`. `LayoutProps<"/">` is a route type Next.js generates into `.next/types`, and both `.next/` and `next-env.d.ts` are gitignored. The workflow runs `tsc --noEmit` before `next build`, so nothing has generated the type when `tsc` reads it. Generating the route types first, or typechecking after the build, would fix it. The "Generated types match the contracts" job in the same workflow passes.
+`7aa85c8` adds the "Web and contracts" workflow, and its first run fails at `npm run typecheck` with `src/app/layout.tsx(9,50): error TS2304: Cannot find name 'LayoutProps'`. `LayoutProps<"/">` is a route type Next.js generates into `.next/types`, and both `.next/` and `next-env.d.ts` are gitignored. The workflow runs `tsc --noEmit` before `next build`, so nothing has generated the type when `tsc` reads it. Generating the route types first, or typechecking after the build, would fix it. The "Generated types match the contracts" job in the same workflow passes. `0aa64b8` runs `next typegen` before `tsc`, and the workflow passes.
+
+### A-29 A scan that fails processing can never be processed again
+Medium. `open`. Lane D.
+
+`a260626` marks a scan `failed` when its process job raises, and nothing queues it again. Reproduced at `a260626` with a `room.json` that is not JSON: the scan goes `failed`. The iOS app shows "Try the upload again" for that state, but its retry re-sends the same IDs and bytes, which return 200, and `complete` returns the scan still `failed` because it only acts on `uploading`. A readable `room.json` under the same ID is refused with 409. Under a new ID it is stored with 201, but `complete` still returns `failed`, and the worker would read the oldest `room_json` anyway (`artifact_of_kind` orders by `created_at`). Pinned in `tests/test_audit_open_findings.py` using the new ID path; if Lane D picks another recovery design, replace the test with one for that design.
+
+### A-30 Starting a second API process runs the other process's jobs again
+Low. `open`. Lane D.
+
+`worker.py` says a job runs once even when two API processes share a database, but `Worker.start` requeues every `running` job, including jobs another live process is running. Reproduced at `a260626`: worker A claims the process job, worker B starts, and both run it. `python -m standardphysics_api` starts one process, so this only bites if a second one is started against the same `var/`. A lease with an expiry, or requeueing only jobs owned by this process, would match the docstring.
+
+### A-31 A finding's render can come from an older revision
+Low, not reachable yet. `open`. Lane D.
+
+`GET /api/scans/{id}/renders/{finding}.png` picks `sorted(glob("*/renders/<finding>.png"))[-1]`. The revision directories sort as strings, so revision `9` sorts after `10`, and finding IDs do not include the revision (`findings.py` hashes the scan ID and rule key). Once a scan passes ten revisions, a finding shows its revision 9 image. No endpoint creates a revision yet, so nothing hits this today. The same route answers `not ready` for an unknown scan where every other route says `no scan`.

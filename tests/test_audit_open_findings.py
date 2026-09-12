@@ -7,15 +7,22 @@ and the finding closes. Reproductions are in PROGRESS.md. The lane that owns
 the code fixes it; the audit only pins it.
 """
 
+import hashlib
 import json
 import uuid
 from pathlib import Path
 
 import pytest
+from fastapi.testclient import TestClient
 
 import standardphysics_fixtures
+from standardphysics_agents import VerificationLedger
+from standardphysics_api.app import create_app
+from standardphysics_api.settings import Settings
+from standardphysics_api.stages import Stages
 from standardphysics_contracts import Mat4, Scenario, SceneGraph, SceneNode, Stop, Vec3, to_meters
 from standardphysics_fixtures import build_graph, build_scenario, node_id
+from standardphysics_pipeline import blender
 from standardphysics_pipeline.ingest import parse_room_json
 from standardphysics_pipeline.measure import PipelineMeasurements
 from standardphysics_pipeline.occupancy import blocks_floor
@@ -101,6 +108,42 @@ def test_a9_door_clear_width_asks_for_a_measurement():
 def test_a22_leg_one_is_not_the_gap_between_the_counter_and_a_table():
     result = PipelineMeasurements().route_clear_width(build_graph(), build_scenario(), 1)
     assert result.inches > 36.0
+
+
+def _without_blender(*args, **kwargs):
+    raise blender.BlenderError("the audit tests do not launch Blender")
+
+
+def _upload(client: TestClient, scan_id: str, artifact_id: str, body: bytes, kind: str) -> None:
+    client.put(
+        f"/api/scans/{scan_id}/artifacts/{artifact_id}",
+        content=body,
+        headers={"X-Checksum-SHA256": hashlib.sha256(body).hexdigest(), "X-Artifact-Kind": kind},
+    )
+
+
+def _finalize_and_process(client: TestClient, scan_id: str) -> str:
+    client.post(f"/api/scans/{scan_id}/complete")
+    client.app.state.worker.drain()
+    return client.get(f"/api/scans/{scan_id}").json()["state"]
+
+
+@pytest.mark.xfail(strict=True, reason="A-29: a scan that fails processing can never be processed again")
+def test_a29_a_failed_scan_is_processed_again_once_a_readable_room_arrives(tmp_path):
+    stages = Stages(
+        ledger_factory=VerificationLedger,
+        export_glb=_without_blender, usdz_to_glb=_without_blender, render_finding=_without_blender,
+    )
+    settings = Settings(data_dir=tmp_path / "var", seed_sample_shop=False)
+    with TestClient(create_app(settings, stages, run_worker=False)) as client:
+        body = {"name": "Corner cafe", "device_model": "iPhone17,1", "duration_seconds": 60.0}
+        scan_id = client.post("/api/scans", json=body).json()["id"]
+        _upload(client, scan_id, "room-json", b"{not json", "room_json")
+        _upload(client, scan_id, "room-usdz", b"usdz", "room_usdz")
+        assert _finalize_and_process(client, scan_id) == "failed"
+        readable = (REAL_EXPORTS / "apple_bedroom3.room.json").read_bytes()
+        _upload(client, scan_id, "room-json-2", readable, "room_json")
+        assert _finalize_and_process(client, scan_id) == "ready"
 
 
 @pytest.mark.parametrize("room", ["apple_bedroom3", "apple_livingroom"])

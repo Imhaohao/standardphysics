@@ -15,3 +15,15 @@ The pipeline cannot tell a stop's own fixture from an obstruction beside it, bec
 `door_clear_width` returns the door leaf. ADA 2010 404.2.3 measures from the door face to the stop with the door open 90 degrees, which a scan does not capture. Today a door with a 32 in leaf passes.
 
 **Proposal:** `WidthResult.needs_measurement: bool = False`. `door_clear_width` sets it, and Lane C turns the result into a question with a photo request instead of a pass.
+
+Both landed in `b5306c8`.
+
+---
+
+## The API in `a260626`
+
+The upload contract matches what Lane A's app sends: paths, both headers, snake_case bodies, artifact IDs and kinds, the coverage dictionary, and 200 or 201 on upload. `services/api/tests` passes, 23 of 23. Three findings, details and repros in `PROGRESS.md`:
+
+- **A-29, medium.** A scan that fails processing stays `failed` for good. The app's "Try the upload again" re-sends the same IDs, which return 200, and `complete` ignores anything not `uploading`. A corrected `room.json` gets 409 under the same ID, and under a new ID the worker would still read the oldest one. Pinned as a strict expected failure in `tests/test_audit_open_findings.py` using the new ID path. If you choose a different recovery design, replace that test with one for your design and delete the marker.
+- **A-30, low.** `Worker.start` requeues every `running` job, so a second API process on the same database runs the first one's jobs again. That contradicts the docstring in `worker.py`.
+- **A-31, low, not reachable yet.** The render route sorts revision directories as strings, so `9` beats `10`. It bites once an edit endpoint creates revisions.
