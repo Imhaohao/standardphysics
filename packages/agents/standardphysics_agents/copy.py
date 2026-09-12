@@ -252,6 +252,24 @@ WRITERS: dict[str, Callable[[Observation, RuleSpec], FindingCopy]] = {
 }
 
 
+REQUESTS = {
+    "door_clear_width": FindingCopy(
+        title="Measure the front doorway and send us the number",
+        detail="Open the door all the way and measure from the face of the door across to the frame. That's the width a wheelchair actually gets, and it needs 32 inches.",
+    ),
+}
+
+GENERIC_REQUEST = FindingCopy(
+    title="Send us one measurement and we'll finish this check",
+    detail="A tape measure across the narrowest part is all it takes.",
+)
+
+
+def request(rule: RuleSpec) -> FindingCopy:
+    """What to ask for when geometry cannot settle a rule on its own."""
+    return REQUESTS.get(rule.id, GENERIC_REQUEST)
+
+
 def another_look(labels: list[str]) -> FindingCopy:
     """Thin coverage becomes a request, never a red finding."""
     subject = things(labels) or "that corner"
@@ -259,6 +277,43 @@ def another_look(labels: list[str]) -> FindingCopy:
         title=f"Point the phone at {subject} again",
         detail="A few seconds from a second angle is enough, then we'll measure it.",
     )
+
+
+NO_ARRANGEMENT = "We couldn't find an arrangement that works."
+"""The sentence the plan prescribes for an exhausted search, section 2.
+
+It is always followed by one specific thing the owner could allow, because a
+dead end with no next move is not an answer.
+"""
+
+RATIONALES = {
+    "split_the_gap": "Move {what} {distance} apart.",
+    "move_one_aside": "Move {what} {distance} over.",
+    "stagger": "Step {what} {distance} apart along the aisle, so they stop lining up.",
+    "turn_one": "Turn {what} a quarter turn.",
+}
+
+RELAXATIONS = {
+    "unlock": "Can {what} be moved? Unlock it and we'll try again.",
+    "set_aside": "Try it without {what}?",
+}
+
+
+def proposal_rationale(strategy: str, labels: list[str], inches_moved: float) -> str:
+    """What the owner sees on the before and after, in one sentence."""
+    template = RATIONALES.get(strategy, "Move {what} {distance}.")
+    return template.format(
+        what=things(labels) or "it", distance=inches(inches_moved)
+    )
+
+
+def relaxation_question(kind: str, labels: list[str]) -> str:
+    """One specific thing to allow, phrased as a choice the owner makes."""
+    return RELAXATIONS[kind].format(what=things(labels) or "one piece")
+
+
+def no_arrangement(question: str | None) -> str:
+    return f"{NO_ARRANGEMENT} {question}" if question else NO_ARRANGEMENT
 
 
 def describe(observation: Observation, rule: RuleSpec) -> FindingCopy:

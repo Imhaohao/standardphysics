@@ -41,11 +41,31 @@ REGISTRY: tuple[tuple[frozenset[str], CheckFn], ...] = (
 )
 
 
+def _waiting_on_a_reader(ctx: CheckContext, max_tier: Tier) -> list[Unevaluated]:
+    """Rules we hold that nobody has read yet.
+
+    An empty report and a clean shop look identical from the outside, so a rule
+    that is switched off for want of a reader says so here. This is how the API
+    and the team find out, and it never reaches the owner.
+    """
+    enabled = {rule.id for rule in ctx.rules.enabled(ctx.ledger, max_tier)}
+    return [
+        Unevaluated(
+            rule.id,
+            f"a person to read {rule.citation.authority} {rule.citation.section} "
+            f"and confirm {rule.threshold:g} {rule.unit}: "
+            f"cli rules verify {rule.id} --by \"<name>\"",
+        )
+        for rule in ctx.rules.within_tier(max_tier)
+        if rule.id not in enabled
+    ]
+
+
 @traced("checks.run")
 def run_checks(ctx: CheckContext, max_tier: Tier = 1) -> CheckResult:
     enabled = {rule.id for rule in ctx.rules.enabled(ctx.ledger, max_tier)}
     observations: list[Observation] = []
-    unevaluated: list[Unevaluated] = []
+    unevaluated: list[Unevaluated] = _waiting_on_a_reader(ctx, max_tier)
 
     for rule_ids, check in REGISTRY:
         if not rule_ids & enabled:

@@ -1,37 +1,23 @@
-"""One canonical fingerprint for a layout.
+"""The layout fingerprint, and the inventory that must survive a rearrangement.
 
-An assessment records the layout it judged and a proposal records the layout it
-was built against. Both have to agree, or a stale result can recolour geometry
-that has already moved on, so the fingerprint is computed in exactly one place.
+`graph_hash` lives in `packages/contracts` now, because an assessment and a
+proposal both carry one and they have to agree. It is re-exported here so the
+import site inside this lane did not have to move.
 """
 
 from __future__ import annotations
 
-import hashlib
-import json
+from standardphysics_contracts import SceneGraph, graph_hash
 
-from standardphysics_contracts import SceneGraph
-
-
-def _node_fingerprint(node) -> list:
-    return [
-        str(node.id),
-        node.kind,
-        [round(value, 6) for value in node.transform.m],
-        [round(node.dimensions.x, 6), round(node.dimensions.y, 6), round(node.dimensions.z, 6)],
-        node.movable,
-        node.quality,
-    ]
-
-
-def graph_hash(graph: SceneGraph) -> str:
-    payload = sorted((_node_fingerprint(node) for node in graph.nodes), key=str)
-    encoded = json.dumps(payload, separators=(",", ":"), sort_keys=True)
-    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+__all__ = ["graph_hash", "inventory"]
 
 
 def inventory(graph: SceneGraph) -> dict[str, int]:
-    """How many of each thing the owner has. Placement is adjustable; this is not."""
+    """How many of each thing the owner has.
+
+    Placement is adjustable and this is not. A proposal that changes any of
+    these counts has thrown away a chair, whatever else it achieved.
+    """
     counts: dict[str, int] = {}
     for node in graph.nodes:
         if node.kind != "object":

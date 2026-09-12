@@ -58,7 +58,11 @@ def _list(args) -> int:
 
 
 def _show(args) -> int:
-    rule = load_pack().by_id(args.rule_id)
+    _print_rule(load_pack().by_id(args.rule_id), load_ledger())
+    return 0
+
+
+def _print_rule(rule: RuleSpec, ledger) -> None:
     print(f"{rule.id}\n")
     print(f"  {rule.title}")
     print(f"  {rule.citation.authority} {rule.citation.display()}")
@@ -67,27 +71,23 @@ def _show(args) -> int:
     for name, value in sorted(rule.parameters.items()):
         print(f"  {name}: {value:g}")
     print(f"  evidence: {rule.evidence}")
-    print(f"  state: {_state(rule, load_ledger())}\n")
+    print(f"  state: {_state(rule, ledger)}\n")
     print(f"  {rule.source_text}\n")
     if rule.review_note:
         print(f"  review note: {rule.review_note}\n")
-    return 0
 
 
 def _read_back(rule: RuleSpec, given: float | None) -> bool:
     if given is not None:
         return math.isclose(given, rule.threshold, abs_tol=READ_BACK_TOLERANCE)
     typed = input(f"Type the number you read in {rule.citation.section}: ").strip()
-    try:
-        return math.isclose(float(typed), rule.threshold, abs_tol=READ_BACK_TOLERANCE)
-    except ValueError:
-        return False
+    return _matches(typed, rule)
 
 
 def _verify(args) -> int:
     pack, ledger = load_pack(), load_ledger()
     rule = pack.by_id(args.rule_id)
-    _show(args)
+    _print_rule(rule, ledger)
     if not _read_back(rule, args.threshold):
         print(
             f"That is not the threshold in the pack. {rule.id} stays off.",
@@ -97,6 +97,43 @@ def _verify(args) -> int:
     save_ledger(ledger.record(rule, verified_by=args.by, note=args.note))
     print(f"{rule.id} is on. {rule.threshold:g} {rule.unit}, read by {args.by}.")
     return 0
+
+
+def _review(args) -> int:
+    """Walk every rule nobody has read yet, one section at a time."""
+    pack = load_pack()
+    waiting = [r for r in pack.within_tier(args.tier) if not load_ledger().verifies(r)]
+    if not waiting:
+        print(f"Every tier {args.tier} rule has a reader.")
+        return 0
+
+    print(f"{len(waiting)} rules to read. Enter a blank line to stop.\n")
+    for rule in waiting:
+        if _review_one(rule, args.by) is False:
+            break
+    return 0
+
+
+def _review_one(rule: RuleSpec, reviewer: str) -> bool:
+    _print_rule(rule, load_ledger())
+    typed = input(
+        f"Number you read in {rule.citation.section} (blank to stop): "
+    ).strip()
+    if not typed:
+        return False
+    if not _matches(typed, rule):
+        print(f"  That is not what the pack says. {rule.id} stays off.\n")
+        return True
+    save_ledger(load_ledger().record(rule, verified_by=reviewer))
+    print(f"  {rule.id} is on.\n")
+    return True
+
+
+def _matches(typed: str, rule: RuleSpec) -> bool:
+    try:
+        return math.isclose(float(typed), rule.threshold, abs_tol=READ_BACK_TOLERANCE)
+    except ValueError:
+        return False
 
 
 def _second_check(args) -> int:
@@ -128,6 +165,7 @@ HANDLERS: dict[str, Callable[[argparse.Namespace], int]] = {
     "rules.list": _list,
     "rules.show": _show,
     "rules.verify": _verify,
+    "rules.review": _review,
     "rules.second-check": _second_check,
     "check": _check,
 }
@@ -153,6 +191,10 @@ def _add_rule_commands(parent) -> None:
         default=None,
         help="the number you read, instead of being asked for it",
     )
+
+    review = sub.add_parser("review", help="read every unverified rule in turn")
+    review.add_argument("--by", required=True)
+    review.add_argument("--tier", type=int, default=1)
 
     second = sub.add_parser("second-check", help="record a second reader")
     second.add_argument("rule_id")
