@@ -1,6 +1,6 @@
 {
   "lane": "C",
-  "updated": "2026-09-13T08:17:36Z",
+  "updated": "2026-09-13T08:51:53Z",
   "done": [
     "rule pack: 18 rules, thresholds in the units the standard is written in, the quoted sentence behind each, and every other number the section states",
     "human verification ledger binding rule id, section, threshold and unit, so editing a threshold switches its check off",
@@ -37,7 +37,8 @@
     "the OpenAI SDK is a declared dependency: without it a model call raised ModuleNotFoundError and the ask box 500d whenever a key was set (2cc1667)",
     "weave-eval: the same 39 cases and 7 scorers through weave.Evaluation, three configurations compared in the Evals tab, scoring still defined once in scorers.py (6ae3aa0)",
     "the schema a model is held to is generated in the subset strict structured output accepts, so the ask box's model resolver can succeed at all: every property required, additionalProperties false, refused keywords dropped (582befd)",
-    "publish_to_weave returns the dataset's real URL from Weave's own path builder, and a run carries it on disk and prints it (e02bc1d)"
+    "publish_to_weave returns the dataset's real URL from Weave's own path builder, and a run carries it on disk and prints it (e02bc1d)",
+    "TypeSafe's confidence and per-action probabilities are traced as router.typesafe.systemone, because a Decision has no room for them and how close the call was matters (ae92f10)"
   ],
   "in_progress": null,
   "blocked_on": null,
