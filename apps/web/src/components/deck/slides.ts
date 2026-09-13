@@ -5,7 +5,6 @@ import { LoopSlide } from "./slides/LoopSlide";
 import { MissionSlide } from "./slides/MissionSlide";
 import { PipelineSlide } from "./slides/PipelineSlide";
 import { ModelSlide } from "./slides/ModelSlide";
-import { PayoutsSlide } from "./slides/PayoutsSlide";
 import { PlannerSlide } from "./slides/PlannerSlide";
 import { RulebookSlide } from "./slides/RulebookSlide";
 import { SaraSlide } from "./slides/SaraSlide";
@@ -28,8 +27,7 @@ export type SlideDefinition = {
 
 export const slides: SlideDefinition[] = [
   { id: "title", shot: "cloud", layer: "behindStage", Content: TitleSlide },
-  { id: "sara", shot: "awayBeforeScan", layer: "overStage", steps: 4, Content: SaraSlide },
-  { id: "payouts", shot: "awayBeforeScan", layer: "overStage", Content: PayoutsSlide },
+  { id: "sara", shot: "awayBeforeScan", layer: "overStage", steps: 5, Content: SaraSlide },
   { id: "rulebook", shot: "awayBeforeScan", layer: "overStage", Content: RulebookSlide },
   { id: "stretched", shot: "awayBeforeScan", layer: "overStage", steps: 2, Content: StretchedSlide },
   { id: "mission", shot: "awayBeforeScan", layer: "overStage", Content: MissionSlide },

@@ -3,9 +3,7 @@
 import { animate, motion, useMotionValue } from "motion/react";
 import { useEffect } from "react";
 import { facts } from "@/lib/facts";
-import { DotField } from "../DotField";
-import { lawsuitFieldCount, sarasShopInField } from "../lawsuitField";
-import { CountFromProgress, FinePrint, MaskedLines, useProgress } from "../primitives";
+import { CountFromProgress, FinePrint, MaskedLines, useProgress } from "./primitives";
 
 const wholeNumber = new Intl.NumberFormat("en-US");
 const paidPercent = facts.casesWithMoneyPercent.value;
@@ -43,21 +41,24 @@ function FallingBill({ bill }: { bill: (typeof bills)[number] }) {
   );
 }
 
-function useUnpaidFade() {
+export function useUnpaidFade(active: boolean) {
   const fade = useMotionValue(0);
   useEffect(() => {
+    if (!active) {
+      fade.jump(0);
+      return;
+    }
     const controls = animate(fade, 1, { duration: 0.9, delay: 0.5 });
     return () => controls.stop();
-  }, [fade]);
+  }, [active, fade]);
   return fade;
 }
 
-function PayingField() {
-  const full = useMotionValue(1);
-  const unpaidFade = useUnpaidFade();
+export const payoutUnpaidShare = unpaidShare;
+
+export function DrainingBills() {
   return (
-    <div className="relative h-deck-art" role="img" aria-label={`${paidPercent} percent of the lawsuit dots stay dark and drain money`}>
-      <DotField count={lawsuitFieldCount} progress={full} origin={sarasShopInField} unpaidShare={unpaidShare} unpaidFade={unpaidFade} />
+    <div aria-hidden className="pointer-events-none absolute inset-0">
       {bills.map((bill) => (
         <FallingBill key={bill.key} bill={bill} />
       ))}
@@ -65,22 +66,19 @@ function PayingField() {
   );
 }
 
-export function PayoutsSlide() {
+export function PayoutsCopy() {
   const progress = useProgress(1.1, 0.3);
   return (
-    <div className="deck-gutter grid h-full grid-cols-[1.7fr_1fr] items-center gap-deck-gap">
-      <div className="flex flex-col gap-deck-hairline">
-        <p className="font-display text-display font-extrabold figures-tabular">
-          <CountFromProgress progress={progress} total={paidPercent} format={(value) => `${value}%`} />
-        </p>
-        <p className="font-display text-lede font-bold">
-          <MaskedLines lines={["of ADA cases reported in", "California ended in a payout"]} delay={0.5} />
-        </p>
-        <div className="mt-deck-rise">
-          <FinePrint delay={1.6}>{`${facts.casesWithMoneyPercent.source}, ${wholeNumber.format(facts.casesWithMoneyPercent.caseReports)} California case reports`}</FinePrint>
-        </div>
+    <div className="flex flex-col gap-deck-hairline">
+      <p className="font-display text-display font-extrabold figures-tabular">
+        <CountFromProgress progress={progress} total={paidPercent} format={(value) => `${value}%`} />
+      </p>
+      <p className="font-display text-lede font-bold">
+        <MaskedLines lines={["of ADA cases reported in", "California ended in a payout"]} delay={0.5} />
+      </p>
+      <div className="mt-deck-rise">
+        <FinePrint delay={1.6}>{`${facts.casesWithMoneyPercent.source}, ${wholeNumber.format(facts.casesWithMoneyPercent.caseReports)} California case reports`}</FinePrint>
       </div>
-      <PayingField />
     </div>
   );
 }

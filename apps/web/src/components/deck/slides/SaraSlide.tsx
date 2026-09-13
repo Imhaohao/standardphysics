@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { easeDrawn, exitTransition } from "@/lib/motion";
 import { CountFromProgress, FinePrint, MaskedLines } from "../primitives";
 import { DotField, type FieldOrigin } from "../DotField";
+import { DrainingBills, PayoutsCopy, payoutUnpaidShare, useUnpaidFade } from "../Payouts";
 import { lawsuitFieldCount, sarasShopInField } from "../lawsuitField";
 import type { SlideProps } from "../slides";
 import { BobaCup } from "../BobaCup";
@@ -129,8 +130,9 @@ function SaraPortrait({ crushed }: { crushed: boolean }) {
   );
 }
 
-type Phase = "meet" | "sued" | "damages" | "others";
-const phases: Phase[] = ["meet", "sued", "damages", "others"];
+type Phase = "meet" | "sued" | "damages" | "others" | "payouts";
+const phases: Phase[] = ["meet", "sued", "damages", "others", "payouts"];
+const showsField = (phase: Phase) => phase === "others" || phase === "payouts";
 
 const lawsuitCount = facts.adaLawsuitsFiled2025.value;
 const FIELD = { collapseSeconds: 1.2, handoffSeconds: 0.4, fillDelay: 1.5, fillSeconds: 2.4, flightSeconds: 3.8 };
@@ -238,11 +240,12 @@ function StoryCopy({ phase, fill }: { phase: Phase; fill: MotionValue<number> })
   if (phase === "meet") return <MeetSara />;
   if (phase === "sued") return <SaraGotSued />;
   if (phase === "damages") return <DamagesCopy waitedSeconds={exitTransition.duration} />;
+  if (phase === "payouts") return <PayoutsCopy />;
   return <OtherBusinesses progress={fill} />;
 }
 
 function SaraShopScene({ phase }: { phase: Phase }) {
-  const zoomedOut = phase === "others";
+  const zoomedOut = showsField(phase);
   return (
     <motion.div
       initial={false}
@@ -313,8 +316,10 @@ function FlyingDot({ landing }: { landing: FieldOrigin }) {
 
 export function SaraSlide({ step }: SlideProps) {
   const phase = phases[Math.min(step, phases.length - 1)];
-  const fill = useFieldFill(phase === "others");
-  const landed = useLanding(phase === "others");
+  const fieldShown = showsField(phase);
+  const fill = useFieldFill(fieldShown);
+  const landed = useLanding(fieldShown);
+  const unpaidFade = useUnpaidFade(phase === "payouts");
   const [landing, setLanding] = useState<FieldOrigin>(SHOP_IN_FIELD);
   const placeLanding = useCallback((position: FieldOrigin) => setLanding(position), []);
   return (
@@ -330,13 +335,22 @@ export function SaraSlide({ step }: SlideProps) {
       <div className="relative h-deck-art">
         <motion.div
           initial={false}
-          animate={{ opacity: phase === "others" ? 1 : 0 }}
+          animate={{ opacity: fieldShown ? 1 : 0 }}
           transition={{ duration: 0.6, delay: phase === "others" ? FIELD.collapseSeconds : 0 }}
           className="absolute inset-0"
         >
-          <DotField count={lawsuitFieldCount} progress={fill} origin={SHOP_IN_FIELD} showHighlight={landed} onHighlightPlaced={placeLanding} />
+          <DotField
+            count={lawsuitFieldCount}
+            progress={fill}
+            origin={SHOP_IN_FIELD}
+            showHighlight={landed}
+            onHighlightPlaced={placeLanding}
+            unpaidShare={payoutUnpaidShare}
+            unpaidFade={unpaidFade}
+          />
         </motion.div>
-        {phase === "others" && !landed && <FlyingDot landing={landing} />}
+        {fieldShown && !landed && <FlyingDot landing={landing} />}
+        {phase === "payouts" && <DrainingBills />}
         <SaraShopScene phase={phase} />
       </div>
     </div>
