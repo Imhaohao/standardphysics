@@ -1,6 +1,6 @@
 {
   "lane": "C",
-  "updated": "2026-09-13T05:21:36Z",
+  "updated": "2026-09-13T07:52:26Z",
   "done": [
     "rule pack: 18 rules, thresholds in the units the standard is written in, the quoted sentence behind each, and every other number the section states",
     "human verification ledger binding rule id, section, threshold and unit, so editing a threshold switches its check off",
@@ -32,7 +32,9 @@
     "A-34: a partly measured turn is a gap on unevaluated, not silence",
     "point_of_sale_height: when a lowered section exists, the finding is the register on the high part, not a missing portion",
     "407 Lane C tests",
-    "a key Weave turns away leaves tracing off and logs why, instead of raising (feb65b4)"
+    "a key Weave turns away leaves tracing off and logs why, instead of raising (feb65b4)",
+    "the OpenAI SDK is a declared dependency: without it a model call raised ModuleNotFoundError and the ask box 500d whenever a key was set (2cc1667)",
+    "weave-eval: the same 39 cases and 7 scorers through weave.Evaluation, three configurations compared in the Evals tab, scoring still defined once in scorers.py (6ae3aa0)"
   ],
   "in_progress": null,
   "blocked_on": null,
