@@ -220,7 +220,7 @@ class TypeSafeRouter:
     def decide(self, state: RouterState) -> Decision | Rejected:
         if not self.configured:
             return Rejected("typesafe_not_configured")
-        raw = self._call(self.request_body(state))
+        raw = self.ask(self.request_body(state))
         if isinstance(raw, Rejected):
             return raw
         choice = _typesafe_choice(raw)
@@ -237,6 +237,20 @@ class TypeSafeRouter:
         if isinstance(decision, Rejected):
             return decision
         return _authorize(decision, state)
+
+    @traced("router.typesafe.systemone")
+    def ask(self, body: dict) -> Any | Rejected:
+        """One request and the answer it returned, as its own traced call.
+
+        System One reports a confidence and a probability for every action it
+        did not pick. A `Decision` has no room for either, and both are worth
+        having when a loop did something surprising, so the answer is traced
+        where it arrives rather than summarized after the fact.
+        """
+        raw = self._call(body)
+        if isinstance(raw, Rejected):
+            return raw
+        return _load(raw) if isinstance(raw, (str, bytes)) else raw
 
     def _call(self, body: dict) -> bytes | Rejected:
         if self.budget is not None and not self.budget.reserve():

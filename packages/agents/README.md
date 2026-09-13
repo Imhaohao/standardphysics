@@ -67,6 +67,30 @@ the failure reads as a question nobody understood. `parse_query` still rejects
 what arrives: a kind outside the set, a measurement longer than a shop, a
 question that names nothing.
 
+## The router
+
+**TypeSafe picks the next action and the code names what it acts on.** The
+request is one Choice question over the five actions, with the measured state
+as its content, so the answer is `FIX`, `RESCAN_AREA`, `ASK_OWNER`, `ESCALATE`
+or `DONE` by construction. System One answers typed questions and does not
+generate arrays of UUIDs, so the targets are assembled from the findings after
+the choice, then validated by the same `parse_decision` every router goes
+through. `_authorize` is the last gate: a fix only where furniture can clear
+the problem and only while attempts remain, a rescan only on geometry somebody
+wants another look at, an escalation only on a problem.
+
+The answer also carries a confidence and a probability for each action it did
+not pick, which a `Decision` has no room for. `router.typesafe.systemone` is
+traced on its own for that reason, so a trace says how close the call was when
+a loop does something surprising. In practice the calls land between 0.5 and
+0.9, often with two actions within 0.05 of each other.
+
+An action the shop has no work for, a body that is not the shape the service
+documents, and a service that is down all come back as `Rejected`, which no
+handler is registered for. `TypeSafeCallBudget` caps paid calls for a campaign.
+Without `TYPESAFE_BASE_URL` the loop runs `router/local_policy.py` and labels
+every decision `local_policy`, so a trace always says which one answered.
+
 ## Turning a check on
 
 **No check runs until a person has read its section.** `rules review` prints the

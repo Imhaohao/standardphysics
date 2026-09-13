@@ -15,6 +15,7 @@ from standardphysics_agents.router import (
     ACTIONS,
     LocalPolicyRouter,
     Rejected,
+    TypeSafeCallBudget,
     TypeSafeRouter,
     action_schema,
     extract_payload,
@@ -397,6 +398,50 @@ class TestTypeSafeClient:
         answer = router.decide(router_state)
         assert isinstance(answer, Rejected)
         assert answer.reason == "transport_error"
+
+
+class TestTheAnswerInTheTrace:
+    """`decide` returns a `Decision`, which has no room for a confidence.
+
+    How close the call was is worth having when a loop did something
+    surprising, so the answer is traced where it arrives.
+    """
+
+    def test_the_answer_comes_back_decoded(self, router_state):
+        answered = json.dumps(
+            {
+                "model": "jev-1.13.0",
+                "answers": {
+                    "action": {
+                        "type": "choice",
+                        "choice": "DONE",
+                        "confidence": 0.35,
+                        "probabilities": {"DONE": 0.4, "FIX": 0.38},
+                    }
+                },
+                "usage": {"input_tokens": 1828, "output_tokens": 51},
+            }
+        ).encode()
+        router, _ = _router(answered)
+        answer = router.ask(router.request_body(router_state))
+        assert answer["answers"]["action"]["confidence"] == 0.35
+        assert answer["answers"]["action"]["probabilities"]["FIX"] == 0.38
+        assert answer["usage"]["input_tokens"] == 1828
+
+    def test_it_is_named_as_its_own_call(self):
+        assert TypeSafeRouter.ask.traced_name == "router.typesafe.systemone"
+
+    def test_a_service_that_is_down_is_not_mistaken_for_an_answer(self, router_state):
+        router, _ = _router(OSError("connection refused"))
+        assert router.ask(router.request_body(router_state)) == Rejected("transport_error")
+
+    def test_the_budget_is_still_what_stops_a_paid_call(self, router_state):
+        router, transport = _router(b'{"answers": {}}')
+        router.budget = TypeSafeCallBudget(limit=1, used=1)
+        assert router.ask(router.request_body(router_state)) == Rejected(
+            "typesafe_call_budget_exhausted"
+        )
+        assert transport.calls == []
 
 
 class TestLocalPolicy:
