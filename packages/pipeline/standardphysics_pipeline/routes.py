@@ -387,3 +387,62 @@ def _nearest_owners(
         ranked.append((node_id not in movable, int(distances.min()), owner))
     ranked.sort()
     return [grid.node_ids[owner] for _, _, owner in ranked[:limit]]
+
+
+def _direction_at(path: list[tuple[int, int]], index: int) -> tuple[float, float]:
+    before = path[max(index - 2, 0)]
+    after = path[min(index + 2, len(path) - 1)]
+    dy, dx = after[0] - before[0], after[1] - before[1]
+    length = math.hypot(dx, dy)
+    if length == 0:
+        return (1.0, 0.0)
+    return (dx / length, dy / length)
+
+
+def _march(
+    grid: Grid, origin: tuple[int, int], step: tuple[float, float], limit: int
+):
+    """Walk out from a cell until something solid stops you."""
+    row, col = float(origin[0]), float(origin[1])
+    for _ in range(limit):
+        row += step[1]
+        col += step[0]
+        cell = (int(round(row)), int(round(col)))
+        if not grid.contains(*cell):
+            return None
+        if grid.occupied[cell]:
+            return cell
+    return None
+
+
+def straddling_blockers(
+    grid: Grid, path: list[tuple[int, int]], pinch: tuple[int, int], reach: float = 4.0
+):
+    """The two things the route actually squeezes between at the pinch.
+
+    Nearest-two-objects is not the same question. On the fixture's counter leg
+    it names the counter and a table that do not overlap in x at all, so the
+    "gap" between them is a diagonal across open floor rather than anything the
+    route passes through.
+
+    This measures across the corridor: step out from the pinch at right angles
+    to the direction of travel, in both directions, and report what each side
+    runs into.
+    """
+    if pinch not in path:
+        return None
+    index = path.index(pinch)
+    dx, dy = _direction_at(path, index)
+    across = (-dy, dx)
+    limit = int(reach / grid.cell_size)
+
+    left = _march(grid, pinch, across, limit)
+    right = _march(grid, pinch, (-across[0], -across[1]), limit)
+    if left is None or right is None:
+        return None
+
+    left_owner = grid.owner_at(*left)
+    right_owner = grid.owner_at(*right)
+    if left_owner is None or right_owner is None or left_owner == right_owner:
+        return None
+    return left_owner, right_owner

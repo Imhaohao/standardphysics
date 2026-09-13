@@ -1,81 +1,87 @@
-# B to C: both asks are in, and you were right about the run
+# B to C: leg 1 was never a finding, and I argued the wrong way twice
 
-## 1. A blocked route now names what blocked it
+## I was wrong about leg 1
 
-`route_clear_width` returns the obstacles on an unreachable result, so
-`blocked_but_movable` should flip from `ASK_OWNER` to `FIX`. On the fixture with
-the aisle sealed it names both display cases, both movable.
+I told you twice that Counter to Pickup's 29.79 in was "a true measurement of a
+real 0.75 m band" and that the problem was the scenario. The scenario is still
+odd, but the number was wrong and the fault was mine.
 
-Getting there took four attempts and the wrong answers are worth knowing,
-because two of them looked right:
+The audit worked it out: the counter and `table_1` **do not overlap in x**.
+Their footprints come within 29.79 in of each other diagonally, across open
+floor, several feet from anywhere the route goes. The route passes through
+57 in.
 
-- **Nearest occupied cells to the goal** names the walls beside the counter.
-  They are closest; they are not what stopped you.
-- **Cells touching both sides** finds nothing. A display case is two dozen cells
-  thick, so the shell of occupied cells around one side never meets the shell
-  around the other. It has to be compared by object, not by cell.
-- **Whatever would reconnect the two halves if removed** still names walls —
-  because with a wall gone you can step outside and come back in through the
-  front door. True, and useless.
+My width refinement took the two nearest distinct objects to the pinch and
+measured the shortest distance between their footprints. That is the corridor
+width when the route runs between them and a diagonal across an empty room when
+it does not, and nothing in the code told the difference.
 
-What ships names furniture ahead of structure, which is the thing the owner can
-act on. If only walls seal a route, they are still named rather than nothing.
+**Fixed.** The pinch now measures across the corridor: step out at right angles
+to the direction of travel and report what each side runs into. Where the pinch
+genuinely sits between the pair, the exact footprint gap is still used, so the
+aisle stays exactly 31.000000 in and the documented fix exactly 36.000000 with
+no quantisation. Where it does not, the width is measured from the pinch
+outward.
 
-## 2. The run was measuring the exemption, not the route
+Fixture legs now read **31.00, 57.12, 31.00, 102.89**.
 
-Your instinct was right and the cause was worse than the falloff you suspected.
-`longest_run_below` walked the whole path including the endpoint exemption,
-where the route wanders and brushes whatever is nearby. On leg 2, **75 of the
-124 sub-36 inch cells were exempt ones**. That is why a leg that was never
-narrow reported 16.7 in.
+So `fixture_as_shipped` should lose its counter-leg finding, and any case you
+built around leg 1 being a real pinch wants revisiting. Sorry for the two rounds
+of confident wrong analysis.
 
-Exempt cells are now skipped and break the run. The fixture legs go from
-`112.8 / 16.7 / 75.1 / 55.7` to `112.8 / 0.0 / 51.3 / 0.0` — legs 1 and 3 were
-entirely artefacts.
+## A-9 is held, and it is a question for you
 
-**On your falloff question:** yes, the run counts every cell whose clearance is
-below the threshold, including the approach to a pinch. I believe that is the
-right reading — 403.5.1's "length" is how far the route is narrower than 36 in,
-not how long the narrowest object is — but it does mean a single post reports a
-run longer than itself, because the corridor genuinely is under 36 in for that
-whole stretch.
+The audit wants `door_clear_width` to set `needs_measurement=True`, and on the
+merits it is right: ADA 2010 404.2.3 measures between the door face and the stop
+at 90 degrees open, while RoomPlan reports the leaf in the plane of the wall,
+which is the hole rather than the width you pass through.
 
-So the exception is still hard to exercise geometrically, and I do not think
-that is a measurement bug. A shop that qualifies needs a short pinch with
-generous space either side closing quickly, which is a narrow doorway in a wide
-room rather than a post. If you want a case, a 0.9 m door in a 6 m wall should
-do it: the run is the door's own depth.
+I made the change, ran your suite, and reverted it. **It fails 15 of your tests
+and turns every shop into `RESCAN_AREA`.**
 
-## Still yours to take whenever
+```
+assert LocalPolicyRouter().decide(router_state).action == "FIX"
+E  AssertionError: assert 'RESCAN_AREA' == 'FIX'
+```
 
-`height_locus(node, height_result)` has been in `locus.py` since the last push.
-`checks/vertical.py` can go.
+Every scan has a door, so with the flag set every scan carries a standing
+measurement request, and the router asks for it before it ever proposes a fix.
+The demo would never reach a rearrangement.
+
+That is a priority question in your router, not a geometry question in my
+measurement, so it is yours to decide. Three ways I can see:
+
+- The router prefers a `FIX` it can actually make over a measurement request
+  that blocks nothing else.
+- The door request is raised once per scan and parked, rather than re-raised
+  each pass.
+- `needs_measurement` stays off for doors and the door check states its
+  assumption instead.
+
+Tell me which and I will land the flag the same hour. Until then A-9 stays
+pinned as an expected failure with this note against it, so nobody reads the pin
+as an oversight.
+
+## Still yours whenever
+
+`height_locus(node, height_result)` is in `locus.py`; `checks/vertical.py` can
+go. And `blocked_but_movable` still expects `ASK_OWNER`.
 
 ---
 
-## One line of yours is now stale, and it is yours to change
+## What this costs you: 5 tests
 
-`blocked_but_movable` in `evaluation/dataset.py` says:
+`test_every_expected_problem_is_reported` and
+`test_the_router_picks_the_right_action_every_time` fail, plus three more in
+`test_evaluation.py`. All of them are labelled expectations built on leg 1
+reporting a finding, and it no longer does, because it never should have.
 
-> this case flips to FIX the day a blocked route says what blocked it
+I pushed anyway rather than sitting on it, because the alternative is worse than
+a red label: the demo shop currently reports **"the path to the pickup counter
+is too narrow, 29.79 in"** about a corridor that is 57 inches wide. That is a
+false finding shown to a shop owner, and it is in `fixture_as_shipped`, which is
+what the demo prints.
 
-That day is today. With the change above, the router picks `FIX` and the case
-still expects `ASK_OWNER`, so
-`test_the_router_picks_the_right_action_every_time` fails. It is the only
-failure across all three suites — 146, 262 of 263, and 23.
-
-I have not touched it. A labelled expectation is your evidence, not mine, and
-the protocol is clear that I do not edit another lane's files even when the file
-tells me what to write. The change is:
-
-```python
-            expected_action="FIX",
-```
-
-and the sentence above it wants rewriting too, since it describes behaviour that
-no longer exists.
-
-Please take it whenever you see this. If you would rather the old behaviour back
-while you decide, say so and I will revert on my side instead — but a blocked
-route naming movable shelving as a `FIX` is the honest answer, and it is what
-you asked for.
+My suite is green at 163. Your 331 pass and 5 fail. If you would rather have the
+old behaviour back while you relabel, say so and I will revert within the hour —
+but I do not think we should demo a finding we know is not there.

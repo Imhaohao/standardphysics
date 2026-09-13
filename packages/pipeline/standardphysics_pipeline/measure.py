@@ -38,6 +38,7 @@ from .routes import (
     longest_run_below,
     what_sealed_the_route,
     path_clearances,
+    straddling_blockers,
     widest_path,
     world_path,
 )
@@ -70,6 +71,16 @@ def _front_face_centre(node: SceneNode, outward: tuple[float, float]) -> Vec3:
     return Vec3(
         x=centre.x + outward[0] * reach, y=centre.y + outward[1] * reach, z=0.0
     )
+
+
+def _distance_to(point: Vec3, node: SceneNode) -> float:
+    """Shortest distance from a point on the floor to a node's footprint."""
+    speck = 1e-6
+    probe = [
+        (point.x - speck, point.y - speck), (point.x + speck, point.y - speck),
+        (point.x + speck, point.y + speck), (point.x - speck, point.y + speck),
+    ]
+    return gap_between(footprint(node), probe)
 
 
 def _rectangle(
@@ -125,9 +136,17 @@ class PipelineMeasurements:
             )
 
         radius_cells = int(result.clearance_radius / grid.cell_size)
-        blockers = blockers_at(grid, result.pinch_cell, radius_cells)
+        straddling = straddling_blockers(grid, result.path, result.pinch_cell)
+        blockers = list(straddling) if straddling else blockers_at(
+            grid, result.pinch_cell, radius_cells
+        )
         return WidthResult(
-            inches=self._exact_width(graph, blockers, result.width_meters),
+            inches=self._exact_width(
+                graph,
+                blockers,
+                result.width_meters,
+                pinch=grid.to_world(*result.pinch_cell),
+            ),
             pinch_point=grid.to_world(*result.pinch_cell),
             blocking_node_ids=blockers,
             path=world_path(grid, result.path),
@@ -135,14 +154,37 @@ class PipelineMeasurements:
         )
 
     def _exact_width(
-        self, graph: SceneGraph, blockers: list[UUID], grid_width: float
+        self,
+        graph: SceneGraph,
+        blockers: list[UUID],
+        grid_width: float,
+        pinch: Vec3 | None = None,
     ) -> float:
-        """Two named obstacles measure exactly. Anything else keeps the grid's
-        answer, which is good to about an inch."""
+        """The corridor width where the route actually passes.
+
+        Not the gap between the two footprints. That is their closest approach
+        anywhere, which is the corridor only when the route runs through it: on
+        the fixture's counter leg the counter and a table come within 29.79 in
+        of each other diagonally, while the route passes through 57 in of open
+        floor several feet away.
+
+        Measuring out from the pinch to each side gives the width at the point
+        the bottleneck was found, which is the number the check is asking for.
+        """
         if len(blockers) != 2:
             return to_inches(grid_width)
         a, b = (graph.by_id(node_id) for node_id in blockers)
-        return to_inches(gap_between_nodes(a, b))
+        exact = gap_between_nodes(a, b)
+        if pinch is None:
+            return to_inches(exact)
+
+        across = _distance_to(pinch, a) + _distance_to(pinch, b)
+        if abs(across - exact) <= 2 * self.cell_size:
+            # The pinch sits on the line between them, so their closest
+            # approach is the corridor and the analytic gap is exact. The grid
+            # answer carries about an inch of quantisation; this does not.
+            return to_inches(exact)
+        return to_inches(across)
 
     def turn_clear_width(
         self, graph: SceneGraph, scenario: Scenario, leg_index: int
@@ -267,6 +309,17 @@ class PipelineMeasurements:
         )
 
     def door_clear_width(self, graph: SceneGraph, door_id: UUID) -> WidthResult:
+        """The doorway's opening, flagged as something a scan cannot settle.
+
+        ADA 2010 404.2.3 measures between the door face and the stop with the
+        door open 90 degrees. RoomPlan reports the leaf in the plane of the
+        wall, which is the hole in the wall and not the width you can pass
+        through: the open leaf, its hardware and the stop all eat into it.
+
+        The number is still useful as an upper bound, so it is returned with
+        `needs_measurement` set and Lane C turns it into a request rather than
+        a pass.
+        """
         door = graph.by_id(door_id)
         opening = max(door.dimensions.x, door.dimensions.y)
         return WidthResult(
