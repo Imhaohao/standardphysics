@@ -72,7 +72,7 @@ const beatSwap: Variants = {
 
 function NoTime() {
   return (
-    <motion.div key="time" initial="enter" animate="present" exit="exit" variants={beatSwap} className="flex flex-col items-center gap-deck-hairline">
+    <motion.div key="time" initial="enter" animate="present" exit="exit" variants={beatSwap} className="absolute inset-0 flex items-center justify-center">
       <div className="stretched-clock">
         <SpinningClock />
       </div>
@@ -174,7 +174,7 @@ function BalanceScale({ active }: { active: boolean }) {
 
 function NoMoney() {
   return (
-    <motion.div key="money" initial="enter" animate="present" exit="exit" variants={beatSwap} className="flex items-end gap-deck-gap">
+    <motion.div key="money" initial="enter" animate="present" exit="exit" variants={beatSwap} className="absolute inset-0 flex items-end justify-center gap-deck-gap">
       <div className="stretched-scale">
         <BalanceScale active />
       </div>
@@ -194,9 +194,11 @@ export function StretchedSlide({ step }: SlideProps) {
       className="deck-gutter flex h-full items-center justify-center gap-deck-gap"
     >
       <SaraAtHerDesk stretched={needsMoney} />
-      <AnimatePresence mode="wait" initial={false}>
-        {needsMoney ? <NoMoney key="money" /> : <NoTime key="time" />}
-      </AnimatePresence>
+      <div className="stretched-stage relative">
+        <AnimatePresence mode="wait" initial={false}>
+          {needsMoney ? <NoMoney key="money" /> : <NoTime key="time" />}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

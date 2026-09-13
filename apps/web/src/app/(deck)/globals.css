@@ -122,6 +122,11 @@
   height: 22vh;
 }
 
+@utility stretched-stage {
+  width: 100vh;
+  height: 66vh;
+}
+
 @utility stretched-scale {
   width: 72vh;
   height: 63vh;
