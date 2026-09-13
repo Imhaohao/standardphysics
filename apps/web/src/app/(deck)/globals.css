@@ -112,19 +112,9 @@
   margin-top: 6px;
 }
 
-@utility stretched-books {
-  width: 16vh;
-  height: 16vh;
-}
-
 @utility stretched-clock {
   width: 44vh;
   height: 44vh;
-}
-
-@utility stretched-sky {
-  width: 12vh;
-  height: 12vh;
 }
 
 @utility stretched-briefcase {
@@ -175,7 +165,9 @@
 }
 
 @utility receipt-shadow {
-  filter: drop-shadow(0 0.35vh 0.5vh color-mix(in srgb, var(--color-ink) 22%, transparent));
+  filter:
+    drop-shadow(0 0 1px color-mix(in srgb, var(--color-ink) 45%, transparent))
+    drop-shadow(0 0.6vh 1vh color-mix(in srgb, var(--color-ink) 28%, transparent));
 }
 
 @utility receipt-tear {

@@ -1,13 +1,12 @@
 "use client";
 
-import { Books, Briefcase, Moon, Sun } from "@phosphor-icons/react";
+import { Briefcase } from "@phosphor-icons/react";
 import { AnimatePresence, animate, motion, useMotionValue, useTransform, type MotionValue, type Variants } from "motion/react";
 import { useEffect, type ReactNode } from "react";
 import { easeDrawn, exitTransition } from "@/lib/motion";
 import type { SlideProps } from "../slides";
 
 const CLOCK = { r: 150, turnSeconds: 1.1 };
-const DAY_SECONDS = CLOCK.turnSeconds * 2;
 
 function appears(delay: number): Variants {
   return {
@@ -19,7 +18,7 @@ function appears(delay: number): Variants {
 
 function SaraAtHerDesk({ stretched }: { stretched: boolean }) {
   return (
-    <motion.div variants={appears(0.1)} className="flex items-end gap-deck-hairline">
+    <motion.div variants={appears(0.1)}>
       <motion.img
         src="/sara.jpg"
         alt="Sara"
@@ -28,7 +27,6 @@ function SaraAtHerDesk({ stretched }: { stretched: boolean }) {
         transition={{ duration: 1.4 }}
         className="size-deck-portrait rounded-full object-cover shadow-lg"
       />
-      <Books weight="fill" className="stretched-books text-ink" />
     </motion.div>
   );
 }
@@ -36,7 +34,7 @@ function SaraAtHerDesk({ stretched }: { stretched: boolean }) {
 function useSpinningHands() {
   const turns = useMotionValue(0);
   useEffect(() => {
-    const controls = animate(turns, 1, { duration: CLOCK.turnSeconds, ease: "linear", repeat: Infinity, delay: 0.6 });
+    const controls = animate(turns, [0, 12], { duration: CLOCK.turnSeconds * 12, ease: "linear", repeat: Infinity, delay: 0.6 });
     return () => controls.stop();
   }, [turns]);
   const angle = (value: number, turnsPerLap: number) => value * turnsPerLap * 2 * Math.PI;
@@ -66,24 +64,15 @@ function SpinningClock() {
   );
 }
 
-function DaysPassing() {
-  const cycle = { duration: DAY_SECONDS, repeat: Infinity, ease: "easeInOut" as const, delay: 0.6 };
-  return (
-    <div className="relative stretched-sky">
-      <motion.span className="absolute inset-0 flex justify-center text-tape-deep" animate={{ opacity: [1, 0, 1] }} transition={cycle}>
-        <Sun weight="fill" className="size-full" />
-      </motion.span>
-      <motion.span className="absolute inset-0 flex justify-center text-ink" animate={{ opacity: [0, 1, 0] }} transition={cycle}>
-        <Moon weight="fill" className="size-full" />
-      </motion.span>
-    </div>
-  );
-}
+const beatSwap: Variants = {
+  enter: { opacity: 0, scale: 0.85, y: 30 },
+  present: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.6, ease: easeDrawn } },
+  exit: { opacity: 0, scale: 0.85, y: -30, transition: { duration: 0.35, ease: "easeIn" } },
+};
 
 function NoTime() {
   return (
-    <motion.div key="time" initial="enter" animate="present" exit="exit" variants={appears(0.2)} className="flex flex-col items-center gap-deck-hairline">
-      <DaysPassing />
+    <motion.div key="time" initial="enter" animate="present" exit="exit" variants={beatSwap} className="flex flex-col items-center gap-deck-hairline">
       <div className="stretched-clock">
         <SpinningClock />
       </div>
@@ -185,7 +174,7 @@ function BalanceScale({ active }: { active: boolean }) {
 
 function NoMoney() {
   return (
-    <motion.div key="money" initial="enter" animate="present" exit="exit" className="flex items-end gap-deck-gap">
+    <motion.div key="money" initial="enter" animate="present" exit="exit" variants={beatSwap} className="flex items-end gap-deck-gap">
       <div className="stretched-scale">
         <BalanceScale active />
       </div>
@@ -201,12 +190,12 @@ export function StretchedSlide({ step }: SlideProps) {
   return (
     <div
       role="img"
-      aria-label={needsMoney ? "Sara can pay only a small part of a consultant's fee" : "Days pass on a spinning clock while Sara sits with the stack of standards"}
+      aria-label={needsMoney ? "Sara can pay only a small part of a consultant's fee" : "Hours spin by on a clock beside Sara"}
       className="deck-gutter flex h-full items-center justify-center gap-deck-gap"
     >
       <SaraAtHerDesk stretched={needsMoney} />
       <AnimatePresence mode="wait" initial={false}>
-        {needsMoney ? <NoMoney /> : <NoTime />}
+        {needsMoney ? <NoMoney key="money" /> : <NoTime key="time" />}
       </AnimatePresence>
     </div>
   );

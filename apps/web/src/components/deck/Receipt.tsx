@@ -2,7 +2,7 @@
 
 import { motion, type Variants } from "motion/react";
 import { facts } from "@/lib/facts";
-import { easeDrawn, exitTransition } from "@/lib/motion";
+import { exitTransition } from "@/lib/motion";
 import { CountFromProgress, FinePrint, MaskedLines, useProgress } from "./primitives";
 
 const MILLISECONDS_PER_DAY = 86_400_000;
@@ -66,14 +66,9 @@ export function DamagesCopy({ waitedSeconds = 0 }: { waitedSeconds?: number }) {
 
   return (
     <div className="flex flex-col justify-center">
-      <motion.p
-        className="font-display text-display font-extrabold figures-tabular"
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25, delay: countStarts, ease: easeDrawn }}
-      >
+      <p className="font-display text-display font-extrabold figures-tabular">
         <CountFromProgress progress={progress} total={facts.californiaMinimumDamages.value} format={dollars.format} />
-      </motion.p>
+      </p>
       <p className="mt-deck-hairline font-display text-lede font-bold">
         <MaskedLines lines={["minimum damages,", "plus legal fees", "and a year in court"]} delay={0.8} />
       </p>
