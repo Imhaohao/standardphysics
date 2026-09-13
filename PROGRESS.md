@@ -56,6 +56,7 @@ The audit fixes code only in files no lane agent is actively changing. For lanes
 | `2b0e2b0` D: the fixture counter stands 47 inches | D | Pass with notes | A-46; edits Lane C's `dataset.py` and `test_checks.py` again, as A-18 records; rule threshold still 36 in |
 | `20f54d9` D: retry the stage that failed, and never call an unchecked shop a pass | D | Pass with notes | Resolves A-42, A-43 and A-44; older stored assessments lack `rules_checked` |
 | `abb3cf6` D: record before and after, fix suggestions and the lawsuit counter | D | Pass | Progress file matches the code |
+| `a6e14f7` Add the two LiDAR scans captured on the phone app: test1 and ravida | A | Pass with notes | A-47 to A-52; landed on a red `master` it did not cause |
 
 `609db3d`, `9028d14`, `b90e570`, `d3f7d95` and `1a06655` change only the plan and lane documents. A-1 covers the lane document errors from `9028d14`.
 
@@ -319,3 +320,72 @@ Low. `open`. Lane D.
 Low. `open`. Lane D.
 
 `2b0e2b0` sets the fixture counter to 47 in and cites Whitaker v. T Rock Inc., N.D. Cal. No. 5:22-cv-00283, complaint paragraph 12. The case exists: CourtListener lists Whitaker v. T Rock Inc., 22-cv-00283-JST, filed January 14, 2022, over the Happy Lemon shop in San Jose. The 47 in figure, the paragraph number and the `5:` division prefix could not be confirmed from public sources, because the complaint is behind PACER. Search results also describe the plaintiff as a serial ADA filer, including a dismissal reported by CBS San Francisco. Before the pitch names a real business and plaintiff, someone should read the complaint and decide whether this is the example to lead with.
+
+### A-47 The coverage engine never reaches "done" on a real scan
+High. `open`. Lane A.
+
+`CoverageSnapshot.isComplete` needs every surface done, and `SurfaceCoverage.isDone` at `a6e14f7` asked for 70% observed area, two viewpoints and high confidence. Replaying the committed `coverage.json` against the confidence in `room.json`:
+
+```
+== test1  surfaces=26  done@0.70/2vp=2  done@0.90/3vp=0 | walls 9: 2 / 0
+== ravida surfaces=25  done@0.70/2vp=5  done@0.90/3vp=3 | walls 8: 5 / 3
+```
+
+`test1` ran 239.58 s, hitting the four minute cap, and finished with 2 of 26 surfaces done. Two of its walls sit at `observed_fraction 0.000, viewpoint_count 0` while RoomPlan reconstructed them at high confidence, so the frustum, normal and distance test rejected all 440 poses for them. No object in `test1` passes 0.660, so the gate is unreachable however long the owner walks. Neither scan could have shown "You've got the whole shop", and the lane document's criterion that walking half a room marks exactly that half done reads the other way: a fully walked room marks 8% done.
+
+`CoveragePolicy` has since moved to 0.90 observed, three viewpoints, 3 m and 50 degrees, which takes `test1` to 0 of 26 and away from the 70%, two viewpoint, 5 m, 60 degree rule in `LANE_A.md` and `docs/PLAN.md` section 3. Either the documents or the policy is wrong.
+
+### A-48 A scan manifest claims an artifact kind the contract did not define
+Medium. `open`. Lane A raises it, Lane D owns the contract.
+
+Both `datasets/phone/*/scan.json` list `"kind": "lidar_mesh"`, and the commit says the checksums match the uploaded artifacts. At `a6e14f7` `ArtifactKind` was `room_usdz`, `room_json`, `room_metadata`, `walkthrough_mp4`, `frames`, `poses`, `coverage`. Validating each listed file against the contract rejects exactly one in both scans:
+
+```
+CONTRACT REJECTS lidar-mesh.json -> Input should be 'room_usdz', 'room_json', 'room_metadata',
+  'walkthrough_mp4', 'frames', 'poses' or 'coverage' [input_value='lidar_mesh']
+```
+
+`lidar_mesh` reached the contract twelve commits later in `6f704a5`, a Lane A commit that wrote `packages/contracts/`, `services/api/` and `apps/web/`. Changing anything in `packages/contracts/` is on the protocol's must-not-decide-alone list.
+
+### A-49 A real uploaded scan never gets a Scenario, so nothing about it is ever checked
+High. `open`. Lane D.
+
+Reproduced by pushing `test1`'s six uploadable artifacts through the real app:
+
+```
+create 201 18e99b14-8643-47b4-9532-766ab6cdf2ae uploading
+complete 200 measuring
+scan state: ready   coverage entries: 26
+assessment: 404 {"error":"not ready"}
+scenario:   404 {"error":"not ready"}
+scene: 200 nodes 26
+```
+
+`worker._assess` reads `repo.get_scenario(...)` and, when it is `None`, skips `stages.assess` and marks the scan `ready`. The only caller of `repo.save_scenario` is `seed.py`, which runs for the seeded sample shop. Every real capture therefore ingests, turns `ready`, and carries no assessment. `scanStatus` short-circuits on `assessment === null` and returns "Ready", which `Workspace.tsx:188` prints as the whole findings panel. Distinct from A-44, where the assessment existed with no findings; here there is none.
+
+### A-50 Neither real scan contains a door or an opening
+Medium. `open`. Lane A captures it; blocks Lane B and Lane C.
+
+```
+test1:  doors=0 openings=0 windows=0
+ravida: doors=0 openings=0 windows=1
+```
+
+`docs/PLAN.md` section 1 measures the path in the door, and Lane C's tier 1 includes ADA 2010 404.2.3 door clear width. With no door node neither check has an input, and Lane B's outstanding criterion that a tape-measured doorway match the SceneGraph within 3 cm is still blocked after the scan arrived. The doorway subtraction in `occupancy.CUTS_THROUGH_WALLS` and the A-20 fix have nothing to act on.
+
+The walls also do not enclose either room: summing wall lengths against the floor extent gives `test1` 11.23 m of wall around a 43.6 m perimeter, and `ravida` 18.15 m around 36.4 m. Seven of `test1`'s nine walls are 0.36 to 0.48 m slivers, 4.4 m tall, and they are the same walls A-47 shows were never observed.
+
+### A-51 Two mesh files are most of the git history
+Low. `open`. Lane A.
+
+The two mesh blobs are 31,840,294 and 26,631,156 bytes, and `du -sh .git` is 17M, so about 15 MB of a 17 MB history is two JSON arrays of floats, permanently. gzip -9 takes the same content to 8,153,561 and 6,835,790 bytes. `.gitignore` has no rule for `datasets/`. A binary form, or keeping the mesh out of git and referencing it by checksum, leaves the scan just as reproducible.
+
+### A-52 A hand-written manifest mirrors a contract model
+Low. `open`. Lane A.
+
+`datasets/phone/*/scan.json` uses `scan_id`, `captured_at` and `files[].file/kind/artifact_id/sha256/bytes`; `contracts.Scan` uses `id`, `created_at`, `artifacts[]`, `coverage[]` and `content_hash`. `docs/PLAN.md` section 5 makes `packages/contracts` the only source of truth for a shape. The manifest is useful and should either take the contract shape or become a model in contracts.
+
+### A-53 A new top-level `datasets/` tree belongs to no lane
+Low. `open`. Lane A and the humans.
+
+All 14 files in `a6e14f7` land under `datasets/phone/`, which no lane document claims: Lane A owns `apps/ios/**`, B `packages/pipeline/**`, C `packages/agents/**`, D contracts, fixtures, api and web. No handoff, README or lane document says what the tree is or that it is now the canonical place for a real scan. `docs/handoffs/B-to-A.md` had asked for the export at `packages/fixtures/standardphysics_fixtures/data/real/`, where the existing `tests/test_real_ingest.py` parameterisation already looks, so the real-export suite did not pick these up and Lane B wrote fresh cases instead. The commit also carries no lane prefix, which the protocol asks for. This is the Lane A analogue of A-3.

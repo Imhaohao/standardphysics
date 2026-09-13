@@ -173,6 +173,21 @@ def test_a40_every_object_named_for_a_sealed_route_would_reopen_it():
         assert PipelineMeasurements().route_clear_width(graph, scenario, 0).reachable
 
 
+@pytest.mark.xfail(
+    strict=True, raises=AssertionError, reason="A-49: a real scan turns ready with no assessment, so nothing about it is checked"
+)
+def test_a49_a_real_scan_that_is_ready_has_been_checked(tmp_path):
+    with _api_client(tmp_path) as client:
+        body = {"name": "Corner cafe", "device_model": "iPhone17,1", "duration_seconds": 60.0}
+        scan_id = client.post("/api/scans", json=body).json()["id"]
+        room = (REAL_EXPORTS / "apple_bedroom3.room.json").read_bytes()
+        _upload(client, scan_id, "room-json", room, "room_json")
+        _upload(client, scan_id, "room-usdz", b"usdz", "room_usdz")
+        assert _finalize_and_process(client, scan_id) == "ready"
+        assert client.get(f"/api/scans/{scan_id}/scene").json()["nodes"]
+        assert client.get(f"/api/scans/{scan_id}/assessment").status_code == 200
+
+
 def test_a29_a_failed_scan_is_processed_again_once_a_readable_room_arrives(tmp_path):
     with _api_client(tmp_path) as client:
         body = {"name": "Corner cafe", "device_model": "iPhone17,1", "duration_seconds": 60.0}

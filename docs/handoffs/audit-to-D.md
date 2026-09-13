@@ -67,3 +67,28 @@ Verified by running code: the A-29, A-31 and A-35 tests pass without their marke
 - **A-45, low.** A proposal holds the assess lock for about 3.3 s on the sample shop, so a drag check sent during one took 4.21 s instead of 1.49 s. Giving the fix search its own measurement provider would likely let drags run alongside it.
 - **A-46, low.** The case is real (CourtListener: Whitaker v. T Rock Inc., 22-cv-00283-JST, Happy Lemon, San Jose), but the 47 in figure, paragraph 12 and the `5:` prefix could not be confirmed without the complaint. Read it before the pitch names the business, and weigh that search results describe the plaintiff as a serial filer.
 - `2b0e2b0` edits two numbers in Lane C's files. The handoff says so and the change is mechanical, but it is the cross-lane edit A-18 records.
+
+## The Lane A burst `1ebff37..24eecbc`
+
+- **A-49, high, pinned.** A real uploaded scan never gets a Scenario, so nothing about it is ever checked. This is the demo path.
+
+Reproduced twice, once from the phone artifacts and once from a fixture export:
+
+```
+put room-json room_json 201 / put room-usdz room_usdz 201
+complete 200 -> measuring
+state      : ready
+assessment : 404 {"error":"not ready"}
+scenario   : 404 {"error":"not ready"}
+scene      : 200 nodes 11
+```
+
+`worker._assess` reads `repo.get_scenario(...)` and, when it is `None`, skips `stages.assess` and marks the scan `ready`. The only caller of `repo.save_scenario` in the repository is `seed.py`, which runs for the seeded sample shop. The sample shop is checked and every real scan is not.
+
+`scanStatus` then short-circuits on `assessment === null` and returns "Ready", and `Workspace.tsx:188` prints that string as the entire findings panel. An owner who scans their shop sees the word "Ready" and no findings.
+
+This is not A-44. There the assessment existed with no rule verified; here there is none.
+
+Giving an uploaded scan a Scenario closes it. The stops can come from the graph — an entrance at the doorway, the counter at the largest fixture with a register, a seat in the seating cluster — or be asked of the owner on the scan screen. Either way `_assess` must stop treating a missing Scenario as a reason to call a scan `ready`. A scan that could not be checked is not ready. Pinned at `tests/test_audit_open_findings.py::test_a49_a_real_scan_that_is_ready_has_been_checked`; delete the marker in the push that fixes it.
+
+- **A-48, medium.** `lidar_mesh` was added to `ArtifactKind`, along with `packages/contracts/standardphysics_contracts/lidar.py`, `services/api/lidar_mesh.py` and eight `apps/web/src/` files, by Lane A in `6f704a5`. Contracts are your exclusive write, and the protocol puts a contract change on the must-not-decide-alone list. Confirm the shape is what you want before it sets.
