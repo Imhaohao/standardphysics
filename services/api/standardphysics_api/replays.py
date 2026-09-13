@@ -8,13 +8,14 @@ import argparse
 import hashlib
 import json
 import os
-from pathlib import Path
 import shutil
 import tempfile
+from pathlib import Path
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import FastAPI, Path as PathParameter
+from fastapi import FastAPI
+from fastapi import Path as PathParameter
 from fastapi.responses import FileResponse
 from standardphysics_contracts import SimulationReplay, graph_hash
 

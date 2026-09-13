@@ -25,12 +25,16 @@ from standardphysics_contracts import (
     LoopResult,
     ProposalRequest,
     ProposalResult,
+    RebuildRequest,
     Report,
     SaveLayoutRequest,
     Scan,
     ScanList,
     Scenario,
     SceneGraph,
+    SimulationRequest,
+    SimulationStatus,
+    graph_hash,
 )
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -40,20 +44,19 @@ from .db import Database
 from .errors import ApiProblem
 from .labels import mark_counter, unmark_counter
 from .layout import check_layout, save_layout
-from .simulations import queue_simulation, simulation_status
-from .replays import install_replay_routes
-from .textures import install_texture_routes, maybe_queue_texture, validate_manifest
-from standardphysics_contracts import RebuildRequest, SimulationRequest, SimulationStatus, graph_hash
 from .lidar_mesh import InvalidLidarMesh, validate_lidar_mesh
 from .loop_run import run as run_loop_on
 from .proposals import propose
 from .questions import answer_question
+from .replays import install_replay_routes
 from .report import build_report
 from .route import confirm, suggestion
 from .seed import seed_sample_shop
 from .settings import Settings
+from .simulations import queue_simulation, simulation_status
 from .stages import Stages, preview_ledger
 from .store import ArtifactStore, ArtifactTooLarge, InvalidArtifactId
+from .textures import install_texture_routes, maybe_queue_texture, validate_manifest
 from .worker import ASSESS, PROCESS, Worker
 
 log = logging.getLogger(__name__)
@@ -210,6 +213,24 @@ def _finalize(database: Database, store: ArtifactStore, scan_id: uuid.UUID) -> t
         return repo.get_scan(connection, scan_id), True
 
 
+STAGED_VALIDATORS = {
+    "lidar_mesh": (validate_lidar_mesh, InvalidLidarMesh, "invalid lidar mesh"),
+    "photo_manifest": (validate_manifest, ValueError, "invalid photo manifest"),
+}
+"""Artifact kinds whose bytes are checked before they are stored: the check, what it raises, and the 400 to send."""
+
+
+def _validate_staged(store: ArtifactStore, staged, kind: str) -> None:
+    if kind not in STAGED_VALIDATORS:
+        return
+    validate, invalid, message = STAGED_VALIDATORS[kind]
+    try:
+        validate(staged.temp_path.read_bytes())
+    except invalid:
+        store.discard(staged)
+        raise ApiProblem(400, message) from None
+
+
 def _install_upload_routes(app: FastAPI, database: Database, store: ArtifactStore, worker: Worker) -> None:
     @app.put("/api/scans/{scan_id}/artifacts/{artifact_id}", response_model=Artifact, status_code=201)
     async def upload_artifact(
@@ -228,18 +249,7 @@ def _install_upload_routes(app: FastAPI, database: Database, store: ArtifactStor
             raise ApiProblem(400, "invalid artifact id") from None
         except ArtifactTooLarge:
             raise ApiProblem(413, "artifact too large") from None
-        if x_artifact_kind == "lidar_mesh":
-            try:
-                validate_lidar_mesh(staged.temp_path.read_bytes())
-            except InvalidLidarMesh:
-                store.discard(staged)
-                raise ApiProblem(400, "invalid lidar mesh") from None
-        if x_artifact_kind == "photo_manifest":
-            try:
-                validate_manifest(staged.temp_path.read_bytes())
-            except ValueError:
-                store.discard(staged)
-                raise ApiProblem(400, "invalid photo manifest") from None
+        _validate_staged(store, staged, x_artifact_kind)
         status, artifact = _accept_staged(
             database, store, scan_id, artifact_id, x_artifact_kind, x_checksum_sha256, staged
         )
@@ -383,7 +393,7 @@ def _install_simulation_routes(app: FastAPI, database: Database, stages: Stages,
 
     @app.post("/api/scans/{scan_id}/rebuild", response_model=SceneGraph, status_code=201)
     def rebuild(scan_id: uuid.UUID, body: RebuildRequest) -> SceneGraph:
-        from .layout import _base, STALE_LAYOUT
+        from .layout import STALE_LAYOUT, _base
         base, latest, _ = _base(database, scan_id, body.base_revision)
         if latest != body.base_revision:
             raise ApiProblem(409, STALE_LAYOUT)

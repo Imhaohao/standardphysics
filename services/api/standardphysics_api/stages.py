@@ -34,8 +34,8 @@ from standardphysics_agents import (
 from standardphysics_agents.ask import Answer, ask
 from standardphysics_agents.fix import FixOutcome, propose_fix
 from standardphysics_contracts import Assessment, Finding, Scenario, SceneGraph, Stop, Vec3
-from standardphysics_pipeline.textures import BakeInputs, BakeResult, bake_textures
 from standardphysics_pipeline import PipelineMeasurements, blender, parse_room_json, reconstruct
+from standardphysics_pipeline.textures import BakeInputs, BakeResult, bake_textures
 
 log = logging.getLogger(__name__)
 
