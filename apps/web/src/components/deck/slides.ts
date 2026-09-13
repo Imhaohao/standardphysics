@@ -10,6 +10,7 @@ import { PayoutsSlide } from "./slides/PayoutsSlide";
 import { PlannerSlide } from "./slides/PlannerSlide";
 import { RulebookSlide } from "./slides/RulebookSlide";
 import { SaraSlide } from "./slides/SaraSlide";
+import { StretchedSlide } from "./slides/StretchedSlide";
 import { FindSlide, FixSlide, ScanSlide } from "./slides/StageSlides";
 import { ClosingSlide, TitleSlide } from "./slides/TitleSlide";
 
@@ -30,6 +31,7 @@ export const slides: SlideDefinition[] = [
   { id: "sara", shot: "awayBeforeScan", layer: "overStage", steps: 4, Content: SaraSlide },
   { id: "payouts", shot: "awayBeforeScan", layer: "overStage", steps: 2, Content: PayoutsSlide },
   { id: "rulebook", shot: "awayBeforeScan", layer: "overStage", Content: RulebookSlide },
+  { id: "stretched", shot: "awayBeforeScan", layer: "overStage", steps: 2, Content: StretchedSlide },
   { id: "mission", shot: "awayBeforeScan", layer: "overStage", Content: MissionSlide },
   { id: "scan", shot: "scan", layer: "overStage", Content: ScanSlide },
   { id: "pipeline", shot: "scan", layer: "overStage", Content: PipelineSlide },

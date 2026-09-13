@@ -112,6 +112,31 @@
   margin-top: 6px;
 }
 
+@utility stretched-books {
+  width: 16vh;
+  height: 16vh;
+}
+
+@utility stretched-clock {
+  width: 44vh;
+  height: 44vh;
+}
+
+@utility stretched-sky {
+  width: 12vh;
+  height: 12vh;
+}
+
+@utility stretched-briefcase {
+  width: 22vh;
+  height: 22vh;
+}
+
+@utility stretched-coin {
+  width: 11vh;
+  height: 11vh;
+}
+
 @utility step-badge {
   width: 1.2em;
   height: 1.2em;
