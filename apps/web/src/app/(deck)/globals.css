@@ -97,6 +97,21 @@
   box-shadow: 0 0 0.7vh 0.05vh color-mix(in srgb, var(--color-tape) 60%, transparent);
 }
 
+@utility loop-node-icon {
+  width: 40px;
+  height: 40px;
+}
+
+@utility loop-node-title {
+  font-size: 30px;
+  margin-top: 6px;
+}
+
+@utility loop-node-tool {
+  font-size: 22px;
+  margin-top: 6px;
+}
+
 @utility step-badge {
   width: 1.2em;
   height: 1.2em;
