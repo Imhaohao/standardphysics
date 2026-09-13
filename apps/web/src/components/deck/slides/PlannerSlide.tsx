@@ -33,6 +33,7 @@ const timeline = {
 type Phase = "shop" | "warehouse";
 
 const ICON_SIZE = 64;
+const ROBOT_SIZE = 44;
 const RACK = { width: 110, height: 200, pitch: 230, columns: 6 };
 
 const warehouseOutline = { west: -440, east: shopOutline.east + 440, north: shopOutline.north, south: shopOutline.south };
@@ -112,17 +113,23 @@ const routeDraws: Variants = {
   warehouse: { pathLength: 0, transition: { duration: 0.01, delay: exitTransition.duration } },
 };
 
-function robotLoop(left: number, right: number, top: number, bottom: number) {
-  return `M ${aisleX(left)} ${top} L ${aisleX(left)} ${bottom} L ${aisleX(right)} ${bottom} L ${aisleX(right)} ${top} Z`;
+type GridStop = [aisle: number, row: keyof typeof aisles];
+
+function gridRoute(stops: GridStop[]) {
+  const points = stops.map(([aisle, row]) => `${aisleX(aisle)} ${aisles[row]}`);
+  return `M ${points.join(" L ")} Z`;
 }
 
+const ROBOT_LAP_SECONDS = 24;
+
 const robotLoops = [
-  { d: robotLoop(0, 1, aisles.top, aisles.bottom), seconds: 9, robotOffsets: [0.1] },
-  { d: robotLoop(2, 4, aisles.top, aisles.bottom), seconds: 12, robotOffsets: [0.05, 0.55] },
-  { d: robotLoop(5, 6, aisles.top, aisles.bottom), seconds: 9, robotOffsets: [0.6] },
+  { d: gridRoute([[0, "top"], [0, "bottom"], [2, "bottom"], [2, "middle"], [1, "middle"], [1, "top"]]), robotOffsets: [0, 0.041] },
+  { d: gridRoute([[6, "bottom"], [6, "top"], [4, "top"], [4, "middle"], [5, "middle"], [5, "bottom"]]), robotOffsets: [0.699, 0.643] },
+  { d: gridRoute([[2, "top"], [4, "top"], [4, "bottom"], [3, "bottom"], [3, "middle"], [2, "middle"]]), robotOffsets: [0.951] },
+  { d: gridRoute([[0, "middle"], [3, "middle"], [3, "top"], [2, "top"], [2, "bottom"], [0, "bottom"]]), robotOffsets: [0.932] },
 ];
 
-const robots = robotLoops.flatMap((loop) => loop.robotOffsets.map((offset) => ({ d: loop.d, seconds: loop.seconds, offset })));
+const robots = robotLoops.flatMap((loop) => loop.robotOffsets.map((offset) => ({ d: loop.d, seconds: ROBOT_LAP_SECONDS, offset })));
 
 function shownInWarehouse(delay: number): Variants {
   return {
@@ -165,11 +172,11 @@ function useTravel(options: { from: number; seconds: number; delay: number; repe
   return progress;
 }
 
-function IconMarker({ path, progress, children }: { path: RefObject<SVGPathElement | null>; progress: MotionValue<number>; children: ReactNode }) {
+function IconMarker({ path, progress, size, children }: { path: RefObject<SVGPathElement | null>; progress: MotionValue<number>; size: number; children: ReactNode }) {
   const { x, y } = useFollowPath(path, progress);
   return (
     <motion.g style={{ x, y }}>
-      <circle r={ICON_SIZE * 0.62} fill="var(--color-paper-raised)" stroke="var(--color-ink)" strokeWidth={4} />
+      <circle r={size * 0.62} fill="var(--color-paper-raised)" stroke="var(--color-ink)" strokeWidth={4} />
       {children}
     </motion.g>
   );
@@ -187,7 +194,7 @@ function WheelchairRoute({ phase }: { phase: Phase }) {
       <text x={planCaseGap.eastX + 24} y={planCaseGap.y + caseDepth / 2 + 56} fill="var(--color-ink)" className="font-display text-4xl font-bold figures-tabular">
         {formatInches(measurements.caseGapInches)}
       </text>
-      <IconMarker path={path} progress={clampedProgress}>
+      <IconMarker path={path} progress={clampedProgress} size={ICON_SIZE}>
         <Wheelchair weight="fill" size={ICON_SIZE} x={-ICON_SIZE / 2} y={-ICON_SIZE / 2} color="var(--color-ink)" />
       </IconMarker>
     </motion.g>
@@ -208,8 +215,8 @@ function RobotOnRoute({ robot, phase }: { robot: (typeof robots)[number]; phase:
 
   return (
     <motion.g variants={shownInWarehouse(timeline.robotsStart)}>
-      <IconMarker path={path} progress={progress}>
-        <Robot weight="fill" size={ICON_SIZE * 0.8} x={-ICON_SIZE * 0.4} y={-ICON_SIZE * 0.4} color="var(--color-ink)" />
+      <IconMarker path={path} progress={progress} size={ROBOT_SIZE}>
+        <Robot weight="fill" size={ROBOT_SIZE * 0.8} x={-ROBOT_SIZE * 0.4} y={-ROBOT_SIZE * 0.4} color="var(--color-ink)" />
       </IconMarker>
     </motion.g>
   );
