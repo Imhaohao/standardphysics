@@ -1,6 +1,6 @@
 {
   "lane": "A",
-  "updated": "2026-09-13T00:31:00Z",
+  "updated": "2026-09-13T00:47:00Z",
   "done": [
     "iOS 17 Xcode project builds on the simulator",
     "device support gate and start screen",
@@ -18,7 +18,13 @@
     "native-size simulator visual verification",
     "signed device build installed and launched on the paired iPhone 17 Pro"
   ],
-  "in_progress": "test1 upload verified; eval mismatch isolated to stale blocked_but_movable label after Lane B added blocker IDs; targeted red regression reproduced in 4.67 seconds; corrected label awaiting full verification",
+  "in_progress": "test1 upload and reconstruction verified; evaluation gate repaired and all suites passed; final pull and push",
+  "evaluation_regression": {
+    "cause": "Lane B commit 022004d intentionally added blocked-route obstacle IDs; blocked_but_movable retained its documented temporary ASK_OWNER label instead of FIX",
+    "fix": "Updated label and description only; no router, compliance threshold, scorer or acceptance-gate changes",
+    "proof": "Real-pipeline paired tests pin movable barrier IDs through finding loci to FIX targets and preserve ESCALATE for fixed barriers. Before correction: 1 failed/1 passed in 4.67s; after: 2 passed in 4.81s. Full agents: 265 passed in 231.71s; original router_action_match == 1.0 assertion passes",
+    "known_limits": "Root suite retains six pre-existing expected audit failures, including A-40 blocker attribution; selecting a FIX attempt does not certify that a proposal succeeds"
+  },
   "reconstruction_plan": [
     {"task": "native ARKit people removal and reliable final mesh persistence", "model_tier": "Astra", "status": "implemented"},
     {"task": "thorough coverage: closer views, more area and viewpoints", "model_tier": "Terra", "status": "verified"},
@@ -34,7 +40,7 @@
   ],
   "repair_validation": {
     "ios_tests_passed": 63,
-    "latest_suite": "merged iOS 63; latest web 31 plus typecheck/lint; production build passed before incoming 20f54d9; API 41 and root Python 154 passed/7 expected failures before 20f54d9; agent suite 262 passed/1 failed (router_action_match 0.96875 vs 1.0)",
+    "latest_suite": "After rebase through a6e14f7 and eval correction: iOS 63 passed; web 31 plus typecheck/lint/production build passed; API 42 passed; root Python 155 passed/6 expected failures; agents 265 passed, including router_action_match 1.0",
     "strict_concurrency_build": "signed iOS build passed with complete concurrency and warnings as errors; test stubs use normal test settings",
     "device_build": "person-filtered measured reconstruction build installed and launched at 17:16 PDT",
     "real_scan": "ravida af42f6cd-d228-4dd8-8790-aff0890fee5b ready on real Lane D API; all 290 artifacts uploaded",
