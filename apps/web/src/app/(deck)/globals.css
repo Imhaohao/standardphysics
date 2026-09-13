@@ -143,6 +143,18 @@
   height: 44vh;
 }
 
+@utility payout-bill {
+  width: 2.8vh;
+  height: 1.4vh;
+  outline: 0.25vh solid var(--color-ink);
+}
+
+@utility payout-bill-seal {
+  width: 0.7vh;
+  height: 0.7vh;
+  outline: 0.2vh solid var(--color-ink);
+}
+
 @utility step-badge {
   width: 1.2em;
   height: 1.2em;

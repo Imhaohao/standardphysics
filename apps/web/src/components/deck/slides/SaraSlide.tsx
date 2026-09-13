@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { easeDrawn, exitTransition } from "@/lib/motion";
 import { CountFromProgress, FinePrint, MaskedLines } from "../primitives";
 import { DotField, type FieldOrigin } from "../DotField";
+import { lawsuitFieldCount, sarasShopInField } from "../lawsuitField";
 import type { SlideProps } from "../slides";
 import { BobaCup } from "../BobaCup";
 import { DamagesCopy, Receipt } from "../Receipt";
@@ -132,11 +133,10 @@ type Phase = "meet" | "sued" | "damages" | "others";
 const phases: Phase[] = ["meet", "sued", "damages", "others"];
 
 const lawsuitCount = facts.adaLawsuitsFiled2025.value;
-const SARAS_SHOP = 1;
 const FIELD = { collapseSeconds: 1.2, handoffSeconds: 0.4, fillDelay: 1.5, fillSeconds: 2.4, flightSeconds: 3.8 };
 /** One ease for the shop shrinking and the dot growing, so the handoff between them reads as a single motion. */
 const easeShrink = [0.65, 0, 0.35, 1] as const;
-const SHOP_IN_FIELD: FieldOrigin = { x: 0.5, y: 0.86 };
+const SHOP_IN_FIELD: FieldOrigin = sarasShopInField;
 
 const crushedDocumentY = documentOffset(1 - CRUSH.squash * (1 - ROOF_TOP));
 
@@ -334,7 +334,7 @@ export function SaraSlide({ step }: SlideProps) {
           transition={{ duration: 0.6, delay: phase === "others" ? FIELD.collapseSeconds : 0 }}
           className="absolute inset-0"
         >
-          <DotField count={lawsuitCount + SARAS_SHOP} progress={fill} origin={SHOP_IN_FIELD} showHighlight={landed} onHighlightPlaced={placeLanding} />
+          <DotField count={lawsuitFieldCount} progress={fill} origin={SHOP_IN_FIELD} showHighlight={landed} onHighlightPlaced={placeLanding} />
         </motion.div>
         {phase === "others" && !landed && <FlyingDot landing={landing} />}
         <SaraShopScene phase={phase} />
