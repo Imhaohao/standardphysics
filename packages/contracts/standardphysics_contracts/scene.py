@@ -17,7 +17,8 @@ needs_another_look: thin coverage or low confidence; becomes a request, not a fi
 confirmed: a number a person entered by hand.
 """
 
-LabelSource = Literal["roomplan", "astra", "owner"]
+LabelSource = Literal["roomplan", "astra", "owner", "discovery"]
+"""discovery: found in the LiDAR and named from the photos, because RoomPlan boxes no such category."""
 
 
 class DisplayAppearance(BaseModel):

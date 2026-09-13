@@ -10,10 +10,10 @@ from dataclasses import dataclass
 
 import numpy as np
 from PIL import Image
-from pydantic import ValidationError
-from standardphysics_contracts import LidarMesh, NodeTextureCoverage, SceneGraph, TextureCoverage
+from standardphysics_contracts import NodeTextureCoverage, SceneGraph, TextureCoverage
 
 from ..blender import BlenderError, _run, display_graph
+from ..lidar import load_mesh, triangles_in_arkit_world
 from ..footprints import floor_polygon
 from .camera import CameraMetadataError, PhotoCamera, load_cameras
 from .project import (
@@ -310,9 +310,9 @@ def _lidar_triangles(path: pathlib.Path | None, capture_to_room: list[float], wo
     if not path.is_file():
         raise TextureBakeError(f"LiDAR mesh does not exist: {path}")
     try:
-        mesh = _load_lidar_json(path)
+        mesh = load_mesh(path)
         if mesh is not None:
-            triangles = _mesh_triangles_in_arkit_world(mesh)
+            triangles = triangles_in_arkit_world(mesh)
         elif path.suffix.lower() == ".npz":
             archive = np.load(path)
             if "triangles" not in archive:
@@ -336,28 +336,6 @@ def _lidar_triangles(path: pathlib.Path | None, capture_to_room: list[float], wo
             f"LiDAR mesh has {len(triangles)} faces; maximum supported for exact occlusion is {MAX_LIDAR_TRIANGLES}"
         )
     return triangles
-
-
-def _load_lidar_json(path: pathlib.Path) -> LidarMesh | None:
-    """Recognize the uploaded `lidar-mesh` artifact by content, not its filename.
-
-    Object storage drops extensions, while local captures use lidar-mesh.json.
-    Both contain the same validated, column-major ARKit mesh schema.
-    """
-    try:
-        return LidarMesh.model_validate_json(path.read_bytes())
-    except (OSError, ValidationError, ValueError):
-        return None
-
-
-def _mesh_triangles_in_arkit_world(mesh: LidarMesh) -> np.ndarray:
-    pieces = []
-    for part in mesh.parts:
-        matrix = np.asarray(part.transform, dtype=np.float32).reshape(4, 4, order="F")
-        vertices = np.asarray(part.vertices, dtype=np.float32).reshape(-1, 3)
-        vertices = vertices @ matrix[:3, :3].T + matrix[:3, 3]
-        pieces.append(vertices[np.asarray(part.triangles, dtype=np.int64).reshape(-1, 3)])
-    return np.concatenate(pieces, axis=0)
 
 
 def _bake_atlas(
