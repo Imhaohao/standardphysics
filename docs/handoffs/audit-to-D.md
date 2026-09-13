@@ -48,3 +48,8 @@ The browser's `moveNode` matches Lane C's `move_node`, pointer deltas reach the 
 
 - **A-38, high.** `test_the_documented_fix_clears_the_aisle` asserts a layout check under 3.0 s. CI took 3.42 s at `9be20af`, and CI failed on both `a9ce65c` and `9be20af`. Routing each leg once per layout is the real fix; until then the time limit belongs in a benchmark, not the unit suite.
 - **A-39, medium.** With the preview ledger, `GET /api/scans/{id}/report` returns `verified_by_human: true` for all 17 rules, each reviewed by "unverified preview (development only)". Set the flag from the reviewer, and mark a preview report at the top of the page.
+
+## `6841172` and `7b72fdc`
+
+- **A-38 is fixed in `7b72fdc`.**
+- **A-42, low.** Right after a save the page pairs revision 1's layout with revision 0's assessment, because it asks for the latest assessment rather than the scene's revision. Before and after then show the same findings until the queued assessment lands and the page happens to refresh. Request `assessment?revision=<scene.revision>` and show "Checking" on a 404.

@@ -48,6 +48,8 @@ The audit fixes code only in files no lane agent is actively changing. For lanes
 | `52ec453` D: the printable report, with who reviewed each rule | D | Pass with notes | A-39 |
 | `d201984` D: record rearrange and the report as ready | D | Pass | Progress file matches the code |
 | `022004d` B: name what sealed a blocked route, and measure runs outside the exemption | B | **Fail** | CI red by design (A-41); A-40; run lengths match the handoff |
+| `6841172` D: before and after, scrubbing between two layouts | D | Pass with notes | A-42 |
+| `7b72fdc` D: take the wall-clock limit out of the layout test | D | Pass | Resolves A-38 |
 
 `609db3d`, `9028d14`, `b90e570`, `d3f7d95` and `1a06655` change only the plan and lane documents. A-1 covers the lane document errors from `9028d14`.
 
@@ -264,7 +266,7 @@ Low. `open`. Lane D.
 `useArrangement.save` answers every failure with "That layout couldn't be saved. Check the pieces marked in red." A 409 for a stale base, meaning someone else saved first, marks nothing red. The page only refreshes after a successful save, so `scene.revision` stays stale and every retry sends the same base and gets 409 again until the page is reloaded. Read from `945b8a4`. Telling the two 409s apart by their `error` body, and refreshing the scene on a stale base, would let the owner recover. A-35 is the race the server's check misses; this is the refusal it does make.
 
 ### A-38 CI is red from `a9ce65c`: a wall-clock limit in the layout test
-High. `open`. Lane D.
+High. `fixed in 7b72fdc`. Lane D.
 
 `test_the_documented_fix_clears_the_aisle` in `services/api/tests/test_layout.py` asserts that one layout check finishes in under 3.0 s. Lane D's own profile in `9be20af` puts a check at 1.7 to 2.3 s on a development machine, and CI took 3.42 s at `9be20af`, so the API step fails with 1 failed and 28 passed. CI failed on both `a9ce65c` and `9be20af`, every run finished since the test arrived. The speed-up Lane D asked Lane B for, routing each leg once per layout, is the real fix. Until then, a time limit on shared CI runners belongs in a benchmark, not the unit suite.
 
@@ -282,3 +284,8 @@ Medium. `open`. Lane B.
 High. `open`. Lane C label, Lane B change.
 
 `022004d` makes a blocked route name its obstacles, so the router now picks `FIX` for the `blocked_but_movable` case, whose label still expects `ASK_OWNER`. `test_the_router_picks_the_right_action_every_time` fails with a score of 0.96875, 31 of 32 cases, reproduced locally at `022004d`. The commit and `B-to-C.md` say so and leave the one-line label change to Lane C, which respects path ownership, but `master` stays red until Lane C takes it. CI on `022004d` also carries A-38.
+
+### A-42 Right after a save, before and after show the same findings
+Low. `open`. Lane D.
+
+`page.tsx` loads the latest assessment that exists, and `6841172` compares it with the previous revision's own assessment. A save writes the new revision at once and assesses it in a queued job, so until that job finishes the scene is the new revision while the latest assessment is still the old one. Reproduced at `6841172` on the sample shop: right after saving the documented fix, `scene` is revision 1, `assessment` is revision 0, and `assessment?revision=1` answers 404. With the preview rules, the panel then shows 3 things to fix on both sides of a layout that clears one, and "Fixed by this layout" is empty. The page refreshes once more after 3 s, so a slower assessment leaves it stale until a reload. Asking for `assessment?revision=<scene revision>` and showing "Checking" on a 404 would keep the two sides honest.
