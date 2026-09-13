@@ -112,6 +112,18 @@ def _pivot_width(turn) -> float:
     return math.inf if turn.pivot_width_inches is None else turn.pivot_width_inches
 
 
+def _read_turn(detail, ctx: CheckContext, index: int):
+    """Ask for a partial turn rather than treating an unmeasured zone as none.
+
+    Lane B withholds a partly measured turn unless we opt in. Opting in is how
+    A-34 stops a turn nobody measured from looking like no turn at all.
+    """
+    try:
+        return detail(ctx.graph, ctx.scenario, index, require_measured=False)
+    except TypeError:
+        return detail(ctx.graph, ctx.scenario, index)
+
+
 @traced("checks.turn_clear_width")
 def turn_clear_width(ctx: CheckContext) -> CheckResult:
     detail = getattr(ctx.measure, "turn_detail", None)
@@ -121,7 +133,7 @@ def turn_clear_width(ctx: CheckContext) -> CheckResult:
     rule = ctx.rule(RULE_ID)
     observations, gaps = [], []
     for index in ctx.legs():
-        turn = detail(ctx.graph, ctx.scenario, index)
+        turn = _read_turn(detail, ctx, index)
         if turn is None:
             continue
         if not zones_measured(turn):

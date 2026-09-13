@@ -304,3 +304,11 @@ class TestDeadEnds:
 
     def test_the_fixture_route_never_doubles_back(self, scenario):
         assert reversal_stops(scenario.stops) == []
+
+
+def test_an_unmeasured_turn_is_a_gap_not_a_finding(graph, scenario, pipeline, ledger):
+    """A-34. A turn with a missing zone used to vanish. The team is told."""
+    result = assess(graph, scenario, pipeline, ledger=ledger)
+    gaps = {gap.rule_id: gap.waiting_on for gap in result.unevaluated}
+    assert "turn_clear_width" in gaps
+    assert not [f for f in result.findings if f.check_id == "turn_clear_width"]

@@ -13,6 +13,7 @@ from uuid import UUID
 from standardphysics_contracts import Finding, SceneGraph
 from standardphysics_contracts.loop import RouterAction
 
+from ..checks.roles import needs_another_look
 from ..rules import AgentRulePack
 
 MAX_FIX_ATTEMPTS = 3
@@ -109,14 +110,16 @@ def _is_movable(graph: SceneGraph, node_id: UUID) -> bool:
         return False
 
 
-def _wants_another_look(finding: Finding, rules: AgentRulePack) -> bool:
-    """A question about something we did measure is a question about coverage."""
-    if finding.outcome != "question":
+def _wants_another_look(finding: Finding, graph: SceneGraph) -> bool:
+    """A question about geometry we are not sure of wants another look.
+
+    Thin coverage on a display case is a rescan. A door whose opening we
+    measured, but not at 90 degrees, is a tape-measure request, and that must
+    not jump the queue in front of a rearrangement that furniture can make.
+    """
+    if finding.outcome != "question" or finding.locus is None:
         return False
-    try:
-        return rules.by_id(finding.check_id).measurable
-    except KeyError:
-        return False
+    return bool(needs_another_look(graph, finding.locus.node_ids))
 
 
 def state_for(
@@ -139,7 +142,7 @@ def state_for(
             if f.outcome == "problem" and _movable_cause(f, graph, rules)
         ),
         rescan_finding_ids=tuple(
-            f.id for f in findings if _wants_another_look(f, rules)
+            f.id for f in findings if _wants_another_look(f, graph)
         ),
         unevaluated=unevaluated,
         actions_taken=actions_taken,

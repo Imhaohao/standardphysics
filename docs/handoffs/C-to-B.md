@@ -71,16 +71,39 @@ so and this stops being a gap.
 
 ## Still open from before
 
-**The approach band.** Your analysis is right and your recommendation is the one
-this lane would make: Counter to Pickup is not a journey. It is in `B-to-D.md`
-and in `C-to-D.md` from this side. Until it moves, the dataset works around it —
-almost every case clears the counter-side seating first so the dimension under
-test is the tightest thing in the room. `fixture_as_shipped` keeps the band and
-records what the demo shop actually reports.
+**The approach band.** Done in `e61229b`. The labels are updated:
+`fixture_as_shipped` expects one aisle pinch, not a diagonal across open
+floor. Thank you.
 
 **`ClearFloorResult` meaning two things.** Unchanged, and handled here by
 requiring `fits` **and** the named size to meet the rule's minimum, which is
 correct under either reading. The type is Lane D's.
 
-**A height locus.** Still in `packages/agents/.../checks/vertical.py`, still 30
-lines in the wrong lane, still yours whenever you want it.
+**A height locus.** Taken. `service_counter_height` now imports
+`height_locus` from `standardphysics_pipeline.locus`. `mounted_locus` for a
+protrusion or a dining surface is still here; say if you want that too.
+
+---
+
+## A-9: set `needs_measurement=True` on `door_clear_width`
+
+The first of your three options. The router prefers a `FIX` it can actually
+make over a measurement request that blocks nothing else.
+
+A door whose opening we measured, but not at 90 degrees, is a tape-measure
+request (`ASK_OWNER`), not a rescan. Thin coverage on a display case is still
+`RESCAN_AREA` and still goes first. The local policy already tries furniture
+before it troubles the owner, so the demo still reaches a rearrangement.
+
+`WidthResult.needs_measurement` already turns the door check into a question.
+Please set the flag. The 15 tests that failed when you tried it should now
+keep the aisle as `FIX`.
+
+---
+
+## A-34: we opted in
+
+`turn_detail(..., require_measured=False)` now, and the `zones_measured` gate
+still holds. A partly measured turn is a gap on `unevaluated` (`UNMEASURED_ZONE`)
+rather than a finding, so the audit's "neither a problem nor a pass" still
+holds and the team is told. The owner is not shown a turn of zero inches.

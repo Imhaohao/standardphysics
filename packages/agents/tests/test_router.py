@@ -326,6 +326,19 @@ class TestLocalPolicy:
         assert router_state.fixable_finding_ids
         assert LocalPolicyRouter().decide(router_state).action == "FIX"
 
+    def test_a_tape_measure_request_does_not_block_a_fix(
+        self, findings, graph, pack
+    ):
+        """A-9. RoomPlan sees the doorway, not the 90-degree opening. That is
+        a number to take with a tape, and it must not stop a rearrangement of
+        the aisle."""
+        door = next(f for f in findings if f.check_id == "door_clear_width")
+        asked = door.model_copy(update={"outcome": "question", "fix": None})
+        rewritten = [asked if f.id == door.id else f for f in findings]
+        state = state_for(rewritten, graph, pack)
+        assert asked.id not in state.rescan_finding_ids
+        assert LocalPolicyRouter().decide(state).action == "FIX"
+
     def test_it_stops_asking_once_it_has_asked(self, findings, graph, pack):
         clear = [f for f in findings if f.outcome != "problem"]
         state = state_for(clear, graph, pack, actions_taken=("ASK_OWNER",))

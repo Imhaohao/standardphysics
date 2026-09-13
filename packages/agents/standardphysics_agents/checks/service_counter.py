@@ -8,6 +8,7 @@ the other, and the fix for each is a different sentence.
 from __future__ import annotations
 
 from standardphysics_pipeline import region_locus
+from standardphysics_pipeline.locus import height_locus
 
 from ..rules import RuleSpec
 from ..tracing import traced
@@ -15,7 +16,6 @@ from . import roles
 from .clear_floor import fits_rectangle
 from .context import CheckContext
 from .observation import Observation
-from .vertical import height_locus
 
 HEIGHT_RULE = "service_counter_height"
 APPROACH_RULE = "service_counter_approach"
