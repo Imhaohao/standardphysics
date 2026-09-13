@@ -152,6 +152,30 @@
       "resolved_by": "changing_a_fixture"
     },
     {
+      "id": "point_of_sale_height",
+      "title": "People pay at the high counter",
+      "citation": {
+        "authority": "ADA_2010",
+        "edition": "2010 ADA Standards for Accessible Design",
+        "section": "904.4",
+        "url": "https://www.access-board.gov/ada/#ada-904"
+      },
+      "tier": 1,
+      "threshold": 36.0,
+      "unit": "in",
+      "comparison": "at_most",
+      "parameters": {
+        "accessible_length_min_inches": 36.0
+      },
+      "applies_to": [
+        "point_of_sale"
+      ],
+      "evidence": "measured",
+      "source_text": "904.4.1 Parallel Approach. A portion of the counter surface that is 36 inches (915 mm) long minimum and 36 inches (915 mm) high maximum above the finish floor shall be provided. Advisory 904.2 Approach. Where a cash register is provided at the sales or service counter, locate the cash register at the accessible section of the counter.",
+      "review_note": "904.2's register sentence is an advisory. The check fires only when a lowered section already meets 904.4.1 and the point of sale still sits on a higher section, which is the fact pattern in Whitaker v. T Rock Inc.",
+      "resolved_by": "moving_things"
+    },
+    {
       "id": "service_counter_approach",
       "title": "There is not enough room to pull up to the counter",
       "citation": {

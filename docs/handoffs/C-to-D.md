@@ -218,3 +218,25 @@ not have to improve a measurement, because they asked for it.
 One thing to know: with no `OPENROUTER_API_KEY` the box matches keywords
 instead of reading the question, and `stderr` says so. It handles "how many
 chairs do I have" and not "open up the middle a bit".
+
+---
+
+## The lawsuit counter: the check and the fix you asked for
+
+`point_of_sale_height` is in the pack, citing 904.4 and the 904.2 advisory
+about the register. It is unverified until a person reads the section, like
+every other rule.
+
+On `build_lawsuit_graph()`:
+
+- **904.4.1 passes.** A lowered section 36 in long and 36 in high already
+  exists, so "Add a lower section" is not the finding.
+- **The register finding fires.** "People pay at the high counter. The card
+  reader sits 47 inches up. Ordering from a wheelchair needs 36 inches or
+  lower. Move the card reader to the lowered counter section."
+
+The card reader is movable, so the router will `FIX` it along with the aisle.
+The first pass still opens the 31 inch pinch; the sentence on the register is
+what the owner reads for the counter.
+
+The sample shop seed can switch to the variant.

@@ -25,7 +25,11 @@ from .questions import RULE_IDS as QUESTION_RULE_IDS
 from .questions import scan_cannot_see
 from .result import CheckResult, as_result
 from .route_width import route_clear_width, route_width_verdict
-from .service_counter import service_counter_approach, service_counter_height
+from .service_counter import (
+    point_of_sale_height,
+    service_counter_approach,
+    service_counter_height,
+)
 from .turn_width import turn_clear_width, turn_verdict
 from .turning_space import turning_space
 
@@ -39,6 +43,7 @@ REGISTRY: tuple[tuple[frozenset[str], CheckFn], ...] = (
     (frozenset({"door_clear_width"}), door_clear_width),
     (frozenset({"service_counter_height"}), service_counter_height),
     (frozenset({"service_counter_approach"}), service_counter_approach),
+    (frozenset({"point_of_sale_height"}), point_of_sale_height),
     (frozenset({"exit_path"}), exit_path),
     (frozenset({"door_maneuvering_clearance"}), door_maneuvering_clearance),
     (frozenset({"protruding_objects"}), protruding_objects),
@@ -111,7 +116,7 @@ __all__ = [
     "COVERED", "CheckContext", "CheckResult", "Observation", "REGISTRY",
     "Unevaluated", "dedupe", "dining_surface_height", "door_clear_width",
     "door_maneuvering_clearance", "door_verdict", "exit_path", "passing_space",
-    "protruding_objects", "route_clear_width",
+    "point_of_sale_height", "protruding_objects", "route_clear_width",
     "route_width_verdict", "run_checks", "scan_cannot_see",
     "service_counter_approach", "service_counter_height", "turn_clear_width",
     "turn_verdict", "turning_space",

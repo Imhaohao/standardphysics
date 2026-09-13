@@ -30,7 +30,12 @@ from uuid import UUID
 from standardphysics_contracts import Scenario, SceneGraph, Stop, Vec3
 from standardphysics_contracts.loop import RouterAction
 from standardphysics_contracts.rules import Tier
-from standardphysics_fixtures import build_graph, build_scenario
+from standardphysics_fixtures import (
+    build_graph,
+    build_lawsuit_graph,
+    build_lawsuit_scenario,
+    build_scenario,
+)
 from standardphysics_fixtures.shop import build_street_scenario, node_id
 
 from . import variants as v
@@ -74,6 +79,7 @@ NO_ROLES: dict[str, frozenset[UUID]] = {
 }
 
 COUNTER_TOO_HIGH = frozenset({"service_counter_height"})
+POS_ON_HIGH_COUNTER = frozenset({"point_of_sale_height"})
 
 ROUTE = "route_clear_width"
 
@@ -653,10 +659,29 @@ def _tall_tables() -> SceneGraph:
     return graph
 
 
+def _lawsuit_cases() -> list[Case]:
+    """The counter as Whitaker v. T Rock Inc. describes it, from D-to-C."""
+    return [
+        _case(
+            "lawsuit_counter",
+            "A lowered section already exists, and the card reader still sits "
+            "on the 47 inch part. 904.4.1 is met; people pay at the high counter.",
+            build_lawsuit_graph(),
+            build_lawsuit_scenario(),
+            expected_problems=frozenset({ROUTE}) | POS_ON_HIGH_COUNTER,
+            forbidden_problems=COUNTER_TOO_HIGH,
+            expected_inches={"point_of_sale_height": FIXTURE_COUNTER_INCHES},
+            expected_action="FIX",
+            fix_should_resolve=True,
+        ),
+    ]
+
+
 BUILDERS = (
     _aisle_cases,
     _door_cases,
     _counter_cases,
+    _lawsuit_cases,
     _coverage_cases,
     _route_shape_cases,
     _blocked_cases,

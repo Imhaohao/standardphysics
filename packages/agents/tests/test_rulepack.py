@@ -14,6 +14,7 @@ TIER_1_CHECKS = {
     "door_clear_width",
     "service_counter_height",
     "service_counter_approach",
+    "point_of_sale_height",
     "exit_path",
 }
 
@@ -48,6 +49,7 @@ def test_thresholds_are_the_numbers_the_standard_states(pack):
         "door_clear_width": 32.0,
         "service_counter_height": 36.0,
         "service_counter_approach": 48.0,
+        "point_of_sale_height": 36.0,
         "door_opening_force": 5.0,
     }
     for rule_id, threshold in expected.items():
@@ -61,6 +63,7 @@ def test_units_are_the_units_the_standard_is_written_in(pack):
 
 def test_a_height_is_a_maximum_and_a_width_is_a_minimum(pack):
     assert pack.by_id("service_counter_height").comparison == "at_most"
+    assert pack.by_id("point_of_sale_height").comparison == "at_most"
     assert pack.by_id("route_clear_width").comparison == "at_least"
 
 

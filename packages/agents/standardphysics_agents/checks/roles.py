@@ -20,6 +20,27 @@ ENTRANCE_LABELS = frozenset({"front door", "entrance", "entry door", "main door"
 
 DINING_SURFACE_LABELS = frozenset({"table", "dining table", "cafe table", "bar table"})
 
+LOWERED_SECTION_LABELS = frozenset(
+    {
+        "lowered counter section",
+        "lowered section",
+        "accessible counter",
+        "accessible section",
+        "low counter",
+    }
+)
+
+POINT_OF_SALE_LABELS = frozenset(
+    {
+        "card reader",
+        "register",
+        "cash register",
+        "point of sale",
+        "payment terminal",
+        "card machine",
+    }
+)
+
 
 def _normalized(label: str) -> str:
     return label.strip().casefold()
@@ -55,6 +76,22 @@ def dining_surfaces(graph: SceneGraph) -> list[SceneNode]:
         node
         for node in graph.nodes
         if node.kind == "object" and _normalized(node.label) in DINING_SURFACE_LABELS
+    ]
+
+
+def lowered_sections(graph: SceneGraph) -> list[SceneNode]:
+    return [
+        node
+        for node in graph.nodes
+        if node.kind == "object" and _normalized(node.label) in LOWERED_SECTION_LABELS
+    ]
+
+
+def point_of_sale(graph: SceneGraph) -> list[SceneNode]:
+    return [
+        node
+        for node in graph.nodes
+        if node.kind == "object" and _normalized(node.label) in POINT_OF_SALE_LABELS
     ]
 
 

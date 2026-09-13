@@ -1,11 +1,11 @@
 {
   "lane": "C",
-  "updated": "2026-09-13T05:00:00Z",
+  "updated": "2026-09-13T05:30:00Z",
   "done": [
-    "rule pack: 17 rules, thresholds in the units the standard is written in, the quoted sentence behind each, and every other number the section states",
+    "rule pack: 18 rules, thresholds in the units the standard is written in, the quoted sentence behind each, and every other number the section states",
     "human verification ledger binding rule id, section, threshold and unit, so editing a threshold switches its check off",
     "cli rules review: prints the section and asks for the number back",
-    "tier 1 checks against MeasurementProvider: route width, 180 turn, passing space, turning space, door width, counter height, counter approach, exit path",
+    "tier 1 checks against MeasurementProvider: route width, 180 turn, passing space, turning space, door width, counter height, counter approach, point of sale height, exit path",
     "403.5.1's exception evaluated through Lane B's route_run_below rather than failed closed",
     "403.5.2 from Lane B's four measurements and the pack's four thresholds",
     "the five things a scan cannot see, as one specific request each",
@@ -20,15 +20,18 @@
     "the ask box: eight kinds of question about the room, answered from the measured model with a locus to fly the camera to",
     "every model call through OpenRouter with the provider pinned and retention denied per request",
     "the loop: one handler per action and no default, so an invalid answer authorizes nothing",
-    "acceptance gate: completes, no lost coverage, no new failures, strictly improves",
-    "32 labelled cases and 7 scorers, with per-case results on disk and in Weave when configured",
+    "acceptance gate: completes, no lost coverage, no new failures, strictly improves; a measured answer turning into a question is lost coverage",
+    "39 labelled cases and 7 scorers, with per-case results on disk and in Weave when configured",
     "tier 2 checks: door maneuvering clearance (404.2.4) read from the stricter end of the table, and protruding objects (307) from the leading edge and the projection off the wall",
     "tier 3: dining surface height (902.3) with 226.1's share; reach range (308) is a photo request because a scan does not identify an operable part",
     "a verified rule with no check behind it reports itself, so the one silent pass left in the lane is guarded",
     "the rule pack says whether a finding is cleared by moving things or by changing a fixture, so the router never sends the fix agent to make a table shorter",
-    "38 labelled cases across all three tiers, 7 scorers, every one at 1.000",
+    "39 labelled cases across all three tiers, 7 scorers, every one at 1.000",
     "Weave tracing verified against a stand-in SDK: init, op naming, wrapped once per function, and both weave.op signatures; every check, agent call, router, model call, loop branch and evaluation case carries @traced under one prefix",
-    "394 Lane C tests, running in the root suite of 549"
+    "A-9: a door tape-measure request does not block a FIX the aisle can take",
+    "A-34: a partly measured turn is a gap on unevaluated, not silence",
+    "point_of_sale_height: when a lowered section exists, the finding is the register on the high part, not a missing portion",
+    "407 Lane C tests"
   ],
   "in_progress": null,
   "blocked_on": null,
@@ -39,10 +42,11 @@
     "standardphysics_agents.run_loop(graph, scenario, measure, router) -> list[LoopStep]",
     "standardphysics_agents.ask(text, graph, scenario, measure) -> Answer, for Lane D's ask box",
     "standardphysics_agents.evaluate() -> EvaluationResult, and accepts(before, after) for the gate",
-    "load_pack().as_contract_pack(ledger) -> contracts.RulePack, for Lane D's report"
+    "load_pack().as_contract_pack(ledger) -> contracts.RulePack, for Lane D's report",
+    "point_of_sale_height on build_lawsuit_graph: the seed can switch to the variant"
   ],
   "needs_human": [
-    "BLOCKING THE WHOLE REPORT: read each rule's section and confirm its number. python -m standardphysics_agents.cli rules review --by \"<name>\". Thirteen tier 1 rules, a few minutes. Until then every check is off and findings_for returns nothing.",
+    "BLOCKING THE WHOLE REPORT: read each rule's section and confirm its number. python -m standardphysics_agents.cli rules review --by \"<name>\". Fourteen tier 1 rules, a few minutes. Until then every check is off and findings_for returns nothing. The new one is point_of_sale_height, 904.4 and the 904.2 advisory.",
     "A second person re-checks each citation: cli rules second-check <id> --by \"<name>\"",
     "Pin the CBC Chapter 10 egress section for exit_path and confirm the occupant load for a shop this size. An accessibility professional or the Palo Alto Building Division.",
     "Confirm Lane B's two disclosed approximations in ADA 403.5.2: the pivot's smaller horizontal extent read as the element width, and geometric turn detection at about 122 degrees",

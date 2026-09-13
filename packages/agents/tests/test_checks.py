@@ -8,6 +8,7 @@ from standardphysics_agents.checks.route_width import route_width_verdict
 from standardphysics_agents.checks.turn_width import turn_verdict
 from pytest import approx
 from standardphysics_contracts import Mat4, Stop, Vec3, to_meters
+from standardphysics_fixtures import build_lawsuit_graph, build_lawsuit_scenario
 from standardphysics_fixtures.shop import FIX_SHIFT_INCHES, node_id
 
 PINCH_INCHES = 31.0
@@ -312,3 +313,28 @@ def test_an_unmeasured_turn_is_a_gap_not_a_finding(graph, scenario, pipeline, le
     gaps = {gap.rule_id: gap.waiting_on for gap in result.unevaluated}
     assert "turn_clear_width" in gaps
     assert not [f for f in result.findings if f.check_id == "turn_clear_width"]
+
+
+def test_a_lowered_section_meets_the_height_rule(pipeline, ledger):
+    """904.4.1 asks for a portion, not that every stretch of counter is 36 in."""
+    result = assess(
+        build_lawsuit_graph(), build_lawsuit_scenario(), pipeline, ledger=ledger
+    )
+    height = [f for f in result.findings if f.check_id == "service_counter_height"]
+    assert height and height[0].outcome == "passes"
+    assert height[0].measured_inches == approx(36.0)
+
+
+def test_a_card_reader_on_the_high_counter_is_the_finding(pipeline, ledger):
+    result = assess(
+        build_lawsuit_graph(), build_lawsuit_scenario(), pipeline, ledger=ledger
+    )
+    pos = [f for f in result.problems if f.check_id == "point_of_sale_height"]
+    assert len(pos) == 1
+    assert pos[0].measured_inches == approx(47.0)
+    assert pos[0].fix == "Move the card reader to the lowered counter section."
+
+
+def test_the_plain_shop_has_no_register_finding(graph, scenario, pipeline, ledger):
+    result = assess(graph, scenario, pipeline, ledger=ledger)
+    assert not [f for f in result.findings if f.check_id == "point_of_sale_height"]

@@ -39,6 +39,8 @@ TOPICS: tuple[tuple[str, frozenset[str]], ...] = (
     ("counter", frozenset({
         "service_counter_height", "service_counter_approach",
     })),
+    ("register", frozenset({"point_of_sale_height"})),
+    ("card reader", frozenset({"point_of_sale_height"})),
     ("bar", frozenset({"service_counter_height", "service_counter_approach"})),
     ("turn", frozenset({"turning_space", "turn_clear_width"})),
     ("floor", frozenset({"floor_surface"})),

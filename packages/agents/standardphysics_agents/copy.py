@@ -108,6 +108,12 @@ def _counter_height(observation: Observation, rule: RuleSpec) -> FindingCopy:
     allowed = inches(rule.threshold)
     length = inches(observation.facts.get("accessible_length_inches", 36.0))
     shown = measured(observation.measured_inches, rule.threshold)
+    portion = observation.facts.get("portion")
+    if observation.satisfied and portion:
+        return FindingCopy(
+            title=f"The {counter} has a section you can order from",
+            detail=f"The lowered section is {shown} high. Ordering from a wheelchair needs {allowed} or lower.",
+        )
     section = f"Make it {length} long and {allowed} high."
     if observation.satisfied:
         return FindingCopy(
@@ -118,6 +124,23 @@ def _counter_height(observation: Observation, rule: RuleSpec) -> FindingCopy:
         title=f"The {counter} is too high to order from",
         detail=f"It's {shown} high. Ordering from a wheelchair needs {allowed} or lower.",
         fix=f"Add a lower section to the {counter}. {section}",
+    )
+
+
+def _point_of_sale(observation: Observation, rule: RuleSpec) -> FindingCopy:
+    reader = observation.facts.get("reader", "card reader").casefold()
+    portion = observation.facts.get("portion", "lowered section").casefold()
+    shown = measured(observation.measured_inches, rule.threshold)
+    allowed = inches(rule.threshold)
+    if observation.satisfied:
+        return FindingCopy(
+            title="People pay at a counter they can reach",
+            detail=f"The {reader} sits {shown} up. Ordering from a wheelchair needs {allowed} or lower.",
+        )
+    return FindingCopy(
+        title="People pay at the high counter",
+        detail=f"The {reader} sits {shown} up. Ordering from a wheelchair needs {allowed} or lower.",
+        fix=f"Move the {reader} to the {portion}.",
     )
 
 
@@ -325,6 +348,7 @@ WRITERS: dict[str, Callable[[Observation, RuleSpec], FindingCopy]] = {
     "route_clear_width": _route_width,
     "door_clear_width": _door_width,
     "service_counter_height": _counter_height,
+    "point_of_sale_height": _point_of_sale,
     "service_counter_approach": _counter_approach,
     "passing_space": _passing_space,
     "turning_space": _turning_space,
