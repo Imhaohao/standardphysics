@@ -7,8 +7,8 @@ import { lidarGeometry, lidarMatrix, objectAtPoint, validateLidarMesh } from "@/
 import type { LidarMesh, SceneGraph } from "@/types/contracts";
 import { MODEL } from "./palette";
 
-export function LidarShopModel({ url, scene, onSelectNode, onBounds }: {
-  url: string; scene: SceneGraph; onSelectNode: (id: string) => void; onBounds: (bounds: Box3) => void;
+export function LidarShopModel({ url, scene, onSelectNode, onBounds, interactive = true }: {
+  url: string; scene: SceneGraph; onSelectNode: (id: string) => void; onBounds: (bounds: Box3) => void; interactive?: boolean;
 }) {
   const [mesh, setMesh] = useState<LidarMesh | null>(null);
   const [failed, setFailed] = useState(false);
@@ -27,9 +27,9 @@ export function LidarShopModel({ url, scene, onSelectNode, onBounds }: {
     void load();
     return () => controller.abort();
   }, [url]);
-  if (failed) return <ScanMessage alert text="Reload the page to try loading the scanned surfaces again." />;
-  if (!mesh) return <ScanMessage text="Loading scanned surfaces" />;
-  return <MeasuredSurfaces mesh={mesh} scene={scene} onSelectNode={onSelectNode} onBounds={onBounds} />;
+  if (failed) return interactive ? <ScanMessage alert text="Reload the page to try loading the scanned surfaces again." /> : null;
+  if (!mesh) return interactive ? <ScanMessage text="Loading scanned surfaces" /> : null;
+  return <MeasuredSurfaces mesh={mesh} scene={scene} onSelectNode={onSelectNode} onBounds={onBounds} interactive={interactive} />;
 }
 
 function ScanMessage({ text, alert = false }: { text: string; alert?: boolean }) {
@@ -38,8 +38,8 @@ function ScanMessage({ text, alert = false }: { text: string; alert?: boolean })
   </Html>;
 }
 
-function MeasuredSurfaces({ mesh, scene, onSelectNode, onBounds }: {
-  mesh: LidarMesh; scene: SceneGraph; onSelectNode: (id: string) => void; onBounds: (bounds: Box3) => void;
+function MeasuredSurfaces({ mesh, scene, onSelectNode, onBounds, interactive }: {
+  mesh: LidarMesh; scene: SceneGraph; onSelectNode: (id: string) => void; onBounds: (bounds: Box3) => void; interactive: boolean;
 }) {
   const parts = useMemo(() => mesh.parts.map((part) => ({
     id: part.id, geometry: lidarGeometry(part), matrix: lidarMatrix(part, mesh.floorY ?? 0),
@@ -55,11 +55,12 @@ function MeasuredSurfaces({ mesh, scene, onSelectNode, onBounds }: {
   }, [parts, onBounds]);
   return <group>{parts.map((part) => (
     <mesh key={part.id} geometry={part.geometry} matrix={part.matrix} matrixAutoUpdate={false}
-      onClick={(event) => {
+      raycast={interactive ? undefined : () => null}
+      onClick={interactive ? (event) => {
         event.stopPropagation();
         onSelectNode(objectAtPoint(scene, event.point)?.id ?? "");
-      }}>
-      <meshStandardMaterial color={MODEL.ground} roughness={0.85} />
+      } : undefined}>
+      <meshStandardMaterial color={MODEL.ground} roughness={0.9} transparent={!interactive} opacity={interactive ? 1 : 0.2} depthWrite={interactive} />
     </mesh>
   ))}</group>;
 }

@@ -63,24 +63,39 @@ type ShopSurfacesProps = Pick<ViewerProps, "scene" | "exported" | "arrange" | "g
   onBounds: (bounds: Box3) => void;
 };
 
-function ShopSurfaces({ scene, exported, arrange, glbUrl, lidarUrl, selected, onSelectNode, onBounds }: ShopSurfacesProps) {
-  if (lidarUrl) return <LidarShopModel key={lidarUrl} url={lidarUrl} scene={scene} onSelectNode={onSelectNode} onBounds={onBounds} />;
+function shopModelProps(scene: SceneGraph, exported: SceneGraph, arrange: ViewerProps["arrange"], selected: ViewerProps["selected"], onSelectNode: ViewerProps["onSelectNode"]) {
   const focus = selected?.locus ? new Set(selected.locus.node_ids) : null;
-  const modelProps = {
+  return {
     shown: scene,
     focus,
     focusColor: selected ? outcomeColor(selected.outcome) : MODEL.accent,
     onSelectNode,
     arrange,
+    exported,
   };
-  const boxes = <BoxShopModel {...modelProps} />;
+}
+
+function InteractableShop({ glbUrl, exported, ...props }: ReturnType<typeof shopModelProps> & { glbUrl: string | null }) {
+  const boxes = <BoxShopModel {...props} />;
   if (!glbUrl) return boxes;
   return (
     <GlbFallback fallback={boxes}>
       <Suspense fallback={boxes}>
-        <GlbShopModel url={glbUrl} exported={exported} {...modelProps} />
+        <GlbShopModel url={glbUrl} exported={exported} {...props} />
       </Suspense>
     </GlbFallback>
+  );
+}
+
+function ShopSurfaces({ scene, exported, arrange, glbUrl, lidarUrl, selected, onSelectNode, onBounds }: ShopSurfacesProps) {
+  const model = shopModelProps(scene, exported, arrange, selected, onSelectNode);
+  return (
+    <group>
+      {lidarUrl && (
+        <LidarShopModel key={lidarUrl} url={lidarUrl} scene={scene} onSelectNode={onSelectNode} onBounds={onBounds} interactive={false} />
+      )}
+      <InteractableShop glbUrl={glbUrl} {...model} />
+    </group>
   );
 }
 
@@ -104,11 +119,11 @@ export default function Viewer({ scene, exported, arrange, route, dragging, glbU
       <color attach="background" args={["#f6f5f1"]} />
       <Lights />
       <CameraRig pose={pose} locked={dragging} bounds={lidarUrl && !selected ? measuredBounds : null} />
-      {!lidarUrl && <><mesh rotation-x={-Math.PI / 2} position-y={-0.002} receiveShadow>
+      <mesh rotation-x={-Math.PI / 2} position-y={-0.002} receiveShadow>
         <planeGeometry args={[80, 80]} />
         <meshStandardMaterial color={MODEL.ground} roughness={1} />
       </mesh>
-      <ContactShadows position={[0, 0.001, 0]} scale={30} opacity={0.35} blur={2.4} far={3} frames={1} /></>}
+      <ContactShadows position={[0, 0.001, 0]} scale={30} opacity={0.35} blur={2.4} far={3} frames={1} />
       <ShopSurfaces scene={scene} exported={exported} arrange={arrange} glbUrl={glbUrl} lidarUrl={lidarUrl} selected={selected} onSelectNode={onSelectNode} onBounds={setMeasuredBounds} />
       {selected && <FindingAnnotation finding={selected} />}
       {route && <StopMarkers route={route} />}
