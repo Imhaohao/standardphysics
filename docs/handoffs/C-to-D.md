@@ -32,9 +32,15 @@ map straight across. One caller changes.
 
 ## 3. Lane C's tests are not collected by the root run
 
-**Half fixed.** CI installs `packages/agents` as of `a260626`, so the imports
-work. `pytest.ini` still has `testpaths = tests`, so the 263 Lane C tests are
-installed and never run. One line left.
+**Done.** You put `packages/agents` on the path and in the CI install; the
+`testpaths` line was the piece left, and Lane C took it, since `pytest.ini`
+belongs to no lane and the change only adds this lane's own tests. `pytest` is
+one suite of 549 now and takes about six and a half minutes.
+
+If that is too slow for every push, the split worth making is
+`-k "not (fix or loop or evaluation or ask)"` on push and the whole suite on
+pull request. Most of the time is rebuilding occupancy grids for the fix search
+and the 38 evaluation cases.
 
 `pytest.ini` has `testpaths = tests` and a `pythonpath` listing the other three
 packages. Lane C's tests live in `packages/agents/tests/`, per

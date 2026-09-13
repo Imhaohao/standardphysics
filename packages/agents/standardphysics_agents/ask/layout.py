@@ -27,7 +27,7 @@ from ..copy import no_room_for_request, request_rationale
 from ..evaluation.gate import accepts
 from ..fix.constraints import violations
 from ..fix.moves import apply_moves
-from ..fix.search import _proposal_id
+from ..fix.search import proposal_id
 from ..hashing import inventory
 from ..tracing import traced
 from . import subjects
@@ -80,7 +80,7 @@ def _proposal(
     base = graph_hash(graph)
     labels = [graph.by_id(move.node_id).label for move in moves]
     return Proposal(
-        id=_proposal_id(base, moves),
+        id=proposal_id(base, moves),
         base_graph_hash=base,
         moves=moves,
         targets=[],

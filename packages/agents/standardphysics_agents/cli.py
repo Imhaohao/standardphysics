@@ -246,6 +246,7 @@ def _ask(args) -> int:
         _measurements(args.provider),
         rules=pack,
         ledger=ledger,
+        max_tier=args.tier,
         with_resolver=picked,
     )
     print(answer.text)
@@ -271,6 +272,7 @@ def _loop(args) -> int:
         _router(args.router),
         rules=pack,
         ledger=ledger,
+        max_tier=args.tier,
     )
     for step in steps:
         action = step.action or f"nothing authorized ({step.rejected})"
@@ -350,12 +352,14 @@ def build_parser() -> argparse.ArgumentParser:
     loop = commands.add_parser("loop", help="run the whole loop on the fixture shop")
     loop.add_argument("--provider", choices=PROVIDERS, default="pipeline")
     loop.add_argument("--router", choices=ROUTERS, default="typesafe")
+    loop.add_argument("--tier", type=int, default=1)
 
     question = commands.add_parser(
         "ask", help="ask the fixture shop a question about itself"
     )
     question.add_argument("question", nargs="+")
     question.add_argument("--provider", choices=PROVIDERS, default="pipeline")
+    question.add_argument("--tier", type=int, default=1)
     return parser
 
 

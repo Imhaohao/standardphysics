@@ -76,7 +76,8 @@ class FixOutcome:
         return self.proposal is not None
 
 
-def _proposal_id(base: str, moves: list[NodeMove]) -> uuid.UUID:
+def proposal_id(base: str, moves: list[NodeMove]) -> uuid.UUID:
+    """The same layout and the same moves always get the same proposal id."""
     shape = "|".join(
         f"{m.node_id}:{m.delta_translation.x:.4f},{m.delta_translation.y:.4f},"
         f"{m.delta_rotation_z_degrees:.1f}"
@@ -112,7 +113,7 @@ def _build_proposal(
 ) -> Proposal:
     base = graph_hash(graph)
     return Proposal(
-        id=_proposal_id(base, picked.moves),
+        id=proposal_id(base, picked.moves),
         base_graph_hash=base,
         moves=picked.moves,
         targets=list(targets),

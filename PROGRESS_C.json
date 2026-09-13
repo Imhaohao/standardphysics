@@ -1,6 +1,6 @@
 {
   "lane": "C",
-  "updated": "2026-09-13T04:40:00Z",
+  "updated": "2026-09-13T05:00:00Z",
   "done": [
     "rule pack: 17 rules, thresholds in the units the standard is written in, the quoted sentence behind each, and every other number the section states",
     "human verification ledger binding rule id, section, threshold and unit, so editing a threshold switches its check off",
@@ -28,7 +28,7 @@
     "the rule pack says whether a finding is cleared by moving things or by changing a fixture, so the router never sends the fix agent to make a table shorter",
     "38 labelled cases across all three tiers, 7 scorers, every one at 1.000",
     "Weave tracing verified against a stand-in SDK: init, op naming, wrapped once per function, and both weave.op signatures; every check, agent call, router, model call, loop branch and evaluation case carries @traced under one prefix",
-    "394 tests"
+    "394 Lane C tests, running in the root suite of 549"
   ],
   "in_progress": null,
   "blocked_on": null,
@@ -49,7 +49,6 @@
     "TYPESAFE_API_KEY and the quickstart's base URL and request path into .env, as TYPESAFE_BASE_URL. Without them the loop runs the local policy and says so, and the TypeSafe track comes out of the pitch.",
     "OPENROUTER_API_KEY in .env with zero data retention on the account and a credit limit. Without it the ask box matches keywords instead of reading the question, and says so.",
     "WANDB_API_KEY, WANDB_ENTITY and WANDB_PROJECT in .env, or tracing and evaluation stay local",
-    "Schedule the accessibility professional",
-    "One line in pytest.ini or Lane C's 263 tests never run on master: docs/handoffs/C-to-D.md item 3"
+    "Schedule the accessibility professional"
   ]
 }
