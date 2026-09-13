@@ -262,6 +262,26 @@ export interface Proposal {
   targets: string[];
 }
 /**
+ * Ask the fix agent for a layout that clears these findings.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "ProposalRequest".
+ */
+export interface ProposalRequest {
+  base_revision: number;
+  finding_ids: string[];
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "ProposalResult".
+ */
+export interface ProposalResult {
+  base_revision: number;
+  message: string;
+  proposal: Proposal | null;
+  question: string | null;
+}
+/**
  * Everything the printed report shows, in one response.
  *
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema

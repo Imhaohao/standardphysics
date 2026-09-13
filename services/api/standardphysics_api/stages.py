@@ -21,7 +21,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from standardphysics_agents import VerificationLedger, assess, load_ledger, load_pack
-from standardphysics_contracts import Assessment, Scenario, SceneGraph
+from standardphysics_agents.fix import FixOutcome, propose_fix
+from standardphysics_contracts import Assessment, Finding, Scenario, SceneGraph
 from standardphysics_pipeline import PipelineMeasurements, blender, parse_room_json
 
 log = logging.getLogger(__name__)
@@ -60,6 +61,11 @@ class Stages:
         for missing in result.unevaluated:
             log.info("rule %s not evaluated: %s", missing.rule_id, missing.waiting_on)
         return result.assessment
+
+    def propose(self, graph: SceneGraph, scenario: Scenario, targets: list[Finding]) -> FixOutcome:
+        """Lane C's fix agent: one arrangement that clears the targets, or one thing to ask."""
+        with self._assess_lock:
+            return propose_fix(graph, scenario, self.measure, targets, rules=load_pack(), ledger=self.ledger_factory())
 
     def geometry(
         self,

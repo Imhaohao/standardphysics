@@ -1,4 +1,4 @@
-import type { LayoutCheckResult, NodeMove, SceneGraph } from "@/types/contracts";
+import type { LayoutCheckResult, NodeMove, ProposalResult, SceneGraph } from "@/types/contracts";
 
 export class ApiRefusal extends Error {
   constructor(readonly status: number, readonly error: string) {
@@ -29,4 +29,8 @@ export function checkLayout(scanId: string, baseRevision: number, sequence: numb
 
 export function saveLayout(scanId: string, baseRevision: number, moves: NodeMove[]) {
   return postJson<SceneGraph>(`/api/scans/${scanId}/revisions`, { base_revision: baseRevision, moves });
+}
+
+export function proposeFix(scanId: string, baseRevision: number, findingIds: string[]) {
+  return postJson<ProposalResult>(`/api/scans/${scanId}/proposals`, { base_revision: baseRevision, finding_ids: findingIds });
 }

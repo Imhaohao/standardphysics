@@ -18,6 +18,8 @@ from standardphysics_contracts import (
     CreateScanRequest,
     LayoutCheckRequest,
     LayoutCheckResult,
+    ProposalRequest,
+    ProposalResult,
     Report,
     SaveLayoutRequest,
     Scan,
@@ -32,6 +34,7 @@ from .coverage import parse_coverage
 from .db import Database
 from .errors import ApiProblem
 from .layout import check_layout, save_layout
+from .proposals import propose
 from .report import build_report
 from .seed import seed_sample_shop
 from .settings import Settings
@@ -253,6 +256,10 @@ def _install_layout_routes(app: FastAPI, database: Database, stages: Stages, wor
     @app.post("/api/scans/{scan_id}/layout-checks", response_model=LayoutCheckResult)
     def layout_check(scan_id: uuid.UUID, body: LayoutCheckRequest) -> LayoutCheckResult:
         return check_layout(database, stages, scan_id, body)
+
+    @app.post("/api/scans/{scan_id}/proposals", response_model=ProposalResult)
+    def proposal(scan_id: uuid.UUID, body: ProposalRequest) -> ProposalResult:
+        return propose(database, stages, scan_id, body)
 
     @app.post("/api/scans/{scan_id}/revisions", response_model=SceneGraph, status_code=201)
     def save_revision(scan_id: uuid.UUID, body: SaveLayoutRequest) -> SceneGraph:

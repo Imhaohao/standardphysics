@@ -1,11 +1,16 @@
 "use client";
 
 import { Camera, CaretDown, Check } from "@phosphor-icons/react";
-import { useState, type KeyboardEvent } from "react";
+import { useState, type KeyboardEvent, type ReactNode } from "react";
 import { formatInches, type FindingGroups } from "@/lib/findings";
 import type { Finding } from "@/types/contracts";
 
-type ListProps = { groups: FindingGroups; selectedId: string | null; onSelect: (finding: Finding) => void };
+type ListProps = {
+  groups: FindingGroups;
+  selectedId: string | null;
+  onSelect: (finding: Finding) => void;
+  extra?: (finding: Finding) => ReactNode;
+};
 
 function OutcomeMark({ outcome }: { outcome: Finding["outcome"] }) {
   if (outcome === "problem") return <span className="mt-2 size-2.5 shrink-0 rounded-full bg-problem" aria-hidden />;
@@ -17,7 +22,9 @@ function citationText(finding: Finding): string {
   return `${finding.citation.edition} ${finding.citation.section}`;
 }
 
-function FindingRow({ finding, selected, onSelect }: { finding: Finding; selected: boolean; onSelect: () => void }) {
+type RowProps = { finding: Finding; selected: boolean; onSelect: () => void; extra?: ReactNode };
+
+function FindingRow({ finding, selected, onSelect, extra }: RowProps) {
   return (
     <li>
       <button
@@ -44,6 +51,7 @@ function FindingRow({ finding, selected, onSelect }: { finding: Finding; selecte
           {selected && <span className="mt-2 block text-sm text-ink-faint">{citationText(finding)}</span>}
         </span>
       </button>
+      {selected && extra && <div className="pb-3 pl-9 pr-3">{extra}</div>}
     </li>
   );
 }
@@ -71,6 +79,7 @@ function Section({ heading, findings, ...props }: { heading: string; findings: F
             finding={finding}
             selected={finding.id === props.selectedId}
             onSelect={() => props.onSelect(finding)}
+            extra={props.extra?.(finding)}
           />
         ))}
       </ul>
@@ -78,14 +87,14 @@ function Section({ heading, findings, ...props }: { heading: string; findings: F
   );
 }
 
-export function FindingsList({ groups, selectedId, onSelect }: ListProps) {
+export function FindingsList({ groups, selectedId, onSelect, extra }: ListProps) {
   const [showPasses, setShowPasses] = useState(false);
   const passSelected = groups.passes.some((finding) => finding.id === selectedId);
   const passesOpen = showPasses || passSelected;
 
   return (
     <nav aria-label="Findings" onKeyDown={moveFocus}>
-      <Section heading="To fix" findings={groups.problems} selectedId={selectedId} onSelect={onSelect} />
+      <Section heading="To fix" findings={groups.problems} selectedId={selectedId} onSelect={onSelect} extra={extra} />
       <Section heading="Send us a photo" findings={groups.questions} selectedId={selectedId} onSelect={onSelect} />
       {groups.passes.length > 0 && (
         <section className="mt-6">

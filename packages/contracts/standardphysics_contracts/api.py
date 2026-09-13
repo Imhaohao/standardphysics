@@ -7,11 +7,12 @@ against, and the mock server's error bodies.
 from __future__ import annotations
 
 from datetime import datetime
+from uuid import UUID
 
 from pydantic import BaseModel
 
 from .findings import Finding
-from .loop import Assessment, NodeMove
+from .loop import Assessment, NodeMove, Proposal
 from .rules import Check
 from .scan import Scan
 from .scene import Scenario, SceneGraph
@@ -84,3 +85,19 @@ class Report(BaseModel):
     rules: list[ReviewedRule]
     preview: bool = False
     """Built from rules no person has reviewed, for development only."""
+
+
+class ProposalRequest(BaseModel):
+    """Ask the fix agent for a layout that clears these findings."""
+
+    base_revision: int
+    finding_ids: list[UUID]
+
+
+class ProposalResult(BaseModel):
+    base_revision: int
+    proposal: Proposal | None
+    message: str
+    """The sentence to show: the fix, or that no arrangement works."""
+    question: str | None = None
+    """One thing the owner could allow, when nothing works as things stand."""

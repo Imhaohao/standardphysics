@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { ApiRefusal, checkLayout, saveLayout } from "@/lib/layout-client";
 import { applyMoves, type MoveSet, withMove } from "@/lib/moves";
-import type { LayoutCheckResult, SceneGraph } from "@/types/contracts";
+import type { LayoutCheckResult, NodeMove, SceneGraph } from "@/types/contracts";
 
 const NUDGE_SETTLE_MS = 350;
 
@@ -63,6 +63,15 @@ export function useArrangement(scanId: string, scene: SceneGraph) {
     [activeId, update, settle],
   );
 
+  const load = useCallback(
+    (proposed: NodeMove[]) => {
+      update(Object.fromEntries(proposed.map((move) => [move.node_id, move])));
+      setActiveId(proposed[0]?.node_id ?? null);
+      runCheck();
+    },
+    [update, runCheck],
+  );
+
   const reset = useCallback(() => {
     latestSequence.current += 1;
     update({});
@@ -101,6 +110,6 @@ export function useArrangement(scanId: string, scene: SceneGraph) {
 
   return {
     shown, moves, check, checking, saving, problem, activeId, hasMoves, blockedIds, canSave,
-    setActiveId, drag, drop: runCheck, nudge, reset, save,
+    setActiveId, drag, drop: runCheck, nudge, reset, save, load,
   };
 }

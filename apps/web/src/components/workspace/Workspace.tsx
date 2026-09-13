@@ -10,10 +10,11 @@ import { interpolateLayout } from "@/lib/compare";
 import { findingForNode, groupFindings } from "@/lib/findings";
 import { scanStatus } from "@/lib/scan-status";
 import { METERS_PER_INCH } from "@/lib/moves";
-import type { Assessment, Finding, Scan, SceneGraph } from "@/types/contracts";
+import type { Assessment, Finding, NodeMove, Scan, SceneGraph } from "@/types/contracts";
 import { ArrangePanel } from "./ArrangePanel";
 import { type Comparison, ComparePanel } from "./ComparePanel";
 import { FindingsList } from "./FindingsList";
+import { FixSuggestion } from "./FixSuggestion";
 import type { ArrangeHandlers } from "./ShopModel";
 import { type Arrangement, useArrangement } from "./useArrangement";
 
@@ -150,6 +151,8 @@ function WorkspaceHeader({ scan, task, canCompare, onTask }: HeaderProps) {
 
 type SidePanelProps = {
   task: Task;
+  scene: SceneGraph;
+  onTryLayout: (moves: NodeMove[]) => void;
   checked: boolean;
   scan: Scan;
   findings: Finding[];
@@ -161,11 +164,18 @@ type SidePanelProps = {
   onToggle: (finding: Finding) => void;
 };
 
-function SidePanel({ task, checked, scan, findings, selected, arrangement, comparison, amount, onAmount, onToggle }: SidePanelProps) {
+function SidePanel({ task, scene, onTryLayout, checked, scan, findings, selected, arrangement, comparison, amount, onAmount, onToggle }: SidePanelProps) {
   if (task === "compare" && comparison) return <ComparePanel comparison={comparison} amount={amount} onAmount={onAmount} />;
   if (task === "arrange") return <ArrangePanel arrangement={arrangement} fallbackFindings={findings} />;
   if (findings.length > 0) {
-    return <FindingsList groups={groupFindings(findings)} selectedId={selected?.id ?? null} onSelect={onToggle} />;
+    return (
+      <FindingsList
+        groups={groupFindings(findings)}
+        selectedId={selected?.id ?? null}
+        onSelect={onToggle}
+        extra={(finding) => <FixSuggestion scanId={scan.id} scene={scene} finding={finding} onTry={onTryLayout} />}
+      />
+    );
   }
   return <p className="px-3 text-ink-muted">{scanStatus(scan, checked ? 0 : null)}</p>;
 }
@@ -196,6 +206,12 @@ export function Workspace({ scan, scene, exported, assessment, previous, glbUrl 
     if (next === "findings") arrangement.reset();
     if (next === "compare") setAmount(0);
     setTask(next);
+  };
+
+  const tryLayout = (moves: NodeMove[]) => {
+    setSelected(null);
+    setTask("arrange");
+    arrangement.load(moves);
   };
 
   useKeyboard(task, arrangement, clear);
@@ -229,6 +245,8 @@ export function Workspace({ scan, scene, exported, assessment, previous, glbUrl 
       <aside className="min-h-0 overflow-y-auto px-3 pb-10 pt-4 lg:pt-0">
         <SidePanel
           task={task}
+          scene={scene}
+          onTryLayout={tryLayout}
           checked={assessment !== null}
           scan={scan}
           findings={findings}
