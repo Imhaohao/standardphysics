@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-observability = ["weave>=0.51"]
+observability = ["weave>=0.51", "wandb>=0.18"]
 replay = ["pillow>=10", "imageio-ffmpeg>=0.5"]
 
 [project.scripts]

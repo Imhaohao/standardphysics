@@ -274,7 +274,6 @@ def _log_one(
             tags=list(TAGS),
             config=experiment.config(),
             notes=NOTES,
-            reinit=True,
         )
     except Exception as error:
         log.warning("this configuration stayed local, %s said: %s", name, error)

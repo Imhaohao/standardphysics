@@ -346,3 +346,39 @@ class TestTheCellSizeKnob:
 
     def test_the_stub_ignores_it(self):
         assert not hasattr(new_measurements("stub", 0.05), "cell_size")
+
+
+class TestAgainstTheRealSdk:
+    """The stand-in proves our wiring. This proves the SDK still takes it.
+
+    Offline mode writes the run to a directory instead of sending it, so the
+    real `init`, `log`, `Table` and `finish` all run with no account. Skipped
+    where wandb is not installed, which is CI and any clone that did not ask
+    for the observability extra.
+    """
+
+    @pytest.fixture
+    def offline(self, monkeypatch, tmp_path):
+        module = pytest.importorskip("wandb")
+        monkeypatch.setenv("WANDB_MODE", "offline")
+        monkeypatch.setenv("WANDB_DIR", str(tmp_path))
+        monkeypatch.setenv("WANDB_SILENT", "true")
+        monkeypatch.setenv("WANDB_API_KEY", "offline-placeholder")
+        monkeypatch.setenv("WANDB_ENTITY", "team")
+        monkeypatch.setenv("WANDB_PROJECT", "shop-review")
+        yield tmp_path
+        module.teardown()
+
+    def test_a_run_lands_with_its_metrics_and_its_table(self, offline, experiment):
+        """One run, one assertion pass: wandb reads WANDB_DIR once a process."""
+        log_experiments([experiment])
+        runs = list((offline / "wandb").glob("offline-run-*"))
+        assert len(runs) == 1
+
+        table = list((runs[0] / "files" / "media" / "table").glob("*.json"))
+        assert len(table) == 1
+        assert json.loads(table[0].read_text())["columns"] == list(TABLE_COLUMNS)
+
+        written = next(runs[0].glob("run-*.wandb")).read_bytes()
+        for name in (*experiment.metrics(), *experiment.config()):
+            assert name.encode() in written, name
