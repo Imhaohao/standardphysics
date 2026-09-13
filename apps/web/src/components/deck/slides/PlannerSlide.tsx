@@ -1,7 +1,7 @@
 "use client";
 
 import { Robot, Wheelchair } from "@phosphor-icons/react";
-import { animate, motion, useMotionValue, useTransform, type MotionValue, type Variants } from "motion/react";
+import { AnimatePresence, animate, motion, useMotionValue, useTransform, type MotionValue, type Variants } from "motion/react";
 import { useEffect, useMemo, useRef, type ReactNode, type RefObject } from "react";
 import { easeDrawn, easeSweep, exitTransition } from "@/lib/motion";
 import {
@@ -17,6 +17,7 @@ import {
   wallOutline,
   type PlanRect,
 } from "../floorPlan";
+import { MaskedLines } from "../primitives";
 import type { SlideProps } from "../slides";
 
 const timeline = {
@@ -249,10 +250,17 @@ function MorphingPlan() {
 export function PlannerSlide({ step }: SlideProps) {
   const phase: Phase = step === 0 ? "shop" : "warehouse";
   return (
-    <div className="deck-gutter flex h-full items-center justify-center">
+    <div className="deck-gutter flex h-full flex-col justify-center gap-deck-hairline">
+      <h2 className="font-display text-figure font-extrabold">
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.span key={phase} className="block" initial="enter" animate="present" exit="exit">
+            <MaskedLines lines={[phase === "shop" ? "Now" : "The future"]} delay={0.1} />
+          </motion.span>
+        </AnimatePresence>
+      </h2>
       <svg
         viewBox={`${warehouseOutline.west - 40} -60 ${warehouseInnerWidth + 80} ${planSize.height + 120}`}
-        className="h-full max-h-deck-art w-full overflow-visible"
+        className="min-h-0 w-full flex-1 overflow-visible"
         role="img"
         aria-label="A wheelchair follows the widest route through the shop, then the shop becomes a warehouse where robots follow planned routes"
       >
