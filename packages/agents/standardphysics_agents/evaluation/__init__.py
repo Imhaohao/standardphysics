@@ -34,17 +34,33 @@ from .runner import (
     run_case,
     save,
 )
+from .scenarios import (
+    LABELLED_SCORERS,
+    PINS,
+    ROUTINES,
+    Knobs,
+    Reading,
+    Routine,
+    readings,
+    room,
+    routine_named,
+    run_knobs,
+    sweep_knob,
+)
 from .scorers import LOWER_IS_BETTER, SCORERS, CaseOutcome
 from .weave_eval import DEFAULT_NAME, evaluate_in_weave, rows, scorer
 
 __all__ = [
     "DEFAULT_GRID", "DEFAULT_NAME", "DEFAULT_SETUPS", "FIX_CANDIDATE_LIMIT",
-    "GRID_AXES", "LOWER_IS_BETTER", "PREVIEW_REVIEWER", "SCORERS",
-    "AccessibilitySweepResult", "Case", "CaseOutcome", "EvaluationResult",
-    "Experiment", "GateResult", "Setup", "accepts", "action_name",
+    "GRID_AXES", "LABELLED_SCORERS", "LOWER_IS_BETTER", "PINS",
+    "PREVIEW_REVIEWER", "ROUTINES", "SCORERS", "AccessibilitySweepResult",
+    "Case", "CaseOutcome", "EvaluationResult", "Experiment", "GateResult",
+    "Knobs", "Reading", "Routine", "Setup", "accepts", "action_name",
     "answered_checks", "dataset", "evaluate", "evaluate_in_weave", "grid",
-    "label_for", "log_experiments", "previewing", "review", "rows",
-    "run_accessibility_sweep", "run_case", "run_experiment", "run_grid",
-    "save", "save_accessibility_sweep", "save_experiments", "scorer", "setup",
-    "summary", "target", "total_shortfall",
+    "label_for", "log_experiments", "previewing", "readings", "review", "room",
+    "routine_named", "rows", "run_accessibility_sweep", "run_case",
+    "run_knobs",
+    "run_experiment", "run_grid", "save", "save_accessibility_sweep",
+    "save_experiments", "scorer", "setup", "summary", "sweep_knob", "target",
+    "total_shortfall",
 ]
