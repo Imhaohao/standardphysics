@@ -184,7 +184,7 @@ function LawsuitDocument({ phase }: { phase: Phase }) {
       style={{ height: `${DOCUMENT_HEIGHT * 100}%` }}
       className="absolute inset-x-0 top-0 z-10 flex flex-col gap-deck-hairline bg-paper-raised px-deck-gap pt-deck-rise shadow-2xl"
     >
-      <p className="font-display text-headline font-extrabold">Lawsuit</p>
+      <p className="font-display text-lede font-extrabold">Lawsuit</p>
       {[0.9, 0.7, 0.85, 0.5].map((width) => (
         <span key={width} className="h-deck-hairline bg-rule" style={{ width: `${width * 100}%` }} />
       ))}
