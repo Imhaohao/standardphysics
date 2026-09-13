@@ -118,13 +118,53 @@ function WhatWeChecked({ scenario, passes, rules }: { scenario: Scenario | null;
   );
 }
 
+function ProblemsSection({ problems }: { problems: Finding[] }) {
+  if (problems.length === 0) return null;
+  return (
+    <section className="mt-12">
+      <h2 className="text-2xl font-semibold">What to fix</h2>
+      <div className="mt-4">
+        {problems.map((finding) => (
+          <ProblemBlock key={finding.id} finding={finding} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function NextStepsSection({ questions }: { questions: Finding[] }) {
+  if (questions.length === 0) return null;
+  return (
+    <section className="mt-12 break-inside-avoid">
+      <h2 className="text-2xl font-semibold">Next steps</h2>
+      <ol className="mt-4 flex list-decimal flex-col gap-4 pl-5">
+        {questions.map((finding) => (
+          <li key={finding.id}>
+            <p className="font-semibold">{finding.title}</p>
+            <p className="text-ink-muted">{finding.detail}</p>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+function PreviewNotice({ preview }: { preview: boolean }) {
+  if (!preview) return null;
+  return (
+    <p className="mb-8 rounded-lg bg-ink px-4 py-3 font-semibold text-paper">
+      Preview report. The rules in it are waiting for a person to review them.
+    </p>
+  );
+}
+
 export default async function ReportPage({ params }: PageProps<"/scans/[scanId]/report">) {
   const { scanId } = await params;
   const report = await getReport(scanId);
   if (!report) notFound();
   const { scan, scene, scenario, assessment, rules } = report;
   const groups = groupFindings(assessment?.findings ?? []);
-  const checkedOn = assessment ? new Date(assessment.created_at) : new Date(scan.created_at);
+  const checkedOn = new Date(assessment?.created_at ?? scan.created_at);
 
   return (
     <main className="mx-auto max-w-3xl px-5 py-10 print:max-w-none print:p-0">
@@ -136,11 +176,7 @@ export default async function ReportPage({ params }: PageProps<"/scans/[scanId]/
         <PrintButton />
       </div>
 
-      {report.preview && (
-        <p className="mb-8 rounded-lg bg-ink px-4 py-3 font-semibold text-paper">
-          Preview report. The rules in it are waiting for a person to review them.
-        </p>
-      )}
+      <PreviewNotice preview={report.preview} />
       <header className="grid items-end gap-6 sm:grid-cols-[1fr_9rem]">
         <div>
           <h1 className="text-4xl font-bold leading-tight">{scan.name}</h1>
@@ -156,30 +192,8 @@ export default async function ReportPage({ params }: PageProps<"/scans/[scanId]/
         {scene && <FloorPlan scene={scene} className="hidden aspect-square w-full sm:block" />}
       </header>
 
-      {groups.problems.length > 0 && (
-        <section className="mt-12">
-          <h2 className="text-2xl font-semibold">What to fix</h2>
-          <div className="mt-4">
-            {groups.problems.map((finding) => (
-              <ProblemBlock key={finding.id} finding={finding} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {groups.questions.length > 0 && (
-        <section className="mt-12 break-inside-avoid">
-          <h2 className="text-2xl font-semibold">Next steps</h2>
-          <ol className="mt-4 flex list-decimal flex-col gap-4 pl-5">
-            {groups.questions.map((finding) => (
-              <li key={finding.id}>
-                <p className="font-semibold">{finding.title}</p>
-                <p className="text-ink-muted">{finding.detail}</p>
-              </li>
-            ))}
-          </ol>
-        </section>
-      )}
+      <ProblemsSection problems={groups.problems} />
+      <NextStepsSection questions={groups.questions} />
 
       <WhatWeChecked scenario={scenario} passes={groups.passes} rules={rules} />
     </main>

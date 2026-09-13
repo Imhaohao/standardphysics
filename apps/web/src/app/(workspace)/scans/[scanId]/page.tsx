@@ -4,6 +4,7 @@ import { Workspace } from "@/components/workspace/Workspace";
 import { getAssessment, getScan, getScene, sceneGlbUrl } from "@/lib/api";
 import { API_ORIGIN } from "@/lib/api-origin";
 import { scanStatus } from "@/lib/scan-status";
+import type { Scan, SceneGraph } from "@/types/contracts";
 
 export const dynamic = "force-dynamic";
 
@@ -20,26 +21,33 @@ async function loadPrevious(scanId: string, revision: number) {
   return scene ? { scene, assessment } : null;
 }
 
+async function loadExported(scanId: string, scene: SceneGraph, glbRevision: number | null): Promise<SceneGraph> {
+  if (glbRevision === null || glbRevision === scene.revision) return scene;
+  return (await getScene(scanId, glbRevision)) ?? scene;
+}
+
+function NotMeasuredYet({ scan }: { scan: Scan }) {
+  return (
+    <main className="mx-auto max-w-2xl px-5 py-20">
+      <h1 className="text-3xl font-bold">{scan.name}</h1>
+      <p className="mt-4 text-lg text-ink-muted">{scanStatus(scan, null)}</p>
+      <RefreshWhile pending={scan.state !== "failed"} />
+    </main>
+  );
+}
+
 export default async function ShopPage({ params }: PageProps<"/scans/[scanId]">) {
   const { scanId } = await params;
   const scan = await getScan(scanId);
   if (!scan) notFound();
   const [scene, glbRevision] = await Promise.all([getScene(scanId), glbExportedRevision(scanId)]);
+  if (!scene) return <NotMeasuredYet scan={scan} />;
 
-  const assessment = scene ? await getAssessment(scanId, scene.revision) : null;
-  if (!scene) {
-    return (
-      <main className="mx-auto max-w-2xl px-5 py-20">
-        <h1 className="text-3xl font-bold">{scan.name}</h1>
-        <p className="mt-4 text-lg text-ink-muted">{scanStatus(scan, null)}</p>
-        <RefreshWhile pending={scan.state !== "failed"} />
-      </main>
-    );
-  }
-
-  const exportedRevision = glbRevision ?? scene.revision;
-  const exported = exportedRevision === scene.revision ? scene : ((await getScene(scanId, exportedRevision)) ?? scene);
-  const previous = scene.revision === 0 ? null : await loadPrevious(scanId, scene.revision - 1);
+  const [assessment, exported, previous] = await Promise.all([
+    getAssessment(scanId, scene.revision),
+    loadExported(scanId, scene, glbRevision),
+    scene.revision === 0 ? null : loadPrevious(scanId, scene.revision - 1),
+  ]);
   return (
     <Workspace
       scan={scan}

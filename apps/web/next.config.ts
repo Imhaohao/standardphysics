@@ -1,7 +1,14 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 import { API_ORIGIN } from "./src/lib/api-origin";
 
+const repositoryRoot = path.join(__dirname, "..", "..");
+
 const nextConfig: NextConfig = {
+  devIndicators: false,
+  turbopack: {
+    root: repositoryRoot,
+  },
   async rewrites() {
     return [{ source: "/api/:path*", destination: `${API_ORIGIN}/api/:path*` }];
   },

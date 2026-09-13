@@ -172,20 +172,26 @@ type SidePanelProps = {
 function SidePanel({ task, scene, onTryLayout, assessment, scan, findings, selected, arrangement, comparison, amount, onAmount, onToggle }: SidePanelProps) {
   if (task === "compare" && comparison) return <ComparePanel comparison={comparison} amount={amount} onAmount={onAmount} />;
   if (task === "arrange") return <ArrangePanel arrangement={arrangement} fallbackFindings={findings} />;
+  return (
+    <FindingsPanel scan={scan} scene={scene} assessment={assessment} findings={findings} selected={selected} onToggle={onToggle} onTryLayout={onTryLayout} />
+  );
+}
+
+type FindingsPanelProps = Pick<SidePanelProps, "scan" | "scene" | "assessment" | "findings" | "selected" | "onToggle" | "onTryLayout">;
+
+function FindingsPanel({ scan, scene, assessment, findings, selected, onToggle, onTryLayout }: FindingsPanelProps) {
   if (assessment === null && isWorking(scan)) {
     return <p className="px-3 font-medium" role="status">Checking this layout</p>;
   }
-  if (findings.length > 0) {
-    return (
-      <FindingsList
-        groups={groupFindings(findings)}
-        selectedId={selected?.id ?? null}
-        onSelect={onToggle}
-        extra={(finding) => <FixSuggestion scanId={scan.id} scene={scene} finding={finding} onTry={onTryLayout} />}
-      />
-    );
-  }
-  return <p className="px-3 text-ink-muted">{scanStatus(scan, assessment)}</p>;
+  if (findings.length === 0) return <p className="px-3 text-ink-muted">{scanStatus(scan, assessment)}</p>;
+  return (
+    <FindingsList
+      groups={groupFindings(findings)}
+      selectedId={selected?.id ?? null}
+      onSelect={onToggle}
+      extra={(finding) => <FixSuggestion scanId={scan.id} scene={scene} finding={finding} onTry={onTryLayout} />}
+    />
+  );
 }
 
 export function Workspace({ scan, scene, exported, assessment, previous, glbUrl }: WorkspaceProps) {

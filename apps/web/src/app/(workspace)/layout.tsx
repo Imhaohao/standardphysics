@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { Atkinson_Hyperlegible_Mono, Atkinson_Hyperlegible_Next } from "next/font/google";
 import "./globals.css";
 
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
   description: "See what gets in the way of customers in your shop, and how to fix it.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${atkinsonNext.variable} ${atkinsonMono.variable}`}>
       <body className="min-h-dvh">{children}</body>

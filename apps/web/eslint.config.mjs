@@ -7,7 +7,7 @@ const eslintConfig = defineConfig([
   ...nextTs,
   {
     rules: {
-      complexity: ["error", 10],
+      complexity: ["error", { max: 8 }],
     },
   },
   globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "src/types/contracts.ts"]),

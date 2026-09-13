@@ -22,6 +22,15 @@ function citationText(finding: Finding): string {
   return `${finding.citation.edition} ${finding.citation.section}`;
 }
 
+function FindingDetails({ finding }: { finding: Finding }) {
+  return (
+    <>
+      {finding.fix && <span className="mt-3 block border-l-2 border-accent pl-3 font-medium text-ink">{finding.fix}</span>}
+      <span className="mt-2 block text-sm text-ink-faint">{citationText(finding)}</span>
+    </>
+  );
+}
+
 type RowProps = { finding: Finding; selected: boolean; onSelect: () => void; extra?: ReactNode };
 
 function FindingRow({ finding, selected, onSelect, extra }: RowProps) {
@@ -45,10 +54,7 @@ function FindingRow({ finding, selected, onSelect, extra }: RowProps) {
             )}
           </span>
           {finding.detail && <span className="mt-1 block text-ink-muted">{finding.detail}</span>}
-          {selected && finding.fix && (
-            <span className="mt-3 block border-l-2 border-accent pl-3 font-medium text-ink">{finding.fix}</span>
-          )}
-          {selected && <span className="mt-2 block text-sm text-ink-faint">{citationText(finding)}</span>}
+          {selected && <FindingDetails finding={finding} />}
         </span>
       </button>
       {selected && extra && <div className="pb-3 pl-9 pr-3">{extra}</div>}
