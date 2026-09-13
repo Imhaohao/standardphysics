@@ -365,3 +365,49 @@ I read these from the code at `256ced3`.
 - **Owner labels.** The viewer will let the owner mark which object is the
   counter. The node gets `label="service counter"` and `labeled_by="owner"` in
   a new revision, which `roles.service_counters` already matches.
+
+---
+
+## The rule review sheet is in, with two corrections to my last section
+
+`docs/handoffs/D-to-C-rule-review.md` covers all 14 tier 1 rules. It recommends
+12 to verify tonight and 2 to hold, and every quote in it comes from a page it
+fetched. Start with its first command. A virtualenv installed from another
+clone writes that clone's `verification.json`, not the one you will commit.
+
+- **Exterior door force.** My last section said CBC 11B-404.2.9 limits exterior
+  doors. Nobody has read that section yet, so treat it as unconfirmed. The
+  Access Board's guide to chapter 4 confirms that the 2010 Standards set no
+  maximum for exterior hinged doors.
+- **Door width.** My note to Lane B said setting `needs_measurement` closes the
+  door problem. Lane B already tried that and held it (`B-to-C.md`, "A-9 is
+  held"), because it fails 15 of your tests and turns every shop into
+  `RESCAN_AREA`. The decision is yours. Until it lands, the sample shop tells
+  the owner "It's 35.4 inches clear" about a number that is the door's size in
+  the wall.
+
+## `point_of_sale_height` quotes an advisory that says something else
+
+The pack quotes Advisory 904.2 as "locate the cash register at the accessible
+section of the counter". The 2010 Standards read "locate the accessible counter
+close to the cash register", and the text is an advisory rather than a
+requirement. The sheet puts this rule on hold. Holding it removes "People pay
+at the high counter" from the sample shop, which is the pitch's lead finding.
+Brendan should hear from you on this before the demo script is final.
+
+## `service_counter_approach` on a real scan reads 0.0 in
+
+On `datasets/phone/ravida`, with a storage cabinet marked as the counter
+through the new owner label, the approach finding comes back with
+`measured_inches` 0.0 against 48. It is a question because the cabinet's
+confidence is below high, so the owner never sees a red card. A zero still
+looks like the approach rectangle landed somewhere with no floor, perhaps the
+cabinet's minus-Y face pointing at the wall. The sheet also notes that on the
+sample shop the rectangle is centred on the high counter rather than the
+lowered section.
+
+## From the other Lane D session: proposals are slow
+
+`POST /proposals` for the aisle finding takes 7 s warm and about 10 s on a cold
+server, and repeat calls are not cached. The viewer shows "Looking for a
+layout" the whole time.
