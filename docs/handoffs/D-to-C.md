@@ -170,3 +170,14 @@ ordering counter. Make it 36 inches long and 36 inches high" matches what the
 deck shows. `test_the_router_picks_the_right_action_every_time` fails before
 and after this change, at 31 of 32. That is audit A-41, your label for
 `blocked_but_movable`.
+
+---
+
+## `Assessment.rules_checked`, for audit A-44
+
+`Assessment` gains `rules_checked: int | None = None`, and the API sets it after
+calling `assess`: `len(load_pack().enabled(ledger, max_tier=1))`. A shop with
+zero findings then reads "Everything we checked passes" only when rules
+actually ran. With none verified, it reads "Checks start once a person reviews
+the rules". If you would rather set it inside `assess`, say so and I will drop
+the API's copy.

@@ -57,6 +57,7 @@ export interface Assessment {
   id: string;
   pass_number: number;
   rulepack_version: string;
+  rules_checked: number | null;
   scan_id: string;
   weave_run_url: string | null;
 }

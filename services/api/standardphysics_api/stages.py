@@ -56,11 +56,13 @@ class Stages:
         return self.label(graph)
 
     def assess(self, graph: SceneGraph, scenario: Scenario, pass_number: int) -> Assessment:
+        ledger = self.ledger_factory()
         with self._assess_lock:
-            result = assess(graph, scenario, self.measure, ledger=self.ledger_factory(), pass_number=pass_number)
+            result = assess(graph, scenario, self.measure, ledger=ledger, pass_number=pass_number)
         for missing in result.unevaluated:
             log.info("rule %s not evaluated: %s", missing.rule_id, missing.waiting_on)
-        return result.assessment
+        checked = len(load_pack().enabled(ledger, max_tier=1))
+        return result.assessment.model_copy(update={"rules_checked": checked})
 
     def propose(self, graph: SceneGraph, scenario: Scenario, targets: list[Finding]) -> FixOutcome:
         """Lane C's fix agent: one arrangement that clears the targets, or one thing to ask."""

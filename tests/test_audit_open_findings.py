@@ -220,9 +220,6 @@ def _assess_that_raises(*args, **kwargs):
     raise RuntimeError("the audit's broken assess stage")
 
 
-@pytest.mark.xfail(
-    strict=True, raises=AssertionError, reason="A-43: retrying a scan whose assess failed leaves it measuring forever"
-)
 def test_a43_a_retried_scan_whose_assessment_still_fails_ends_failed(tmp_path):
     with _api_client(tmp_path, seed_sample_shop=True) as client:
         client.app.state.worker.stages.assess = _assess_that_raises

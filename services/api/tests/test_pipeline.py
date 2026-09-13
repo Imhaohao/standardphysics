@@ -78,3 +78,13 @@ def test_without_verified_rules_the_sample_shop_reports_nothing(make_client):
         drain(client)
         scan_id = client.get("/api/scans").json()["scans"][0]["id"]
         assert client.get(f"/api/scans/{scan_id}/assessment").json()["findings"] == []
+
+
+def test_an_assessment_says_how_many_rules_ran(make_client):
+    from conftest import no_blender_stages
+    from standardphysics_agents import VerificationLedger
+
+    with make_client(seed=True, stages=no_blender_stages(ledger_factory=VerificationLedger)) as client:
+        drain(client)
+        scan_id = client.get("/api/scans").json()["scans"][0]["id"]
+        assert client.get(f"/api/scans/{scan_id}/assessment").json()["rules_checked"] == 0

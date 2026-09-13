@@ -1,4 +1,5 @@
-import type { Scan } from "@/types/contracts";
+import type { Assessment, Scan } from "@/types/contracts";
+import { countNeedingAttention } from "./findings";
 
 const STATE_LABEL: Record<Scan["state"], string> = {
   uploading: "Uploading",
@@ -8,9 +9,10 @@ const STATE_LABEL: Record<Scan["state"], string> = {
   failed: "This scan didn't go through. Scan the shop again.",
 };
 
-export function scanStatus(scan: Scan, attention: number | null): string {
-  if (scan.state !== "ready") return STATE_LABEL[scan.state];
-  if (attention === null) return "Ready";
+export function scanStatus(scan: Scan, assessment: Assessment | null): string {
+  if (scan.state !== "ready" || assessment === null) return STATE_LABEL[scan.state];
+  if (assessment.rules_checked === 0) return "Checks start once a person reviews the rules";
+  const attention = countNeedingAttention(assessment.findings);
   if (attention === 0) return "Everything we checked passes";
   return attention === 1 ? "1 thing to look at" : `${attention} things to look at`;
 }

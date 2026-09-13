@@ -12,8 +12,7 @@ const dateFormat = new Intl.DateTimeFormat("en-US", { month: "long", day: "numer
 
 async function ShopRow({ scan }: { scan: Scan }) {
   const [scene, assessment] = await Promise.all([getScene(scan.id), getAssessment(scan.id)]);
-  const attention = assessment ? countNeedingAttention(assessment.findings) : null;
-  const needsWork = (attention ?? 0) > 0;
+  const needsWork = assessment !== null && assessment.rules_checked !== 0 && countNeedingAttention(assessment.findings) > 0;
 
   return (
     <li>
@@ -29,7 +28,7 @@ async function ShopRow({ scan }: { scan: Scan }) {
           <p className="mt-1 text-ink-muted">{dateFormat.format(new Date(scan.created_at))}</p>
           <p className={`mt-3 flex items-center gap-2 font-medium ${needsWork ? "text-ink" : "text-ink-muted"}`}>
             {needsWork && <span className="size-2 rounded-full bg-problem" aria-hidden />}
-            {scanStatus(scan, attention)}
+            {scanStatus(scan, assessment)}
           </p>
         </div>
       </Link>

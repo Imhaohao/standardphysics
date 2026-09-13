@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { RefreshWhile } from "@/components/RefreshWhile";
 import { Workspace } from "@/components/workspace/Workspace";
 import { getAssessment, getScan, getScene, sceneGlbUrl } from "@/lib/api";
 import { API_ORIGIN } from "@/lib/api-origin";
@@ -23,13 +24,15 @@ export default async function ShopPage({ params }: PageProps<"/scans/[scanId]">)
   const { scanId } = await params;
   const scan = await getScan(scanId);
   if (!scan) notFound();
-  const [scene, assessment, glbRevision] = await Promise.all([getScene(scanId), getAssessment(scanId), glbExportedRevision(scanId)]);
+  const [scene, glbRevision] = await Promise.all([getScene(scanId), glbExportedRevision(scanId)]);
 
+  const assessment = scene ? await getAssessment(scanId, scene.revision) : null;
   if (!scene) {
     return (
       <main className="mx-auto max-w-2xl px-5 py-20">
         <h1 className="text-3xl font-bold">{scan.name}</h1>
         <p className="mt-4 text-lg text-ink-muted">{scanStatus(scan, null)}</p>
+        <RefreshWhile pending={scan.state !== "failed"} />
       </main>
     );
   }

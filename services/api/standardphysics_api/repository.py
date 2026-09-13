@@ -143,10 +143,20 @@ def finish_job(connection: sqlite3.Connection, job_id: int, error: str | None = 
     connection.execute("UPDATE jobs SET state = ?, error = ? WHERE id = ?", (state, error, job_id))
 
 
-def retry_failed_processing(connection: sqlite3.Connection, scan_id: uuid.UUID) -> None:
-    connection.execute("UPDATE scans SET state = 'measuring' WHERE id = ?", (str(scan_id),))
+def retry_failed_jobs(connection: sqlite3.Connection, scan_id: uuid.UUID) -> None:
+    """Queue again whichever stage failed, and show the state that stage runs in."""
+    kinds = {
+        row["kind"]
+        for row in connection.execute(
+            "SELECT kind FROM jobs WHERE scan_id = ? AND state = 'failed' AND kind != 'display'", (str(scan_id),)
+        )
+    }
+    if not kinds:
+        return
+    state = "measuring" if "process" in kinds else "checking"
+    connection.execute("UPDATE scans SET state = ? WHERE id = ?", (state, str(scan_id)))
     connection.execute(
-        "UPDATE jobs SET state = 'queued', error = NULL WHERE scan_id = ? AND kind = 'process' AND state = 'failed'",
+        "UPDATE jobs SET state = 'queued', error = NULL WHERE scan_id = ? AND state = 'failed' AND kind != 'display'",
         (str(scan_id),),
     )
 

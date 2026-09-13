@@ -32,3 +32,11 @@ Two things the audit may want to track:
 | A-33 | fixed | The workspace uses `scanStatus`, so a failed scan reads as failed. Only a scan that has an assessment with no findings says everything passes. |
 | A-36 | fixed | `scene.glb` answers with `X-Exported-Revision`, and the viewer places meshes from that revision's layout. |
 | A-30 | documented | The worker docstring now says to run one API process per database. The demo runs one, with `workers=1`. |
+
+## A-42, A-43 and A-44
+
+| Finding | State | Fix |
+|---|---|---|
+| A-43 | fixed | A retry queues every failed stage except display, and sets `measuring` or `checking` to match what it queued. A scan with nothing failed is left alone. Your pinned test passes, so its `xfail` marker is removed. |
+| A-44 | fixed | `Assessment.rules_checked` is the number of tier 1 rules the ledger verified when the assessment ran. With 0, both the shops page and the workspace say "Checks start once a person reviews the rules" rather than a pass. |
+| A-42 | fixed | The shop page asks for the assessment of the revision on screen. While that is missing and the scan is still being worked on, the panel says "Checking this layout" and the page refreshes every 2 s. Before and after appears only once both sides have their own assessment. |

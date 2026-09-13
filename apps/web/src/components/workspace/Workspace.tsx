@@ -13,6 +13,7 @@ import { METERS_PER_INCH } from "@/lib/moves";
 import type { Assessment, Finding, NodeMove, Scan, SceneGraph } from "@/types/contracts";
 import { ArrangePanel } from "./ArrangePanel";
 import { type Comparison, ComparePanel } from "./ComparePanel";
+import { RefreshWhile } from "@/components/RefreshWhile";
 import { FindingsList } from "./FindingsList";
 import { FixSuggestion } from "./FixSuggestion";
 import type { ArrangeHandlers } from "./ShopModel";
@@ -35,6 +36,10 @@ type WorkspaceProps = {
 };
 
 type ViewMode = "overview" | "top";
+
+function isWorking(scan: Scan): boolean {
+  return scan.state === "uploading" || scan.state === "measuring" || scan.state === "checking";
+}
 type Task = "findings" | "arrange" | "compare";
 
 function poseFor(scene: SceneGraph, selected: Finding | null, mode: ViewMode): ViewerPose {
@@ -49,7 +54,7 @@ function comparisonFor(arrangement: Arrangement, scene: SceneGraph, findings: Fi
       beforeLabel: "Now", afterLabel: "With your moves",
     };
   }
-  if (!previous) return null;
+  if (!previous || previous.assessment === null) return null;
   return {
     before: previous.scene, after: scene, beforeFindings: previous.assessment?.findings ?? [], afterFindings: findings,
     beforeLabel: "Before", afterLabel: "After",
@@ -153,7 +158,7 @@ type SidePanelProps = {
   task: Task;
   scene: SceneGraph;
   onTryLayout: (moves: NodeMove[]) => void;
-  checked: boolean;
+  assessment: Assessment | null;
   scan: Scan;
   findings: Finding[];
   selected: Finding | null;
@@ -164,9 +169,12 @@ type SidePanelProps = {
   onToggle: (finding: Finding) => void;
 };
 
-function SidePanel({ task, scene, onTryLayout, checked, scan, findings, selected, arrangement, comparison, amount, onAmount, onToggle }: SidePanelProps) {
+function SidePanel({ task, scene, onTryLayout, assessment, scan, findings, selected, arrangement, comparison, amount, onAmount, onToggle }: SidePanelProps) {
   if (task === "compare" && comparison) return <ComparePanel comparison={comparison} amount={amount} onAmount={onAmount} />;
   if (task === "arrange") return <ArrangePanel arrangement={arrangement} fallbackFindings={findings} />;
+  if (assessment === null && isWorking(scan)) {
+    return <p className="px-3 font-medium" role="status">Checking this layout</p>;
+  }
   if (findings.length > 0) {
     return (
       <FindingsList
@@ -177,7 +185,7 @@ function SidePanel({ task, scene, onTryLayout, checked, scan, findings, selected
       />
     );
   }
-  return <p className="px-3 text-ink-muted">{scanStatus(scan, checked ? 0 : null)}</p>;
+  return <p className="px-3 text-ink-muted">{scanStatus(scan, assessment)}</p>;
 }
 
 export function Workspace({ scan, scene, exported, assessment, previous, glbUrl }: WorkspaceProps) {
@@ -217,6 +225,8 @@ export function Workspace({ scan, scene, exported, assessment, previous, glbUrl 
   useKeyboard(task, arrangement, clear);
 
   return (
+    <>
+    <RefreshWhile pending={assessment === null && isWorking(scan)} />
     <div className="grid h-dvh grid-rows-[auto_minmax(18rem,55dvh)_1fr] lg:grid-cols-[1fr_24rem] lg:grid-rows-[auto_1fr]">
       <WorkspaceHeader scan={scan} task={task} canCompare={comparison !== null} onTask={switchTask} />
       <section className="relative min-h-0 touch-none overflow-hidden lg:rounded-tr-2xl" aria-label="Shop model">
@@ -247,7 +257,7 @@ export function Workspace({ scan, scene, exported, assessment, previous, glbUrl 
           task={task}
           scene={scene}
           onTryLayout={tryLayout}
-          checked={assessment !== null}
+          assessment={assessment}
           scan={scan}
           findings={findings}
           selected={selected}
@@ -259,5 +269,6 @@ export function Workspace({ scan, scene, exported, assessment, previous, glbUrl 
         />
       </aside>
     </div>
+    </>
   );
 }

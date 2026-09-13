@@ -146,7 +146,7 @@ def _finalize(database: Database, store: ArtifactStore, scan_id: uuid.UUID) -> t
     with database.transaction() as connection:
         scan = _scan_or_404(connection, scan_id)
         if scan.state == "failed":
-            repo.retry_failed_processing(connection, scan_id)
+            repo.retry_failed_jobs(connection, scan_id)
             return repo.get_scan(connection, scan_id), True
         if scan.state != "uploading":
             return scan, False

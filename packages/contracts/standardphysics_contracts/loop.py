@@ -58,6 +58,8 @@ class Assessment(BaseModel):
     findings: list[Finding]
     decision: Decision | None = None
     weave_run_url: str | None = None
+    rules_checked: int | None = None
+    """How many rules a person had verified when this ran. Zero means nothing was checked."""
 
     @property
     def problems(self) -> list[Finding]:
