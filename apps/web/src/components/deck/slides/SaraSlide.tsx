@@ -133,7 +133,9 @@ const phases: Phase[] = ["meet", "sued", "damages", "others"];
 
 const lawsuitCount = facts.adaLawsuitsFiled2025.value;
 const SARAS_SHOP = 1;
-const FIELD = { collapseSeconds: 0.8, fillDelay: 0.55, fillSeconds: 2, flightSeconds: 3.8 };
+const FIELD = { collapseSeconds: 1.2, handoffSeconds: 0.4, fillDelay: 1.5, fillSeconds: 2.4, flightSeconds: 3.8 };
+/** One ease for the shop shrinking and the dot growing, so the handoff between them reads as a single motion. */
+const easeShrink = [0.65, 0, 0.35, 1] as const;
 const SHOP_IN_FIELD: FieldOrigin = { x: 0.5, y: 0.86 };
 
 const crushedDocumentY = documentOffset(1 - CRUSH.squash * (1 - ROOF_TOP));
@@ -244,8 +246,8 @@ function SaraShopScene({ phase }: { phase: Phase }) {
   return (
     <motion.div
       initial={false}
-      animate={zoomedOut ? { scale: 0.03, opacity: 0 } : { scale: 1, opacity: 1 }}
-      transition={zoomedOut ? { scale: { duration: FIELD.collapseSeconds, ease: "easeIn" }, opacity: { duration: 0.25, delay: FIELD.collapseSeconds - 0.2 } } : { duration: 0.5 }}
+      animate={zoomedOut ? { scale: 0.08, opacity: 0 } : { scale: 1, opacity: 1 }}
+      transition={zoomedOut ? { scale: { duration: FIELD.collapseSeconds, ease: easeShrink }, opacity: { duration: FIELD.handoffSeconds, delay: FIELD.collapseSeconds - FIELD.handoffSeconds / 2 } } : { duration: 0.5 }}
       style={{ originX: SHOP_IN_FIELD.x, originY: SHOP_IN_FIELD.y }}
       className="absolute inset-0 flex justify-center"
     >
@@ -288,7 +290,7 @@ function useLanding(active: boolean) {
   const [landed, setLanded] = useState(false);
   useEffect(() => {
     if (!active) return;
-    const timer = window.setTimeout(() => setLanded(true), (FIELD.collapseSeconds + FIELD.flightSeconds) * 1000);
+    const timer = window.setTimeout(() => setLanded(true), (FIELD.collapseSeconds - FIELD.handoffSeconds + FIELD.flightSeconds) * 1000);
     return () => {
       window.clearTimeout(timer);
       setLanded(false);
@@ -300,12 +302,12 @@ function useLanding(active: boolean) {
 function FlyingDot({ landing }: { landing: FieldOrigin }) {
   const progress = useMotionValue(0);
   useEffect(() => {
-    const controls = animate(progress, 1, { duration: FIELD.flightSeconds, delay: FIELD.collapseSeconds - 0.15, ease: [0.45, 0, 0.55, 1] });
+    const controls = animate(progress, 1, { duration: FIELD.flightSeconds, delay: FIELD.collapseSeconds - FIELD.handoffSeconds, ease: [0.45, 0, 0.55, 1] });
     return () => controls.stop();
   }, [progress]);
   const left = useTransform(progress, (value) => `${flightPoint(value, landing).x * 100}%`);
   const top = useTransform(progress, (value) => `${flightPoint(value, landing).y * 100}%`);
-  const scale = useTransform(progress, [0, 0.12, 0.85, 1], [0, FLIGHT.popScale, FLIGHT.popScale, 1]);
+  const scale = useTransform(progress, [0, 0.05, 0.85, 1], [0, FLIGHT.popScale, FLIGHT.popScale, 1]);
   return <motion.span aria-hidden style={{ left, top, scale }} className="flying-dot absolute z-30 rounded-full bg-tape" />;
 }
 
@@ -329,7 +331,7 @@ export function SaraSlide({ step }: SlideProps) {
         <motion.div
           initial={false}
           animate={{ opacity: phase === "others" ? 1 : 0 }}
-          transition={{ duration: 0.4, delay: phase === "others" ? FIELD.collapseSeconds - 0.3 : 0 }}
+          transition={{ duration: 0.6, delay: phase === "others" ? FIELD.collapseSeconds : 0 }}
           className="absolute inset-0"
         >
           <DotField count={lawsuitCount + SARAS_SHOP} progress={fill} origin={SHOP_IN_FIELD} showHighlight={landed} onHighlightPlaced={placeLanding} />
