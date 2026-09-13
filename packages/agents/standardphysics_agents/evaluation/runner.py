@@ -29,12 +29,17 @@ from .dataset import Case, dataset
 from .gate import accepts
 from .scorers import LOWER_IS_BETTER, SCORERS, CaseOutcome
 
-FIX_CANDIDATE_LIMIT = 8
+FIX_CANDIDATE_LIMIT = 16
 """A shorter ladder for the dataset than for a real shop.
 
-Thirty cases times a full ladder is minutes of measuring. Eight candidates is
-enough to tell whether a rearrangement exists at all, which is what the scorer
-asks.
+Thirty cases times a full ladder is minutes of measuring, and the scorer only
+asks whether a rearrangement exists at all. Eight was a guess, and it was too
+short: at a 20 mm occupancy grid the dataset resolves 0.444 of the fixes it
+should at eight candidates and 0.778 at sixteen, and at 30 mm it goes from
+0.889 to 1.000. Sixteen is where that stops moving, and twenty-four measures
+the same candidates as sixteen everywhere. At the 25 mm the pipeline ships,
+every fix is found in the first four, which is why a grid that only looked at
+25 mm and either side of it read the ladder as doing nothing.
 """
 
 

@@ -7,18 +7,21 @@ grid it will draw the heat map over two axes or the parallel coordinates over
 all of them, and say which knob moved which metric. So the same cases and the
 same scorers are logged both ways, and neither one re-implements a score.
 
-The grid varies two knobs, both of which trade work against accuracy.
-`cell_size` is how coarse the occupancy grid is that every width and clearance
-is measured on: halving it quarters the cells and multiplies the measuring,
-and coarsening it eventually moves a measurement across a threshold and changes
-what the checks report. `fix_candidates` is how deep the fix agent's ladder
-goes before it gives up.
+The grid sweeps `cell_size`, the occupancy grid that every width and clearance
+is measured on. Halving it quarters the cells and multiplies the measuring, and
+coarsening it moves a measurement across a threshold and changes what the checks
+report. One control run holds the cell size and swaps Lane B's pipeline for the
+fixtures' stand-in, which says how much of the score rests on measuring the room
+rather than on the rules.
 
-The question the grid is built to answer: every accuracy scorer sits at 1.000
-on this dataset at the shipped settings, so the thing worth knowing is how much
-of that work is load-bearing. The cheapest configuration that keeps every score
-is a faster loop for the same answer, and the first configuration that loses a
-score says where the margin actually is.
+The second axis is `fix_candidates`, how deep the fix agent's ladder goes
+before it gives up. ARIA read an earlier grid and found that axis inert: 21 of
+23 metrics identical across 4, 8 and 16 candidates, and the two that moved were
+wall clocks at p = 0.88 and p = 0.74. It was right about the runs it had. The
+run it proposed next is what overturned it — the three cell sizes in that grid
+all happened to find every fix in the first four rungs, and at 20 mm and 30 mm
+the ladder decides whether a third of the fixes are found at all. The axis
+values were the unlucky part, not the axis. See `docs/aria_responses.md`.
 
 The local JSON is the authoritative record here, as it is for a single run:
 the grid runs and saves with no account, and W&B gets the same numbers when a
@@ -56,14 +59,20 @@ JOB_TYPE = "evaluation"
 TAGS = ("shop-review", "evaluation", "aria")
 
 GRID_AXES: dict[str, tuple[Any, ...]] = {
-    "cell_size": (0.015, 0.025, 0.05),
-    "fix_candidates": (4, 8, 16),
+    "cell_size": (0.02, 0.025, 0.03, 0.035, 0.04),
+    "fix_candidates": (4, 16),
 }
 """Two axes, so the grid is the shape ARIA draws as a heat map.
 
-The middle cell size is what the pipeline ships. Fifty millimetres is two
-inches, which is coarse enough that a width can land on the wrong side of a
-36-inch threshold, so the row is there to show where that starts."""
+The cell sizes step 5 mm either side of the 25 mm the pipeline ships. ARIA
+proposed 35 mm as the next run, reasoning that 25 mm scored 1.000 and 50 mm was
+four times faster for 0.965, so the boundary between them was unexplored. What
+the sweep found is that there is no boundary to bracket: the scores flicker
+with the resolution rather than falling off past a point.
+
+The ladder is 4 against 16 because those are the two values whose outcomes
+differ. Eight measures more candidates than four and scores the same as it
+everywhere, so it would cost a run and say nothing."""
 
 NOTES = (
     "One configuration of the shop review, scored against the labelled cases. "
@@ -182,7 +191,16 @@ def grid(**axes: tuple[Any, ...]) -> list[Setup]:
     ]
 
 
-DEFAULT_GRID = tuple(grid(**GRID_AXES))
+CONTROL = setup(measurements="stub")
+"""The rules scored against the fixtures' simplified measurements.
+
+`FixtureMeasurements` merges axis-aligned boxes along a straight leg, which is
+right for the shipped shop and wrong for cases that move the geometry, so this
+is a control rather than a rival: reading it against the sweep says how much of
+the score is the measurement. It ignores cell size, so it is one run and not a
+second axis."""
+
+DEFAULT_GRID = (*grid(**GRID_AXES), CONTROL)
 
 
 def run_experiment(

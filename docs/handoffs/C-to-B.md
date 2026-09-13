@@ -145,3 +145,20 @@ grid, and the four other cell sizes are false positives. Either way the demo
 runs one cell size and the answer should not depend on which one.
 
 We have not touched the threshold or the labels. Both are a person's call.
+
+### ARIA reached the same two cases from the tables
+
+We put the grid in W&B and asked ARIA which check accounted for the precision
+drop. It isolated the same two cases from the per-case tables without being
+pointed at them, and added a number we had missed: at 50 mm cells
+`router_action_match` falls to 0.9744 as well. A coarser grid does not only add
+a finding, it changes what the router decides to do next.
+
+Running the cell sizes between the ones we had first sharpens the question. At
+20 mm, six cases pick up a spurious `turn_clear_width` rather than two. At
+40 mm, `finding_recall` drops to 0.9375 — the check now misses a real finding
+instead of inventing one. The full set is in `docs/aria_responses.md`.
+
+So the answer we need from you has not changed, and it matters more than it did:
+whether those shops contain a 180 degree turn. The check is wrong in both
+directions depending on the resolution it is handed.

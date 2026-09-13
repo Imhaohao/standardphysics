@@ -107,27 +107,33 @@ A W&B automation can send one of these on its own: point it at a run finishing
 in this project and ARIA starts the conversation. That needs the same account
 access as the rest.
 
-## What the grid says already
+## What the grid says
 
-Nine runs of the grid on disk, 39 cases each, rules scored as verified, on
-an M2 Pro. These were run without an account, so they are in
-`runs/experiments.json` rather than in W&B.
+Eleven runs, 39 cases each, rules scored as verified, on an M2 Pro. Every score
+not shown is 1.000.
 
-| Cell size | Weakest score | Measurements | Seconds |
-|---|---|---|---|
-| 15 mm | 0.9653 `finding_precision` | 4,878 | 51.7 |
-| 25 mm | 1.0000 | 4,732 | 16.8 |
-| 50 mm | 0.9653 `finding_precision` | 4,345 | 4.0 |
+| Cell size | Ladder | Weakest score | Measurements | Seconds |
+|---|---|---|---|---|
+| 20 mm | 4 | 0.4444 `fix_resolves_finding` | 5,233 | 30.0 |
+| 20 mm | 16 | 0.7778 `fix_resolves_finding` | 6,234 | 35.1 |
+| 25 mm | 4 | 1.0000 | 4,732 | 16.9 |
+| 25 mm | 16 | 1.0000 | 4,732 | 16.9 |
+| 30 mm | 4 | 0.8889 `fix_resolves_finding` | 4,842 | 12.3 |
+| 30 mm | 16 | 0.9861 `finding_precision` | 5,203 | 13.4 |
+| 35 mm | 4 | 0.8889 `fix_resolves_finding` | 4,803 | 7.8 |
+| 35 mm | 16 | 0.8889 `fix_resolves_finding` | 5,556 | 9.6 |
+| 40 mm | 4 | 0.8889 `fix_resolves_finding` | 4,261 | 5.8 |
+| 40 mm | 16 | 0.8889 `fix_resolves_finding` | 4,261 | 5.8 |
+| stub measurements | 4 | 0.3796 `finding_precision` | 1,422 | 0.1 |
 
-Ladder depth sits at 4, 8 and 16 in every row, and every row is identical:
-the same scores, the same 13 candidates measured, the same seconds. The fix
-agent never reaches its fifth candidate on this dataset, so the depth beyond
-four is not doing anything the evaluation can see.
+The shipped 25 mm is the only cell size that holds every score, and it is not a
+plateau: 20 mm and 30 mm both lose findings, 35 mm holds precision and recall
+but not the fixes, 40 mm holds precision and loses recall. Scores flicker with
+the resolution rather than falling off past a point.
 
-The cell size row is the one to look at. 25 mm scores 1.0000 and both
-neighbours drop to 0.9653, which is the same two cases in both directions:
-`lawsuit_counter` and `door_clearance_blocked` report a `turn_clear_width`
-problem the labels do not expect. Reading the measurement behind it:
+Behind the precision column is one check on two cases. `lawsuit_counter` and
+`door_clearance_blocked` report a `turn_clear_width` problem the labels do not
+expect, at every cell size except 25 mm. The measurement behind it:
 
 | Cell size | `lawsuit_counter` | `door_clearance_blocked` |
 |---|---|---|
@@ -138,18 +144,58 @@ problem the labels do not expect. Reading the measurement behind it:
 | 50 mm | 33.6 in | 43.3 in |
 
 403.5.2 asks for 48 inches at the turn, so every number there is a shortfall.
-The shipped cell size is the only one of the five that finds no 180 degree turn
-on these two shops at all. That points at turn detection rather than at the
-threshold: the turn is recognised from the path the widest-path search returns,
-and that path changes with the grid. Lane C's `needs_human` already carries the
-approximation this rests on — geometric turn detection at about 122 degrees.
+The widths themselves are steady to a thousandth of an inch across that range,
+so what moves is whether a turn is detected at all: the turn is recognised from
+the path the widest-path search returns, and that path is laid out on the grid.
+Lane C's `needs_human` already carries the approximation this rests on —
+geometric turn detection at about 122 degrees.
 
 Two things follow, and neither is an agent's to decide. Whether those two shops
 contain a 180 degree turn is a question for Lane B and the person holding the
 rule pack. Whether the labels or the check are right decides which one changes.
+It is written up in [`handoffs/C-to-B.md`](handoffs/C-to-B.md).
 
-## The improvement we ship
+## The improvement we shipped
 
-The prize asks for one improvement ARIA found, shipped. Fill this in from the
-ARIA session with the question that produced it, the change, the commit, and the
-grid before and after.
+ARIA read the first grid — three cell sizes crossed with three ladder depths —
+and concluded twice that `fix_candidates` does nothing: 21 of 23 metrics
+identical across 4, 8 and 16 candidates at every cell size, and the two that
+moved were wall clocks at p = 0.88 and p = 0.74. It recommended keeping the
+ladder at 4, and added one thing to check: *"verify that this config is actually
+wired into candidate selection; the current evidence makes it look inert, or at
+least non-binding on this dataset."*
+
+It is wired, and a test pins that. What made it look inert is the grid it was
+given. The three cell sizes in it — 15, 25 and 50 mm — all happen to find every
+fix in the first four rungs. ARIA's own proposed next run is what exposed this:
+it asked for 35 mm because the boundary between 25 and 50 was unexplored, and
+running that plus 20, 30 and 40 mm showed the ladder deciding whether a third of
+the fixes are found at all.
+
+| Cell size | `fix_resolves_finding` at 4 | at 8 | at 16 |
+|---|---|---|---|
+| 20 mm | 0.4444 | 0.4444 | 0.7778 |
+| 30 mm | 0.8889 | 0.8889 | 1.0000 |
+
+So two changes, both in `packages/agents`:
+
+**The evaluation's ladder went from 8 to 16.** Eight was a guess written into
+`FIX_CANDIDATE_LIMIT` with a comment saying it was enough. On the cell sizes
+nobody had run it was not: sixteen is where `fix_resolves_finding` stops moving,
+and twenty-four measures the same candidates as sixteen everywhere. At the 25 mm
+the pipeline ships this costs nothing — the same 13 candidates either way.
+
+**The grid's axis values changed rather than the axis.** Cell size now steps
+5 mm either side of 25, and the ladder is 4 against 16, the two values whose
+outcomes differ. Every row in the table above differs from its neighbour, where
+six of the old nine runs were duplicates of the other three.
+
+Two of ARIA's findings we tested and did not ship. Its cheapest-cell-size answer
+of 25 mm stands, but as a coincidence rather than a frontier, so nothing about
+the pipeline's default changed on the strength of it. And `turning_space` being
+71% of all measurement requests does not make it the thing to optimize: each
+call reads a clearance field the provider already built and indexes one cell, so
+taking the duplicated field lookup out of it moved a 39-case run from 16.99 to
+16.95 seconds.
+
+Everything ARIA said is in [`aria_responses.md`](aria_responses.md).

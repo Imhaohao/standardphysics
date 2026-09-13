@@ -121,15 +121,25 @@ class TestTheGrid:
         assert setup(measurements="pipeline").label == "pipeline measurements"
         assert setup(run_fixes=True).label == "defaults"
 
-    def test_the_default_grid_varies_two_knobs(self):
-        assert len(GRID_AXES) == 2
-        assert len(DEFAULT_GRID) == len(GRID_AXES["cell_size"]) * len(
+    def test_the_default_grid_crosses_both_axes(self):
+        assert list(GRID_AXES) == ["cell_size", "fix_candidates"]
+        swept = [s for s in DEFAULT_GRID if s.measurements == "pipeline"]
+        assert len(swept) == len(GRID_AXES["cell_size"]) * len(
             GRID_AXES["fix_candidates"]
         )
+
+    def test_it_carries_one_control_against_the_stub_measurements(self):
+        assert [s.measurements for s in DEFAULT_GRID].count("stub") == 1
 
     def test_no_two_configurations_are_the_same(self):
         fields = [tuple(sorted(s.fields().items())) for s in DEFAULT_GRID]
         assert len(set(fields)) == len(fields)
+
+    def test_the_ladder_spans_where_it_binds(self):
+        """Four against sixteen. The dataset resolves a third fewer fixes at
+        four candidates once the occupancy grid is 20 or 30 mm, which is what
+        made the axis look inert on a grid that only held 15, 25 and 50."""
+        assert set(GRID_AXES["fix_candidates"]) == {4, 16}
 
     def test_the_grid_runs_one_experiment_per_configuration(self):
         run = run_grid(

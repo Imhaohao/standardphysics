@@ -1,6 +1,6 @@
 {
   "lane": "D",
-  "updated": "2026-09-13T09:35:00Z",
+  "updated": "2026-09-13T10:20:00Z",
   "done": [
     "contracts and fixture shop (21bbc65)",
     "Stop.anchor_node_id and WidthResult.needs_measurement (audit A-6, A-9)",
@@ -35,7 +35,8 @@
     "the API server turns Weave on from .env at startup, so an upload through the web app traces itself (eb96dc4)",
     "Fix what I can: the workspace runs Lane C's run_loop and shows each pass, the router's choice and whether the re-measure kept it",
     "ARIA: the evaluation grid is in W&B as one run per configuration, and docs/aria.md says what a run holds, what a person has to turn on, and which questions to ask",
-    "marimo: notebooks/scenario_sweep.py varies the shop's dimensions and the routine through Lane C's run_case, with a sweep chart whose sampled boundary lands on the number the check cites (docs/marimo.md)"
+    "marimo: notebooks/scenario_sweep.py varies the shop's dimensions and the routine through Lane C's run_case, with a sweep chart whose sampled boundary lands on the number the check cites (docs/marimo.md)",
+    "ARIA: nine runs uploaded, six questions asked and answered, one improvement shipped from what it found. docs/aria_responses.md holds its answers and docs/aria.md holds what changed"
   ],
   "in_progress": null,
   "blocked_on": null,
@@ -66,7 +67,6 @@
     "Every key from .env.example in .env on the demo machine; OPENROUTER_API_KEY is blocking Lane B",
     "W&B project created with public visibility settings",
     "Confirm submission deadline and eligibility with organizers",
-    "Keep the demo machine stable and awake, with Blender 5.x installed",
-    "ARIA needs a team project on W&B Multi-tenant Cloud and Smart features turned on by an org admin. Then run cli experiments, ask the questions in docs/aria.md, and write what it found plus the change into that file's last section. That is the prize claim."
+    "Keep the demo machine stable and awake, with Blender 5.x installed"
   ]
 }
