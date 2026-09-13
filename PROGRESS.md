@@ -47,6 +47,7 @@ The audit fixes code only in files no lane agent is actively changing. For lanes
 | `945b8a4` D: drag furniture, see the checks update, and save the layout | D | Pass with notes | A-36, A-37; the drag and turn maths match Lane C's `move_node` |
 | `52ec453` D: the printable report, with who reviewed each rule | D | Pass with notes | A-39 |
 | `d201984` D: record rearrange and the report as ready | D | Pass | Progress file matches the code |
+| `022004d` B: name what sealed a blocked route, and measure runs outside the exemption | B | **Fail** | CI red by design (A-41); A-40; run lengths match the handoff |
 
 `609db3d`, `9028d14`, `b90e570`, `d3f7d95` and `1a06655` change only the plan and lane documents. A-1 covers the lane document errors from `9028d14`.
 
@@ -271,3 +272,13 @@ High. `open`. Lane D.
 Medium. `open`. Lane D.
 
 `report.py` sets `check.verified_by_human = True` on every rule the ledger verifies, and `preview_ledger` records every rule under the reviewer "unverified preview (development only)". Reproduced at `d201984` with the preview ledger: all 17 rules come back with `verified_by_human: true`. The printed table shows the preview reviewer's name, but the contract field says the opposite, and nothing at the top of the printed report marks it as a preview. Setting the flag from whether the reviewer is the preview reviewer, and marking a preview report at the top, would keep the two from disagreeing.
+
+### A-40 A sealed route names a display case that is not sealing it
+Medium. `open`. Lane B.
+
+`what_sealed_the_route` in `022004d` asks, for each object, whether removing its cells reconnects the two sides of the route. The occupancy grid records one owner per cell, so where two objects overlap, removing one frees cells the other still covers. Reproduced at `022004d` with the fixture aisle sealed by stretching `case_east` wall to wall: the route names `case_west` and `case_east`, but taking `case_west` away alone leaves the route blocked, and only `case_east` or a wall reopens it. `case_west` keeps all 2,304 of its cells after the stretch, which is why `_would_open` reports it. The fix agent is then pointed at a case that cannot clear the aisle. Pinned in `tests/test_audit_open_findings.py`: every object named must reopen the route when it alone is removed.
+
+### A-41 CI is red at `022004d` by design: Lane C's labelled case expects the old behaviour
+High. `open`. Lane C label, Lane B change.
+
+`022004d` makes a blocked route name its obstacles, so the router now picks `FIX` for the `blocked_but_movable` case, whose label still expects `ASK_OWNER`. `test_the_router_picks_the_right_action_every_time` fails with a score of 0.96875, 31 of 32 cases, reproduced locally at `022004d`. The commit and `B-to-C.md` say so and leave the one-line label change to Lane C, which respects path ownership, but `master` stays red until Lane C takes it. CI on `022004d` also carries A-38.

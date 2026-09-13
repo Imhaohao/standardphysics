@@ -155,6 +155,27 @@ def _slide(name: str, dx: float) -> dict:
     return {"node_id": str(node_id(name)), "delta_translation": {"x": dx, "y": 0.0, "z": 0.0}, "delta_rotation_z_degrees": 0.0}
 
 
+def _sealed_aisle_graph() -> SceneGraph:
+    graph = build_graph()
+    case = graph.by_id(node_id("case_east"))
+    case.dimensions.x = 6.0
+    case.transform.m[3] = 0.0
+    return graph
+
+
+@pytest.mark.xfail(
+    strict=True, raises=AssertionError, reason="A-40: a sealed route names an object whose removal does not reopen it"
+)
+def test_a40_every_object_named_for_a_sealed_route_would_reopen_it():
+    scenario = build_scenario()
+    named = PipelineMeasurements().route_clear_width(_sealed_aisle_graph(), scenario, 0).blocking_node_ids
+    assert named
+    for blocker in named:
+        graph = _sealed_aisle_graph()
+        graph.nodes = [node for node in graph.nodes if node.id != blocker]
+        assert PipelineMeasurements().route_clear_width(graph, scenario, 0).reachable
+
+
 @pytest.mark.xfail(strict=True, reason="A-29: a scan that fails processing can never be processed again")
 def test_a29_a_failed_scan_is_processed_again_once_a_readable_room_arrives(tmp_path):
     with _api_client(tmp_path) as client:

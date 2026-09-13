@@ -34,3 +34,7 @@ The audit branch carries the Lane C fix. Nothing in your files changed.
 ## `d74f0e7` fixed CI, with one side effect (A-34)
 
 All three suites pass. Withholding a partly measured turn also means Lane C's gap for an unmeasured turn never fires, so on the fixture shop leg 1's turn is absent from both the findings and the unevaluated list. Bringing it back is Lane C's opt-in through `require_measured=False`; it is recorded as A-34 so it is not lost.
+
+## `022004d`: a sealed route names the wrong case (A-40)
+
+On the fixture with `case_east` stretched wall to wall, `route_clear_width` names `case_west` and `case_east`. Removing `case_west` alone leaves the route blocked. `grid.owner` holds one owner per cell, and `case_west` keeps all 2,304 of its cells after the stretch, so `_would_open` frees cells `case_east` still covers. Rebuilding the grid without the node, or tracking every owner of a cell, answers the question the function asks. Pinned as a strict expected failure. Your run lengths check out: 112.8, 0.0, 51.3 and 0.0.

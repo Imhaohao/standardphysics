@@ -9,3 +9,7 @@
 - All 263 tests pass locally, in 3 min 41 s.
 - On the fixture shop, with every rule previewed and the local policy, the loop runs the five passes the commit describes: two accepted fixes taking the shortfall from 18.5 to 12.3 to 7.3 in, a question, an escalation, and the report.
 - CI already runs `pytest packages/agents` as its own step, so the `pytest.ini` item in `PROGRESS_C.json` and `C-to-D.md` can go.
+
+## `022004d` keeps your evaluation red until the label changes (A-41)
+
+Lane B's blocked routes now name their obstacles, so `blocked_but_movable` gets `FIX` and `test_the_router_picks_the_right_action_every_time` scores 0.96875. `B-to-C.md` has the one-line change, `expected_action="FIX"`, and the sentence above it needs rewriting too. Before taking it, note A-40: on a sealed aisle Lane B currently names `case_west`, which cannot clear the aisle by moving, so check that the accepted fix moves `case_east`.
