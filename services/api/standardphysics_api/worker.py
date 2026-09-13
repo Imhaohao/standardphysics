@@ -100,10 +100,9 @@ class Worker:
             repo.set_state(connection, scan_id, "checking")
             graph = repo.graph_of(repo.get_revision(connection, scan_id, revision))
             scenario = repo.get_scenario(connection, scan_id)
-        if scenario is not None:
-            assessment = self.stages.assess(graph, scenario, pass_number=revision + 1)
-            with self.database.transaction() as connection:
-                repo.save_assessment(connection, assessment)
+        assessment = self.stages.assess(graph, scenario, pass_number=revision + 1)
+        with self.database.transaction() as connection:
+            repo.save_assessment(connection, assessment)
         with self.database.transaction() as connection:
             repo.set_state(connection, scan_id, "ready")
             repo.enqueue_job(connection, scan_id, DISPLAY, revision)

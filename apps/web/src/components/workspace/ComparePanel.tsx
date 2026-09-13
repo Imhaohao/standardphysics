@@ -3,6 +3,7 @@
 import { ArrowRight } from "@phosphor-icons/react";
 import { describeMovement, movements } from "@/lib/compare";
 import { groupFindings } from "@/lib/findings";
+import { allClearSentence, type CheckScope } from "@/lib/scan-status";
 import type { Finding, SceneGraph } from "@/types/contracts";
 
 export type Comparison = {
@@ -28,7 +29,7 @@ function outcomeChanges(before: Finding[], after: Finding[]): { cleared: Finding
   };
 }
 
-export function ComparePanel({ comparison, amount, onAmount }: { comparison: Comparison; amount: number; onAmount: (value: number) => void }) {
+export function ComparePanel({ comparison, amount, onAmount, scope }: { comparison: Comparison; amount: number; onAmount: (value: number) => void; scope: CheckScope }) {
   const moved = movements(comparison.before, comparison.after);
   const { cleared, added } = outcomeChanges(comparison.beforeFindings, comparison.afterFindings);
   const allPass = groupFindings(comparison.afterFindings).problems.length === 0;
@@ -58,7 +59,7 @@ export function ComparePanel({ comparison, amount, onAmount }: { comparison: Com
         <dd><Count findings={comparison.afterFindings} /></dd>
       </dl>
 
-      {allPass && <p className="font-semibold text-pass">Every check passes with this layout</p>}
+      {allPass && <p className="font-semibold text-pass">{allClearSentence(scope, "This layout passes everything we checked")}</p>}
 
       {cleared.length > 0 && (
         <section>

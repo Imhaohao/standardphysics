@@ -35,6 +35,7 @@ from . import repository as repo
 from .coverage import parse_coverage
 from .db import Database
 from .errors import ApiProblem
+from .labels import mark_counter, unmark_counter
 from .layout import check_layout, save_layout
 from .simulations import queue_simulation, simulation_status
 from standardphysics_contracts import RebuildRequest, SimulationRequest, SimulationStatus, graph_hash
@@ -101,6 +102,7 @@ def create_app(settings: Settings | None = None, stages: Stages | None = None, r
     _install_layout_routes(app, database, stages, worker)
     _install_route_routes(app, database, worker)
     _install_simulation_routes(app, database, stages, worker)
+    _install_label_routes(app, database, worker)
 
     @app.get("/api/scans/{scan_id}/report", response_model=Report)
     def report(scan_id: uuid.UUID) -> Report:
@@ -285,6 +287,18 @@ def _install_layout_routes(app: FastAPI, database: Database, stages: Stages, wor
     @app.post("/api/scans/{scan_id}/revisions", response_model=SceneGraph, status_code=201)
     def save_revision(scan_id: uuid.UUID, body: SaveLayoutRequest) -> SceneGraph:
         return save_layout(database, worker, scan_id, body)
+
+
+def _install_label_routes(app: FastAPI, database: Database, worker: Worker) -> None:
+    counter_path = "/api/scans/{scan_id}/revisions/{base_revision}/counters/{node_id}"
+
+    @app.put(counter_path, response_model=SceneGraph, status_code=201)
+    def mark_as_counter(scan_id: uuid.UUID, base_revision: int, node_id: uuid.UUID) -> SceneGraph:
+        return mark_counter(database, worker, scan_id, base_revision, node_id)
+
+    @app.delete(counter_path, response_model=SceneGraph, status_code=201)
+    def unmark_as_counter(scan_id: uuid.UUID, base_revision: int, node_id: uuid.UUID) -> SceneGraph:
+        return unmark_counter(database, worker, scan_id, base_revision, node_id)
 
 
 def _install_route_routes(app: FastAPI, database: Database, worker: Worker) -> None:

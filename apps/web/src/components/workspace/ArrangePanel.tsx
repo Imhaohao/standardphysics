@@ -3,12 +3,13 @@
 import { ArrowCounterClockwise, CircleNotch } from "@phosphor-icons/react";
 import { blockedSentence } from "@/lib/blocked-copy";
 import { groupFindings } from "@/lib/findings";
+import { allClearSentence, type CheckScope } from "@/lib/scan-status";
 import type { Finding } from "@/types/contracts";
 import { Button } from "@/components/ui/Button";
 import type { Arrangement } from "./useArrangement";
 import { FindingsList } from "./FindingsList";
 
-function Status({ arrangement, problems }: { arrangement: Arrangement; problems: number }) {
+function Status({ arrangement, problems, scope }: { arrangement: Arrangement; problems: number; scope: CheckScope }) {
   if (arrangement.checking) {
     return (
       <p className="flex items-center gap-2 font-medium" role="status">
@@ -21,7 +22,7 @@ function Status({ arrangement, problems }: { arrangement: Arrangement; problems:
     return <p className="text-ink-muted">Drag a table or case to move it. With a keyboard, press R to turn the one you picked.</p>;
   }
   if (problems === 0 && arrangement.check.blocked.length === 0) {
-    return <p className="font-semibold text-pass" role="status">This layout passes every check</p>;
+    return <p className="font-semibold text-pass" role="status">{allClearSentence(scope, "This layout passes everything we checked")}</p>;
   }
   return (
     <p className="font-semibold" role="status">
@@ -30,14 +31,14 @@ function Status({ arrangement, problems }: { arrangement: Arrangement; problems:
   );
 }
 
-export function ArrangePanel({ arrangement, fallbackFindings }: { arrangement: Arrangement; fallbackFindings: Finding[] }) {
+export function ArrangePanel({ arrangement, fallbackFindings, scope }: { arrangement: Arrangement; fallbackFindings: Finding[]; scope: CheckScope }) {
   const findings = arrangement.check?.findings ?? fallbackFindings;
   const groups = groupFindings(findings);
 
   return (
     <div className="flex flex-col gap-5">
       <div className="px-3">
-        <Status arrangement={arrangement} problems={groups.problems.length} />
+        <Status arrangement={arrangement} problems={groups.problems.length} scope={scope} />
         {arrangement.check?.blocked.map((blocked) => (
           <p key={`${blocked.node_id}-${blocked.reason}`} className="mt-2 flex gap-2 text-problem">
             <span className="mt-2 size-2 shrink-0 rounded-full bg-problem" aria-hidden />

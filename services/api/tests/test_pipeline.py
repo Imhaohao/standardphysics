@@ -86,9 +86,10 @@ def test_display_geometry_falls_back_to_the_graph_when_conversion_fails(client):
     assert metadata.headers["X-Exported-Revision"] == response.headers["X-Exported-Revision"]
 
 
-def test_a_real_scan_without_stops_has_no_assessment_yet(client):
+def test_a_real_scan_without_stops_is_assessed_without_its_route(client):
     scan_id = _upload_real_room(client, "apple_bedroom3")
-    assert client.get(f"/api/scans/{scan_id}/assessment").status_code == 404
+    assert client.get(f"/api/scans/{scan_id}/scenario").status_code == 404
+    assert client.get(f"/api/scans/{scan_id}/assessment").json()["graph_revision"] == 0
 
 
 def test_rebuild_geometry_is_revision_pinned_and_reports_pending_work(client):

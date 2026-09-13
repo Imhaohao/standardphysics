@@ -16,11 +16,18 @@ def _real_scan(client, name: str) -> str:
     return scan_id
 
 
-def test_a_phone_scan_is_ready_but_unchecked_until_it_has_a_route(client):
+def test_a_phone_scan_without_a_route_is_checked_for_everything_but_its_route(client):
+    from standardphysics_agents import load_pack
+    from standardphysics_api.stages import ROUTE_SUBJECTS
+
+    route_rules = {rule.id for rule in load_pack().rules if ROUTE_SUBJECTS.intersection(rule.applies_to)}
     scan_id = _real_scan(client, "ravida")
     assert client.get(f"/api/scans/{scan_id}").json()["state"] == "ready"
     assert client.get(f"/api/scans/{scan_id}/scenario").status_code == 404
-    assert client.get(f"/api/scans/{scan_id}/assessment").status_code == 404
+    assessment = client.get(f"/api/scans/{scan_id}/assessment").json()
+    tier_one_without_route = [rule for rule in load_pack().within_tier(1) if rule.id not in route_rules]
+    assert assessment["rules_checked"] == len(tier_one_without_route)
+    assert not {finding["check_id"] for finding in assessment["findings"]} & route_rules
 
 
 def test_the_suggestion_has_five_stops_on_open_floor(client):
