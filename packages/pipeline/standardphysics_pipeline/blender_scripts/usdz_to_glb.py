@@ -15,6 +15,7 @@ unmapped rather than quietly renamed to something plausible.
 import argparse
 import json
 import plistlib
+import re
 import sys
 
 import bpy
@@ -48,12 +49,28 @@ def load_map(path):
     return {str(key): str(value) for key, value in raw.items()}
 
 
+BLENDER_SUFFIX = re.compile(r"\.\d{3}$")
+
+
+def lookup(mapping, name):
+    """Find a name's element, ignoring Blender's duplicate suffix.
+
+    A real export carries each element twice — once parametric, once as mesh —
+    so the second import of `Chair0` becomes `Chair0.001`. That suffix is
+    Blender disambiguating, not part of the USD name, and the mapping file
+    knows nothing about it. On a phone scan it cost half the identities.
+    """
+    if name in mapping:
+        return mapping[name]
+    return mapping.get(BLENDER_SUFFIX.sub("", name))
+
+
 def rename_through(mapping):
     """Rename in two passes so a target name colliding with a not-yet-renamed
     object cannot make Blender append .001 and lose the identity."""
     staged = []
     for obj in list(bpy.data.objects):
-        target = mapping.get(obj.name)
+        target = lookup(mapping, obj.name)
         if target:
             obj.name = "__staged__%d" % len(staged)
             staged.append((obj, target))

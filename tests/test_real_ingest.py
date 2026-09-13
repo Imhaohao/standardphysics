@@ -125,3 +125,45 @@ def test_a_real_usdz_converts_with_every_mesh_identified(tmp_path, name):
     )
     assert result.fully_identified
     assert result.renamed == result.meshes
+
+
+PHONE = pathlib.Path(__file__).parent.parent / "datasets/phone"
+PHONE_SCANS = ["test1", "ravida"]
+
+
+def phone_missing(name: str) -> bool:
+    return not (PHONE / name / "room.json").exists()
+
+
+@pytest.mark.parametrize("name", PHONE_SCANS)
+def test_a_scan_off_our_own_phone_parses(name):
+    if phone_missing(name):
+        pytest.skip(f"{name} not present")
+    assert parse_room_json(json.loads((PHONE / name / "room.json").read_text())).nodes
+
+
+@pytest.mark.parametrize("name", PHONE_SCANS)
+def test_a_phone_scan_stands_on_its_floor(name):
+    if phone_missing(name):
+        pytest.skip(f"{name} not present")
+    graph = parse_room_json(json.loads((PHONE / name / "room.json").read_text()))
+    floor = next(node for node in graph.nodes if node.kind == "floor")
+    assert floor.transform.position.z == pytest.approx(0.0, abs=1e-6)
+
+
+@pytest.mark.skipif(blender_missing(), reason="Blender not installed")
+@pytest.mark.parametrize("name", PHONE_SCANS)
+def test_a_phone_usdz_keeps_every_mesh_identified(tmp_path, name):
+    """A real export carries each element twice, parametric and mesh, so the
+    second import of Chair0 arrives as Chair0.001. That suffix is Blender
+    disambiguating rather than part of the USD name, and taking it literally
+    lost half the identities on the first phone scan."""
+    if phone_missing(name):
+        pytest.skip(f"{name} not present")
+    result = usdz_to_glb(
+        PHONE / name / "room.usdz",
+        tmp_path / f"{name}.glb",
+        PHONE / name / "room.metadata.plist",
+    )
+    assert result.fully_identified
+    assert result.renamed == result.meshes
