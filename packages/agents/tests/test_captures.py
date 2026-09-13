@@ -12,6 +12,7 @@ from dataclasses import replace
 import pytest
 from standardphysics_agents.evaluation import captures as c
 from standardphysics_agents.evaluation.configuration import setup
+from standardphysics_agents.fix.constraints import _in_swing, door_keep_clear
 from standardphysics_contracts import to_meters
 
 SAMPLE = "apple_livingroom"
@@ -132,9 +133,21 @@ class TestRearranging:
     def test_pushing_a_sofa_into_something_is_not(self, aim):
         """The constraint set that guards a proposal answers here too, so an
         impossible layout is not reported as a measurement."""
-        breaches = c.refused(replace(aim, moved="Sofa 2", shift_y=to_meters(24.0)))
-        assert breaches
-        assert all(isinstance(each, str) and each for each in breaches)
+        breaches = [
+            c.refused(replace(aim, moved="Sofa 2", shift_x=to_meters(inches)))
+            for inches in (6.0, 12.0, 18.0, 24.0)
+        ]
+        assert any(breaches)
+        assert all(each for found in breaches for each in found)
+
+    def test_an_overlap_the_scan_already_had_is_not_blamed_on_the_nudge(self, aim):
+        """This door is 3.67 m wide, so its keep-clear square covers most of
+        the room and Sofa 2 stands in it already. A rearrangement is judged on
+        what it changes, not on what the scan walked in with."""
+        door = next(node for node in c.load(aim.capture).nodes if node.kind == "door")
+        sofa = c.movable(c.load(aim.capture))["Sofa 2"]
+        assert _in_swing(sofa, door_keep_clear(door), 0.0)
+        assert c.refused(replace(aim, moved="Sofa 2", shift_y=to_meters(24.0))) == []
 
     def test_a_sweep_needs_a_piece_to_move(self, aim):
         with pytest.raises(ValueError):

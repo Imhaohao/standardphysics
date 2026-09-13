@@ -81,9 +81,18 @@ class TestWhatTheNotebookRestsOn:
         )
 
     def test_every_knob_has_a_name_and_a_range(self, ran):
-        for knob, (name, lowest, highest, step) in ran["KNOBS"].items():
-            assert knob in ran["scenarios"].PINS
+        for _, (name, lowest, highest, step) in ran["KNOBS"].items():
             assert name and lowest < highest and step > 0
+
+    def test_a_knob_that_answers_no_check_cites_nothing(self, ran):
+        """The doorway slider sets the opening in the wall, and 404.2.3 is
+        about the clear width with the door open. `PINS` leaves it out, so the
+        sweep draws no reference line rather than raising on the lookup."""
+        unpinned = [
+            knob for knob in ran["KNOBS"] if knob not in ran["scenarios"].PINS
+        ]
+        assert unpinned == ["door_inches"]
+        assert all(ran["cited_inches"](knob) is None for knob in unpinned)
 
 
 SWEPT_AXIS = "shift_y"

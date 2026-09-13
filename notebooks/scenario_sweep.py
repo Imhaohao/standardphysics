@@ -561,9 +561,14 @@ def _(
         walking in from the street makes the doorway the pinch, so crossing
         403.5.1's 36 in on an aisle axis would change nothing and the line
         would be pointing at the wrong dimension.
+
+        A knob can also answer no check at all. The doorway slider sets the
+        opening in the wall, and 404.2.3 is about the clear width with the
+        door open, which is always smaller, so `PINS` leaves it out and there
+        is no cited number to draw.
         """
-        pinned = scenarios.PINS[knob]
-        if pinned not in scenarios.expected_inches(knobs):
+        pinned = scenarios.PINS.get(knob)
+        if pinned is None or pinned not in scenarios.expected_inches(knobs):
             return None
         for _, outcome in sweep:
             for finding in outcome.result.findings:
