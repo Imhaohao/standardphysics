@@ -11,6 +11,8 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from itertools import pairwise
+from typing import Literal
+from uuid import UUID
 
 import numpy as np
 from standardphysics_contracts import (
@@ -42,6 +44,7 @@ CASHIER_TERMS = frozenset(
 )
 STAIR_TERMS = frozenset({"stair", "stairs", "step", "steps", "curb", "threshold"})
 RAMP_TERMS = frozenset({"ramp", "slope", "incline"})
+CUSTOMER_ROUTE_KINDS = frozenset({"door", "opening", "object"})
 
 
 @dataclass(frozen=True)
@@ -309,20 +312,30 @@ def _environment_routes(
     cashiers = _nodes(graph, CASHIER_TERMS, kinds={"object"})
     exits = _with_scenario_anchors(graph, scenario, exits, {"exit", "entrance", "way out"})
     cashiers = _with_scenario_anchors(graph, scenario, cashiers, {"cashier", "counter", "register"})
-    pairs: list[tuple[str, SceneNode, SceneNode]] = [
-        ("evacuation", origin, destination)
-        for origin in [*seats, *cashiers]
-        for destination in exits
-        if origin.id != destination.id
-    ]
-    pairs.extend(
-        ("seat_to_cashier", seat, cashier)
-        for seat in seats
-        for cashier in cashiers
-        if seat.id != cashier.id
-    )
-    if len(pairs) > MAX_ROUTE_PAIRS:
+    targets = _customer_route_nodes(graph, scenario)
+    exit_ids = {node.id for node in exits}
+    seat_ids = {node.id for node in seats}
+    cashier_ids = {node.id for node in cashiers}
+    route_pair_count = len(targets) * (len(targets) - 1)
+    if route_pair_count > MAX_ROUTE_PAIRS:
         raise ValueError(f"environment route pair count exceeds {MAX_ROUTE_PAIRS}")
+
+    pairs = (
+        (
+            _route_purpose(
+                origin.id,
+                destination.id,
+                exit_ids=exit_ids,
+                seat_ids=seat_ids,
+                cashier_ids=cashier_ids,
+            ),
+            origin,
+            destination,
+        )
+        for origin in targets
+        for destination in targets
+        if origin.id != destination.id
+    )
 
     routes = []
     turning_observations = []
@@ -365,6 +378,39 @@ def _environment_routes(
             )
     counts = {"exits": len(exits), "seats": len(seats), "cashiers": len(cashiers)}
     return routes, counts, turning_observations[:MAX_LEVEL_CHANGE_OBSERVATIONS]
+
+
+def _route_purpose(
+    origin_id: UUID,
+    destination_id: UUID,
+    *,
+    exit_ids: set[UUID],
+    seat_ids: set[UUID],
+    cashier_ids: set[UUID],
+) -> Literal["customer_access", "evacuation", "seat_to_cashier"]:
+    if destination_id in exit_ids and (
+        origin_id in seat_ids or origin_id in cashier_ids
+    ):
+        return "evacuation"
+    if origin_id in seat_ids and destination_id in cashier_ids:
+        return "seat_to_cashier"
+    return "customer_access"
+
+
+def _customer_route_nodes(
+    graph: SceneGraph, scenario: Scenario
+) -> list[SceneNode]:
+    """Every scanned destination plus anything the owner explicitly anchored."""
+    anchored_ids = {
+        stop.anchor_node_id
+        for stop in scenario.stops
+        if stop.anchor_node_id is not None
+    }
+    return [
+        node
+        for node in graph.nodes
+        if node.kind in CUSTOMER_ROUTE_KINDS or node.id in anchored_ids
+    ]
 
 
 def _nodes(graph: SceneGraph, terms: frozenset[str], *, kinds: set[str]) -> list[SceneNode]:

@@ -50,6 +50,7 @@ COUNTER_CLEAR_WIDTH = to_meters(48.0)
 COUNTER_CLEAR_DEPTH = to_meters(30.0)
 """ADA 2010 305.3 clear floor space, laid out for a parallel approach with the
 48 in side running along the counter."""
+MAX_CACHED_ROUTE_PATHS = 5_000
 
 
 def _signature(graph: SceneGraph) -> tuple:
@@ -116,7 +117,7 @@ class PipelineMeasurements:
         key = (_signature(graph), start, goal)
         if key not in self._paths:
             self._paths[key] = widest_path(grid, clearance, start, goal)
-            if len(self._paths) > 256:
+            if len(self._paths) > MAX_CACHED_ROUTE_PATHS:
                 self._paths.popitem(last=False)
         self._paths.move_to_end(key)
         return self._paths[key]

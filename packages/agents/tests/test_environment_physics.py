@@ -77,6 +77,51 @@ def test_one_inch_riser_slope_roll_tip_and_environment_routes_are_screened():
     assert result.exits_found >= 1
 
 
+def test_every_customer_destination_is_screened_from_every_other_destination():
+    graph = build_graph()
+    sofa = graph.by_id(node_id("table_1")).model_copy(
+        update={"id": uuid4(), "label": "Sofa", "raw_category": "sofa"}
+    )
+    computer = graph.by_id(node_id("table_2")).model_copy(
+        update={"id": uuid4(), "label": "Computer", "raw_category": "computer"}
+    )
+    graph = graph.model_copy(update={"nodes": [*graph.nodes, sofa, computer]})
+
+    result = analyze_environment_physics(
+        graph, build_scenario(), FixtureMeasurements()
+    )
+
+    customer_target_ids = {
+        node.id
+        for node in graph.nodes
+        if node.kind in {"door", "opening", "object"}
+    } | {
+        stop.anchor_node_id
+        for stop in build_scenario().stops
+        if stop.anchor_node_id is not None
+    }
+    expected_pairs = {
+        (origin_id, destination_id)
+        for origin_id in customer_target_ids
+        for destination_id in customer_target_ids
+        if origin_id != destination_id
+    }
+    actual_pairs = {
+        (route.origin_node_id, route.destination_node_id)
+        for route in result.routes
+    }
+    purposes = {
+        (route.origin_node_id, route.destination_node_id): route.purpose
+        for route in result.routes
+    }
+
+    assert actual_pairs == expected_pairs
+    assert purposes[(node_id("chair_1"), node_id("door_front"))] == "evacuation"
+    assert purposes[(node_id("counter"), node_id("door_front"))] == "evacuation"
+    assert purposes[(node_id("chair_1"), node_id("counter"))] == "seat_to_cashier"
+    assert purposes[(node_id("table_1"), node_id("door_front"))] == "customer_access"
+
+
 def test_missing_lidar_floor_reference_degrades_to_a_limitation():
     mesh = _mesh(((0, 0, 0), (1, 0, 0), (0, 1, 0))).model_copy(
         update={"floorY": None}

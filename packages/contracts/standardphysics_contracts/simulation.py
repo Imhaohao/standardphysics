@@ -64,7 +64,7 @@ class PhysicsObservation(BaseModel):
 class PhysicsRoute(BaseModel):
     model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
 
-    purpose: Literal["evacuation", "seat_to_cashier"]
+    purpose: Literal["customer_access", "evacuation", "seat_to_cashier"]
     origin_node_id: UUID
     destination_node_id: UUID
     reachable: bool

@@ -7,7 +7,7 @@ checks are measuring something other than what they think.
 
 import pytest
 
-from standardphysics_contracts import Mat4, SceneGraph, SceneNode, Vec3, to_inches, to_meters
+from standardphysics_contracts import Mat4, Scenario, SceneGraph, SceneNode, Stop, Vec3, to_inches, to_meters
 from standardphysics_fixtures import (
     FIX_SHIFT_INCHES,
     PINCH_INCHES,
@@ -339,3 +339,41 @@ def test_repeated_measurements_reuse_paths_but_moves_invalidate_them(shop, monke
     assert len(calls) == 2
     assert measure.route_clear_width(graph, scenario, 1) == before
     assert len(calls) == 2
+
+
+def test_exhaustive_customer_route_matrix_stays_in_the_path_cache(shop, monkeypatch):
+    import standardphysics_pipeline.measure as module
+    from standardphysics_pipeline.routes import PathResult
+
+    graph, _, _ = shop
+    calls = []
+
+    def counted(grid, clearance, start, goal):
+        calls.append((start, goal))
+        return PathResult(1.0, start, [start, goal], reachable=True)
+
+    monkeypatch.setattr(module, "widest_path", counted)
+    measure = module.PipelineMeasurements()
+    scenarios = [
+        Scenario(
+            name=f"route {index}",
+            stops=[
+                Stop(name="Door", position=Vec3(x=0.0, y=-3.7, z=0.0)),
+                Stop(
+                    name=f"Furniture {index}",
+                    position=Vec3(
+                        x=-2.8 + (index % 17) * 0.35,
+                        y=-3.2 + (index // 17) * 0.4,
+                        z=0.0,
+                    ),
+                ),
+            ],
+        )
+        for index in range(257)
+    ]
+
+    for scenario in scenarios:
+        measure.route_clear_width(graph, scenario, 0)
+    measure.route_clear_width(graph, scenarios[0], 0)
+
+    assert len(calls) == len(scenarios)

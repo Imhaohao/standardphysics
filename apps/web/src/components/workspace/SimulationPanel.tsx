@@ -94,7 +94,7 @@ function PhysicsResults({ result, labels }: { result: NonNullable<SimulationStat
     <summary className="cursor-pointer font-medium">Wheelchair physics and environment routes</summary>
     <div className="mt-3 space-y-2 text-sm">
       <p className="text-ink-muted">One-inch analysis; {physics.mesh_triangles_checked.toLocaleString()} mesh triangles, {physics.surface_samples.toLocaleString()} low-surface samples, {physics.seats_found} seats, {physics.cashiers_found} service points, and {physics.exits_found} exits.</p>
-      <p className="text-ink-muted">{physics.routes.length} evacuation or seat-to-cashier routes screened; {blockedRoutes.length} were unreachable.</p>
+      <p className="text-ink-muted">{physics.routes.length} customer routes screened between every door, opening, and piece of furniture; {blockedRoutes.length} were unreachable.</p>
       {barriers.length > 0 && <ul className="space-y-2">{barriers.map((item, index) => {
         const nodes = item.node_ids.map((id) => labels.get(id) ?? id);
         const value = item.measured_value === null ? "" : `: ${item.measured_value.toFixed(2)} ${item.unit ?? ""}`;

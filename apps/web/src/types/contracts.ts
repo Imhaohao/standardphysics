@@ -296,7 +296,7 @@ export interface PhysicsRoute {
   destination_node_id: string;
   distance_inches: number | null;
   origin_node_id: string;
-  purpose: "evacuation" | "seat_to_cashier";
+  purpose: "customer_access" | "evacuation" | "seat_to_cashier";
   reachable: boolean;
 }
 /**
