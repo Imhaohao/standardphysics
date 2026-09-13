@@ -103,6 +103,12 @@ class Transport(Protocol):
     def post(self, url: str, body: bytes, headers: dict[str, str]) -> bytes: ...
 
 
+class Guidance(Protocol):
+    """Lessons learned by the outer loop, for one kind of room at a time."""
+
+    def for_room(self, room_kind: str) -> list[str]: ...
+
+
 class UrllibTransport:
     """The standard library, so no lane inherits an HTTP dependency."""
 
@@ -191,6 +197,7 @@ class TypeSafeRouter:
         model: str | None = None,
         transport: Transport | None = None,
         budget: TypeSafeCallBudget | None = None,
+        playbook: Guidance | None = None,
     ) -> None:
         self.api_key = api_key or os.environ.get(API_KEY_ENV)
         self.base_url = (
@@ -200,6 +207,7 @@ class TypeSafeRouter:
         self.model = model or os.environ.get(MODEL_ENV) or DEFAULT_MODEL
         self.transport = transport or UrllibTransport()
         self.budget = budget
+        self.playbook = playbook
 
     @property
     def configured(self) -> bool:
@@ -212,11 +220,19 @@ class TypeSafeRouter:
             "questions": {
                 "action": {
                     "type": "choice",
-                    "instructions": INSTRUCTION,
+                    "instructions": self.instructions(state),
                     "criteria": ACTION_CRITERIA,
                 }
             },
         }
+
+    def instructions(self, state: RouterState) -> str:
+        """The fixed instruction, then any lessons the outer loop kept for this kind of room."""
+        lessons = self.playbook.for_room(state.room_kind) if self.playbook is not None else []
+        if not lessons:
+            return INSTRUCTION
+        numbered = " ".join(f"({index}) {text}" for index, text in enumerate(lessons, start=1))
+        return f"{INSTRUCTION} Lessons kept from earlier evaluated runs: {numbered}"
 
     @traced("router.typesafe")
     def decide(self, state: RouterState) -> Decision | Rejected:

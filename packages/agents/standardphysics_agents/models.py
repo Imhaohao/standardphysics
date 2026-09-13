@@ -86,9 +86,20 @@ class OpenRouter:
 
     @traced("model.openrouter")
     def structured(
-        self, instruction: str, payload: dict, schema: dict, schema_name: str
+        self,
+        instruction: str,
+        payload: dict,
+        schema: dict,
+        schema_name: str,
+        *,
+        max_tokens: int | None = None,
     ) -> ModelAnswer | Rejected:
-        """One call, one JSON object shaped by `schema`."""
+        """One call, one JSON object shaped by `schema`.
+
+        `max_tokens` caps the answer. Without it OpenRouter reserves the model's
+        whole output budget up front, and a nearly empty account refuses a call
+        that only needed a sentence.
+        """
         if not self.configured:
             return Rejected("openrouter_not_configured")
         try:
@@ -96,16 +107,22 @@ class OpenRouter:
             if client is None:
                 return Rejected("openrouter_not_configured")
             response = client.chat.completions.create(**self._request(
-                instruction, payload, schema, schema_name
+                instruction, payload, schema, schema_name, max_tokens=max_tokens
             ))
         except Exception as error:  # a third party being down decides nothing
             return Rejected(f"model_error:{type(error).__name__}")
         return self._answer(response)
 
     def _request(
-        self, instruction: str, payload: dict, schema: dict, schema_name: str
+        self,
+        instruction: str,
+        payload: dict,
+        schema: dict,
+        schema_name: str,
+        *,
+        max_tokens: int | None = None,
     ) -> dict:
-        return {
+        request = {
             "model": self.model,
             "messages": [
                 {"role": "system", "content": instruction},
@@ -121,6 +138,9 @@ class OpenRouter:
             },
             "extra_body": {"provider": PROVIDER_ROUTING},
         }
+        if max_tokens is not None:
+            request["max_tokens"] = max_tokens
+        return request
 
     def _answer(self, response: Any) -> ModelAnswer | Rejected:
         content = self._content(response)
