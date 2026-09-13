@@ -32,6 +32,7 @@ Contracts and fixtures are already committed, including a synthetic boba shop wi
 | Keep the demo machine stable and awake | Physical machine | Continuous |
 | Submit a working version by noon Sunday | Someone clicks submit | **Sun 12:00** |
 | Three timed rehearsals | People talking | Sun 11:00 |
+| A team project on W&B with Smart features on, then an ARIA session ([`docs/aria.md`](../aria.md)) | ARIA only answers in a team project, and an org admin turns the feature on | **Sun 09:00** |
 
 ## Build order
 
