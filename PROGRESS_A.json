@@ -1,6 +1,6 @@
 {
   "lane": "A",
-  "updated": "2026-09-13T00:47:00Z",
+  "updated": "2026-09-13T00:53:00Z",
   "done": [
     "iOS 17 Xcode project builds on the simulator",
     "device support gate and start screen",
@@ -18,11 +18,11 @@
     "native-size simulator visual verification",
     "signed device build installed and launched on the paired iPhone 17 Pro"
   ],
-  "in_progress": "test1 upload and reconstruction verified; evaluation gate repaired and all suites passed; final pull and push",
+  "in_progress": "Complete: test1 reconstruction, merged evaluation repair and regression checks verified",
   "evaluation_regression": {
     "cause": "Lane B commit 022004d intentionally added blocked-route obstacle IDs; blocked_but_movable retained its documented temporary ASK_OWNER label instead of FIX",
-    "fix": "Updated label and description only; no router, compliance threshold, scorer or acceptance-gate changes",
-    "proof": "Real-pipeline paired tests pin movable barrier IDs through finding loci to FIX targets and preserve ESCALATE for fixed barriers. Before correction: 1 failed/1 passed in 4.67s; after: 2 passed in 4.81s. Full agents: 265 passed in 231.71s; original router_action_match == 1.0 assertion passes",
+    "fix": "Initially corrected stale label; final pull included Lane C's simultaneous 94439b3 fix, which is preserved verbatim with its fix_should_resolve requirement. Lane A adds paired real-pipeline regression coverage, with no production agent-code diff from origin",
+    "proof": "Real-pipeline paired tests pin movable barrier IDs through finding loci to FIX targets and preserve ESCALATE for fixed barriers. Before correction: 1 failed/1 passed in 4.67s; after: 2 passed in 4.81s. After rebase through ee0304a: all 336 agents tests passed in 296.25s, including routing score 1.0 and fix resolution",
     "known_limits": "Root suite retains six pre-existing expected audit failures, including A-40 blocker attribution; selecting a FIX attempt does not certify that a proposal succeeds"
   },
   "reconstruction_plan": [
@@ -40,7 +40,7 @@
   ],
   "repair_validation": {
     "ios_tests_passed": 63,
-    "latest_suite": "After rebase through a6e14f7 and eval correction: iOS 63 passed; web 31 plus typecheck/lint/production build passed; API 42 passed; root Python 155 passed/6 expected failures; agents 265 passed, including router_action_match 1.0",
+    "latest_suite": "After rebase through ee0304a: agents 336 passed; root Python 161 passed/6 expected failures; API 42 passed; web 31 plus typecheck/stricter complexity lint/production build passed. Unchanged iOS: 63 passed. Extracted viewer/model/validation helpers to meet incoming complexity limit without changing behavior",
     "strict_concurrency_build": "signed iOS build passed with complete concurrency and warnings as errors; test stubs use normal test settings",
     "device_build": "person-filtered measured reconstruction build installed and launched at 17:16 PDT",
     "real_scan": "ravida af42f6cd-d228-4dd8-8790-aff0890fee5b ready on real Lane D API; all 290 artifacts uploaded",
@@ -55,7 +55,7 @@
     "mesh": "112 parts; 554250 vertices; 988079 triangles; 31840294 bytes",
     "mesh_sha256": "11a4480fd35e6b8a71dc8043c6e3375c34142888f66bac27067f5db0cf44fdb2",
     "people_filtering": "enabled in new capture metadata; visual completeness of removal still requires close inspection",
-    "production": "mesh renders; switching to Move furniture shows Layout preview and switching back restores measured surfaces",
+    "production": "Refreshed LAN API and production web to merged code; test1 ready with 447 artifacts; workspace and scene HEAD return HTTP 200; browser mesh renders and Move furniture/Findings switch between Layout preview and Scanned surfaces without saving edits",
     "merge": "human authorized resolution; preserved Lane D reports, proposals, comparison, revision alignment and drag locks through 2b0e2b0",
     "glb_metadata": "HEAD returns exported revision without streaming geometry; test and production verified",
     "review_disposition": "missing mesh floor metadata and load failures remain explicit errors to avoid guessed alignment or silent box substitution; empty final snapshots preserve prior mesh with a recovery notice"
