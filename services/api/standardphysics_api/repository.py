@@ -77,7 +77,7 @@ def scan_exists(connection: sqlite3.Connection, scan_id: uuid.UUID) -> bool:
     return connection.execute("SELECT 1 FROM scans WHERE id = ?", (str(scan_id),)).fetchone() is not None
 
 
-CHILD_TABLES = ("simulations", "assessments", "scenarios", "revisions", "jobs", "artifacts")
+CHILD_TABLES = ("texture_builds", "simulations", "assessments", "scenarios", "revisions", "jobs", "artifacts")
 """Everything that references a scan, deepest first.
 
 SQLite does not enforce the foreign keys by default, so leaving a child row
@@ -163,11 +163,12 @@ def queue_job_again(connection: sqlite3.Connection, scan_id: uuid.UUID, kind: st
     )
 
 
-def claim_job(connection: sqlite3.Connection) -> sqlite3.Row | None:
+def claim_job(connection: sqlite3.Connection, texture_only: bool | None = None) -> sqlite3.Row | None:
     return connection.execute(
         "UPDATE jobs SET state = 'running', attempts = attempts + 1"
-        " WHERE id = (SELECT id FROM jobs WHERE state = 'queued' ORDER BY id LIMIT 1)"
-        " RETURNING id, scan_id, kind, revision"
+        " WHERE id = (SELECT id FROM jobs WHERE state = 'queued' AND (? IS NULL OR (kind='texture')=?) ORDER BY id LIMIT 1)"
+        " RETURNING id, scan_id, kind, revision",
+        (texture_only, texture_only),
     ).fetchone()
 
 
@@ -181,7 +182,7 @@ def retry_failed_jobs(connection: sqlite3.Connection, scan_id: uuid.UUID) -> Non
     kinds = {
         row["kind"]
         for row in connection.execute(
-            "SELECT kind FROM jobs WHERE scan_id = ? AND state = 'failed' AND kind NOT IN ('display', 'simulate')", (str(scan_id),)
+            "SELECT kind FROM jobs WHERE scan_id = ? AND state = 'failed' AND kind NOT IN ('display', 'simulate', 'texture')", (str(scan_id),)
         )
     }
     if not kinds:
@@ -189,7 +190,7 @@ def retry_failed_jobs(connection: sqlite3.Connection, scan_id: uuid.UUID) -> Non
     state = "measuring" if "process" in kinds else "checking"
     connection.execute("UPDATE scans SET state = ? WHERE id = ?", (state, str(scan_id)))
     connection.execute(
-        "UPDATE jobs SET state = 'queued', error = NULL WHERE scan_id = ? AND state = 'failed' AND kind NOT IN ('display', 'simulate')",
+        "UPDATE jobs SET state = 'queued', error = NULL WHERE scan_id = ? AND state = 'failed' AND kind NOT IN ('display', 'simulate', 'texture')",
         (str(scan_id),),
     )
 

@@ -34,6 +34,7 @@ from standardphysics_agents import (
 from standardphysics_agents.ask import Answer, ask
 from standardphysics_agents.fix import FixOutcome, propose_fix
 from standardphysics_contracts import Assessment, Finding, Scenario, SceneGraph, Stop, Vec3
+from standardphysics_pipeline.textures import BakeInputs, BakeResult, bake_textures
 from standardphysics_pipeline import PipelineMeasurements, blender, parse_room_json, reconstruct
 
 log = logging.getLogger(__name__)
@@ -68,6 +69,7 @@ def without_route_rules(ledger: VerificationLedger) -> VerificationLedger:
 
 @dataclass
 class Stages:
+    bake_textures: Callable[[BakeInputs], BakeResult] = bake_textures
     ledger_factory: Callable[[], VerificationLedger] = load_ledger
     measure: PipelineMeasurements = field(default_factory=PipelineMeasurements)
     label: Callable[[SceneGraph], SceneGraph] = reconstruct

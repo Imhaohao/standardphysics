@@ -1,4 +1,4 @@
-import type { Assessment, Report, Scan, ScanList, Scenario, SceneGraph, SimulationReplay } from "@/types/contracts";
+import type { Assessment, Report, Scan, ScanList, Scenario, SceneGraph, SimulationReplay, TextureStatus } from "@/types/contracts";
 import { API_ORIGIN } from "./api-origin";
 
 export class NotReady extends Error {}
@@ -32,3 +32,5 @@ export const getReport = (scanId: string) => getOptional<Report>(`/api/scans/${s
 export const getScenarioSuggestion = (scanId: string) => getOptional<Scenario>(`/api/scans/${scanId}/scenario/suggestion`);
 export const getSimulationReplay = (scanId: string, revision: number) =>
   getOptional<SimulationReplay>(`/api/scans/${scanId}/revisions/${revision}/replay`);
+export const getTextureStatus = (scanId: string, revision: number) =>
+  getOptional<TextureStatus>(`/api/scans/${scanId}/textures?revision=${revision}`);

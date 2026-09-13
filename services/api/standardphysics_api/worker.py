@@ -14,11 +14,16 @@ import threading
 import traceback
 import uuid
 
+from standardphysics_contracts import SimulationRequest
+
 from . import repository as repo
 from .db import Database
+from .errors import ApiProblem
+from .settings import Settings
+from .simulations import SIMULATE, queue_simulation, run_simulation
 from .stages import Stages
 from .store import ArtifactStore
-from .simulations import SIMULATE, run_simulation
+from .textures import TEXTURE, maybe_queue_texture, run_texture
 
 log = logging.getLogger(__name__)
 
@@ -26,11 +31,19 @@ PROCESS, ASSESS, DISPLAY = "process", "assess", "display"
 
 
 class Worker:
-    def __init__(self, database: Database, store: ArtifactStore, stages: Stages):
+    def __init__(
+        self,
+        database: Database,
+        store: ArtifactStore,
+        stages: Stages,
+        settings: Settings,
+    ):
         self.database, self.store, self.stages = database, store, stages
+        self.settings = settings
         self._wake = threading.Event()
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
+        self._texture_thread: threading.Thread | None = None
 
     def start(self) -> None:
         with self.database.transaction() as connection:
@@ -41,12 +54,21 @@ class Worker:
             repo.requeue_interrupted_jobs(connection)
         self._thread = threading.Thread(target=self._loop, name="standardphysics-worker", daemon=True)
         self._thread.start()
+        self._texture_thread = threading.Thread(
+            target=self._loop,
+            args=(True,),
+            name="standardphysics-textures",
+            daemon=True,
+        )
+        self._texture_thread.start()
 
     def stop(self) -> None:
         self._stop.set()
         self._wake.set()
         if self._thread is not None:
             self._thread.join(timeout=5)
+        if self._texture_thread is not None:
+            self._texture_thread.join(timeout=5)
 
     def wake(self) -> None:
         self._wake.set()
@@ -65,9 +87,9 @@ class Worker:
         while self.run_once():
             pass
 
-    def run_once(self) -> bool:
+    def run_once(self, texture_only: bool | None = None) -> bool:
         with self.database.transaction() as connection:
-            job = repo.claim_job(connection)
+            job = repo.claim_job(connection, texture_only)
         if job is None:
             return False
         error = self._run(job)
@@ -75,24 +97,35 @@ class Worker:
             repo.finish_job(connection, job["id"], error)
         return True
 
-    def _loop(self) -> None:
+    def _loop(self, texture_only: bool = False) -> None:
         while not self._stop.is_set():
-            if not self.run_once():
+            if not self.run_once(texture_only):
                 self._wake.wait(timeout=2.0)
                 self._wake.clear()
 
     def _run(self, job) -> str | None:
         scan_id, revision = uuid.UUID(job["scan_id"]), job["revision"]
-        handler = {PROCESS: self._process, ASSESS: self._assess, DISPLAY: self._display, SIMULATE: self._simulate}[job["kind"]]
+        handler = {
+            PROCESS: self._process,
+            ASSESS: self._assess,
+            DISPLAY: self._display,
+            SIMULATE: self._simulate,
+            TEXTURE: self._texture,
+        }[job["kind"]]
         try:
             handler(scan_id, revision)
             return None
         except Exception as exc:
             log.error("job %s %s failed:\n%s", job["kind"], scan_id, traceback.format_exc())
-            if job["kind"] not in (DISPLAY, SIMULATE):
+            if job["kind"] not in (DISPLAY, SIMULATE, TEXTURE):
                 with self.database.transaction() as connection:
                     repo.set_state(connection, scan_id, "failed")
-            return "Simulation failed; check the server log and retry" if job["kind"] == SIMULATE else f"{type(exc).__name__}: {exc}"
+            if job["kind"] == SIMULATE:
+                return "Simulation failed; check the server log and retry"
+            return f"{type(exc).__name__}: {exc}"
+
+    def _texture(self, scan_id, build_id):
+        run_texture(self.database, self.store, self.stages, scan_id, build_id)
 
     def _simulate(self, scan_id: uuid.UUID, revision: int) -> None:
         run_simulation(self.database, self.store, self.stages, scan_id, revision)
@@ -122,7 +155,48 @@ class Worker:
         with self.database.transaction() as connection:
             repo.set_state(connection, scan_id, "ready")
             repo.enqueue_job(connection, scan_id, DISPLAY, revision)
+        maybe_queue_texture(self.database, self.store, self, scan_id, revision)
+        self._maybe_queue_deep_simulation(scan_id, revision, scenario is not None)
         self.wake()
+
+    def _maybe_queue_deep_simulation(
+        self, scan_id: uuid.UUID, revision: int, has_scenario: bool
+    ) -> None:
+        if not self.settings.auto_deep_simulation or not has_scenario:
+            return
+        with self.database.connect() as connection:
+            existing = connection.execute(
+                "SELECT 1 FROM simulations WHERE scan_id=? AND revision=?",
+                (str(scan_id), revision),
+            ).fetchone()
+        if existing is not None:
+            return
+        try:
+            request = SimulationRequest(
+                base_revision=revision,
+                samples=self.settings.auto_deep_samples,
+                router="typesafe",
+                refine_with_astra=True,
+                typesafe_call_limit=self.settings.auto_deep_typesafe_call_limit,
+                astra_rounds=self.settings.auto_deep_astra_rounds,
+                exhaustive_evaluations=self.settings.auto_deep_exhaustive_evaluations,
+            )
+            queue_simulation(
+                self.database, self.stages, self, scan_id, request
+            )
+        except ApiProblem as error:
+            log.warning(
+                "automatic deep simulation skipped for %s revision %s: %s",
+                scan_id,
+                revision,
+                error.body.error,
+            )
+        except ValueError:
+            log.warning(
+                "automatic deep simulation skipped for %s revision %s: invalid limits",
+                scan_id,
+                revision,
+            )
 
     def _display(self, scan_id: uuid.UUID, revision: int) -> None:
         with self.database.connect() as connection:

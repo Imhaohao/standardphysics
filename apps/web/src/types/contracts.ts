@@ -8,6 +8,18 @@ export interface StandardPhysicsContracts {
 }
 /**
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "AdaptiveRoundResult".
+ */
+export interface AdaptiveRoundResult {
+  accepted: boolean;
+  astra_model: string | null;
+  base_graph_hash: string;
+  jev_preferred_candidate: string | null;
+  reasons: string[];
+  round: number;
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
  * via the `definition` "Annotation".
  */
 export interface Annotation {
@@ -41,7 +53,15 @@ export interface Artifact {
   bytes: number;
   id: string;
   kind:
-    "room_usdz" | "room_json" | "room_metadata" | "walkthrough_mp4" | "frames" | "poses" | "coverage" | "lidar_mesh";
+    | "room_usdz"
+    | "room_json"
+    | "room_metadata"
+    | "walkthrough_mp4"
+    | "frames"
+    | "poses"
+    | "coverage"
+    | "lidar_mesh"
+    | "photo_manifest";
   sha256: string;
   stored_path: string | null;
 }
@@ -238,6 +258,49 @@ export interface DisplayAppearance {
 }
 /**
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "EnvironmentPhysicsResult".
+ */
+export interface EnvironmentPhysicsResult {
+  cashiers_found: number;
+  exits_found: number;
+  limitations: string[];
+  mesh_triangles_checked: number;
+  observations: PhysicsObservation[];
+  resolution_inches: number;
+  routes: PhysicsRoute[];
+  seats_found: number;
+  surface_samples: number;
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "PhysicsObservation".
+ */
+export interface PhysicsObservation {
+  kind: "surface_slope" | "uncontrolled_roll" | "wheelchair_tip" | "level_change" | "stair_or_step" | "turning";
+  measured_value: number | null;
+  node_ids: string[];
+  point: Vec3 | null;
+  reference_value: number | null;
+  source: "lidar_mesh" | "scene_graph" | "route_geometry";
+  status: "clear" | "potential_barrier" | "needs_measurement";
+  title: string;
+  unit: string | null;
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "PhysicsRoute".
+ */
+export interface PhysicsRoute {
+  blocking_node_ids: string[];
+  clear_width_inches: number | null;
+  destination_node_id: string;
+  distance_inches: number | null;
+  origin_node_id: string;
+  purpose: "evacuation" | "seat_to_cashier";
+  reachable: boolean;
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
  * via the `definition` "HeightResult".
  */
 export interface HeightResult {
@@ -391,6 +454,84 @@ export interface Mat4 {
   ];
 }
 /**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "NodeTextureCoverage".
+ */
+export interface NodeTextureCoverage {
+  node_id: string;
+  textured_fraction: number;
+}
+/**
+ * Written by the phone after its photos upload. A build waits until every listed frame is stored.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "PhotoManifest".
+ */
+export interface PhotoManifest {
+  /**
+   * @minItems 1
+   * @maxItems 4000
+   */
+  frames: [PhotoManifestFrame, ...PhotoManifestFrame[]];
+  manifest_version: 1;
+  poses_sha256: string;
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "PhotoManifestFrame".
+ */
+export interface PhotoManifestFrame {
+  bytes: number;
+  frame_id: string;
+  sha256: string;
+}
+/**
+ * One keyframe in poses.json. Version 1 records lack the image metadata.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "PoseRecord".
+ */
+export interface PoseRecord {
+  calibration_height: number | null;
+  calibration_width: number | null;
+  frame_id: string | null;
+  image: string;
+  image_height: number | null;
+  image_orientation: "sensor" | null;
+  image_width: number | null;
+  /**
+   * @minItems 9
+   * @maxItems 9
+   */
+  intrinsics: [number, number, number, number, number, number, number, number, number, ...number[]];
+  metadata_version: number;
+  orientation: string;
+  timestamp: number;
+  /**
+   * @minItems 16
+   * @maxItems 16
+   */
+  transform: [
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    ...number[]
+  ];
+}
+/**
  * Ask the fix agent for a layout that clears these findings.
  *
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
@@ -507,6 +648,7 @@ export interface Stop {
  */
 export interface SceneGraph {
   base_hash: string | null;
+  capture_to_room?: Mat4 | null;
   nodes: SceneNode[];
   revision: number;
   scan_id: string;
@@ -597,11 +739,14 @@ export interface SimulationReplay {
  * via the `definition` "SimulationRequest".
  */
 export interface SimulationRequest {
+  astra_rounds: number;
   base_revision: number;
+  exhaustive_evaluations: number;
   max_workers: number;
   refine_with_astra: boolean;
   router: "local" | "typesafe";
   samples: number;
+  typesafe_call_limit: number;
 }
 /**
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
@@ -611,10 +756,17 @@ export interface SimulationResult {
   action_counts: {
     [k: string]: number;
   };
+  adaptive_rounds: AdaptiveRoundResult[];
+  astra_calls: number;
   completed_runs: number;
+  exhaustive_evaluations: number;
+  exhaustive_outcomes: {
+    [k: string]: number;
+  };
   feedback: SimulationFeedback[];
   limitations: string[];
   mesh_checked: boolean;
+  physics: EnvironmentPhysicsResult | null;
   preview: boolean;
   recommended_graph: SceneGraph | null;
   redesign_accepted: boolean;
@@ -627,6 +779,7 @@ export interface SimulationResult {
   rules_checked: number;
   rules_total: number;
   total_runs: number;
+  typesafe_calls: number;
   unique_layouts: number;
 }
 /**
@@ -637,10 +790,55 @@ export interface SimulationStatus {
   base_revision: number;
   completed: number;
   error: string | null;
+  exhaustive_evaluations: number;
   result: SimulationResult | null;
   router: "local" | "typesafe";
   samples: number;
   state: "queued" | "running" | "done" | "failed";
+  typesafe_call_limit: number;
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "TextureBuild".
+ */
+export interface TextureBuild {
+  bake_graph: SceneGraph;
+  build_id: string;
+  coverage: TextureCoverage;
+  coverage_mask_urls: string[];
+  frames_used: number;
+  glb_url: string;
+  seconds: number;
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "TextureCoverage".
+ */
+export interface TextureCoverage {
+  needs_another_view: string[];
+  nodes: NodeTextureCoverage[];
+  textured_fraction: number;
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "TextureRequest".
+ */
+export interface TextureRequest {
+  revision?: number | null;
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "TextureStatus".
+ */
+export interface TextureStatus {
+  build: TextureBuild | null;
+  can_retry: boolean;
+  error: string | null;
+  exact: boolean;
+  revision: number;
+  scan_id: string;
+  stale_node_ids: string[];
+  state: "needs_photos" | "waiting_for_photos" | "not_started" | "queued" | "running" | "complete" | "failed";
 }
 /**
  * The bottleneck of a route leg, and where it is.

@@ -52,6 +52,12 @@ class SceneGraph(BaseModel):
     revision: int = 0
     base_hash: str | None = None
     nodes: list[SceneNode]
+    capture_to_room: Mat4 | None = Field(default=None, exclude_if=lambda value: value is None)
+    """ARKit world to this graph's room frame: the Y-up to Z-up turn, then the floor drop.
+
+    Photos and the raw scan are posed in ARKit world, so projecting a photo onto
+    the model maps model points back through the inverse of this.
+    """
 
     def by_id(self, node_id: UUID) -> SceneNode:
         for node in self.nodes:

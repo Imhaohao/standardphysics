@@ -4,7 +4,7 @@ import { Canvas } from "@react-three/fiber";
 import { Component, Suspense, type ReactNode } from "react";
 import type { ViewerPose } from "@/lib/camera";
 import type { Focus } from "@/lib/findings";
-import type { SceneGraph } from "@/types/contracts";
+import type { NodeTextureCoverage, SceneGraph } from "@/types/contracts";
 import { FindingAnnotation } from "./Annotation";
 import { CameraRig } from "./CameraRig";
 import { MODEL, outcomeColor } from "./palette";
@@ -25,6 +25,9 @@ type ViewerProps = {
   selected: Focus | null;
   onSelectNode: (nodeId: string) => void;
   onClearSelection: () => void;
+  materialMode: "captured" | "plain" | "coverage";
+  staleNodeIds: string[];
+  coverage: NodeTextureCoverage[];
 };
 
 class GlbFallback extends Component<{ fallback: ReactNode; children: ReactNode }, { failed: boolean }> {
@@ -58,9 +61,9 @@ function Lights() {
   );
 }
 
-type ShopSurfacesProps = Pick<ViewerProps, "scene" | "exported" | "arrange" | "glbUrl" | "lidarUrl" | "selected" | "onSelectNode" | "cutWalls">;
+type ShopSurfacesProps = Pick<ViewerProps, "scene" | "exported" | "arrange" | "glbUrl" | "lidarUrl" | "selected" | "onSelectNode" | "cutWalls" | "materialMode" | "staleNodeIds" | "coverage">;
 
-function ShopSurfaces({ scene, exported, arrange, glbUrl, lidarUrl, selected, onSelectNode, cutWalls }: ShopSurfacesProps) {
+function ShopSurfaces({ scene, exported, arrange, glbUrl, lidarUrl, selected, onSelectNode, cutWalls, materialMode, staleNodeIds, coverage }: ShopSurfacesProps) {
   const focus = selected?.locus ? new Set(selected.locus.node_ids) : null;
   const modelProps = {
     shown: scene,
@@ -69,6 +72,9 @@ function ShopSurfaces({ scene, exported, arrange, glbUrl, lidarUrl, selected, on
     onSelectNode,
     arrange,
     cutWalls,
+    materialMode,
+    staleNodeIds: new Set(staleNodeIds),
+    coverage: new Map(coverage.map((entry) => [entry.node_id, entry.textured_fraction])),
   };
   const boxes = <BoxShopModel {...modelProps} />;
   const reconstructed = !glbUrl ? boxes : (
@@ -81,7 +87,7 @@ function ShopSurfaces({ scene, exported, arrange, glbUrl, lidarUrl, selected, on
   return <group>{lidarUrl && <LidarShopModel key={lidarUrl} url={lidarUrl} />}{reconstructed}</group>;
 }
 
-export default function Viewer({ scene, exported, arrange, route, dragging, cutWalls, glbUrl, lidarUrl, pose, selected, onSelectNode, onClearSelection }: ViewerProps) {
+export default function Viewer({ scene, exported, arrange, route, dragging, cutWalls, glbUrl, lidarUrl, pose, selected, onSelectNode, onClearSelection, materialMode, staleNodeIds, coverage }: ViewerProps) {
   return (
     <Canvas
       frameloop="demand"
@@ -103,7 +109,7 @@ export default function Viewer({ scene, exported, arrange, route, dragging, cutW
         <planeGeometry args={[80, 80]} />
         <meshStandardMaterial color={MODEL.ground} roughness={1} />
       </mesh>
-      <ShopSurfaces scene={scene} exported={exported} arrange={arrange} glbUrl={glbUrl} lidarUrl={lidarUrl} selected={selected} onSelectNode={onSelectNode} cutWalls={cutWalls} />
+      <ShopSurfaces scene={scene} exported={exported} arrange={arrange} glbUrl={glbUrl} lidarUrl={lidarUrl} selected={selected} onSelectNode={onSelectNode} cutWalls={cutWalls} materialMode={materialMode} staleNodeIds={staleNodeIds} coverage={coverage} />
       {selected && <FindingAnnotation finding={selected} />}
       {route && <StopMarkers route={route} />}
     </Canvas>

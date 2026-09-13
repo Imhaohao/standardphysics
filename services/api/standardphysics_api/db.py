@@ -69,6 +69,16 @@ CREATE TABLE IF NOT EXISTS simulations (
     result_json TEXT,
     PRIMARY KEY (scan_id, revision)
 );
+CREATE TABLE IF NOT EXISTS texture_builds (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    scan_id TEXT NOT NULL REFERENCES scans(id),
+    build_key TEXT NOT NULL,
+    graph_json TEXT NOT NULL,
+    inputs_json TEXT NOT NULL,
+    result_json TEXT,
+    created_at TEXT NOT NULL,
+    UNIQUE(scan_id, build_key)
+);
 CREATE TABLE IF NOT EXISTS assessments (
     id TEXT PRIMARY KEY,
     scan_id TEXT NOT NULL REFERENCES scans(id),

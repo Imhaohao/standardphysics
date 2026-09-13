@@ -24,3 +24,22 @@ export function needsDisplayBoxFallback(node: SceneNode, geometry: BufferGeometr
   ];
   return Math.min(...axisLengths) <= SINGULAR_SCALE;
 }
+
+/** A floor may be geometrically flat, but its placement transform must still be usable. */
+export function hasUsableFloorMesh(geometry: BufferGeometry, matrix: Matrix4): boolean {
+  if ((geometry.getAttribute("position")?.count ?? 0) < 3) return false;
+  const elements = matrix.elements;
+  if (!elements.every(Number.isFinite)) return false;
+  const axisLengths = [
+    Math.hypot(elements[0], elements[1], elements[2]),
+    Math.hypot(elements[4], elements[5], elements[6]),
+    Math.hypot(elements[8], elements[9], elements[10]),
+  ];
+  return Math.min(...axisLengths) > SINGULAR_SCALE;
+}
+
+/** Stale builds never supply shape geometry; only their unchanged nodes may use the baked GLB. */
+export function canUseCapturedGlbGeometry(node: SceneNode, geometry: BufferGeometry, matrix: Matrix4, stale: boolean): boolean {
+  if (stale) return false;
+  return node.kind === "floor" ? hasUsableFloorMesh(geometry, matrix) : !needsDisplayBoxFallback(node, geometry, matrix);
+}

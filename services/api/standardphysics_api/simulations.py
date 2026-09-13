@@ -2,19 +2,33 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from uuid import UUID
 
-from standardphysics_agents import load_pack
-from standardphysics_agents.simulation_report import simulation_result
-from standardphysics_agents.redesign import propose_redesign
+from standardphysics_agents import (
+    TypeSafeCallBudget,
+    analyze_environment_physics,
+    load_pack,
+    run_adaptive_redesign,
+)
+from standardphysics_agents.evaluation.scan_campaign import run_campaign
+from standardphysics_agents.evaluation.scan_tasks import choose_task, propose_tasks
 from standardphysics_agents.mesh_collision import MeshCollisionIndex
 from standardphysics_agents.router import LocalPolicyRouter, TypeSafeRouter
+from standardphysics_agents.simulation_report import simulation_result
 from standardphysics_agents.workflows import (
-    DEFAULT_PROFILES, Interaction, build_workflow_suite, run_workflow_batch,
+    DEFAULT_PROFILES,
+    Interaction,
+    build_workflow_suite,
+    run_workflow_batch,
 )
 from standardphysics_contracts import (
-    LidarMesh, Scenario, SceneGraph, SimulationRequest,
-    SimulationResult, SimulationStatus,
+    LidarMesh,
+    Scenario,
+    SceneGraph,
+    SimulationRequest,
+    SimulationResult,
+    SimulationStatus,
 )
 from standardphysics_pipeline import PipelineMeasurements
 
@@ -35,9 +49,9 @@ def _live_ready(stages) -> None:
 
 
 def queue_simulation(database, stages, worker, scan_id: UUID, body: SimulationRequest) -> SimulationStatus:
-    if body.router == "typesafe":
+    if body.router == "typesafe" or body.refine_with_astra or body.exhaustive_evaluations:
         _live_ready(stages)
-    if body.refine_with_astra and not os.environ.get("OPENROUTER_API_KEY"):
+    if (body.refine_with_astra or body.exhaustive_evaluations) and not os.environ.get("OPENROUTER_API_KEY"):
         raise ApiProblem(409, "Astra needs OPENROUTER_API_KEY on the server")
     with database.transaction() as connection:
         if not repo.scan_exists(connection, scan_id):
@@ -81,7 +95,10 @@ def simulation_status(database, scan_id: UUID, revision: int) -> SimulationStatu
     request = SimulationRequest.model_validate_json(row["request_json"])
     return SimulationStatus(
         base_revision=revision, state=row["state"], router=request.router,
-        samples=request.samples, completed=row["completed"], error=row["error"],
+        samples=request.samples, completed=row["completed"],
+        typesafe_call_limit=request.typesafe_call_limit,
+        exhaustive_evaluations=request.exhaustive_evaluations,
+        error=row["error"],
         result=SimulationResult.model_validate_json(row["result_json"]) if row["result_json"] else None,
     )
 
@@ -95,9 +112,12 @@ def _interactions(graph: SceneGraph, scenario: Scenario) -> list[Interaction]:
 
 def run_simulation(database, store, stages, scan_id: UUID, revision: int) -> None:
     with database.connect() as connection:
-        row = connection.execute("SELECT * FROM simulations WHERE scan_id=? AND revision=?", (str(scan_id), revision)).fetchone()
+        row = connection.execute(
+            "SELECT * FROM simulations WHERE scan_id=? AND revision=?",
+            (str(scan_id), revision),
+        ).fetchone()
     request = SimulationRequest.model_validate_json(row["request_json"])
-    if request.router == "typesafe":
+    if request.router == "typesafe" or request.refine_with_astra or request.exhaustive_evaluations:
         _live_ready(stages)
     graph = SceneGraph.model_validate_json(row["graph_json"])
     scenario = Scenario.model_validate_json(row["scenario_json"])
@@ -109,27 +129,160 @@ def run_simulation(database, store, stages, scan_id: UUID, revision: int) -> Non
     def progress(completed: int) -> None:
         if completed % 10 == 0 or completed == request.samples:
             with database.transaction() as connection:
-                connection.execute("UPDATE simulations SET completed=? WHERE scan_id=? AND revision=?", (completed, str(scan_id), revision))
+                connection.execute(
+                    "UPDATE simulations SET completed=? WHERE scan_id=? AND revision=?",
+                    (completed, str(scan_id), revision),
+                )
 
     workflows = build_workflow_suite(graph, scenario, interactions=_interactions(graph, scenario))
+    campaign_reserve = 9 if request.exhaustive_evaluations else 0
+    adaptive_reserve = request.astra_rounds if request.refine_with_astra else 0
+    workflow_budget = (
+        TypeSafeCallBudget(
+            request.typesafe_call_limit - campaign_reserve - adaptive_reserve
+        )
+        if request.router == "typesafe"
+        else None
+    )
     batch = run_workflow_batch(
         graph, workflows=workflows,
         profiles=list(DEFAULT_PROFILES), samples=request.samples, max_workers=request.max_workers,
         measure_factory=PipelineMeasurements,
-        router_factory=TypeSafeRouter if request.router == "typesafe" else LocalPolicyRouter,
+        router_factory=(
+            (lambda: TypeSafeRouter(budget=workflow_budget))
+            if workflow_budget is not None
+            else LocalPolicyRouter
+        ),
         rules=rules, ledger=ledger, lidar_mesh=mesh, on_progress=progress,
     )
     result = simulation_result(batch, rules, ledger, mesh)
+    typesafe_calls = workflow_budget.used if workflow_budget is not None else 0
+    astra_calls = 0
+    limitations = list(result.limitations)
+    physics = analyze_environment_physics(
+        graph, scenario, PipelineMeasurements(), mesh=mesh
+    )
+
+    exhaustive_count = 0
+    exhaustive_outcomes: dict[str, int] = {}
+    if request.exhaustive_evaluations:
+        campaign_budget = TypeSafeCallBudget(campaign_reserve)
+        campaign_path = (
+            store.scan_dir(scan_id)
+            / "revisions"
+            / str(revision)
+            / "deep_scan_campaign.json"
+        )
+        try:
+            _validate_exhaustive_inputs(graph, mesh)
+            astra_calls += 1
+            campaign = _run_exhaustive_campaign(
+                graph,
+                mesh,
+                request.exhaustive_evaluations,
+                campaign_path,
+                campaign_budget,
+            )
+            exhaustive_count = campaign["evaluations"]
+            exhaustive_outcomes = campaign["outcomes"]
+        except (RuntimeError, ValueError) as error:
+            limitations.append(
+                "Exhaustive route-and-reach campaign skipped: "
+                f"{type(error).__name__}: {error}"
+            )
+        typesafe_calls += campaign_budget.used
+
     if request.refine_with_astra:
-        redesign = propose_redesign(
-            result.recommended_graph or graph, workflows, list(DEFAULT_PROFILES),
-            [item.model_dump(mode="json") for item in result.feedback], PipelineMeasurements(),
-            rules=rules, ledger=ledger, collision_index=MeshCollisionIndex(mesh) if mesh else None,
+        adaptive_budget = TypeSafeCallBudget(adaptive_reserve)
+        redesign = run_adaptive_redesign(
+            graph,
+            starting_graph=result.recommended_graph or graph,
+            workflows=workflows,
+            profiles=list(DEFAULT_PROFILES),
+            measure=PipelineMeasurements(),
+            rules=rules,
+            ledger=ledger,
+            rounds=request.astra_rounds,
+            budget=adaptive_budget,
+            collision_index=MeshCollisionIndex(mesh) if mesh else None,
+        )
+        last_round = redesign.rounds[-1] if redesign.rounds else None
+        accepted_round = next(
+            (item for item in reversed(redesign.rounds) if item.accepted), None
         )
         result = result.model_copy(update={
             "recommended_graph": redesign.graph or result.recommended_graph,
-            "redesign_model": redesign.model, "redesign_accepted": redesign.accepted,
-            "redesign_reasons": list(redesign.reasons),
+            "redesign_model": (
+                accepted_round.astra_model
+                if accepted_round is not None
+                else last_round.astra_model if last_round else None
+            ),
+            "redesign_accepted": redesign.graph is not None,
+            "redesign_reasons": (
+                []
+                if redesign.graph is not None
+                else list(last_round.reasons) if last_round else []
+            ),
+            "adaptive_rounds": list(redesign.rounds),
         })
+        astra_calls += redesign.astra_calls
+        typesafe_calls += adaptive_budget.used
+
+    if typesafe_calls > request.typesafe_call_limit:
+        raise AssertionError("TypeSafe per-scan call limit was exceeded")
+    if graph != SceneGraph.model_validate_json(row["graph_json"]):
+        raise AssertionError("simulation changed its measured scan snapshot")
+    result = result.model_copy(
+        update={
+            "typesafe_calls": typesafe_calls,
+            "astra_calls": astra_calls,
+            "physics": physics,
+            "exhaustive_evaluations": exhaustive_count,
+            "exhaustive_outcomes": exhaustive_outcomes,
+            "limitations": limitations,
+        }
+    )
     with database.transaction() as connection:
-        connection.execute("UPDATE simulations SET result_json=?, completed=? WHERE scan_id=? AND revision=?", (result.model_dump_json(), request.samples, str(scan_id), revision))
+        connection.execute(
+            "UPDATE simulations SET result_json=?, completed=?"
+            " WHERE scan_id=? AND revision=?",
+            (result.model_dump_json(), request.samples, str(scan_id), revision),
+        )
+
+
+def _run_exhaustive_campaign(
+    graph: SceneGraph,
+    mesh: LidarMesh | None,
+    evaluations: int,
+    output: Path,
+    budget: TypeSafeCallBudget,
+) -> dict:
+    _validate_exhaustive_inputs(graph, mesh)
+    assert mesh is not None
+    suite, source = propose_tasks(graph)
+    router = TypeSafeRouter(budget=budget)
+    campaign = run_campaign(
+        graph,
+        mesh,
+        suite,
+        evaluations=evaluations,
+        seed=graph.revision + 20_260_913,
+        output=output,
+        planner=lambda tasks, history: choose_task(tasks, history, router),
+    )
+    campaign["task_generation"] = source
+    return campaign
+
+
+def _validate_exhaustive_inputs(
+    graph: SceneGraph, mesh: LidarMesh | None
+) -> None:
+    if mesh is None:
+        raise ValueError("a LiDAR mesh is required")
+    if mesh.floorY is None:
+        raise ValueError("the LiDAR mesh has no floor reference")
+    if not any(
+        node.kind == "object" and node.raw_category == "table"
+        for node in graph.nodes
+    ):
+        raise ValueError("the scan has no table candidates for generated tasks")

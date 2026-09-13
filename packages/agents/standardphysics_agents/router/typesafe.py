@@ -11,8 +11,10 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 import urllib.error
 import urllib.request
+from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 from standardphysics_contracts import Decision
@@ -63,6 +65,36 @@ service that returns the object at the top level works without configuration.
 """
 
 _NO_TYPESAFE_ANSWER = object()
+
+
+@dataclass
+class TypeSafeCallBudget:
+    """One thread-safe, per-campaign ceiling on paid provider calls."""
+
+    limit: int
+    used: int = 0
+    _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+
+    def __post_init__(self) -> None:
+        if isinstance(self.limit, bool) or not 1 <= self.limit <= 50_000:
+            raise ValueError("TypeSafe call limit must be between 1 and 50000")
+        if (
+            isinstance(self.used, bool)
+            or not isinstance(self.used, int)
+            or not 0 <= self.used <= self.limit
+        ):
+            raise ValueError("TypeSafe calls used must be between zero and the limit")
+
+    @property
+    def remaining(self) -> int:
+        return max(self.limit - self.used, 0)
+
+    def reserve(self) -> bool:
+        with self._lock:
+            if self.used >= self.limit:
+                return False
+            self.used += 1
+            return True
 
 
 class Transport(Protocol):
@@ -133,9 +165,13 @@ def _load(raw: str | bytes) -> Any:
 def _walk(body: Any, path: tuple) -> Any:
     current = body
     for step in path:
-        if isinstance(step, int) and isinstance(current, list) and len(current) > step:
-            current = current[step]
-        elif isinstance(current, dict) and step in current:
+        list_index = (
+            isinstance(step, int)
+            and isinstance(current, list)
+            and len(current) > step
+        )
+        mapping_key = isinstance(current, dict) and step in current
+        if list_index or mapping_key:
             current = current[step]
         else:
             return None
@@ -152,6 +188,7 @@ class TypeSafeRouter:
         path: str = DEFAULT_PATH,
         model: str | None = None,
         transport: Transport | None = None,
+        budget: TypeSafeCallBudget | None = None,
     ) -> None:
         self.api_key = api_key or os.environ.get(API_KEY_ENV)
         self.base_url = (
@@ -160,6 +197,7 @@ class TypeSafeRouter:
         self.path = path or DEFAULT_PATH
         self.model = model or os.environ.get(MODEL_ENV) or DEFAULT_MODEL
         self.transport = transport or UrllibTransport()
+        self.budget = budget
 
     @property
     def configured(self) -> bool:
@@ -201,6 +239,8 @@ class TypeSafeRouter:
         return _authorize(decision, state)
 
     def _call(self, body: dict) -> bytes | Rejected:
+        if self.budget is not None and not self.budget.reserve():
+            return Rejected("typesafe_call_budget_exhausted")
         try:
             return self.transport.post(
                 f"{self.base_url}{self.path}",

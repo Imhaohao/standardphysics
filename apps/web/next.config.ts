@@ -7,10 +7,9 @@ const repositoryRoot = path.join(__dirname, "..", "..");
 const nextConfig: NextConfig = {
   devIndicators: false,
   // Room reconstruction can include a bounded model call before saving a revision.
-  experimental: { proxyTimeout: 180_000 },
   allowedDevOrigins: ["*.local", "10.*.*.*", "192.168.*.*", "172.*.*.*"],
   experimental: {
-    proxyTimeout: 120_000,
+    proxyTimeout: 180_000,
   },
   turbopack: {
     root: repositoryRoot,

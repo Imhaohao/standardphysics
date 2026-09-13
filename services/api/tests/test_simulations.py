@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import json
-import pytest
-from standardphysics_contracts import SimulationRequest, graph_hash
-from standardphysics_api import repository as repo
-from standardphysics_api.simulations import SIMULATE
-from standardphysics_api.stages import Stages
-from standardphysics_agents.router import Rejected
+from uuid import UUID
+
 from conftest import drain, no_blender_stages
+from standardphysics_contracts import SimulationRequest
+from standardphysics_fixtures import build_scenario
+
+from standardphysics_api import repository as repo
 
 
 def shop(client):
@@ -18,7 +17,10 @@ def test_screening_is_queued_snapshotted_and_does_not_save_a_layout(make_client)
     with make_client(seed=True) as client:
         scan_id = shop(client)
         before = client.get(f'/api/scans/{scan_id}/scene').json()
-        response = client.post(f'/api/scans/{scan_id}/simulations', json={'base_revision': 0, 'samples': 4, 'max_workers': 2})
+        response = client.post(
+            f'/api/scans/{scan_id}/simulations',
+            json={'base_revision': 0, 'samples': 4, 'max_workers': 2},
+        )
         assert response.status_code == 202, response.text
         assert response.json()['state'] == 'queued'
         assert client.post(f'/api/scans/{scan_id}/simulations', json={'base_revision': 0}).status_code == 409
@@ -30,6 +32,9 @@ def test_screening_is_queued_snapshotted_and_does_not_save_a_layout(make_client)
         assert result['result']['feedback']
         assert result['result']['unique_layouts'] >= 1
         assert result['result']['preview'] is True
+        assert result['result']['physics']['resolution_inches'] == 1.0
+        assert result['result']['typesafe_calls'] == 0
+        assert result['result']['astra_calls'] == 0
         assert result['result']['limitations']
         assert client.get(f'/api/scans/{scan_id}/scene').json() == before
 
@@ -46,7 +51,16 @@ def test_live_preflight_rejects_missing_key_before_queuing(make_client, monkeypa
 def test_job_limits_and_stale_layout_rejected(make_client):
     with make_client(seed=True) as client:
         scan_id = shop(client)
-        for body in ({'samples': 10001}, {'samples': 0}, {'max_workers': 17}, {'max_workers': 0}, {'router': 'made-up'}, {'unknown': True}):
+        for body in (
+            {'samples': 10001},
+            {'samples': 0},
+            {'max_workers': 17},
+            {'max_workers': 0},
+            {'router': 'made-up'},
+            {'exhaustive_evaluations': 39},
+            {'router': 'typesafe', 'refine_with_astra': True, 'typesafe_call_limit': 4},
+            {'unknown': True},
+        ):
             response = client.post(f'/api/scans/{scan_id}/simulations', json={'base_revision': 0, **body})
             assert response.status_code == 400
         response = client.post(f'/api/scans/{scan_id}/simulations', json={'base_revision': 9})
@@ -72,7 +86,14 @@ def test_rebuild_keeps_measured_geometry_and_rejects_stale_revision(make_client)
 
     def label(graph):
         calls.append(graph.revision)
-        return graph.model_copy(update={'nodes': [node.model_copy(update={'label': 'Reviewed ' + node.label}) for node in graph.nodes]})
+        return graph.model_copy(
+            update={
+                'nodes': [
+                    node.model_copy(update={'label': 'Reviewed ' + node.label})
+                    for node in graph.nodes
+                ]
+            }
+        )
     with make_client(seed=True, stages=no_blender_stages(label=label)) as client:
         scan_id = shop(client)
         before = client.get(f'/api/scans/{scan_id}/scene').json()
@@ -95,7 +116,11 @@ def test_rebuild_keeps_measured_geometry_and_rejects_stale_revision(make_client)
 def test_deleting_room_cleans_queued_simulation(make_client):
     with make_client(seed=True) as client:
         scan_id = shop(client)
-        assert client.post(f'/api/scans/{scan_id}/simulations', json={'base_revision': 0, 'samples': 1}).status_code == 202
+        response = client.post(
+            f'/api/scans/{scan_id}/simulations',
+            json={'base_revision': 0, 'samples': 1},
+        )
+        assert response.status_code == 202
         assert client.delete(f'/api/scans/{scan_id}').status_code == 204
         assert client.get(f'/api/scans/{scan_id}/simulations?revision=0').status_code == 404
         drain(client)
@@ -109,3 +134,44 @@ def test_deletion_waits_for_running_jobs(make_client):
             connection.execute("UPDATE jobs SET state='running' WHERE scan_id=? AND kind='simulate'", (scan_id,))
         assert client.delete(f'/api/scans/{scan_id}').status_code == 409
         assert client.get(f'/api/scans/{scan_id}').status_code == 200
+
+
+def test_auto_deep_campaign_waits_for_route_and_is_idempotent(
+    make_client, monkeypatch
+):
+    monkeypatch.setenv("TYPESAFE_API_KEY", "test-key")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    monkeypatch.setattr("standardphysics_api.simulations._live_ready", lambda stages: None)
+    with make_client(
+        seed=True,
+        auto_deep_simulation=True,
+        auto_deep_samples=7,
+        auto_deep_typesafe_call_limit=23,
+        auto_deep_astra_rounds=3,
+        auto_deep_exhaustive_evaluations=400,
+    ) as client:
+        scan_id = shop(client)
+        worker = client.app.state.worker
+        database = client.app.state.database
+        with database.transaction() as connection:
+            connection.execute("DELETE FROM scenarios WHERE scan_id=?", (scan_id,))
+        worker._assess(UUID(scan_id), 0)
+        with database.connect() as connection:
+            assert connection.execute(
+                "SELECT 1 FROM simulations WHERE scan_id=?", (scan_id,)
+            ).fetchone() is None
+
+        with database.transaction() as connection:
+            repo.save_scenario(connection, UUID(scan_id), build_scenario())
+        worker._assess(UUID(scan_id), 0)
+        worker._assess(UUID(scan_id), 0)
+        with database.connect() as connection:
+            rows = connection.execute(
+                "SELECT request_json FROM simulations WHERE scan_id=?", (scan_id,)
+            ).fetchall()
+        assert len(rows) == 1
+        request = SimulationRequest.model_validate_json(rows[0]["request_json"])
+        assert request.samples == 7
+        assert request.typesafe_call_limit == 23
+        assert request.astra_rounds == 3
+        assert request.exhaustive_evaluations == 400

@@ -80,8 +80,31 @@ function ResultIntroduction({ result, status }: { result: NonNullable<Simulation
   return <>
     <p>Processed {status.completed} of {result.total_runs} trials across {result.unique_layouts} distinct layouts. {result.rejected_runs} routing decisions were rejected.</p>
     <p className="text-ink-muted">Screened with {screening}. Rules checked: {result.rules_checked} of {result.rules_total}.</p>
+    <p className="text-ink-muted">Provider calls: {result.typesafe_calls} TypeSafe and {result.astra_calls} Astra. Deterministic exhaustive evaluations: {result.exhaustive_evaluations.toLocaleString()}.</p>
     <p className="text-ink-muted">{preview} {mesh}</p>
   </>;
+}
+
+function PhysicsResults({ result, labels }: { result: NonNullable<SimulationStatus["result"]>; labels: Map<string, string> }) {
+  const physics = result.physics;
+  if (!physics) return null;
+  const barriers = physics.observations.filter((item) => item.status !== "clear");
+  const blockedRoutes = physics.routes.filter((route) => !route.reachable);
+  return <details className="rounded-lg bg-rule/30 p-3" open>
+    <summary className="cursor-pointer font-medium">Wheelchair physics and environment routes</summary>
+    <div className="mt-3 space-y-2 text-sm">
+      <p className="text-ink-muted">One-inch analysis; {physics.mesh_triangles_checked.toLocaleString()} mesh triangles, {physics.surface_samples.toLocaleString()} low-surface samples, {physics.seats_found} seats, {physics.cashiers_found} service points, and {physics.exits_found} exits.</p>
+      <p className="text-ink-muted">{physics.routes.length} evacuation or seat-to-cashier routes screened; {blockedRoutes.length} were unreachable.</p>
+      {barriers.length > 0 && <ul className="space-y-2">{barriers.map((item, index) => {
+        const nodes = item.node_ids.map((id) => labels.get(id) ?? id);
+        const value = item.measured_value === null ? "" : `: ${item.measured_value.toFixed(2)} ${item.unit ?? ""}`;
+        return <li key={`${item.kind}-${index}`} className="rounded-md border border-rule p-2">
+          <p className="font-medium">{item.title}{value}</p>
+          <p className="text-ink-muted">{item.status.replaceAll("_", " ")}{nodes.length > 0 ? `; ${nodes.join(", ")}` : ""}</p>
+        </li>;
+      })}</ul>}
+    </div>
+  </details>;
 }
 
 function ResultFeedback({ feedback, labels }: { feedback: SimulationFeedback[]; labels: Map<string, string> }) {
@@ -104,6 +127,7 @@ function AstraRedesign({ result }: { result: NonNullable<SimulationStatus["resul
   return <div className="space-y-1 rounded-lg bg-rule/30 p-3 text-sm">
     <p className="font-medium">Astra layout proposal {result.redesign_accepted ? "accepted for preview" : "rejected"}</p>
     <p className="text-ink-muted">Model: {result.redesign_model}</p>
+    <p className="text-ink-muted">Adaptive rounds attempted: {result.adaptive_rounds.length}.</p>
     {result.redesign_reasons.length > 0 && <ul className="list-disc space-y-1 pl-5 text-ink-muted">{result.redesign_reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>}
   </div>;
 }
@@ -113,6 +137,7 @@ function SimulationResults({ status, labels, scene, onTryLayout }: { status: Sim
   const moves = status.result.recommended_graph && candidateMoves(scene, status.result.recommended_graph);
   return <div className="space-y-3 text-sm">
     <ResultIntroduction result={status.result} status={status} />
+    <PhysicsResults result={status.result} labels={labels} />
     <ResultFeedback feedback={status.result.feedback} labels={labels} />
     <ResultLimitations limitations={status.result.limitations} />
     <AstraRedesign result={status.result} />
@@ -172,7 +197,16 @@ function useSimulation(scanId: string, revision: number) {
     setError(null);
     setStarting(true);
     try {
-      setStatus(await startSimulation(scanId, { base_revision: revision, samples: SAMPLES, max_workers: 4, router: routerName, refine_with_astra: refineWithAstra }));
+      setStatus(await startSimulation(scanId, {
+        base_revision: revision,
+        samples: SAMPLES,
+        max_workers: 4,
+        router: routerName,
+        refine_with_astra: refineWithAstra,
+        typesafe_call_limit: 3000,
+        astra_rounds: 4,
+        exhaustive_evaluations: 0,
+      }));
     } catch (reason) {
       setError(message(reason, "We couldn't start the route trials."));
     } finally {

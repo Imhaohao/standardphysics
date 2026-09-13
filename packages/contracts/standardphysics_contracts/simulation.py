@@ -3,7 +3,10 @@ from __future__ import annotations
 
 from typing import Literal
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict, Field
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from .geometry import Vec3
 from .scene import SceneGraph
 
 
@@ -17,6 +20,82 @@ class SimulationRequest(RebuildRequest):
     max_workers: int = Field(default=4, ge=1, le=16)
     router: Literal["local", "typesafe"] = "local"
     refine_with_astra: bool = False
+    typesafe_call_limit: int = Field(default=3000, ge=1, le=50000)
+    astra_rounds: int = Field(default=4, ge=1, le=8)
+    exhaustive_evaluations: int = Field(default=0, ge=0, le=5_000_000)
+
+    @model_validator(mode="after")
+    def enough_budget_for_selected_models(self) -> SimulationRequest:
+        reserved = (self.astra_rounds if self.refine_with_astra else 0) + (
+            9 if self.exhaustive_evaluations else 0
+        )
+        if self.router == "typesafe":
+            reserved += 1
+        if self.typesafe_call_limit < reserved:
+            raise ValueError(
+                "typesafe_call_limit is too small for the selected bounded campaigns"
+            )
+        if 0 < self.exhaustive_evaluations < 40:
+            raise ValueError("exhaustive_evaluations must be zero or at least 40")
+        return self
+
+
+class PhysicsObservation(BaseModel):
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+
+    kind: Literal[
+        "surface_slope",
+        "uncontrolled_roll",
+        "wheelchair_tip",
+        "level_change",
+        "stair_or_step",
+        "turning",
+    ]
+    status: Literal["clear", "potential_barrier", "needs_measurement"]
+    title: str
+    measured_value: float | None = None
+    reference_value: float | None = None
+    unit: str | None = None
+    source: Literal["lidar_mesh", "scene_graph", "route_geometry"]
+    point: Vec3 | None = None
+    node_ids: list[UUID] = []
+
+
+class PhysicsRoute(BaseModel):
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+
+    purpose: Literal["evacuation", "seat_to_cashier"]
+    origin_node_id: UUID
+    destination_node_id: UUID
+    reachable: bool
+    distance_inches: float | None = Field(default=None, ge=0)
+    clear_width_inches: float | None = Field(default=None, ge=0)
+    blocking_node_ids: list[UUID] = []
+
+
+class EnvironmentPhysicsResult(BaseModel):
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+
+    resolution_inches: float = Field(gt=0)
+    mesh_triangles_checked: int = Field(ge=0)
+    surface_samples: int = Field(ge=0)
+    observations: list[PhysicsObservation]
+    routes: list[PhysicsRoute]
+    exits_found: int = Field(ge=0)
+    seats_found: int = Field(ge=0)
+    cashiers_found: int = Field(ge=0)
+    limitations: list[str]
+
+
+class AdaptiveRoundResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    round: int = Field(ge=1)
+    base_graph_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    astra_model: str | None = None
+    accepted: bool
+    reasons: list[str]
+    jev_preferred_candidate: str | None = None
 
 
 class SimulationFeedback(BaseModel):
@@ -48,6 +127,12 @@ class SimulationResult(BaseModel):
     redesign_model: str | None = None
     redesign_accepted: bool = False
     redesign_reasons: list[str] = []
+    typesafe_calls: int = Field(default=0, ge=0)
+    astra_calls: int = Field(default=0, ge=0)
+    adaptive_rounds: list[AdaptiveRoundResult] = []
+    physics: EnvironmentPhysicsResult | None = None
+    exhaustive_evaluations: int = Field(default=0, ge=0)
+    exhaustive_outcomes: dict[str, int] = {}
     limitations: list[str]
 
 
@@ -57,6 +142,8 @@ class SimulationStatus(BaseModel):
     router: Literal["local", "typesafe"]
     samples: int
     completed: int
+    typesafe_call_limit: int = 0
+    exhaustive_evaluations: int = 0
     error: str | None = None
     result: SimulationResult | None = None
 

@@ -5,11 +5,11 @@ import uuid
 
 import pytest
 from fastapi.testclient import TestClient
+from standardphysics_pipeline import blender
 
 from standardphysics_api.app import create_app
 from standardphysics_api.settings import Settings
 from standardphysics_api.stages import Stages, preview_ledger
-from standardphysics_pipeline import blender
 
 REPO = pathlib.Path(__file__).resolve().parents[3]
 FIXTURE_DATA = REPO / "packages/fixtures/standardphysics_fixtures/data"
@@ -41,8 +41,17 @@ def no_blender_stages(**overrides) -> Stages:
 
 @pytest.fixture
 def make_client(tmp_path):
-    def build(seed: bool = False, stages: Stages | None = None) -> TestClient:
-        settings = Settings(data_dir=tmp_path / "var", seed_sample_shop=seed, max_artifact_bytes=5_000_000)
+    def build(
+        seed: bool = False,
+        stages: Stages | None = None,
+        **settings_overrides,
+    ) -> TestClient:
+        settings = Settings(
+            data_dir=tmp_path / "var",
+            seed_sample_shop=seed,
+            max_artifact_bytes=5_000_000,
+            **settings_overrides,
+        )
         return TestClient(create_app(settings, stages or no_blender_stages(), run_worker=False))
 
     return build

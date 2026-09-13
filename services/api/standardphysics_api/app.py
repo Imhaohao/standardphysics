@@ -42,6 +42,7 @@ from .labels import mark_counter, unmark_counter
 from .layout import check_layout, save_layout
 from .simulations import queue_simulation, simulation_status
 from .replays import install_replay_routes
+from .textures import install_texture_routes, maybe_queue_texture, validate_manifest
 from standardphysics_contracts import RebuildRequest, SimulationRequest, SimulationStatus, graph_hash
 from .lidar_mesh import InvalidLidarMesh, validate_lidar_mesh
 from .loop_run import run as run_loop_on
@@ -89,7 +90,7 @@ def create_app(settings: Settings | None = None, stages: Stages | None = None, r
         stages = Stages(ledger_factory=preview_ledger) if settings.preview_unverified_rules else Stages()
     database = Database(settings.database_path)
     store = ArtifactStore(settings.data_dir, settings.max_artifact_bytes)
-    worker = Worker(database, store, stages)
+    worker = Worker(database, store, stages, settings)
 
     @contextlib.asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -116,6 +117,7 @@ def create_app(settings: Settings | None = None, stages: Stages | None = None, r
     _install_route_routes(app, database, worker)
     _install_simulation_routes(app, database, stages, worker)
     install_replay_routes(app, database, store)
+    install_texture_routes(app, database, store, worker)
     _install_label_routes(app, database, worker)
 
     @app.get("/api/scans/{scan_id}/report", response_model=Report)
@@ -232,9 +234,17 @@ def _install_upload_routes(app: FastAPI, database: Database, store: ArtifactStor
             except InvalidLidarMesh:
                 store.discard(staged)
                 raise ApiProblem(400, "invalid lidar mesh") from None
+        if x_artifact_kind == "photo_manifest":
+            try:
+                validate_manifest(staged.temp_path.read_bytes())
+            except ValueError:
+                store.discard(staged)
+                raise ApiProblem(400, "invalid photo manifest") from None
         status, artifact = _accept_staged(
             database, store, scan_id, artifact_id, x_artifact_kind, x_checksum_sha256, staged
         )
+        if x_artifact_kind in ("photo_manifest", "frames", "poses", "lidar_mesh"):
+            maybe_queue_texture(database, store, worker, scan_id)
         return JSONResponse(artifact.model_dump(mode="json"), status_code=status)
 
     @app.post("/api/scans/{scan_id}/complete", response_model=Scan)
