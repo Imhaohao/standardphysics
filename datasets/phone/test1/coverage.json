@@ -1,0 +1,106 @@
+{
+  "172AB6F6-D0CF-4631-96F4-E8700A23802E" : {
+    "observed_fraction" : 0.659574031829834,
+    "viewpoint_count" : 7
+  },
+  "1D7DC938-AF75-4CC3-8475-A4C16CAF6C1F" : {
+    "observed_fraction" : 0.2500000596046448,
+    "viewpoint_count" : 1
+  },
+  "1DC86D8B-42FE-49CB-BB37-6049B7D65939" : {
+    "observed_fraction" : 0.26301413774490356,
+    "viewpoint_count" : 2
+  },
+  "274EFDD6-4819-4781-B7FC-8F7EF9A2E450" : {
+    "observed_fraction" : 0.8699996471405029,
+    "viewpoint_count" : 5
+  },
+  "344D9A88-969D-4203-B796-E6B6B7FAD892" : {
+    "observed_fraction" : 0.22236981987953186,
+    "viewpoint_count" : 4
+  },
+  "39949407-E4E8-459D-A6D1-5EC5157B1812" : {
+    "observed_fraction" : 0.22834959626197815,
+    "viewpoint_count" : 3
+  },
+  "49319B9F-E9C0-4143-B47A-305A76027479" : {
+    "observed_fraction" : 0.35388341546058655,
+    "viewpoint_count" : 2
+  },
+  "4BB8D1C3-C1A5-43A4-8C27-C58E78144E64" : {
+    "observed_fraction" : 0.14260469377040863,
+    "viewpoint_count" : 2
+  },
+  "4F04BD0B-1D6C-4BF0-952C-3C7EBB034871" : {
+    "observed_fraction" : 0.3829082250595093,
+    "viewpoint_count" : 8
+  },
+  "54736801-FE6E-482D-A477-BF40D058F664" : {
+    "observed_fraction" : 0.6376668214797974,
+    "viewpoint_count" : 5
+  },
+  "61F71AC0-09BB-4008-9A5B-F6D5AAF49B82" : {
+    "observed_fraction" : 0.5018219947814941,
+    "viewpoint_count" : 6
+  },
+  "63A8EA40-D712-4808-9BCA-357B4EE3BFC0" : {
+    "observed_fraction" : 0.3644678592681885,
+    "viewpoint_count" : 5
+  },
+  "6C878D9C-71A2-42F8-AA01-1903F10E185F" : {
+    "observed_fraction" : 0.6600005030632019,
+    "viewpoint_count" : 3
+  },
+  "773DFE08-4426-49D8-B4EE-F78147D5E3A9" : {
+    "observed_fraction" : 0.16831478476524353,
+    "viewpoint_count" : 3
+  },
+  "889BE6F3-1ACB-4037-9061-239F6448F24A" : {
+    "observed_fraction" : 0.33311858773231506,
+    "viewpoint_count" : 3
+  },
+  "8FB179F5-5B83-4D14-9095-26E03B67CE74" : {
+    "observed_fraction" : 0.669999897480011,
+    "viewpoint_count" : 2
+  },
+  "95D36655-79F7-4C78-A624-8DC8B29FDB7E" : {
+    "observed_fraction" : 0.46804532408714294,
+    "viewpoint_count" : 5
+  },
+  "9C4024E7-E928-41B0-9971-BFAAA74E48B7" : {
+    "observed_fraction" : 0.39439329504966736,
+    "viewpoint_count" : 2
+  },
+  "A5CB738B-5FDF-4065-A4D4-9A5B6975239C" : {
+    "observed_fraction" : 0.4903370440006256,
+    "viewpoint_count" : 7
+  },
+  "B32A15B9-23BE-4850-9401-76862F6ADF77" : {
+    "observed_fraction" : 0.5900007486343384,
+    "viewpoint_count" : 3
+  },
+  "B49D4FE2-EBA9-49D2-AC4A-274860011DFD" : {
+    "observed_fraction" : 0.4200004041194916,
+    "viewpoint_count" : 12
+  },
+  "BF1E85DD-5A00-40F8-859C-292F232AF141" : {
+    "observed_fraction" : 0.15000014007091522,
+    "viewpoint_count" : 1
+  },
+  "D2512D74-EC74-4C61-8B3F-F35F2BCF8113" : {
+    "observed_fraction" : 0,
+    "viewpoint_count" : 0
+  },
+  "E41351DF-52D2-4F3A-A9C8-BF2E05C6C2EB" : {
+    "observed_fraction" : 0,
+    "viewpoint_count" : 0
+  },
+  "F4CE55B1-DB9E-4FB4-994F-F0A0EBA731DA" : {
+    "observed_fraction" : 0.800000011920929,
+    "viewpoint_count" : 3
+  },
+  "FA25E333-FDAF-43AD-91BA-81CEA0E87202" : {
+    "observed_fraction" : 0.5711435675621033,
+    "viewpoint_count" : 6
+  }
+}

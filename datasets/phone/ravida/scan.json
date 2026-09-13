@@ -1,0 +1,56 @@
+{
+  "scan_id": "af42f6cd-d228-4dd8-8790-aff0890fee5b",
+  "name": "ravida",
+  "device_model": "iPhone18,1",
+  "duration_seconds": 154.72342704201583,
+  "captured_at": "2026-09-12T23:32:35.672100+00:00",
+  "files": [
+    {
+      "file": "coverage.json",
+      "kind": "coverage",
+      "artifact_id": "coverage",
+      "sha256": "237a5523f483da35cf3d85a01ec8e6b3d77e57b99e7ef1db5c35078ec8bf273d",
+      "bytes": 2974
+    },
+    {
+      "file": "lidar-mesh.json",
+      "kind": "lidar_mesh",
+      "artifact_id": "lidar-mesh",
+      "sha256": "829fa97e2a6b10d7fc546b0721c0c63ee259c0dca3b85a5627aa248f547015d1",
+      "bytes": 26631156
+    },
+    {
+      "file": "poses.json",
+      "kind": "poses",
+      "artifact_id": "poses",
+      "sha256": "10eb601fa4f5de0d66b99915182ef0328779e8939141ae935f6080287ab5394d",
+      "bytes": 152976
+    },
+    {
+      "file": "room.json",
+      "kind": "room_json",
+      "artifact_id": "room-json",
+      "sha256": "7a744aafed47a94d5684cb5c675b4f605b6e3122327b212f7e32ef7795041371",
+      "bytes": 360586
+    },
+    {
+      "file": "room.metadata.plist",
+      "kind": "room_metadata",
+      "artifact_id": "room-metadata",
+      "sha256": "f9ef8e6a23d8688802cb04ccb5ea2362c07fbfcc4d8f34cacb45e1ae154a54a7",
+      "bytes": 1341
+    },
+    {
+      "file": "room.usdz",
+      "kind": "room_usdz",
+      "artifact_id": "room-usdz",
+      "sha256": "6a036ffcb5cca8175f476d91b47857b9e3e1edbbec5e0af33e29da4e215f464f",
+      "bytes": 135266
+    }
+  ],
+  "omitted": {
+    "frames": 284,
+    "walkthrough_mp4": 1
+  },
+  "omitted_reason": "Photo frames and the walkthrough video show people and screens, so they stay out of this public repository."
+}

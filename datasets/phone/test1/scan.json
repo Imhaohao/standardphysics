@@ -1,0 +1,56 @@
+{
+  "scan_id": "731cc48e-bd67-4402-b33d-6a696a30754f",
+  "name": "test1",
+  "device_model": "iPhone18,1",
+  "duration_seconds": 239.58446279191412,
+  "captured_at": "2026-09-13T00:22:02.849141+00:00",
+  "files": [
+    {
+      "file": "coverage.json",
+      "kind": "coverage",
+      "artifact_id": "coverage",
+      "sha256": "5e1fa2d6f05d9a14c8ba979bc4b03ba1f8976511f653ebd290fd4b29c557d80c",
+      "bytes": 3148
+    },
+    {
+      "file": "lidar-mesh.json",
+      "kind": "lidar_mesh",
+      "artifact_id": "lidar-mesh",
+      "sha256": "11a4480fd35e6b8a71dc8043c6e3375c34142888f66bac27067f5db0cf44fdb2",
+      "bytes": 31840294
+    },
+    {
+      "file": "poses.json",
+      "kind": "poses",
+      "artifact_id": "poses",
+      "sha256": "543e02dffab181ce48c0919fde9967f5ffdc5e390c4ba624d4086faf5b662325",
+      "bytes": 236980
+    },
+    {
+      "file": "room.json",
+      "kind": "room_json",
+      "artifact_id": "room-json",
+      "sha256": "349fde08faa03c41daf51bc8c35acfff2e015d8b8a497455d03b0ce8b1814c7f",
+      "bytes": 382166
+    },
+    {
+      "file": "room.metadata.plist",
+      "kind": "room_metadata",
+      "artifact_id": "room-metadata",
+      "sha256": "e84bb727f0d1805c842f63e94bb49dbe3344bf33feb7e76f337d769d9982612b",
+      "bytes": 1391
+    },
+    {
+      "file": "room.usdz",
+      "kind": "room_usdz",
+      "artifact_id": "room-usdz",
+      "sha256": "0c9dc6392e8b89e0f46be891cec22313576b6858a99359b84b5b104cd9a373ff",
+      "bytes": 134090
+    }
+  ],
+  "omitted": {
+    "frames": 440,
+    "walkthrough_mp4": 1
+  },
+  "omitted_reason": "Photo frames and the walkthrough video show people and screens, so they stay out of this public repository."
+}
