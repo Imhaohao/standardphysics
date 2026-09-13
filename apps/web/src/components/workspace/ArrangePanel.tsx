@@ -18,7 +18,7 @@ function Status({ arrangement, problems }: { arrangement: Arrangement; problems:
     );
   }
   if (!arrangement.check) {
-    return <p className="text-ink-muted">Drag a table or case to move it. Press R to turn the one you picked.</p>;
+    return <p className="text-ink-muted">Drag a table or case to move it. With a keyboard, press R to turn the one you picked.</p>;
   }
   if (problems === 0 && arrangement.check.blocked.length === 0) {
     return <p className="font-semibold text-pass" role="status">This layout passes every check</p>;

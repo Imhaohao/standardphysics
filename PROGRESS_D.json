@@ -1,6 +1,6 @@
 {
   "lane": "D",
-  "updated": "2026-09-13T02:03:17Z",
+  "updated": "2026-09-13T03:15:13Z",
   "done": [
     "contracts and fixture shop (21bbc65)",
     "Stop.anchor_node_id and WidthResult.needs_measurement (audit A-6, A-9)",
@@ -24,9 +24,12 @@
     "customer route for real scans: suggestion from geometry, owner confirms in the viewer, then checks run (audit A-49)",
     "lawsuit counter variant: lowered section and card reader, build_lawsuit_graph",
     "ask box on Lane C's ask(), with camera focus and Try this layout",
-    "fix searches and questions on their own measurement cache (audit A-45)"
+    "fix searches and questions on their own measurement cache (audit A-45)",
+    "./start.sh starts the API and web from a clean clone, tested in a fresh clone (f33e512)",
+    "sample shop seeds the lawsuit counter now that Lane C checks the register (256ced3)",
+    "release checks: phone width at 390 px, report print to PDF, keyboard-only flow from finding to saved layout, 60 fps orbiting on the M2 Pro (17.1 ms median, none over 20 ms), copy against PLAN section 2"
   ],
-  "in_progress": "release: one-command start, phone width, print, copy pass",
+  "in_progress": null,
   "blocked_on": null,
   "ready_for_others": [
     "python -m standardphysics_api serves the real upload contract on :8787 (Lane A can point API_BASE_URL at the demo machine)",

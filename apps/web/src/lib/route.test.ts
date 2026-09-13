@@ -14,6 +14,13 @@ describe("stopMarkers", () => {
     expect(markers.map((marker) => marker.label)).toEqual(["Entrance and exit", "Counter", "Seat"]);
     expect(markers[0].stopIndexes).toEqual([0, 3]);
   });
+
+  it("lifts the label of a stop that crowds an earlier one", () => {
+    const crowded: Scenario = { ...route, stops: [at("Entrance", 0, -3), at("Counter", 0.3, 3.1), at("Pickup", 0.8, 3.1), at("Exit", 0, -3)] };
+    expect(stopMarkers(crowded).map((marker) => [marker.label, marker.labelTier])).toEqual([
+      ["Entrance and exit", 0], ["Counter", 0], ["Pickup", 1],
+    ]);
+  });
 });
 
 describe("moveMarker", () => {

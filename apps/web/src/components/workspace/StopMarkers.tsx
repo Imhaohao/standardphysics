@@ -8,6 +8,7 @@ import type { StopMarker } from "@/lib/route";
 import { MODEL } from "./palette";
 
 const FLOOR = new Plane(new Vector3(0, 1, 0), 0);
+const LABEL_STEP_PERCENT = 115;
 
 export type RouteHandles = {
   markers: StopMarker[];
@@ -52,7 +53,10 @@ function Marker({ marker, route }: { marker: StopMarker; route: RouteHandles }) 
         <meshBasicMaterial color={MODEL.accent} transparent opacity={route.editable ? 0.85 : 0.5} depthWrite={false} />
       </mesh>
       <Html position={[0, 0.3, 0]} center style={{ pointerEvents: "none" }}>
-        <span className="whitespace-nowrap rounded-md bg-accent px-2 py-1 text-sm font-semibold text-paper shadow-md">
+        <span
+          className="block whitespace-nowrap rounded-md bg-accent px-2 py-1 text-sm font-semibold text-paper shadow-md"
+          style={{ transform: `translateY(${-marker.labelTier * LABEL_STEP_PERCENT}%)` }}
+        >
           {marker.label}
         </span>
       </Html>

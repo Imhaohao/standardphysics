@@ -142,22 +142,22 @@ function WorkspaceHeader({ scan, task, canCompare, onTask }: HeaderProps) {
         <FileText size={16} weight="bold" aria-hidden />
         Report
       </Link>
-      <div className="flex gap-1 rounded-xl bg-rule/50 p-1" role="group" aria-label="What to do">
+      <div className="flex max-w-full gap-1 overflow-x-auto rounded-xl bg-rule/50 p-1" role="group" aria-label="What to do">
         <Button variant="chip" aria-pressed={task === "findings"} onClick={() => onTask("findings")}>
-          <ListChecks size={16} weight="bold" aria-hidden />
+          <ListChecks size={16} weight="bold" className="hidden sm:block" aria-hidden />
           Findings
         </Button>
         <Button variant="chip" aria-pressed={task === "arrange"} onClick={() => onTask("arrange")}>
-          <HandGrabbing size={16} weight="bold" aria-hidden />
+          <HandGrabbing size={16} weight="bold" className="hidden sm:block" aria-hidden />
           Move furniture
         </Button>
         <Button variant="chip" aria-pressed={task === "route"} onClick={() => onTask("route")}>
-          <MapPin size={16} weight="bold" aria-hidden />
+          <MapPin size={16} weight="bold" className="hidden sm:block" aria-hidden />
           Customer route
         </Button>
         {canCompare && (
           <Button variant="chip" aria-pressed={task === "compare"} onClick={() => onTask("compare")}>
-            <ArrowsLeftRight size={16} weight="bold" aria-hidden />
+            <ArrowsLeftRight size={16} weight="bold" className="hidden sm:block" aria-hidden />
             Before and after
           </Button>
         )}
@@ -226,10 +226,10 @@ function FindingsPanel({ scan, scene, assessment, findings, selected, onToggle, 
   );
 }
 
-function SurfaceLabel({ objectLabel, lidarUrl }: { objectLabel: string | null; lidarUrl: string | null }) {
+function SurfaceLabel({ objectLabel }: { objectLabel: string | null }) {
   return (
-    <p aria-live="polite" className="absolute left-4 top-4 rounded-lg bg-sheet px-3 py-2 text-sm text-ink">
-      {objectLabel ?? (lidarUrl ? "Scanned surfaces" : "Layout preview")}
+    <p aria-live="polite" hidden={!objectLabel} className="absolute left-4 top-4 rounded-lg bg-sheet px-3 py-2 text-sm text-ink">
+      {objectLabel}
     </p>
   );
 }
@@ -291,6 +291,7 @@ export function Workspace({ scan, scene, exported, assessment, previous, glbUrl,
     setSelected(null);
     setTask("arrange");
     arrangement.load(moves);
+    requestAnimationFrame(() => document.querySelector<HTMLButtonElement>('[aria-label="What to do"] [aria-pressed="true"]')?.focus());
   };
 
   useKeyboard(task, arrangement, clear);
@@ -298,7 +299,7 @@ export function Workspace({ scan, scene, exported, assessment, previous, glbUrl,
   return (
     <>
     <RefreshWhile pending={assessment === null && isWorking(scan)} />
-    <div className="grid h-dvh grid-rows-[auto_minmax(18rem,55dvh)_1fr] lg:grid-cols-[1fr_24rem] lg:grid-rows-[auto_1fr]">
+    <div className="grid h-dvh grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(16rem,45dvh)_1fr] lg:grid-cols-[minmax(0,1fr)_24rem] lg:grid-rows-[auto_1fr]">
       <WorkspaceHeader scan={scan} task={task} canCompare={comparison !== null} onTask={switchTask} />
       <section className="relative min-h-0 touch-none overflow-hidden lg:rounded-tr-2xl" aria-label="Shop model">
         <Viewer
@@ -314,7 +315,7 @@ export function Workspace({ scan, scene, exported, assessment, previous, glbUrl,
           onSelectNode={selectNode}
           onClearSelection={clear}
         />
-        <SurfaceLabel objectLabel={objectLabel} lidarUrl={displayedLidarUrl} />
+        <SurfaceLabel objectLabel={objectLabel} />
         <div className="absolute bottom-4 left-4 flex gap-2">
           <Button variant="chip" aria-pressed={mode === "overview" && !selected} onClick={() => showView("overview")}>
             <ArrowsOutCardinal size={16} weight="bold" aria-hidden />

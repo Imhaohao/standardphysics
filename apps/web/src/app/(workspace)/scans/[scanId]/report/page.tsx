@@ -66,9 +66,9 @@ function RulesTable({ rules }: { rules: ReviewedRule[] }) {
         <tbody>
           {rules.map((rule) => (
             <tr key={rule.check.id} className="border-t border-rule align-top">
-              <td className="measurement py-2 pr-4">{rule.check.citation.section}</td>
+              <td className="measurement whitespace-nowrap py-2 pr-4">{rule.check.citation.section}</td>
               <td className="py-2 pr-4">{rule.check.title}</td>
-              <td className="measurement py-2 pr-4">{threshold(rule)}</td>
+              <td className="measurement whitespace-nowrap py-2 pr-4">{threshold(rule)}</td>
               <td className="py-2">
                 {rule.verified_by}, {longDate.format(new Date(rule.verified_at))}
                 {rule.second_check_by && <span className="block text-ink-muted">Second check: {rule.second_check_by}</span>}

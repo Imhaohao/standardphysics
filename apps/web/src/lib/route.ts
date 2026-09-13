@@ -1,8 +1,9 @@
 import type { Scenario } from "@/types/contracts";
 
-export type StopMarker = { key: string; label: string; stopIndexes: number[]; x: number; y: number };
+export type StopMarker = { key: string; label: string; stopIndexes: number[]; x: number; y: number; labelTier: number };
 
 const SAME_SPOT_METERS = 0.05;
+const CROWDED_METERS = 1.2;
 
 /** One marker per spot, so an entrance that is also the exit is dragged as one. */
 export function stopMarkers(scenario: Scenario): StopMarker[] {
@@ -15,9 +16,17 @@ export function stopMarkers(scenario: Scenario): StopMarker[] {
       shared.label = `${shared.label} and ${stop.name.toLowerCase()}`;
       return;
     }
-    markers.push({ key: `${index}`, label: stop.name, stopIndexes: [index], x, y });
+    markers.push({ key: `${index}`, label: stop.name, stopIndexes: [index], x, y, labelTier: 0 });
   });
-  return markers;
+  return stackCrowdedLabels(markers);
+}
+
+/** A marker close to earlier ones lifts its label above theirs, so Counter and Pickup stay readable. */
+function stackCrowdedLabels(markers: StopMarker[]): StopMarker[] {
+  return markers.map((marker, index) => ({
+    ...marker,
+    labelTier: markers.slice(0, index).filter((earlier) => Math.hypot(earlier.x - marker.x, earlier.y - marker.y) < CROWDED_METERS).length,
+  }));
 }
 
 export function moveMarker(scenario: Scenario, marker: StopMarker, dx: number, dy: number): Scenario {
