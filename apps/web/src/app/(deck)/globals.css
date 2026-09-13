@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 @theme inline {
-  --font-display: var(--font-bricolage-grotesque), ui-sans-serif, system-ui, sans-serif;
-  --font-body: var(--font-atkinson-hyperlegible-next), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-libre-franklin), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-karla), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-body);
 }
 

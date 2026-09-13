@@ -29,7 +29,7 @@ export type SlideDefinition = {
 export const slides: SlideDefinition[] = [
   { id: "title", shot: "cloud", layer: "behindStage", Content: TitleSlide },
   { id: "sara", shot: "awayBeforeScan", layer: "overStage", steps: 4, Content: SaraSlide },
-  { id: "payouts", shot: "awayBeforeScan", layer: "overStage", steps: 2, Content: PayoutsSlide },
+  { id: "payouts", shot: "awayBeforeScan", layer: "overStage", Content: PayoutsSlide },
   { id: "rulebook", shot: "awayBeforeScan", layer: "overStage", Content: RulebookSlide },
   { id: "stretched", shot: "awayBeforeScan", layer: "overStage", steps: 2, Content: StretchedSlide },
   { id: "mission", shot: "awayBeforeScan", layer: "overStage", Content: MissionSlide },
