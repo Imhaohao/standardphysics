@@ -132,9 +132,9 @@
   height: 22vh;
 }
 
-@utility stretched-coin {
-  width: 11vh;
-  height: 11vh;
+@utility stretched-scale {
+  width: 72vh;
+  height: 63vh;
 }
 
 @utility closing-portrait {
