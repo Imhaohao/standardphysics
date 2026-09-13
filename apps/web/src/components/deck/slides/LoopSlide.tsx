@@ -164,7 +164,7 @@ const copy: Record<LoopPhase, { headline: string[]; detail: string[] }> = {
   },
   decide: {
     headline: ["TypeSafe picks", "the next move."],
-    detail: ["Fix the layout, rescan an area, ask Sara,", "hand it to a person, or call it done."],
+    detail: [],
   },
   improve: {
     headline: ["Every fix", "must prove itself."],
@@ -178,9 +178,11 @@ function LoopCopy({ phase }: { phase: LoopPhase }) {
       <h2 className="font-display text-figure font-extrabold">
         <MaskedLines lines={copy[phase].headline} delay={0.1} />
       </h2>
-      <p className="mt-deck-rise font-display text-caption font-bold text-ink-muted">
-        <MaskedLines lines={copy[phase].detail} delay={0.4} />
-      </p>
+      {copy[phase].detail.length > 0 && (
+        <p className="mt-deck-rise font-display text-caption font-bold text-ink-muted">
+          <MaskedLines lines={copy[phase].detail} delay={0.4} />
+        </p>
+      )}
     </>
   );
 }
