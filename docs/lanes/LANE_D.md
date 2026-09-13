@@ -71,6 +71,8 @@ The measurement label is what sells this. Project the 3D midpoint to screen spac
 
 **12. CI.** Typecheck, pytest, contract generation. Clean-clone startup with one command, tested on a machine that has never run it.
 
+**13. The reactive notebook.** `notebooks/scenario_sweep.py`, described in [`docs/marimo.md`](../marimo.md). Sliders set the shop's dimensions and the routine walked through it, and the same `run_case` the evaluation grid calls reads the room they build. The notebook draws findings and reads scorers; it measures nothing itself. *Done when moving a slider changes a finding, and the sweep chart's sampled boundary lands on the number the check cites.*
+
 ## Copy
 
 You write more user-facing strings than any other lane. Section 2 of the plan is not a style note, it is a requirement: short sentences, ordinary words, inches, no jargon, and never a sentence whose job is to deny or disclaim. That includes reassurance nobody asked for. If a string would only land with someone already suspicious, cut it.
