@@ -39,7 +39,7 @@
 
   --spacing-deck-gap: 4vw;
   --spacing-deck-rise: 4vh;
-  --spacing-deck-printer: 9vh;
+  --spacing-deck-printer: 14vh;
   --spacing-deck-hairline: 1.5vh;
   --spacing-deck-art: 78vh;
   --spacing-receipt: 19em;
@@ -172,6 +172,10 @@
   inset-block: 0.05em;
   z-index: -1;
   background: var(--color-tape);
+}
+
+@utility receipt-shadow {
+  filter: drop-shadow(0 0.35vh 0.5vh color-mix(in srgb, var(--color-ink) 22%, transparent));
 }
 
 @utility receipt-tear {

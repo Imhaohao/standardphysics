@@ -36,7 +36,7 @@ const paperPrinting: Variants = {
 
 export function Receipt() {
   return (
-    <div className="flex w-receipt min-w-fit flex-col items-stretch text-caption drop-shadow-2xl">
+    <div className="flex w-receipt min-w-fit flex-col items-stretch text-caption receipt-shadow">
       <div aria-hidden className="relative z-10 h-4 rounded-full bg-ink shadow-lg" />
       <div className="-mt-2 overflow-hidden px-4">
         <motion.div variants={paperPrinting} className="receipt-tear bg-paper-raised px-6 pt-8 pb-10">
