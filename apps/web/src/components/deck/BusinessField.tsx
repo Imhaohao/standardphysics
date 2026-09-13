@@ -21,8 +21,14 @@ function pitchFor(state: FieldState) {
   return Math.sqrt((state.width * state.height) / 10 ** state.businessesLog);
 }
 
+const tileCache = new Map<string, { tile: HTMLCanvasElement; size: number }>();
+const MAX_PIXEL_RATIO = 1.25;
+
 function dotTile(pitch: number, color: string) {
   const size = Math.max(Math.round(pitch), SMALLEST_TILE_PX);
+  const key = `${size}:${color}`;
+  const cached = tileCache.get(key);
+  if (cached) return cached;
   const tile = document.createElement("canvas");
   tile.width = size;
   tile.height = size;
@@ -32,7 +38,9 @@ function dotTile(pitch: number, color: string) {
   context.beginPath();
   context.arc(size / 2, size / 2, size * DOT_TO_PITCH, 0, Math.PI * 2);
   context.fill();
-  return { tile, size };
+  const made = { tile, size };
+  tileCache.set(key, made);
+  return made;
 }
 
 function fillDotsAtPitch(context: CanvasRenderingContext2D, state: FieldState, pitch: number, color: string) {
@@ -101,7 +109,7 @@ export function BusinessField({ businessesLog, waveProgress }: { businessesLog: 
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    const context = canvas?.getContext("2d");
+    const context = canvas?.getContext("2d", { alpha: true, desynchronized: true });
     if (!canvas || !context) return;
     const colors = readColors(canvas);
     let size = { width: 1, height: 1 };
@@ -113,7 +121,7 @@ export function BusinessField({ businessesLog, waveProgress }: { businessesLog: 
 
     function resize() {
       if (!canvas || !context) return;
-      const ratio = window.devicePixelRatio || 1;
+      const ratio = Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO);
       const bounds = canvas.getBoundingClientRect();
       canvas.width = Math.round(bounds.width * ratio);
       canvas.height = Math.round(bounds.height * ratio);
@@ -122,14 +130,24 @@ export function BusinessField({ businessesLog, waveProgress }: { businessesLog: 
       render();
     }
 
+    let frame = 0;
+    function scheduleRender() {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        render();
+      });
+    }
+
     const observer = new ResizeObserver(resize);
     observer.observe(canvas);
-    const stopBusinesses = businessesLog.on("change", render);
-    const stopWave = waveProgress.on("change", render);
+    const stopBusinesses = businessesLog.on("change", scheduleRender);
+    const stopWave = waveProgress.on("change", scheduleRender);
     return () => {
       observer.disconnect();
       stopBusinesses();
       stopWave();
+      cancelAnimationFrame(frame);
     };
   }, [businessesLog, waveProgress]);
 

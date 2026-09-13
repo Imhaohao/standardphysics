@@ -1,6 +1,8 @@
 "use client";
 
-import { motion, type Variants } from "motion/react";
+import { AnimatePresence, motion, type Variants } from "motion/react";
+import { AppCapture } from "../AppCapture";
+import type { SlideProps } from "../slides";
 import { easeDrawn, exitTransition } from "@/lib/motion";
 import {
   formatInches,
@@ -178,9 +180,18 @@ function DataRow({ row, index }: { row: (typeof dataRows)[number]; index: number
   );
 }
 
-export function ModelSlide() {
+export function ModelSlide({ step }: SlideProps) {
   return (
-    <div className="deck-gutter flex h-full items-center justify-center">
+    <div className="deck-gutter relative flex h-full items-center justify-center">
+      <AnimatePresence>
+        {step > 0 && (
+          <motion.div key="app" className="absolute inset-0 z-10 flex items-center justify-center bg-paper/80 px-deck-gap" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <div className="app-capture-wide">
+              <AppCapture image="/deck/app-model.jpg" alt="The measured 3D model of the sample boba shop in the Standard Physics app, with its findings beside it" />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <svg viewBox="-40 -60 1400 930" className="h-full max-h-deck-art w-full overflow-visible" role="img" aria-label="Scan points settle into a measured floor plan, and each object becomes a row of data">
         <ScanDots />
         {dataRows.map((row, index) => (

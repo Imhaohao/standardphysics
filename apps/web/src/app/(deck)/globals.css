@@ -39,11 +39,13 @@
 
   --spacing-deck-gap: 4vw;
   --spacing-deck-rise: 4vh;
-  --spacing-deck-printer: 9vh;
+  --spacing-deck-printer: 14vh;
   --spacing-deck-hairline: 1.5vh;
   --spacing-deck-art: 78vh;
   --spacing-receipt: 19em;
   --spacing-deck-portrait: 24vh;
+  --spacing-stretched-time: 36vh;
+  --spacing-stretched-money: 100vh;
   --spacing-deck-bar: min(5vw, 9vh);
   --spacing-deck-stage: 42vh;
   --spacing-deck-copy: 26vh;
@@ -112,9 +114,9 @@
   margin-top: 6px;
 }
 
-@utility stretched-books {
-  width: 16vh;
-  height: 16vh;
+@utility stretched-circle {
+  width: 36vh;
+  height: 36vh;
 }
 
 @utility stretched-clock {
@@ -122,14 +124,13 @@
   height: 44vh;
 }
 
-@utility stretched-sky {
-  width: 12vh;
-  height: 12vh;
-}
-
 @utility stretched-briefcase {
   width: 22vh;
   height: 22vh;
+}
+
+@utility stretched-stage {
+  height: 66vh;
 }
 
 @utility stretched-scale {
@@ -140,6 +141,28 @@
 @utility closing-portrait {
   width: 44vh;
   height: 44vh;
+}
+
+@utility payout-bill {
+  width: 2.8vh;
+  height: 1.4vh;
+  outline: 0.25vh solid var(--color-ink);
+}
+
+@utility payout-bill-seal {
+  width: 0.7vh;
+  height: 0.7vh;
+  outline: 0.2vh solid var(--color-ink);
+}
+
+@utility slider-thumb {
+  width: 3vh;
+  height: 3vh;
+  translate: -50% -50%;
+}
+
+@utility app-capture-wide {
+  width: min(78vw, 128vh);
 }
 
 @utility step-badge {
@@ -172,6 +195,10 @@
   inset-block: 0.05em;
   z-index: -1;
   background: var(--color-tape);
+}
+
+@utility receipt-shadow {
+  filter: drop-shadow(0 0 1px color-mix(in srgb, var(--color-ink) 45%, transparent));
 }
 
 @utility receipt-tear {

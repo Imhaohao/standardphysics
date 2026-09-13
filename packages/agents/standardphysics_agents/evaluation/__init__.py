@@ -42,13 +42,11 @@ from .scenarios import (
     Knobs,
     Reading,
     Routine,
-    held,
     readings,
     room,
     routine_named,
     run_knobs,
     sweep_knob,
-    verdicts,
 )
 from .scorers import LOWER_IS_BETTER, SCORERS, CaseOutcome
 from .weave_eval import DEFAULT_NAME, evaluate_in_weave, rows, scorer
@@ -61,11 +59,11 @@ __all__ = [
     "Knobs", "Reading", "Routine", "Setup", "accepts", "action_name",
     "answered_checks", "blocker", "dataset", "evaluate", "evaluate_in_weave",
     "grid",
-    "held", "label_for", "log_experiments", "previewing", "readings", "review",
+    "label_for", "log_experiments", "previewing", "readings", "review",
     "room",
     "routine_named", "rows", "run_accessibility_sweep", "run_case",
     "run_knobs",
     "run_experiment", "run_grid", "save", "save_accessibility_sweep",
     "save_experiments", "scorer", "setup", "summary", "sweep_knob", "target",
-    "total_shortfall", "verdicts",
+    "total_shortfall",
 ]

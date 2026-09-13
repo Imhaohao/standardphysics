@@ -23,7 +23,6 @@ import type { SlideProps } from "../slides";
 const timeline = {
   planIn: 0.1,
   routeDraws: 0.6,
-  routeSeconds: 1.6,
   chairRolls: 0.9,
   chairSeconds: 2.2,
   morphSeconds: 1.4,
@@ -108,12 +107,6 @@ const shownInShop: Variants = {
   warehouse: { opacity: 0, transition: exitTransition },
 };
 
-const routeDraws: Variants = {
-  enter: { pathLength: 0 },
-  shop: { pathLength: 1, transition: { duration: timeline.routeSeconds, ease: easeDrawn, delay: timeline.routeDraws } },
-  warehouse: { pathLength: 0, transition: { duration: 0.01, delay: exitTransition.duration } },
-};
-
 type GridStop = [aisle: number, row: keyof typeof aisles];
 
 function gridRoute(stops: GridStop[]) {
@@ -187,11 +180,12 @@ function WheelchairRoute({ phase }: { phase: Phase }) {
   const path = useRef<SVGPathElement>(null);
   const progress = useTravel({ from: 0, seconds: timeline.chairSeconds, delay: timeline.chairRolls, repeat: false, active: phase === "shop" });
   const clampedProgress = useTransform(progress, (value) => Math.min(value, 0.999));
+  const drawnLength = useTransform(progress, (value) => Math.min(Math.max(value, 0.001), 1));
 
   return (
     <motion.g variants={shownInShop}>
-      <motion.path d={wheelchairRoute} fill="none" stroke="var(--color-tape)" strokeOpacity={0.45} strokeWidth={planCaseGap.eastX - planCaseGap.westX} variants={routeDraws} />
-      <motion.path ref={path} d={wheelchairRoute} fill="none" stroke="var(--color-ink)" strokeWidth={4} variants={routeDraws} />
+      <motion.path d={wheelchairRoute} fill="none" stroke="var(--color-tape)" strokeOpacity={0.45} strokeWidth={planCaseGap.eastX - planCaseGap.westX} style={{ pathLength: drawnLength }} />
+      <motion.path ref={path} d={wheelchairRoute} fill="none" stroke="var(--color-ink)" strokeWidth={4} style={{ pathLength: drawnLength }} />
       <text x={planCaseGap.eastX + 24} y={planCaseGap.y + caseDepth / 2 + 56} fill="var(--color-ink)" className="font-display text-4xl font-bold figures-tabular">
         {formatInches(measurements.caseGapInches)}
       </text>

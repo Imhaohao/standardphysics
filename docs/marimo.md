@@ -5,9 +5,10 @@ names each one uses, and changing a value re-runs only the cells downstream of
 it. There is no hidden state and no stale output, so a notebook checked into a
 repository runs the same way for the next person who opens it.
 
-`notebooks/scenario_sweep.py` uses that to make the review interactive. Sliders
-set the shop's dimensions, and the same evaluator that scores the labelled
-dataset reads the room they build.
+`notebooks/scenario_sweep.py` uses that to make the review interactive. Its
+first half builds a shop from sliders, and the same evaluator that scores the
+labelled dataset reads the room they build. Its second half does the same thing
+to a room that came off a phone.
 
 ```bash
 ./start.sh                                     # once, to install
@@ -70,6 +71,63 @@ shipped shop take about four seconds. Moving the swept slider itself does not
 pay that again: the sweep replaces that knob at every reading, so its current
 value cannot change the answer, and the notebook parks it before asking the
 cache. Only the marker moves.
+
+## A room off a phone
+
+The shop is geometry we authored, which tests the arithmetic and leaves the
+assumptions alone. The second half of the notebook runs the checks over real
+RoomPlan captures instead.
+
+Four are wired up. The two Apple samples ship inside the fixtures package, so
+they are there in any install. The two phone scans live under `datasets/phone`
+and appear only in a checkout that carries them, which
+`standardphysics_agents.evaluation.captures.available()` works out by looking.
+
+| Control | What it does |
+|---|---|
+| Room | Which capture to read |
+| From, To | The two things the trip runs between, named off the scan itself. Two sofas come back as `Sofa 1` and `Sofa 2` |
+| Move, Along, Distance | Pushes one movable piece up to 24 in either way and measures again |
+| Read the pieces it only glimpsed as measured | Stands in for the rescan the router would ask for |
+
+That last switch is the one worth understanding. RoomPlan attaches a confidence
+to every piece it recognises, ingest turns medium and low into
+`needs_another_look`, and a check resting on one of those asks for another look
+rather than ruling. A real capture therefore comes back mostly undecided: the
+living room measures a 59.6 in route and declines to call it a pass, because the
+fireplace beside it was only glimpsed. `after_a_rescan` writes confidence and
+nothing else, so it can stop an answer from being withheld and cannot invent
+one.
+
+Rearranging goes through `fix.moves.apply_moves` and is judged by
+`fix.constraints.violations`, the pair the fix agent already uses. A nudge can
+only be a move the loop was allowed to propose, and when a slider pushes a sofa
+into a wall the notebook says which constraint it broke instead of reporting a
+measurement of an impossible room.
+
+## The route that leaves the building
+
+On three of the four captures most of the walked path runs outside the scanned
+floor, and the plan draws that stretch as a faint dotted aside rather than as
+the trip.
+
+This is real behaviour, not a drawing error. The occupancy grid marks a cell
+free wherever nothing occupies it, so a capture whose walls do not close leaves
+open ground outside the building, and the widest path search will use it: the
+living room has a 3.67 m doorway, and going around the outside is wider than
+squeezing past the sofa. The shipped fixture cannot show this, because its four
+walls enclose the room. The headline number says so too, and reports the share
+of the route that left the floor rather than calling the reading the tightest
+point of a walk through the room.
+
+## Nothing on a capture is scored
+
+`scenarios.run_knobs` calls `run_case`, which scores. `captures.review` calls
+`assess` and stops there. A knob that sets a dimension is a claim about what a
+correct measurement of it would be, and nobody measured these rooms by hand, so
+there is no correct answer to read the pipeline against. Reading precision
+against a room nobody labelled would score a missing label as a wrong answer.
+What a capture shows is the finding and the confidence behind it.
 
 ## Rules a person has to read first
 

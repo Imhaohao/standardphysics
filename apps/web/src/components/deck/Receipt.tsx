@@ -2,7 +2,7 @@
 
 import { motion, type Variants } from "motion/react";
 import { facts } from "@/lib/facts";
-import { easeDrawn, exitTransition } from "@/lib/motion";
+import { exitTransition } from "@/lib/motion";
 import { CountFromProgress, FinePrint, MaskedLines, useProgress } from "./primitives";
 
 const MILLISECONDS_PER_DAY = 86_400_000;
@@ -36,7 +36,7 @@ const paperPrinting: Variants = {
 
 export function Receipt() {
   return (
-    <div className="flex w-receipt min-w-fit flex-col items-stretch text-caption drop-shadow-2xl">
+    <div className="flex w-receipt min-w-fit flex-col items-stretch text-caption receipt-shadow">
       <div aria-hidden className="relative z-10 h-4 rounded-full bg-ink shadow-lg" />
       <div className="-mt-2 overflow-hidden px-4">
         <motion.div variants={paperPrinting} className="receipt-tear bg-paper-raised px-6 pt-8 pb-10">
@@ -58,8 +58,11 @@ export function Receipt() {
   );
 }
 
-export function DamagesCopy() {
-  const progress = useProgress(1.4, 0.5, easeDrawn);
+const LINEAR = [0, 0, 1, 1] as const;
+
+export function DamagesCopy({ waitedSeconds = 0 }: { waitedSeconds?: number }) {
+  const countStarts = Math.max(PRINT_DELAY - waitedSeconds, 0);
+  const progress = useProgress(PRINT_SECONDS, countStarts, LINEAR);
 
   return (
     <div className="flex flex-col justify-center">

@@ -9,6 +9,7 @@ finding the server would report for that room.
 from __future__ import annotations
 
 import pytest
+from standardphysics_agents.assess import STRENGTH
 from standardphysics_agents.evaluation import scenarios as s
 from standardphysics_agents.evaluation.configuration import setup
 from standardphysics_agents.evaluation.dataset import ROUTE, SCAN_CANNOT_SEE
@@ -146,7 +147,7 @@ class TestSweepingOneKnob:
 
 class TestWhatEachCheckSaid:
     def test_one_verdict_per_check(self, outcome):
-        assert set(s.verdicts(outcome).values()) <= set(s.STRENGTH)
+        assert set(outcome.result.verdicts.values()) <= set(STRENGTH)
 
     def test_a_problem_on_any_leg_is_the_verdict(self, outcome):
         """The route measures every leg. The shipped shop passes most of them
@@ -157,14 +158,14 @@ class TestWhatEachCheckSaid:
             if finding.check_id == ROUTE
         }
         assert legs == {"problem", "passes"}
-        assert s.verdicts(outcome)[ROUTE] == "problem"
+        assert outcome.result.verdicts[ROUTE] == "problem"
 
     def test_a_held_rule_says_what_it_is_waiting_on(self, outcome):
-        waiting = s.held(outcome)
+        waiting = outcome.result.held
         assert waiting
         assert all(reason for reason in waiting.values())
 
     def test_holding_does_not_hide_what_a_rule_did_answer(self, outcome):
         """`exit_path` measures a width and holds the rest of its section."""
-        assert "exit_path" in s.held(outcome)
-        assert s.verdicts(outcome)["exit_path"] == "passes"
+        assert "exit_path" in outcome.result.held
+        assert outcome.result.verdicts["exit_path"] == "passes"

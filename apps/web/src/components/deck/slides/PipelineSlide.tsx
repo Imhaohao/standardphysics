@@ -1,7 +1,9 @@
 "use client";
 
 import { Cube, DeviceMobile, ListChecks, MapPin, Tag, type Icon } from "@phosphor-icons/react";
-import { motion, type Variants } from "motion/react";
+import { AnimatePresence, motion, type Variants } from "motion/react";
+import { AppCapture } from "../AppCapture";
+import type { SlideProps } from "../slides";
 import { easeDrawn, exitTransition } from "@/lib/motion";
 
 type PipelineStep = { Icon: Icon; title: string; detail: string; tool?: string };
@@ -51,10 +53,17 @@ function StepRow({ step, index }: { step: PipelineStep; index: number }) {
   );
 }
 
-export function PipelineSlide() {
+export function PipelineSlide({ step }: SlideProps) {
   return (
-    <div className="deck-gutter flex h-full items-center">
-      <ol aria-label="How Standard Physics checks a scan" className="flex flex-col gap-deck-rise text-lede">
+    <div className="deck-gutter grid h-full grid-cols-[auto_minmax(0,1fr)] items-center gap-deck-gap">
+      <AnimatePresence>
+        {step > 0 && (
+          <motion.div key="report" className="col-start-2 row-start-1" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <AppCapture aspect="square" image="/deck/app-report.jpg" alt="The Standard Physics report pinning the 47 inch counter and the 31 inch aisle, each with a render of the exact spot and the fix" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <ol aria-label="How Standard Physics checks a scan" className="col-start-1 row-start-1 flex flex-col gap-deck-rise text-lede">
         {steps.map((step, index) => (
           <StepRow key={step.title} step={step} index={index} />
         ))}
