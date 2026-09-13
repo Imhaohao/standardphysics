@@ -44,6 +44,8 @@
   --spacing-deck-art: 78vh;
   --spacing-receipt: 19em;
   --spacing-deck-portrait: 24vh;
+  --spacing-stretched-time: 36vh;
+  --spacing-stretched-money: 100vh;
   --spacing-deck-bar: min(5vw, 9vh);
   --spacing-deck-stage: 42vh;
   --spacing-deck-copy: 26vh;
@@ -112,6 +114,11 @@
   margin-top: 6px;
 }
 
+@utility stretched-circle {
+  width: 36vh;
+  height: 36vh;
+}
+
 @utility stretched-clock {
   width: 44vh;
   height: 44vh;
@@ -123,7 +130,6 @@
 }
 
 @utility stretched-stage {
-  width: 100vh;
   height: 66vh;
 }
 

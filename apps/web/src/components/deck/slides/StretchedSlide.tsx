@@ -25,7 +25,7 @@ function SaraAtHerDesk({ stretched }: { stretched: boolean }) {
         initial={false}
         animate={{ filter: stretched ? "grayscale(0.8)" : "grayscale(0)", y: stretched ? 8 : 0 }}
         transition={{ duration: 1.4 }}
-        className="size-deck-portrait rounded-full object-cover shadow-lg"
+        className="stretched-circle rounded-full object-cover shadow-lg"
       />
     </motion.div>
   );
@@ -52,7 +52,7 @@ function useSpinningHands() {
 function SpinningClock() {
   const { minute, hour } = useSpinningHands();
   return (
-    <svg viewBox="-170 -170 340 340" className="size-full">
+    <svg viewBox="-155 -155 310 310" className="size-full overflow-visible">
       <circle r={CLOCK.r} fill="var(--color-paper-raised)" stroke="var(--color-ink)" strokeWidth={10} />
       {Array.from({ length: 12 }, (_, index) => (
         <line key={index} x1={0} y1={-CLOCK.r + 16} x2={0} y2={-CLOCK.r + (index % 3 === 0 ? 44 : 30)} stroke="var(--color-ink)" strokeWidth={index % 3 === 0 ? 8 : 4} transform={`rotate(${index * 30})`} />
@@ -73,7 +73,7 @@ const beatSwap: Variants = {
 function NoTime() {
   return (
     <motion.div key="time" initial="enter" animate="present" exit="exit" variants={beatSwap} className="absolute inset-0 flex items-center justify-center">
-      <div className="stretched-clock">
+      <div className="stretched-circle">
         <SpinningClock />
       </div>
     </motion.div>
@@ -194,11 +194,16 @@ export function StretchedSlide({ step }: SlideProps) {
       className="deck-gutter flex h-full items-center justify-center gap-deck-gap"
     >
       <SaraAtHerDesk stretched={needsMoney} />
-      <div className="stretched-stage relative">
+      <motion.div
+        className="stretched-stage relative"
+        initial={false}
+        animate={{ width: needsMoney ? "var(--spacing-stretched-money)" : "var(--spacing-stretched-time)" }}
+        transition={{ duration: 0.7, ease: easeDrawn }}
+      >
         <AnimatePresence mode="wait" initial={false}>
           {needsMoney ? <NoMoney key="money" /> : <NoTime key="time" />}
         </AnimatePresence>
-      </div>
+      </motion.div>
     </div>
   );
 }
