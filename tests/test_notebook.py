@@ -84,3 +84,86 @@ class TestWhatTheNotebookRestsOn:
         for knob, (name, lowest, highest, step) in ran["KNOBS"].items():
             assert knob in ran["scenarios"].PINS
             assert name and lowest < highest and step > 0
+
+
+SWEPT_AXIS = "shift_y"
+
+
+class TestTheCaptureSection:
+    def test_it_reads_a_real_scan(self, ran):
+        """The plan is drawn from the capture, not from a fixture."""
+        scanned = ran["scanned"]
+        assert scanned.nodes
+        assert all(node.labeled_by == "roomplan" for node in scanned.nodes)
+
+    def test_the_shipped_samples_are_offered(self, ran):
+        assert {each.id for each in ran["scans"]} >= {
+            "apple_livingroom",
+            "apple_bedroom3",
+        }
+
+    def test_the_trip_runs_between_two_things_the_scan_found(self, ran):
+        places = ran["places"]
+        assert ran["aim"].start in places
+        assert ran["aim"].end in places
+
+    def test_the_plan_names_itself_for_a_screen_reader(self, ran):
+        assert "<title>" in ran["plan_view"]().text
+
+    def test_the_plan_squares_the_room_to_its_longest_wall(self, ran):
+        """A capture is oriented to wherever the phone stood, so the drawing
+        turns it flat before fitting it."""
+        import math
+
+        turn = ran["square_to_the_walls"](ran["scanned"])
+        assert abs(turn) <= math.pi / 4
+
+    def test_a_wall_is_stroked_because_the_scan_gives_it_no_thickness(self, ran):
+        """RoomPlan returns walls as zero-thickness planes, so a filled shape
+        would come out invisible."""
+        walls = [node for node in ran["scanned"].nodes if node.kind == "wall"]
+        assert walls
+        assert all(min(node.dimensions.x, node.dimensions.y) == 0.0 for node in walls)
+        assert "stroke-width" in ran["plan_view"]().text
+
+    def test_the_stretch_off_the_floor_is_drawn_as_an_aside(self, ran):
+        """This capture's walls do not close, so the widest path leaves the
+        building. Drawing it like the rest would call a walk around the block
+        the trip."""
+        captures, aim, survey = ran["captures"], ran["aim"], ran["survey"]
+        path = captures.walked_path(survey)
+        inside = captures.on_the_floor(captures.room(aim), path)
+        assert not all(inside)
+        runs = ran["runs_of"](path, inside)
+        assert {on_floor for on_floor, _ in runs} == {True, False}
+
+    def test_the_headline_number_says_where_it_was_taken(self, ran):
+        assert "off the scanned floor" in ran["reading_block"](ran["survey"])
+
+    def test_a_confidence_the_scan_withheld_is_named(self, ran):
+        """A check that measured something and asked anyway is listed by name,
+        because a count alone does not say what is unresolved."""
+        waiting = ran["captures"].withheld(ran["survey"])
+        assert waiting
+        block = ran["withheld_block"](ran["survey"])
+        assert all(ran["rule_title"](check) in block for check in waiting)
+
+
+class TestWhatTheCaptureSectionRestsOn:
+    def test_moving_the_nudged_slider_leaves_the_cache_key_alone(self, ran):
+        parked_nudge, aim = ran["parked_nudge"], ran["aim"]
+        assert parked_nudge(aim, SWEPT_AXIS) == parked_nudge(
+            replace(aim, shift_y=0.5), SWEPT_AXIS
+        )
+
+    def test_picking_another_piece_does_not(self, ran):
+        parked_nudge, aim = ran["parked_nudge"], ran["aim"]
+        assert parked_nudge(aim, SWEPT_AXIS) != parked_nudge(
+            replace(aim, moved="Sofa 3"), SWEPT_AXIS
+        )
+
+    def test_a_capture_is_never_scored(self, ran):
+        """`run_case` scores, and there is nothing here to score against, so
+        the section reads findings off a pass instead."""
+        assert not hasattr(ran["survey"], "case")
+        assert ran["survey"].verdicts
