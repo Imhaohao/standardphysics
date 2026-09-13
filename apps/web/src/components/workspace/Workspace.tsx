@@ -226,10 +226,10 @@ function FindingsPanel({ scan, scene, assessment, findings, selected, onToggle, 
   );
 }
 
-function SurfaceLabel({ objectLabel, lidarUrl }: { objectLabel: string | null; lidarUrl: string | null }) {
+function SurfaceLabel({ objectLabel }: { objectLabel: string | null }) {
   return (
     <p aria-live="polite" className="absolute left-4 top-4 rounded-lg bg-sheet px-3 py-2 text-sm text-ink">
-      {objectLabel ?? (lidarUrl ? "Scanned surfaces" : "Layout preview")}
+      {objectLabel ?? "Shop layout"}
     </p>
   );
 }
@@ -273,7 +273,7 @@ export function Workspace({ scan, scene, exported, assessment, previous, glbUrl,
   const clear = useCallback(() => { setSelected(null); setAsked(null); setObjectLabel(null); }, [setSelected, setAsked]);
   const selectNode = useCallback((nodeId: string) => {
     setSelected(findingForNode(findings, nodeId) ?? null);
-    setObjectLabel(scene.nodes.find((node) => node.id === nodeId)?.label ?? "Scanned surface");
+    setObjectLabel(scene.nodes.find((node) => node.id === nodeId)?.label ?? "Object");
   }, [findings, scene, setSelected]);
   const toggle = (finding: Finding) => setSelected((current) => (current?.id === finding.id ? null : finding));
   const showView = (next: ViewMode) => {
@@ -314,7 +314,7 @@ export function Workspace({ scan, scene, exported, assessment, previous, glbUrl,
           onSelectNode={selectNode}
           onClearSelection={clear}
         />
-        <SurfaceLabel objectLabel={objectLabel} lidarUrl={displayedLidarUrl} />
+        <SurfaceLabel objectLabel={objectLabel} />
         <div className="absolute bottom-4 left-4 flex gap-2">
           <Button variant="chip" aria-pressed={mode === "overview" && !selected} onClick={() => showView("overview")}>
             <ArrowsOutCardinal size={16} weight="bold" aria-hidden />
