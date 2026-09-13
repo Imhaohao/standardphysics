@@ -121,7 +121,7 @@ function gridRoute(stops: GridStop[]) {
   return `M ${points.join(" L ")} Z`;
 }
 
-const ROBOT_LAP_SECONDS = 24;
+const ROBOT_LAP_SECONDS = 13;
 
 const robotLoops = [
   { d: gridRoute([[0, "top"], [0, "bottom"], [2, "bottom"], [2, "middle"], [1, "middle"], [1, "top"]]), robotOffsets: [0, 0.041] },
