@@ -40,3 +40,16 @@ Two things the audit may want to track:
 | A-43 | fixed | A retry queues every failed stage except display, and sets `measuring` or `checking` to match what it queued. A scan with nothing failed is left alone. Your pinned test passes, so its `xfail` marker is removed. |
 | A-44 | fixed | `Assessment.rules_checked` is the number of tier 1 rules the ledger verified when the assessment ran. With 0, both the shops page and the workspace say "Checks start once a person reviews the rules" rather than a pass. |
 | A-42 | fixed | The shop page asks for the assessment of the revision on screen. While that is missing and the scan is still being worked on, the panel says "Checking this layout" and the page refreshes every 2 s. Before and after appears only once both sides have their own assessment. |
+
+## A-46: the complaint is public, and it confirms the 47 inches
+
+RECAP has a public copy of the complaint:
+`https://storage.courtlistener.com/recap/gov.uscourts.cand.390547/gov.uscourts.cand.390547.1.0_1.pdf`.
+Its header reads `Case 5:22-cv-00283-VKD Document 1 Filed 01/14/22`. Paragraph
+12 reads: "the sales counter was too high. While there was a lowered section,
+transactions take place at the higher counter, which is located about 47 inches
+above the finish floor. The point-of-sale machines were located on the higher
+counters." Paragraphs 2, 3 and 8 name Happy Lemon at 919 Story Rd., San Jose,
+and a December 2021 visit. The fixture's 47 in, the paragraph and the `5:`
+prefix all hold. Whether the pitch should name the business and plaintiff is
+for the team, and I have raised it with Brendan.
