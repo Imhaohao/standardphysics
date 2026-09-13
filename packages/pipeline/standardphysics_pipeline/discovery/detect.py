@@ -46,11 +46,16 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 MODEL_ENV = "DISCOVERY_MODEL"
-API_KEY_ENV = "OPENROUTER_API_KEY"
-BASE_URL_ENV = "OPENROUTER_BASE_URL"
+API_KEY_ENV = "DISCOVERY_API_KEY"
+BASE_URL_ENV = "DISCOVERY_BASE_URL"
+FALLBACK_KEY_ENV = "OPENROUTER_API_KEY"
+FALLBACK_BASE_URL_ENV = "OPENROUTER_BASE_URL"
 DEFAULT_MODEL = "google/gemini-3.8-flash"
 DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
+OPENROUTER_HOST = "openrouter.ai"
 PROVIDER_ROUTING = {"data_collection": "deny"}
+"""OpenRouter's own routing rules. Every other host rejects or ignores them, so
+they travel only when the request is going to OpenRouter."""
 REQUEST_TIMEOUT_SECONDS = 120.0
 MAX_ATTEMPTS = 4
 FIRST_BACKOFF_SECONDS = 1.5
@@ -187,9 +192,9 @@ def detect_objects(
 ) -> list[Detection]:
     """Every object the model finds in one frame, boxed in that frame's stored pixels."""
     frame = encode_frame(image_path, orientation)
-    api_key = os.environ.get(API_KEY_ENV, "")
+    api_key = _api_key()
     if transport is None and not api_key:
-        raise DetectionError(f"{API_KEY_ENV} is not set, so no frame can be read")
+        raise DetectionError(f"neither {API_KEY_ENV} nor {FALLBACK_KEY_ENV} is set, so no frame can be read")
     body = _request_body(frame)
     for attempt in range(1, MAX_ATTEMPTS + 1):
         try:
@@ -239,9 +244,18 @@ def _compressed(image) -> bytes:
     raise DetectionError("frame will not compress under the size limit")
 
 
+def _api_key() -> str:
+    return os.environ.get(API_KEY_ENV) or os.environ.get(FALLBACK_KEY_ENV) or ""
+
+
+def _base_url() -> str:
+    configured = os.environ.get(BASE_URL_ENV) or os.environ.get(FALLBACK_BASE_URL_ENV)
+    return (configured or DEFAULT_BASE_URL).rstrip("/")
+
+
 def _request_body(frame: EncodedFrame) -> dict[str, Any]:
     data_url = "data:image/jpeg;base64," + base64.b64encode(frame.jpeg).decode("ascii")
-    return {
+    body: dict[str, Any] = {
         "model": os.environ.get(MODEL_ENV) or DEFAULT_MODEL,
         "max_tokens": MAX_OUTPUT_TOKENS,
         "messages": [
@@ -254,12 +268,14 @@ def _request_body(frame: EncodedFrame) -> dict[str, Any]:
         "response_format": {"type": "json_schema", "json_schema": {
             "name": "detections", "strict": True, "schema": DETECTION_SCHEMA,
         }},
-        "provider": PROVIDER_ROUTING,
     }
+    if OPENROUTER_HOST in _base_url():
+        body["provider"] = PROVIDER_ROUTING
+    return body
 
 
 def _post(transport: Transport | None, body: dict[str, Any], api_key: str) -> dict[str, Any]:
-    url = f"{(os.environ.get(BASE_URL_ENV) or DEFAULT_BASE_URL).rstrip('/')}/chat/completions"
+    url = f"{_base_url()}/chat/completions"
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     try:
         return (transport or _openrouter_post)(url, body, headers)
