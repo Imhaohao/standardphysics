@@ -107,27 +107,58 @@ function StageLights({ colors }: { colors: ThemeColors }) {
 }
 
 const REMOUNT_AFTER_LOSS_MS = 400;
+const MAX_REMOUNTS_IN_A_ROW = 3;
+const HEALTHY_AFTER_MS = 10_000;
 
+/** A lost context hands three a null shader, so nothing is drawn until the stage remounts on a fresh one. */
+function skipRenderingWhileLost(gl: WebGLRenderer) {
+  const context = gl.getContext();
+  const render = gl.render.bind(gl);
+  gl.render = (scene, camera) => {
+    if (!context.isContextLost()) render(scene, camera);
+  };
+}
+
+/**
+ * Remounts the stage after the browser takes its WebGL context, backing off each time. When the browser keeps
+ * refusing, usually because too many contexts are open, the stage stays down and the slides carry on without it.
+ */
 function useRecoverFromContextLoss() {
   const [generation, setGeneration] = useState(0);
   const [lost, setLost] = useState(false);
+  const failuresInARow = useRef(0);
 
   useEffect(() => {
-    if (!lost) return;
+    if (lost) return;
+    const timer = window.setTimeout(() => (failuresInARow.current = 0), HEALTHY_AFTER_MS);
+    return () => window.clearTimeout(timer);
+  }, [lost, generation]);
+
+  useEffect(() => {
+    if (!lost || failuresInARow.current > MAX_REMOUNTS_IN_A_ROW) return;
     const timer = window.setTimeout(() => {
       setGeneration((current) => current + 1);
       setLost(false);
-    }, REMOUNT_AFTER_LOSS_MS);
+    }, REMOUNT_AFTER_LOSS_MS * 2 ** failuresInARow.current);
     return () => window.clearTimeout(timer);
   }, [lost]);
 
   const watch = useCallback((gl: WebGLRenderer, stopRendering: () => void) => {
+    const markLost = () => {
+      stopRendering();
+      failuresInARow.current += 1;
+      setLost(true);
+    };
+    skipRenderingWhileLost(gl);
+    if (gl.getContext().isContextLost()) {
+      markLost();
+      return;
+    }
     gl.domElement.addEventListener(
       "webglcontextlost",
       (event) => {
         event.preventDefault();
-        stopRendering();
-        setLost(true);
+        markLost();
       },
       { once: true },
     );
