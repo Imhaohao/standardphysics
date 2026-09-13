@@ -54,6 +54,8 @@ The audit fixes code only in files no lane agent is actively changing. For lanes
 | `a00eda7` B: put agents and api on the local test path | B | Pass | Lets a plain local `pytest` import the audit tests' Lane C and API modules; 153 passed and 7 expected failures after it |
 | `fff9e60` D: find a layout that fixes a finding, then try it | D | Pass with notes | A-45 |
 | `2b0e2b0` D: the fixture counter stands 47 inches | D | Pass with notes | A-46; edits Lane C's `dataset.py` and `test_checks.py` again, as A-18 records; rule threshold still 36 in |
+| `20f54d9` D: retry the stage that failed, and never call an unchecked shop a pass | D | Pass with notes | Resolves A-42, A-43 and A-44; older stored assessments lack `rules_checked` |
+| `abb3cf6` D: record before and after, fix suggestions and the lawsuit counter | D | Pass | Progress file matches the code |
 
 `609db3d`, `9028d14`, `b90e570`, `d3f7d95` and `1a06655` change only the plan and lane documents. A-1 covers the lane document errors from `9028d14`.
 
@@ -292,19 +294,21 @@ High. `open`. Lane C label, Lane B change.
 `022004d` makes a blocked route name its obstacles, so the router now picks `FIX` for the `blocked_but_movable` case, whose label still expects `ASK_OWNER`. `test_the_router_picks_the_right_action_every_time` fails with a score of 0.96875, 31 of 32 cases, reproduced locally at `022004d`. The commit and `B-to-C.md` say so and leave the one-line label change to Lane C, which respects path ownership, but `master` stays red until Lane C takes it. CI on `022004d` also carries A-38.
 
 ### A-42 Right after a save, before and after show the same findings
-Low. `open`. Lane D.
+Low. `fixed in 20f54d9`. Lane D.
 
 `page.tsx` loads the latest assessment that exists, and `6841172` compares it with the previous revision's own assessment. A save writes the new revision at once and assesses it in a queued job, so until that job finishes the scene is the new revision while the latest assessment is still the old one. Reproduced at `6841172` on the sample shop: right after saving the documented fix, `scene` is revision 1, `assessment` is revision 0, and `assessment?revision=1` answers 404. With the preview rules, the panel then shows 3 things to fix on both sides of a layout that clears one, and "Fixed by this layout" is empty. The page refreshes once more after 3 s, so a slower assessment leaves it stale until a reload. Asking for `assessment?revision=<scene revision>` and showing "Checking" on a 404 would keep the two sides honest.
 
 ### A-43 Retrying a scan whose assessment failed leaves it measuring forever
-Medium. `open`. Lane D. Introduced by `a10d6da`.
+Medium. `fixed in 20f54d9`. Lane D. Introduced by `a10d6da`.
 
 `a10d6da`'s retry in `_finalize` sets any `failed` scan to `measuring` but requeues only failed `process` jobs. A scan also fails when its `assess` job raises, and then nothing is queued. Reproduced at `a10d6da` on the sample shop with an `assess` stage that raises: the scan is `failed` with one failed `assess` job, `complete` answers `measuring`, and after the worker drains the scan is still `measuring` with the same failed job. The iOS app polls until a scan is ready or failed, so it would wait forever. Before `a10d6da` the same scan stayed `failed`. Pinned in `tests/test_audit_open_findings.py`: with `assess` still broken, a retried scan must end `failed`, not `measuring`.
 
 ### A-44 With no rule verified, a scan reads "Everything we checked passes"
-Medium. `open`. Lane D.
+Medium. `fixed in 20f54d9`, for assessments made from then on. Lane D.
 
 Until a person reviews the rule pack every check is off, and `assess` returns an assessment with no findings. Reproduced at `a10d6da` with the default ledger: the sample shop is `ready` and its assessment has 0 findings. `scanStatus` turns an assessment with nothing needing attention into "Everything we checked passes", which the shops page has shown since `2fad000` and the workspace shows since `a10d6da`'s change for A-33. Nothing was checked, so it reads as a clean pass. `assess(...).unevaluated` records why, but the assess stage only logs it. Carrying the count of evaluated rules into the assessment, and saying that no rules are switched on yet when it is zero, would keep an unchecked scan from looking compliant.
+
+`20f54d9` adds `Assessment.rules_checked`, and `scanStatus` says checks start once a person reviews the rules when it is `0`. An assessment stored before `20f54d9` has no `rules_checked`, and `scanStatus` treats only `0` as unchecked, so an older assessment with no findings still reads "Everything we checked passes" until the scan is assessed again. A database created before `20f54d9`, such as a demo machine's, keeps such assessments; treating a missing count as unchecked would cover them. The A-43 test passes as a plain test at `abb3cf6`, with 155 root and 37 API tests passing.
 
 ### A-45 Asking for a fix stalls every drag check for about three seconds
 Low. `open`. Lane D.
