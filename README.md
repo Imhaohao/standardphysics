@@ -20,9 +20,22 @@ Owners spend less on consultants and more time building the shop of their dreams
 
 ## Setup
 
+You need Python 3.11 or newer and Node 20.9 or newer. From a fresh clone:
+
 ```bash
-python -m pip install -e . -e packages/contracts -e packages/fixtures pytest
-python -m pytest
+./start.sh
+```
+
+That installs the Python packages into `.venv` and the web packages into `apps/web`, then starts the API on port 8787 and the web workspace at http://localhost:3000. It opens with a sample shop, so you don't need a scan, a key, or Blender to try it. Ctrl-C stops both. For the demo, `./start.sh --prod` runs a production build instead.
+
+Findings come only from rules a person has verified, with `.venv/bin/standardphysics-agents rules verify <rule> --by "<name>"` from Lane C. Until someone does that, `SP_PREVIEW_UNVERIFIED_RULES=1 ./start.sh` runs every rule anyway, for development only.
+
+To run the tests:
+
+```bash
+.venv/bin/python -m pytest
+.venv/bin/python -m pytest packages/agents services/api/tests -q
+(cd apps/web && npm run lint && npm run typecheck && npm run test)
 ```
 
 Lane B additionally needs Blender 5.x. `brew install --cask --force blender` — the `--force` matters, because a plain install silently does nothing when Blender was installed by hand.
