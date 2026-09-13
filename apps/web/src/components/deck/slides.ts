@@ -37,5 +37,5 @@ export const slides: SlideDefinition[] = [
   { id: "boomers", shot: "awayAfterFix", layer: "overStage", steps: 4, Content: BoomersSlide },
   { id: "model", shot: "awayAfterFix", layer: "overStage", Content: ModelSlide },
   { id: "planner", shot: "awayAfterFix", layer: "overStage", steps: 2, Content: PlannerSlide },
-  { id: "closing", shot: "cloud", layer: "behindStage", Content: ClosingSlide },
+  { id: "closing", shot: "cloud", layer: "overStage", Content: ClosingSlide },
 ];
