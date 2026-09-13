@@ -8,3 +8,4 @@ runs/
 .env.*
 !.env.example
 wandb/
+uv.lock
