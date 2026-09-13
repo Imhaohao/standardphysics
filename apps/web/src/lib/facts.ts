@@ -78,25 +78,6 @@ export const facts = {
     source: "NASA, How Far Away Is the Moon?",
     url: "https://spaceplace.nasa.gov/moon-distance/en/",
   },
-  loopRunOnDemoShop: {
-    passes: [
-      { action: "FIX", problems: 2, outcome: "Move the two display cases 5.5 inches apart.", shortfallBefore: 16, shortfallAfter: 11 },
-      { action: "ASK_OWNER", problems: 1, outcome: "Send a photo of the front door handle." },
-      { action: "ESCALATE", problems: 1, outcome: "An accessibility professional will look at this one." },
-      { action: "DONE", problems: 1, outcome: "Your report is ready." },
-    ],
-    source: "Standard Physics loop run on the demo shop, local router policy, unverified preview rules, 2026-09-13",
-  },
-  loopEvaluation: {
-    cases: 39,
-    scorers: [
-      { name: "Problems reported correctly", standIn: 0.38, pipeline: 1.0 },
-      { name: "Fixes that clear the problem", standIn: 0.89, pipeline: 1.0 },
-      { name: "Next action matches the label", standIn: 0.87, pipeline: 1.0 },
-    ],
-    measurementErrorInches: { standIn: 8.0, pipeline: 0.0007 },
-    source: "Standard Physics evaluation, 39 labeled cases, simplified stand-in vs measuring pipeline, unverified preview rules, 2026-09-13",
-  },
 } as const;
 
 export const salesCountersExcerpt =
