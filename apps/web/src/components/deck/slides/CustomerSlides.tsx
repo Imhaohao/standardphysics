@@ -2,15 +2,14 @@
 
 import { PersonSimple, PersonSimpleWalk, Wheelchair } from "@phosphor-icons/react";
 import { Storefront } from "./SaraSlide";
-import { AnimatePresence, motion, useTransform, type MotionValue, type Variants } from "motion/react";
+import { AnimatePresence, motion, type Variants } from "motion/react";
 import { useState } from "react";
 import type { SlideProps } from "../slides";
 import { facts } from "@/lib/facts";
 import { easeDrawn, exitTransition } from "@/lib/motion";
-import { CountFromProgress, FinePrint, MaskedLines, useProgress } from "../primitives";
+import { FinePrint, MaskedLines } from "../primitives";
 import { MoonStacks, moonTrips } from "../MoonStacks";
 
-const boomers = facts.boomersAllOver65By;
 const disability = facts.olderAdultsWithDisability;
 const wealth = facts.boomerNetWorthTrillions;
 
@@ -67,14 +66,11 @@ export function PivotSlide() {
   );
 }
 
-type BoomerPhase = "aging" | "disability" | "wealth";
-const boomerPhases: BoomerPhase[] = ["aging", "disability", "wealth"];
+type BoomerPhase = "disability" | "wealth";
+const boomerPhases: BoomerPhase[] = ["disability", "wealth"];
 
 const CROWD = { columns: 10, rows: 5 };
 const crowdSize = CROWD.columns * CROWD.rows;
-const RETIREMENT_AGE = 65;
-const FIRST_BOOMER_RETIRES = boomers.bornFrom + RETIREMENT_AGE;
-const AGING_SECONDS = 3.2;
 
 type CrowdColors = { faint: string; ink: string; tape: string };
 
@@ -84,36 +80,29 @@ function readCrowdColors(): CrowdColors {
   return { faint: token("--color-rule"), ink: token("--color-ink"), tape: token("--color-tape-deep") };
 }
 
-function birthYear(index: number) {
-  return boomers.bornFrom + (index / (crowdSize - 1)) * (boomers.bornThrough - boomers.bornFrom);
-}
-
 function hasDisability(index: number) {
   return index % disability.outOf < disability.count;
 }
 
 function settledColor(index: number, phase: BoomerPhase, colors: CrowdColors) {
-  if (phase === "aging") return colors.ink;
   if (hasDisability(index)) return colors.tape;
   return phase === "disability" ? colors.faint : colors.ink;
 }
 
-function CrowdMember({ index, phase, year, colors }: { index: number; phase: BoomerPhase; year: MotionValue<number>; colors: CrowdColors }) {
-  const agingColor = useTransform(year, (value) => (value >= birthYear(index) + RETIREMENT_AGE ? colors.ink : colors.faint));
+function CrowdMember({ index, phase, colors }: { index: number; phase: BoomerPhase; colors: CrowdColors }) {
   const arrival = { duration: 0.6, ease: easeDrawn, delay: 0.15 + (index % CROWD.columns) * 0.03 + Math.floor(index / CROWD.columns) * 0.05 };
   return (
     <motion.span
       initial={{ opacity: 0, x: "-60%" }}
-      animate={{ opacity: 1, x: "0%", ...(phase === "aging" ? {} : { color: settledColor(index, phase, colors) }) }}
+      animate={{ opacity: 1, x: "0%", color: settledColor(index, phase, colors) }}
       transition={{ opacity: arrival, x: arrival, color: { duration: 0.5, delay: (index % disability.outOf) * 0.04 } }}
-      style={phase === "aging" ? { color: agingColor } : undefined}
     >
       <PersonSimple weight="fill" className="icon-em block" />
     </motion.span>
   );
 }
 
-function BoomerCrowd({ phase, year }: { phase: BoomerPhase; year: MotionValue<number> }) {
+function BoomerCrowd({ phase }: { phase: BoomerPhase }) {
   const [colors] = useState(readCrowdColors);
   return (
     <motion.div
@@ -124,25 +113,9 @@ function BoomerCrowd({ phase, year }: { phase: BoomerPhase; year: MotionValue<nu
       className="grid w-fit grid-cols-10 text-figure leading-none"
     >
       {Array.from({ length: crowdSize }, (_, index) => (
-        <CrowdMember key={index} index={index} phase={phase} year={year} colors={colors} />
+        <CrowdMember key={index} index={index} phase={phase} colors={colors} />
       ))}
     </motion.div>
-  );
-}
-
-function AgingCopy({ year }: { year: MotionValue<number> }) {
-  return (
-    <>
-      <p className="font-display text-display font-extrabold figures-tabular">
-        <CountFromProgress progress={year} total={1} format={(value) => String(value)} />
-      </p>
-      <h2 className="font-display text-lede font-bold">
-        <MaskedLines lines={[`By ${boomers.value}, every baby boomer will be 65 or older.`]} delay={0.1} />
-      </h2>
-      <div className="mt-deck-hairline">
-        <FinePrint delay={1.2}>{boomers.source}</FinePrint>
-      </div>
-    </>
   );
 }
 
@@ -150,7 +123,7 @@ function DisabilityCopy() {
   return (
     <>
       <h2 className="font-display text-headline font-extrabold">
-        <MaskedLines lines={[`About ${disability.count} in ${disability.outOf} of them`, "live with a disability."]} delay={0.1} />
+        <MaskedLines lines={[`About ${disability.count} in ${disability.outOf}`, "baby boomers live", "with a disability."]} delay={0.1} />
       </h2>
       <div className="mt-deck-hairline">
         <FinePrint delay={0.9}>{disability.source}</FinePrint>
@@ -175,20 +148,13 @@ function WealthCopy() {
   );
 }
 
-function BoomerCopy({ phase, year }: { phase: BoomerPhase; year: MotionValue<number> }) {
-  if (phase === "aging") return <AgingCopy year={year} />;
+function BoomerCopy({ phase }: { phase: BoomerPhase }) {
   if (phase === "disability") return <DisabilityCopy />;
   return <WealthCopy />;
 }
 
-function useBoomerYear() {
-  const progress = useProgress(AGING_SECONDS, 0.9);
-  return useTransform(progress, (value) => FIRST_BOOMER_RETIRES + value * (boomers.value - FIRST_BOOMER_RETIRES));
-}
-
 export function BoomersSlide({ step }: SlideProps) {
   const phase = boomerPhases[Math.min(step, boomerPhases.length - 1)];
-  const year = useBoomerYear();
   const showsMoney = phase === "wealth";
 
   return (
@@ -196,12 +162,12 @@ export function BoomersSlide({ step }: SlideProps) {
       <div className="min-h-deck-copy">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div key={phase} initial="enter" animate="present" exit="exit">
-            <BoomerCopy phase={phase} year={year} />
+            <BoomerCopy phase={phase} />
           </motion.div>
         </AnimatePresence>
       </div>
       <div className="flex items-end justify-center gap-deck-gap">
-        <BoomerCrowd phase={phase} year={year} />
+        <BoomerCrowd phase={phase} />
         <AnimatePresence>
           {showsMoney && (
             <motion.div

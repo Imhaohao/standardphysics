@@ -37,7 +37,7 @@ export const slides: SlideDefinition[] = [
   { id: "fix", shot: "counterFixed", layer: "overStage", Content: FixSlide },
   { id: "loop", shot: "awayAfterFix", layer: "overStage", steps: 3, Content: LoopSlide },
   { id: "pivot", shot: "awayAfterFix", layer: "overStage", Content: PivotSlide },
-  { id: "boomers", shot: "awayAfterFix", layer: "overStage", steps: 3, Content: BoomersSlide },
+  { id: "boomers", shot: "awayAfterFix", layer: "overStage", steps: 2, Content: BoomersSlide },
   { id: "model", shot: "awayAfterFix", layer: "overStage", Content: ModelSlide },
   { id: "planner", shot: "awayAfterFix", layer: "overStage", steps: 2, Content: PlannerSlide },
   { id: "closing", shot: "awayBeforeScan", layer: "overStage", steps: 2, Content: ClosingSlide },
