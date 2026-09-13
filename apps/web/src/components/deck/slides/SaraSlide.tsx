@@ -237,7 +237,7 @@ function OtherBusinesses({ progress }: { progress: MotionValue<number> }) {
 function StoryCopy({ phase, fill }: { phase: Phase; fill: MotionValue<number> }) {
   if (phase === "meet") return <MeetSara />;
   if (phase === "sued") return <SaraGotSued />;
-  if (phase === "damages") return <DamagesCopy />;
+  if (phase === "damages") return <DamagesCopy waitedSeconds={exitTransition.duration} />;
   return <OtherBusinesses progress={fill} />;
 }
 

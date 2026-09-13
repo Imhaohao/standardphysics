@@ -58,14 +58,22 @@ export function Receipt() {
   );
 }
 
-export function DamagesCopy() {
-  const progress = useProgress(1.4, 0.5, easeDrawn);
+const LINEAR = [0, 0, 1, 1] as const;
+
+export function DamagesCopy({ waitedSeconds = 0 }: { waitedSeconds?: number }) {
+  const countStarts = Math.max(PRINT_DELAY - waitedSeconds, 0);
+  const progress = useProgress(PRINT_SECONDS, countStarts, LINEAR);
 
   return (
     <div className="flex flex-col justify-center">
-      <p className="font-display text-display font-extrabold figures-tabular">
+      <motion.p
+        className="font-display text-display font-extrabold figures-tabular"
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, delay: countStarts, ease: easeDrawn }}
+      >
         <CountFromProgress progress={progress} total={facts.californiaMinimumDamages.value} format={dollars.format} />
-      </p>
+      </motion.p>
       <p className="mt-deck-hairline font-display text-lede font-bold">
         <MaskedLines lines={["minimum damages,", "plus legal fees", "and a year in court"]} delay={0.8} />
       </p>
