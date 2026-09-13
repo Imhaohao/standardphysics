@@ -14,6 +14,7 @@ from .api import (
 from .findings import Annotation, AnnotationKind, Finding, Locus, Outcome
 from .geometry import CameraPose, Mat4, Vec3, to_inches, to_meters
 from .hashing import graph_hash
+from .lidar import LidarMesh, LidarMeshPart
 from .loop import Assessment, Decision, NodeMove, Proposal, RouterAction
 from .measurement import (
     ClearFloorResult,
@@ -27,8 +28,8 @@ from .scene import LabelSource, NodeKind, Quality, Scenario, SceneGraph, SceneNo
 
 __all__ = [
     "Annotation",
-    "ApiError",
     "AnnotationKind",
+    "ApiError",
     "Artifact",
     "ArtifactKind",
     "Assessment",
@@ -45,6 +46,8 @@ __all__ = [
     "LabelSource",
     "LayoutCheckRequest",
     "LayoutCheckResult",
+    "LidarMesh",
+    "LidarMeshPart",
     "Locus",
     "Mat4",
     "MeasurementProvider",

@@ -18,12 +18,19 @@ struct LidarMesh: Codable, Sendable {
     }
 
     let parts: [Part]
+    var peopleFilteringEnabled: Bool?
+    var floorY: Float?
 
     var triangleCount: Int { parts.reduce(0) { $0 + $1.triangles.count / 3 } }
 
-    init(parts: [Part]) { self.parts = parts.filter(\.isValid) }
+    init(parts: [Part], peopleFilteringEnabled: Bool? = nil, floorY: Float? = nil) {
+        self.parts = parts.filter(\.isValid)
+        self.peopleFilteringEnabled = peopleFilteringEnabled
+        self.floorY = floorY
+    }
 
-    init(anchors: [ARMeshAnchor]) {
+    init(anchors: [ARMeshAnchor], peopleFilteringEnabled: Bool) {
+        self.peopleFilteringEnabled = peopleFilteringEnabled
         parts = anchors.compactMap { anchor in
             let source = anchor.geometry.vertices
             let faces = anchor.geometry.faces
@@ -55,7 +62,7 @@ struct LidarMesh: Codable, Sendable {
             let geometry = SCNGeometry(sources: [source], elements: [element])
             let material = SCNMaterial()
             material.diffuse.contents = UIColor(white: 0.72, alpha: 1)
-            material.isDoubleSided = true
+            material.isDoubleSided = false
             material.lightingModel = .lambert
             geometry.materials = [material]
             let node = SCNNode(geometry: geometry)
@@ -67,6 +74,7 @@ struct LidarMesh: Codable, Sendable {
     }
 
     func write(to directory: URL) throws {
+        guard !parts.isEmpty, parts.allSatisfy(\.isValid) else { throw MeshError.invalidGeometry }
         try JSONEncoder().encode(self).write(to: directory.appendingPathComponent("lidar-mesh.json"), options: .atomic)
     }
 
@@ -95,35 +103,45 @@ private extension LidarMesh.Part {
 final class LidarMeshRecorder {
     private let directory: URL
     private let queue = DispatchQueue(label: "com.standardphysics.lidar", qos: .utility)
-    private var isSaving = false
+    private let peopleFilteringEnabled: Bool
+    private var saveTask: Task<Void, Never>?
     private var lastTimestamp: TimeInterval = -.infinity
     private(set) var triangleCount = 0
     private(set) var error: Error?
 
-    init(directory: URL) { self.directory = directory }
+    init(directory: URL, peopleFilteringEnabled: Bool = false) {
+        self.directory = directory
+        self.peopleFilteringEnabled = peopleFilteringEnabled
+    }
 
-    func sample(_ frame: ARFrame) {
-        guard !isSaving, frame.timestamp - lastTimestamp >= 2 else { return }
+    func sample(_ frame: ARFrame, force: Bool = false) {
+        guard saveTask == nil, force || frame.timestamp - lastTimestamp >= 2 else { return }
         let anchors = frame.anchors.compactMap { $0 as? ARMeshAnchor }
-        guard !anchors.isEmpty else { return }
-        let mesh = LidarMesh(anchors: anchors)
-        guard !mesh.parts.isEmpty else { return }
-        triangleCount = mesh.triangleCount
+        guard force || !anchors.isEmpty else { return }
+        let mesh = LidarMesh(anchors: anchors, peopleFilteringEnabled: peopleFilteringEnabled)
         lastTimestamp = frame.timestamp
-        isSaving = true
         let directory = directory
-        queue.async { [weak self] in
-            let result = Result { try mesh.write(to: directory) }
-            Task { @MainActor in
-                self?.isSaving = false
-                if case .failure(let error) = result { self?.error = error }
+        let queue = queue
+        saveTask = Task { [weak self] in
+            let result: Result<Void, Error> = await withCheckedContinuation { continuation in
+                queue.async { continuation.resume(returning: Result { try mesh.write(to: directory) }) }
             }
+            guard let self else { return }
+            switch result {
+            case .success:
+                error = nil
+                triangleCount = mesh.triangleCount
+            case .failure(let failure): error = failure
+            }
+            saveTask = nil
         }
     }
 
-    func finish() async {
-        await withCheckedContinuation { continuation in
-            queue.async { continuation.resume() }
-        }
+    func finish(frame: ARFrame?) async throws {
+        await saveTask?.value
+        if let frame { sample(frame, force: true) }
+        await saveTask?.value
+        if let error { throw error }
+        guard triangleCount > 0 else { throw LidarMesh.MeshError.invalidGeometry }
     }
 }

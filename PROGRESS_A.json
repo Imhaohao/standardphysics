@@ -1,6 +1,6 @@
 {
   "lane": "A",
-  "updated": "2026-09-12T23:46:00Z",
+  "updated": "2026-09-13T00:18:00Z",
   "done": [
     "iOS 17 Xcode project builds on the simulator",
     "device support gate and start screen",
@@ -18,7 +18,14 @@
     "native-size simulator visual verification",
     "signed device build installed and launched on the paired iPhone 17 Pro"
   ],
-  "in_progress": "verify final recovery fixes and connect approved no-sign-in local workspace",
+  "in_progress": "reconstruction implemented and installed; awaiting new physical scan validation",
+  "reconstruction_plan": [
+    {"task": "native ARKit people removal and reliable final mesh persistence", "model_tier": "Astra", "status": "implemented"},
+    {"task": "thorough coverage: closer views, more area and viewpoints", "model_tier": "Terra", "status": "verified"},
+    {"task": "mesh-based native/web review and geometry-aligned recognized objects", "model_tier": "Astra", "status": "verified_on_ravida"},
+    {"task": "shared mesh contract and validated API uploads", "model_tier": "Luna", "status": "verified"},
+    {"task": "independent review, tests and device verification", "model_tier": "Luna/Terra", "status": "reviewed; installed; physical scan pending"}
+  ],
   "repair_plan": [
     {"task": "coverage geometry, final reconciliation, and guidance", "model_tier": "Terra", "status": "verified"},
     {"task": "upload ordering, durable resume, UUID validation, and failed-scan recovery", "model_tier": "Terra", "status": "verified"},
@@ -26,23 +33,25 @@
     {"task": "simulator tests, strict concurrency, physical installation, and adversarial review", "model_tier": "Sonnet/Luna", "status": "pending"}
   ],
   "repair_validation": {
-    "ios_tests_passed": 45,
-    "latest_suite": "running after final recovery and local workspace changes",
-    "strict_concurrency_build": "prior repair passed; final check pending",
-    "device_build": "capture repair installed; final workspace update pending",
+    "ios_tests_passed": 63,
+    "latest_suite": "iOS 63; web 17 plus typecheck/lint/production build; API 34; root Python 141 passed; agent suite running",
+    "strict_concurrency_build": "signed iOS build passed with complete concurrency and warnings as errors; test stubs use normal test settings",
+    "device_build": "person-filtered measured reconstruction build installed and launched at 17:16 PDT",
     "real_scan": "ravida af42f6cd-d228-4dd8-8790-aff0890fee5b ready on real Lane D API; all 290 artifacts uploaded",
     "video": "AVFoundation playable, 153.84 seconds, 1280x960, 77304881 bytes",
-    "detailed_geometry": "93 parts, 460497 vertices, 819498 triangles; saved locally and shareable",
+    "detailed_geometry": "93 parts, 460497 vertices, 819498 triangles; production web rendering verified; phone/server mesh bytes match SHA256 829fa97e2a6b10d7fc546b0721c0c63ee259c0dca3b85a5627aa248f547015d1",
     "semantic_objects": "3 tables, 11 chairs, 1 storage unit; no TV recognized",
     "metadata": "binary plist confirmed; 25 final surface coverage IDs; 284 frame poses"
   },
-  "blocked_on": "Detailed mesh upload and web display need Lane D contract/viewer support; request in A-to-D",
+  "blocked_on": null,
   "ready_for_others": [
     "Lane A produces room.json and RoomPlan metadata mapping from a real scan",
-    "Lane A uploads the services/api/openapi.json artifact contract"
+    "Lane A uploads the services/api/openapi.json artifact contract",
+    "User-approved lidar_mesh contract/API/viewer path preserves actual triangles and floor alignment",
+    "New captures enable native ARKit people filtering; legacy captures retain unknown filtering metadata"
   ],
   "needs_human": [
-    "Confirm ravida Details view captures the desk/TV area adequately",
+    "Upload a new scan with a moving person followed by a clear view of the desk/TV area; inspect removal and guidance",
     "Hand the phone to a first-time scanner and watch whether the guidance works"
   ]
 }

@@ -2,10 +2,10 @@
 
 import { OrbitControls } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useRef } from "react";
-import { PerspectiveCamera, Vector3 } from "three";
+import { useEffect, useMemo, useRef } from "react";
+import { Box3, PerspectiveCamera, Vector3 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import { easeOutCubic, TWEEN_MS, type ViewerPose } from "@/lib/camera";
+import { easeOutCubic, fitPoseToBounds, TWEEN_MS, type ViewerPose } from "@/lib/camera";
 
 type Tween = { from: ViewerPose; to: ViewerPose; startedAt: number };
 
@@ -30,11 +30,14 @@ function applyPose(camera: PerspectiveCamera, controls: OrbitControlsImpl, from:
 }
 
 /** Orbit controls, plus a 700 ms ease-out flight whenever the requested pose changes. */
-export function CameraRig({ pose, locked = false }: { pose: ViewerPose; locked?: boolean }) {
+export function CameraRig({ pose: requestedPose, bounds, locked = false }: { pose: ViewerPose; bounds?: Box3 | null; locked?: boolean }) {
   const controls = useRef<OrbitControlsImpl>(null);
   const tween = useRef<Tween | null>(null);
   const camera = useThree((state) => state.camera) as PerspectiveCamera;
   const invalidate = useThree((state) => state.invalidate);
+  const size = useThree((state) => state.size);
+  const pose = useMemo(() => bounds ? fitPoseToBounds(requestedPose, bounds, size.width / size.height) : requestedPose,
+    [requestedPose, bounds, size.width, size.height]);
 
   useEffect(() => {
     const orbit = controls.current;

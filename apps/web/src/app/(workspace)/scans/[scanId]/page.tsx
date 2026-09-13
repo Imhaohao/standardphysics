@@ -10,8 +10,7 @@ export const dynamic = "force-dynamic";
 
 /** Whether a GLB exists, and the revision whose layout it was exported from. */
 async function glbExportedRevision(scanId: string): Promise<number | null> {
-  const response = await fetch(`${API_ORIGIN}${sceneGlbUrl(scanId)}`, { cache: "no-store" });
-  await response.body?.cancel();
+  const response = await fetch(`${API_ORIGIN}${sceneGlbUrl(scanId)}`, { method: "HEAD", cache: "no-store" });
   const revision = response.headers.get("X-Exported-Revision");
   return response.ok && revision !== null ? Number(revision) : null;
 }
@@ -56,6 +55,7 @@ export default async function ShopPage({ params }: PageProps<"/scans/[scanId]">)
       assessment={assessment}
       previous={previous}
       glbUrl={glbRevision === null ? null : sceneGlbUrl(scanId)}
+      lidarUrl={scan.artifacts.some((artifact) => artifact.kind === "lidar_mesh") ? `/api/scans/${scanId}/lidar-mesh` : null}
     />
   );
 }

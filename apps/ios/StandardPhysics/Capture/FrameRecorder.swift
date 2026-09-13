@@ -124,7 +124,7 @@ final class FrameRecorder: NSObject {
 
     /// Stops capture without exporting a scan, while preserving the room's
     /// recovery data and all JPEGs that completed before cancellation.
-    func cancel(completion: @escaping @MainActor (Error?) -> Void = { _ in }) {
+    func cancel(completion: @escaping @MainActor @Sendable (Error?) -> Void = { _ in }) {
         displayLink?.invalidate()
         displayLink = nil
 

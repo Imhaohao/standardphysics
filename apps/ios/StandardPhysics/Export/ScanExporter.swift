@@ -9,6 +9,7 @@ enum ArtifactKind: String, Codable, Sendable {
     case frames
     case poses
     case coverage
+    case lidarMesh = "lidar_mesh"
 }
 
 struct CaptureArtifact: Identifiable, Codable, Sendable {
@@ -27,12 +28,25 @@ struct CapturedScan: Identifiable, Codable {
     var captureNotice: String? = nil
 
     func renamed(_ name: String) throws -> CapturedScan {
+        var uploadArtifacts = artifacts
+        let meshURL = directory.appendingPathComponent("lidar-mesh.json")
+        if !uploadArtifacts.contains(where: { $0.kind == .lidarMesh }),
+           FileManager.default.fileExists(atPath: meshURL.path) {
+            var mesh = try LidarMesh.load(from: directory)
+            if mesh.floorY == nil {
+                let room = try JSONDecoder().decode(CapturedRoom.self,
+                    from: Data(contentsOf: directory.appendingPathComponent("room.json")))
+                mesh.floorY = room.floors.first?.transform.columns.3.y ?? 0
+                try mesh.write(to: directory)
+            }
+            uploadArtifacts.append(CaptureArtifact(id: "lidar-mesh", kind: .lidarMesh, fileURL: meshURL))
+        }
         let updated = CapturedScan(
             id: id,
             directory: directory,
             roomURL: roomURL,
             duration: duration,
-            artifacts: artifacts,
+            artifacts: uploadArtifacts,
             name: name,
             captureNotice: captureNotice
         )
@@ -102,6 +116,12 @@ enum ScanExporter {
             CaptureArtifact(id: "poses", kind: .poses, fileURL: recording.posesURL),
             CaptureArtifact(id: "coverage", kind: .coverage, fileURL: coverageURL)
         ]
+        if var mesh = try? LidarMesh.load(from: directory) {
+            mesh.floorY = room.floors.first?.transform.columns.3.y ?? 0
+            try mesh.write(to: directory)
+            artifacts.append(CaptureArtifact(id: "lidar-mesh", kind: .lidarMesh,
+                fileURL: directory.appendingPathComponent("lidar-mesh.json")))
+        }
         if let videoURL = recording.videoURL {
             artifacts.append(CaptureArtifact(id: "walkthrough", kind: .walkthroughMP4, fileURL: videoURL))
         }

@@ -40,7 +40,8 @@ export interface ApiError {
 export interface Artifact {
   bytes: number;
   id: string;
-  kind: "room_usdz" | "room_json" | "room_metadata" | "walkthrough_mp4" | "frames" | "poses" | "coverage";
+  kind:
+    "room_usdz" | "room_json" | "room_metadata" | "walkthrough_mp4" | "frames" | "poses" | "coverage" | "lidar_mesh";
   sha256: string;
   stored_path: string | null;
 }
@@ -211,6 +212,59 @@ export interface LayoutCheckResult {
   findings: Finding[];
   graph_hash: string;
   sequence: number;
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "LidarMesh".
+ */
+export interface LidarMesh {
+  floorY?: number | null;
+  /**
+   * @minItems 1
+   * @maxItems 4096
+   */
+  parts: [LidarMeshPart, ...LidarMeshPart[]];
+  peopleFilteringEnabled?: boolean | null;
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "LidarMeshPart".
+ */
+export interface LidarMeshPart {
+  id: string;
+  /**
+   * @minItems 16
+   * @maxItems 16
+   */
+  transform: [
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    ...number[]
+  ];
+  /**
+   * @minItems 3
+   * @maxItems 6000000
+   */
+  triangles: [number, number, number, ...number[]];
+  /**
+   * @minItems 3
+   * @maxItems 3000000
+   */
+  vertices: [number, number, number, ...number[]];
 }
 /**
  * Row-major 4x4 transform.

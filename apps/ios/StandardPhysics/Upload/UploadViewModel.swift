@@ -46,7 +46,7 @@ final class UploadViewModel: ObservableObject {
         uploadedCount = uploadStore.completedArtifactIDs.count
         totalCount = scan.artifacts.count
         pendingOptionalUploadCount = scan.artifacts.filter {
-            !Self.coreArtifactKinds.contains($0.kind)
+            !Self.coreArtifactKinds.contains($0.kind) && $0.kind != .lidarMesh
                 && uploadStore.needsUpload(artifactID: $0.id)
         }.count
         state = uploadStore.lastServerState ?? .uploading
@@ -223,17 +223,18 @@ final class UploadViewModel: ObservableObject {
     }
 
     private func coreArtifacts() throws -> [CaptureArtifact] {
-        try Self.coreArtifactKinds.map { kind in
+        let required = try Self.coreArtifactKinds.map { kind in
             guard let artifact = scan.artifacts.first(where: { $0.kind == kind }) else {
                 throw UploadViewModelError.missingCoreArtifact(kind)
             }
             return artifact
         }
+        return scan.artifacts.filter { $0.kind == .lidarMesh } + required
     }
 
     private func optionalArtifacts() -> [CaptureArtifact] {
         scan.artifacts.filter { artifact in
-            !Self.coreArtifactKinds.contains(artifact.kind)
+            !Self.coreArtifactKinds.contains(artifact.kind) && artifact.kind != .lidarMesh
         }
     }
 

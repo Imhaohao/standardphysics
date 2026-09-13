@@ -36,6 +36,7 @@ from .errors import ApiProblem
 from .layout import check_layout, save_layout
 from .proposals import propose
 from .report import build_report
+from .lidar_mesh import InvalidLidarMesh, validate_lidar_mesh
 from .seed import seed_sample_shop
 from .settings import Settings
 from .stages import Stages, preview_ledger
@@ -133,6 +134,8 @@ def _accept_staged(database, store, scan_id, artifact_id, kind, claimed, staged)
         existing = repo.find_artifact(connection, scan_id, artifact_id)
         if existing is not None:
             store.discard(staged)
+            if existing.kind != kind:
+                raise ApiProblem(409, "artifact already stored with different kind")
             if existing.sha256 != staged.sha256:
                 raise ApiProblem(409, "artifact already stored with different content")
             return 200, existing
@@ -181,6 +184,12 @@ def _install_upload_routes(app: FastAPI, database: Database, store: ArtifactStor
             raise ApiProblem(400, "invalid artifact id") from None
         except ArtifactTooLarge:
             raise ApiProblem(413, "artifact too large") from None
+        if x_artifact_kind == "lidar_mesh":
+            try:
+                validate_lidar_mesh(staged.temp_path.read_bytes())
+            except InvalidLidarMesh:
+                store.discard(staged)
+                raise ApiProblem(400, "invalid lidar mesh") from None
         status, artifact = _accept_staged(
             database, store, scan_id, artifact_id, x_artifact_kind, x_checksum_sha256, staged
         )
@@ -210,6 +219,7 @@ def _install_workspace_routes(app: FastAPI, database: Database, store: ArtifactS
             raise ApiProblem(404, "not ready")
         return repo.graph_of(row)
 
+    @app.head("/api/scans/{scan_id}/scene.glb")
     @app.get("/api/scans/{scan_id}/scene.glb")
     def scene_glb(scan_id: uuid.UUID) -> FileResponse:
         with database.connect() as connection:
@@ -218,6 +228,14 @@ def _install_workspace_routes(app: FastAPI, database: Database, store: ArtifactS
         response = _file_or_404(found[0] if found else None, "model/gltf-binary")
         response.headers["X-Exported-Revision"] = str(found[1])
         return response
+
+    @app.get("/api/scans/{scan_id}/lidar-mesh")
+    def lidar_mesh(scan_id: uuid.UUID) -> FileResponse:
+        with database.connect() as connection:
+            _scan_or_404(connection, scan_id)
+            artifact = repo.artifact_of_kind(connection, scan_id, "lidar_mesh")
+        path = store.artifact_path(scan_id, artifact.id) if artifact else None
+        return _file_or_404(path, "application/json")
 
     @app.get("/api/scans/{scan_id}/scenario", response_model=Scenario)
     def scenario(scan_id: uuid.UUID) -> Scenario:

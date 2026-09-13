@@ -11,7 +11,7 @@ final class UploadViewModelTests: XCTestCase {
     func testCoreEvidenceFinalizesBeforeSlowExtrasAndReadyIsObservable() async throws {
         let directory = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
-        let scan = try makeScan(in: directory, optionalArtifactKinds: [.walkthroughMP4, .frames])
+        let scan = try makeScan(in: directory, optionalArtifactKinds: [.walkthroughMP4, .frames, .lidarMesh])
         let remoteID = UUID()
         var uploadedKinds: [ArtifactKind] = []
         var completedAfterKinds: [ArtifactKind] = []
@@ -47,11 +47,11 @@ final class UploadViewModelTests: XCTestCase {
         try await waitUntil { model.state == .ready && model.uploadedCount < model.totalCount }
         XCTAssertEqual(
             completedAfterKinds,
-            [.roomMetadata, .poses, .coverage, .roomUSDZ, .roomJSON]
+            [.lidarMesh, .roomMetadata, .poses, .coverage, .roomUSDZ, .roomJSON]
         )
 
         try await waitUntil { model.uploadedCount == model.totalCount }
-        XCTAssertEqual(uploadedKinds, [.roomMetadata, .poses, .coverage, .roomUSDZ, .roomJSON, .walkthroughMP4, .frames])
+        XCTAssertEqual(uploadedKinds, [.lidarMesh, .roomMetadata, .poses, .coverage, .roomUSDZ, .roomJSON, .walkthroughMP4, .frames])
     }
 
     func testRestartUsesPersistedReceiptsWithoutCreatingAnotherRemoteScan() async throws {

@@ -32,6 +32,10 @@ def test_display_geometry_falls_back_to_the_graph_when_conversion_fails(client):
     response = client.get(f"/api/scans/{scan_id}/scene.glb")
     assert response.status_code == 200
     assert response.content[:4] == b"glTF"
+    metadata = client.head(f"/api/scans/{scan_id}/scene.glb")
+    assert metadata.status_code == 200
+    assert metadata.content == b""
+    assert metadata.headers["X-Exported-Revision"] == response.headers["X-Exported-Revision"]
 
 
 def test_a_real_scan_without_stops_has_no_assessment_yet(client):

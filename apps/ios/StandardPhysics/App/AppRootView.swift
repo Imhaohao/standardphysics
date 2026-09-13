@@ -54,10 +54,11 @@ final class AppModel: ObservableObject {
             screen = .connection
             return
         }
-        if let existing = uploads[scan.id] {
+        if let existing = uploads[scan.id], existing.totalCount == scan.artifacts.count {
             screen = .upload(existing)
             return
         }
+        uploads[scan.id]?.cancel()
         let model = UploadViewModel(
             scan: scan,
             name: name,

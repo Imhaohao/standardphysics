@@ -8,6 +8,26 @@ enum SurfaceConfidence: String, Codable, Sendable {
     case high
 }
 
+private enum CoveragePolicy {
+    static let requiredObservedFraction = 0.90
+    static let requiredViewpointCount = 3
+    static let maximumObservationDistance: Float = 3
+    static let maximumObservationAngleRadians = 50 * Float.pi / 180
+    static let minimumFacingDot = Float(cos(Double(maximumObservationAngleRadians)))
+    static let supportFaceMaximumUpDot: Float = -0.9
+    static let floorContactTolerance: Float = 0.05
+
+    static func isComplete(observedFraction: Double, viewpointCount: Int, highConfidence: Bool) -> Bool {
+        observedFraction >= requiredObservedFraction &&
+            viewpointCount >= requiredViewpointCount &&
+            highConfidence
+    }
+
+    static func isCloseEnoughToObserve(distance: Float) -> Bool {
+        distance <= maximumObservationDistance
+    }
+}
+
 enum SurfaceShape: Sendable {
     case plane(width: Float, height: Float, localU: SIMD3<Float>, localV: SIMD3<Float>, localNormal: SIMD3<Float>)
     case box(size: SIMD3<Float>)
@@ -23,8 +43,9 @@ struct SurfaceSnapshot: Identifiable, Sendable {
     let shape: SurfaceShape
     let kind: String
     let name: String?
+    let restsOnFloor: Bool
 
-    init(id: UUID, width: Float, height: Float, transform: simd_float4x4, confidence: SurfaceConfidence, isWall: Bool = true, shape: SurfaceShape? = nil, kind: String? = nil, name: String? = nil) {
+    init(id: UUID, width: Float, height: Float, transform: simd_float4x4, confidence: SurfaceConfidence, isWall: Bool = true, shape: SurfaceShape? = nil, kind: String? = nil, name: String? = nil, restsOnFloor: Bool = false) {
         self.id = id
         self.width = width
         self.height = height
@@ -34,6 +55,7 @@ struct SurfaceSnapshot: Identifiable, Sendable {
         self.shape = shape ?? .plane(width: width, height: height, localU: SIMD3(1, 0, 0), localV: SIMD3(0, 1, 0), localNormal: SIMD3(0, 0, 1))
         self.kind = kind ?? (isWall ? "wall" : "area")
         self.name = name
+        self.restsOnFloor = restsOnFloor
     }
 
     var center: SIMD3<Float> { SIMD3(transform.columns.3.x, transform.columns.3.y, transform.columns.3.z) }
@@ -71,7 +93,13 @@ struct SurfaceCoverage: Identifiable, Codable, Equatable, Sendable {
         case viewpointCount = "viewpoint_count"
     }
 
-    var isDone: Bool { observedFraction >= 0.70 && viewpointCount >= 2 && highConfidence }
+    var isDone: Bool {
+        CoveragePolicy.isComplete(
+            observedFraction: observedFraction,
+            viewpointCount: viewpointCount,
+            highConfidence: highConfidence
+        )
+    }
 
     init(id: UUID, observedFraction: Double, observedSegments: [Bool] = [], viewpointCount: Int, highConfidence: Bool) {
         self.id = id
@@ -115,6 +143,7 @@ struct CoverageEngine {
     private struct GeometryFingerprint: Equatable {
         let transform: [Float]
         let shape: ShapeFingerprint
+        let restsOnFloor: Bool
     }
 
     private enum ShapeFingerprint: Equatable {
@@ -155,8 +184,9 @@ struct CoverageEngine {
         let instruction: String
     }
 
-    private enum GuidanceNeed {
+    private enum GuidanceNeed: Equatable {
         case point
+        case moveCloser
         case secondViewpoint
         case steadierView
     }
@@ -239,7 +269,7 @@ struct CoverageEngine {
         case let .box(size):
             shape = .box(size: size)
         }
-        return GeometryFingerprint(transform: values, shape: shape)
+        return GeometryFingerprint(transform: values, shape: shape, restsOnFloor: surface.restsOnFloor)
     }
 
     private func replayedState(from state: ObservationState, on surface: SurfaceSnapshot) -> ObservationState {
@@ -272,7 +302,7 @@ struct CoverageEngine {
 
     private func coverage(for surface: SurfaceSnapshot) -> SurfaceCoverage {
         let state = observations[surface.id, default: ObservationState()]
-        let samples = samples(on: surface)
+        let samples = completionSamples(on: surface)
         let totalWeight = samples.reduce(0) { $0 + $1.weight }
         let observedWeight = samples.filter { state.observedSamples.contains($0.index) }.reduce(0) { $0 + $1.weight }
         let fraction = totalWeight > 0 ? Double(observedWeight / totalWeight) : 0
@@ -291,6 +321,21 @@ struct CoverageEngine {
             return faceSamples(startIndex: 0, center: .zero, width: width, height: height, localU: localU, localV: localV, localNormal: localNormal, area: width * height, segmented: true)
         case let .box(size):
             return boxSamples(size: size)
+        }
+    }
+
+    private func completionSamples(on surface: SurfaceSnapshot) -> [SurfaceSample] {
+        let allSamples = samples(on: surface)
+        guard case .box = surface.shape, surface.restsOnFloor else { return allSamples }
+
+        // Only a clearly downward-facing base is normally against the floor and cannot be captured handheld.
+        // Every other box face remains part of the completion requirement.
+        let normalTransform = simd_transpose(simd_inverse(surface.transform))
+        let worldUp = SIMD3<Float>(0, 1, 0)
+        return allSamples.filter { sample in
+            let transformed = normalTransform * SIMD4(sample.localNormal, 0)
+            let worldNormal = simd_normalize(SIMD3(transformed.x, transformed.y, transformed.z))
+            return simd_dot(worldNormal, worldUp) > CoveragePolicy.supportFaceMaximumUpDot
         }
     }
 
@@ -344,7 +389,7 @@ struct CoverageEngine {
             let segmentSamples = samples.filter { $0.segment == segment }
             let total = segmentSamples.reduce(0) { $0 + $1.weight }
             let observed = segmentSamples.filter { state.observedSamples.contains($0.index) }.reduce(0) { $0 + $1.weight }
-            return total > 0 && observed / total >= 0.70
+            return total > 0 && observed / total >= Float(CoveragePolicy.requiredObservedFraction)
         }
     }
 
@@ -362,8 +407,8 @@ struct CoverageEngine {
     private func isVisible(_ sample: PreparedSurfaceSample, from camera: PreparedCamera) -> Bool {
         let pointToCamera = camera.position - sample.worldPoint
         let distance = simd_length(pointToCamera)
-        guard distance > 0, distance <= 5 else { return false }
-        guard simd_dot(sample.worldNormal, pointToCamera / distance) > 0.5 else { return false }
+        guard distance > 0, CoveragePolicy.isCloseEnoughToObserve(distance: distance) else { return false }
+        guard simd_dot(sample.worldNormal, pointToCamera / distance) > CoveragePolicy.minimumFacingDot else { return false }
         let cameraPoint = camera.inverseTransform * SIMD4(sample.worldPoint, 1)
         guard cameraPoint.z < 0 else { return false }
         let depth = -cameraPoint.z
@@ -377,15 +422,19 @@ struct CoverageEngine {
         let candidates = surfaces.flatMap { surface -> [GuidanceTarget] in
             guard let surfaceCoverage = coverageByID[surface.id], !surfaceCoverage.isDone else { return [] }
             let state = observations[surface.id, default: ObservationState()]
-            let remaining = samples(on: surface).filter { !state.observedSamples.contains($0.index) }
+            let remaining = completionSamples(on: surface).filter { !state.observedSamples.contains($0.index) }
             if !remaining.isEmpty {
                 return remaining.map { GuidanceTarget(surface: surface, sample: $0, need: .point) }
             }
-            let need: GuidanceNeed = surfaceCoverage.viewpointCount < 2 ? .secondViewpoint : .steadierView
+            let need: GuidanceNeed = surfaceCoverage.viewpointCount < CoveragePolicy.requiredViewpointCount ? .secondViewpoint : .steadierView
             return nearestCenterSample(on: surface).map { [GuidanceTarget(surface: surface, sample: $0, need: need)] } ?? []
         }
-        guard let target = candidates.min(by: { distance(to: $0.sample, on: $0.surface, from: camera) < distance(to: $1.sample, on: $1.surface, from: camera) }) else {
+        guard var target = candidates.min(by: { distance(to: $0.sample, on: $0.surface, from: camera) < distance(to: $1.sample, on: $1.surface, from: camera) }) else {
             return Guidance(angle: .zero, instruction: "You’ve got the whole shop.")
+        }
+        let targetDistance = distance(to: target.sample, on: target.surface, from: camera)
+        if target.need == .point, !CoveragePolicy.isCloseEnoughToObserve(distance: targetDistance) {
+            target = GuidanceTarget(surface: target.surface, sample: target.sample, need: .moveCloser)
         }
         let worldPoint = worldPoint(for: target.sample, on: target.surface)
         let cameraDirection = simd_inverse(camera.transform) * SIMD4(worldPoint - camera.position, 0)
@@ -397,6 +446,7 @@ struct CoverageEngine {
         let targetName = guidanceTargetName(for: target.surface, angle: angle)
         return switch target.need {
         case .point: "Point the phone at the \(targetName)."
+        case .moveCloser: "Move closer to the \(targetName), then point the phone at it."
         case .secondViewpoint: "Walk to a new spot. Point the phone at the \(targetName)."
         case .steadierView: "Hold the phone steady on the \(targetName)."
         }
@@ -413,7 +463,7 @@ struct CoverageEngine {
     }
 
     private func nearestCenterSample(on surface: SurfaceSnapshot) -> SurfaceSample? {
-        samples(on: surface).min { simd_length($0.localPoint) < simd_length($1.localPoint) }
+        completionSamples(on: surface).min { simd_length($0.localPoint) < simd_length($1.localPoint) }
     }
 
     private func distance(to sample: SurfaceSample, on surface: SurfaceSnapshot, from camera: CameraObservation) -> Float {
@@ -428,7 +478,8 @@ struct CoverageEngine {
 
 enum RoomCoverage {
     static func snapshots(from room: CapturedRoom) -> [SurfaceSnapshot] {
-        room.walls.map(wallSnapshot) + room.doors.map { planeSnapshot($0, kind: "door") } + room.windows.map { planeSnapshot($0, kind: "window") } + room.openings.map { planeSnapshot($0, kind: "opening") } + room.floors.map(floorSnapshot) + room.objects.map(objectSnapshot)
+        let floorHeights = room.floors.map { $0.transform.columns.3.y }
+        return room.walls.map(wallSnapshot) + room.doors.map { planeSnapshot($0, kind: "door") } + room.windows.map { planeSnapshot($0, kind: "window") } + room.openings.map { planeSnapshot($0, kind: "opening") } + room.floors.map(floorSnapshot) + room.objects.map { objectSnapshot($0, floorHeights: floorHeights) }
     }
 
     static func reconcile(_ engine: inout CoverageEngine, finalRoom: CapturedRoom) -> CoverageSnapshot {
@@ -449,8 +500,21 @@ enum RoomCoverage {
         return SurfaceSnapshot(id: surface.identifier, width: shape.width, height: shape.height, transform: surface.transform, confidence: SurfaceConfidence(surface.confidence), isWall: false, shape: shape.surfaceShape, kind: "floor")
     }
 
-    private static func objectSnapshot(_ object: CapturedRoom.Object) -> SurfaceSnapshot {
-        SurfaceSnapshot(id: object.identifier, width: object.dimensions.x, height: object.dimensions.y, transform: object.transform, confidence: SurfaceConfidence(object.confidence), isWall: false, shape: .box(size: object.dimensions), kind: String(describing: object.category))
+    private static func objectSnapshot(_ object: CapturedRoom.Object, floorHeights: [Float]) -> SurfaceSnapshot {
+        SurfaceSnapshot(id: object.identifier, width: object.dimensions.x, height: object.dimensions.y, transform: object.transform, confidence: SurfaceConfidence(object.confidence), isWall: false, shape: .box(size: object.dimensions), kind: String(describing: object.category), restsOnFloor: objectRestsOnFloor(dimensions: object.dimensions, transform: object.transform, floorHeights: floorHeights))
+    }
+
+    static func objectRestsOnFloor(dimensions: SIMD3<Float>, transform: simd_float4x4, floorHeights: [Float]) -> Bool {
+        guard !floorHeights.isEmpty else { return false }
+        let halfDimensions = SIMD3(abs(dimensions.x), abs(dimensions.y), abs(dimensions.z)) / 2
+        let bottomY = [-halfDimensions.x, halfDimensions.x].flatMap { x in
+            [-halfDimensions.y, halfDimensions.y].flatMap { y in
+                [-halfDimensions.z, halfDimensions.z].map { z in
+                    (transform * SIMD4(x, y, z, 1)).y
+                }
+            }
+        }.min() ?? transform.columns.3.y
+        return floorHeights.contains { abs(bottomY - $0) <= CoveragePolicy.floorContactTolerance }
     }
 
     static func planeShape(dimensions: SIMD3<Float>, transform: simd_float4x4, isFloor: Bool) -> (width: Float, height: Float, surfaceShape: SurfaceShape) {

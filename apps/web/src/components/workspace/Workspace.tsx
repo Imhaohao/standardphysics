@@ -10,6 +10,7 @@ import { interpolateLayout } from "@/lib/compare";
 import { findingForNode, groupFindings } from "@/lib/findings";
 import { scanStatus } from "@/lib/scan-status";
 import { METERS_PER_INCH } from "@/lib/moves";
+import { capturedMeshUrl } from "@/lib/lidar-mesh";
 import type { Assessment, Finding, NodeMove, Scan, SceneGraph } from "@/types/contracts";
 import { ArrangePanel } from "./ArrangePanel";
 import { type Comparison, ComparePanel } from "./ComparePanel";
@@ -33,6 +34,7 @@ type WorkspaceProps = {
   assessment: Assessment | null;
   previous: Previous;
   glbUrl: string | null;
+  lidarUrl: string | null;
 };
 
 type ViewMode = "overview" | "top";
@@ -194,10 +196,11 @@ function FindingsPanel({ scan, scene, assessment, findings, selected, onToggle, 
   );
 }
 
-export function Workspace({ scan, scene, exported, assessment, previous, glbUrl }: WorkspaceProps) {
+export function Workspace({ scan, scene, exported, assessment, previous, glbUrl, lidarUrl }: WorkspaceProps) {
   const findings = useMemo(() => assessment?.findings ?? [], [assessment]);
   const [selected, setSelected] = useState<Finding | null>(null);
   const [mode, setMode] = useState<ViewMode>("overview");
+  const [objectLabel, setObjectLabel] = useState<string | null>(null);
   const [task, setTask] = useState<Task>("findings");
   const [dragging, setDragging] = useState(false);
   const [amount, setAmount] = useState(1);
@@ -208,15 +211,19 @@ export function Workspace({ scan, scene, exported, assessment, previous, glbUrl 
   const pose = useMemo(() => poseFor(scene, selected, mode), [scene, selected, mode]);
   const handlers = useArrangeHandlers(task === "arrange", arrangement, setDragging);
 
-  const clear = useCallback(() => setSelected(null), []);
-  const selectNode = useCallback((nodeId: string) => setSelected(findingForNode(findings, nodeId) ?? null), [findings]);
+  const displayedLidarUrl = capturedMeshUrl(lidarUrl, scene.revision, task !== "findings");
+  const clear = useCallback(() => { setSelected(null); setObjectLabel(null); }, []);
+  const selectNode = useCallback((nodeId: string) => {
+    setSelected(findingForNode(findings, nodeId) ?? null);
+    setObjectLabel(scene.nodes.find((node) => node.id === nodeId)?.label ?? "Scanned surface");
+  }, [findings, scene]);
   const toggle = (finding: Finding) => setSelected((current) => (current?.id === finding.id ? null : finding));
   const showView = (next: ViewMode) => {
     setSelected(null);
     setMode(next);
   };
   const switchTask = (next: Task) => {
-    setSelected(null);
+    clear();
     if (next === "findings") arrangement.reset();
     if (next === "compare") setAmount(0);
     setTask(next);
@@ -242,11 +249,15 @@ export function Workspace({ scan, scene, exported, assessment, previous, glbUrl 
           arrange={handlers}
           dragging={dragging}
           glbUrl={glbUrl}
+          lidarUrl={displayedLidarUrl}
           pose={pose}
           selected={task === "findings" ? selected : null}
           onSelectNode={selectNode}
           onClearSelection={clear}
         />
+        <p aria-live="polite" className="absolute left-4 top-4 rounded-lg bg-sheet px-3 py-2 text-sm text-ink">
+          {objectLabel ?? (displayedLidarUrl ? "Scanned surfaces" : "Layout preview")}
+        </p>
         <div className="absolute bottom-4 left-4 flex gap-2">
           <Button variant="chip" aria-pressed={mode === "overview" && !selected} onClick={() => showView("overview")}>
             <ArrowsOutCardinal size={16} weight="bold" aria-hidden />

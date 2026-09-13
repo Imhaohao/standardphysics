@@ -2,13 +2,15 @@
 
 import { ContactShadows } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
-import { Component, Suspense, type ReactNode } from "react";
+import { Component, Suspense, useState, type ReactNode } from "react";
+import { Box3 } from "three";
 import type { ViewerPose } from "@/lib/camera";
 import type { Finding, SceneGraph } from "@/types/contracts";
 import { FindingAnnotation } from "./Annotation";
 import { CameraRig } from "./CameraRig";
 import { MODEL, outcomeColor } from "./palette";
 import { type ArrangeHandlers, BoxShopModel, GlbShopModel } from "./ShopModel";
+import { LidarShopModel } from "./LidarShopModel";
 
 type ViewerProps = {
   scene: SceneGraph;
@@ -16,6 +18,7 @@ type ViewerProps = {
   arrange: ArrangeHandlers | null;
   dragging: boolean;
   glbUrl: string | null;
+  lidarUrl: string | null;
   pose: ViewerPose;
   selected: Finding | null;
   onSelectNode: (nodeId: string) => void;
@@ -53,7 +56,8 @@ function Lights() {
   );
 }
 
-export default function Viewer({ scene, exported, arrange, dragging, glbUrl, pose, selected, onSelectNode, onClearSelection }: ViewerProps) {
+export default function Viewer({ scene, exported, arrange, dragging, glbUrl, lidarUrl, pose, selected, onSelectNode, onClearSelection }: ViewerProps) {
+  const [measuredBounds, setMeasuredBounds] = useState<Box3 | null>(null);
   const focus = selected?.locus ? new Set(selected.locus.node_ids) : null;
   const modelProps = {
     shown: scene,
@@ -80,13 +84,13 @@ export default function Viewer({ scene, exported, arrange, dragging, glbUrl, pos
     >
       <color attach="background" args={["#f6f5f1"]} />
       <Lights />
-      <CameraRig pose={pose} locked={dragging} />
-      <mesh rotation-x={-Math.PI / 2} position-y={-0.002} receiveShadow>
+      <CameraRig pose={pose} locked={dragging} bounds={lidarUrl && !selected ? measuredBounds : null} />
+      {!lidarUrl && <><mesh rotation-x={-Math.PI / 2} position-y={-0.002} receiveShadow>
         <planeGeometry args={[80, 80]} />
         <meshStandardMaterial color={MODEL.ground} roughness={1} />
       </mesh>
-      <ContactShadows position={[0, 0.001, 0]} scale={30} opacity={0.35} blur={2.4} far={3} frames={1} />
-      {glbUrl ? (
+      <ContactShadows position={[0, 0.001, 0]} scale={30} opacity={0.35} blur={2.4} far={3} frames={1} /></>}
+      {lidarUrl ? <LidarShopModel key={lidarUrl} url={lidarUrl} scene={scene} onSelectNode={onSelectNode} onBounds={setMeasuredBounds} /> : glbUrl ? (
         <GlbFallback fallback={boxes}>
           <Suspense fallback={boxes}>
             <GlbShopModel url={glbUrl} exported={exported} {...modelProps} />

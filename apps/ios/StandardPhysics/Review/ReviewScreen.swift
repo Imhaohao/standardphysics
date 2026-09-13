@@ -1,14 +1,16 @@
 import SceneKit
 import SwiftUI
+import RoomPlan
 
 struct ReviewScreen: View {
     @ObservedObject var model: AppModel
     let scan: CapturedScan
     @State private var name: String
-    @State private var showDetail = true
     @State private var roomScene: SCNScene?
     @State private var detailScene: SCNScene?
     @State private var saveError: String?
+    @State private var selectedSurface = "Scanned surfaces"
+    @State private var locator = ScanObjectLocator(objects: [])
 
     init(model: AppModel, scan: CapturedScan) {
         self.model = model
@@ -21,10 +23,8 @@ struct ReviewScreen: View {
             AppTheme.canvas.ignoresSafeArea()
             VStack(spacing: 0) {
                 ZStack(alignment: .topLeading) {
-                    SceneView(
-                        scene: showDetail ? detailScene ?? roomScene : roomScene,
-                        options: [.allowsCameraControl, .autoenablesDefaultLighting]
-                    )
+                    ScannedRoomView(scene: detailScene ?? roomScene, locator: locator,
+                        onSelect: { selectedSurface = $0 })
                     .background(AppTheme.panel)
                     Button {
                         model.showStart()
@@ -46,17 +46,17 @@ struct ReviewScreen: View {
                 }
 
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.card) {
+                    Text(selectedSurface).font(.headline).accessibilityAddTraits(.updatesFrequently)
                     if let notice = scan.captureNotice {
                         Text(notice).foregroundStyle(AppTheme.mutedInk)
                         Button("Record another pass") { model.beginCapture() }
                             .buttonStyle(AppButtonStyle(.secondary))
                     }
                     if detailScene != nil {
-                        Picker("Room view", selection: $showDetail) {
-                            Text("Details").tag(true)
-                            Text("Room layout").tag(false)
-                        }.pickerStyle(.segmented)
                         ShareLink("Share detailed scan", item: scan.directory.appendingPathComponent("lidar-mesh.json"))
+                    } else {
+                        Button("Scan detailed surfaces") { model.beginCapture() }
+                            .buttonStyle(AppButtonStyle(.secondary))
                     }
                     Text("Name this shop")
                         .font(.title2.bold())
@@ -84,6 +84,11 @@ struct ReviewScreen: View {
         .task(id: scan.id) {
             roomScene = try? SCNScene(url: scan.roomURL)
             detailScene = try? LidarMesh.load(from: scan.directory).makeScene()
+            if detailScene == nil { selectedSurface = "Simplified layout" }
+            if let data = try? Data(contentsOf: scan.directory.appendingPathComponent("room.json")),
+               let room = try? JSONDecoder().decode(CapturedRoom.self, from: data) {
+                locator = ScanObjectLocator(objects: RoomCoverage.snapshots(from: room))
+            }
         }
     }
 

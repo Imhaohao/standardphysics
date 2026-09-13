@@ -63,6 +63,16 @@
         }
       }
     },
+    "/api/scans/{scan_id}/lidar-mesh": {
+      "get": {
+        "summary": "Get the raw captured LiDAR mesh",
+        "parameters": [{"name": "scan_id", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}}],
+        "responses": {
+          "200": {"description": "Raw LiDAR mesh JSON", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/LidarMesh"}}}},
+          "404": {"description": "Scan or mesh is not available"}
+        }
+      }
+    },
     "/api/scans/{scan_id}": {
       "get": {
         "summary": "Poll scan state",
@@ -75,7 +85,7 @@
     "schemas": {
       "ArtifactKind": {
         "type": "string",
-        "enum": ["room_usdz", "room_json", "room_metadata", "walkthrough_mp4", "frames", "poses", "coverage"]
+        "enum": ["room_usdz", "room_json", "room_metadata", "walkthrough_mp4", "frames", "poses", "coverage", "lidar_mesh"]
       },
       "ScanState": {
         "type": "string",
@@ -104,6 +114,25 @@
           "duration_seconds": {"type": "number"},
           "state": {"$ref": "#/components/schemas/ScanState"},
           "artifacts": {"type": "array", "items": {"$ref": "#/components/schemas/Artifact"}}
+        }
+      },
+      "LidarMeshPart": {
+        "type": "object",
+        "required": ["id", "transform", "vertices", "triangles"],
+        "properties": {
+          "id": {"type": "string", "format": "uuid"},
+          "transform": {"type": "array", "minItems": 16, "maxItems": 16, "items": {"type": "number"}},
+          "vertices": {"type": "array", "items": {"type": "number"}},
+          "triangles": {"type": "array", "items": {"type": "integer"}}
+        }
+      },
+      "LidarMesh": {
+        "type": "object",
+        "required": ["parts"],
+        "properties": {
+          "parts": {"type": "array", "minItems": 1, "items": {"$ref": "#/components/schemas/LidarMeshPart"}},
+          "peopleFilteringEnabled": {"type": ["boolean", "null"]},
+          "floorY": {"type": ["number", "null"]}
         }
       }
     }

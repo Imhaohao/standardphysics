@@ -11,6 +11,7 @@ final class RoomCaptureController: UIViewController, RoomCaptureViewDelegate, Ro
     private var liveRoom: CapturedRoom?
     private var processedRoom: CapturedRoom?
     private var recording: RecordingResult?
+    private var finalMeshFrame: ARFrame?
     private var directory: URL?
     private var isFinishing = false
     private var isExporting = false
@@ -34,10 +35,8 @@ final class RoomCaptureController: UIViewController, RoomCaptureViewDelegate, Ro
         // RoomPlan preserves the settings of an already-running AR session on iOS 17+.
         let session = ARSession()
         let recorder = try FrameRecorder(session: session, directory: directory)
-        let configuration = ARWorldTrackingConfiguration()
-        if ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh) {
-            configuration.sceneReconstruction = .mesh
-        }
+        let preparedConfiguration = SceneCaptureConfiguration.prepare()
+        let configuration = preparedConfiguration.configuration
         session.run(configuration)
         let captureView = RoomCaptureView(frame: view.bounds, arSession: session)
         captureView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -48,7 +47,10 @@ final class RoomCaptureController: UIViewController, RoomCaptureViewDelegate, Ro
         recorder.onTimeLimit = { [weak self] in self?.store?.finish() }
         recorder.onObservation = { [weak self] frame in self?.observe(frame) }
         self.recorder = recorder
-        detailRecorder = LidarMeshRecorder(directory: directory)
+        detailRecorder = LidarMeshRecorder(
+            directory: directory,
+            peopleFilteringEnabled: preparedConfiguration.options.peopleFilteringEnabled
+        )
         var roomConfiguration = RoomCaptureSession.Configuration()
         roomConfiguration.isCoachingEnabled = true
         captureView.captureSession.run(configuration: roomConfiguration)
@@ -58,6 +60,7 @@ final class RoomCaptureController: UIViewController, RoomCaptureViewDelegate, Ro
     func finish() {
         guard !isFinishing else { return }
         isFinishing = true
+        finalMeshFrame = captureView?.captureSession.arSession.currentFrame
         saveRecoveryRoom(liveRoom)
         captureView?.captureSession.stop(pauseARSession: true)
         recorder?.stop { [weak self] result in
@@ -196,10 +199,14 @@ final class RoomCaptureController: UIViewController, RoomCaptureViewDelegate, Ro
         isExporting = true
         let coverage = coverageEngine.reconcile(finalSurfaces: RoomCoverage.snapshots(from: room))
         let detailRecorder = detailRecorder
+        let finalMeshFrame = finalMeshFrame
         Task { [weak self] in
-            await detailRecorder?.finish()
+            var recording = recording
+            do { try await detailRecorder?.finish(frame: finalMeshFrame) }
+            catch { recording.captureNotice = "Your room layout is saved. Record another pass to save the detailed surfaces." }
+            let savedRecording = recording
             let result = await Task.detached(priority: .userInitiated) {
-                Result { try ScanExporter.export(room: room, recording: recording, coverage: coverage, directory: directory) }
+                Result { try ScanExporter.export(room: room, recording: savedRecording, coverage: coverage, directory: directory) }
             }.value
             guard let self else { return }
             isExporting = false
