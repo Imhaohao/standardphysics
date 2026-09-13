@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import numpy as np
 
-from ..textures.camera import PhotoCamera
 from .detect import Detection
 
 CLUSTER_VOXEL = 0.06
@@ -74,13 +73,13 @@ def _union(parent: np.ndarray, first: int, second: int) -> None:
 
 def dominant_cluster(
     points: np.ndarray,
-    camera: PhotoCamera,
+    columns: np.ndarray,
+    rows: np.ndarray,
     detection: Detection,
     voxel: float = CLUSTER_VOXEL,
 ) -> np.ndarray:
     """The piece whose outline best matches the rectangle the detector drew."""
     labels = voxel_components(points, voxel)
-    columns, rows, _ = camera.project(points)
     best_score, best = 0.0, np.zeros(len(points), dtype=bool)
     for label in np.unique(labels):
         member = labels == label

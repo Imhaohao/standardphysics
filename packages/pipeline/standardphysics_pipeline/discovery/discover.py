@@ -35,19 +35,26 @@ from ..lidar import LidarMeshError, room_cloud
 from ..textures.camera import CameraMetadataError, PhotoCamera, load_cameras
 from ..textures.project import depth_buffer
 from .boxes import claimed_by_any, contained_fraction, resting_parent
-from .carve import carve
+from .carve import FrameView, carve
 from .detect import Detection, DetectionError, Transport, detect_objects
 from .merge import Candidate, DiscoveredObject, merge_candidates
 from .people import without_people
 
 log = logging.getLogger(__name__)
 
-FRAME_LIMIT = 24
-"""Frames read for objects. The walk is slow enough that more views mostly repeat."""
+FRAME_LIMIT = 400
+"""Every keyframe of a normal walk. A frame nobody reads is a person left in
+the mesh and an object that was never there: on a real 110-second capture,
+sampling 24 of 218 frames found half the laptops and a quarter of the people."""
 DETECTION_WORKERS = 6
 MIN_VOLUME = 0.0004
 """Forty cubic centimetres, about a card reader lying flat. Smaller is noise."""
 MAX_FLOOR_CLEARANCE = 2.4
+CONFIDENT_VIEWS = 4
+"""Views that make a box worth trusting without a second look."""
+MIN_VIEWS = 2
+"""An object one frame saw once is usually a fragment of something else. Two
+frames from different places agreeing is the cheapest evidence that it is real."""
 ALREADY_MEASURED = 0.6
 """A carved object mostly inside a node RoomPlan already boxed is that node, not a new one."""
 DISCOVERY_NAMESPACE = uuid.UUID("6f1f6a2e-9a5f-5f77-9a0c-8b6f1b0d4a10")
@@ -168,16 +175,20 @@ def _carve_all(
 ) -> list[Candidate]:
     candidates = []
     for camera in cameras:
-        for detection in detections.get(camera.frame_id, []):
-            if detection.is_person:
-                continue
-            box = carve(points, camera, detection, buffers[camera.frame_id])
+        wanted = [one for one in detections.get(camera.frame_id, []) if not one.is_person]
+        if not wanted:
+            continue
+        view = FrameView.of(points, camera, buffers[camera.frame_id])
+        for detection in wanted:
+            box = carve(view, detection)
             if box is not None and box.volume >= MIN_VOLUME:
                 candidates.append(Candidate(detection=detection, box=box))
     return candidates
 
 
 def _worth_keeping(object_: DiscoveredObject, graph: SceneGraph) -> bool:
+    if object_.views < MIN_VIEWS:
+        return False
     if object_.box.volume < MIN_VOLUME or object_.box.floor_clearance > MAX_FLOOR_CLEARANCE:
         return False
     return not any(
@@ -195,7 +206,7 @@ def _node_for(object_: DiscoveredObject, graph: SceneGraph) -> SceneNode:
         raw_category=object_.name.replace(" ", "_"),
         dimensions=object_.box.as_vec3(),
         transform=object_.box.as_transform(),
-        quality="measured" if object_.views >= 2 else "needs_another_look",
+        quality="measured" if object_.views >= CONFIDENT_VIEWS else "needs_another_look",
         movable=object_.movable,
         labeled_by="discovery",
         parent_id=resting_parent(object_.box, graph),

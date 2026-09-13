@@ -41,6 +41,9 @@ BAND_SHARE = 0.12
 """A depth bin holding at least this share of the peak bin belongs to the same surface."""
 MIN_POINTS = 25
 MIN_EXTENT = 0.03
+SLIVER_EXTENT = 0.035
+"""A fitted box whose thinnest side lands this close to the floor value is a
+smear across one surface, not an object seen from enough angles to have depth."""
 MAX_EXTENT = 4.0
 TRIM_PERCENTILE = 2.0
 """Extents are read between the 2nd and 98th percentile, so one stray vertex cannot inflate a box."""
@@ -76,37 +79,52 @@ class CarvedBox:
         ])
 
 
-def carve(
-    points: np.ndarray,
-    camera: PhotoCamera,
-    detection: Detection,
-    depth_buffer: np.ndarray | None = None,
-) -> CarvedBox | None:
+@dataclass(frozen=True)
+class FrameView:
+    """One camera's view of a fixed set of points, projected once.
+
+    A frame holds a dozen detections and every one of them would otherwise
+    reproject the whole cloud. The projection depends only on the camera, so it
+    is done once and every rectangle reads the same arrays.
+    """
+
+    camera: PhotoCamera
+    points: np.ndarray
+    columns: np.ndarray
+    rows: np.ndarray
+    depth: np.ndarray
+    visible: np.ndarray
+    """In front of the camera and not hidden behind a nearer surface."""
+
+    @classmethod
+    def of(
+        cls,
+        points: np.ndarray,
+        camera: PhotoCamera,
+        depth_buffer: np.ndarray | None = None,
+    ) -> FrameView:
+        columns, rows, depth = camera.project(points)
+        visible = depth > NEAR_LIMIT
+        if depth_buffer is not None:
+            visible &= unoccluded(columns, rows, depth, camera, depth_buffer)
+        return cls(camera, points, columns, rows, depth, visible)
+
+    def through(self, detection: Detection) -> np.ndarray:
+        return self.visible & detection.contains(self.columns, self.rows)
+
+
+def carve(view: FrameView, detection: Detection) -> CarvedBox | None:
     """The measured box for one detection, or nothing when too few points survive."""
-    seen = points[_seen_through(points, camera, detection, depth_buffer)]
-    if len(seen) < MIN_POINTS:
+    chosen = np.flatnonzero(view.through(detection))
+    if len(chosen) < MIN_POINTS:
         return None
-    _, _, depth = camera.project(seen)
-    seen = seen[nearest_band(depth)]
-    if len(seen) < MIN_POINTS:
+    chosen = chosen[nearest_band(view.depth[chosen])]
+    if len(chosen) < MIN_POINTS:
         return None
-    object_points = seen[dominant_cluster(seen, camera, detection)]
-    if len(object_points) < MIN_POINTS:
+    chosen = chosen[dominant_cluster(view.points[chosen], view.columns[chosen], view.rows[chosen], detection)]
+    if len(chosen) < MIN_POINTS:
         return None
-    return fit_box(object_points)
-
-
-def _seen_through(
-    points: np.ndarray,
-    camera: PhotoCamera,
-    detection: Detection,
-    depth_buffer: np.ndarray | None,
-) -> np.ndarray:
-    columns, rows, depth = camera.project(points)
-    inside = (depth > NEAR_LIMIT) & detection.contains(columns, rows)
-    if depth_buffer is None:
-        return inside
-    return inside & unoccluded(columns, rows, depth, camera, depth_buffer)
+    return fit_box(view.points[chosen])
 
 
 def unoccluded(
@@ -146,7 +164,7 @@ def fit_box(points: np.ndarray) -> CarvedBox | None:
     across = -points[:, 0] * sin_t + points[:, 1] * cos_t
     spans = [_span(values) for values in (along, across, points[:, 2])]
     dimensions = tuple(max(MIN_EXTENT, high - low) for low, high in spans)
-    if any(extent > MAX_EXTENT for extent in dimensions):
+    if any(extent > MAX_EXTENT for extent in dimensions) or min(dimensions) < SLIVER_EXTENT:
         return None
     local_centre = [(low + high) / 2 for low, high in spans]
     centre = (
