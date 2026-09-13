@@ -14,10 +14,13 @@ from standardphysics_contracts.rules import Tier
 from ..tracing import traced
 from .context import CheckContext
 from .dedupe import dedupe
+from .dining import dining_surface_height
+from .door_clearance import door_maneuvering_clearance, door_verdict
 from .door_width import door_clear_width
 from .exit_path import exit_path
 from .observation import Observation, Unevaluated
 from .passing_space import passing_space
+from .protrusions import protruding_objects
 from .questions import RULE_IDS as QUESTION_RULE_IDS
 from .questions import scan_cannot_see
 from .result import CheckResult, as_result
@@ -37,8 +40,29 @@ REGISTRY: tuple[tuple[frozenset[str], CheckFn], ...] = (
     (frozenset({"service_counter_height"}), service_counter_height),
     (frozenset({"service_counter_approach"}), service_counter_approach),
     (frozenset({"exit_path"}), exit_path),
+    (frozenset({"door_maneuvering_clearance"}), door_maneuvering_clearance),
+    (frozenset({"protruding_objects"}), protruding_objects),
+    (frozenset({"dining_surface_height"}), dining_surface_height),
     (QUESTION_RULE_IDS, scan_cannot_see),
 )
+
+
+COVERED: frozenset[str] = frozenset()
+"""Filled in below, once the registry exists."""
+
+
+def _waiting_on_a_check(ctx: CheckContext, max_tier: Tier) -> list[Unevaluated]:
+    """Rules a person has verified that no check answers.
+
+    A rule with nothing behind it produces no findings, which from the outside
+    is indistinguishable from a shop that passes it. Every other silent pass in
+    this lane is guarded; this is the guard for the one where the gap is ours.
+    """
+    enabled = {rule.id for rule in ctx.rules.enabled(ctx.ledger, max_tier)}
+    return [
+        Unevaluated(rule_id, "a check in packages/agents to answer it")
+        for rule_id in sorted(enabled - COVERED)
+    ]
 
 
 def _waiting_on_a_reader(ctx: CheckContext, max_tier: Tier) -> list[Unevaluated]:
@@ -65,7 +89,10 @@ def _waiting_on_a_reader(ctx: CheckContext, max_tier: Tier) -> list[Unevaluated]
 def run_checks(ctx: CheckContext, max_tier: Tier = 1) -> CheckResult:
     enabled = {rule.id for rule in ctx.rules.enabled(ctx.ledger, max_tier)}
     observations: list[Observation] = []
-    unevaluated: list[Unevaluated] = _waiting_on_a_reader(ctx, max_tier)
+    unevaluated: list[Unevaluated] = [
+        *_waiting_on_a_reader(ctx, max_tier),
+        *_waiting_on_a_check(ctx, max_tier),
+    ]
 
     for rule_ids, check in REGISTRY:
         if not rule_ids & enabled:
@@ -77,9 +104,14 @@ def run_checks(ctx: CheckContext, max_tier: Tier = 1) -> CheckResult:
     return CheckResult(dedupe(observations, ctx.rules), unevaluated)
 
 
+COVERED = frozenset().union(*[rule_ids for rule_ids, _ in REGISTRY])
+
+
 __all__ = [
-    "CheckContext", "CheckResult", "Observation", "REGISTRY", "Unevaluated",
-    "dedupe", "door_clear_width", "exit_path", "passing_space", "route_clear_width",
+    "COVERED", "CheckContext", "CheckResult", "Observation", "REGISTRY",
+    "Unevaluated", "dedupe", "dining_surface_height", "door_clear_width",
+    "door_maneuvering_clearance", "door_verdict", "exit_path", "passing_space",
+    "protruding_objects", "route_clear_width",
     "route_width_verdict", "run_checks", "scan_cannot_see",
     "service_counter_approach", "service_counter_height", "turn_clear_width",
     "turn_verdict", "turning_space",

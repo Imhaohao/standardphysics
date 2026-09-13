@@ -18,6 +18,15 @@ from standardphysics_contracts.rules import Tier
 
 Comparison = Literal["at_least", "at_most"]
 
+ResolvedBy = Literal["moving_things", "changing_a_fixture"]
+"""What it would take to clear a finding against this rule.
+
+A route is too narrow because of where things are standing, and moving them
+fixes it. A counter is too high because of what it is, and no rearrangement
+changes that. The router needs to know which, or it points the fix agent at a
+table and asks it to make the table shorter.
+"""
+
 Evidence = Literal["measured", "photo", "owner_report", "document"]
 """measured: geometry answers it.
 photo: a person has to send a picture of something LiDAR cannot see.
@@ -56,6 +65,7 @@ class RuleSpec(BaseModel):
 
     applies_to: list[str] = []
     evidence: Evidence = "measured"
+    resolved_by: ResolvedBy = "moving_things"
     source_text: str
     """The sentence a person reads to confirm the threshold."""
 
@@ -64,6 +74,11 @@ class RuleSpec(BaseModel):
     @property
     def measurable(self) -> bool:
         return self.evidence == "measured"
+
+    @property
+    def rearrangeable(self) -> bool:
+        """Whether moving furniture could clear a finding against this rule."""
+        return self.resolved_by == "moving_things"
 
     def satisfied_by(self, measured: float) -> bool:
         if self.comparison == "at_most":

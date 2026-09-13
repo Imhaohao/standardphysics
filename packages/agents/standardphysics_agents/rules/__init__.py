@@ -3,6 +3,7 @@ from .pack import (
     AgentRulePack,
     Comparison,
     Evidence,
+    ResolvedBy,
     RuleSpec,
     load_pack,
     parse_pack,
@@ -19,6 +20,7 @@ from .verification import (
 
 __all__ = [
     "AgentRulePack", "Comparison", "Evidence", "LEDGER_FILE", "PACK_FILE",
-    "LEDGER_PATH_ENV", "RuleSpec", "Verification", "VerificationLedger",
+    "LEDGER_PATH_ENV", "ResolvedBy", "RuleSpec", "Verification",
+    "VerificationLedger",
     "ledger_path", "load_ledger", "load_pack", "parse_pack", "save_ledger",
 ]

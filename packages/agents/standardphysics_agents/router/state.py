@@ -80,16 +80,33 @@ class RouterState:
         }
 
 
-def _movable_cause(finding: Finding, graph: SceneGraph) -> bool:
+def _movable_cause(
+    finding: Finding, graph: SceneGraph, rules: AgentRulePack
+) -> bool:
+    """Whether moving furniture could clear this.
+
+    Two conditions, and both matter. The rule has to be about where things are
+    standing rather than about what they are, because no rearrangement makes a
+    counter shorter. And at least one of the things causing it has to be
+    movable.
+    """
     if finding.locus is None:
         return False
-    for node_id in finding.locus.node_ids:
-        try:
-            if graph.by_id(node_id).movable:
-                return True
-        except KeyError:
-            continue
-    return False
+    try:
+        if not rules.by_id(finding.check_id).rearrangeable:
+            return False
+    except KeyError:
+        return False
+    return any(
+        _is_movable(graph, node_id) for node_id in finding.locus.node_ids
+    )
+
+
+def _is_movable(graph: SceneGraph, node_id: UUID) -> bool:
+    try:
+        return graph.by_id(node_id).movable
+    except KeyError:
+        return False
 
 
 def _wants_another_look(finding: Finding, rules: AgentRulePack) -> bool:
@@ -119,7 +136,7 @@ def state_for(
         fixable_finding_ids=tuple(
             f.id
             for f in findings
-            if f.outcome == "problem" and _movable_cause(f, graph)
+            if f.outcome == "problem" and _movable_cause(f, graph, rules)
         ),
         rescan_finding_ids=tuple(
             f.id for f in findings if _wants_another_look(f, rules)

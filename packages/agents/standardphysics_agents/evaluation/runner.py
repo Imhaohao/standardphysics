@@ -114,13 +114,19 @@ def run_case(
     except Exception as error:  # a broken case must not take the run down
         return CaseOutcome(
             case=case,
-            result=assess(case.graph, case.scenario, measure, rules=rules, ledger=VerificationLedger()),
+                result=assess(
+                case.graph, case.scenario, measure,
+                rules=rules, ledger=VerificationLedger(), max_tier=case.max_tier,
+            ),
             error=f"{type(error).__name__}: {error}",
         )
 
 
 def _run_case(case, measure, rules, ledger, router, run_fixes) -> CaseOutcome:
-    before = assess(case.graph, case.scenario, measure, rules=rules, ledger=ledger)
+    before = assess(
+        case.graph, case.scenario, measure,
+        rules=rules, ledger=ledger, max_tier=case.max_tier,
+    )
     state = state_for(
         before.findings,
         case.graph,
@@ -135,10 +141,14 @@ def _run_case(case, measure, rules, ledger, router, run_fixes) -> CaseOutcome:
 
     fix = propose_fix(
         case.graph, case.scenario, measure, before.problems,
-        rules=rules, ledger=ledger, baseline=before, limit=FIX_CANDIDATE_LIMIT,
+        rules=rules, ledger=ledger, baseline=before,
+        max_tier=case.max_tier, limit=FIX_CANDIDATE_LIMIT,
     )
     after = (
-        assess(fix.graph, case.scenario, measure, rules=rules, ledger=ledger)
+        assess(
+            fix.graph, case.scenario, measure,
+            rules=rules, ledger=ledger, max_tier=case.max_tier,
+        )
         if fix.graph is not None
         else None
     )

@@ -14,6 +14,7 @@ from standardphysics_contracts import (
     Locus,
     SceneNode,
     Vec3,
+    to_inches,
     to_meters,
 )
 from standardphysics_pipeline import format_inches
@@ -60,5 +61,30 @@ def height_locus(node: SceneNode, result: HeightResult) -> Locus:
         ),
         camera=camera_for(
             Vec3(x=base.x, y=base.y, z=top.z / 2), max(top.z, 1.0), direction
+        ),
+    )
+
+
+def mounted_locus(node: SceneNode) -> Locus:
+    """A patch around one piece, for a finding about the piece itself."""
+    centre = node.transform.position
+    reach = max(node.dimensions.x, node.dimensions.y) / 2 + FRAME_PADDING
+    corners = [
+        Vec3(x=centre.x - reach, y=centre.y - reach, z=0.02),
+        Vec3(x=centre.x + reach, y=centre.y - reach, z=0.02),
+        Vec3(x=centre.x + reach, y=centre.y + reach, z=0.02),
+        Vec3(x=centre.x - reach, y=centre.y + reach, z=0.02),
+    ]
+    top = centre.z + node.dimensions.z / 2
+    return Locus(
+        point=Vec3(x=centre.x, y=centre.y, z=top),
+        bbox_min=Vec3(x=centre.x - reach, y=centre.y - reach, z=0.0),
+        bbox_max=Vec3(x=centre.x + reach, y=centre.y + reach, z=top + FRAME_PADDING),
+        node_ids=[node.id],
+        annotation=Annotation(
+            kind="region", points=corners, label=format_inches(to_inches(top))
+        ),
+        camera=camera_for(
+            Vec3(x=centre.x, y=centre.y, z=top / 2), max(reach, 1.0), (0.0, -1.0)
         ),
     )

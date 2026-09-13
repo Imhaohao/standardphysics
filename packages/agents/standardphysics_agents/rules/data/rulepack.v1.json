@@ -20,9 +20,12 @@
         "separating_segment_min_length_inches": 48.0,
         "separating_segment_min_width_inches": 36.0
       },
-      "applies_to": ["route_leg"],
+      "applies_to": [
+        "route_leg"
+      ],
       "evidence": "measured",
-      "source_text": "Except as provided in 403.5.2 and 403.5.3, the clear width of walking surfaces shall be 36 inches (915 mm) minimum. EXCEPTION: The clear width shall be permitted to be reduced to 32 inches (815 mm) minimum for a length of 24 inches (610 mm) maximum provided that reduced width segments are separated by segments that are 48 inches (1220 mm) minimum in length and 36 inches (915 mm) minimum in width."
+      "source_text": "Except as provided in 403.5.2 and 403.5.3, the clear width of walking surfaces shall be 36 inches (915 mm) minimum. EXCEPTION: The clear width shall be permitted to be reduced to 32 inches (815 mm) minimum for a length of 24 inches (610 mm) maximum provided that reduced width segments are separated by segments that are 48 inches (1220 mm) minimum in length and 36 inches (915 mm) minimum in width.",
+      "resolved_by": "moving_things"
     },
     {
       "id": "turn_clear_width",
@@ -44,9 +47,12 @@
         "leaving_min_inches": 42.0,
         "exempt_at_turn_width_inches": 60.0
       },
-      "applies_to": ["route_turn"],
+      "applies_to": [
+        "route_turn"
+      ],
       "evidence": "measured",
-      "source_text": "Where the accessible route makes a 180 degree turn around an element which is less than 48 inches (1220 mm) in width, clear width shall be 42 inches (1065 mm) minimum approaching the turn, 48 inches (1220 mm) minimum at the turn and 42 inches (1065 mm) minimum leaving the turn. EXCEPTION: 403.5.2 shall not apply where the clear width at the turn is 60 inches (1525 mm) minimum."
+      "source_text": "Where the accessible route makes a 180 degree turn around an element which is less than 48 inches (1220 mm) in width, clear width shall be 42 inches (1065 mm) minimum approaching the turn, 48 inches (1220 mm) minimum at the turn and 42 inches (1065 mm) minimum leaving the turn. EXCEPTION: 403.5.2 shall not apply where the clear width at the turn is 60 inches (1525 mm) minimum.",
+      "resolved_by": "moving_things"
     },
     {
       "id": "passing_space",
@@ -67,9 +73,12 @@
         "interval_max_feet": 200.0,
         "t_arm_extension_min_inches": 48.0
       },
-      "applies_to": ["route"],
+      "applies_to": [
+        "route"
+      ],
       "evidence": "measured",
-      "source_text": "An accessible route with a clear width less than 60 inches (1525 mm) shall provide passing spaces at intervals of 200 feet (61 m) maximum. Passing spaces shall be either: a space 60 inches (1525 mm) minimum by 60 inches (1525 mm) minimum; or, an intersection of two walking surfaces providing a T-shaped space complying with 304.3.2 where the base and arms of the T-shaped space extend 48 inches (1220 mm) minimum beyond the intersection."
+      "source_text": "An accessible route with a clear width less than 60 inches (1525 mm) shall provide passing spaces at intervals of 200 feet (61 m) maximum. Passing spaces shall be either: a space 60 inches (1525 mm) minimum by 60 inches (1525 mm) minimum; or, an intersection of two walking surfaces providing a T-shaped space complying with 304.3.2 where the base and arms of the T-shaped space extend 48 inches (1220 mm) minimum beyond the intersection.",
+      "resolved_by": "moving_things"
     },
     {
       "id": "turning_space",
@@ -89,9 +98,12 @@
         "t_square_inches": 60.0,
         "t_arm_width_inches": 36.0
       },
-      "applies_to": ["route_dead_end"],
+      "applies_to": [
+        "route_dead_end"
+      ],
       "evidence": "measured",
-      "source_text": "304.3 Size. Turning space shall comply with 304.3.1 or 304.3.2. 304.3.1 Circular Space. The turning space shall be a space of 60 inches (1525 mm) diameter minimum. The space shall be permitted to include knee and toe clearance complying with 306."
+      "source_text": "304.3 Size. Turning space shall comply with 304.3.1 or 304.3.2. 304.3.1 Circular Space. The turning space shall be a space of 60 inches (1525 mm) diameter minimum. The space shall be permitted to include knee and toe clearance complying with 306.",
+      "resolved_by": "moving_things"
     },
     {
       "id": "door_clear_width",
@@ -109,9 +121,12 @@
       "parameters": {
         "measured_at_door_angle_degrees": 90.0
       },
-      "applies_to": ["door"],
+      "applies_to": [
+        "door"
+      ],
       "evidence": "measured",
-      "source_text": "Door openings shall provide a clear width of 32 inches (815 mm) minimum. Clear openings of doorways with swinging doors shall be measured between the face of the door and the stop, with the door open 90 degrees."
+      "source_text": "Door openings shall provide a clear width of 32 inches (815 mm) minimum. Clear openings of doorways with swinging doors shall be measured between the face of the door and the stop, with the door open 90 degrees.",
+      "resolved_by": "changing_a_fixture"
     },
     {
       "id": "service_counter_height",
@@ -129,9 +144,12 @@
       "parameters": {
         "accessible_length_min_inches": 36.0
       },
-      "applies_to": ["service_counter"],
+      "applies_to": [
+        "service_counter"
+      ],
       "evidence": "measured",
-      "source_text": "904.4.1 Parallel Approach. A portion of the counter surface that is 36 inches (915 mm) long minimum and 36 inches (915 mm) high maximum above the finish floor shall be provided. A clear floor or ground space complying with 305 shall be positioned for a parallel approach adjacent to the 36 inch (915 mm) minimum length of counter."
+      "source_text": "904.4.1 Parallel Approach. A portion of the counter surface that is 36 inches (915 mm) long minimum and 36 inches (915 mm) high maximum above the finish floor shall be provided. A clear floor or ground space complying with 305 shall be positioned for a parallel approach adjacent to the 36 inch (915 mm) minimum length of counter.",
+      "resolved_by": "changing_a_fixture"
     },
     {
       "id": "service_counter_approach",
@@ -150,9 +168,12 @@
         "clear_width_min_inches": 48.0,
         "clear_depth_min_inches": 30.0
       },
-      "applies_to": ["service_counter"],
+      "applies_to": [
+        "service_counter"
+      ],
       "evidence": "measured",
-      "source_text": "305.3 Size. The clear floor or ground space shall be 30 inches (760 mm) minimum by 48 inches (1220 mm) minimum. Referenced by 904.4.1, which positions that space for a parallel approach adjacent to the 36 inch minimum length of counter."
+      "source_text": "305.3 Size. The clear floor or ground space shall be 30 inches (760 mm) minimum by 48 inches (1220 mm) minimum. Referenced by 904.4.1, which positions that space for a parallel approach adjacent to the 36 inch minimum length of counter.",
+      "resolved_by": "moving_things"
     },
     {
       "id": "exit_path",
@@ -168,10 +189,13 @@
       "unit": "in",
       "comparison": "at_least",
       "parameters": {},
-      "applies_to": ["route_leg"],
+      "applies_to": [
+        "route_leg"
+      ],
       "evidence": "measured",
       "source_text": "DRAFT, section not yet pinned. Chapter 10 governs means of egress. The width of exit access is scoped by 1020.2 and the egress width per occupant by 1005.3, and which one governs a small shop depends on occupant load.",
-      "review_note": "Pin the exact section and confirm the occupant load that applies to a shop of this size before enabling. An accessibility professional or the Palo Alto Building Division should confirm this one."
+      "review_note": "Pin the exact section and confirm the occupant load that applies to a shop of this size before enabling. An accessibility professional or the Palo Alto Building Division should confirm this one.",
+      "resolved_by": "moving_things"
     },
     {
       "id": "entrance_threshold",
@@ -191,9 +215,12 @@
         "beveled_max_inches": 0.5,
         "bevel_max_slope_run_per_rise": 2.0
       },
-      "applies_to": ["entrance"],
+      "applies_to": [
+        "entrance"
+      ],
       "evidence": "photo",
-      "source_text": "303.2 Vertical. Changes in level of 1/4 inch (6.4 mm) high maximum shall be permitted to be vertical. 303.3 Beveled. Changes in level between 1/4 inch (6.4 mm) high minimum and 1/2 inch (13 mm) high maximum shall be beveled with a slope not steeper than 1:2."
+      "source_text": "303.2 Vertical. Changes in level of 1/4 inch (6.4 mm) high maximum shall be permitted to be vertical. 303.3 Beveled. Changes in level between 1/4 inch (6.4 mm) high minimum and 1/2 inch (13 mm) high maximum shall be beveled with a slope not steeper than 1:2.",
+      "resolved_by": "changing_a_fixture"
     },
     {
       "id": "door_hardware",
@@ -212,9 +239,12 @@
         "min_height_inches": 34.0,
         "max_height_inches": 48.0
       },
-      "applies_to": ["door"],
+      "applies_to": [
+        "door"
+      ],
       "evidence": "photo",
-      "source_text": "404.2.7 Door and Gate Hardware. Handles, pulls, latches, locks, and other operable parts on doors and gates shall comply with 309.4. Operable parts of such hardware shall be 34 inches (865 mm) minimum and 48 inches (1220 mm) maximum above the finish floor. 309.4 requires operation with one hand and without tight grasping, pinching, or twisting of the wrist."
+      "source_text": "404.2.7 Door and Gate Hardware. Handles, pulls, latches, locks, and other operable parts on doors and gates shall comply with 309.4. Operable parts of such hardware shall be 34 inches (865 mm) minimum and 48 inches (1220 mm) maximum above the finish floor. 309.4 requires operation with one hand and without tight grasping, pinching, or twisting of the wrist.",
+      "resolved_by": "changing_a_fixture"
     },
     {
       "id": "door_opening_force",
@@ -233,9 +263,12 @@
         "interior_hinged_max_lbf": 5.0,
         "sliding_or_folding_max_lbf": 5.0
       },
-      "applies_to": ["door"],
+      "applies_to": [
+        "door"
+      ],
       "evidence": "owner_report",
-      "source_text": "404.2.9 Door and Gate Opening Force. Fire doors shall have a minimum opening force allowable by the appropriate administrative authority. The force for pushing or pulling open a door or gate other than fire doors shall be as follows: (a) Interior hinged doors and gates: 5 pounds (22.2 N) maximum. (b) Sliding or folding doors: 5 pounds (22.2 N) maximum. These forces do not apply to the force required to retract latch bolts or disengage other devices that hold the door or gate in a closed position."
+      "source_text": "404.2.9 Door and Gate Opening Force. Fire doors shall have a minimum opening force allowable by the appropriate administrative authority. The force for pushing or pulling open a door or gate other than fire doors shall be as follows: (a) Interior hinged doors and gates: 5 pounds (22.2 N) maximum. (b) Sliding or folding doors: 5 pounds (22.2 N) maximum. These forces do not apply to the force required to retract latch bolts or disengage other devices that hold the door or gate in a closed position.",
+      "resolved_by": "changing_a_fixture"
     },
     {
       "id": "floor_surface",
@@ -254,9 +287,12 @@
         "carpet_pile_max_inches": 0.5,
         "opening_sphere_max_inches": 0.5
       },
-      "applies_to": ["floor"],
+      "applies_to": [
+        "floor"
+      ],
       "evidence": "photo",
-      "source_text": "302.1 General. Floor and ground surfaces shall be stable, firm, and slip resistant. 302.2 Carpet. Carpet or carpet tile shall be securely attached and shall have a firm cushion, pad, or backing or no cushion or pad. Carpet or carpet tile shall have a level loop, textured loop, level cut pile, or level cut/uncut pile texture. Pile height shall be 1/2 inch (13 mm) maximum. 302.3 Openings. Openings in floor or ground surfaces shall not allow passage of a sphere more than 1/2 inch (13 mm) diameter."
+      "source_text": "302.1 General. Floor and ground surfaces shall be stable, firm, and slip resistant. 302.2 Carpet. Carpet or carpet tile shall be securely attached and shall have a firm cushion, pad, or backing or no cushion or pad. Carpet or carpet tile shall have a level loop, textured loop, level cut pile, or level cut/uncut pile texture. Pile height shall be 1/2 inch (13 mm) maximum. 302.3 Openings. Openings in floor or ground surfaces shall not allow passage of a sphere more than 1/2 inch (13 mm) diameter.",
+      "resolved_by": "changing_a_fixture"
     },
     {
       "id": "restroom_turning_space",
@@ -275,9 +311,12 @@
         "water_closet_centerline_min_inches": 16.0,
         "water_closet_centerline_max_inches": 18.0
       },
-      "applies_to": ["restroom"],
+      "applies_to": [
+        "restroom"
+      ],
       "evidence": "photo",
-      "source_text": "603.2.1 Turning Space. Turning space complying with 304 shall be provided within the room. 604.2 Location. The water closet shall be positioned with a wall or partition to the rear and to one side. The centerline of the water closet shall be 16 inches (405 mm) minimum to 18 inches (455 mm) maximum from the side wall or partition."
+      "source_text": "603.2.1 Turning Space. Turning space complying with 304 shall be provided within the room. 604.2 Location. The water closet shall be positioned with a wall or partition to the rear and to one side. The centerline of the water closet shall be 16 inches (405 mm) minimum to 18 inches (455 mm) maximum from the side wall or partition.",
+      "resolved_by": "moving_things"
     },
     {
       "id": "door_maneuvering_clearance",
@@ -297,10 +336,13 @@
         "front_approach_pull_latch_side_inches": 18.0,
         "front_approach_push_depth_inches": 48.0
       },
-      "applies_to": ["door"],
+      "applies_to": [
+        "door"
+      ],
       "evidence": "measured",
       "source_text": "404.2.4 Maneuvering Clearances. Minimum maneuvering clearances at doors and gates shall comply with 404.2.4. Maneuvering clearances shall extend the full width of the doorway and the required latch side or hinge side clearance. Table 404.2.4.1 gives the clearance by approach direction and door type; a front approach, pull side, hinged door requires 60 inches perpendicular to the doorway and 18 inches beyond the latch side.",
-      "review_note": "Table 404.2.4.1 has twelve rows. Each approach direction needs its own entry here before this check ships."
+      "review_note": "Table 404.2.4.1 has twelve rows. Each approach direction needs its own entry here before this check ships.",
+      "resolved_by": "moving_things"
     },
     {
       "id": "protruding_objects",
@@ -321,10 +363,14 @@
         "wall_mounted_max_projection_inches": 4.0,
         "post_mounted_max_projection_inches": 12.0
       },
-      "applies_to": ["wall_mounted", "post_mounted"],
+      "applies_to": [
+        "wall_mounted",
+        "post_mounted"
+      ],
       "evidence": "measured",
       "source_text": "307.2 Protrusion Limits. Objects with leading edges more than 27 inches (685 mm) and not more than 80 inches (2030 mm) above the finish floor or ground shall protrude 4 inches (100 mm) maximum horizontally into the circulation path. 307.3 Post-Mounted Objects. Free-standing objects mounted on posts or pylons shall overhang circulation paths 12 inches (305 mm) maximum when located 27 inches (685 mm) minimum and 80 inches (2030 mm) maximum above the finish floor or ground.",
-      "review_note": "LiDAR misses thin wall-mounted items. This check may only report where coverage shows the wall was observed in the 27 to 80 inch band."
+      "review_note": "LiDAR misses thin wall-mounted items. This check may only report where coverage shows the wall was observed in the 27 to 80 inch band.",
+      "resolved_by": "changing_a_fixture"
     },
     {
       "id": "reach_range",
@@ -345,9 +391,13 @@
         "obstructed_forward_high_inches": 44.0,
         "obstructed_side_high_inches": 46.0
       },
-      "applies_to": ["operable_part"],
-      "evidence": "measured",
-      "source_text": "308.2.1 Unobstructed. Where a forward reach is unobstructed, the high forward reach shall be 48 inches (1220 mm) maximum and the low forward reach shall be 15 inches (380 mm) minimum above the finish floor or ground."
+      "applies_to": [
+        "operable_part"
+      ],
+      "evidence": "photo",
+      "source_text": "308.2.1 Unobstructed. Where a forward reach is unobstructed, the high forward reach shall be 48 inches (1220 mm) maximum and the low forward reach shall be 15 inches (380 mm) minimum above the finish floor or ground.",
+      "review_note": "308 is about operable parts: switches, card readers, bell pulls. A scan gives boxes and does not identify any of them, so this is a request for a photograph rather than a measurement.",
+      "resolved_by": "changing_a_fixture"
     },
     {
       "id": "dining_surface_height",
@@ -368,10 +418,13 @@
         "knee_clearance_min_inches": 27.0,
         "accessible_share": 0.05
       },
-      "applies_to": ["dining_surface"],
+      "applies_to": [
+        "dining_surface"
+      ],
       "evidence": "measured",
       "source_text": "902.3 Height. The tops of dining surfaces and work surfaces shall be 28 inches (710 mm) minimum and 34 inches (865 mm) maximum above the finish floor or ground. 226.1 requires that where dining surfaces are provided for the consumption of food or drink, at least 5 percent of the seating spaces and standing spaces at the dining surfaces shall comply with 902.",
-      "review_note": "226.1 scopes a share of seats, not every seat. The share and the height are two separate checks and this entry only carries the height."
+      "review_note": "226.1 scopes a share of seats, not every seat. The share and the height are two separate checks and this entry only carries the height.",
+      "resolved_by": "changing_a_fixture"
     }
   ]
 }

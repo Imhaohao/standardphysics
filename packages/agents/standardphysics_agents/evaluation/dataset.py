@@ -31,6 +31,7 @@ from uuid import UUID
 
 from standardphysics_contracts import Scenario, SceneGraph, Stop, Vec3
 from standardphysics_contracts.loop import RouterAction
+from standardphysics_contracts.rules import Tier
 from standardphysics_fixtures import build_graph, build_scenario
 from standardphysics_fixtures.shop import build_street_scenario, node_id
 
@@ -99,6 +100,8 @@ class Case:
     expected_action: RouterAction | None = None
     actions_taken: tuple[RouterAction, ...] = ()
     fix_should_resolve: bool = False
+    max_tier: Tier = 1
+    """Which tiers to run. Tier 1 unless the case is about a tier 2 or 3 rule."""
 
 
 def _case(case_id: str, description: str, graph, scenario=None, **labels) -> Case:
@@ -557,6 +560,99 @@ def _corridor_scenario() -> Scenario:
     )
 
 
+def _tier_2_and_3_cases() -> list[Case]:
+    """Rules that land once route measurement works, per plan section 8."""
+    clean = _clean()
+    shelf_at_head_height = v.add(
+        clean,
+        v.box("wall_shelf", "Shelf", (-2.8, 1.5, 1.1), (0.3, 1.2, 0.3), movable=False),
+    )
+    return [
+        _case(
+            "door_clearance_clear",
+            "Nothing in front of the door, so there is room to pull it open "
+            "from a wheelchair whichever way it swings.",
+            clean,
+            forbidden_problems=frozenset({"door_maneuvering_clearance"}),
+            expected_questions=SCAN_CANNOT_SEE | {"reach_range"},
+            expected_action="ASK_OWNER",
+            max_tier=3,
+        ),
+        _case(
+            "door_clearance_blocked",
+            "A chair left in the doorway, so there is not enough floor in "
+            "front to open the door from a wheelchair at all.",
+            v.add(clean, v.box("blocker", "Chair", (0.0, -3.3, 0.45), (0.45, 0.45, 0.9))),
+            expected_problems=frozenset({"door_maneuvering_clearance", ROUTE}),
+            expected_questions=SCAN_CANNOT_SEE | {"reach_range"},
+            expected_action="FIX",
+            max_tier=3,
+        ),
+        _case(
+            "protrusion_sticks_out",
+            "A shelf mounted at head height reaching a foot off the wall, "
+            "which a cane sweeping the floor never finds.",
+            shelf_at_head_height,
+            expected_problems=frozenset({"protruding_objects"}),
+            expected_inches={"protruding_objects": 11.8},
+            expected_questions=SCAN_CANNOT_SEE | {"reach_range"},
+            expected_action="ASK_OWNER",
+            max_tier=3,
+        ),
+        _case(
+            "protrusion_tucked_in",
+            "The same shelf, shallow enough to stay out of the way.",
+            v.add(
+                clean,
+                v.box(
+                    "wall_shelf", "Shelf", (-2.9119, 1.5, 1.1),
+                    (0.0762, 1.2, 0.3), movable=False,
+                ),
+            ),
+            forbidden_problems=frozenset({"protruding_objects"}),
+            expected_questions=SCAN_CANNOT_SEE | {"reach_range"},
+            expected_action="ASK_OWNER",
+            max_tier=3,
+        ),
+        _case(
+            "tables_are_a_usable_height",
+            "Tables at 29 inches, inside the 28 to 34 inch range 902.3 sets.",
+            clean,
+            forbidden_problems=frozenset({"dining_surface_height"}),
+            expected_questions=SCAN_CANNOT_SEE | {"reach_range"},
+            expected_action="ASK_OWNER",
+            max_tier=3,
+        ),
+        _case(
+            "tables_are_bar_height",
+            "Every table at 42 inches, which is a bar stool height and no use "
+            "from a wheelchair. 226.1 wants one in twenty to work.",
+            _tall_tables(),
+            expected_problems=frozenset({"dining_surface_height"}),
+            expected_questions=SCAN_CANNOT_SEE | {"reach_range"},
+            expected_action="ASK_OWNER",
+            max_tier=3,
+        ),
+    ]
+
+
+def _tall_tables() -> SceneGraph:
+    from standardphysics_contracts import Mat4, to_meters
+
+    graph = _clean()
+    height = to_meters(42.0)
+    for name in ("table_3", "table_4"):
+        node = graph.by_id(node_id(name))
+        position = node.transform.position
+        graph = v.replace(
+            graph,
+            node.id,
+            dimensions=Vec3(x=node.dimensions.x, y=node.dimensions.y, z=height),
+            transform=Mat4.translation(position.x, position.y, height / 2),
+        )
+    return graph
+
+
 BUILDERS = (
     _aisle_cases,
     _door_cases,
@@ -566,6 +662,7 @@ BUILDERS = (
     _blocked_cases,
     _quiet_cases,
     _crowding_cases,
+    _tier_2_and_3_cases,
 )
 
 

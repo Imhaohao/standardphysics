@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import Callable
 
 from .checks.observation import Observation
-from .numbers import by, inches, measured, size, things
+from .numbers import by, inches, measured, plural, size, things
 from .rules import RuleSpec
 
 
@@ -238,9 +238,90 @@ QUESTIONS = {
         title="Send a photo of the customer restroom from the doorway",
         detail="Stand in the door and get the whole room in. We'll check there's a 60 inch circle to turn around in.",
     ),
+    "reach_range": FindingCopy(
+        title="Send a photo of anything a customer has to reach for",
+        detail="The card reader, the light switch by the door, a bell pull. We'll check each one sits between 15 and 48 inches up.",
+    ),
 }
 
+def _door_clearance(observation: Observation, rule: RuleSpec) -> FindingCopy:
+    door = observation.facts.get("door", "door").casefold()
+    pull = inches(observation.facts.get("pull_depth", rule.threshold))
+    push = inches(observation.facts.get("push_depth", 48.0))
+    latch = inches(observation.facts.get("latch_side", 18.0))
+    if observation.reason == "complies_either_way":
+        return FindingCopy(
+            title=f"There's room to work the {door}",
+            detail=f"The floor in front of it is clear for {pull}, which is "
+            "enough to pull it open from a wheelchair.",
+        )
+    if observation.reason == "depends_on_the_swing":
+        return FindingCopy(
+            title=f"Tell us which way the {door} opens",
+            detail=f"There's {push} of clear floor in front of it. That's "
+            f"enough to push it open and short of the {pull} it takes to pull "
+            "it open. Which way it swings decides this one.",
+        )
+    return FindingCopy(
+        title=f"There's not enough room to open the {door}",
+        detail=f"Opening it from a wheelchair needs {push} of clear floor in "
+        f"front, and {latch} of that clear past the handle side.",
+        fix=f"Keep the floor in front of the {door} clear for {pull}.",
+    )
+
+
+def _protrusion(observation: Observation, rule: RuleSpec) -> FindingCopy:
+    thing = observation.facts.get("object", "object").casefold()
+    edge = inches(observation.facts.get("leading_edge_inches", 40.0))
+    out = measured(observation.measured_inches, observation.required_inches)
+    allowed = inches(observation.required_inches or rule.threshold)
+    if observation.satisfied:
+        return FindingCopy(
+            title=f"The {thing} on the wall is out of the way",
+            detail=f"It sticks out {out} at {edge} up, and {allowed} is the most "
+            "that's allowed at that height.",
+        )
+    return FindingCopy(
+        title=f"The {thing} sticks out where someone could walk into it",
+        detail=f"It comes {out} off the wall at {edge} up. At that height "
+        f"anything over {allowed} is in the way, because a cane sweeping the "
+        "floor never finds it.",
+        fix=f"Bring it back to {allowed} off the wall, or put something solid "
+        "underneath it that a cane will find.",
+    )
+
+
+def _dining(observation: Observation, rule: RuleSpec) -> FindingCopy:
+    total = int(observation.facts.get("surfaces", 0))
+    complying = int(observation.facts.get("complying", 0))
+    needed = int(observation.facts.get("needed", 1))
+    low = inches(observation.facts.get("range_low", 28.0))
+    high = inches(observation.facts.get("range_high", 34.0))
+    tables = plural("table") if total != 1 else "table"
+    if observation.satisfied:
+        return FindingCopy(
+            title="There's a table someone in a wheelchair can use",
+            detail=f"{complying} of your {total} {tables} sit between {low} and "
+            f"{high} high, which is the range that works from a wheelchair.",
+        )
+    return FindingCopy(
+        title="None of the tables are a height that works from a wheelchair",
+        detail=f"A table needs to sit between {low} and {high} high. "
+        f"{_count_phrase(complying, total, tables)}",
+        fix=f"Set {needed} of them between {low} and {high} high.",
+    )
+
+
+def _count_phrase(complying: int, total: int, tables: str) -> str:
+    if complying == 0:
+        return f"All {total} of yours are outside that."
+    return f"{complying} of your {total} {tables} are."
+
+
 WRITERS: dict[str, Callable[[Observation, RuleSpec], FindingCopy]] = {
+    "door_maneuvering_clearance": _door_clearance,
+    "protruding_objects": _protrusion,
+    "dining_surface_height": _dining,
     "route_clear_width": _route_width,
     "door_clear_width": _door_width,
     "service_counter_height": _counter_height,
@@ -253,6 +334,10 @@ WRITERS: dict[str, Callable[[Observation, RuleSpec], FindingCopy]] = {
 
 
 REQUESTS = {
+    "door_maneuvering_clearance": FindingCopy(
+        title="Tell us which way your front door opens",
+        detail="Pushed outward or pulled inward, from where a customer stands. Pulling one open takes more room in front of it, so it decides whether this passes.",
+    ),
     "door_clear_width": FindingCopy(
         title="Measure the front doorway and send us the number",
         detail="Open the door all the way and measure from the face of the door across to the frame. That's the width a wheelchair actually gets, and it needs 32 inches.",

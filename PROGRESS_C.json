@@ -1,6 +1,6 @@
 {
   "lane": "C",
-  "updated": "2026-09-13T01:20:00Z",
+  "updated": "2026-09-13T04:10:00Z",
   "done": [
     "rule pack: 17 rules, thresholds in the units the standard is written in, the quoted sentence behind each, and every other number the section states",
     "human verification ledger binding rule id, section, threshold and unit, so editing a threshold switches its check off",
@@ -23,7 +23,12 @@
     "acceptance gate: completes, no lost coverage, no new failures, strictly improves",
     "32 labelled cases and 7 scorers, with per-case results on disk and in Weave when configured",
     "Weave tracing that runs with or without an account",
-    "263 tests"
+    "tier 2 checks: door maneuvering clearance (404.2.4) read from the stricter end of the table, and protruding objects (307) from the leading edge and the projection off the wall",
+    "tier 3: dining surface height (902.3) with 226.1's share; reach range (308) is a photo request because a scan does not identify an operable part",
+    "a verified rule with no check behind it reports itself, so the one silent pass left in the lane is guarded",
+    "the rule pack says whether a finding is cleared by moving things or by changing a fixture, so the router never sends the fix agent to make a table shorter",
+    "38 labelled cases across all three tiers, 7 scorers, every one at 1.000",
+    "368 tests"
   ],
   "in_progress": null,
   "blocked_on": null,

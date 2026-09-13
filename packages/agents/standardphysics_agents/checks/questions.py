@@ -1,9 +1,10 @@
 """The things LiDAR cannot see, turned into one specific ask each.
 
 A scan measures shapes. It does not measure how hard a door is to push, what a
-handle feels like in a closed fist, or whether the mat by the door is stuck
-down. Each of those becomes a single request for one piece of evidence, written
-as the thing to do rather than as the thing we are missing.
+handle feels like in a closed fist, whether the mat by the door is stuck down,
+or which of the boxes on a wall is a light switch. Each of those becomes a
+single request for one piece of evidence, written as the thing to do rather
+than as the thing we are missing.
 """
 
 from __future__ import annotations
@@ -39,6 +40,7 @@ ASK_ABOUT: tuple[tuple[str, NodeFinder], ...] = (
     ("door_opening_force", _entrance_nodes),
     ("floor_surface", _floor_nodes),
     ("restroom_turning_space", _no_nodes),
+    ("reach_range", _no_nodes),
 )
 
 RULE_IDS = frozenset(rule_id for rule_id, _ in ASK_ABOUT)
