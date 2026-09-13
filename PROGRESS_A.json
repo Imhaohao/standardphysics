@@ -1,6 +1,6 @@
 {
   "lane": "A",
-  "updated": "2026-09-13T00:18:00Z",
+  "updated": "2026-09-13T00:31:00Z",
   "done": [
     "iOS 17 Xcode project builds on the simulator",
     "device support gate and start screen",
@@ -18,13 +18,13 @@
     "native-size simulator visual verification",
     "signed device build installed and launched on the paired iPhone 17 Pro"
   ],
-  "in_progress": "reconstruction implemented, tested and installed; merge authorization and new physical scan validation pending",
+  "in_progress": "test1 upload verified; Lane D merges resolved; final agent tests and push pending",
   "reconstruction_plan": [
     {"task": "native ARKit people removal and reliable final mesh persistence", "model_tier": "Astra", "status": "implemented"},
     {"task": "thorough coverage: closer views, more area and viewpoints", "model_tier": "Terra", "status": "verified"},
     {"task": "mesh-based native/web review and geometry-aligned recognized objects", "model_tier": "Astra", "status": "verified_on_ravida"},
     {"task": "shared mesh contract and validated API uploads", "model_tier": "Luna", "status": "verified"},
-    {"task": "independent review, tests and device verification", "model_tier": "Luna/Terra", "status": "reviewed; installed; physical scan pending"}
+    {"task": "independent review, tests and device verification", "model_tier": "Luna/Terra", "status": "reviewed; installed; test1 hardware capture uploaded and rendered"}
   ],
   "repair_plan": [
     {"task": "coverage geometry, final reconciliation, and guidance", "model_tier": "Terra", "status": "verified"},
@@ -34,7 +34,7 @@
   ],
   "repair_validation": {
     "ios_tests_passed": 63,
-    "latest_suite": "iOS 63; web 17 plus typecheck/lint/production build; API 34; root Python 141; agents 263 passed",
+    "latest_suite": "merged iOS 63; web 28 plus typecheck/lint/production build; API 41; root Python 154 passed and 7 expected failures; agent suite running",
     "strict_concurrency_build": "signed iOS build passed with complete concurrency and warnings as errors; test stubs use normal test settings",
     "device_build": "person-filtered measured reconstruction build installed and launched at 17:16 PDT",
     "real_scan": "ravida af42f6cd-d228-4dd8-8790-aff0890fee5b ready on real Lane D API; all 290 artifacts uploaded",
@@ -43,7 +43,18 @@
     "semantic_objects": "3 tables, 11 chairs, 1 storage unit; no TV recognized",
     "metadata": "binary plist confirmed; 25 final surface coverage IDs; 284 frame poses"
   },
-  "blocked_on": "Rebase onto origin/master a10d6da conflicts with Lane D changes in scan page, CameraRig, Viewer, Workspace and API app.py. Rebase aborted per repo protocol; local commits preserved and not pushed. Await explicit merge authorization.",
+  "reconstruction_validation": {
+    "scan": "test1 731cc48e-bd67-4402-b33d-6a696a30754f",
+    "upload": "ready; 447 artifacts including 440 images and walkthrough",
+    "mesh": "112 parts; 554250 vertices; 988079 triangles; 31840294 bytes",
+    "mesh_sha256": "11a4480fd35e6b8a71dc8043c6e3375c34142888f66bac27067f5db0cf44fdb2",
+    "people_filtering": "enabled in new capture metadata; visual completeness of removal still requires close inspection",
+    "production": "mesh renders; switching to Move furniture shows Layout preview and switching back restores measured surfaces",
+    "merge": "human authorized resolution; preserved Lane D reports, proposals, comparison, revision alignment and drag locks through 2b0e2b0",
+    "glb_metadata": "HEAD returns exported revision without streaming geometry; test and production verified",
+    "review_disposition": "missing mesh floor metadata and load failures remain explicit errors to avoid guessed alignment or silent box substitution; empty final snapshots preserve prior mesh with a recovery notice"
+  },
+  "blocked_on": null,
   "ready_for_others": [
     "Lane A produces room.json and RoomPlan metadata mapping from a real scan",
     "Lane A uploads the services/api/openapi.json artifact contract",
@@ -51,7 +62,7 @@
     "New captures enable native ARKit people filtering; legacy captures retain unknown filtering metadata"
   ],
   "needs_human": [
-    "Upload a new scan with a moving person followed by a clear view of the desk/TV area; inspect removal and guidance",
+    "Inspect test1 close-up for remaining people and judge desk/TV surface quality",
     "Hand the phone to a first-time scanner and watch whether the guidance works"
   ]
 }
