@@ -137,6 +137,11 @@
   height: 11vh;
 }
 
+@utility closing-portrait {
+  width: 44vh;
+  height: 44vh;
+}
+
 @utility step-badge {
   width: 1.2em;
   height: 1.2em;

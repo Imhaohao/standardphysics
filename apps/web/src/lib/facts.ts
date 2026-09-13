@@ -78,6 +78,11 @@ export const facts = {
     source: "NASA, How Far Away Is the Moon?",
     url: "https://spaceplace.nasa.gov/moon-distance/en/",
   },
+  smallBusinessesInAmerica: {
+    value: 36_200_000,
+    source: "U.S. Small Business Administration Office of Advocacy, 2025 Small Business Profiles",
+    url: "https://advocacy.sba.gov/2025/06/30/new-advocacy-report-shows-the-number-of-small-businesses-in-the-u-s-exceeds-36-million/",
+  },
 } as const;
 
 export const salesCountersExcerpt =

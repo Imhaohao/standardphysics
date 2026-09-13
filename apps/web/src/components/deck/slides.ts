@@ -11,7 +11,8 @@ import { RulebookSlide } from "./slides/RulebookSlide";
 import { SaraSlide } from "./slides/SaraSlide";
 import { StretchedSlide } from "./slides/StretchedSlide";
 import { FindSlide, FixSlide, ScanSlide } from "./slides/StageSlides";
-import { ClosingSlide, TitleSlide } from "./slides/TitleSlide";
+import { TitleSlide } from "./slides/TitleSlide";
+import { ClosingSlide } from "./slides/ClosingSlide";
 
 export type SlideLayer = "behindStage" | "overStage";
 
@@ -41,5 +42,5 @@ export const slides: SlideDefinition[] = [
   { id: "boomers", shot: "awayAfterFix", layer: "overStage", steps: 3, Content: BoomersSlide },
   { id: "model", shot: "awayAfterFix", layer: "overStage", Content: ModelSlide },
   { id: "planner", shot: "awayAfterFix", layer: "overStage", steps: 2, Content: PlannerSlide },
-  { id: "closing", shot: "cloud", layer: "overStage", Content: ClosingSlide },
+  { id: "closing", shot: "awayBeforeScan", layer: "overStage", steps: 2, Content: ClosingSlide },
 ];

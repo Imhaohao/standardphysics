@@ -23,6 +23,3 @@ export function TitleSlide() {
   return <NameAndTagline tagline="Making accessibility more accessible." />;
 }
 
-export function ClosingSlide() {
-  return <NameAndTagline tagline="Together, let’s make accessibility more accessible for all." />;
-}
