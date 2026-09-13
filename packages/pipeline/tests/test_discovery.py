@@ -19,7 +19,7 @@ import numpy as np
 import pytest
 from standardphysics_contracts import Mat4, SceneGraph, SceneNode, Vec3
 from standardphysics_pipeline.coords import capture_to_room
-from standardphysics_pipeline.discovery.boxes import claimed_by_any, inside, resting_parent, structure_points
+from standardphysics_pipeline.discovery.boxes import claimed_by, claimed_by_any, inside, resting_parent, structure_points
 from standardphysics_pipeline.discovery.carve import FrameView, carve, fit_box
 from standardphysics_pipeline.discovery.clusters import voxel_components, without_the_surface_beneath
 from standardphysics_pipeline.discovery.detect import Detection, _pixel_box, EncodedFrame
@@ -360,3 +360,20 @@ class TestLeavingBehindWhatAThingRestsOn:
 
     def test_too_few_points_to_judge_are_left_alone(self):
         assert without_the_surface_beneath(slab((0.0, 0.0, 1.0), (0.05, 0.05, 0.05))).all()
+
+
+class TestWhatAPieceOfFurnitureAccountsFor:
+    def _desk(self):
+        return node("Desk", (0.0, 0.0, 0.37), (1.2, 0.6, 0.74))
+
+    def test_a_desk_accounts_for_its_own_body(self):
+        assert claimed_by(slab((0.0, 0.0, 0.30), (0.3, 0.3, 0.2)), self._desk()).all()
+
+    def test_a_desk_does_not_account_for_what_is_left_on_it(self):
+        """Its box reaches 0.74; a generated box is least accurate right there."""
+        on_top = slab((0.0, 0.0, 0.70), (0.3, 0.2, 0.04))
+        assert not claimed_by(on_top, self._desk()).any()
+
+    def test_a_wall_still_accounts_for_all_of_itself(self):
+        wall = node("Wall", (0.0, 2.0, 1.2), (4.0, 0.1, 2.4), kind="wall")
+        assert claimed_by(slab((0.0, 2.0, 2.3), (0.3, 0.05, 0.1)), wall).all()

@@ -18,6 +18,15 @@ from .carve import CarvedBox
 
 CLAIMED_MARGIN = 0.03
 """Points within three centimetres of a known node's shell belong to that node."""
+UNCLAIMED_LID = 0.10
+"""How much of a piece of furniture's own height it does not get to claim.
+
+Everything anybody leaves on a table lives in the last few centimetres of that
+table's box, and a generated box is least accurate exactly there: on a real
+capture RoomPlan's tops miss the scanned surface by up to twenty-one inches. A
+table that claims all the way to its own ceiling therefore swallows the laptop
+standing on it, and the laptop is deleted before anything can look at it. So a
+piece of furniture claims its body and leaves its lid alone."""
 RESTING_GAP = 0.12
 """A new object counts as sitting on a node whose top is within this of its underside."""
 STRUCTURE_KINDS = frozenset({"wall", "floor", "door", "window", "opening"})
@@ -38,16 +47,27 @@ def to_local(points: np.ndarray, node: SceneNode) -> np.ndarray:
 
 
 def inside(points: np.ndarray, node: SceneNode, margin: float = CLAIMED_MARGIN) -> np.ndarray:
+    """Whether each point lies within the node's own box, give or take a margin."""
     _, _, half = _frame(node)
     local = np.abs(to_local(points, node))
     return np.all(local <= half + margin, axis=1)
+
+
+def claimed_by(points: np.ndarray, node: SceneNode, margin: float = CLAIMED_MARGIN) -> np.ndarray:
+    """What this node accounts for: its whole box, except the lid of furniture."""
+    _, _, half = _frame(node)
+    local = to_local(points, node)
+    within = np.all(np.abs(local) <= half + margin, axis=1)
+    if node.kind != "object" or half[2] * 2 <= UNCLAIMED_LID:
+        return within
+    return within & (local[:, 2] <= half[2] - UNCLAIMED_LID)
 
 
 def claimed_by_any(points: np.ndarray, graph: SceneGraph, margin: float = CLAIMED_MARGIN) -> np.ndarray:
     """Points already inside something the scan measured."""
     owned = np.zeros(len(points), dtype=bool)
     for node in graph.nodes:
-        owned |= inside(points, node, margin)
+        owned |= claimed_by(points, node, margin)
     return owned
 
 
