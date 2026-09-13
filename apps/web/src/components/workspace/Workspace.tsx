@@ -1,15 +1,17 @@
 "use client";
 
-import { ArrowLeft, ArrowsOutCardinal, FileText, HandGrabbing, ListChecks, SquareHalfBottom } from "@phosphor-icons/react";
+import { ArrowLeft, ArrowsLeftRight, ArrowsOutCardinal, FileText, HandGrabbing, ListChecks, SquareHalfBottom } from "@phosphor-icons/react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { overviewPose, poseFromLocus, topDownPose, type ViewerPose } from "@/lib/camera";
+import { interpolateLayout } from "@/lib/compare";
 import { findingForNode, groupFindings } from "@/lib/findings";
 import { METERS_PER_INCH } from "@/lib/moves";
 import type { Assessment, Finding, Scan, SceneGraph } from "@/types/contracts";
 import { ArrangePanel } from "./ArrangePanel";
+import { type Comparison, ComparePanel } from "./ComparePanel";
 import { FindingsList } from "./FindingsList";
 import type { ArrangeHandlers } from "./ShopModel";
 import { type Arrangement, useArrangement } from "./useArrangement";
@@ -19,20 +21,37 @@ const Viewer = dynamic(() => import("./Viewer"), {
   loading: () => <div className="h-full w-full animate-pulse bg-rule/30" />,
 });
 
+type Previous = { scene: SceneGraph; assessment: Assessment | null } | null;
+
 type WorkspaceProps = {
   scan: Scan;
   scene: SceneGraph;
   exported: SceneGraph;
   assessment: Assessment | null;
+  previous: Previous;
   glbUrl: string | null;
 };
 
 type ViewMode = "overview" | "top";
-type Task = "findings" | "arrange";
+type Task = "findings" | "arrange" | "compare";
 
 function poseFor(scene: SceneGraph, selected: Finding | null, mode: ViewMode): ViewerPose {
   if (selected?.locus) return poseFromLocus(selected.locus.camera);
   return mode === "top" ? topDownPose(scene) : overviewPose(scene);
+}
+
+function comparisonFor(arrangement: Arrangement, scene: SceneGraph, findings: Finding[], previous: Previous): Comparison | null {
+  if (arrangement.hasMoves && arrangement.check) {
+    return {
+      before: scene, after: arrangement.shown, beforeFindings: findings, afterFindings: arrangement.check.findings,
+      beforeLabel: "Now", afterLabel: "With your moves",
+    };
+  }
+  if (!previous) return null;
+  return {
+    before: previous.scene, after: scene, beforeFindings: previous.assessment?.findings ?? [], afterFindings: findings,
+    beforeLabel: "Before", afterLabel: "After",
+  };
 }
 
 const NUDGES: Record<string, [number, number]> = {
@@ -69,35 +88,11 @@ function useKeyboard(task: Task, arrangement: Arrangement, clear: () => void) {
   }, [task, arrangement, clear]);
 }
 
-export function Workspace({ scan, scene, exported, assessment, glbUrl }: WorkspaceProps) {
-  const findings = useMemo(() => assessment?.findings ?? [], [assessment]);
-  const groups = useMemo(() => groupFindings(findings), [findings]);
-  const [selected, setSelected] = useState<Finding | null>(null);
-  const [mode, setMode] = useState<ViewMode>("overview");
-  const [task, setTask] = useState<Task>("findings");
-  const [dragging, setDragging] = useState(false);
-  const arrangement = useArrangement(scan.id, scene);
-  const pose = useMemo(() => poseFor(scene, selected, mode), [scene, selected, mode]);
-
-  const clear = useCallback(() => setSelected(null), []);
-  const selectNode = useCallback((nodeId: string) => setSelected(findingForNode(findings, nodeId) ?? null), [findings]);
-  const toggle = (finding: Finding) => setSelected((current) => (current?.id === finding.id ? null : finding));
-  const showView = (next: ViewMode) => {
-    setSelected(null);
-    setMode(next);
-  };
-  const switchTask = (next: Task) => {
-    setSelected(null);
-    if (next === "findings") arrangement.reset();
-    setTask(next);
-  };
-
-  useKeyboard(task, arrangement, clear);
-
+function useArrangeHandlers(enabled: boolean, arrangement: Arrangement, setDragging: (on: boolean) => void) {
   const { setActiveId, drag, drop, activeId, blockedIds } = arrangement;
-  const handlers: ArrangeHandlers | null = useMemo(
+  return useMemo<ArrangeHandlers | null>(
     () =>
-      task !== "arrange"
+      !enabled
         ? null
         : {
             activeId,
@@ -112,37 +107,107 @@ export function Workspace({ scan, scene, exported, assessment, glbUrl }: Workspa
               drop();
             },
           },
-    [task, activeId, blockedIds, setActiveId, drag, drop],
+    [enabled, activeId, blockedIds, setActiveId, drag, drop, setDragging],
   );
+}
+
+type HeaderProps = { scan: Scan; task: Task; canCompare: boolean; onTask: (task: Task) => void };
+
+function WorkspaceHeader({ scan, task, canCompare, onTask }: HeaderProps) {
+  return (
+    <header className="flex flex-wrap items-center gap-3 px-3 py-3 lg:col-span-2">
+      <Link href="/" className="rounded-lg p-2 text-ink-muted hover:bg-ink/5 hover:text-ink" aria-label="Your shops">
+        <ArrowLeft size={20} weight="bold" />
+      </Link>
+      <h1 className="min-w-0 flex-1 truncate text-lg font-semibold">{scan.name}</h1>
+      <Link
+        href={`/scans/${scan.id}/report`}
+        className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-ink-muted hover:bg-ink/5 hover:text-ink"
+      >
+        <FileText size={16} weight="bold" aria-hidden />
+        Report
+      </Link>
+      <div className="flex gap-1 rounded-xl bg-rule/50 p-1" role="group" aria-label="What to do">
+        <Button variant="chip" aria-pressed={task === "findings"} onClick={() => onTask("findings")}>
+          <ListChecks size={16} weight="bold" aria-hidden />
+          Findings
+        </Button>
+        <Button variant="chip" aria-pressed={task === "arrange"} onClick={() => onTask("arrange")}>
+          <HandGrabbing size={16} weight="bold" aria-hidden />
+          Move furniture
+        </Button>
+        {canCompare && (
+          <Button variant="chip" aria-pressed={task === "compare"} onClick={() => onTask("compare")}>
+            <ArrowsLeftRight size={16} weight="bold" aria-hidden />
+            Before and after
+          </Button>
+        )}
+      </div>
+    </header>
+  );
+}
+
+type SidePanelProps = {
+  task: Task;
+  scan: Scan;
+  findings: Finding[];
+  selected: Finding | null;
+  arrangement: Arrangement;
+  comparison: Comparison | null;
+  amount: number;
+  onAmount: (value: number) => void;
+  onToggle: (finding: Finding) => void;
+};
+
+function SidePanel({ task, scan, findings, selected, arrangement, comparison, amount, onAmount, onToggle }: SidePanelProps) {
+  if (task === "compare" && comparison) return <ComparePanel comparison={comparison} amount={amount} onAmount={onAmount} />;
+  if (task === "arrange") return <ArrangePanel arrangement={arrangement} fallbackFindings={findings} />;
+  if (findings.length > 0) {
+    return <FindingsList groups={groupFindings(findings)} selectedId={selected?.id ?? null} onSelect={onToggle} />;
+  }
+  return (
+    <p className="px-3 text-ink-muted">
+      {scan.state === "ready" ? "Findings show up here once the shop is checked." : "Checking your shop"}
+    </p>
+  );
+}
+
+export function Workspace({ scan, scene, exported, assessment, previous, glbUrl }: WorkspaceProps) {
+  const findings = useMemo(() => assessment?.findings ?? [], [assessment]);
+  const [selected, setSelected] = useState<Finding | null>(null);
+  const [mode, setMode] = useState<ViewMode>("overview");
+  const [task, setTask] = useState<Task>("findings");
+  const [dragging, setDragging] = useState(false);
+  const [amount, setAmount] = useState(1);
+  const arrangement = useArrangement(scan.id, scene);
+  const comparison = comparisonFor(arrangement, scene, findings, previous);
+  const comparing = task === "compare" && comparison !== null;
+  const shown = comparing ? interpolateLayout(comparison.before, comparison.after, amount) : arrangement.shown;
+  const pose = useMemo(() => poseFor(scene, selected, mode), [scene, selected, mode]);
+  const handlers = useArrangeHandlers(task === "arrange", arrangement, setDragging);
+
+  const clear = useCallback(() => setSelected(null), []);
+  const selectNode = useCallback((nodeId: string) => setSelected(findingForNode(findings, nodeId) ?? null), [findings]);
+  const toggle = (finding: Finding) => setSelected((current) => (current?.id === finding.id ? null : finding));
+  const showView = (next: ViewMode) => {
+    setSelected(null);
+    setMode(next);
+  };
+  const switchTask = (next: Task) => {
+    setSelected(null);
+    if (next === "findings") arrangement.reset();
+    if (next === "compare") setAmount(0);
+    setTask(next);
+  };
+
+  useKeyboard(task, arrangement, clear);
 
   return (
     <div className="grid h-dvh grid-rows-[auto_minmax(18rem,55dvh)_1fr] lg:grid-cols-[1fr_24rem] lg:grid-rows-[auto_1fr]">
-      <header className="flex items-center gap-3 px-3 py-3 lg:col-span-2">
-        <Link href="/" className="rounded-lg p-2 text-ink-muted hover:bg-ink/5 hover:text-ink" aria-label="Your shops">
-          <ArrowLeft size={20} weight="bold" />
-        </Link>
-        <h1 className="min-w-0 flex-1 truncate text-lg font-semibold">{scan.name}</h1>
-        <Link
-          href={`/scans/${scan.id}/report`}
-          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-ink-muted hover:bg-ink/5 hover:text-ink"
-        >
-          <FileText size={16} weight="bold" aria-hidden />
-          Report
-        </Link>
-        <div className="flex gap-1 rounded-xl bg-rule/50 p-1" role="group" aria-label="What to do">
-          <Button variant="chip" aria-pressed={task === "findings"} onClick={() => switchTask("findings")}>
-            <ListChecks size={16} weight="bold" aria-hidden />
-            Findings
-          </Button>
-          <Button variant="chip" aria-pressed={task === "arrange"} onClick={() => switchTask("arrange")}>
-            <HandGrabbing size={16} weight="bold" aria-hidden />
-            Move furniture
-          </Button>
-        </div>
-      </header>
+      <WorkspaceHeader scan={scan} task={task} canCompare={comparison !== null} onTask={switchTask} />
       <section className="relative min-h-0 touch-none overflow-hidden lg:rounded-tr-2xl" aria-label="Shop model">
         <Viewer
-          scene={arrangement.shown}
+          scene={shown}
           exported={exported}
           arrange={handlers}
           dragging={dragging}
@@ -164,15 +229,17 @@ export function Workspace({ scan, scene, exported, assessment, glbUrl }: Workspa
         </div>
       </section>
       <aside className="min-h-0 overflow-y-auto px-3 pb-10 pt-4 lg:pt-0">
-        {task === "arrange" ? (
-          <ArrangePanel arrangement={arrangement} fallbackFindings={findings} />
-        ) : findings.length > 0 ? (
-          <FindingsList groups={groups} selectedId={selected?.id ?? null} onSelect={toggle} />
-        ) : (
-          <p className="px-3 text-ink-muted">
-            {scan.state === "ready" ? "Findings show up here once the shop is checked." : "Checking your shop"}
-          </p>
-        )}
+        <SidePanel
+          task={task}
+          scan={scan}
+          findings={findings}
+          selected={selected}
+          arrangement={arrangement}
+          comparison={comparison}
+          amount={amount}
+          onAmount={setAmount}
+          onToggle={toggle}
+        />
       </aside>
     </div>
   );

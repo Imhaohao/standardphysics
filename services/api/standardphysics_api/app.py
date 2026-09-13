@@ -221,10 +221,14 @@ def _install_workspace_routes(app: FastAPI, database: Database, store: ArtifactS
         return found
 
     @app.get("/api/scans/{scan_id}/assessment", response_model=Assessment)
-    def assessment(scan_id: uuid.UUID) -> Assessment:
+    def assessment(scan_id: uuid.UUID, revision: int | None = None) -> Assessment:
         with database.connect() as connection:
             _scan_or_404(connection, scan_id)
-            found = repo.latest_assessment(connection, scan_id)
+            found = (
+                repo.latest_assessment(connection, scan_id)
+                if revision is None
+                else repo.assessment_for_revision(connection, scan_id, revision)
+            )
         if found is None:
             raise ApiProblem(404, "not ready")
         return found

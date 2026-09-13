@@ -12,6 +12,11 @@ async function glbAvailable(scanId: string): Promise<boolean> {
   return response.ok;
 }
 
+async function loadPrevious(scanId: string, revision: number) {
+  const [scene, assessment] = await Promise.all([getScene(scanId, revision), getAssessment(scanId, revision)]);
+  return scene ? { scene, assessment } : null;
+}
+
 export default async function ShopPage({ params }: PageProps<"/scans/[scanId]">) {
   const { scanId } = await params;
   const scan = await getScan(scanId);
@@ -28,7 +33,15 @@ export default async function ShopPage({ params }: PageProps<"/scans/[scanId]">)
   }
 
   const exported = scene.revision === 0 ? scene : ((await getScene(scanId, 0)) ?? scene);
+  const previous = scene.revision === 0 ? null : await loadPrevious(scanId, scene.revision - 1);
   return (
-    <Workspace scan={scan} scene={scene} exported={exported} assessment={assessment} glbUrl={hasGlb ? sceneGlbUrl(scanId) : null} />
+    <Workspace
+      scan={scan}
+      scene={scene}
+      exported={exported}
+      assessment={assessment}
+      previous={previous}
+      glbUrl={hasGlb ? sceneGlbUrl(scanId) : null}
+    />
   );
 }
