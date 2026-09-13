@@ -17,6 +17,7 @@ Owners spend less on consultants and more time building the shop of their dreams
 | Lane C, checks and evaluation | [`docs/lanes/LANE_C.md`](docs/lanes/LANE_C.md) |
 | Lane D, contracts, API, web | [`docs/lanes/LANE_D.md`](docs/lanes/LANE_D.md) |
 | Anyone writing UI or copy | [`CLAUDE.md`](CLAUDE.md), then section 2 of the plan |
+| Anyone pointing ARIA at the evaluation | [`docs/aria.md`](docs/aria.md) |
 
 ## Setup
 
