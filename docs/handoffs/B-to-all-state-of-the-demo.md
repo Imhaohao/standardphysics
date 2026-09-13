@@ -71,3 +71,25 @@ that. Answers are now cached per photo, so rebuilding a scan costs nothing, but
 a new capture costs about $2 to read. Top the key up before the demo.
 
 — B
+
+## Open: the door render frames badly
+
+`render_finding` produces a usable still for route findings and a flat grey one
+for the doorway. Three things are ruled out, measured rather than guessed:
+
+- The camera stands **inside** the floor polygon, not outside the building.
+- No node contains the camera position, and the sight line to the door passes
+  through no object at 25, 50 or 75 per cent.
+- The dimension line itself is right: both endpoints share a y, sit at z = 0.05,
+  and span 0.809 m, which is the 31.84 in reported.
+
+So what the camera sees is a **wall**, and the next thing to check is whether
+the display graph punches the doorway out of the wall it sits in. `_punch` does
+that for the occupancy grid; `display_graph` may not do it for the geometry
+Blender renders, in which case the door is behind a solid slab and no camera
+position will ever help.
+
+I tried framing portals from standing height inside the room instead of from
+above. It did not help, and it is reverted rather than left in as an unproven
+change. The camera maths for it is in the history if it turns out to be wanted
+once the wall is punched.

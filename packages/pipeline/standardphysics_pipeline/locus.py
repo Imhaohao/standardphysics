@@ -25,7 +25,7 @@ from standardphysics_contracts import (
     to_meters,
 )
 
-from .footprints import closest_points, footprint, rotation_about_z
+from .footprints import closest_points, floor_polygon, footprint, rotation_about_z
 
 EYE_PITCH_DEGREES = 55.0
 """How far above the floor the camera sits, in degrees from horizontal.
@@ -77,6 +77,27 @@ def _viewing_side(
     return across
 
 
+def _standing_room(graph: SceneGraph, subject: Vec3) -> Vec3 | None:
+    """Somewhere inside the room to look from, for a measurement no route reaches.
+
+    A doorway has no customer path leading to it, so nothing said which side to
+    stand on, and half the time the camera was put outside the building looking
+    at the back of a wall. The middle of the floor is always somewhere a person
+    could stand and see in.
+    """
+    floor = next((node for node in graph.nodes if node.kind == "floor"), None)
+    if floor is None:
+        return None
+    polygon = floor_polygon(floor)
+    if not polygon:
+        return None
+    return Vec3(
+        x=sum(point[0] for point in polygon) / len(polygon),
+        y=sum(point[1] for point in polygon) / len(polygon),
+        z=subject.z,
+    )
+
+
 def camera_for(
     subject: Vec3,
     radius: float,
@@ -120,7 +141,7 @@ def width_locus(
     subject = _midpoint(start, end)
 
     across = _perpendicular(end.x - start.x, end.y - start.y)
-    approach = result.path[0] if result.path else None
+    approach = result.path[0] if result.path else _standing_room(graph, subject)
     direction = _viewing_side(subject, across, approach)
 
     radius = _framing_radius(graph, result, subject, span_between=start, and_=end)
