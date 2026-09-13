@@ -18,7 +18,7 @@
     "native-size simulator visual verification",
     "signed device build installed and launched on the paired iPhone 17 Pro"
   ],
-  "in_progress": "reconstruction implemented and installed; awaiting new physical scan validation",
+  "in_progress": "reconstruction implemented, tested and installed; merge authorization and new physical scan validation pending",
   "reconstruction_plan": [
     {"task": "native ARKit people removal and reliable final mesh persistence", "model_tier": "Astra", "status": "implemented"},
     {"task": "thorough coverage: closer views, more area and viewpoints", "model_tier": "Terra", "status": "verified"},
@@ -34,7 +34,7 @@
   ],
   "repair_validation": {
     "ios_tests_passed": 63,
-    "latest_suite": "iOS 63; web 17 plus typecheck/lint/production build; API 34; root Python 141 passed; agent suite running",
+    "latest_suite": "iOS 63; web 17 plus typecheck/lint/production build; API 34; root Python 141; agents 263 passed",
     "strict_concurrency_build": "signed iOS build passed with complete concurrency and warnings as errors; test stubs use normal test settings",
     "device_build": "person-filtered measured reconstruction build installed and launched at 17:16 PDT",
     "real_scan": "ravida af42f6cd-d228-4dd8-8790-aff0890fee5b ready on real Lane D API; all 290 artifacts uploaded",
@@ -43,7 +43,7 @@
     "semantic_objects": "3 tables, 11 chairs, 1 storage unit; no TV recognized",
     "metadata": "binary plist confirmed; 25 final surface coverage IDs; 284 frame poses"
   },
-  "blocked_on": null,
+  "blocked_on": "Rebase onto origin/master a10d6da conflicts with Lane D changes in scan page, CameraRig, Viewer, Workspace and API app.py. Rebase aborted per repo protocol; local commits preserved and not pushed. Await explicit merge authorization.",
   "ready_for_others": [
     "Lane A produces room.json and RoomPlan metadata mapping from a real scan",
     "Lane A uploads the services/api/openapi.json artifact contract",
