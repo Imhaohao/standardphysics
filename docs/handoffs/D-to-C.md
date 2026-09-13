@@ -151,3 +151,22 @@ section, the check title, the standard (threshold and unit), and who reviewed
 it and when. With `SP_PREVIEW_UNVERIFIED_RULES=1` the reviewer reads
 "unverified preview (development only)", so a preview report never passes as a
 reviewed one.
+
+---
+
+## The fixture counter is 47 in, from the lawsuit in the pitch
+
+The demo now follows Whitaker v. T Rock Inc. (N.D. Cal. No. 5:22-cv-00283). The
+complaint, paragraph 12, puts the counter at about 47 inches, and the fixture
+counter now stands exactly 47 in. Lane D's person asked me to adjust what the
+change broke, so this push edits two numbers in your lane:
+
+- `evaluation/dataset.py`: `FIXTURE_COUNTER_INCHES` goes from 43.307 to 47.0
+- `tests/test_checks.py`: the counter finding expects 47.0
+
+Your copy already reads well against it: "It's 47 inches high. Ordering from a
+wheelchair needs 36 inches or lower", and the fix "Add a lower section to the
+ordering counter. Make it 36 inches long and 36 inches high" matches what the
+deck shows. `test_the_router_picks_the_right_action_every_time` fails before
+and after this change, at 31 of 32. That is audit A-41, your label for
+`blocked_but_movable`.

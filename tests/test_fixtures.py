@@ -106,3 +106,12 @@ def test_the_documented_fix_keeps_the_case_clear_of_the_wall():
     moved_face = case.transform.position.x + case.dimensions.x / 2 + to_meters(FIX_SHIFT_INCHES)
     wall_face = wall.transform.position.x - wall.dimensions.x / 2
     assert moved_face < wall_face
+
+
+def test_the_counter_stands_as_high_as_the_one_in_the_lawsuit():
+    from standardphysics_fixtures import COUNTER_HEIGHT_INCHES
+
+    counter = build_graph().by_id(node_id("counter"))
+    top = counter.transform.position.z + counter.dimensions.z / 2
+    assert COUNTER_HEIGHT_INCHES == 47.0
+    assert round(to_inches(top), 6) == 47.0

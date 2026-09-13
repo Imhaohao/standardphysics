@@ -1,4 +1,8 @@
-"""A synthetic boba shop with a deliberate 31-inch pinch.
+"""A synthetic boba shop with a 47-inch ordering counter and a 31-inch pinch.
+
+The counter is the one from Whitaker v. T Rock Inc., N.D. Cal. No.
+5:22-cv-00283: the complaint (paragraph 12) puts the counter at about 47
+inches, and ADA 2010 904.4.1 allows 36. That finding leads the demo.
 
 Two display cases run from the side walls toward the middle and leave exactly
 31 inches between them, on the only path from the door to the counter. That is
@@ -35,8 +39,13 @@ PINCH_METERS = to_meters(PINCH_INCHES)
 CASE_DEPTH = 0.6
 CASE_HEIGHT = 0.9
 
+COUNTER_HEIGHT = to_meters(47.0)
+
 FIX_SHIFT_INCHES = 5.0
 """Moving the east case this far east opens the gap to 36 inches."""
+
+COUNTER_HEIGHT_INCHES = 47.0
+"""Whitaker v. T Rock Inc., complaint paragraph 12."""
 
 CASE_WALL_GAP_INCHES = 6.0
 """Room between each case and its side wall, so the documented fix is a legal
@@ -127,7 +136,7 @@ def build_graph() -> SceneGraph:
     )
     nodes.append(
         _box("counter", "object", "Ordering counter", "storage",
-             (0.0, 3.6, 0.55), (3.2, 0.7, 1.1), False)
+             (0.0, 3.6, COUNTER_HEIGHT / 2), (3.2, 0.7, COUNTER_HEIGHT), False)
     )
     nodes += _display_cases()
     nodes += _furniture()

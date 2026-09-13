@@ -189,3 +189,26 @@ too high to order from", both show a flat close-up of the counter front with
 the vertical line and nothing else. Nobody can tell what they are looking at.
 The route renders read well. Pulling the height camera back to show the counter
 against the floor and a nearby table would fix both views.
+
+---
+
+## The counter leads the demo now, at 47 inches
+
+The pitch example is a real lawsuit, Whitaker v. T Rock Inc. (N.D. Cal. No.
+5:22-cv-00283). Its complaint, paragraph 12, puts the ordering counter at about
+47 inches, against the 36 in that ADA 2010 904.4.1 allows. The fixture counter
+now stands exactly 47 in, up from 43.3 in. The route pinch is unchanged, and
+`shop.glb` and `shop.usdz` are rebuilt. Your tests read the height from the
+graph, so they still pass.
+
+That makes the counter height the first finding people see. **The height
+locus camera matters most now.** Today it frames a flat close-up of the counter
+front with a vertical line, in both the viewer and `render_finding`. The shot
+needs to show:
+
+- the counter against the floor
+- the 47 in line running up its front
+- enough of the room to read as a shop
+
+The deck in `apps/web` draws a 36 in long lowered section next to it, so leave
+a little room at one end of the counter.

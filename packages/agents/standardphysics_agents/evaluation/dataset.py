@@ -51,8 +51,8 @@ DOOR = v.DOOR
 CASE_WEST = v.CASE_WEST
 CASE_EAST = v.CASE_EAST
 
-FIXTURE_COUNTER_INCHES = 43.307
-"""The fixture counter's height, against the 36 in that 904.4.1 allows."""
+FIXTURE_COUNTER_INCHES = 47.0
+"""The fixture counter's height, from Whitaker v. T Rock Inc., against the 36 in that 904.4.1 allows."""
 
 DOORWAY_INCHES = 35.433
 """The fixture's front door opening. Wide enough for 404.2.3's 32 in, and

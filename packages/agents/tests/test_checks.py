@@ -132,7 +132,7 @@ def test_the_counter_height_is_a_problem_with_a_locus(
     result = assess(graph, scenario, measure, ledger=ledger)
     height = _problems(result, "service_counter_height")
     assert len(height) == 1
-    assert round(height[0].measured_inches, 1) == 43.3
+    assert round(height[0].measured_inches, 1) == 47.0
     assert height[0].required_inches == 36.0
     assert height[0].citation.section == "904.4.1"
     assert height[0].locus.node_ids == [COUNTER]
