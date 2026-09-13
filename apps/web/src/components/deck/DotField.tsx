@@ -43,22 +43,84 @@ function grownRadius(dot: Dot, radius: number, progress: number) {
   return radius * grown * (1 + Math.sin(grown * Math.PI) * 0.45);
 }
 
-function drawDots(context: CanvasRenderingContext2D, layout: FieldLayout, progress: number, colors: { ink: string; tape: string }, showHighlight: boolean) {
-  context.fillStyle = colors.ink;
-  context.beginPath();
-  for (const dot of layout.dots) {
-    if (dot === layout.highlighted) continue;
-    const dotRadius = grownRadius(dot, layout.radius, progress);
-    if (dotRadius <= 0) continue;
-    context.moveTo(dot.x + dotRadius, dot.y);
-    context.arc(dot.x, dot.y, dotRadius, 0, Math.PI * 2);
+type FieldColors = { ink: string; tape: string };
+
+function addDot(context: CanvasRenderingContext2D, dot: Dot, radius: number) {
+  context.moveTo(dot.x + radius, dot.y);
+  context.arc(dot.x, dot.y, radius, 0, Math.PI * 2);
+}
+
+class FieldPainter {
+  private readonly settled: HTMLCanvasElement;
+  private readonly settledContext: CanvasRenderingContext2D;
+  private order: Dot[] = [];
+  private settledCount = 0;
+  private layout: FieldLayout = { dots: [], radius: 0, highlighted: null };
+
+  constructor(private readonly colors: FieldColors) {
+    this.settled = document.createElement("canvas");
+    this.settledContext = this.settled.getContext("2d") as CanvasRenderingContext2D;
   }
-  context.fill();
-  if (!layout.highlighted || !showHighlight) return;
-  context.fillStyle = colors.tape;
-  context.beginPath();
-  context.arc(layout.highlighted.x, layout.highlighted.y, Math.max(layout.radius * 1.6, 4), 0, Math.PI * 2);
-  context.fill();
+
+  reset(layout: FieldLayout, pixelWidth: number, pixelHeight: number, ratio: number) {
+    this.layout = layout;
+    this.order = layout.dots.filter((dot) => dot !== layout.highlighted).sort((left, right) => left.threshold - right.threshold);
+    this.settled.width = pixelWidth;
+    this.settled.height = pixelHeight;
+    this.settledContext.setTransform(ratio, 0, 0, ratio, 0, 0);
+    this.settledContext.fillStyle = this.colors.ink;
+    this.settledCount = 0;
+  }
+
+  private settleUpTo(progress: number) {
+    const context = this.settledContext;
+    context.beginPath();
+    while (this.settledCount < this.order.length && progress >= this.order[this.settledCount].threshold + DOT_GROWTH_WINDOW) {
+      addDot(context, this.order[this.settledCount], this.layout.radius);
+      this.settledCount += 1;
+    }
+    context.fill();
+  }
+
+  private unsettleIfRewound(progress: number) {
+    if (this.settledCount === 0) return;
+    const last = this.order[this.settledCount - 1];
+    if (progress >= last.threshold + DOT_GROWTH_WINDOW) return;
+    this.settledContext.save();
+    this.settledContext.setTransform(1, 0, 0, 1, 0, 0);
+    this.settledContext.clearRect(0, 0, this.settled.width, this.settled.height);
+    this.settledContext.restore();
+    this.settledCount = 0;
+  }
+
+  paint(context: CanvasRenderingContext2D, progress: number, showHighlight: boolean) {
+    this.unsettleIfRewound(progress);
+    this.settleUpTo(progress);
+    context.save();
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+    context.drawImage(this.settled, 0, 0);
+    context.restore();
+
+    context.fillStyle = this.colors.ink;
+    context.beginPath();
+    for (let index = this.settledCount; index < this.order.length; index += 1) {
+      const dot = this.order[index];
+      if (dot.threshold >= progress) break;
+      addDot(context, dot, grownRadius(dot, this.layout.radius, progress));
+    }
+    context.fill();
+    this.paintHighlight(context, showHighlight);
+  }
+
+  private paintHighlight(context: CanvasRenderingContext2D, showHighlight: boolean) {
+    const highlighted = this.layout.highlighted;
+    if (!highlighted || !showHighlight) return;
+    context.fillStyle = this.colors.tape;
+    context.beginPath();
+    context.arc(highlighted.x, highlighted.y, Math.max(this.layout.radius * 1.6, 4), 0, Math.PI * 2);
+    context.fill();
+  }
 }
 
 type DotFieldProps = {
@@ -71,6 +133,13 @@ type DotFieldProps = {
 
 export function DotField({ count, progress, origin, showHighlight = true, onHighlightPlaced }: DotFieldProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const showHighlightRef = useRef(showHighlight);
+  const repaintRef = useRef<() => void>(() => {});
+
+  useEffect(() => {
+    showHighlightRef.current = showHighlight;
+    repaintRef.current();
+  }, [showHighlight]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -78,13 +147,10 @@ export function DotField({ count, progress, origin, showHighlight = true, onHigh
     if (!canvas || !context) return;
 
     const styles = getComputedStyle(canvas);
-    const colors = { ink: styles.color, tape: styles.getPropertyValue("--color-tape").trim() };
-    let layout = layoutDots(count, 1, 1, origin);
+    const painter = new FieldPainter({ ink: styles.color, tape: styles.getPropertyValue("--color-tape").trim() });
 
     function render(value: number) {
-      if (!canvas || !context) return;
-      context.clearRect(0, 0, canvas.width, canvas.height);
-      drawDots(context, layout, value, colors, showHighlight);
+      painter.paint(context as CanvasRenderingContext2D, value, showHighlightRef.current);
     }
 
     function resize() {
@@ -94,11 +160,13 @@ export function DotField({ count, progress, origin, showHighlight = true, onHigh
       canvas.width = Math.round(width * ratio);
       canvas.height = Math.round(height * ratio);
       context.setTransform(ratio, 0, 0, ratio, 0, 0);
-      layout = layoutDots(count, width, height, origin);
+      const layout = layoutDots(count, width, height, origin);
+      painter.reset(layout, canvas.width, canvas.height, ratio);
       if (layout.highlighted) onHighlightPlaced?.({ x: layout.highlighted.x / width, y: layout.highlighted.y / height });
       render(progress.get());
     }
 
+    repaintRef.current = () => render(progress.get());
     const observer = new ResizeObserver(resize);
     observer.observe(canvas);
     const unsubscribe = progress.on("change", render);
@@ -106,7 +174,7 @@ export function DotField({ count, progress, origin, showHighlight = true, onHigh
       observer.disconnect();
       unsubscribe();
     };
-  }, [count, progress, origin, showHighlight, onHighlightPlaced]);
+  }, [count, progress, origin, onHighlightPlaced]);
 
   return <canvas ref={canvasRef} aria-hidden className="size-full text-ink" />;
 }
