@@ -265,15 +265,15 @@ function SaraShopScene({ phase }: { phase: Phase }) {
 }
 
 /**
- * The dot's flight, in fractions of the art box. It leaves the shop along an ellipse that swings left over the
- * middle of the slide, comes back around, and eases onto its place in the field over the last stretch.
+ * The dot's flight, in fractions of the art box. It leaves the shop counterclockwise along an ellipse that swings
+ * left over the middle of the slide, comes back around, and eases onto its place in the field over the last stretch.
  */
 const FLIGHT = { centerX: 0.05, centerY: 0.5, radiusX: 0.9, radiusY: 0.416, startDegrees: 60, settleFrom: 0.72, popScale: 1.6 };
 
 const smoothstep = (value: number) => value * value * (3 - 2 * value);
 
 function flightPoint(progress: number, landing: FieldOrigin): FieldOrigin {
-  const angle = ((FLIGHT.startDegrees + progress * 360) * Math.PI) / 180;
+  const angle = ((FLIGHT.startDegrees - progress * 360) * Math.PI) / 180;
   const orbit = { x: FLIGHT.centerX + FLIGHT.radiusX * Math.cos(angle), y: FLIGHT.centerY + FLIGHT.radiusY * Math.sin(angle) };
   const settle = smoothstep(Math.max(0, (progress - FLIGHT.settleFrom) / (1 - FLIGHT.settleFrom)));
   return { x: orbit.x + (landing.x - orbit.x) * settle, y: orbit.y + (landing.y - orbit.y) * settle };

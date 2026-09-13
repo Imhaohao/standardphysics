@@ -92,7 +92,8 @@
   width: 0.9vh;
   height: 0.9vh;
   translate: -50% -50%;
-  box-shadow: 0 0 0.5vh 0 color-mix(in srgb, var(--color-tape) 45%, transparent);
+  background-image: radial-gradient(circle at 32% 30%, #fffbe8 0 14%, var(--color-tape) 46%, var(--color-tape-deep) 100%);
+  box-shadow: 0 0 0.7vh 0.05vh color-mix(in srgb, var(--color-tape) 60%, transparent);
 }
 
 @utility step-badge {
