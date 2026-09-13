@@ -3,7 +3,7 @@
 import { motion, type Variants } from "motion/react";
 import { facts } from "@/lib/facts";
 import { easeDrawn, exitTransition } from "@/lib/motion";
-import { CountFromProgress, FinePrint, MaskedLines, useProgress } from "../primitives";
+import { CountFromProgress, FinePrint, MaskedLines, useProgress } from "./primitives";
 
 const MILLISECONDS_PER_DAY = 86_400_000;
 const PRINT_SECONDS = 1.8;
@@ -34,14 +34,14 @@ const paperPrinting: Variants = {
   exit: { opacity: 0, transition: exitTransition },
 };
 
-function Receipt() {
+export function Receipt() {
   return (
-    <div className="flex w-full max-w-xl flex-col items-stretch">
+    <div className="flex w-receipt min-w-fit flex-col items-stretch text-caption">
       <div aria-hidden className="relative z-10 h-4 rounded-full bg-ink shadow-lg" />
       <div className="-mt-2 overflow-hidden px-4">
-        <motion.div variants={paperPrinting} className="receipt-tear bg-paper-raised px-6 pt-8 pb-10 shadow-md">
-          <p className="text-center font-display text-caption font-bold">{facts.lawsuit.shortName}</p>
-          <dl className="mt-4 border-t border-dashed border-rule pt-4 font-display text-caption figures-tabular">
+        <motion.div variants={paperPrinting} className="receipt-tear bg-paper-raised px-6 pt-8 pb-10 shadow-xl">
+          <p className="text-center font-display font-bold">{facts.lawsuit.shortName}</p>
+          <dl className="mt-4 border-t border-dashed border-rule pt-4 font-display figures-tabular">
             {receiptRows.map((row) => (
               <div
                 key={row.label}
@@ -58,24 +58,19 @@ function Receipt() {
   );
 }
 
-export function ReceiptSlide() {
-  const progress = useProgress(1.4, 0.2, easeDrawn);
+export function DamagesCopy() {
+  const progress = useProgress(1.4, 0.5, easeDrawn);
 
   return (
-    <div className="deck-gutter grid h-full grid-cols-[1.2fr_1fr] items-center gap-deck-gap">
-      <div className="flex h-full flex-col justify-center">
-        <p className="font-display text-display font-extrabold figures-tabular">
-          <CountFromProgress progress={progress} total={facts.californiaMinimumDamages.value} format={dollars.format} />
-        </p>
-        <p className="mt-deck-hairline font-display text-lede font-bold">
-          <MaskedLines lines={["minimum damages,", "plus legal fees"]} delay={0.6} />
-        </p>
-        <div className="mt-deck-rise">
-          <FinePrint delay={1.6}>{`${facts.lawsuit.source}; ${facts.californiaMinimumDamages.source}`}</FinePrint>
-        </div>
-      </div>
-      <div className="flex h-full items-center justify-center">
-        <Receipt />
+    <div className="flex flex-col justify-center">
+      <p className="font-display text-display font-extrabold figures-tabular">
+        <CountFromProgress progress={progress} total={facts.californiaMinimumDamages.value} format={dollars.format} />
+      </p>
+      <p className="mt-deck-hairline font-display text-lede font-bold">
+        <MaskedLines lines={["minimum damages,", "plus legal fees", "and a year in court"]} delay={0.8} />
+      </p>
+      <div className="mt-deck-rise">
+        <FinePrint delay={1.6}>{`${facts.lawsuit.source}; ${facts.californiaMinimumDamages.source}`}</FinePrint>
       </div>
     </div>
   );

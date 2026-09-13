@@ -30,7 +30,7 @@ function CameraRig({ shot }: { shot: ShotName }) {
     easing.damp3(camera.position, framing.cameraPosition, CAMERA_SMOOTH_SECONDS, delta);
     easing.damp3(target, framing.cameraTarget, CAMERA_SMOOTH_SECONDS, delta);
     camera.lookAt(target);
-    camera.setViewOffset(size.width, size.height, -levels.frameShift * size.width, 0, size.width, size.height);
+    camera.setViewOffset(size.width, size.height, -levels.frameShift * size.width, -levels.frameDrop * size.height, size.width, size.height);
   });
 
   return null;
@@ -83,7 +83,7 @@ export function ShopStage({ shot }: { shot: ShotName }) {
     <div aria-hidden className="pointer-events-none absolute inset-0 z-10">
       <Canvas
         flat
-        shadows
+        shadows="percentage"
         dpr={[1, 2]}
         gl={{ antialias: true, alpha: true }}
         camera={{ fov: 24, near: 0.1, far: 120, position: shots.awayBeforeScan.cameraPosition }}

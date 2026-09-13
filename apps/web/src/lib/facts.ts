@@ -49,6 +49,35 @@ export const facts = {
     source: "2010 ADA Standards 904.4.1",
     url: "https://www.access-board.gov/ada/#ada-904",
   },
+  boomersAllOver65By: {
+    value: 2030,
+    bornFrom: 1946,
+    bornThrough: 1964,
+    source: "U.S. Census Bureau, By 2030, All Baby Boomers Will Be Age 65 or Older, 2019",
+    url: "https://www.census.gov/library/stories/2019/12/by-2030-all-baby-boomers-will-be-age-65-or-older.html",
+  },
+  olderAdultsWithDisability: {
+    count: 2,
+    outOf: 5,
+    source: "CDC, Disability and Health Care Access Among Adults, adults 65 and older, 2025",
+    url: "https://www.cdc.gov/disability-and-health/articles-documents/disabilities-health-care-access.html",
+  },
+  boomerNetWorthTrillions: {
+    value: 89.8,
+    shareOfHouseholdWealthPercent: 51.6,
+    source: "Federal Reserve, Distributional Financial Accounts, 2026 Q1",
+    url: "https://www.federalreserve.gov/releases/z1/dataviz/dfa/distribute/chart/",
+  },
+  dollarBillThicknessInches: {
+    value: 0.0043,
+    source: "Bureau of Engraving and Printing, via The Physics Factbook",
+    url: "https://hypertextbook.com/facts/1999/DeneneWilliams.shtml",
+  },
+  moonDistanceMiles: {
+    value: 238855,
+    source: "NASA, How Far Away Is the Moon?",
+    url: "https://spaceplace.nasa.gov/moon-distance/en/",
+  },
 } as const;
 
 export const salesCountersExcerpt =

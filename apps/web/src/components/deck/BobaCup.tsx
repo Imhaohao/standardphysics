@@ -2,8 +2,6 @@
 
 import { motion, type Variants } from "motion/react";
 import { easeDrawn, exitTransition } from "@/lib/motion";
-import { facts } from "@/lib/facts";
-import { FinePrint, MaskedLines } from "../primitives";
 
 const CUP_OUTLINE = "M85.2 225 L122 566 Q124 584 142 584 L258 584 Q276 584 278 566 L314.8 225";
 const LID_DOME = "M92 204 C96 118 304 118 308 204";
@@ -19,9 +17,17 @@ const pearls = pearlRows.flatMap((row, rowIndex) =>
   row.xs.map((x, column) => ({ x, y: row.y + ((column * 7) % 5), order: rowIndex * 5 + ((column * 3) % 5) })),
 );
 
+const buildTimeline = {
+  outline: { delay: 0.15, duration: 0.5 },
+  tea: { delay: 0.45, duration: 0.6 },
+  pearls: { delay: 0.65, stagger: 0.025 },
+  lid: 1.15,
+  straw: 1.35,
+};
+
 const stroke = { stroke: "var(--color-ink)", strokeWidth: 7, strokeLinecap: "round", strokeLinejoin: "round", fill: "none" } as const;
 
-function drawn(delay: number, duration = 0.9): Variants {
+function drawn(delay: number, duration: number): Variants {
   return {
     enter: { pathLength: 0, opacity: 0 },
     present: { pathLength: 1, opacity: 1, transition: { pathLength: { duration, ease: easeDrawn, delay }, opacity: { duration: 0.01, delay } } },
@@ -30,12 +36,13 @@ function drawn(delay: number, duration = 0.9): Variants {
 }
 
 function pearlDrop(order: number): Variants {
+  const delay = buildTimeline.pearls.delay + order * buildTimeline.pearls.stagger;
   return {
     enter: { y: -520, opacity: 0 },
     present: {
       y: 0,
       opacity: 1,
-      transition: { y: { type: "spring", stiffness: 260, damping: 15, delay: 1.35 + order * 0.045 }, opacity: { duration: 0.01, delay: 1.35 + order * 0.045 } },
+      transition: { y: { type: "spring", stiffness: 380, damping: 18, delay }, opacity: { duration: 0.01, delay } },
     },
     exit: { opacity: 0, transition: exitTransition },
   };
@@ -43,25 +50,25 @@ function pearlDrop(order: number): Variants {
 
 const teaRise: Variants = {
   enter: { scaleY: 0 },
-  present: { scaleY: 1, transition: { duration: 1.1, ease: easeDrawn, delay: 0.95 } },
+  present: { scaleY: 1, transition: { ...buildTimeline.tea, ease: easeDrawn } },
   exit: { opacity: 0, transition: exitTransition },
 };
 
 const lidDrop: Variants = {
   enter: { y: -140, opacity: 0 },
-  present: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 300, damping: 18, delay: 2.35 } },
+  present: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 420, damping: 22, delay: buildTimeline.lid } },
   exit: { opacity: 0, transition: exitTransition },
 };
 
 const strawStab: Variants = {
   enter: { y: -260, opacity: 0 },
-  present: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 240, damping: 20, delay: 2.75 } },
+  present: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 360, damping: 24, delay: buildTimeline.straw } },
   exit: { opacity: 0, transition: exitTransition },
 };
 
-function BobaCup() {
+export function BobaCup({ className = "h-full max-h-full w-auto" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 400 620" className="h-full max-h-full w-auto overflow-visible" role="img" aria-label="A boba tea cup filling with tapioca pearls">
+    <svg viewBox="0 0 400 620" className={`${className} overflow-visible`} role="img" aria-label="A boba tea cup filling with tapioca pearls">
       <defs>
         <clipPath id="cup-inside">
           <path d={TEA_FILL} />
@@ -76,29 +83,11 @@ function BobaCup() {
       <motion.g variants={strawStab}>
         <path d="M214 36 L246 36 L222 540 L196 540 Z" {...stroke} fill="var(--color-paper-raised)" />
       </motion.g>
-      <motion.path d={CUP_OUTLINE} {...stroke} variants={drawn(0.25)} />
+      <motion.path d={CUP_OUTLINE} {...stroke} variants={drawn(buildTimeline.outline.delay, buildTimeline.outline.duration)} />
       <motion.g variants={lidDrop}>
         <path d={LID_DOME} {...stroke} fill="var(--color-paper-raised)" fillOpacity={0.55} />
         <rect x={70} y={200} width={260} height={22} rx={11} {...stroke} fill="var(--color-paper-raised)" />
       </motion.g>
     </svg>
-  );
-}
-
-export function SuedSlide() {
-  return (
-    <div className="deck-gutter grid h-full grid-cols-[1.7fr_1fr] items-center gap-deck-gap">
-      <div>
-        <h2 className="font-display text-headline font-extrabold">
-          <MaskedLines lines={["Our family", "friend’s boba", "shop got sued."]} delay={0.1} />
-        </h2>
-        <div className="mt-deck-rise">
-          <FinePrint delay={1.2}>{facts.lawsuit.caption}</FinePrint>
-        </div>
-      </div>
-      <div className="flex h-deck-art justify-center">
-        <BobaCup />
-      </div>
-    </div>
   );
 }

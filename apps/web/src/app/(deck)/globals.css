@@ -30,6 +30,8 @@
   --text-headline--line-height: 0.92;
   --text-lede: min(3.2vw, 5.6vh);
   --text-lede--line-height: 1.1;
+  --text-figure: min(5vw, 8.8vh);
+  --text-figure--line-height: 1;
   --text-caption: min(1.9vw, 3.4vh);
   --text-caption--line-height: 1.2;
   --text-fineprint: min(1vw, 1.8vh);
@@ -39,6 +41,11 @@
   --spacing-deck-rise: 4vh;
   --spacing-deck-hairline: 1.5vh;
   --spacing-deck-art: 78vh;
+  --spacing-receipt: 19em;
+  --spacing-deck-portrait: 24vh;
+  --spacing-deck-bar: min(5vw, 9vh);
+  --spacing-deck-stage: 42vh;
+  --spacing-deck-copy: 26vh;
 }
 
 @layer base {
@@ -79,6 +86,30 @@
   width: 0.06em;
   background: var(--color-tape);
   box-shadow: 0 0 0.5em 0.12em var(--color-tape);
+}
+
+@utility flying-dot {
+  width: 0.9vh;
+  height: 0.9vh;
+  translate: -50% -50%;
+  box-shadow: 0 0 1.2vh 0.3vh var(--color-tape);
+}
+
+@utility step-badge {
+  width: 1.2em;
+  height: 1.2em;
+  flex: none;
+}
+
+@utility step-connector {
+  left: calc(0.6em - 2px);
+  top: 1.2em;
+  width: 4px;
+}
+
+@utility step-icon {
+  width: 0.6em;
+  height: 0.6em;
 }
 
 @utility icon-em {

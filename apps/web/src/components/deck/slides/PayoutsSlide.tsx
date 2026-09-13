@@ -1,26 +1,24 @@
 "use client";
 
-import { Money, Wrench } from "@phosphor-icons/react";
-import { motion, type Variants } from "motion/react";
-import type { ComponentType } from "react";
+import { AnimatePresence, motion, type Variants } from "motion/react";
 import { facts } from "@/lib/facts";
 import { easeDrawn, exitTransition } from "@/lib/motion";
-import { CountFromProgress, FinePrint, MaskedLines, fadeReveal, useProgress } from "../primitives";
+import { CountFromProgress, FinePrint, MaskedLines, useProgress } from "../primitives";
+import type { SlideProps } from "../slides";
 
 const GRID_SIZE = 10;
 const wholeNumber = new Intl.NumberFormat("en-US");
 const DOT_STAGGER = 0.012;
 
 type Stat = {
-  Icon: ComponentType<{ weight: "duotone"; className: string }>;
   percent: number;
   caption: string[];
   delay: number;
 };
 
 const stats: Stat[] = [
-  { Icon: Money, percent: facts.casesWithMoneyPercent.value, caption: ["ended with money", "for the plaintiff"], delay: 0.2 },
-  { Icon: Wrench, percent: facts.casesWithFixOrderedPercent.value, caption: ["ended with an order", "to fix the barrier"], delay: 0.9 },
+  { percent: facts.casesWithMoneyPercent.value, caption: ["ended with a payout", "to the plaintiff"], delay: 0.2 },
+  { percent: facts.casesWithFixOrderedPercent.value, caption: ["ended with an order", "to fix the barrier"], delay: 0.15 },
 ];
 
 function dotFill(index: number, filled: boolean, startDelay: number): Variants {
@@ -57,9 +55,6 @@ function StatColumn({ stat }: { stat: Stat }) {
   const progress = useProgress(1.3, stat.delay);
   return (
     <div className="flex flex-col items-start gap-deck-hairline">
-      <motion.span variants={fadeReveal(stat.delay, 20)} className="text-lede text-ink-muted">
-        <stat.Icon weight="duotone" className="icon-em" />
-      </motion.span>
       <div className="flex items-end gap-deck-gap">
         <p className="font-display text-display font-extrabold figures-tabular">
           <CountFromProgress progress={progress} total={stat.percent} format={(value) => `${value}%`} />
@@ -73,13 +68,20 @@ function StatColumn({ stat }: { stat: Stat }) {
   );
 }
 
-export function PayoutsSlide() {
+const [payoutStat, fixOrderStat] = stats;
+
+export function PayoutsSlide({ step }: SlideProps) {
   return (
     <div className="deck-gutter flex h-full flex-col justify-center gap-deck-rise">
       <div className="grid grid-cols-2 gap-deck-gap">
-        {stats.map((stat) => (
-          <StatColumn key={stat.caption.join(" ")} stat={stat} />
-        ))}
+        <StatColumn stat={payoutStat} />
+        <AnimatePresence>
+          {step > 0 && (
+            <motion.div key="fix-order" initial="enter" animate="present" exit="exit">
+              <StatColumn stat={fixOrderStat} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
       <FinePrint delay={1.6}>{`${facts.casesWithMoneyPercent.source}, ${wholeNumber.format(facts.casesWithMoneyPercent.caseReports)} California case reports`}</FinePrint>
     </div>
