@@ -345,3 +345,28 @@ def test_no_weave_client_means_no_span(monkeypatch):
     reconstruct_result(graph, transport=lambda *_: model_response(patch_for(objects[0])))
 
     assert weave.conversation.spans == []
+
+
+def bedroom_payload():
+    payload = shop_payload()
+    payload["objects"].append(element("bed", dims=(2.0, 0.5, 1.5), at=(2.5, 0.25, 1.0)))
+    return payload
+
+
+def test_a_long_dresser_against_a_bedroom_wall_is_not_an_ordering_counter():
+    rebuilt = reconstruct(parse_room_json(bedroom_payload()))
+    labels = {node.label for node in rebuilt.nodes if node.kind == "object"}
+    assert "Ordering counter" not in labels
+    assert "Display case" not in labels
+    assert "Storage" in labels
+
+
+def test_astra_is_told_a_bedroom_is_a_home():
+    system = _chat_body(parse_room_json(bedroom_payload()))["messages"][0]["content"]
+    assert "home" in system
+    assert "shop" not in system
+
+
+def test_astra_is_still_told_a_shop_is_a_shop():
+    system = _chat_body(parse_room_json(shop_payload()))["messages"][0]["content"]
+    assert "shop scan" in system

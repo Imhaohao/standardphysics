@@ -25,7 +25,7 @@ from uuid import UUID
 from standardphysics_contracts import DisplayAppearance, SceneGraph, SceneNode
 
 from .footprints import footprint, gap_between
-from .ingest import FIXED_CATEGORIES
+from .ingest import FIXED_CATEGORIES, sleeping_places
 
 API_KEY_ENV = "OPENROUTER_API_KEY"
 MODEL_ENV = "OPENROUTER_MODEL"
@@ -60,14 +60,23 @@ WALL_GAP_METERS = 0.45
 OVERLAP_METERS = 0.02
 THIN_METERS = 0.04
 
-INSTRUCTION = (
-    "Label every supplied object in this shop scan with an ordinary name such as "
-    "Ordering counter, Display case, Table, or Chair. Counters and plumbed-in "
-    "fixtures are not movable. Do not change sizes. Mark thin or overlapping "
+LABELLING_RULES = (
+    "Do not change sizes. Mark thin or overlapping "
     "detections as needs_another_look. You may add a display-only appearance "
     "with a six-digit base color and broad material when the frame evidence is "
     "clear; when images_provided is false, appearance must be null. Return every "
     "object exactly once."
+)
+INSTRUCTION = (
+    "Label every supplied object in this shop scan with an ordinary name such as "
+    "Ordering counter, Display case, Table, or Chair. Counters and plumbed-in "
+    "fixtures are not movable. " + LABELLING_RULES
+)
+HOME_INSTRUCTION = (
+    "Label every supplied object in this scan of a bedroom or dorm room with an "
+    "ordinary name such as Bed, Desk, Dresser, Shelf, or Chair. It is a home, so "
+    "nothing in it is an ordering counter, a register, or a display case. "
+    "Plumbed-in fixtures are not movable. " + LABELLING_RULES
 )
 LABEL_SCHEMA = {
     "type": "object", "additionalProperties": False, "required": ["nodes"],
@@ -209,12 +218,17 @@ def _local_identity(node: SceneNode, walls: list[SceneNode], graph: SceneGraph) 
         return node.label, False
     if node.label.strip().casefold() in COUNTER_LABELS:
         return node.label, False
-    if _looks_like_counter(node, walls):
+    home = bool(sleeping_places(graph))
+    if not home and _looks_like_counter(node, walls):
         return "Ordering counter", False
-    return _named_furniture(node.raw_category) or (node.label, node.movable)
+    return _named_furniture(node.raw_category, home) or (node.label, node.movable)
 
 
-def _named_furniture(category: str) -> tuple[str, bool] | None:
+def _named_furniture(category: str, home: bool = False) -> tuple[str, bool] | None:
+    """Plain names for RoomPlan's categories. Storage in a home is a dresser or
+    a shelf, never something a shop displays stock in."""
+    if home and category == "storage":
+        return "Storage", True
     return {
         "storage": ("Display case", True), "chair": ("Chair", True), "table": ("Table", True),
         "sofa": ("Sofa", True), "stool": ("Stool", True), "bench": ("Bench", True),
@@ -351,6 +365,10 @@ def _chat_headers(api_key: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
 
 
+def _instruction(graph: SceneGraph) -> str:
+    return HOME_INSTRUCTION if sleeping_places(graph) else INSTRUCTION
+
+
 def _chat_body(
     graph: SceneGraph,
     *,
@@ -367,7 +385,7 @@ def _chat_body(
         "model": os.environ.get(MODEL_ENV) or DEFAULT_MODEL,
         "max_tokens": MAX_OUTPUT_TOKENS,
         "reasoning": {"effort": "low"},
-        "messages": [{"role": "system", "content": INSTRUCTION}, {"role": "user", "content": content}],
+        "messages": [{"role": "system", "content": _instruction(graph)}, {"role": "user", "content": content}],
         "response_format": {"type": "json_schema", "json_schema": {"name": "astra_labels", "strict": True, "schema": LABEL_SCHEMA}},
         "provider": PROVIDER_ROUTING,
     }

@@ -13,7 +13,7 @@ from uuid import UUID
 from standardphysics_contracts import Finding, SceneGraph
 from standardphysics_contracts.loop import RouterAction
 
-from ..checks.roles import needs_another_look
+from ..checks.roles import RoomKind, needs_another_look, room_kind
 from ..rules import AgentRulePack
 
 MAX_FIX_ATTEMPTS = 3
@@ -57,6 +57,9 @@ class RouterState:
     """What the most recent search measured, which hard constraints turned
     candidates away, and whether it found anything at all."""
 
+    room_kind: RoomKind = "general"
+    """A service business, a home, or a general room, from what the scan holds."""
+
     @property
     def last_action(self) -> RouterAction | None:
         return self.actions_taken[-1] if self.actions_taken else None
@@ -76,6 +79,7 @@ class RouterState:
     def summary(self) -> dict:
         """The shape that goes over the wire."""
         return {
+            "room_kind": self.room_kind,
             "pass_number": self.pass_number,
             "fix_attempts": self.fix_attempts,
             "fix_attempts_remaining": self.fix_budget_left,
@@ -170,4 +174,5 @@ def state_for(
         actions_taken=actions_taken,
         last_gate=last_gate,
         last_search=last_search,
+        room_kind=room_kind(graph),
     )

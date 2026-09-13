@@ -188,3 +188,30 @@ def test_typesafe_budget_is_thread_safe_and_exhaustion_makes_no_provider_call():
     with pytest.raises(SystemOneError, match="typesafe_call_budget_exhausted"):
         client.evaluate({}, {"q": question})
     assert transport.calls == 1
+
+
+def test_a_bedroom_is_screened_from_the_bed_and_never_sent_to_a_cashier():
+    from pathlib import Path
+
+    import standardphysics_fixtures
+    from standardphysics_contracts import Scenario, Stop, Vec3
+    from standardphysics_pipeline import PipelineMeasurements, parse_room_json, reconstruct
+
+    room = Path(standardphysics_fixtures.__file__).parent / "data/real/apple_bedroom3.room.json"
+    graph = reconstruct(parse_room_json(json.loads(room.read_text())))
+    bed = next(node for node in graph.nodes if node.raw_category == "bed")
+    door = next(node for node in graph.nodes if node.kind == "door")
+    scenario = Scenario(
+        name="Get around the room",
+        stops=[
+            Stop(name="Entrance", position=Vec3(x=door.transform.position.x, y=door.transform.position.y, z=0.0)),
+            Stop(name="Bedside", position=Vec3(x=bed.transform.position.x, y=bed.transform.position.y, z=0.0)),
+        ],
+    )
+
+    result = analyze_environment_physics(graph, scenario, PipelineMeasurements())
+
+    assert result.cashiers_found == 0
+    assert not any(route.purpose == "seat_to_cashier" for route in result.routes)
+    assert any(route.origin_node_id == bed.id for route in result.routes)
+    assert not any("cashier" in item.lower() for item in result.limitations)

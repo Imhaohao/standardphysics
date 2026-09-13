@@ -35,7 +35,9 @@ DEFAULT_TIMEOUT_SECONDS = 20.0
 PROVIDER = "typesafe"
 
 INSTRUCTION = (
-    "You are choosing the next step for an accessibility review of a small shop. "
+    "You are choosing the next step for an accessibility review of a scanned room. "
+    "room_kind in the state says whether it is a service business, a home, or a "
+    "general room; only a service business has a counter people are served at. "
     "Pick exactly one action from the options. FIX moves furniture and may only "
     "target problems where furniture_can_fix is true. RESCAN_AREA asks for a "
     "short follow-up scan and may only target findings where wants_another_look "
