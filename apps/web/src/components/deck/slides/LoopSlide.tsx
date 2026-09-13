@@ -121,8 +121,8 @@ function ActionChoices({ visible }: { visible: boolean }) {
                 }}
               >
                 <line x1={decide.x + NODE_RADIUS} y1={decide.y} x2={decide.x + 150} y2={y} stroke={chosen ? "var(--color-tape-deep)" : "var(--color-rule)"} strokeWidth={chosen ? 6 : 3} />
-                <rect x={decide.x + 150} y={y - 28} width={240} height={56} rx={8} fill={chosen ? "var(--color-tape)" : "var(--color-paper-raised)"} />
-                <text x={decide.x + 270} y={y + 10} textAnchor="middle" fill={chosen ? "var(--color-ink)" : "var(--color-ink-muted)"} className="font-display text-3xl font-extrabold">
+                <rect x={decide.x + 150} y={y - 28} width={290} height={56} rx={8} fill={chosen ? "var(--color-tape)" : "var(--color-paper-raised)"} />
+                <text x={decide.x + 295} y={y + 10} textAnchor="middle" fill={chosen ? "var(--color-ink)" : "var(--color-ink-muted)"} className="font-display text-3xl font-extrabold">
                   {action}
                 </text>
               </motion.g>
@@ -136,7 +136,7 @@ function ActionChoices({ visible }: { visible: boolean }) {
 
 function LoopDiagram({ phase }: { phase: LoopPhase }) {
   return (
-    <svg viewBox="90 60 1120 820" className="h-full w-full overflow-visible" role="img" aria-label="A loop: check the shop, TypeSafe decides the next action, the fix agent acts, and the change is re-checked and traced in W&B Weave">
+    <svg viewBox="90 60 1180 820" className="h-full w-full overflow-visible" role="img" aria-label="A loop: check the shop, TypeSafe decides the next action, the fix agent acts, and the change is re-checked and traced in W&B Weave">
       {nodes.map((node, index) => (
         <motion.path
           key={node.key}
@@ -190,7 +190,7 @@ function LoopCopy({ phase }: { phase: LoopPhase }) {
 export function LoopSlide({ step }: SlideProps) {
   const phase = loopPhases[Math.min(step, loopPhases.length - 1)];
   return (
-    <div className="deck-gutter grid h-full grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] items-center gap-deck-gap">
+    <div className="deck-gutter grid h-full grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] items-center gap-deck-gap">
       <div>
         <AnimatePresence mode="wait" initial={false}>
           <motion.div key={phase} initial="enter" animate="present" exit="exit">
