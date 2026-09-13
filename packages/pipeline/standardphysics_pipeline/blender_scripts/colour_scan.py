@@ -51,12 +51,16 @@ def paint(obj) -> None:
 
 
 def thin(obj, triangle_count: int) -> None:
+    """Bring the scan down to something a phone can draw, colour and all."""
     if triangle_count <= MAX_TRIANGLES:
         return
+    bpy.ops.object.select_all(action="DESELECT")
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
     modifier = obj.modifiers.new("thin", "DECIMATE")
     modifier.ratio = MAX_TRIANGLES / triangle_count
-    bpy.context.view_layer.objects.active = obj
     bpy.ops.object.modifier_apply(modifier="thin")
+    print(f"THINNED {triangle_count} -> {len(obj.data.polygons)}")
 
 
 def main() -> None:
