@@ -65,7 +65,11 @@ def _discovery_inputs(
     if not frames:
         return None
     return DiscoveryInputs(
-        graph=graph, poses_path=poses_path, frame_paths=frames, lidar_mesh_path=lidar_mesh_path
+        graph=graph,
+        poses_path=poses_path,
+        frame_paths=frames,
+        lidar_mesh_path=lidar_mesh_path,
+        cache_dir=lidar_mesh_path.parent.parent / "detections",
     )
 
 

@@ -1,6 +1,7 @@
 """Objects RoomPlan never boxed: found in the LiDAR, named from the photos."""
 
 from .boxes import claimed_by_any, contained_fraction, inside, resting_parent
+from .cache import DetectionCache
 from .carve import CarvedBox, carve, fit_box
 from .clusters import dominant_cluster, voxel_components
 from .detect import Detection, DetectionError, detect_objects
@@ -9,7 +10,7 @@ from .merge import Candidate, DiscoveredObject, merge_candidates
 from .people import PeopleRemoval, without_people
 
 __all__ = [
-    "Candidate", "CarvedBox", "Detection", "DetectionError", "DiscoveredObject",
+    "Candidate", "CarvedBox", "Detection", "DetectionCache", "DetectionError", "DiscoveredObject",
     "DiscoveryError", "DiscoveryInputs", "DiscoveryResult", "PeopleRemoval",
     "carve", "claimed_by_any", "contained_fraction", "detect_objects",
     "discover_objects", "dominant_cluster", "fit_box", "inside",

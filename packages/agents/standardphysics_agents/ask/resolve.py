@@ -279,7 +279,35 @@ def catalogue(graph: SceneGraph, scenario: Scenario) -> list[dict]:
     ]
 
 
+class FallbackResolver:
+    """The model first, and the keywords whenever it does not come back with a query.
+
+    The model reads phrasing the keywords never will, so it leads. But it can
+    fail for reasons that have nothing to do with the question: no credit left,
+    a rate limit, a timeout, a reply that would not parse. Treating those as
+    "we did not follow that one" tells the owner their question was bad when
+    the truth is that a server was busy, and it throws away an answer the
+    keywords could have given from measurements already in hand.
+    """
+
+    provider = "openrouter"
+
+    def __init__(self, models: OpenRouter | None = None) -> None:
+        self.model = ModelResolver(models)
+        self.keywords = KeywordResolver()
+
+    @property
+    def configured(self) -> bool:
+        return self.model.configured
+
+    def resolve(self, text: str, graph: SceneGraph, scenario: Scenario):
+        answer = self.model.resolve(text, graph, scenario)
+        if not isinstance(answer, Rejected):
+            return answer
+        return self.keywords.resolve(text, graph, scenario)
+
+
 def resolver(models: OpenRouter | None = None):
-    """The model when it is configured, and keywords when it is not."""
-    model = ModelResolver(models)
-    return model if model.configured else KeywordResolver()
+    """The model backed by the keywords, or the keywords alone when it is not configured."""
+    chain = FallbackResolver(models)
+    return chain if chain.configured else chain.keywords

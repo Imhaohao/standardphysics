@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import logging
+import os
 import pathlib
 import uuid
 from dataclasses import dataclass, field
@@ -36,7 +37,8 @@ from ..textures.camera import CameraMetadataError, PhotoCamera, load_cameras
 from ..textures.project import depth_buffer
 from .boxes import claimed_by_any, contained_fraction, resting_parent
 from .carve import FrameView, carve
-from .detect import Detection, DetectionError, Transport, detect_objects
+from .cache import DetectionCache
+from .detect import DEFAULT_MODEL, MODEL_ENV, Detection, DetectionError, Transport, detect_objects
 from .merge import Candidate, DiscoveredObject, merge_candidates
 from .people import without_people
 
@@ -73,6 +75,8 @@ class DiscoveryInputs:
     frame_paths: dict[str, pathlib.Path]
     """Stored JPEG for each frame id, as the photo manifest lists them."""
     lidar_mesh_path: pathlib.Path
+    cache_dir: pathlib.Path | None = None
+    """Where answers about these photos are kept, so a rebuild asks nothing again."""
 
 
 @dataclass
@@ -97,7 +101,7 @@ def discover_objects(inputs: DiscoveryInputs, *, transport: Transport | None = N
         raise DiscoveryError("the scan has no capture_to_room transform, so photos cannot be projected")
     points = _mesh_points(inputs)
     cameras = _cameras(inputs, graph)
-    detections, failures = _detect_all(cameras, inputs.frame_paths, transport)
+    detections, failures = _detect_all(cameras, inputs.frame_paths, transport, _cache_for(inputs))
     buffers = {camera.frame_id: depth_buffer(camera, points) for camera in cameras}
     removal = without_people(
         points, graph,
@@ -147,26 +151,54 @@ def _evenly_spread(cameras: list[PhotoCamera], limit: int) -> list[PhotoCamera]:
     return [cameras[index] for index in dict.fromkeys(picks.tolist())]
 
 
+def _cache_for(inputs: DiscoveryInputs) -> DetectionCache | None:
+    if inputs.cache_dir is None:
+        return None
+    return DetectionCache(inputs.cache_dir, os.environ.get(MODEL_ENV) or DEFAULT_MODEL)
+
+
 def _detect_all(
     cameras: list[PhotoCamera],
     frame_paths: dict[str, pathlib.Path],
     transport: Transport | None,
+    cache: DetectionCache | None,
 ) -> tuple[dict[str, list[Detection]], list[str]]:
     detections: dict[str, list[Detection]] = {}
     failures: list[str] = []
+    wanted = _not_already_read(cameras, frame_paths, cache, detections)
     with concurrent.futures.ThreadPoolExecutor(max_workers=DETECTION_WORKERS) as pool:
         futures = {
-            pool.submit(detect_objects, frame_paths[camera.frame_id], camera.frame_id, transport=transport): camera
-            for camera in cameras
+            pool.submit(detect_objects, frame_paths[frame_id], frame_id, transport=transport): frame_id
+            for frame_id in wanted
         }
         for future in concurrent.futures.as_completed(futures):
-            frame_id = futures[future].frame_id
+            frame_id = futures[future]
             try:
                 detections[frame_id] = future.result()
             except DetectionError as error:
                 log.warning("no objects read from %s: %s", frame_id, error)
                 failures.append(f"{frame_id}: {error}")
+                continue
+            if cache is not None:
+                cache.put(frame_paths[frame_id], detections[frame_id])
+    log.info("read %d photos, %d already known", len(wanted), len(cameras) - len(wanted))
     return detections, failures
+
+
+def _not_already_read(
+    cameras: list[PhotoCamera],
+    frame_paths: dict[str, pathlib.Path],
+    cache: DetectionCache | None,
+    into: dict[str, list[Detection]],
+) -> list[str]:
+    wanted = []
+    for camera in cameras:
+        stored = cache.get(frame_paths[camera.frame_id], camera.frame_id) if cache else None
+        if stored is None:
+            wanted.append(camera.frame_id)
+        else:
+            into[camera.frame_id] = stored
+    return wanted
 
 
 def _carve_all(
