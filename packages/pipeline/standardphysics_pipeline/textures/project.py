@@ -21,6 +21,11 @@ import numpy as np
 from .camera import PhotoCamera
 
 NEAR_LIMIT = 0.15
+OCCLUDER_TOLERANCE = 0.025
+"""How far in front of a surface the scan must sit before something is standing on it.
+
+Just above the LiDAR's own noise, and well under the thickness of the flattest
+thing anyone leaves on a desk."""
 MIN_FACING = 0.3
 DEPTH_BUFFER_DIVISOR = 8
 MAX_DEPTH_BUFFER_SIDE = 512
@@ -248,9 +253,21 @@ def _depth_agreement(buffers, u, v, depth, facing, inside):
     if buffers.lidar is None:
         return inside & in_front_of_clean, np.zeros_like(inside)
     scanned = buffers.lidar[rows, columns]
+    # The two directions are not the same claim, so they do not share a number.
+    #
+    # A scan surface IN FRONT of the model surface is something really standing
+    # there. A laptop lying on a desk puts its keyboard about two centimetres
+    # above the top, and one loose tolerance covering both directions called
+    # that agreement and painted the keyboard flat onto the desk. Judged
+    # strictly, it is what it is: an object in the way.
+    #
+    # A scan surface BEHIND it is usually noise, a thin gap, or a wall the scan
+    # caught once at a glancing angle, and rejecting those leaves holes in
+    # surfaces that were photographed perfectly well.
+    occluding = OCCLUDER_TOLERANCE + spread
     tolerance = 0.04 + 0.015 * depth + spread
     known = np.isfinite(scanned)
-    behind_scan = known & (depth > scanned + tolerance)
+    behind_scan = known & (depth > scanned + occluding)
     short_of_scan = known & (depth < scanned - tolerance)
     visible = inside & in_front_of_clean
     # A supplied LiDAR mesh is an occlusion authority. Unknown depth must not

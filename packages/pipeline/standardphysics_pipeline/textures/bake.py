@@ -43,11 +43,6 @@ MAX_SOURCE_BYTES = 32 * 1024 * 1024
 MAX_SOURCE_PIXELS = 24_000_000
 MAX_IMAGE_EDGE = 2048
 MAX_EXPOSURE_POINTS = 20_000
-SPECKLE_PASSES = 3
-"""How far photo colour grows into the specks a strict occlusion test leaves.
-
-Wide enough to close the flecks that clutter on a tabletop punches into it,
-narrow enough that a face no camera ever saw keeps its own colour."""
 
 
 class TextureBakeError(RuntimeError):
@@ -366,9 +361,6 @@ def _bake_atlas(
                 views.note_disagreement(disagreement + start)
     colors, covered = views.resolve()
     image[texels.rows[covered], texels.columns[covered]] = colors[covered]
-    photographed = np.zeros((ATLAS_SIZE, ATLAS_SIZE), dtype=bool)
-    photographed[texels.rows[covered], texels.columns[covered]] = True
-    image = pad_gutters(image, photographed, SPECKLE_PASSES)
     filled = np.zeros((ATLAS_SIZE, ATLAS_SIZE), dtype=bool)
     filled[texels.rows, texels.columns] = True
     image = pad_gutters(image, filled)
