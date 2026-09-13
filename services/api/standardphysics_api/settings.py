@@ -37,7 +37,13 @@ class Settings:
     preview_unverified_rules: bool = False
     """Development only. Runs every rule as if a person had verified it, so the
     viewer has findings to draw before the rule pack is reviewed."""
-    seed_sample_shop: bool = True
+    seed_sample_shop: bool = False
+    """Off. The workspace shows scans that came off a phone, never a fixture.
+
+    A synthetic shop in the list is indistinguishable from a real one at a
+    glance, and a demo that shows invented findings about an invented room is
+    worse than an empty list. Set SP_SEED_SAMPLE_SHOP=1 if you want it back.
+    """
 
     @property
     def database_path(self) -> pathlib.Path:
@@ -49,4 +55,5 @@ class Settings:
         return cls(
             data_dir=pathlib.Path(os.environ.get("SP_DATA_DIR", DEFAULT_DATA_DIR)),
             preview_unverified_rules=_flag("SP_PREVIEW_UNVERIFIED_RULES"),
+            seed_sample_shop=_flag("SP_SEED_SAMPLE_SHOP"),
         )
