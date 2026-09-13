@@ -88,6 +88,21 @@ def _built(connection, scan_id, poses, frames: dict, shas: dict) -> dict:
     }
 
 
+def _manifest_frames(connection, scan_id, manifest, cameras):
+    """Artifact ids and checksums for every photo the manifest names, or None while any is still uploading."""
+    frames, shas = {}, {}
+    for frame in manifest.frames:
+        artifact = repo.find_artifact(connection, scan_id, frame.frame_id)
+        if artifact is None:
+            return None
+        if artifact.kind != "frames" or artifact.sha256 != frame.sha256 or artifact.bytes != frame.bytes:
+            raise ValueError("photo manifest does not match uploaded images")
+        if frame.frame_id not in cameras:
+            raise ValueError("photo lacks synchronized version 2 camera metadata; capture again")
+        frames[frame.frame_id], shas[frame.frame_id] = artifact.id, artifact.sha256
+    return frames, shas
+
+
 def _inputs(connection, store, scan_id):
     manifest_artifact = repo.artifact_of_kind(connection, scan_id, "photo_manifest")
     if manifest_artifact is None:
@@ -104,16 +119,10 @@ def _inputs(connection, store, scan_id):
             return "waiting_for_photos", None, None
         if poses.sha256 != manifest.poses_sha256:
             raise ValueError("photo manifest does not match camera poses")
-        frames, shas = {}, {}
-        for frame in manifest.frames:
-            artifact = repo.find_artifact(connection, scan_id, frame.frame_id)
-            if artifact is None:
-                return "waiting_for_photos", None, None
-            if artifact.kind != "frames" or artifact.sha256 != frame.sha256 or artifact.bytes != frame.bytes:
-                raise ValueError("photo manifest does not match uploaded images")
-            if frame.frame_id not in cameras:
-                raise ValueError("photo lacks synchronized version 2 camera metadata; capture again")
-            frames[frame.frame_id], shas[frame.frame_id] = artifact.id, artifact.sha256
+        uploaded = _manifest_frames(connection, scan_id, manifest, cameras)
+        if uploaded is None:
+            return "waiting_for_photos", None, None
+        frames, shas = uploaded
         return "not_started", _built(connection, scan_id, poses, frames, shas), None
     except (ValueError, TypeError, OSError, ValidationError) as error:
         return "failed", None, str(error)[:300]
