@@ -663,7 +663,7 @@ export interface SceneNode {
   id: string;
   kind: "wall" | "door" | "window" | "opening" | "floor" | "object";
   label: string;
-  labeled_by: "roomplan" | "astra" | "owner";
+  labeled_by: "roomplan" | "astra" | "owner" | "discovery";
   movable: boolean;
   parent_id: string | null;
   quality: "measured" | "needs_another_look" | "confirmed";
