@@ -6,6 +6,7 @@ const repositoryRoot = path.join(__dirname, "..", "..");
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  allowedDevOrigins: ["*.local", "10.*.*.*", "192.168.*.*", "172.*.*.*"],
   turbopack: {
     root: repositoryRoot,
   },
