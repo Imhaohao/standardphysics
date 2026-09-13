@@ -131,12 +131,12 @@ def bake_textures(inputs: BakeInputs) -> BakeResult:
         for atlas in range(atlas_count):
             selection = atlas_by_owner[owners] == atlas
             texels = rasterize_atlas(world[selection], uv[selection], owners[selection], ATLAS_SIZE)
-            atlas_image, covered = _bake_atlas(
+            atlas_image, covered, reachable = _bake_atlas(
                 texels, base_by_owner, cameras, images, clean_buffers, lidar_buffers, gains, quality
             )
             for owner in np.unique(texels.owners):
                 own = texels.owners == owner
-                texels_by_owner[owner] += int(own.sum())
+                texels_by_owner[owner] += int((own & reachable).sum())
                 covered_by_owner[owner] += int(covered[own].sum())
             atlas_path = inputs.out_dir / f"atlas-{atlas}.png"
             mask_path = inputs.out_dir / f"coverage-{atlas}.png"
@@ -340,15 +340,18 @@ def _lidar_triangles(path: pathlib.Path | None, capture_to_room: list[float], wo
 
 def _bake_atlas(
     texels, base_by_owner, cameras, images, clean_buffers, lidar_buffers, gains, quality
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """The painted atlas, which texels received colour, and which could ever have."""
     image = np.zeros((ATLAS_SIZE, ATLAS_SIZE, 3), dtype=np.float32)
     image[texels.rows, texels.columns] = to_linear(base_by_owner[texels.owners])
     views = TopViews(len(texels))
+    reachable = np.zeros(len(texels), dtype=bool)
     for camera, photo, clean, lidar, gain, view_quality in zip(cameras, images, clean_buffers, lidar_buffers, gains, quality):
         buffers = DepthBuffers(camera, clean, lidar)
         for start in range(0, len(texels), CHUNK_SIZE):
             stop = min(len(texels), start + CHUNK_SIZE)
             samples = view_samples(buffers, texels.positions[start:stop], texels.normals[start:stop], view_quality)
+            reachable[start:stop] |= samples.faced
             accepted = np.flatnonzero(samples.accepted)
             if len(accepted):
                 colors = np.clip(bilinear(photo, samples.u[accepted], samples.v[accepted]) * gain, 0.0, 1.0)
@@ -361,12 +364,20 @@ def _bake_atlas(
     filled = np.zeros((ATLAS_SIZE, ATLAS_SIZE), dtype=bool)
     filled[texels.rows, texels.columns] = True
     image = pad_gutters(image, filled)
-    return np.rint(to_srgb(image) * 255).astype(np.uint8), covered
+    return np.rint(to_srgb(image) * 255).astype(np.uint8), covered, reachable
 
 
 def _coverage(
     graph: SceneGraph, node_meta: list[dict], covered: np.ndarray, total: np.ndarray
 ) -> TextureCoverage:
+    """How much of what the walk could have photographed it did photograph.
+
+    `total` counts only texels some camera faced from inside its frame. The
+    back of a wall, the underside of a table and the far side of a cabinet are
+    not missing colour, because standing in the room there was never a shot to
+    take. Counting them made a good bake read as 14 per cent covered, which
+    told the owner to rescan a room that had been scanned properly.
+    """
     by_id = {node["id"]: index for index, node in enumerate(node_meta)}
     entries = []
     needs = []

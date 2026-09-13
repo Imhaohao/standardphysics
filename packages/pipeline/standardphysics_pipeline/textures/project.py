@@ -59,6 +59,12 @@ class ViewSamples:
     u: np.ndarray
     v: np.ndarray
     weight: np.ndarray
+    faced: np.ndarray
+    """Turned toward this camera and inside its frame, before anything occludes it.
+
+    A texel no camera ever faced could not have been photographed from where
+    the owner walked, so it is not missing colour: it was never reachable.
+    """
 
 
 def face_normals(world: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -220,7 +226,7 @@ def view_samples(buffers: DepthBuffers, positions: np.ndarray, normals: np.ndarr
     accepted, disagreed = _depth_agreement(buffers, u, v, depth, facing, inside)
     border = np.clip(np.minimum.reduce([u, v, camera.width - 1 - u, camera.height - 1 - v]) / BORDER_FALLOFF_PIXELS, 0.0, 1.0)
     weight = np.where(accepted, facing ** 2 / np.maximum(distance, 0.5) * border * quality, 0.0)
-    return ViewSamples(accepted & (weight > 0), disagreed, u, v, weight.astype(np.float32))
+    return ViewSamples(accepted & (weight > 0), disagreed, u, v, weight.astype(np.float32), inside)
 
 
 def _depth_agreement(buffers, u, v, depth, facing, inside):

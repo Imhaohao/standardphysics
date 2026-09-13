@@ -100,7 +100,12 @@ not_started: photos are complete and nothing is built for this layout's shapes.
 class NodeTextureCoverage(BaseModel):
     node_id: UUID
     textured_fraction: float = Field(ge=0.0, le=1.0)
-    """Share of the node's surface that received photo color."""
+    """Share of the node's photographable surface that received photo color.
+
+    Faces no camera ever turned toward are left out of the total. A wall has a
+    back and a table has an underside, and neither is a shot the owner failed
+    to take.
+    """
 
 
 class TextureCoverage(BaseModel):
