@@ -1,6 +1,6 @@
 {
   "lane": "D",
-  "updated": "2026-09-12T23:54:22Z",
+  "updated": "2026-09-13T00:29:57Z",
   "done": [
     "contracts and fixture shop (21bbc65)",
     "Stop.anchor_node_id and WidthResult.needs_measurement (audit A-6, A-9)",
@@ -15,9 +15,13 @@
     "sample shop seeded after ingest; real Apple RoomPlan export tested through every stage",
     "web: shops page, /scans/[scanId] viewer, finding callouts (camera flight, fade, outline, dimension label), findings list with keyboard",
     "rearrange: drag, arrow-key nudge and R to turn movable pieces; layout checks through Lane C's constraints; save as a new revision",
-    "printable report at /scans/<id>/report with renders, fixes, next steps and who reviewed each rule"
+    "printable report at /scans/<id>/report with renders, fixes, next steps and who reviewed each rule",
+    "before and after scrub between layouts, with what moved and what it fixed",
+    "fix suggestions from Lane C's propose_fix, loaded into Move furniture with Try this layout",
+    "fixture counter at 47 in, as in Whitaker v. T Rock Inc.; shop.glb and shop.usdz rebuilt",
+    "audit findings A-29 to A-39 and A-42 to A-44 fixed; A-30 documented"
   ],
-  "in_progress": "before and after scrub, then the ask box on Lane C's propose_fix",
+  "in_progress": "release: merge the pitch deck into apps/web, one-command start, phone width, print, copy pass",
   "blocked_on": null,
   "ready_for_others": [
     "python -m standardphysics_api serves the real upload contract on :8787 (Lane A can point API_BASE_URL at the demo machine)",
@@ -27,7 +31,10 @@
     "apps/web/src/types/contracts.ts, regenerate with npm run contracts in apps/web",
     "packages/fixtures/standardphysics_fixtures/data/real: two real RoomPlan exports",
     "POST /api/scans/{id}/layout-checks and /revisions",
-    "GET /api/scans/{id}/report"
+    "GET /api/scans/{id}/report",
+    "POST /api/scans/{id}/proposals",
+    "Assessment.rules_checked",
+    "standardphysics_fixtures.COUNTER_HEIGHT_INCHES"
   ],
   "needs_human": [
     "Verify the rule pack thresholds (Lane C's cli rules verify). Until then real scans report no findings; SP_PREVIEW_UNVERIFIED_RULES=1 is for development only",
