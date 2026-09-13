@@ -21,7 +21,7 @@ HEIGHT_RULE = "service_counter_height"
 APPROACH_RULE = "service_counter_approach"
 
 
-@traced("check.service_counter_height")
+@traced("checks.service_counter_height")
 def service_counter_height(ctx: CheckContext) -> list[Observation]:
     rule = ctx.rule(HEIGHT_RULE)
     observations = []
@@ -48,7 +48,7 @@ def service_counter_height(ctx: CheckContext) -> list[Observation]:
     return observations
 
 
-@traced("check.service_counter_approach")
+@traced("checks.service_counter_approach")
 def service_counter_approach(ctx: CheckContext) -> list[Observation]:
     rule = ctx.rule(APPROACH_RULE)
     observations = []

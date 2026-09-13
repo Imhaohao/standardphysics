@@ -27,7 +27,7 @@ EXIT_STOP_NAMES = frozenset({"exit", "exit door", "way out"})
 WAITING_ON = "the egress width section, pinned by a person: see the rule's review note"
 
 
-@traced("check.exit_path")
+@traced("checks.exit_path")
 def exit_path(ctx: CheckContext) -> CheckResult:
     legs = [
         ctx.measure.route_clear_width(ctx.graph, ctx.scenario, index)

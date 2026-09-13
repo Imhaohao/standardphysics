@@ -24,7 +24,7 @@ APPROACH_SETBACK_INCHES = 30.0
 """The depth of a clear floor space, ADA 2010 305.3."""
 
 
-@traced("check.turning_space")
+@traced("checks.turning_space")
 def turning_space(ctx: CheckContext) -> list[Observation]:
     rule = ctx.rule(RULE_ID)
     stops = ctx.scenario.stops

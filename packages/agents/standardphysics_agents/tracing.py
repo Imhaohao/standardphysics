@@ -46,8 +46,26 @@ class _Tracing:
 
     def op(self, name: str, fn: Callable[..., Any]) -> Callable[..., Any]:
         if fn not in self._ops:
-            self._ops[fn] = self._weave.op(fn, name=name)
+            self._ops[fn] = self._build(name, fn)
         return self._ops[fn]
+
+    def _build(self, name: str, fn: Callable[..., Any]) -> Callable[..., Any]:
+        """Wrap once, whichever way this version of Weave spells it.
+
+        `weave.op` has been both a decorator factory and a plain decorator. A
+        traced call is on every check and every agent call, so the one thing it
+        may not do is raise because the SDK moved.
+        """
+        for attempt in (
+            lambda: self._weave.op(name=name)(fn),
+            lambda: self._weave.op(fn, name=name),
+            lambda: self._weave.op(fn),
+        ):
+            try:
+                return attempt()
+            except TypeError:
+                continue
+        return fn
 
 
 _TRACING = _Tracing()

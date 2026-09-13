@@ -24,7 +24,7 @@ def needs_measurement(result: WidthResult) -> bool:
     return bool(getattr(result, "needs_measurement", False))
 
 
-@traced("check.door_clear_width")
+@traced("checks.door_clear_width")
 def door_clear_width(ctx: CheckContext) -> list[Observation]:
     rule = ctx.rule(RULE_ID)
     observations = []

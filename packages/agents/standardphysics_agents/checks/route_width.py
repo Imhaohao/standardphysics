@@ -63,7 +63,7 @@ def dedupe_key(result: WidthResult) -> tuple:
     return (RULE_ID, round(pinch.x, 2), round(pinch.y, 2))
 
 
-@traced("check.route_clear_width")
+@traced("checks.route_clear_width")
 def route_clear_width(ctx: CheckContext) -> list[Observation]:
     rule = ctx.rule(RULE_ID)
     return [_leg(ctx, rule, index) for index in ctx.legs()]

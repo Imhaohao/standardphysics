@@ -46,7 +46,7 @@ ASK_ABOUT: tuple[tuple[str, NodeFinder], ...] = (
 RULE_IDS = frozenset(rule_id for rule_id, _ in ASK_ABOUT)
 
 
-@traced("check.scan_cannot_see")
+@traced("checks.scan_cannot_see")
 def scan_cannot_see(ctx: CheckContext) -> list[Observation]:
     return [_ask(ctx, rule_id, finder) for rule_id, finder in ASK_ABOUT]
 

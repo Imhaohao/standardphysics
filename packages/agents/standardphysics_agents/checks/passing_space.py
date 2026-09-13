@@ -26,7 +26,7 @@ SAMPLE_SPACING_METERS = 0.5
 """Close enough to catch the open middle of a room, coarse enough to be quick."""
 
 
-@traced("check.passing_space")
+@traced("checks.passing_space")
 def passing_space(ctx: CheckContext) -> list[Observation]:
     rule = ctx.rule(RULE_ID)
     legs = [ctx.measure.route_clear_width(ctx.graph, ctx.scenario, i) for i in ctx.legs()]

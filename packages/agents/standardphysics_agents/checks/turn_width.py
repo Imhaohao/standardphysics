@@ -112,7 +112,7 @@ def _pivot_width(turn) -> float:
     return math.inf if turn.pivot_width_inches is None else turn.pivot_width_inches
 
 
-@traced("check.turn_clear_width")
+@traced("checks.turn_clear_width")
 def turn_clear_width(ctx: CheckContext) -> CheckResult:
     detail = getattr(ctx.measure, "turn_detail", None)
     if detail is None:

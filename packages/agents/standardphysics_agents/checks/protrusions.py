@@ -109,7 +109,7 @@ def _limit(node: SceneNode, graph: SceneGraph, rule: RuleSpec) -> float:
     return rule.parameter("wall_mounted_max_projection_inches")
 
 
-@traced("check.protruding_objects")
+@traced("checks.protruding_objects")
 def protruding_objects(ctx: CheckContext) -> list[Observation]:
     rule = ctx.rule(RULE_ID)
     mounted = [

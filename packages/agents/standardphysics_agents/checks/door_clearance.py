@@ -139,7 +139,7 @@ def approaches_head_on(ctx: CheckContext, door: SceneNode) -> bool:
     return alignment >= 0.7
 
 
-@traced("check.door_maneuvering_clearance")
+@traced("checks.door_maneuvering_clearance")
 def door_maneuvering_clearance(ctx: CheckContext) -> list[Observation]:
     rule = ctx.rule(RULE_ID)
     return [

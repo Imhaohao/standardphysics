@@ -43,7 +43,7 @@ def required_count(total: int, rule: RuleSpec) -> int:
     return max(1, math.ceil(total * rule.parameter("accessible_share")))
 
 
-@traced("check.dining_surface_height")
+@traced("checks.dining_surface_height")
 def dining_surface_height(ctx: CheckContext) -> list[Observation]:
     rule = ctx.rule(RULE_ID)
     surfaces = roles.dining_surfaces(ctx.graph)
