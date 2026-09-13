@@ -23,12 +23,18 @@ from dataclasses import dataclass, field
 from standardphysics_agents import VerificationLedger, assess, load_ledger, load_pack
 from standardphysics_agents.ask import Answer, ask
 from standardphysics_agents.fix import FixOutcome, propose_fix
-from standardphysics_contracts import Assessment, Finding, Scenario, SceneGraph
+from standardphysics_contracts import Assessment, Finding, Scenario, SceneGraph, Stop, Vec3
 from standardphysics_pipeline import PipelineMeasurements, blender, parse_room_json
 
 log = logging.getLogger(__name__)
 
 PREVIEW_REVIEWER = "unverified preview (development only)"
+
+ROUTE_SUBJECTS = frozenset({"route", "route_leg", "route_turn", "route_dead_end"})
+
+UNPLACED = Stop(name="Unplaced", position=Vec3(x=0.0, y=0.0, z=0.0))
+NO_ROUTE_YET = Scenario(name="No route yet", stops=[UNPLACED, UNPLACED])
+"""Lane C's CheckContext needs a scenario, and only rules that never read one run with this."""
 
 
 def pass_through(graph: SceneGraph) -> SceneGraph:
@@ -40,6 +46,12 @@ def preview_ledger() -> VerificationLedger:
     for rule in load_pack().rules:
         ledger = ledger.record(rule, verified_by=PREVIEW_REVIEWER)
     return ledger
+
+
+def without_route_rules(ledger: VerificationLedger) -> VerificationLedger:
+    """The same verifications minus every rule about a customer route, for a scan that has none yet."""
+    route_rule_ids = {rule.id for rule in load_pack().rules if ROUTE_SUBJECTS.intersection(rule.applies_to)}
+    return VerificationLedger(entries=[entry for entry in ledger.entries if entry.rule_id not in route_rule_ids])
 
 
 @dataclass
@@ -60,8 +72,11 @@ class Stages:
         graph = parse_room_json(json.loads(room_json.read_bytes()), scan_id=scan_id)
         return self.label(graph)
 
-    def assess(self, graph: SceneGraph, scenario: Scenario, pass_number: int) -> Assessment:
+    def assess(self, graph: SceneGraph, scenario: Scenario | None, pass_number: int) -> Assessment:
+        """Every verified rule, or only the rules that need no route until the owner confirms one."""
         ledger = self.ledger_factory()
+        if scenario is None:
+            ledger, scenario = without_route_rules(ledger), NO_ROUTE_YET
         with self._assess_lock:
             result = assess(graph, scenario, self.measure, ledger=ledger, pass_number=pass_number)
         for missing in result.unevaluated:

@@ -172,9 +172,6 @@ def test_a40_every_object_named_for_a_sealed_route_would_reopen_it():
         assert PipelineMeasurements().route_clear_width(graph, scenario, 0).reachable
 
 
-@pytest.mark.xfail(
-    strict=True, raises=AssertionError, reason="A-49: a real scan turns ready with no assessment, so nothing about it is checked"
-)
 def test_a49_a_real_scan_that_is_ready_has_been_checked(tmp_path):
     with _api_client(tmp_path) as client:
         body = {"name": "Corner cafe", "device_model": "iPhone17,1", "duration_seconds": 60.0}

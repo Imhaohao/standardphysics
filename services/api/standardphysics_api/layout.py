@@ -54,7 +54,7 @@ def _candidate(base: SceneGraph, moves: list[NodeMove]) -> tuple[SceneGraph, lis
 def check_layout(database: Database, stages: Stages, scan_id: uuid.UUID, body: LayoutCheckRequest) -> LayoutCheckResult:
     base, _, scenario = _base(database, scan_id, body.base_revision)
     candidate, blocked = _candidate(base, body.moves)
-    findings = [] if scenario is None else stages.assess(candidate, scenario, candidate.revision + 1).findings
+    findings = stages.assess(candidate, scenario, candidate.revision + 1).findings
     return LayoutCheckResult(
         sequence=body.sequence, graph_hash=graph_hash(candidate), findings=findings, blocked=blocked
     )
