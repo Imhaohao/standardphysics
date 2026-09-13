@@ -199,6 +199,17 @@ def requeue_interrupted_jobs(connection: sqlite3.Connection) -> None:
     connection.execute("UPDATE jobs SET state = 'queued' WHERE state = 'running'")
 
 
+_REVISION_WRITE = {"owner": "INSERT INTO", "ingest": "INSERT INTO", "other": "INSERT OR IGNORE INTO"}
+_REVISION_CONFLICT = {
+    "ingest": " ON CONFLICT (scan_id, revision) DO UPDATE SET"
+              " graph_hash = excluded.graph_hash, graph_json = excluded.graph_json,"
+              " created_at = excluded.created_at",
+}
+"""An ingest revision is derived entirely from the uploaded artifacts, so running
+ingest again replaces it. Everything an owner did stands on its own revision and
+is never overwritten."""
+
+
 def save_revision(
     connection: sqlite3.Connection,
     graph: SceneGraph,
@@ -206,11 +217,11 @@ def save_revision(
     base_revision: int | None = None,
     glb_path: str | None = None,
 ) -> None:
-    verb = "INSERT INTO" if source == "owner" else "INSERT OR IGNORE INTO"
     connection.execute(
-        f"{verb} revisions"
+        f"{_REVISION_WRITE[source if source in _REVISION_WRITE else 'other']} revisions"
         " (scan_id, revision, graph_hash, graph_json, source, base_revision, glb_path, created_at)"
-        " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        " VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        f"{_REVISION_CONFLICT.get(source, '')}",
         (str(graph.scan_id), graph.revision, graph_hash(graph), graph.model_dump_json(),
          source, base_revision, glb_path, now()),
     )

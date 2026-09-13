@@ -46,7 +46,9 @@ FRAME_LIMIT = 400
 """Every keyframe of a normal walk. A frame nobody reads is a person left in
 the mesh and an object that was never there: on a real 110-second capture,
 sampling 24 of 218 frames found half the laptops and a quarter of the people."""
-DETECTION_WORKERS = 6
+DETECTION_WORKERS = 5
+"""Enough to keep the walk short, few enough that a long capture does not trip
+the model host's rate limit and lose frames to it."""
 MIN_VOLUME = 0.0004
 """Forty cubic centimetres, about a card reader lying flat. Smaller is noise."""
 MAX_FLOOR_CLEARANCE = 2.4

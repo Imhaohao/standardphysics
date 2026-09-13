@@ -133,12 +133,14 @@ class Worker:
     def _process(self, scan_id: uuid.UUID, revision: int) -> None:
         with self.database.connect() as connection:
             room_json = repo.artifact_of_kind(connection, scan_id, "room_json")
+            mesh = repo.artifact_of_kind(connection, scan_id, "lidar_mesh")
         frame_paths, poses_path = self.label_inputs(scan_id)
         graph = self.stages.ingest(
             self.store.artifact_path(scan_id, room_json.id),
             scan_id,
             frame_paths=frame_paths,
             poses_path=poses_path,
+            lidar_mesh_path=self.store.artifact_path(scan_id, mesh.id) if mesh is not None else None,
         )
         with self.database.transaction() as connection:
             repo.save_revision(connection, graph, source="ingest")

@@ -14,9 +14,15 @@ resolution. Rotating here would silently shear every box against the camera.
 0-1000 of the image's height or width. Asking for the convention the model was
 trained on gets better corners than asking it to translate.
 
-A request that fails raises. Nothing here returns an empty list to mean the
-network was down, because a silent fallback reads downstream as a room with
-nothing in it.
+A frame is worth asking about more than once. Reading a whole walk means
+hundreds of requests in a couple of minutes, and at that rate a few come back
+rate-limited or with a truncated body. Those are retried with a widening,
+jittered wait, because one frame lost to a blip is an object that silently
+never existed.
+
+A request that fails every attempt raises. Nothing here returns an empty list
+to mean the network was down: a silent fallback reads downstream as a room
+with nothing in it.
 """
 
 from __future__ import annotations
@@ -26,6 +32,8 @@ import io
 import json
 import os
 import pathlib
+import random
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -38,6 +46,9 @@ DEFAULT_MODEL = "google/gemini-3.8-flash"
 DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 PROVIDER_ROUTING = {"data_collection": "deny"}
 REQUEST_TIMEOUT_SECONDS = 120.0
+MAX_ATTEMPTS = 4
+FIRST_BACKOFF_SECONDS = 1.5
+BACKOFF_GROWTH = 2.5
 MAX_OUTPUT_TOKENS = 8_192
 MAX_RESPONSE_BYTES = 4_000_000
 MAX_DETECTIONS = 40
@@ -157,8 +168,20 @@ def detect_objects(
     api_key = os.environ.get(API_KEY_ENV, "")
     if transport is None and not api_key:
         raise DetectionError(f"{API_KEY_ENV} is not set, so no frame can be read")
-    payload = _post(transport, _request_body(frame), api_key)
-    return _detections_from(payload, frame, frame_id)
+    body = _request_body(frame)
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        try:
+            return _detections_from(_post(transport, body, api_key), frame, frame_id)
+        except DetectionError:
+            if attempt == MAX_ATTEMPTS:
+                raise
+            time.sleep(_backoff(attempt))
+    raise DetectionError("unreachable")
+
+
+def _backoff(attempt: int) -> float:
+    """A widening wait, spread out so retries from many frames do not land together."""
+    return FIRST_BACKOFF_SECONDS * (BACKOFF_GROWTH ** (attempt - 1)) * (0.5 + random.random())
 
 
 def encode_frame(image_path: pathlib.Path) -> EncodedFrame:

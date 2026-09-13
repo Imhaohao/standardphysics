@@ -2,6 +2,7 @@
 
     ingest    Lane B  parse_room_json
     label     Lane B  Astra label and clean, with a deterministic local fallback
+    discover  Lane B  the objects RoomPlan has no category for, found in the LiDAR
     assess    Lane C  assess, with the human verification ledger
     geometry  Lane B  object-separated export_glb; scanned USDZ is fallback
     renders   Lane B  render_finding per locatable finding
@@ -35,6 +36,7 @@ from standardphysics_agents.ask import Answer, ask
 from standardphysics_agents.fix import FixOutcome, propose_fix
 from standardphysics_contracts import Assessment, Finding, Scenario, SceneGraph, Stop, Vec3
 from standardphysics_pipeline import PipelineMeasurements, blender, parse_room_json, reconstruct
+from standardphysics_pipeline.discovery import DiscoveryError, DiscoveryInputs, DiscoveryResult, discover_objects
 from standardphysics_pipeline.textures import BakeInputs, BakeResult, bake_textures
 
 log = logging.getLogger(__name__)
@@ -46,6 +48,25 @@ ROUTE_SUBJECTS = frozenset({"route", "route_leg", "route_turn", "route_dead_end"
 UNPLACED = Stop(name="Unplaced", position=Vec3(x=0.0, y=0.0, z=0.0))
 NO_ROUTE_YET = Scenario(name="No route yet", stops=[UNPLACED, UNPLACED])
 """Lane C's CheckContext needs a scenario, and only rules that never read one run with this."""
+
+
+def _discovery_inputs(
+    graph: SceneGraph,
+    frame_paths: list[pathlib.Path] | None,
+    poses_path: pathlib.Path | None,
+    lidar_mesh_path: pathlib.Path | None,
+) -> DiscoveryInputs | None:
+    """The photos, poses and mesh discovery needs, or nothing when the scan lacks one."""
+    if not frame_paths or poses_path is None or lidar_mesh_path is None:
+        return None
+    if not poses_path.is_file() or not lidar_mesh_path.is_file():
+        return None
+    frames = {path.name: path for path in frame_paths if path.is_file()}
+    if not frames:
+        return None
+    return DiscoveryInputs(
+        graph=graph, poses_path=poses_path, frame_paths=frames, lidar_mesh_path=lidar_mesh_path
+    )
 
 
 def preview_ledger() -> VerificationLedger:
@@ -73,6 +94,7 @@ class Stages:
     ledger_factory: Callable[[], VerificationLedger] = load_ledger
     measure: PipelineMeasurements = field(default_factory=PipelineMeasurements)
     label: Callable[[SceneGraph], SceneGraph] = reconstruct
+    discover: Callable[[DiscoveryInputs], DiscoveryResult] = discover_objects
     export_glb: Callable[[SceneGraph, pathlib.Path], pathlib.Path] = blender.export_glb
     usdz_to_glb: Callable[..., blender.ConversionResult] = blender.usdz_to_glb
     render_finding: Callable[..., pathlib.Path] = blender.render_finding
@@ -90,9 +112,41 @@ class Stages:
         *,
         frame_paths: list[pathlib.Path] | None = None,
         poses_path: pathlib.Path | None = None,
+        lidar_mesh_path: pathlib.Path | None = None,
     ) -> SceneGraph:
         graph = parse_room_json(json.loads(room_json.read_bytes()), scan_id=scan_id)
-        return self.label_scan(graph, frame_paths=frame_paths, poses_path=poses_path)
+        graph = self.label_scan(graph, frame_paths=frame_paths, poses_path=poses_path)
+        return self.discover_scan(graph, frame_paths=frame_paths, poses_path=poses_path,
+                                  lidar_mesh_path=lidar_mesh_path)
+
+    def discover_scan(
+        self,
+        graph: SceneGraph,
+        *,
+        frame_paths: list[pathlib.Path] | None,
+        poses_path: pathlib.Path | None,
+        lidar_mesh_path: pathlib.Path | None,
+    ) -> SceneGraph:
+        """The same graph plus the objects RoomPlan has no category for.
+
+        A scan with no photos, or one the vision model cannot reach, keeps the
+        nodes RoomPlan measured. Discovery only ever adds.
+        """
+        inputs = _discovery_inputs(graph, frame_paths, poses_path, lidar_mesh_path)
+        if inputs is None:
+            return graph
+        try:
+            result = self.discover(inputs)
+        except (DiscoveryError, OSError) as exc:
+            log.warning("no object discovery for %s: %s", graph.scan_id, exc)
+            return graph
+        for failure in result.failures:
+            log.info("discovery could not read a frame: %s", failure)
+        log.info(
+            "discovered %d objects for %s, and took %d mesh points of people out",
+            len(result.nodes), graph.scan_id, result.people_points_removed,
+        )
+        return graph.model_copy(update={"nodes": [*graph.nodes, *result.nodes]})
 
     def label_scan(
         self,
