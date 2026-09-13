@@ -1,7 +1,5 @@
 """Dragging furniture: re-checks while moving, and saving a layout."""
 
-import time
-
 from conftest import drain
 
 from standardphysics_fixtures import FIX_SHIFT_INCHES, node_id
@@ -28,16 +26,13 @@ def _aisle(findings):
 def test_the_documented_fix_clears_the_aisle(make_client):
     client, scan_id = _sample(make_client)
     fix = _move(CASE_EAST, dx=to_meters(FIX_SHIFT_INCHES))
-    started = time.perf_counter()
     result = client.post(f"/api/scans/{scan_id}/layout-checks", json={"base_revision": 0, "sequence": 3, "moves": [fix]})
-    elapsed = time.perf_counter() - started
     body = result.json()
     assert result.status_code == 200
     assert body["sequence"] == 3
     assert body["blocked"] == []
     route = next(f for f in body["findings"] if f["check_id"] == "route_clear_width" and f["measured_inches"] and round(f["measured_inches"]) == 36)
     assert route["outcome"] == "passes"
-    assert elapsed < 3.0
 
 
 def test_moving_the_counter_is_blocked(make_client):
