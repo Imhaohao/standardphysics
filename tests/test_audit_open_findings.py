@@ -163,9 +163,6 @@ def _sealed_aisle_graph() -> SceneGraph:
     return graph
 
 
-@pytest.mark.xfail(
-    strict=True, raises=AssertionError, reason="A-40: a sealed route names an object whose removal does not reopen it"
-)
 def test_a40_every_object_named_for_a_sealed_route_would_reopen_it():
     scenario = build_scenario()
     named = PipelineMeasurements().route_clear_width(_sealed_aisle_graph(), scenario, 0).blocking_node_ids
