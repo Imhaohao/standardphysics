@@ -88,12 +88,16 @@ class Knobs:
 PINS: dict[str, str] = {
     "aisle_inches": ROUTE,
     "counter_inches": "service_counter_height",
-    "door_inches": "door_clear_width",
 }
 """Which check answers each knob that sets a dimension.
 
 Read one way it says what a sweep of that knob should move. Read the other way
 it is where the expected measurements on the case come from.
+
+The doorway knob is absent on purpose. It sets the opening in the wall, and
+404.2.3 is about the clear width with the door open, which is always smaller.
+The check reports no measurement for that reason, so scoring one against this
+knob would score the opening as though it were the clear width.
 """
 
 

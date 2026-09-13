@@ -108,7 +108,6 @@ def test_a6_an_obstruction_just_inside_the_entrance_narrows_the_route():
     assert result.inches == pytest.approx(20.0, abs=0.5)
 
 
-@pytest.mark.xfail(strict=True, reason="A-9: held; the flag makes the router ask before it ever fixes, see B-to-C.md")
 def test_a9_door_clear_width_asks_for_a_measurement():
     result = PipelineMeasurements().door_clear_width(build_graph(), node_id("door_front"))
     assert result.needs_measurement

@@ -140,10 +140,16 @@ def test_the_counter_height_is_a_problem_with_a_locus(
     assert height[0].locus.annotation.kind == "dimension_line"
 
 
-def test_the_front_door_is_wide_enough(graph, scenario, measure, ledger):
+def test_a_wide_enough_opening_still_asks_for_the_clear_width(graph, scenario, measure, ledger):
+    """404.2.3 measures with the door open 90 degrees, and the scan sees the hole.
+
+    The leaf, its hardware and the stop all sit inside that hole, so an opening
+    over the requirement settles nothing and the owner is asked for the one
+    number a tape measure gives.
+    """
     result = assess(graph, scenario, measure, ledger=ledger)
     door = next(f for f in result.findings if f.check_id == "door_clear_width")
-    assert door.outcome == "passes"
+    assert door.outcome == "question"
     assert door.fix is None
 
 
@@ -172,8 +178,8 @@ def test_things_a_scan_cannot_see_become_questions(graph, scenario, measure, led
     result = assess(graph, scenario, measure, ledger=ledger)
     asked = {f.check_id for f in result.questions}
     assert asked == {
-        "entrance_threshold", "door_hardware", "door_opening_force",
-        "floor_surface", "restroom_turning_space",
+        "door_clear_width", "entrance_threshold", "door_hardware",
+        "door_opening_force", "floor_surface", "restroom_turning_space",
     }
 
 

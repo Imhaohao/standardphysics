@@ -72,7 +72,10 @@ class TestWhatTheKnobsClaim:
     def test_a_knob_that_sets_a_dimension_expects_that_measurement(self):
         expected = s.expected_inches(s.Knobs(aisle_inches=33.0, door_inches=34.0))
         assert expected[ROUTE] == pytest.approx(33.0)
-        assert expected["door_clear_width"] == pytest.approx(34.0)
+
+    def test_the_doorway_knob_claims_no_measurement(self):
+        """It sets the hole in the wall, and 404.2.3 is about the door in it."""
+        assert "door_clear_width" not in s.expected_inches(s.Knobs(door_inches=34.0))
 
     def test_the_doorway_on_the_route_retires_the_aisle_claim(self):
         """Walking in from the street makes the doorway the tightest thing."""
