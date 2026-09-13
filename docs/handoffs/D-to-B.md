@@ -225,3 +225,47 @@ floors. Nothing in Lane D reads the floor's size today; I use the wall
 footprints for the room outline instead. Anything that takes the room's extent
 from the floor node will be wrong, and a floor footprint currently has no
 depth at all.
+
+---
+
+## Tonight: two checks that tell an owner they pass when they may not
+
+Brendan wants the app to do what the README pitch says. I read both of these
+from the code at `256ced3`; they are the Lane B half of the fixes.
+
+### `door_clear_width` never sets `needs_measurement`
+
+`measure.py:311` has a docstring saying the opening comes back with
+`needs_measurement` set. The code at `measure.py:323-328` returns
+`max(door.dimensions.x, door.dimensions.y)` and never sets it. ADA 2010 404.2.3
+measures between the door face and the stop with the door open 90 degrees, and
+the open leaf and the stop both sit inside RoomPlan's opening. So a 33 in
+opening passes as 33 in clear when the real clear width can be under 32.
+
+Lane C already turns the flag into a request for one tape measurement
+(`checks/door_width.py:22-33`, from `eb28c10`). Setting
+`needs_measurement=True` on every door result closes this. An opening already
+under 32 in can stay a plain fail if you want, since the clear width can only
+be smaller.
+
+### `turning_space` reports a circle, and `passing_space` reads it as a square
+
+`measure.py:295-309` returns `inches_wide` and `inches_deep` both equal to
+twice the clearance at the point. That describes the largest clear circle.
+`passing_space.py:100-101` passes it to `fits_square`, and 403.5.3 asks for a
+60 by 60 inch square. A square fits only when its corners are clear too, so a
+point with a 60 in clear circle can fail the square. A conservative answer
+is a square side of `clearance * sqrt(2)`, which fits at any rotation.
+Searching rotations for the exact side is better if it is cheap. Please agree
+the field meaning with Lane C before either of you pushes, as with `0f0e01b`.
+
+### Still open and on the pitch path
+
+- **A-6, the endpoint exemption.** The 0.75 m around a stop still hides
+  anything just inside the entrance (`routes.py`). The pitch now says we check
+  doorways, and that is the one place the exemption hides most.
+- **The tape check.** No real scan has been tape-measured yet, and neither
+  phone scan in `datasets/phone` contains a door. Your done criterion needs a
+  scan with a real door and a tape measure against it. If someone can scan a
+  space with a door before the venue closes, that one number backs every
+  measurement in the demo.

@@ -288,3 +288,80 @@ move, so the viewer can't offer "Try this layout" for the counter. The request
 passes the lawsuit graph at revision 0 and that one finding ID. Could
 `propose_fix` place the card reader on the lowered section? One guess, which I
 haven't checked: its footprint collides with the counter it sits on.
+
+---
+
+## Tonight: nothing runs until the rules are verified
+
+`rules/data/verification.json` is `{"entries": []}`, so a real scan gets no
+findings. `docs/handoffs/D-to-C-rule-review.md` is coming in my next push. It
+has every tier 1 rule with the pack's text beside the primary source text and
+the exact `cli rules verify` command. Please get a person on it tonight, plus
+a second person for the citation check. Every other item below matters only
+after that.
+
+## Checks that can tell an owner they pass when they don't
+
+I read these from the code at `256ced3`.
+
+- **Passing space accepts a circle as the square.** `passing_space.py:100-101`
+  calls `fits_square` on `measure.turning_space`, which returns a clear
+  circle's diameter as both width and depth. 403.5.3 asks for 60 by 60 in. The
+  Lane B half is in `D-to-B.md`.
+- **No margin at a threshold.** `pack.py:40` compares with
+  `COMPARISON_EPSILON = 1e-6`, so 36.1 in passes and 35.9 in fails. The plan's
+  done criterion allows 3 cm (about 1.2 in) of scan error, and no scan has been
+  tape-checked yet. A measured value within that band of its threshold could
+  become a request to check with a tape, using the `needs_another_look` path
+  you already have, instead of a pass or a fail.
+- **Door width.** Your side is done. Lane B still has to set
+  `needs_measurement` (`D-to-B.md`).
+
+## Checks that fail shops that comply
+
+- **Turning space at dead ends.** `turning_space.py` issues a problem citing
+  304.3.1 at every stop a customer reverses out of. The 2010 Standards don't
+  require a turning space at a dead-end route in a sales area. The Access
+  Board's guide to chapter 3 recommends one there, and requires one in specific
+  rooms such as toilet rooms. This reads better as a question or a
+  recommendation than as a red finding.
+- **Forward approach at the counter.** `service_counter.py` tests the
+  parallel approach from 904.4.1 only. 904.4.2 allows a forward approach with
+  knee and toe clearance instead, so a counter that complies that way fails.
+
+## Owner questions
+
+- **Door opening force.** `questions.py:40` asks about the front door against
+  5 lbf. 404.2.9 sets 5 lbf only for interior hinged doors and for sliding or
+  folding doors, so the 2010 Standards set no limit for an exterior hinged
+  front door. California's CBC 11B-404.2.9 does limit exterior doors, so this
+  depends on which authority the report claims.
+- **Zoning.** PLAN section 8 says zoning appears as questions for a
+  professional. Nothing produces those yet, and the pitch mentions zoning. A
+  short list of owner questions under a `PAMC` authority would cover it.
+- **Exit path.** `exit_path` still cites "CBC Chapter 10" with source text
+  "DRAFT, section not yet pinned", and it checks only that the exit can be
+  reached. The pitch says we check building codes, so this is the one rule
+  that has to carry a real section. Pinning it, or holding it out of the
+  report, are both better than shipping the draft.
+
+## From the other Lane D session: the register finding
+
+- **Label.** The locus label reads "50.1 in", which is the card reader's top
+  edge (47 + 3.1). `measured_inches` is 47. They should agree.
+- **Region.** The region sits on the floor in front of the counter rather
+  than at the reader.
+
+## Coming from Lane D, nothing for you to change
+
+- **Checks before a route.** The API will run every rule whose `applies_to`
+  names no route subject (`route`, `route_leg`, `route_turn`,
+  `route_dead_end`) as soon as a scan is ingested. Route rules still wait for
+  the confirmed route. `CheckContext` needs a `Scenario`, so those passes carry
+  a placeholder with two stops that no enabled rule reads. One catch:
+  `door_maneuvering_clearance` has `applies_to: ["door"]` but reads leg 0's
+  direction. It is tier 2, so the API doesn't run it today. If it moves to tier
+  1, please add a route subject to its `applies_to`.
+- **Owner labels.** The viewer will let the owner mark which object is the
+  counter. The node gets `label="service counter"` and `labeled_by="owner"` in
+  a new revision, which `roles.service_counters` already matches.
