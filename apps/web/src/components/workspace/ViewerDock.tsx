@@ -1,0 +1,155 @@
+"use client";
+
+import { ChartPieSlice, CircleNotch, Cube, CubeTransparent, DownloadSimple, ImageSquare, Scan, Square, SquareHalfBottom, Wall } from "@phosphor-icons/react";
+import type { ReactNode } from "react";
+import { Button } from "@/components/ui/Button";
+import { IconButton, IconLink } from "@/components/ui/IconButton";
+import { textureStatusView } from "@/lib/texture-status";
+import type { TextureStatus } from "@/types/contracts";
+
+export type ViewMode = "overview" | "top";
+export type MaterialMode = "captured" | "plain" | "coverage" | "scan";
+
+const ICON_SIZE = 18;
+
+function DockGroup({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div role="group" aria-label={label} className="flex items-center gap-0.5">
+      {children}
+    </div>
+  );
+}
+
+function CameraGroup({ activeMode, onView }: { activeMode: ViewMode | null; onView: (mode: ViewMode) => void }) {
+  return (
+    <DockGroup label="Camera">
+      <IconButton label="Whole shop" aria-pressed={activeMode === "overview"} onClick={() => onView("overview")}>
+        <Cube size={ICON_SIZE} aria-hidden />
+      </IconButton>
+      <IconButton label="From above" aria-pressed={activeMode === "top"} onClick={() => onView("top")}>
+        <SquareHalfBottom size={ICON_SIZE} aria-hidden />
+      </IconButton>
+    </DockGroup>
+  );
+}
+
+export type Visibility = {
+  cutWalls: boolean;
+  onToggleWalls: () => void;
+  evidenceAvailable: boolean;
+  evidenceShown: boolean;
+  onToggleEvidence: () => void;
+};
+
+function VisibilityGroup({ visibility }: { visibility: Visibility }) {
+  return (
+    <DockGroup label="Show">
+      <IconButton label={visibility.cutWalls ? "Show full walls" : "Cut walls down"} aria-pressed={!visibility.cutWalls} onClick={visibility.onToggleWalls}>
+        <Wall size={ICON_SIZE} aria-hidden />
+      </IconButton>
+      {visibility.evidenceAvailable && (
+        <IconButton label={visibility.evidenceShown ? "Hide scanned surfaces" : "Show scanned surfaces"} aria-pressed={visibility.evidenceShown} onClick={visibility.onToggleEvidence}>
+          <CubeTransparent size={ICON_SIZE} aria-hidden />
+        </IconButton>
+      )}
+    </DockGroup>
+  );
+}
+
+export type Textures = {
+  status: TextureStatus | null;
+  requesting: boolean;
+  error: string | null;
+  mode: MaterialMode;
+  onMode: (mode: MaterialMode) => void;
+  onRequest: () => void;
+};
+
+function coverageLabel(status: TextureStatus) {
+  const fraction = status.build?.coverage.textured_fraction;
+  return fraction === undefined ? "Photo coverage" : `Photo coverage, ${Math.round(fraction * 100)}% photographed`;
+}
+
+function TextureAction({ textures, actionLabel }: { textures: Textures; actionLabel: string | null }) {
+  if (!actionLabel) return null;
+  return (
+    <Button variant="chip" disabled={textures.requesting} onClick={textures.onRequest} className="shadow-none">
+      <ImageSquare size={16} aria-hidden />
+      {textures.requesting ? "Starting textures" : actionLabel}
+    </Button>
+  );
+}
+
+function photoLabel(textures: Textures, status: TextureStatus, statusMessage: string | null) {
+  const problem = textures.error ?? status.error;
+  if (problem) return problem;
+  if (status.build === null && statusMessage) return statusMessage;
+  return "Photo textures";
+}
+
+function BuiltModes({ textures, status }: { textures: Textures; status: TextureStatus }) {
+  return (
+    <>
+      {status.build?.scan_glb_url && (
+        <IconButton
+          label="The room as it was scanned"
+          aria-pressed={textures.mode === "scan"}
+          onClick={() => textures.onMode("scan")}
+        >
+          <Scan size={ICON_SIZE} aria-hidden />
+        </IconButton>
+      )}
+      <IconButton label="Plain materials" aria-pressed={textures.mode === "plain"} onClick={() => textures.onMode("plain")}>
+        <Square size={ICON_SIZE} aria-hidden />
+      </IconButton>
+      <IconButton label={coverageLabel(status)} aria-pressed={textures.mode === "coverage"} onClick={() => textures.onMode("coverage")}>
+        <ChartPieSlice size={ICON_SIZE} aria-hidden />
+      </IconButton>
+    </>
+  );
+}
+
+function MaterialGroup({ textures }: { textures: Textures }) {
+  const { status } = textures;
+  if (!status) return null;
+  const view = textureStatusView(status);
+  const hasBuild = status.build !== null;
+  return (
+    <DockGroup label="Materials">
+      <IconButton
+        label={photoLabel(textures, status, view.message)}
+        aria-pressed={hasBuild && textures.mode === "captured"}
+        aria-disabled={!hasBuild}
+        onClick={() => hasBuild && textures.onMode("captured")}
+      >
+        {view.working ? <CircleNotch size={ICON_SIZE} className="animate-spin" aria-hidden /> : <ImageSquare size={ICON_SIZE} aria-hidden />}
+      </IconButton>
+      {hasBuild && <BuiltModes textures={textures} status={status} />}
+      <TextureAction textures={textures} actionLabel={view.actionLabel} />
+      {view.working && <span className="sr-only" role="status">{view.message}</span>}
+    </DockGroup>
+  );
+}
+
+type ViewerDockProps = {
+  activeMode: ViewMode | null;
+  onView: (mode: ViewMode) => void;
+  visibility: Visibility;
+  textures: Textures;
+  downloadUrl: string | null;
+};
+
+export function ViewerDock({ activeMode, onView, visibility, textures, downloadUrl }: ViewerDockProps) {
+  return (
+    <div className="absolute bottom-4 left-4 flex max-w-[calc(100%-2rem)] flex-wrap items-center gap-3 rounded-xl bg-sheet/95 p-1 shadow-float">
+      <CameraGroup activeMode={activeMode} onView={onView} />
+      <VisibilityGroup visibility={visibility} />
+      <MaterialGroup textures={textures} />
+      {downloadUrl && (
+        <IconLink label="Export GLB" href={downloadUrl} download="room.glb">
+          <DownloadSimple size={ICON_SIZE} aria-hidden />
+        </IconLink>
+      )}
+    </div>
+  );
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowsLeftRight, ArrowsOutCardinal, Eye, FileText, HandGrabbing, ListChecks, MapPin, SquareHalfBottom } from "@phosphor-icons/react";
+import { ArrowLeft, ArrowsLeftRight, FileText, HandGrabbing, ListChecks, MapPin } from "@phosphor-icons/react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -26,7 +26,8 @@ import { PickedObject } from "./PickedObject";
 import type { ArrangeHandlers } from "./ShopModel";
 import { type Arrangement, useArrangement } from "./useArrangement";
 import { SimulationPanel } from "./SimulationPanel";
-import { isTextureRefreshing, textureStatusMatches, textureStatusView } from "@/lib/texture-status";
+import { type MaterialMode, type ViewMode, ViewerDock } from "./ViewerDock";
+import { isTextureRefreshing, textureStatusMatches } from "@/lib/texture-status";
 import type { TextureStatus } from "@/types/contracts";
 
 const Viewer = dynamic(() => import("./Viewer"), {
@@ -48,8 +49,6 @@ type WorkspaceProps = {
   suggestedScenario: Scenario | null;
   textureStatus: TextureStatus | null;
 };
-
-type ViewMode = "overview" | "top";
 
 function isWorking(scan: Scan): boolean {
   return scan.state === "uploading" || scan.state === "measuring" || scan.state === "checking";
@@ -311,25 +310,6 @@ function useWorkspaceActions(findings: Finding[], scene: SceneGraph, arrangement
   return { clear, selectNode, toggle, showView, switchTask, tryLayout, look };
 }
 
-function EvidenceToggle({ available, shown, onToggle }: { available: boolean; shown: boolean; onToggle: () => void }) {
-  if (!available) return null;
-  return <Button variant="chip" aria-pressed={shown} onClick={onToggle}>
-    <Eye size={16} weight="bold" aria-hidden />
-    {shown ? "Hide scan evidence" : "Show scan evidence"}
-  </Button>;
-}
-
-function WallToggle({ cut, onToggle }: { cut: boolean; onToggle: () => void }) {
-  return <Button variant="chip" aria-pressed={!cut} onClick={onToggle}>{cut ? "Show full walls" : "Cut away walls"}</Button>;
-}
-
-function GeometryDownload({ url, hasMoves, comparing }: { url: string | null; hasMoves: boolean; comparing: boolean }) {
-  if (!url || hasMoves || comparing) return null;
-  return <a href={url} download="room.glb" className="rounded-lg bg-sheet px-3 py-2 text-sm font-medium text-ink-muted hover:text-ink">Export GLB</a>;
-}
-
-type MaterialMode = "captured" | "plain" | "coverage";
-
 function usePhotoTextures(scanId: string, revision: number, initial: TextureStatus | null) {
   const key = `${scanId}:${revision}`;
   const currentKey = useRef(key);
@@ -388,31 +368,6 @@ function usePhotoTextures(scanId: string, revision: number, initial: TextureStat
   return { status, requesting, request, error };
 }
 
-// eslint-disable-next-line complexity
-function TextureControls({ status, requesting, error, mode, picked, onMode, onRequest }: {
-  status: TextureStatus | null;
-  requesting: boolean;
-  error: string | null;
-  mode: MaterialMode;
-  picked: boolean;
-  onMode: (mode: MaterialMode) => void;
-  onRequest: () => void;
-}) {
-  if (!status) return null;
-  const view = textureStatusView(status);
-  const message = error ?? status.error ?? view.message;
-  const hasBuild = status.build !== null;
-  return <div className={`absolute left-4 ${picked ? "top-20" : "top-4"} flex max-w-[min(30rem,calc(100%-2rem))] flex-wrap items-center gap-2 rounded-xl bg-sheet/95 p-2 shadow-sm`} aria-label="Photo textures">
-    {message && <span className="px-1 text-sm font-medium text-ink-muted" role={view.working ? "status" : undefined}>{message}</span>}
-    {view.actionLabel && <Button variant="chip" disabled={requesting} onClick={onRequest}>{requesting ? "Starting textures" : view.actionLabel}</Button>}
-    {hasBuild && <div className="flex gap-1 rounded-lg bg-rule/50 p-1" role="group" aria-label="Model material">
-      <Button variant="chip" aria-pressed={mode === "captured"} onClick={() => onMode("captured")}>Photo textures</Button>
-      <Button variant="chip" aria-pressed={mode === "plain"} onClick={() => onMode("plain")}>Plain materials</Button>
-      <Button variant="chip" aria-pressed={mode === "coverage"} onClick={() => onMode("coverage")}>Coverage overview</Button>
-    </div>}
-  </div>;
-}
-
 type WorkspaceBodyProps = WorkspaceProps & {
   findings: Finding[]; task: Task; selected: Finding | null; focus: Focus | null; mode: ViewMode; picked: ReturnType<typeof usePicked>; dragging: boolean; amount: number; setAmount: (amount: number) => void; showScanEvidence: boolean; setShowScanEvidence: (value: boolean | ((current: boolean) => boolean)) => void; visuals: ReturnType<typeof useWorkspaceVisuals>; actions: ReturnType<typeof useWorkspaceActions>;
 };
@@ -428,14 +383,14 @@ function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, te
   const activeMode = selected ? null : mode;
   const photoBuild = textures.status?.build ?? null;
   const sourceGlbUrl = photoBuild?.glb_url ?? glbUrl;
+  const scanGlbUrl = photoBuild?.scan_glb_url ?? null;
   const sourceGraph = photoBuild?.bake_graph ?? exported;
   return <>
     <RefreshWhile pending={assessment === null && isWorking(scan)} />
     <div className="grid h-dvh grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(16rem,45dvh)_1fr] lg:grid-cols-[minmax(0,1fr)_24rem] lg:grid-rows-[auto_1fr]">
       <WorkspaceHeader scan={scan} task={task} canCompare={visuals.comparison !== null} onTask={actions.switchTask} />
       <section className="relative min-h-0 touch-none overflow-hidden lg:rounded-tr-2xl" aria-label="Shop model">
-        <Viewer scene={visuals.shown} exported={sourceGraph} arrange={visuals.handlers} route={visuals.routeHandles} dragging={dragging} cutWalls={cutWalls} glbUrl={sourceGlbUrl} lidarUrl={displayedLidarUrl} pose={visuals.pose} selected={task === "findings" ? focus : null} onSelectNode={actions.selectNode} onClearSelection={actions.clear} materialMode={photoBuild ? materialMode : "plain"} staleNodeIds={textures.status?.stale_node_ids ?? []} coverage={photoBuild?.coverage.nodes ?? []} />
-        <TextureControls status={textures.status} requesting={textures.requesting} error={textures.error} mode={materialMode} picked={picked.label !== null} onMode={setMaterialMode} onRequest={() => { void textures.request(); }} />
+        <Viewer scene={visuals.shown} exported={sourceGraph} arrange={visuals.handlers} route={visuals.routeHandles} dragging={dragging} cutWalls={cutWalls} glbUrl={sourceGlbUrl} scanGlbUrl={scanGlbUrl} lidarUrl={displayedLidarUrl} pose={visuals.pose} selected={task === "findings" ? focus : null} onSelectNode={actions.selectNode} onClearSelection={actions.clear} materialMode={photoBuild ? materialMode : "plain"} staleNodeIds={textures.status?.stale_node_ids ?? []} coverage={photoBuild?.coverage.nodes ?? []} />
         <PickedObject
           scanId={scan.id}
           revision={scene.revision}
@@ -443,13 +398,13 @@ function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, te
           node={picked.node}
           editable={canMarkCounter(task, scan)}
         />
-        <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2">
-          <Button variant="chip" aria-pressed={activeMode === "overview"} onClick={() => actions.showView("overview")}><ArrowsOutCardinal size={16} weight="bold" aria-hidden />Whole shop</Button>
-          <Button variant="chip" aria-pressed={activeMode === "top"} onClick={() => actions.showView("top")}><SquareHalfBottom size={16} weight="bold" aria-hidden />From above</Button>
-          <WallToggle cut={cutWalls} onToggle={() => setCutWalls((current) => !current)} />
-          <GeometryDownload url={sourceGlbUrl} hasMoves={visuals.arrangement.hasMoves} comparing={task === "compare"} />
-          <EvidenceToggle available={evidenceAvailable} shown={showScanEvidence} onToggle={() => setShowScanEvidence((current) => !current)} />
-        </div>
+        <ViewerDock
+          activeMode={activeMode}
+          onView={actions.showView}
+          visibility={{ cutWalls, onToggleWalls: () => setCutWalls((current) => !current), evidenceAvailable, evidenceShown: showScanEvidence, onToggleEvidence: () => setShowScanEvidence((current) => !current) }}
+          textures={{ status: textures.status, requesting: textures.requesting, error: textures.error, mode: materialMode, onMode: setMaterialMode, onRequest: () => { void textures.request(); } }}
+          downloadUrl={sourceGlbUrl && !visuals.arrangement.hasMoves && task !== "compare" ? sourceGlbUrl : null}
+        />
       </section>
       <aside className="min-h-0 overflow-y-auto px-3 pb-10 pt-4 lg:pt-0">
         <SidePanel task={task} scene={scene} onTryLayout={actions.tryLayout} assessment={assessment} scan={scan} findings={findings} selected={selected} arrangement={visuals.arrangement} comparison={visuals.comparison} amount={amount} onAmount={setAmount} onToggle={actions.toggle} route={visuals.route} onRoute={() => actions.switchTask("route")} onLook={actions.look} />

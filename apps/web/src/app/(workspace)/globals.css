@@ -18,6 +18,8 @@
   --font-display: var(--font-libre-franklin), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-atkinson-mono), ui-monospace, monospace;
 
+  --shadow-float: 0 1px 2px rgb(27 28 30 / 0.12), 0 4px 16px rgb(27 28 30 / 0.08);
+
   --ease-settle: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
