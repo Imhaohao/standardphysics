@@ -41,6 +41,8 @@ class Violation:
     kind: str
     node_id: str
     detail: str
+    blocker: str | None = None
+    """What the moved piece ran into, when something did."""
 
 
 def _moved_nodes(base: SceneGraph, candidate: SceneGraph) -> list[SceneNode]:
@@ -71,8 +73,18 @@ def _resizes(base: SceneGraph, candidate: SceneGraph) -> list[Violation]:
     return found
 
 
-def _inventory_changes(base: SceneGraph, candidate: SceneGraph) -> list[Violation]:
-    was, now = inventory(base), inventory(candidate)
+def _without(graph: SceneGraph, node_ids) -> SceneGraph:
+    if not node_ids:
+        return graph
+    return graph.model_copy(
+        update={"nodes": [n for n in graph.nodes if n.id not in node_ids]}
+    )
+
+
+def _inventory_changes(
+    base: SceneGraph, candidate: SceneGraph, added
+) -> list[Violation]:
+    was, now = inventory(base), inventory(_without(candidate, added))
     return [
         Violation("inventory_changed", label, f"{was.get(label, 0)} -> {now.get(label, 0)}")
         for label in sorted(set(was) | set(now))
@@ -94,6 +106,36 @@ def floor_bounds(graph: SceneGraph) -> tuple[float, float, float, float] | None:
     return None
 
 
+def interior_bounds(graph: SceneGraph) -> tuple[float, float, float, float] | None:
+    """The floor somebody can actually stand on, inside the walls.
+
+    The floor node and the walls overlap: a wall straddles the edge of the
+    floor it stands on, so half its thickness is inside the room. Placing
+    furniture against the floor boundary puts it inside a wall, which is why
+    this trims each side back to the wall's inner face.
+    """
+    bounds = floor_bounds(graph)
+    if bounds is None:
+        return None
+    min_x, min_y, max_x, max_y = bounds
+    centre_x, centre_y = (min_x + max_x) / 2, (min_y + max_y) / 2
+
+    for wall in (node for node in graph.nodes if node.kind == "wall"):
+        shape = footprint(wall)
+        low_x, high_x = min(x for x, _ in shape), max(x for x, _ in shape)
+        low_y, high_y = min(y for _, y in shape), max(y for _, y in shape)
+        if high_y - low_y >= high_x - low_x:
+            if (low_x + high_x) / 2 < centre_x:
+                min_x = max(min_x, high_x)
+            else:
+                max_x = min(max_x, low_x)
+        elif (low_y + high_y) / 2 < centre_y:
+            min_y = max(min_y, high_y)
+        else:
+            max_y = min(max_y, low_y)
+    return min_x, min_y, max_x, max_y
+
+
 def _off_the_floor(candidate: SceneGraph, moved: list[SceneNode]) -> list[Violation]:
     bounds = floor_bounds(candidate)
     if bounds is None:
@@ -106,7 +148,11 @@ def _off_the_floor(candidate: SceneGraph, moved: list[SceneNode]) -> list[Violat
                 min_x - FLOOR_MARGIN <= x <= max_x + FLOOR_MARGIN
                 and min_y - FLOOR_MARGIN <= y <= max_y + FLOOR_MARGIN
             ):
-                found.append(Violation("left_the_floor", str(node.id), node.label))
+                found.append(
+                    Violation(
+                        "left_the_floor", str(node.id), node.label, blocker="wall"
+                    )
+                )
                 break
     return found
 
@@ -160,26 +206,47 @@ def _collisions(candidate: SceneGraph, moved: list[SceneNode]) -> list[Violation
 def _overlaps(node: SceneNode, shape: Polygon, obstacles, swings) -> list[Violation]:
     for other in obstacles:
         if gap_between(shape, collision_shape(other)) == 0.0:
-            return [Violation("collided", str(node.id), f"{node.label} into {other.label}")]
+            return [
+                Violation(
+                    "collided",
+                    str(node.id),
+                    f"{node.label} into {other.label}",
+                    blocker=other.label,
+                )
+            ]
     for door, keep_clear in swings:
         if gap_between(shape, keep_clear) == 0.0:
             return [
                 Violation(
-                    "blocked_a_door", str(node.id), f"{node.label} into the {door.label}"
+                    "blocked_a_door",
+                    str(node.id),
+                    f"{node.label} into the {door.label}",
+                    blocker=door.label,
                 )
             ]
     return []
 
 
-def violations(base: SceneGraph, candidate: SceneGraph) -> list[Violation]:
-    """Every hard constraint the candidate breaks, or an empty list."""
-    moved = _moved_nodes(base, candidate)
+def violations(
+    base: SceneGraph, candidate: SceneGraph, added: frozenset = frozenset()
+) -> list[Violation]:
+    """Every hard constraint the candidate breaks, or an empty list.
+
+    `added` names pieces that are meant to be new, which is how "do I have room
+    for a 97 inch couch" is asked. They do not count against the inventory, and
+    they are checked for collisions and floor bounds exactly like a piece that
+    moved: a candidate nobody tested for collisions fits everywhere.
+    """
+    checked = [
+        *_moved_nodes(base, candidate),
+        *[node for node in candidate.nodes if node.id in added],
+    ]
     return [
         *_locked_moves(base, candidate),
         *_resizes(base, candidate),
-        *_inventory_changes(base, candidate),
-        *_off_the_floor(candidate, moved),
-        *_collisions(candidate, moved),
+        *_inventory_changes(base, candidate, added),
+        *_off_the_floor(candidate, checked),
+        *_collisions(candidate, checked),
     ]
 
 

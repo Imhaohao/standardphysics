@@ -54,22 +54,48 @@ def _separating_text(value: float, required: float) -> str:
     return f"{value:.3f}"
 
 
+def _singular(word: str) -> str:
+    if word.endswith("ves") and len(word) > 4:
+        return word[:-3] + "f"
+    if word.endswith(("ses", "hes", "xes")):
+        return word[:-2]
+    if word.endswith("s") and not word.endswith("ss"):
+        return word[:-1]
+    return word
+
+
+VES_ENDINGS = ("lf", "af")
+"""Shelf and half take -ves. Roof and chef do not, so only these two shapes
+get the rule rather than every word ending in f."""
+
+
 def plural(label: str) -> str:
-    lowered = label.strip().casefold()
+    """`chairs`, `display cases`, `boxes`, `shelves`.
+
+    Idempotent, so a word that arrives plural does not come back as `sofases`.
+    """
+    lowered = _singular(label.strip().casefold())
+    if lowered.endswith(VES_ENDINGS):
+        return f"{lowered[:-1]}ves"
     if lowered.endswith(("s", "x", "ch", "sh")):
         return f"{lowered}es"
     return f"{lowered}s"
 
 
+COUNT_WORDS = {2: "two", 3: "three", 4: "four", 5: "five", 6: "six"}
+"""Counted in words up to six, because nobody writes "the 4 tables"."""
+
+
 def things(labels: list[str]) -> str | None:
-    """`the two display cases`, `the display case and the table`."""
+    """`the two display cases`, `the four tables`, `the case and the table`."""
     unique = list(dict.fromkeys(labels))
     if not labels:
         return None
     if len(unique) == 1:
         if len(labels) == 1:
             return f"the {unique[0].casefold()}"
-        return f"the two {plural(unique[0])}"
+        count = COUNT_WORDS.get(len(labels), str(len(labels)))
+        return f"the {count} {plural(unique[0])}"
     return " and ".join(f"the {label.casefold()}" for label in unique[:2])
 
 
@@ -81,6 +107,35 @@ def size(value: float) -> str:
     return f"{_whole_or_tenth(value)} inch"
 
 
+INCHES_PER_FOOT = 12.0
+
+FEET_ABOVE_INCHES = 36.0
+"""Above three feet, people say feet.
+
+"126 inches" is a number you have to convert in your head to picture. "10 feet
+6 inches" is a distance across a room.
+"""
+
+
+def span(value: float) -> str:
+    """`31 inches`, `10 feet 6 inches`, for a distance across a room."""
+    if value < FEET_ABOVE_INCHES:
+        return inches(value)
+    feet = int(value // INCHES_PER_FOOT)
+    rest = round(value - feet * INCHES_PER_FOOT)
+    if rest >= INCHES_PER_FOOT:
+        feet, rest = feet + 1, 0
+    foot_word = "foot" if feet == 1 else "feet"
+    if rest == 0:
+        return f"{feet} {foot_word}"
+    return f"{feet} {foot_word} {inches(rest)}"
+
+
 def by(width: float, depth: float) -> str:
     """`48 by 30 inches`, for a rectangle."""
     return f"{_whole_or_tenth(width)} by {inches(depth)}"
+
+
+def by_size(width: float, depth: float) -> str:
+    """`48 by 30 inch`, for use in front of a noun: a 97 by 38 inch couch."""
+    return f"{_whole_or_tenth(width)} by {size(depth)}"

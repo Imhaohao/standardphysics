@@ -16,6 +16,9 @@
     "TypeSafe router: closed action set, schema generated from the contract, fail-closed validation of malformed, contradictory and truncated output",
     "labelled local policy for when TypeSafe is unavailable",
     "fix agent: bounded search over slides and quarter turns, hard constraints from plan section 10, one tested relaxation when it runs out",
+    "a sealed route is a shortfall of the whole requirement, not an unknown, and widening is not offered where there is no gap to widen",
+    "the ask box: eight kinds of question about the room, answered from the measured model with a locus to fly the camera to",
+    "every model call through OpenRouter with the provider pinned and retention denied per request",
     "the loop: one handler per action and no default, so an invalid answer authorizes nothing",
     "acceptance gate: completes, no lost coverage, no new failures, strictly improves",
     "32 labelled cases and 7 scorers, with per-case results on disk and in Weave when configured",
@@ -29,6 +32,7 @@
     "standardphysics_agents.assess(graph, scenario, measure) -> Pass, with .problems, .questions and .unevaluated",
     "standardphysics_agents.propose_fix(...) -> FixOutcome, with the proposal, the gate result and the relaxation",
     "standardphysics_agents.run_loop(graph, scenario, measure, router) -> list[LoopStep]",
+    "standardphysics_agents.ask(text, graph, scenario, measure) -> Answer, for Lane D's ask box",
     "standardphysics_agents.evaluate() -> EvaluationResult, and accepts(before, after) for the gate",
     "load_pack().as_contract_pack(ledger) -> contracts.RulePack, for Lane D's report"
   ],
@@ -38,6 +42,7 @@
     "Pin the CBC Chapter 10 egress section for exit_path and confirm the occupant load for a shop this size. An accessibility professional or the Palo Alto Building Division.",
     "Confirm Lane B's two disclosed approximations in ADA 403.5.2: the pivot's smaller horizontal extent read as the element width, and geometric turn detection at about 122 degrees",
     "TYPESAFE_API_KEY and the quickstart's base URL and request path into .env, as TYPESAFE_BASE_URL. Without them the loop runs the local policy and says so, and the TypeSafe track comes out of the pitch.",
+    "OPENROUTER_API_KEY in .env with zero data retention on the account and a credit limit. Without it the ask box matches keywords instead of reading the question, and says so.",
     "WANDB_API_KEY, WANDB_ENTITY and WANDB_PROJECT in .env, or tracing and evaluation stay local",
     "Schedule the accessibility professional",
     "One line in pytest.ini or Lane C's 263 tests never run on master: docs/handoffs/C-to-D.md item 3"

@@ -307,6 +307,83 @@ def proposal_rationale(strategy: str, labels: list[str], inches_moved: float) ->
     )
 
 
+REQUEST_SENTENCES = {
+    "back": "Move {what} {distance} back.",
+    "front": "Move {what} {distance} toward the door.",
+    "left": "Move {what} {distance} to the left.",
+    "right": "Move {what} {distance} to the right.",
+    "apart": "Move {what} {distance} apart.",
+    "together": "Move {what} {distance} closer together.",
+}
+
+ASK_REPLIES = {
+    "asked_to_move_something_fixed": (
+        "That one is built in. Tell us which of the loose pieces to move."
+    ),
+    "asked_about_something_that_is_not_here": (
+        "Point at the piece you mean in the plan and we will look at it."
+    ),
+    "asked_to_move_something_it_also_locked": (
+        "That piece is on both lists. Say whether it moves or stays."
+    ),
+    "question_names_nothing": (
+        "Name a piece of furniture and ask again. The counter, the tables, "
+        "the chairs."
+    ),
+    "question_does_not_say_which_dimension": (
+        "Say whether you mean how tall, how wide or how deep."
+    ),
+    "question_names_only_one_end": (
+        "Name both ends and we will measure between them."
+    ),
+    "question_does_not_say_how_big": (
+        "Tell us how long it is in inches and we will see where it goes."
+    ),
+    "question_does_not_say_which_way": (
+        "Say which way: back, front, left, right, apart or together."
+    ),
+    "measurement_out_of_range": "Give us the size in inches and we will try it.",
+    "restatement_too_long": "Ask it in one sentence and we will have a go.",
+}
+
+ASK_DEFAULT_REPLY = (
+    "We did not follow that one. You can ask how many of something you have, "
+    "how big it is, where it is, what shape it sits in, or whether something "
+    "you are thinking of buying would fit."
+)
+
+
+def request_rationale(direction: str, labels: list[str], inches_moved: float) -> str:
+    """What will happen, with the distance, for the owner to approve."""
+    template = REQUEST_SENTENCES.get(direction, "Move {what} {distance}.")
+    return template.format(
+        what=things(labels) or "it", distance=inches(inches_moved)
+    )
+
+
+def no_room_for_request(labels: list[str], blocker: str | None) -> str:
+    """Why the pieces stopped where they did, and what to try instead."""
+    what = things(labels) or "they"
+    subject = what[:1].upper() + what[1:]
+    one = len(labels) == 1
+    if blocker:
+        runs = "runs" if one else "run"
+        return (
+            f"{subject} {runs} into the {blocker.casefold()} first. "
+            "Try a shorter move, or fewer pieces."
+        )
+    is_are = "is" if one else "are"
+    return (
+        f"{subject} {is_are} blocked on every side. "
+        "Try a shorter move, or fewer pieces."
+    )
+
+
+def ask_reply(reason: str) -> str:
+    """What to say when a request could not be read, as something to do."""
+    return ASK_REPLIES.get(reason, ASK_DEFAULT_REPLY)
+
+
 def relaxation_question(kind: str, labels: list[str]) -> str:
     """One specific thing to allow, phrased as a choice the owner makes."""
     return RELAXATIONS[kind].format(what=things(labels) or "one piece")

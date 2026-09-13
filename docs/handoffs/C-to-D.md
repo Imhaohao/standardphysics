@@ -164,3 +164,51 @@ The third is what this lane would ship, and the stops matter enough that a wrong
 one produces a confident finding about a journey nobody makes — which is exactly
 what the Pickup stop is doing today. That is item 5, and `B-to-D.md` says the
 same thing from the other side.
+
+## 9. The ask box takes any question, not a menu
+
+`D-to-C.md` did not ask for this, and plan section 10 only describes moving
+furniture and checking whether a couch fits. Both of those are now one kind of
+question among eight, because a box that only accepts two phrasings is a menu
+with a text field.
+
+```python
+from standardphysics_agents import ask
+
+answer = ask("how are my tables laid out?", graph, scenario, measure)
+answer.text     # "Your four tables sit in two rows of two, 15 feet 1 inch between the rows."
+answer.kind     # "DESCRIBE"
+answer.locus    # where to fly the camera
+answer.data     # {"shape": "two_rows", "rows": 2, "columns": 2, ...}
+```
+
+| Kind | Example |
+|---|---|
+| `COUNT` | How many chairs do I have? |
+| `MEASURE` | How tall is my counter? |
+| `DISTANCE` | How far is it from the counter to the display case? |
+| `WHERE` | Where is the front door? |
+| `DESCRIBE` | How are my tables laid out? |
+| `SPACE` | Do I have space for a 97 inch couch? |
+| `REARRANGE` | Move the seating to the back. |
+| `CHECK` | Is the path to the counter wide enough? |
+
+**What the viewer gets.** `Answer.locus` on every answer that has a subject, so
+asking about the tables lights up the tables and tweens the camera to them —
+the same `Locus` the findings use, so your callout code already handles it.
+`Answer.data` carries the numbers behind the sentence for a label or a table.
+`Answer.graph` carries a layout to show as a before and after when the answer
+moved something or placed something.
+
+**When it cannot read a question** it says what it can answer rather than
+asking again: `Answer.understood` is false, `text` lists the kinds. Worth
+rendering as a hint under the box.
+
+**REARRANGE and SPACE share the checker with dragging.** Same hard constraints,
+same measurement, same gate, so words and a drag cannot disagree about what is
+allowed. A request the owner made only has to avoid breaking something; it does
+not have to improve a measurement, because they asked for it.
+
+One thing to know: with no `OPENROUTER_API_KEY` the box matches keywords
+instead of reading the question, and `stderr` says so. It handles "how many
+chairs do I have" and not "open up the middle a bit".

@@ -20,6 +20,21 @@ catch that now, and it reports as a gap rather than as a turn zero inches wide.
 
 ## 1. A blocked route names nothing that blocked it
 
+**Done in `022004d`.** The label flipped with it: `blocked_but_movable` expects
+`FIX` now, and the fix agent acts on a sealed route by treating an empty width
+as a shortfall of the whole 36 inches rather than as an unknown. It steps the
+two shelves past each other, because a sealed run cannot be widened — the
+things forming it are already touching, so sliding them apart along the
+measurement pushes each one into whatever is behind it. Those candidates are no
+longer offered when the width is empty.
+
+A-40 is yours and nothing here depends on it: every candidate is validated and
+measured, so a blocker named in error costs one wasted candidate rather than a
+wrong answer.
+
+### The original ask, for the record
+
+
 `route_clear_width` returns `blocking_node_ids=[]` when `reachable` is False. So
 a finding about a sealed route has no locus node ids, nothing is marked as
 something furniture could fix, and the fix agent has no pinch to work on. A shop

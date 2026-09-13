@@ -28,6 +28,13 @@ class Pinch:
     """Unit vector at right angles to it, roughly the direction of travel."""
 
     deficit_meters: float
+    sealed: bool = False
+    """Whether there is no gap here at all, rather than one that is too narrow.
+
+    It changes which rearrangements are worth trying first: a gap of zero
+    cannot be widened, because the two things forming it are already touching
+    and there is nothing between them to open.
+    """
 
     @property
     def fixable(self) -> bool:
@@ -74,10 +81,14 @@ def _unlockable(node: SceneNode) -> bool:
 
 
 def pinch_from(finding: Finding, graph: SceneGraph) -> Pinch | None:
-    """What the fix agent has to work with, or None if nothing can be moved."""
-    if finding.locus is None or finding.measured_inches is None:
-        return None
-    if finding.required_inches is None:
+    """What the fix agent has to work with, or None if there is nothing to go on.
+
+    A sealed route has no width to report, so its measurement is empty. That is
+    a gap of zero rather than an unknown: the shortfall is the whole of what the
+    section asks for. Treating it as unknown would leave the one case the owner
+    most wants solved with nothing tried on it.
+    """
+    if finding.locus is None or finding.required_inches is None:
         return None
 
     nodes = _nodes(graph, finding.locus.node_ids)
@@ -99,5 +110,8 @@ def pinch_from(finding: Finding, graph: SceneGraph) -> Pinch | None:
         centre=centre,
         across=across,
         along=(-across[1], across[0]),
-        deficit_meters=to_meters(finding.required_inches - finding.measured_inches),
+        deficit_meters=to_meters(
+            finding.required_inches - (finding.measured_inches or 0.0)
+        ),
+        sealed=finding.measured_inches is None,
     )

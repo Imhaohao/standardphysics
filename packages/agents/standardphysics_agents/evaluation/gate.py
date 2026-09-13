@@ -95,13 +95,23 @@ def _improvement(before: Pass, after: Pass) -> list[str]:
     return ["nothing measurable changed"]
 
 
-CONDITIONS = (_completeness, _coverage, _new_failures, _improvement)
+SAFETY = (_completeness, _coverage, _new_failures)
+"""Conditions about not making things worse. Always checked."""
 
 
-def accepts(before: Pass, after: Pass) -> GateResult:
+def accepts(before: Pass, after: Pass, require_improvement: bool = True) -> GateResult:
+    """`require_improvement` is off for something the owner asked for.
+
+    A rearrangement the loop proposed has to earn its place, so a candidate
+    that changes nothing measurable is refused. A rearrangement the owner asked
+    for has already earned it — they want the seating at the back — and the
+    gate's job there is only to stop it breaking something.
+    """
     reasons: list[str] = []
-    for condition in CONDITIONS:
+    for condition in SAFETY:
         reasons.extend(condition(before, after))
+    if require_improvement:
+        reasons.extend(_improvement(before, after))
     return GateResult(
         accepted=not reasons,
         reasons=tuple(reasons),

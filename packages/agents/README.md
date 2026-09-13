@@ -16,11 +16,44 @@ copy.py         every sentence the owner reads
 numbers.py      the display boundary, where inches become words
 findings.py     a measurement becomes a problem, a pass or a request
 assess.py       one pass over a shop
+ask/            any question about the room, answered from the measured model
 router/         the closed action set, validated before it authorizes anything
 fix/            rearrangements that keep the owner's furniture
 loop.py         the action choosing the branch, and the gate letting it through
 evaluation/     the labelled dataset, the scorers and the acceptance gate
+models.py       every model call, through OpenRouter
 ```
+
+## The ask box
+
+Any question about the shop, not a menu of them.
+
+```bash
+python -m standardphysics_agents.cli ask how many chairs do I have
+python -m standardphysics_agents.cli ask how are my tables laid out
+python -m standardphysics_agents.cli ask do I have space for a 97 inch couch
+```
+
+```
+You have six chairs.
+Your four tables sit in two rows of two, 15 feet 1 inch between the rows.
+Give us one more number about the couch. Measure how deep it is, front to back.
+```
+
+Eight kinds of question, each with one executor: how many of something there
+is, how big it is, how far apart two things are, where something is, what shape
+a set of furniture makes, whether something would fit, moving furniture, and
+whether something meets the standards.
+
+**The model picks the question and the code supplies the facts.** Working out
+that "how would you describe my table arrangement" is a question about shape is
+judgment, and a model is good at it. Knowing the tables sit in two rows 15 feet
+apart is measurement, and a model is not. A model that returns a height along
+with the question has that height ignored, and there is a test that says so.
+
+Every answer carries a locus, so asking about the tables sends the camera to
+the tables. That is the difference between a room you can talk to and a list of
+measurements.
 
 ## Turning a check on
 

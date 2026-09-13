@@ -143,6 +143,17 @@ def _turn_one(pinch: Pinch) -> list[Candidate]:
 
 FAMILIES = (_split_the_gap, _move_one_aside, _stagger, _turn_one)
 
+SEALED_FAMILIES = (_stagger, _turn_one)
+"""What is worth trying when there is no gap at all.
+
+A sealed run cannot be widened. The two things forming it are already touching,
+so sliding them apart along the measurement pushes each one into whatever is
+behind it, at every distance. Offering those candidates anyway fills the ladder
+with rearrangements that were never going to work and pushes the ones that
+might off the end of it. Stepping the two past each other, or turning one, is
+what opens a sealed run.
+"""
+
 PREFERENCE = ("split_the_gap", "move_one_aside", "stagger", "turn_one")
 """How ties are broken, in order.
 
@@ -153,12 +164,14 @@ what the plan's own example asks for, so it goes first.
 """
 
 
+
+
 def candidates(pinch: Pinch, limit: int = 24) -> list[Candidate]:
     """Every rearrangement worth measuring, least disruptive first."""
     if not pinch.fixable:
         return []
     found: list[Candidate] = []
-    for family in FAMILIES:
+    for family in SEALED_FAMILIES if pinch.sealed else FAMILIES:
         found.extend(family(pinch))
     found.sort(
         key=lambda candidate: (

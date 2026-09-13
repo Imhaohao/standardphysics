@@ -384,3 +384,69 @@ class TestExhaustion:
         _, fixed = exhausted
         assert fixed.proposal is None
         assert fixed.graph is None
+
+
+class TestASealedRoute:
+    """A route with no way through reports no width at all."""
+
+    @pytest.fixture
+    def sealed(self, graph, scenario, pipeline, ledger, pack):
+        from standardphysics_agents.evaluation.dataset import by_id
+
+        case = by_id("blocked_but_movable")
+        before = assess(case.graph, case.scenario, pipeline, rules=pack, ledger=ledger)
+        blocked = [
+            f for f in before.problems if f.check_id == "route_clear_width"
+        ]
+        assert blocked, "the sealed case has to seal the route"
+        return case, before, blocked
+
+    def test_the_barrier_starts_legal(self, sealed):
+        """A barrier built through a wall is in breach before anything moves,
+        so every rearrangement of it would be refused for the wrong reason."""
+        case, _, _ = sealed
+        assert violations(case.graph, case.graph) == []
+
+    def test_no_width_is_reported(self, sealed):
+        _, _, blocked = sealed
+        assert all(f.measured_inches is None for f in blocked)
+
+    def test_the_shortfall_is_the_whole_requirement(self, sealed):
+        case, _, blocked = sealed
+        pinch = pinch_from(blocked[0], case.graph)
+        assert pinch.sealed
+        assert pinch.deficit_meters == pytest.approx(to_meters(36.0))
+
+    def test_widening_is_not_offered_because_it_cannot_work(self, sealed):
+        """The two things forming the gap are already touching."""
+        case, _, blocked = sealed
+        strategies = {c.strategy for c in candidates(pinch_from(blocked[0], case.graph))}
+        assert strategies <= {"stagger", "turn_one"}
+
+    def test_it_finds_a_way_through(self, sealed, scenario, pipeline, pack, ledger):
+        case, before, _ = sealed
+        outcome = propose_fix(
+            case.graph, case.scenario, pipeline, before.problems,
+            rules=pack, ledger=ledger, baseline=before, limit=8,
+        )
+        assert outcome.found
+        after = assess(
+            outcome.graph, case.scenario, pipeline, rules=pack, ledger=ledger
+        )
+        assert not [
+            f for f in after.problems if f.check_id == "route_clear_width"
+        ]
+
+    def test_fixed_shelving_is_still_somebody_elses_job(
+        self, scenario, pipeline, pack, ledger
+    ):
+        from standardphysics_agents.evaluation.dataset import by_id
+
+        case = by_id("blocked_solid")
+        before = assess(case.graph, case.scenario, pipeline, rules=pack, ledger=ledger)
+        outcome = propose_fix(
+            case.graph, case.scenario, pipeline, before.problems,
+            rules=pack, ledger=ledger, baseline=before, limit=8,
+        )
+        assert not outcome.found
+        assert outcome.relaxation.kind == "unlock"

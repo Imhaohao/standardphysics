@@ -394,36 +394,58 @@ def _route_shape_cases() -> list[Case]:
     ]
 
 
+BARRIER_HALF_WIDTH = 2.95
+"""Two shelves this wide meet in the middle of the fixture room and seal it,
+with both of them still inside their own walls. A barrier built through a wall
+is in breach before anything moves, so every rearrangement of it is refused for
+the wrong reason."""
+
+
+def _barrier(movable: bool) -> SceneGraph:
+    """A sealed room with nothing else near the barrier.
+
+    The display cases and the counter-side seating come out, so a rearrangement
+    of the barrier is tested against the barrier rather than against whatever
+    else the fixture happens to leave in the way.
+    """
+    bare = v.drop(_clean(), CASE_WEST, CASE_EAST)
+    centre = BARRIER_HALF_WIDTH / 2
+    return v.add(
+        bare,
+        v.box(
+            "bar_west", "Shelf", (-centre, 0.5, 0.6),
+            (BARRIER_HALF_WIDTH, 0.6, 1.2), movable=movable,
+        ),
+        v.box(
+            "bar_east", "Shelf", (centre, 0.5, 0.6),
+            (BARRIER_HALF_WIDTH, 0.6, 1.2), movable=movable,
+        ),
+    )
+
+
 def _blocked_cases() -> list[Case]:
     """No way through, and whether furniture could open one."""
-    def barrier(movable: bool) -> SceneGraph:
-        return v.add(
-            _clean(),
-            v.box("bar_west", "Shelf", (-1.5, -1.0, 0.6), (3.1, 0.6, 1.2), movable=movable),
-            v.box("bar_east", "Shelf", (1.5, -1.0, 0.6), (3.1, 0.6, 1.2), movable=movable),
-        )
-
     return [
         _case(
             "blocked_solid",
             "Fixed shelving sealing the only route. Nothing movable causes it, "
             "the owner has already been asked, and it belongs with a "
             "professional.",
-            barrier(movable=False),
+            _barrier(movable=False),
             expected_problems=frozenset({ROUTE, "exit_path"}),
             expected_action="ESCALATE",
             actions_taken=("ASK_OWNER",),
         ),
         _case(
             "blocked_but_movable",
-            "The same barrier, unlocked. It still is not a rearrangement: a "
-            "sealed route names nothing as its blocker, so there is nothing "
-            "for a fix to move even though the shelves would move. Asked for "
-            "in docs/handoffs/C-to-B.md; this case flips to FIX the day a "
-            "blocked route says what blocked it.",
-            barrier(movable=True),
+            "The same barrier, unlocked. A sealed route reports no width at "
+            "all, which is a shortfall of the whole 36 inches rather than an "
+            "unknown, so the shelves get stepped past each other until a way "
+            "through opens.",
+            _barrier(movable=True),
             expected_problems=frozenset({ROUTE, "exit_path"}),
-            expected_action="ASK_OWNER",
+            expected_action="FIX",
+            fix_should_resolve=True,
         ),
     ]
 

@@ -14,6 +14,8 @@ import sys
 from pathlib import Path
 from typing import Callable
 
+from .ask import ask as ask_question
+from .ask import resolver
 from .assess import assess
 from .evaluation import evaluate, save
 from .evaluation.scorers import LOWER_IS_BETTER
@@ -227,6 +229,36 @@ def _evaluate(args) -> int:
     return 0 if result.completed else 1
 
 
+def _ask(args) -> int:
+    pack, ledger = load_pack(), load_ledger()
+    graph, scenario = _fixture_shop()
+    picked = resolver()
+    if picked.provider == "local_keywords":
+        print(
+            "OPENROUTER_API_KEY is not set. Matching keywords instead, "
+            "labelled as such.",
+            file=sys.stderr,
+        )
+    answer = ask_question(
+        " ".join(args.question),
+        graph,
+        scenario,
+        _measurements(args.provider),
+        rules=pack,
+        ledger=ledger,
+        with_resolver=picked,
+    )
+    print(answer.text)
+    if answer.kind:
+        looking = (
+            f" look at {_count(len(answer.locus.node_ids), 'piece')}"
+            if answer.locus
+            else ""
+        )
+        print(f"  [{answer.kind}]{looking}")
+    return 0 if answer.understood else 1
+
+
 def _loop(args) -> int:
     pack, ledger = load_pack(), load_ledger()
     if _nothing_enabled(pack, ledger):
@@ -263,6 +295,7 @@ HANDLERS: dict[str, Callable[[argparse.Namespace], int]] = {
     "check": _check,
     "evaluate": _evaluate,
     "loop": _loop,
+    "ask": _ask,
 }
 
 
@@ -317,6 +350,12 @@ def build_parser() -> argparse.ArgumentParser:
     loop = commands.add_parser("loop", help="run the whole loop on the fixture shop")
     loop.add_argument("--provider", choices=PROVIDERS, default="pipeline")
     loop.add_argument("--router", choices=ROUTERS, default="typesafe")
+
+    question = commands.add_parser(
+        "ask", help="ask the fixture shop a question about itself"
+    )
+    question.add_argument("question", nargs="+")
+    question.add_argument("--provider", choices=PROVIDERS, default="pipeline")
     return parser
 
 
