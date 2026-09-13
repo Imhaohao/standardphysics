@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import math
 import uuid
+from dataclasses import replace
 
 import numpy as np
 import pytest
@@ -22,6 +23,8 @@ from standardphysics_pipeline.discovery.boxes import claimed_by_any, inside, res
 from standardphysics_pipeline.discovery.carve import FrameView, carve, fit_box
 from standardphysics_pipeline.discovery.clusters import voxel_components
 from standardphysics_pipeline.discovery.detect import Detection, _pixel_box, EncodedFrame
+from standardphysics_pipeline.discovery.discover import _viewpoints
+from standardphysics_pipeline.discovery.merge import DiscoveredObject
 from standardphysics_pipeline.discovery.merge import Candidate, merge_candidates
 from standardphysics_pipeline.discovery.people import without_people
 from standardphysics_pipeline.textures.camera import PhotoCamera
@@ -257,3 +260,33 @@ class TestNamingThings:
 
     def test_furniture_is_not_a_person(self):
         assert not Detection("frame-0001", "chair", (0, 0, 1, 1), True, 0.9).is_person
+
+
+class TestCountingSeparateLooks:
+    """Keyframes land twice a second, so a run of them is one look, not twelve."""
+
+    def _object(self, frame_ids):
+        box = fit_box(slab((0.0, 1.0, 1.0), (0.3, 0.2, 0.2)))
+        return DiscoveredObject(
+            name="laptop", box=box, movable=True, confidence=0.9,
+            frame_ids=tuple(frame_ids),
+        )
+
+    def _cameras(self, positions):
+        return [
+            replace(camera_at(position, (position[0], position[1] + 1.0, position[2])),
+                    frame_id=f"frame-{index:04d}")
+            for index, position in enumerate(positions)
+        ]
+
+    def test_standing_still_is_one_look_however_many_frames(self):
+        cameras = self._cameras([(0.0, -1.0, 1.2), (0.05, -1.02, 1.2), (0.08, -0.99, 1.2)])
+        assert _viewpoints(self._object([c.frame_id for c in cameras]), cameras) == 1
+
+    def test_walking_around_something_is_several_looks(self):
+        cameras = self._cameras([(0.0, -1.0, 1.2), (1.4, -1.0, 1.2), (2.8, -1.0, 1.2)])
+        assert _viewpoints(self._object([c.frame_id for c in cameras]), cameras) == 3
+
+    def test_frames_that_never_saw_it_do_not_count(self):
+        cameras = self._cameras([(0.0, -1.0, 1.2), (1.4, -1.0, 1.2)])
+        assert _viewpoints(self._object(["frame-0000"]), cameras) == 1

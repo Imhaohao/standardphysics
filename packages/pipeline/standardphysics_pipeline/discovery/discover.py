@@ -54,11 +54,18 @@ the model host's rate limit and lose frames to it."""
 MIN_VOLUME = 0.0004
 """Forty cubic centimetres, about a card reader lying flat. Smaller is noise."""
 MAX_FLOOR_CLEARANCE = 2.4
-CONFIDENT_VIEWS = 4
-"""Views that make a box worth trusting without a second look."""
+CONFIDENT_VIEWS = 3
+"""Separate places the object was seen from before its box is worth trusting."""
 MIN_VIEWS = 2
-"""An object one frame saw once is usually a fragment of something else. Two
-frames from different places agreeing is the cheapest evidence that it is real."""
+"""Fewer separate places than this and it is usually a fragment of something else."""
+APART = 0.75
+"""How far the phone must move before a second photo counts as a second look.
+
+Keyframes land twice a second, so a dozen of them in a row are one viewpoint
+seen twelve times, not twelve viewpoints. Counting frames made a fragment
+glimpsed once from a doorway look as well evidenced as a sofa walked around,
+and a fragment standing in an aisle turns a real route finding into a request
+to go and rescan it."""
 ALREADY_MEASURED = 0.6
 """A carved object mostly inside a node RoomPlan already boxed is that node, not a new one."""
 DISCOVERY_NAMESPACE = uuid.UUID("6f1f6a2e-9a5f-5f77-9a0c-8b6f1b0d4a10")
@@ -109,12 +116,14 @@ def discover_objects(inputs: DiscoveryInputs, *, transport: Transport | None = N
     )
     unclaimed = removal.points[~claimed_by_any(removal.points, graph)]
     candidates = _carve_all(cameras, detections, unclaimed, buffers)
-    objects = [
-        object_ for object_ in merge_candidates(candidates)
-        if _worth_keeping(object_, graph)
+    found = [
+        (object_, _viewpoints(object_, cameras))
+        for object_ in merge_candidates(candidates)
     ]
+    kept = [pair for pair in found if _worth_keeping(pair[0], graph, pair[1])]
+    objects = [object_ for object_, _ in kept]
     return DiscoveryResult(
-        nodes=[_node_for(object_, graph) for object_ in objects],
+        nodes=[_node_for(object_, graph, viewpoints) for object_, viewpoints in kept],
         objects=objects,
         frames_read=len(cameras) - len(failures),
         people_points_removed=removal.removed,
@@ -220,8 +229,20 @@ def _carve_all(
     return candidates
 
 
-def _worth_keeping(object_: DiscoveredObject, graph: SceneGraph) -> bool:
-    if object_.views < MIN_VIEWS:
+def _viewpoints(object_: DiscoveredObject, cameras: list[PhotoCamera]) -> int:
+    """How many separate places this was seen from, rather than how many frames saw it."""
+    positions = [
+        camera.position for camera in cameras if camera.frame_id in set(object_.frame_ids)
+    ]
+    kept: list[np.ndarray] = []
+    for position in positions:
+        if all(float(np.linalg.norm(position - other)) >= APART for other in kept):
+            kept.append(position)
+    return len(kept)
+
+
+def _worth_keeping(object_: DiscoveredObject, graph: SceneGraph, viewpoints: int) -> bool:
+    if viewpoints < MIN_VIEWS:
         return False
     if object_.box.volume < MIN_VOLUME or object_.box.floor_clearance > MAX_FLOOR_CLEARANCE:
         return False
@@ -232,7 +253,7 @@ def _worth_keeping(object_: DiscoveredObject, graph: SceneGraph) -> bool:
     )
 
 
-def _node_for(object_: DiscoveredObject, graph: SceneGraph) -> SceneNode:
+def _node_for(object_: DiscoveredObject, graph: SceneGraph, viewpoints: int) -> SceneNode:
     return SceneNode(
         id=_stable_id(graph.scan_id, object_),
         kind="object",
@@ -240,7 +261,7 @@ def _node_for(object_: DiscoveredObject, graph: SceneGraph) -> SceneNode:
         raw_category=object_.name.replace(" ", "_"),
         dimensions=object_.box.as_vec3(),
         transform=object_.box.as_transform(),
-        quality="measured" if object_.views >= CONFIDENT_VIEWS else "needs_another_look",
+        quality="measured" if viewpoints >= CONFIDENT_VIEWS else "needs_another_look",
         movable=object_.movable,
         labeled_by="discovery",
         parent_id=resting_parent(object_.box, graph),

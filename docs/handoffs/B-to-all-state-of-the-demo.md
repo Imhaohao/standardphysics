@@ -10,7 +10,7 @@ Everything below was run against **jerry's house**: a real 110-second capture,
 | Capture on the phone | LiDAR, video and 2 Hz photos, version 2 poses |
 | Upload | 218 frames, poses, mesh, room.json, walkthrough |
 | Ingest | 29 nodes from RoomPlan |
-| **Discovery** | **51 more objects RoomPlan has no category for** |
+| **Discovery** | **27 more objects RoomPlan has no category for** |
 | People removed | 12,927 mesh points, from 59 frames that had someone in them |
 | Checks | 9 rules, 8 findings with ADA citations and 3D locations |
 | Renders | one still per finding, from Blender |
@@ -95,3 +95,41 @@ the camera, clear of what it measures.
 
 I also tried framing portals from standing height rather than from above.
 That was treating the symptom, and it is reverted.
+
+
+## A fragment in an aisle invents a violation
+
+Discovery counted a frame as a look. Keyframes land twice a second, so a dozen
+of them in a row counted as a dozen looks at something the phone saw once from
+a doorway. Fragments came through with enough apparent support to be emitted,
+and some of them stood in the aisle.
+
+They were not harmless. On this capture they produced:
+
+- a turn reported as **30.6 in**, a red finding, against a requirement of 48
+- a route reported as **26.4 in**, against a requirement of 36
+
+Counting separate places the phone stood, rather than frames, drops 55 objects
+to 27 and those findings become **51.5 in, which passes** and **36.2 in**. We
+were reporting a violation that was not there.
+
+What survives is the real furniture: the sofa, the shelving, the chairs, the
+lamps, a backpack, a laptop, a kettlebell, a book, a shoe. Half of them carry
+`needs_another_look`, including things seen in a dozen frames from one spot,
+which is the honest reading of standing still and pointing.
+
+## Findings now reach the objects discovery found
+
+With a customer route marked, 14 rules run and 5 findings pin to objects
+RoomPlan never boxed: a shoe and a kettlebell on the exit path, a laptop and a
+backpack narrowing the passing space and the route.
+
+They come out as questions rather than problems, because a discovered object in
+the pinch carries `needs_another_look`. That is the right way round: an object
+carved to within about eight inches should ask for a better look before it
+accuses anybody.
+
+**Nothing runs these rules until a route is marked.** Without one the
+route rules are stripped and the shop reads as eight door findings. The
+"Mark the customer route" button is not decoration; it is what turns the
+checks on.
