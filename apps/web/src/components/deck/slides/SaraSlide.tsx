@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, animate, motion, useMotionValue, type MotionValue, type Transition, type Variants } from "motion/react";
+import { AnimatePresence, animate, motion, useMotionValue, useTransform, type MotionValue, type Transition, type Variants } from "motion/react";
 import { facts } from "@/lib/facts";
 import { useCallback, useEffect, useState } from "react";
 import { easeDrawn, exitTransition } from "@/lib/motion";
@@ -264,13 +264,20 @@ function SaraShopScene({ phase }: { phase: Phase }) {
   );
 }
 
-const FLIGHT_PATH = [
-  { x: 0, y: 0 },
-  { x: -0.9, y: -0.55 },
-  { x: -1.7, y: 0.05 },
-  { x: -0.6, y: 0.35 },
-  { x: 0.25, y: -0.45 },
-];
+/**
+ * The dot's flight, in fractions of the art box. It leaves the shop along an ellipse that swings left over the
+ * middle of the slide, comes back around, and eases onto its place in the field over the last stretch.
+ */
+const FLIGHT = { centerX: 0.05, centerY: 0.5, radiusX: 0.9, radiusY: 0.416, startDegrees: 60, settleFrom: 0.72, popScale: 1.6 };
+
+const smoothstep = (value: number) => value * value * (3 - 2 * value);
+
+function flightPoint(progress: number, landing: FieldOrigin): FieldOrigin {
+  const angle = ((FLIGHT.startDegrees + progress * 360) * Math.PI) / 180;
+  const orbit = { x: FLIGHT.centerX + FLIGHT.radiusX * Math.cos(angle), y: FLIGHT.centerY + FLIGHT.radiusY * Math.sin(angle) };
+  const settle = smoothstep(Math.max(0, (progress - FLIGHT.settleFrom) / (1 - FLIGHT.settleFrom)));
+  return { x: orbit.x + (landing.x - orbit.x) * settle, y: orbit.y + (landing.y - orbit.y) * settle };
+}
 
 function useLanding(active: boolean) {
   const [landed, setLanded] = useState(false);
@@ -286,17 +293,15 @@ function useLanding(active: boolean) {
 }
 
 function FlyingDot({ landing }: { landing: FieldOrigin }) {
-  const path = [...FLIGHT_PATH.map((point) => ({ x: SHOP_IN_FIELD.x + point.x, y: SHOP_IN_FIELD.y + point.y })), landing];
-  const toPercent = (value: number) => `${value * 100}%`;
-  return (
-    <motion.span
-      aria-hidden
-      initial={{ left: toPercent(SHOP_IN_FIELD.x), top: toPercent(SHOP_IN_FIELD.y), scale: 0 }}
-      animate={{ left: path.map((point) => toPercent(point.x)), top: path.map((point) => toPercent(point.y)), scale: [0, 2.4, 2.4, 2.4, 2.4, 1] }}
-      transition={{ duration: FIELD.flightSeconds, delay: FIELD.collapseSeconds - 0.15, ease: "easeInOut" }}
-      className="flying-dot absolute z-30 rounded-full bg-tape"
-    />
-  );
+  const progress = useMotionValue(0);
+  useEffect(() => {
+    const controls = animate(progress, 1, { duration: FIELD.flightSeconds, delay: FIELD.collapseSeconds - 0.15, ease: [0.45, 0, 0.55, 1] });
+    return () => controls.stop();
+  }, [progress]);
+  const left = useTransform(progress, (value) => `${flightPoint(value, landing).x * 100}%`);
+  const top = useTransform(progress, (value) => `${flightPoint(value, landing).y * 100}%`);
+  const scale = useTransform(progress, [0, 0.12, 0.85, 1], [0, FLIGHT.popScale, FLIGHT.popScale, 1]);
+  return <motion.span aria-hidden style={{ left, top, scale }} className="flying-dot absolute z-30 rounded-full bg-tape" />;
 }
 
 export function SaraSlide({ step }: SlideProps) {

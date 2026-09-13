@@ -92,7 +92,7 @@
   width: 0.9vh;
   height: 0.9vh;
   translate: -50% -50%;
-  box-shadow: 0 0 1.2vh 0.3vh var(--color-tape);
+  box-shadow: 0 0 0.5vh 0 color-mix(in srgb, var(--color-tape) 45%, transparent);
 }
 
 @utility step-badge {
