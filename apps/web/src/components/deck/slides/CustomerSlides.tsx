@@ -67,8 +67,8 @@ export function PivotSlide() {
   );
 }
 
-type BoomerPhase = "aging" | "disability" | "wealth" | "spending";
-const boomerPhases: BoomerPhase[] = ["aging", "disability", "wealth", "spending"];
+type BoomerPhase = "aging" | "disability" | "wealth";
+const boomerPhases: BoomerPhase[] = ["aging", "disability", "wealth"];
 
 const CROWD = { columns: 10, rows: 5 };
 const crowdSize = CROWD.columns * CROWD.rows;
@@ -175,19 +175,10 @@ function WealthCopy() {
   );
 }
 
-function SpendingCopy() {
-  return (
-    <h2 className="font-display text-figure font-extrabold">
-      <MaskedLines lines={["The customers who need accessible spaces", "have the most money to spend."]} delay={0.1} />
-    </h2>
-  );
-}
-
 function BoomerCopy({ phase, year }: { phase: BoomerPhase; year: MotionValue<number> }) {
   if (phase === "aging") return <AgingCopy year={year} />;
   if (phase === "disability") return <DisabilityCopy />;
-  if (phase === "wealth") return <WealthCopy />;
-  return <SpendingCopy />;
+  return <WealthCopy />;
 }
 
 function useBoomerYear() {
@@ -198,7 +189,7 @@ function useBoomerYear() {
 export function BoomersSlide({ step }: SlideProps) {
   const phase = boomerPhases[Math.min(step, boomerPhases.length - 1)];
   const year = useBoomerYear();
-  const showsMoney = phase === "wealth" || phase === "spending";
+  const showsMoney = phase === "wealth";
 
   return (
     <div className="deck-gutter flex h-full flex-col justify-center gap-deck-rise">
