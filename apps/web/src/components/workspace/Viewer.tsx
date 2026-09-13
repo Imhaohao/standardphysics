@@ -11,11 +11,13 @@ import { CameraRig } from "./CameraRig";
 import { MODEL, outcomeColor } from "./palette";
 import { type ArrangeHandlers, BoxShopModel, GlbShopModel } from "./ShopModel";
 import { LidarShopModel } from "./LidarShopModel";
+import { type RouteHandles, StopMarkers } from "./StopMarkers";
 
 type ViewerProps = {
   scene: SceneGraph;
   exported: SceneGraph;
   arrange: ArrangeHandlers | null;
+  route: RouteHandles | null;
   dragging: boolean;
   glbUrl: string | null;
   lidarUrl: string | null;
@@ -81,7 +83,7 @@ function ShopSurfaces({ scene, exported, arrange, glbUrl, lidarUrl, selected, on
   );
 }
 
-export default function Viewer({ scene, exported, arrange, dragging, glbUrl, lidarUrl, pose, selected, onSelectNode, onClearSelection }: ViewerProps) {
+export default function Viewer({ scene, exported, arrange, route, dragging, glbUrl, lidarUrl, pose, selected, onSelectNode, onClearSelection }: ViewerProps) {
   const [measuredBounds, setMeasuredBounds] = useState<Box3 | null>(null);
 
   return (
@@ -108,6 +110,7 @@ export default function Viewer({ scene, exported, arrange, dragging, glbUrl, lid
       <ContactShadows position={[0, 0.001, 0]} scale={30} opacity={0.35} blur={2.4} far={3} frames={1} /></>}
       <ShopSurfaces scene={scene} exported={exported} arrange={arrange} glbUrl={glbUrl} lidarUrl={lidarUrl} selected={selected} onSelectNode={onSelectNode} onBounds={setMeasuredBounds} />
       {selected && <FindingAnnotation finding={selected} />}
+      {route && <StopMarkers route={route} />}
     </Canvas>
   );
 }

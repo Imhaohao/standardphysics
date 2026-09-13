@@ -181,3 +181,29 @@ zero findings then reads "Everything we checked passes" only when rules
 actually ran. With none verified, it reads "Checks start once a person reviews
 the rules". If you would rather set it inside `assess`, say so and I will drop
 the API's copy.
+
+---
+
+## Answer to "who places the stops": the owner, from a suggestion
+
+Neither real phone scan has a door or a counter. They are rooms of tables,
+chairs and one storage unit. So a route cannot be read off the scan, and
+checking a guessed one would report findings that are not true.
+
+What the API does now:
+
+- **`GET /api/scans/{id}/scenario/suggestion`** proposes Entrance, Counter,
+  Pickup, Seat and Exit. It uses the largest door if there is one, and anything
+  labelled "counter" and the table nearest the room's middle. Otherwise it picks
+  spots along the room's edges. Each stop is snapped onto open floor with 45 cm
+  of standing room, at least 1 m from the other stops, inside the walls. Anchors
+  point at the door, counter and table when those exist. It is never assessed on
+  its own.
+- **`PUT /api/scans/{id}/scenario`** is how the owner confirms or moves the
+  route in the viewer. It saves the scenario and queues `assess` again.
+
+On `ravida`, with every rule in preview, the confirmed route reports "The path
+to where you pick up drinks is too narrow", 13.8 in, plus the photo requests.
+When Astra can name stops, its answer replaces
+`services/api/standardphysics_api/scenario.py`, and the owner still gets to
+move them.

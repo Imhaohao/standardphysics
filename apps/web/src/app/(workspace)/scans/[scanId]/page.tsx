@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { RefreshWhile } from "@/components/RefreshWhile";
 import { Workspace } from "@/components/workspace/Workspace";
-import { getAssessment, getScan, getScene, sceneGlbUrl } from "@/lib/api";
+import { getAssessment, getScan, getScenario, getScenarioSuggestion, getScene, sceneGlbUrl } from "@/lib/api";
 import { API_ORIGIN } from "@/lib/api-origin";
 import { scanStatus } from "@/lib/scan-status";
 import type { Scan, SceneGraph } from "@/types/contracts";
@@ -42,11 +42,13 @@ export default async function ShopPage({ params }: PageProps<"/scans/[scanId]">)
   const [scene, glbRevision] = await Promise.all([getScene(scanId), glbExportedRevision(scanId)]);
   if (!scene) return <NotMeasuredYet scan={scan} />;
 
-  const [assessment, exported, previous] = await Promise.all([
+  const [assessment, exported, previous, scenario] = await Promise.all([
     getAssessment(scanId, scene.revision),
     loadExported(scanId, scene, glbRevision),
     scene.revision === 0 ? null : loadPrevious(scanId, scene.revision - 1),
+    getScenario(scanId),
   ]);
+  const suggestedScenario = scenario ? null : await getScenarioSuggestion(scanId);
   return (
     <Workspace
       scan={scan}
@@ -55,6 +57,8 @@ export default async function ShopPage({ params }: PageProps<"/scans/[scanId]">)
       assessment={assessment}
       previous={previous}
       glbUrl={glbRevision === null ? null : sceneGlbUrl(scanId)}
+      scenario={scenario}
+      suggestedScenario={suggestedScenario}
       lidarUrl={scan.artifacts.some((artifact) => artifact.kind === "lidar_mesh") ? `/api/scans/${scanId}/lidar-mesh` : null}
     />
   );

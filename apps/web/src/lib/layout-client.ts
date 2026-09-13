@@ -1,4 +1,4 @@
-import type { LayoutCheckResult, NodeMove, ProposalResult, SceneGraph } from "@/types/contracts";
+import type { LayoutCheckResult, NodeMove, ProposalResult, Scenario, SceneGraph } from "@/types/contracts";
 
 export class ApiRefusal extends Error {
   constructor(readonly status: number, readonly error: string) {
@@ -6,9 +6,9 @@ export class ApiRefusal extends Error {
   }
 }
 
-async function postJson<T>(url: string, body: unknown): Promise<T> {
+async function sendJson<T>(url: string, body: unknown, method = "POST"): Promise<T> {
   const response = await fetch(url, {
-    method: "POST",
+    method,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
@@ -20,7 +20,7 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
 }
 
 export function checkLayout(scanId: string, baseRevision: number, sequence: number, moves: NodeMove[]) {
-  return postJson<LayoutCheckResult>(`/api/scans/${scanId}/layout-checks`, {
+  return sendJson<LayoutCheckResult>(`/api/scans/${scanId}/layout-checks`, {
     base_revision: baseRevision,
     sequence,
     moves,
@@ -28,9 +28,13 @@ export function checkLayout(scanId: string, baseRevision: number, sequence: numb
 }
 
 export function saveLayout(scanId: string, baseRevision: number, moves: NodeMove[]) {
-  return postJson<SceneGraph>(`/api/scans/${scanId}/revisions`, { base_revision: baseRevision, moves });
+  return sendJson<SceneGraph>(`/api/scans/${scanId}/revisions`, { base_revision: baseRevision, moves });
 }
 
 export function proposeFix(scanId: string, baseRevision: number, findingIds: string[]) {
-  return postJson<ProposalResult>(`/api/scans/${scanId}/proposals`, { base_revision: baseRevision, finding_ids: findingIds });
+  return sendJson<ProposalResult>(`/api/scans/${scanId}/proposals`, { base_revision: baseRevision, finding_ids: findingIds });
+}
+
+export function confirmRoute(scanId: string, scenario: Scenario) {
+  return sendJson<Scenario>(`/api/scans/${scanId}/scenario`, scenario, "PUT");
 }

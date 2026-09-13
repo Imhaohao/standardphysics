@@ -212,3 +212,16 @@ needs to show:
 
 The deck in `apps/web` draws a 36 in long lowered section next to it, so leave
 a little room at one end of the counter.
+
+---
+
+## Real phone scans: the floor node's dimensions swap depth and height
+
+For both `datasets/phone/ravida` and `test1`, `parse_room_json` gives the
+floor `dimensions` of (9.78, 0.00, 8.41) and (11.22, 0.00, 10.56), which is
+8 to 10 m tall and zero deep. RoomPlan writes a floor as [x, y, 0] with its
+local z pointing up, so `dimensions_to_z_up` is swapping the wrong pair for
+floors. Nothing in Lane D reads the floor's size today; I use the wall
+footprints for the room outline instead. Anything that takes the room's extent
+from the floor node will be wrong, and a floor footprint currently has no
+depth at all.

@@ -34,9 +34,10 @@ from .coverage import parse_coverage
 from .db import Database
 from .errors import ApiProblem
 from .layout import check_layout, save_layout
+from .lidar_mesh import InvalidLidarMesh, validate_lidar_mesh
 from .proposals import propose
 from .report import build_report
-from .lidar_mesh import InvalidLidarMesh, validate_lidar_mesh
+from .route import confirm, suggestion
 from .seed import seed_sample_shop
 from .settings import Settings
 from .stages import Stages, preview_ledger
@@ -91,7 +92,9 @@ def create_app(settings: Settings | None = None, stages: Stages | None = None, r
     _install_scan_routes(app, database)
     _install_upload_routes(app, database, store, worker)
     _install_workspace_routes(app, database, store)
+    _install_file_routes(app, database, store)
     _install_layout_routes(app, database, stages, worker)
+    _install_route_routes(app, database, worker)
 
     @app.get("/api/scans/{scan_id}/report", response_model=Report)
     def report(scan_id: uuid.UUID) -> Report:
@@ -219,24 +222,6 @@ def _install_workspace_routes(app: FastAPI, database: Database, store: ArtifactS
             raise ApiProblem(404, "not ready")
         return repo.graph_of(row)
 
-    @app.head("/api/scans/{scan_id}/scene.glb")
-    @app.get("/api/scans/{scan_id}/scene.glb")
-    def scene_glb(scan_id: uuid.UUID) -> FileResponse:
-        with database.connect() as connection:
-            _scan_or_404(connection, scan_id)
-            found = repo.display_geometry(connection, scan_id)
-        response = _file_or_404(found[0] if found else None, "model/gltf-binary")
-        response.headers["X-Exported-Revision"] = str(found[1])
-        return response
-
-    @app.get("/api/scans/{scan_id}/lidar-mesh")
-    def lidar_mesh(scan_id: uuid.UUID) -> FileResponse:
-        with database.connect() as connection:
-            _scan_or_404(connection, scan_id)
-            artifact = repo.artifact_of_kind(connection, scan_id, "lidar_mesh")
-        path = store.artifact_path(scan_id, artifact.id) if artifact else None
-        return _file_or_404(path, "application/json")
-
     @app.get("/api/scans/{scan_id}/scenario", response_model=Scenario)
     def scenario(scan_id: uuid.UUID) -> Scenario:
         with database.connect() as connection:
@@ -259,15 +244,6 @@ def _install_workspace_routes(app: FastAPI, database: Database, store: ArtifactS
             raise ApiProblem(404, "not ready")
         return found
 
-    @app.get("/api/scans/{scan_id}/renders/{finding_id}.png")
-    def render(scan_id: uuid.UUID, finding_id: uuid.UUID) -> FileResponse:
-        with database.connect() as connection:
-            revision = repo.get_revision(connection, scan_id)
-        if revision is None:
-            raise ApiProblem(404, "not ready")
-        directory = store.scan_dir(scan_id) / "revisions"
-        matches = sorted(directory.glob(f"*/renders/{finding_id}.png"), key=lambda path: int(path.parent.parent.name))
-        return _file_or_404(matches[-1] if matches else None, "image/png")
 
 
 def _install_layout_routes(app: FastAPI, database: Database, stages: Stages, worker: Worker) -> None:
@@ -282,3 +258,43 @@ def _install_layout_routes(app: FastAPI, database: Database, stages: Stages, wor
     @app.post("/api/scans/{scan_id}/revisions", response_model=SceneGraph, status_code=201)
     def save_revision(scan_id: uuid.UUID, body: SaveLayoutRequest) -> SceneGraph:
         return save_layout(database, worker, scan_id, body)
+
+
+def _install_route_routes(app: FastAPI, database: Database, worker: Worker) -> None:
+    @app.get("/api/scans/{scan_id}/scenario/suggestion", response_model=Scenario)
+    def scenario_suggestion(scan_id: uuid.UUID) -> Scenario:
+        return suggestion(database, scan_id)
+
+    @app.put("/api/scans/{scan_id}/scenario", response_model=Scenario)
+    def confirm_scenario(scan_id: uuid.UUID, body: Scenario) -> Scenario:
+        return confirm(database, worker, scan_id, body)
+
+
+def _install_file_routes(app: FastAPI, database: Database, store: ArtifactStore) -> None:
+    @app.head("/api/scans/{scan_id}/scene.glb")
+    @app.get("/api/scans/{scan_id}/scene.glb")
+    def scene_glb(scan_id: uuid.UUID) -> FileResponse:
+        with database.connect() as connection:
+            _scan_or_404(connection, scan_id)
+            found = repo.display_geometry(connection, scan_id)
+        response = _file_or_404(found[0] if found else None, "model/gltf-binary")
+        response.headers["X-Exported-Revision"] = str(found[1])
+        return response
+
+    @app.get("/api/scans/{scan_id}/lidar-mesh")
+    def lidar_mesh(scan_id: uuid.UUID) -> FileResponse:
+        with database.connect() as connection:
+            _scan_or_404(connection, scan_id)
+            artifact = repo.artifact_of_kind(connection, scan_id, "lidar_mesh")
+        path = store.artifact_path(scan_id, artifact.id) if artifact else None
+        return _file_or_404(path, "application/json")
+
+    @app.get("/api/scans/{scan_id}/renders/{finding_id}.png")
+    def render(scan_id: uuid.UUID, finding_id: uuid.UUID) -> FileResponse:
+        with database.connect() as connection:
+            revision = repo.get_revision(connection, scan_id)
+        if revision is None:
+            raise ApiProblem(404, "not ready")
+        directory = store.scan_dir(scan_id) / "revisions"
+        matches = sorted(directory.glob(f"*/renders/{finding_id}.png"), key=lambda path: int(path.parent.parent.name))
+        return _file_or_404(matches[-1] if matches else None, "image/png")

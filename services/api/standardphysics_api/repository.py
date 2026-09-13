@@ -130,6 +130,16 @@ def enqueue_job(connection: sqlite3.Connection, scan_id: uuid.UUID, kind: str, r
     )
 
 
+def queue_job_again(connection: sqlite3.Connection, scan_id: uuid.UUID, kind: str, revision: int) -> None:
+    """Queue a job whether or not it ran before, unless it is running now."""
+    connection.execute(
+        "INSERT INTO jobs (scan_id, kind, revision, state, created_at) VALUES (?, ?, ?, 'queued', ?)"
+        " ON CONFLICT (scan_id, kind, revision) DO UPDATE SET state = 'queued', error = NULL"
+        " WHERE jobs.state != 'running'",
+        (str(scan_id), kind, revision, now()),
+    )
+
+
 def claim_job(connection: sqlite3.Connection) -> sqlite3.Row | None:
     return connection.execute(
         "UPDATE jobs SET state = 'running', attempts = attempts + 1"

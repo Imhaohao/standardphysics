@@ -29,3 +29,4 @@ export const getAssessment = (scanId: string, revision?: number) =>
 
 export const sceneGlbUrl = (scanId: string) => `/api/scans/${scanId}/scene.glb`;
 export const getReport = (scanId: string) => getOptional<Report>(`/api/scans/${scanId}/report`);
+export const getScenarioSuggestion = (scanId: string) => getOptional<Scenario>(`/api/scans/${scanId}/scenario/suggestion`);
