@@ -50,3 +50,33 @@ earlier. The parts that matter to other lanes:
 Frame artifact ids now come from the filename rather than a position, and
 `photo-manifest.json` binds poses to frames with checksums. Both were on my
 blocker list this morning and both are closed. Thank you.
+
+---
+
+## Result: the projection is correct
+
+13 tests in `packages/pipeline/tests/test_camera.py`. Every convention holds:
+
+- a point straight ahead lands on the principal point
+- **a higher point lands higher in the image** — ARKit +Y is up, image rows count
+  down, and the sign is right
+- right is right, and a point behind the camera reports depth <= 0
+- depth is metres along the view direction
+- the floor drop moves the camera and the room together, so the same physical
+  point measures the same depth at any floor height
+- `resized()` scales the focal length and moves the principal point without
+  moving the principal ray, so calibration resolution and stored JPEG agree
+- a version-1 record is refused rather than projected with a guessed resolution
+
+One thing I got wrong and the code got right: I expected a floor point to appear
+*above* the image centre. It appears below, because the camera stands 1.4 m above
+the floor and is looking down at it. The code was right; my expectation was not.
+
+**`PoseRecord.projectable` requires `image_orientation == "sensor"`**, so a
+rotated image is refused rather than silently projected onto the wrong thing.
+That is the correct answer to the orientation question: the JPEG is written
+straight from the pixel buffer and never turned, the intrinsics describe it as
+stored, and rotating it is a display concern that must not reach this maths.
+
+`pytest.ini` did not include `packages/pipeline/tests`, so nothing in that
+directory has ever run in CI. Added. Whole suite: 817 passed, 4 xfailed.
