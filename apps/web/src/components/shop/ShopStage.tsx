@@ -121,11 +121,12 @@ function useRecoverFromContextLoss() {
     return () => window.clearTimeout(timer);
   }, [lost]);
 
-  const watch = useCallback((gl: WebGLRenderer) => {
+  const watch = useCallback((gl: WebGLRenderer, stopRendering: () => void) => {
     gl.domElement.addEventListener(
       "webglcontextlost",
       (event) => {
         event.preventDefault();
+        stopRendering();
         setLost(true);
       },
       { once: true },
@@ -154,9 +155,9 @@ export function ShopStage({ shot }: { shot: ShotName }) {
             far: 120,
             position: shots.awayBeforeScan.cameraPosition,
           }}
-          onCreated={({ gl }) => {
+          onCreated={({ gl, setFrameloop }) => {
             gl.localClippingEnabled = true;
-            watch(gl);
+            watch(gl, () => setFrameloop("never"));
           }}
         >
           <StageLevelsProvider shot={shot}>

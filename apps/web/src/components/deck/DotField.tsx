@@ -107,7 +107,7 @@ class FieldPainter {
     context.save();
     context.setTransform(1, 0, 0, 1, 0, 0);
     context.clearRect(0, 0, context.canvas.width, context.canvas.height);
-    context.drawImage(this.settled, 0, 0);
+    if (this.settled.width > 0 && this.settled.height > 0) context.drawImage(this.settled, 0, 0);
     context.restore();
 
     context.fillStyle = this.colors.ink;
