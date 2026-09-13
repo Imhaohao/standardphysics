@@ -12,11 +12,17 @@ import json
 
 import pytest
 from standardphysics_agents.evaluation import dataset
-from standardphysics_agents.evaluation.configuration import Setup, setup
+from standardphysics_agents.evaluation.configuration import (
+    Setup,
+    measurements,
+    new_measurements,
+    setup,
+)
 from standardphysics_agents.evaluation.experiments import (
     DEFAULT_GRID,
     GRID_AXES,
     TABLE_COLUMNS,
+    Counted,
     grid,
     log_experiments,
     run_experiment,
@@ -25,6 +31,11 @@ from standardphysics_agents.evaluation.experiments import (
     target,
 )
 from standardphysics_agents.evaluation.scorers import LOWER_IS_BETTER, SCORERS
+from standardphysics_fixtures import (
+    FixtureMeasurements,
+    build_graph,
+    build_scenario,
+)
 
 TWO_CASES = dataset()[:2]
 
@@ -87,14 +98,14 @@ def experiment():
 
 class TestTheGrid:
     def test_every_combination_gets_a_configuration(self):
-        built = grid(measurements=("pipeline", "stub"), fix_candidates=(4, 8))
-        assert {(s.measurements, s.fix_candidates) for s in built} == {
-            ("pipeline", 4), ("pipeline", 8), ("stub", 4), ("stub", 8),
+        built = grid(cell_size=(0.025, 0.05), fix_candidates=(4, 8))
+        assert {(s.cell_size, s.fix_candidates) for s in built} == {
+            (0.025, 4), (0.025, 8), (0.05, 4), (0.05, 8),
         }
 
     def test_a_label_says_what_the_configuration_sets(self):
-        assert setup(measurements="stub", fix_candidates=4).label == (
-            "stub measurements, 4 candidates"
+        assert setup(cell_size=0.05, fix_candidates=4).label == (
+            "50 mm cells, 4 candidates"
         )
 
     def test_a_label_leaves_the_defaults_out(self):
@@ -103,7 +114,7 @@ class TestTheGrid:
 
     def test_the_default_grid_varies_two_knobs(self):
         assert len(GRID_AXES) == 2
-        assert len(DEFAULT_GRID) == len(GRID_AXES["measurements"]) * len(
+        assert len(DEFAULT_GRID) == len(GRID_AXES["cell_size"]) * len(
             GRID_AXES["fix_candidates"]
         )
 
@@ -146,19 +157,29 @@ class TestTheMetrics:
 
     def test_it_says_what_the_run_spent(self, experiment):
         metrics = experiment.metrics()
-        assert metrics["wall_seconds"] >= 0
-        assert metrics["seconds_per_case"] >= 0
-        assert metrics["candidates_measured"] >= 0
+        assert metrics["cost/wall_seconds"] >= 0
+        assert metrics["cost/seconds_per_case"] >= 0
+        assert metrics["cost/candidates_measured"] >= 0
 
     def test_candidates_measured_sums_the_fix_searches(self, experiment):
         expected = sum(
             o.fix.measured for o in experiment.result.outcomes if o.fix is not None
         )
-        assert experiment.metrics()["candidates_measured"] == expected
+        assert experiment.metrics()["cost/candidates_measured"] == expected
+
+    def test_it_counts_every_measurement_asked_for(self, experiment):
+        metrics = experiment.metrics()
+        asked = {
+            name: value
+            for name, value in metrics.items()
+            if name.startswith("measurements/")
+        }
+        assert asked
+        assert sum(asked.values()) == metrics["cost/measurements_taken"]
 
     def test_it_says_whether_the_run_completed(self, experiment):
-        assert experiment.metrics()["completed"] is True
-        assert experiment.metrics()["cases_failed"] == 0
+        assert experiment.metrics()["cost/completed"] is True
+        assert experiment.metrics()["cost/cases_failed"] == 0
 
 
 class TestTheCaseTable:
@@ -234,7 +255,7 @@ class TestWithoutAnAccount:
     def test_a_refused_key_leaves_the_numbers_alone(self, wandb, experiment):
         wandb.refuse = True
         assert log_experiments([experiment]) == []
-        assert experiment.metrics()["completed"] is True
+        assert experiment.metrics()["cost/completed"] is True
 
     def test_it_says_what_to_install(self, monkeypatch, experiment):
         import sys
@@ -286,3 +307,42 @@ class TestTheLadderKnob:
             fixable,
         )
         assert limits == [3]
+
+
+class TestCountingWhatWasMeasured:
+    """A count is the same number every run. Wall seconds are not."""
+
+    def test_it_counts_each_question(self):
+        counted = Counted(FixtureMeasurements())
+        graph, scenario = build_graph(), build_scenario()
+        counted.route_clear_width(graph, scenario, 0)
+        counted.route_clear_width(graph, scenario, 1)
+        counted.turning_space(graph, scenario.stops[0].position)
+        assert counted.calls == {"route_clear_width": 2, "turning_space": 1}
+        assert counted.total == 3
+
+    def test_it_returns_the_provider_s_answer(self):
+        graph, scenario = build_graph(), build_scenario()
+        provider = FixtureMeasurements()
+        assert Counted(provider).route_clear_width(
+            graph, scenario, 0
+        ).inches == provider.route_clear_width(graph, scenario, 0).inches
+
+    def test_it_leaves_a_plain_attribute_alone(self):
+        assert Counted(new_measurements("pipeline", 0.05)).cell_size == 0.05
+
+
+class TestTheCellSizeKnob:
+    def test_the_configuration_sets_the_grid_the_room_is_measured_on(self):
+        assert new_measurements("pipeline", 0.04).cell_size == 0.04
+
+    def test_each_configuration_gets_its_own_provider(self):
+        """Two configurations sharing one provider means the second rides the
+        first one's cache and its cost says nothing."""
+        assert new_measurements("pipeline") is not new_measurements("pipeline")
+
+    def test_scoring_one_configuration_reuses_its_provider(self):
+        assert measurements("pipeline") is measurements("pipeline")
+
+    def test_the_stub_ignores_it(self):
+        assert not hasattr(new_measurements("stub", 0.05), "cell_size")

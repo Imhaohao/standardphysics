@@ -444,8 +444,8 @@ def _experiments(args) -> int:
 
 
 GRID_HEADER = (
-    f"{'configuration':38} {'weakest score':28} {'error in':>9} "
-    f"{'candidates':>11} {'seconds':>8}"
+    f"{'configuration':34} {'weakest score':28} {'error in':>9} "
+    f"{'measurements':>13} {'seconds':>8}"
 )
 
 
@@ -454,10 +454,10 @@ def _print_grid(experiments) -> None:
     for experiment in experiments:
         metrics = experiment.metrics()
         print(
-            f"{experiment.setup.label:38} {_weakest(metrics):28} "
+            f"{experiment.setup.label:34} {_weakest(metrics):28} "
             f"{_reading(metrics.get('measurement_error_in')):>9} "
-            f"{metrics['candidates_measured']:>11} "
-            f"{metrics['wall_seconds']:>8.1f}"
+            f"{metrics['cost/measurements_taken']:>13} "
+            f"{metrics['cost/wall_seconds']:>8.1f}"
         )
 
 

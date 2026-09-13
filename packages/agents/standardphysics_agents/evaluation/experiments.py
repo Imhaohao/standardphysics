@@ -7,16 +7,18 @@ grid it will draw the heat map over two axes or the parallel coordinates over
 all of them, and say which knob moved which metric. So the same cases and the
 same scorers are logged both ways, and neither one re-implements a score.
 
-The grid varies two knobs. `measurements` swaps Lane B's pipeline for the
-fixtures' simplified stand-in, which says how much of the score rests on
-measuring the room rather than on the rules. `fix_candidates` is how deep the
-fix agent's ladder goes before it gives up. Both change what the system does
-without changing what a correct answer is.
+The grid varies two knobs, both of which trade work against accuracy.
+`cell_size` is how coarse the occupancy grid is that every width and clearance
+is measured on: halving it quarters the cells and multiplies the measuring,
+and coarsening it eventually moves a measurement across a threshold and changes
+what the checks report. `fix_candidates` is how deep the fix agent's ladder
+goes before it gives up.
 
 The question the grid is built to answer: every accuracy scorer sits at 1.000
-on this dataset, so the axis with room left in it is what the loop spends to
-get there. A configuration that keeps every score and measures fewer candidates
-is a faster loop for the same answer.
+on this dataset at the shipped settings, so the thing worth knowing is how much
+of that work is load-bearing. The cheapest configuration that keeps every score
+is a faster loop for the same answer, and the first configuration that loses a
+score says where the margin actually is.
 
 The local JSON is the authoritative record here, as it is for a single run:
 the grid runs and saves with no account, and W&B gets the same numbers when a
@@ -25,18 +27,20 @@ key is present.
 
 from __future__ import annotations
 
+import functools
 import itertools
 import json
 import logging
 import os
 import time
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from ..rules import load_pack
 from ..tracing import ENTITY_ENV, PROJECT_ENV
-from .configuration import Setup, ledger, measurements, router, setup
+from .configuration import Setup, ledger, new_measurements, router, setup
 from .dataset import Case, dataset
 from .runner import EvaluationResult, evaluate
 from .scorers import LOWER_IS_BETTER, SCORERS
@@ -50,15 +54,19 @@ JOB_TYPE = "evaluation"
 TAGS = ("shop-review", "evaluation", "aria")
 
 GRID_AXES: dict[str, tuple[Any, ...]] = {
-    "measurements": ("pipeline", "stub"),
+    "cell_size": (0.015, 0.025, 0.05),
     "fix_candidates": (4, 8, 16),
 }
-"""Two axes, so the grid is the shape ARIA draws as a heat map."""
+"""Two axes, so the grid is the shape ARIA draws as a heat map.
+
+The middle cell size is what the pipeline ships. Fifty millimetres is two
+inches, which is coarse enough that a width can land on the wrong side of a
+36-inch threshold, so the row is there to show where that starts."""
 
 NOTES = (
     "One configuration of the shop review, scored against the labelled cases. "
-    "measurements is which pipeline answers a measurement, fix_candidates is "
-    "how deep the fix agent searches. "
+    "cell_size is the occupancy grid every width is measured on, in metres. "
+    "fix_candidates is how deep the fix agent searches. "
     f"{', '.join(sorted(LOWER_IS_BETTER))} is an error, so lower is better; "
     "every other score is a share of the cases, so higher is better."
 )
@@ -74,6 +82,37 @@ TABLE_COLUMNS = (
 log = logging.getLogger(__name__)
 
 
+class Counted:
+    """A measurement provider that keeps a tally of what was asked of it.
+
+    Wall seconds move with a warm cache, with the machine, and with whatever
+    else is running on it. A count of measurements is the same number every
+    time, which is what comparing one configuration against another needs. It
+    counts questions asked rather than grids built, so a provider that answers
+    from its cache still shows the work the configuration called for.
+    """
+
+    def __init__(self, provider: Any) -> None:
+        self.provider = provider
+        self.calls: Counter[str] = Counter()
+
+    def __getattr__(self, name: str) -> Any:
+        answer = getattr(self.provider, name)
+        if not callable(answer):
+            return answer
+
+        @functools.wraps(answer)
+        def counted(*args: Any, **kwargs: Any) -> Any:
+            self.calls[name] += 1
+            return answer(*args, **kwargs)
+
+        return counted
+
+    @property
+    def total(self) -> int:
+        return sum(self.calls.values())
+
+
 @dataclass(frozen=True)
 class Experiment:
     """One configuration, run, with what it scored and what it spent."""
@@ -81,6 +120,8 @@ class Experiment:
     setup: Setup
     result: EvaluationResult
     wall_seconds: float
+    asked: dict[str, int]
+    """How many times each measurement was asked for."""
 
     def config(self) -> dict[str, Any]:
         """Flat scalars only. A nested config is a config ARIA cannot plot."""
@@ -91,20 +132,30 @@ class Experiment:
         }
 
     def metrics(self) -> dict[str, Any]:
-        return {**self.result.scores, **self._cost()}
+        """The scores under the names scorers.py gives them, then the cost.
+
+        A metric means the same thing here as it does in the Evals tab, so the
+        scorer names are left alone and everything else is grouped under a
+        prefix W&B reads as a section.
+        """
+        return {**self.result.scores, **self._cost(), **self._asked()}
 
     def _cost(self) -> dict[str, Any]:
         fixes = [o.fix for o in self.result.outcomes if o.fix is not None]
         cases = len(self.result.outcomes) or 1
         return {
-            "wall_seconds": round(self.wall_seconds, 2),
-            "seconds_per_case": round(self.wall_seconds / cases, 3),
-            "candidates_measured": sum(fix.measured for fix in fixes),
-            "fixes_attempted": len(fixes),
-            "fixes_found": sum(1 for fix in fixes if fix.found),
-            "cases_failed": len(self.result.failures),
-            "completed": self.result.completed,
+            "cost/measurements_taken": sum(self.asked.values()),
+            "cost/candidates_measured": sum(fix.measured for fix in fixes),
+            "cost/wall_seconds": round(self.wall_seconds, 2),
+            "cost/seconds_per_case": round(self.wall_seconds / cases, 3),
+            "cost/fixes_attempted": len(fixes),
+            "cost/fixes_found": sum(1 for fix in fixes if fix.found),
+            "cost/cases_failed": len(self.result.failures),
+            "cost/completed": self.result.completed,
         }
+
+    def _asked(self) -> dict[str, int]:
+        return {f"measurements/{name}": n for name, n in sorted(self.asked.items())}
 
     def table_rows(self) -> list[list[Any]]:
         return [
@@ -135,10 +186,13 @@ DEFAULT_GRID = tuple(grid(**GRID_AXES))
 def run_experiment(
     configuration: Setup, cases: list[Case] | None = None
 ) -> Experiment:
-    """One configuration against every case, timed."""
+    """One configuration against every case, counted and timed."""
+    measure = Counted(
+        new_measurements(configuration.measurements, configuration.cell_size)
+    )
     started = time.monotonic()
     result = evaluate(
-        measure=measurements(configuration.measurements),
+        measure=measure,
         rules=load_pack(),
         ledger=ledger(configuration.preview_unverified),
         router=router(configuration.router),
@@ -147,7 +201,9 @@ def run_experiment(
         fix_candidates=configuration.fix_candidates,
         publish=False,
     )
-    return Experiment(configuration, result, time.monotonic() - started)
+    return Experiment(
+        configuration, result, time.monotonic() - started, dict(measure.calls)
+    )
 
 
 def run_grid(
@@ -275,6 +331,7 @@ def _wandb() -> Any:
 
 __all__ = [
     "DEFAULT_GRID", "GRID_AXES", "GROUP", "JOB_TYPE", "KEY_ENV", "NOTES",
-    "TABLE_COLUMNS", "TAGS", "Experiment", "grid", "log_experiments",
-    "run_experiment", "run_grid", "save_experiments", "target",
+    "TABLE_COLUMNS", "TAGS", "Counted", "Experiment", "grid",
+    "log_experiments", "run_experiment", "run_grid", "save_experiments",
+    "target",
 ]

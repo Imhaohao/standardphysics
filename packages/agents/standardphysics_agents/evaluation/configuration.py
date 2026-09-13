@@ -1,10 +1,10 @@
 """One configuration of the review, and running a case under it.
 
 A configuration is the set of knobs that change what the system does without
-changing what a correct answer is: which measurement pipeline answers, which
-router decides, whether the fix agent runs, how deep its ladder goes, and
-whether the rule pack is treated as verified. The cases carry their own tier,
-so tier is not one.
+changing what a correct answer is: which measurement pipeline answers, how
+coarse its occupancy grid is, which router decides, whether the fix agent runs,
+how deep its ladder goes, and whether the rule pack is treated as verified. The
+cases carry their own tier, so tier is not one.
 
 Two things publish these runs. `weave_eval.py` scores them as a Weave
 Evaluation, where the Evals tab draws a mean per scorer and a side by side.
@@ -18,6 +18,8 @@ from __future__ import annotations
 import functools
 from dataclasses import dataclass, replace
 from typing import Any, Callable
+
+from standardphysics_pipeline.occupancy import CELL_SIZE
 
 from ..rules import VerificationLedger, load_ledger, load_pack
 from .dataset import Case, dataset
@@ -34,6 +36,7 @@ evidence about a shop, and the run records the flag that produced it."""
 class Setup:
     label: str
     measurements: str = "pipeline"
+    cell_size: float = CELL_SIZE
     router: str = "local"
     run_fixes: bool = True
     fix_candidates: int = FIX_CANDIDATE_LIMIT
@@ -42,6 +45,7 @@ class Setup:
     def fields(self) -> dict[str, Any]:
         return {
             "measurements": self.measurements,
+            "cell_size": self.cell_size,
             "router": self.router,
             "run_fixes": self.run_fixes,
             "fix_candidates": self.fix_candidates,
@@ -65,6 +69,7 @@ the fix agent back says what the fixes cost the other scorers."""
 
 LABELS: dict[str, Callable[[Any], str | None]] = {
     "measurements": lambda value: f"{value} measurements",
+    "cell_size": lambda value: f"{value * 1000:.0f} mm cells",
     "router": lambda value: f"{value} router",
     "run_fixes": lambda value: None if value else "fixes off",
     "fix_candidates": lambda value: f"{value} candidates",
@@ -112,14 +117,12 @@ def review(configuration: Any, case_id: str) -> dict[str, Any]:
     """
     outcome = run_case(
         case(case_id),
-        measurements(configuration.measurements),
+        measurements(configuration.measurements, configuration.cell_size),
         load_pack(),
         ledger(configuration.preview_unverified),
         router(configuration.router),
         configuration.run_fixes,
-        fix_candidates=getattr(
-            configuration, "fix_candidates", FIX_CANDIDATE_LIMIT
-        ),
+        fix_candidates=configuration.fix_candidates,
     )
     return summary(outcome)
 
@@ -136,15 +139,26 @@ def case(case_id: str) -> Case:
     return found
 
 
-@functools.lru_cache(maxsize=2)
-def measurements(name: str):
+def new_measurements(name: str, cell_size: float = CELL_SIZE):
+    """A provider with nothing measured yet.
+
+    `PipelineMeasurements` keeps a clearance field and a path cache, so two
+    configurations sharing one provider means the second rides the first one's
+    work and its timings say nothing. A grid gives each configuration its own.
+    """
     if name == "stub":
         from standardphysics_fixtures import FixtureMeasurements
 
         return FixtureMeasurements()
     from standardphysics_pipeline import PipelineMeasurements
 
-    return PipelineMeasurements()
+    return PipelineMeasurements(cell_size=cell_size)
+
+
+@functools.lru_cache(maxsize=4)
+def measurements(name: str, cell_size: float = CELL_SIZE):
+    """The shared provider, for scoring case after case in one configuration."""
+    return new_measurements(name, cell_size)
 
 
 @functools.lru_cache(maxsize=2)
@@ -165,7 +179,7 @@ def ledger(preview_unverified: bool) -> VerificationLedger:
 
 
 __all__ = [
-    "DEFAULT_SETUPS", "LABELS", "PREVIEW_REVIEWER", "Setup", "case",
-    "label_for", "ledger", "measurements", "previewing", "review", "router",
-    "setup", "summary",
+    "CELL_SIZE", "DEFAULT_SETUPS", "LABELS", "PREVIEW_REVIEWER", "Setup",
+    "case", "label_for", "ledger", "measurements", "new_measurements",
+    "previewing", "review", "router", "setup", "summary",
 ]
