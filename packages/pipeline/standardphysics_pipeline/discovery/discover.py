@@ -69,6 +69,18 @@ and a fragment standing in an aisle turns a real route finding into a request
 to go and rescan it."""
 ALREADY_MEASURED = 0.6
 """A carved object mostly inside a node RoomPlan already boxed is that node, not a new one."""
+ALREADY_THE_ROOM = frozenset({
+    "wall", "walls", "floor", "flooring", "ceiling", "door", "doors", "doorway",
+    "window", "windows", "blinds", "curtain", "curtains", "window blinds",
+    "baseboard", "skirting board", "staircase", "stairs",
+})
+"""Named things that are the room rather than something in it.
+
+RoomPlan measures the shell, and a second box over the same wall is worse than
+no box: it shadows the real one, takes photo colour meant for it, and offers
+the owner a wall to drag across the floor. The detector names these because
+they are there, which is correct of it and not useful to us."""
+
 DISCOVERY_NAMESPACE = uuid.UUID("6f1f6a2e-9a5f-5f77-9a0c-8b6f1b0d4a10")
 
 
@@ -265,6 +277,8 @@ def _viewpoints(object_: DiscoveredObject, cameras: list[PhotoCamera]) -> int:
 
 
 def _worth_keeping(object_: DiscoveredObject, graph: SceneGraph, viewpoints: int) -> bool:
+    if object_.name.strip().lower() in ALREADY_THE_ROOM:
+        return False
     if viewpoints < MIN_VIEWS:
         return False
     if object_.box.volume < MIN_VOLUME or object_.box.floor_clearance > MAX_FLOOR_CLEARANCE:

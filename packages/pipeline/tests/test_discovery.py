@@ -23,7 +23,7 @@ from standardphysics_pipeline.discovery.boxes import claimed_by_any, inside, res
 from standardphysics_pipeline.discovery.carve import FrameView, carve, fit_box
 from standardphysics_pipeline.discovery.clusters import voxel_components
 from standardphysics_pipeline.discovery.detect import Detection, _pixel_box, EncodedFrame
-from standardphysics_pipeline.discovery.discover import _viewpoints
+from standardphysics_pipeline.discovery.discover import _viewpoints, _worth_keeping
 from standardphysics_pipeline.discovery.merge import DiscoveredObject
 from standardphysics_pipeline.discovery.merge import Candidate, merge_candidates
 from standardphysics_pipeline.discovery.people import without_people
@@ -324,3 +324,19 @@ class TestShowingTheModelTheRoomUpright:
         assert set(QUARTER_TURNS_CLOCKWISE) == {
             "portrait", "portrait_upside_down", "landscape_left", "landscape_right",
         }
+
+
+class TestNotReDiscoveringTheRoom:
+    def _object(self, name):
+        return DiscoveredObject(
+            name=name, box=fit_box(slab((0.0, 1.0, 1.0), (0.4, 0.3, 0.4))),
+            movable=True, confidence=0.9, frame_ids=("frame-0001", "frame-0002"),
+        )
+
+    def test_the_shell_of_the_room_is_not_an_object_in_it(self):
+        for name in ("wall", "floor", "ceiling", "door", "window", "blinds", "curtains"):
+            assert not _worth_keeping(self._object(name), graph_of(), viewpoints=9), name
+
+    def test_furniture_and_clutter_still_count(self):
+        for name in ("laptop", "payment terminal", "kettlebell", "backpack", "desk"):
+            assert _worth_keeping(self._object(name), graph_of(), viewpoints=9), name
