@@ -55,11 +55,8 @@ export function PivotSlide() {
     <div className="deck-gutter grid h-full grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] items-center gap-deck-gap">
       <div>
         <h2 className="font-display text-figure font-extrabold">
-          <MaskedLines lines={["Accessibility", "couldn’t be more", "important for", "small businesses."]} delay={0.1} />
+          <MaskedLines lines={["Accessibility", "couldn’t be more", "important."]} delay={0.1} />
         </h2>
-        <p className="mt-deck-rise font-display text-caption font-bold text-ink-muted">
-          <MaskedLines lines={["The customers who need accessible", "spaces have the most money to spend."]} delay={0.7} />
-        </p>
       </div>
       <HappyLemonWelcomes />
     </div>
