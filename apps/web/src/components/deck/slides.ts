@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 import type { ShotName } from "@/components/shop/shots";
 import { BoomersSlide, PivotSlide } from "./slides/CustomerSlides";
+import { LoopRunSlide, WeaveScoresSlide } from "./slides/LoopRunSlides";
 import { LoopSlide } from "./slides/LoopSlide";
 import { MissionSlide } from "./slides/MissionSlide";
 import { PipelineSlide } from "./slides/PipelineSlide";
@@ -35,6 +36,8 @@ export const slides: SlideDefinition[] = [
   { id: "find", shot: "counter", layer: "overStage", Content: FindSlide },
   { id: "fix", shot: "counterFixed", layer: "overStage", Content: FixSlide },
   { id: "loop", shot: "awayAfterFix", layer: "overStage", steps: 3, Content: LoopSlide },
+  { id: "loop-run", shot: "awayAfterFix", layer: "overStage", steps: 4, Content: LoopRunSlide },
+  { id: "weave-scores", shot: "awayAfterFix", layer: "overStage", steps: 2, Content: WeaveScoresSlide },
   { id: "pivot", shot: "awayAfterFix", layer: "overStage", Content: PivotSlide },
   { id: "boomers", shot: "awayAfterFix", layer: "overStage", steps: 4, Content: BoomersSlide },
   { id: "model", shot: "awayAfterFix", layer: "overStage", Content: ModelSlide },
