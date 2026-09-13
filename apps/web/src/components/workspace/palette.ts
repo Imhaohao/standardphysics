@@ -16,6 +16,7 @@ export const MODEL = {
 export const WALL_CUT_HEIGHT = 1.2;
 
 export function nodeColor(node: SceneNode): string {
+  if (node.appearance?.base_color) return node.appearance.base_color;
   if (node.kind === "wall") return MODEL.wall;
   if (node.kind === "floor") return MODEL.floor;
   if (node.kind !== "object") return MODEL.opening;

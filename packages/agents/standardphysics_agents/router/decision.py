@@ -13,6 +13,7 @@ through to a default.
 from __future__ import annotations
 
 import json
+from collections.abc import Collection
 from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
@@ -121,7 +122,13 @@ def _as_text(payload: dict, key: str) -> str | None | Rejected:
     return value
 
 
-def _contradiction(decision: Decision, findings: list[Finding]) -> str | None:
+def _contradiction(
+    decision: Decision,
+    findings: list[Finding],
+    *,
+    fixable_finding_ids: Collection[UUID] | None,
+    rescan_finding_ids: Collection[UUID] | None,
+) -> str | None:
     if decision.action in REQUIRES_TARGET and not decision.target_finding_ids:
         return f"{decision.action.casefold()}_without_target"
     if decision.action == "ASK_OWNER" and not (decision.question or "").strip():
@@ -129,7 +136,22 @@ def _contradiction(decision: Decision, findings: list[Finding]) -> str | None:
     if decision.action == "DONE" and decision.target_finding_ids:
         return "done_with_targets"
     if decision.action == "FIX":
-        return _fix_targets_problems(decision, findings)
+        problem_conflict = _fix_targets_problems(decision, findings)
+        if problem_conflict:
+            return problem_conflict
+        if fixable_finding_ids is not None and any(
+            target not in fixable_finding_ids
+            for target in decision.target_finding_ids
+        ):
+            return "fix_targets_unfixable_finding"
+    if decision.action == "RESCAN_AREA" and rescan_finding_ids is not None and any(
+        target not in rescan_finding_ids for target in decision.target_finding_ids
+    ):
+        return "rescan_targets_finding_not_requesting_rescan"
+    if decision.action == "ESCALATE":
+        problems = {finding.id for finding in findings if finding.outcome == "problem"}
+        if any(target not in problems for target in decision.target_finding_ids):
+            return "escalate_targets_something_that_is_not_a_problem"
     return None
 
 
@@ -142,7 +164,12 @@ def _fix_targets_problems(decision: Decision, findings: list[Finding]) -> str | 
 
 
 def parse_decision(
-    raw: Any, findings: list[Finding], provider: str = "typesafe"
+    raw: Any,
+    findings: list[Finding],
+    provider: str = "typesafe",
+    *,
+    fixable_finding_ids: Collection[UUID] | None = None,
+    rescan_finding_ids: Collection[UUID] | None = None,
 ) -> Decision | Rejected:
     payload = _as_object(raw)
     if isinstance(payload, Rejected):
@@ -171,5 +198,10 @@ def parse_decision(
         rationale=rationale,
         provider=provider,
     )
-    conflict = _contradiction(decision, findings)
+    conflict = _contradiction(
+        decision,
+        findings,
+        fixable_finding_ids=fixable_finding_ids,
+        rescan_finding_ids=rescan_finding_ids,
+    )
     return Rejected(conflict) if conflict else decision

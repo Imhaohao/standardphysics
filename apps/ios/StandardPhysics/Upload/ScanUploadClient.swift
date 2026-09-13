@@ -103,8 +103,13 @@ struct ScanUploadClient {
     }
 
     private func validate(_ response: URLResponse, expectedStatus: ClosedRange<Int>) throws {
-        guard let response = response as? HTTPURLResponse,
-              expectedStatus.contains(response.statusCode) else {
+        guard let response = response as? HTTPURLResponse else {
+            throw UploadClientError.unexpectedResponse
+        }
+        if response.statusCode == 404 || response.statusCode == 410 {
+            throw UploadClientError.remoteScanMissing
+        }
+        guard expectedStatus.contains(response.statusCode) else {
             throw UploadClientError.unexpectedResponse
         }
     }
@@ -137,6 +142,7 @@ enum SHA256Digest {
 enum UploadClientError: Error, Equatable {
     case unexpectedResponse
     case mismatchedScanIdentifier
+    case remoteScanMissing
 }
 
 private enum DeviceModel {

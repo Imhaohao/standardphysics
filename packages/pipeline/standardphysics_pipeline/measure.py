@@ -9,6 +9,7 @@ threshold check cannot afford that.
 from __future__ import annotations
 
 from uuid import UUID
+from collections import OrderedDict
 
 import numpy as np
 
@@ -33,6 +34,7 @@ from .footprints import (
 )
 from .occupancy import CELL_SIZE, Grid, blocks_floor, build_grid
 from .routes import (
+    PathResult,
     blockers_at,
     clearance_map,
     longest_run_below,
@@ -101,6 +103,7 @@ class PipelineMeasurements:
     def __init__(self, cell_size: float = CELL_SIZE) -> None:
         self.cell_size = cell_size
         self._cache: dict[tuple, tuple[Grid, np.ndarray]] = {}
+        self._paths: OrderedDict[tuple, PathResult] = OrderedDict()
 
     def _field(self, graph: SceneGraph) -> tuple[Grid, np.ndarray]:
         key = _signature(graph)
@@ -109,6 +112,15 @@ class PipelineMeasurements:
             self._cache = {key: (grid, clearance_map(grid))}
         return self._cache[key]
 
+    def _widest(self, graph, grid, clearance, start, goal) -> PathResult:
+        key = (_signature(graph), start, goal)
+        if key not in self._paths:
+            self._paths[key] = widest_path(grid, clearance, start, goal)
+            if len(self._paths) > 256:
+                self._paths.popitem(last=False)
+        self._paths.move_to_end(key)
+        return self._paths[key]
+
     def route_clear_width(
         self, graph: SceneGraph, scenario: Scenario, leg_index: int
     ) -> WidthResult:
@@ -116,8 +128,8 @@ class PipelineMeasurements:
         start = scenario.stops[leg_index].position
         goal = scenario.stops[leg_index + 1].position
 
-        result = widest_path(
-            grid,
+        result = self._widest(
+            graph, grid,
             clearance,
             grid.to_cell(start.x, start.y),
             grid.to_cell(goal.x, goal.y),
@@ -229,8 +241,8 @@ class PipelineMeasurements:
         grid, clearance = self._field(graph)
         start = scenario.stops[leg_index].position
         goal = scenario.stops[leg_index + 1].position
-        result = widest_path(
-            grid, clearance, grid.to_cell(start.x, start.y), grid.to_cell(goal.x, goal.y)
+        result = self._widest(
+            graph, grid, clearance, grid.to_cell(start.x, start.y), grid.to_cell(goal.x, goal.y)
         )
         if not result.reachable:
             return 0.0
@@ -254,8 +266,8 @@ class PipelineMeasurements:
         grid, clearance = self._field(graph)
         start = scenario.stops[leg_index].position
         goal = scenario.stops[leg_index + 1].position
-        result = widest_path(
-            grid, clearance, grid.to_cell(start.x, start.y), grid.to_cell(goal.x, goal.y)
+        result = self._widest(
+            graph, grid, clearance, grid.to_cell(start.x, start.y), grid.to_cell(goal.x, goal.y)
         )
         if not result.reachable:
             return []

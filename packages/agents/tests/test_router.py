@@ -164,6 +164,37 @@ class TestContradictions:
         payload = {"action": "FIX", "target_finding_ids": [str(question.id)]}
         assert _reason(payload, findings) == "fix_targets_something_that_passed"
 
+    def test_escalating_a_question(self, findings, question):
+        payload = {"action": "ESCALATE", "target_finding_ids": [str(question.id)]}
+        assert _reason(payload, findings) == "escalate_targets_something_that_is_not_a_problem"
+
+    def test_typesafe_cannot_fix_a_problem_without_movable_furniture(
+        self, findings, problem
+    ):
+        payload = {"action": "FIX", "target_finding_ids": [str(problem.id)]}
+        answer = parse_decision(
+            payload,
+            findings,
+            fixable_finding_ids=(),
+        )
+        assert isinstance(answer, Rejected)
+        assert answer.reason == "fix_targets_unfixable_finding"
+
+    def test_typesafe_cannot_rescan_a_finding_that_does_not_need_another_look(
+        self, findings, question
+    ):
+        payload = {
+            "action": "RESCAN_AREA",
+            "target_finding_ids": [str(question.id)],
+        }
+        answer = parse_decision(
+            payload,
+            findings,
+            rescan_finding_ids=(),
+        )
+        assert isinstance(answer, Rejected)
+        assert answer.reason == "rescan_targets_finding_not_requesting_rescan"
+
 
 class TestValid:
     def test_a_plain_done(self, findings):
@@ -210,6 +241,10 @@ class TestResponseEnvelopes:
         body = {"choices": [{"message": {"content": {"action": "DONE"}}}]}
         assert extract_payload(body) == {"action": "DONE"}
 
+    def test_a_typesafe_system_one_envelope(self):
+        body = json.loads(_typesafe_response("DONE"))
+        assert extract_payload(body) == {"action": "DONE"}
+
     def test_json_text(self):
         assert extract_payload('{"action": "DONE"}') == {"action": "DONE"}
 
@@ -229,6 +264,26 @@ class FakeTransport:
         if isinstance(self.body, Exception):
             raise self.body
         return self.body
+
+
+def _typesafe_response(action: str) -> bytes:
+    return json.dumps(
+        {
+            "model": "jev-latest",
+            "answers": {
+                "action": {
+                    "type": "choice",
+                    "choice": action,
+                    "probabilities": {
+                        name: 1.0 if name == action else 0.0
+                        for name in sorted(ACTIONS)
+                    },
+                    "confidence": 1.0,
+                }
+            },
+            "usage": {"input_tokens": 10, "output_tokens": 2},
+        }
+    ).encode()
 
 
 def _router(body) -> tuple[TypeSafeRouter, FakeTransport]:
@@ -252,14 +307,38 @@ class TestTypeSafeClient:
         assert isinstance(answer, Rejected)
         assert answer.reason == "typesafe_not_configured"
 
-    def test_the_request_carries_the_contract_schema(self, router_state):
-        router, transport = _router(b'{"action": "DONE"}')
+    def test_a_bare_contract_payload_cannot_authorize(self, router_state):
+        router, _ = _router(b'{"action": "DONE"}')
+        assert router.decide(router_state) == Rejected(
+            "typesafe_response_missing_answers"
+        )
+
+    def test_a_non_choice_answer_cannot_authorize(self, router_state):
+        body = json.dumps(
+            {
+                "model": "jev-latest",
+                "answers": {"action": {"type": "noul", "noul": 1.0}},
+                "usage": {"input_tokens": 10, "output_tokens": 2},
+            }
+        ).encode()
+        router, _ = _router(body)
+        assert router.decide(router_state) == Rejected("no_action")
+
+    def test_the_request_matches_the_system_one_contract(self, router_state):
+        router, transport = _router(_typesafe_response("DONE"))
         router.decide(router_state)
         _, body = transport.calls[0]
-        assert body["schema"] == action_schema()
+        assert set(body) == {"state", "model", "questions"}
+        assert body["state"] == router_state.summary()
+        assert body["model"] == "jev-latest"
+        assert body["questions"]["action"]["type"] == "choice"
+        assert set(body["questions"]["action"]["criteria"]) == ACTIONS
+        assert "schema" not in body
+        assert "instruction" not in body
+        assert "input" not in body
 
     def test_the_request_carries_no_geometry_and_no_key(self, router_state):
-        router, transport = _router(b'{"action": "DONE"}')
+        router, transport = _router(_typesafe_response("DONE"))
         router.decide(router_state)
         _, body = transport.calls[0]
         sent = json.dumps(body)
@@ -267,34 +346,50 @@ class TestTypeSafeClient:
         assert "transform" not in sent
 
     def test_a_transport_answer_comes_back_as_a_decision(self, router_state):
-        body = json.dumps(
-            {"action": "FIX", "target_finding_ids": [str(router_state.fixable_finding_ids[0])]}
-        ).encode()
-        router, _ = _router(body)
+        router, _ = _router(_typesafe_response("FIX"))
         answer = router.decide(router_state)
         assert answer.action == "FIX"
         assert answer.provider == "typesafe"
 
-    def test_a_fix_cannot_target_a_counter_height(self, router_state):
-        target = next(f for f in router_state.problems if f.check_id == "service_counter_height")
-        router, _ = _router(json.dumps({"action": "FIX", "target_finding_ids": [str(target.id)]}).encode())
-        assert router.decide(router_state) == Rejected("fix_targets_unfixable_finding")
+    def test_a_fix_targets_only_movable_problems(self, router_state):
+        router, _ = _router(_typesafe_response("FIX"))
+        answer = router.decide(router_state)
+        assert isinstance(answer, Decision)
+        assert set(answer.target_finding_ids) == set(router_state.fixable_finding_ids)
+        counter = next(
+            f for f in router_state.problems if f.check_id == "service_counter_height"
+        )
+        assert counter.id not in answer.target_finding_ids
 
     def test_a_fix_cannot_exceed_the_attempt_budget(self, router_state):
         from dataclasses import replace
-        router, _ = _router(json.dumps({"action": "FIX", "target_finding_ids": [str(router_state.fixable_finding_ids[0])]}).encode())
+        router, _ = _router(_typesafe_response("FIX"))
         assert router.decide(replace(router_state, fix_attempts=3)) == Rejected("fix_budget_exhausted")
 
-    @pytest.mark.parametrize("action, reason", [
-        ("RESCAN_AREA", "rescan_targets_measured_finding"),
-        ("ESCALATE", "escalate_targets_nonproblem"),
-    ])
-    def test_a_passing_finding_cannot_authorize_followup(self, router_state, passing, action, reason):
-        router, _ = _router(json.dumps({"action": action, "target_finding_ids": [str(passing.id)]}).encode())
-        assert router.decide(router_state) == Rejected(reason)
+    def test_a_rescan_without_an_eligible_finding_authorizes_nothing(self, router_state):
+        router, _ = _router(_typesafe_response("RESCAN_AREA"))
+        assert router.decide(router_state) == Rejected("rescan_area_without_target")
+
+    def test_a_type_safe_escalation_targets_only_stuck_problems(self, router_state):
+        router, _ = _router(_typesafe_response("ESCALATE"))
+        answer = router.decide(router_state)
+        assert isinstance(answer, Decision)
+        expected = {
+            finding.id
+            for finding in router_state.problems
+            if finding.id not in router_state.fixable_finding_ids
+        }
+        assert set(answer.target_finding_ids) == expected
+
+    def test_a_done_choice_never_targets_a_passing_finding(self, router_state, passing):
+        router, _ = _router(_typesafe_response("DONE"))
+        answer = router.decide(router_state)
+        assert isinstance(answer, Decision)
+        assert passing.id not in answer.target_finding_ids
 
     def test_a_truncated_answer_authorizes_nothing(self, router_state):
-        router, _ = _router(b'{"action": "FI')
+        body = _typesafe_response("FIX")[:-1]
+        router, _ = _router(body)
         assert isinstance(router.decide(router_state), Rejected)
 
     def test_a_service_that_is_down_authorizes_nothing(self, router_state):

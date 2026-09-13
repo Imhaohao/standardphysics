@@ -77,7 +77,7 @@ def scan_exists(connection: sqlite3.Connection, scan_id: uuid.UUID) -> bool:
     return connection.execute("SELECT 1 FROM scans WHERE id = ?", (str(scan_id),)).fetchone() is not None
 
 
-CHILD_TABLES = ("assessments", "scenarios", "revisions", "jobs", "artifacts")
+CHILD_TABLES = ("simulations", "assessments", "scenarios", "revisions", "jobs", "artifacts")
 """Everything that references a scan, deepest first.
 
 SQLite does not enforce the foreign keys by default, so leaving a child row
@@ -173,7 +173,7 @@ def retry_failed_jobs(connection: sqlite3.Connection, scan_id: uuid.UUID) -> Non
     kinds = {
         row["kind"]
         for row in connection.execute(
-            "SELECT kind FROM jobs WHERE scan_id = ? AND state = 'failed' AND kind != 'display'", (str(scan_id),)
+            "SELECT kind FROM jobs WHERE scan_id = ? AND state = 'failed' AND kind NOT IN ('display', 'simulate')", (str(scan_id),)
         )
     }
     if not kinds:
@@ -181,7 +181,7 @@ def retry_failed_jobs(connection: sqlite3.Connection, scan_id: uuid.UUID) -> Non
     state = "measuring" if "process" in kinds else "checking"
     connection.execute("UPDATE scans SET state = ? WHERE id = ?", (state, str(scan_id)))
     connection.execute(
-        "UPDATE jobs SET state = 'queued', error = NULL WHERE scan_id = ? AND state = 'failed' AND kind != 'display'",
+        "UPDATE jobs SET state = 'queued', error = NULL WHERE scan_id = ? AND state = 'failed' AND kind NOT IN ('display', 'simulate')",
         (str(scan_id),),
     )
 
@@ -223,14 +223,22 @@ def graph_of(row: sqlite3.Row) -> SceneGraph:
     return SceneGraph.model_validate_json(row["graph_json"])
 
 
-def display_geometry(connection: sqlite3.Connection, scan_id: uuid.UUID) -> tuple[str, int] | None:
+def display_geometry(connection: sqlite3.Connection, scan_id: uuid.UUID, revision: int | None = None) -> tuple[str, int] | None:
     """The newest GLB, and the revision whose layout it was exported from."""
     row = connection.execute(
         "SELECT glb_path, revision FROM revisions WHERE scan_id = ? AND glb_path IS NOT NULL"
+        " AND (? IS NULL OR revision = ?)"
         " ORDER BY revision DESC LIMIT 1",
-        (str(scan_id),),
+        (str(scan_id), revision, revision),
     ).fetchone()
     return (row["glb_path"], row["revision"]) if row else None
+
+
+def display_pending(connection: sqlite3.Connection, scan_id: uuid.UUID) -> bool:
+    return connection.execute(
+        "SELECT 1 FROM jobs WHERE scan_id = ? AND kind IN ('process', 'assess', 'display')"
+        " AND state IN ('queued', 'running') LIMIT 1", (str(scan_id),),
+    ).fetchone() is not None
 
 
 def base_glb_path(connection: sqlite3.Connection, scan_id: uuid.UUID) -> str | None:

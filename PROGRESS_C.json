@@ -1,6 +1,6 @@
 {
   "lane": "C",
-  "updated": "2026-09-13T05:30:00Z",
+  "updated": "2026-09-13T03:33:11.195218+00:00",
   "done": [
     "rule pack: 18 rules, thresholds in the units the standard is written in, the quoted sentence behind each, and every other number the section states",
     "human verification ledger binding rule id, section, threshold and unit, so editing a threshold switches its check off",
@@ -31,9 +31,10 @@
     "A-9: a door tape-measure request does not block a FIX the aisle can take",
     "A-34: a partly measured turn is a gap on unevaluated, not silence",
     "point_of_sale_height: when a lowered section exists, the finding is the register on the high part, not a missing portion",
-    "407 Lane C tests"
+    "407 Lane C tests",
+    "workflow simulation: all-directions route suites, four functional avatar profiles, forward-facing paths, RoomPlan plus raw-mesh collision evidence, target reach checks, 1,000-trial bounded TypeSafe batches, aggregate design feedback, full-suite layout ranking, and a no-workflow-regression gate on furniture proposals"
   ],
-  "in_progress": null,
+  "in_progress": "wire workflow feedback and avatar paths into the Lane D HTTP/report/viewer surfaces",
   "blocked_on": null,
   "ready_for_others": [
     "standardphysics_agents.findings_for(graph, scenario) -> list[Finding], and RULEPACK_VERSION",
@@ -43,7 +44,9 @@
     "standardphysics_agents.ask(text, graph, scenario, measure) -> Answer, for Lane D's ask box",
     "standardphysics_agents.evaluate() -> EvaluationResult, and accepts(before, after) for the gate",
     "load_pack().as_contract_pack(ledger) -> contracts.RulePack, for Lane D's report",
-    "point_of_sale_height on build_lawsuit_graph: the seed can switch to the variant"
+    "point_of_sale_height on build_lawsuit_graph: the seed can switch to the variant",
+    "standardphysics_agents.build_workflow_suite(...) expands a scan scenario into all stop directions plus task approaches",
+    "standardphysics_agents.run_typesafe_workflow_batch(...) runs up to 1,000 bounded trials and returns feedback plus recommended_graph"
   ],
   "needs_human": [
     "BLOCKING THE WHOLE REPORT: read each rule's section and confirm its number. python -m standardphysics_agents.cli rules review --by \"<name>\". Fourteen tier 1 rules, a few minutes. Until then every check is off and findings_for returns nothing. The new one is point_of_sale_height, 904.4 and the 904.2 advisory.",
@@ -54,5 +57,92 @@
     "OPENROUTER_API_KEY in .env with zero data retention on the account and a credit limit. Without it the ask box matches keywords instead of reading the question, and says so.",
     "WANDB_API_KEY, WANDB_ENTITY and WANDB_PROJECT in .env, or tracing and evaluation stay local",
     "Schedule the accessibility professional"
-  ]
+  ],
+  "simulation_video": {
+    "plan": [
+      {
+        "task": "Reuse sweep and capture bounded actual-run replays",
+        "tier": "Luna",
+        "status": "complete"
+      },
+      {
+        "task": "Run 2000000 cases and render ten-run MP4",
+        "tier": "Luna",
+        "status": "complete"
+      },
+      {
+        "task": "Verify invariants and document TypeSafe prize design",
+        "tier": "Sol",
+        "status": "complete"
+      }
+    ],
+    "scope": "Random generated geometry; no legal determination or fabricated model calls",
+    "results": {
+      "evaluations": 2000000,
+      "layouts": 100000,
+      "routes": 500000,
+      "algorithm_disagreements": 0,
+      "elapsed_seconds": 142.95203495770693,
+      "seed": 20260913,
+      "recorded_runs": 10,
+      "video_seconds": 58,
+      "video_resolution": "1920x1080",
+      "tests": "445 passed; targeted mypy passed; full MP4 decoded successfully",
+      "result": "runs/accessibility-2m.json",
+      "video": "runs/accessibility-ten-runs.mp4",
+      "manifest": "runs/accessibility-ten-runs.json",
+      "live_model_calls": 0,
+      "subagents": []
+    },
+    "prize_design": {
+      "status": "Recommendation using existing measured-room loop; not a live TypeSafe campaign in this sweep",
+      "loop": [
+        "Generate bounded, reproducible layout and journey cases",
+        "Measure routes and preserve distinct failure examples",
+        "TypeSafe selects FIX, RESCAN_AREA, ASK_OWNER, ESCALATE, or DONE from measured evidence",
+        "Validate action and move only permitted furniture",
+        "Remeasure every affected journey; accept only improvements without regressions",
+        "Retain counterexamples and repeat within the run budget"
+      ],
+      "proof": [
+        "Show a real TypeSafe answer changing the executed branch",
+        "Show malformed output authorizing nothing",
+        "Show a blocked journey becoming accessible without breaking another journey",
+        "Report distinct layouts, routes, profile checks, actual model calls, token usage, and elapsed time separately"
+      ],
+      "limitations": [
+        "Synthetic sweep samples configurations; it does not enumerate all rooms or paths",
+        "12-inch grid and circular width profiles do not prove physical wheelchair maneuverability",
+        "Algorithm oracle shares grid clearance assumptions; agreement is not ground-truth ADA validation",
+        "Human verification ledger is empty; legal rule checks remain disabled",
+        "Live prize eligibility and judging criteria still need organizer confirmation"
+      ]
+    }
+  },
+  "bread_test_campaign": {
+    "status": "in progress",
+    "scan_id": "5067a214-1b87-4460-82f7-10b08a9e44be",
+    "tasks": [
+      {
+        "task": "Astra anchored scenario generation",
+        "tier": "Astra",
+        "status": "in progress"
+      },
+      {
+        "task": "Two million distinct scan route and reach evaluations",
+        "tier": "Local numerical",
+        "status": "in progress"
+      },
+      {
+        "task": "Ten 3D dual-camera task replays",
+        "tier": "Local Blender",
+        "status": "in progress"
+      },
+      {
+        "task": "Validation and provenance",
+        "tier": "Sol",
+        "status": "in progress"
+      }
+    ]
+  }
 }

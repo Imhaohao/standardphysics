@@ -1,3 +1,4 @@
+from .simulation import RebuildRequest, SimulationFeedback, SimulationRequest, SimulationResult, SimulationStatus
 from .api import (
     ApiError,
     AskAnswer,
@@ -26,9 +27,10 @@ from .measurement import (
 )
 from .rules import Authority, Check, Citation, RulePack, Tier
 from .scan import Artifact, ArtifactKind, Scan, ScanState, SurfaceCoverage
-from .scene import LabelSource, NodeKind, Quality, Scenario, SceneGraph, SceneNode, Stop
+from .scene import DisplayAppearance, LabelSource, NodeKind, Quality, Scenario, SceneGraph, SceneNode, Stop
 
 __all__ = [
+    "RebuildRequest", "SimulationFeedback", "SimulationRequest", "SimulationResult", "SimulationStatus",
     "Annotation",
     "AnnotationKind",
     "ApiError",
@@ -45,6 +47,7 @@ __all__ = [
     "ClearFloorResult",
     "CreateScanRequest",
     "Decision",
+    "DisplayAppearance",
     "Finding",
     "HeightResult",
     "LabelSource",

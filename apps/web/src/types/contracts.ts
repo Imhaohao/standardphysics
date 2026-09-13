@@ -226,6 +226,17 @@ export interface CreateScanRequest {
   name: string;
 }
 /**
+ * An inferred finish for rendering; never physical or compliance evidence.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "DisplayAppearance".
+ */
+export interface DisplayAppearance {
+  base_color: string;
+  material: "paint" | "wood" | "fabric" | "metal" | "stone" | "glass" | "neutral";
+  source: "astra";
+}
+/**
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
  * via the `definition` "HeightResult".
  */
@@ -363,6 +374,13 @@ export interface ProposalResult {
   question: string | null;
 }
 /**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "RebuildRequest".
+ */
+export interface RebuildRequest {
+  base_revision: number;
+}
+/**
  * Everything the printed report shows, in one response.
  *
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
@@ -451,6 +469,7 @@ export interface SceneGraph {
  * via the `definition` "SceneNode".
  */
 export interface SceneNode {
+  appearance?: DisplayAppearance | null;
   dimensions: Vec3;
   id: string;
   kind: "wall" | "door" | "window" | "opening" | "floor" | "object";
@@ -484,6 +503,72 @@ export interface SaveLayoutRequest {
  */
 export interface ScanList {
   scans: Scan[];
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "SimulationFeedback".
+ */
+export interface SimulationFeedback {
+  blocking_node_ids: string[];
+  clearance_failure_trials: number;
+  floor_plan_collision_trials: number;
+  mesh_collision_trials: number;
+  needs_measurement_trials: number;
+  passed_trials: number;
+  profile_title: string;
+  trials: number;
+  unreachable_interaction_trials: number;
+  workflow_title: string;
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "SimulationRequest".
+ */
+export interface SimulationRequest {
+  base_revision: number;
+  max_workers: number;
+  refine_with_astra: boolean;
+  router: "local" | "typesafe";
+  samples: number;
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "SimulationResult".
+ */
+export interface SimulationResult {
+  action_counts: {
+    [k: string]: number;
+  };
+  completed_runs: number;
+  feedback: SimulationFeedback[];
+  limitations: string[];
+  mesh_checked: boolean;
+  preview: boolean;
+  recommended_graph: SceneGraph | null;
+  redesign_accepted: boolean;
+  redesign_model: string | null;
+  redesign_reasons: string[];
+  rejected_runs: number;
+  rejection_counts: {
+    [k: string]: number;
+  };
+  rules_checked: number;
+  rules_total: number;
+  total_runs: number;
+  unique_layouts: number;
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "SimulationStatus".
+ */
+export interface SimulationStatus {
+  base_revision: number;
+  completed: number;
+  error: string | null;
+  result: SimulationResult | null;
+  router: "local" | "typesafe";
+  samples: number;
+  state: "queued" | "running" | "done" | "failed";
 }
 /**
  * The bottleneck of a route leg, and where it is.

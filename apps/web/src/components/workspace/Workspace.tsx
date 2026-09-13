@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowsLeftRight, ArrowsOutCardinal, FileText, HandGrabbing, ListChecks, MapPin, SquareHalfBottom } from "@phosphor-icons/react";
+import { ArrowLeft, ArrowsLeftRight, ArrowsOutCardinal, Eye, FileText, HandGrabbing, ListChecks, MapPin, SquareHalfBottom } from "@phosphor-icons/react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -23,6 +23,7 @@ import { FindingsList } from "./FindingsList";
 import { FixSuggestion } from "./FixSuggestion";
 import type { ArrangeHandlers } from "./ShopModel";
 import { type Arrangement, useArrangement } from "./useArrangement";
+import { SimulationPanel } from "./SimulationPanel";
 
 const Viewer = dynamic(() => import("./Viewer"), {
   ssr: false,
@@ -191,6 +192,7 @@ function SidePanel({ task, scene, onTryLayout, assessment, scan, findings, selec
   return (
     <>
       <AskBox scanId={scan.id} revision={scene.revision} onLook={onLook} onTry={onTryLayout} />
+      <SimulationPanel key={`${scan.id}-${scene.revision}`} scanId={scan.id} scene={scene} onTryLayout={onTryLayout} />
       <FindingsPanel scan={scan} scene={scene} assessment={assessment} findings={findings} selected={selected} onToggle={onToggle} onTryLayout={onTryLayout} route={route} onRoute={onRoute} />
     </>
   );
@@ -252,101 +254,99 @@ function useFocus() {
   return { selected, setSelected, setAsked, focus };
 }
 
-export function Workspace({ scan, scene, exported, assessment, previous, glbUrl, lidarUrl, scenario, suggestedScenario }: WorkspaceProps) {
-  const findings = useMemo(() => assessment?.findings ?? [], [assessment]);
-  const { selected, setSelected, setAsked, focus } = useFocus();
-  const [mode, setMode] = useState<ViewMode>("overview");
-  const [objectLabel, setObjectLabel] = useState<string | null>(null);
-  const [task, setTask] = useState<Task>("findings");
-  const [dragging, setDragging] = useState(false);
-  const [amount, setAmount] = useState(1);
-  const arrangement = useArrangement(scan.id, scene);
-  const comparison = comparisonFor(arrangement, scene, findings, previous);
-  const comparing = task === "compare" && comparison !== null;
-  const shown = comparing ? interpolateLayout(comparison.before, comparison.after, amount) : arrangement.shown;
-  const pose = useMemo(() => poseFor(scene, focus, mode), [scene, focus, mode]);
+function useWorkspaceVisuals(props: WorkspaceProps, findings: Finding[], task: Task, amount: number, focus: Focus | null, mode: ViewMode, setDragging: (on: boolean) => void) {
+  const arrangement = useArrangement(props.scan.id, props.scene);
+  const comparison = comparisonFor(arrangement, props.scene, findings, props.previous);
+  const shown = task === "compare" && comparison ? interpolateLayout(comparison.before, comparison.after, amount) : arrangement.shown;
+  const pose = useMemo(() => poseFor(props.scene, focus, mode), [props.scene, focus, mode]);
   const handlers = useArrangeHandlers(task === "arrange", arrangement, setDragging);
-  const route = useRoute(scan.id, scenario, suggestedScenario);
-  const routeHandles = useRouteHandles(task, route, setDragging);
+  const route = useRoute(props.scan.id, props.scenario, props.suggestedScenario);
+  return { arrangement, comparison, shown, pose, handlers, route, routeHandles: useRouteHandles(task, route, setDragging) };
+}
 
-  const displayedLidarUrl = capturedMeshUrl(lidarUrl, scene.revision, task === "arrange" || task === "compare");
-  const clear = useCallback(() => { setSelected(null); setAsked(null); setObjectLabel(null); }, [setSelected, setAsked]);
+function useWorkspaceActions(findings: Finding[], scene: SceneGraph, arrangement: Arrangement, setSelected: (finding: Finding | null | ((current: Finding | null) => Finding | null)) => void, setAsked: (focus: Focus | null) => void, setObjectLabel: (label: string | null) => void, setTask: (task: Task) => void, setMode: (mode: ViewMode) => void, setAmount: (amount: number) => void) {
+  const clear = useCallback(() => { setSelected(null); setAsked(null); setObjectLabel(null); }, [setSelected, setAsked, setObjectLabel]);
   const selectNode = useCallback((nodeId: string) => {
     setSelected(findingForNode(findings, nodeId) ?? null);
     setObjectLabel(scene.nodes.find((node) => node.id === nodeId)?.label ?? "Scanned surface");
-  }, [findings, scene, setSelected]);
-  const toggle = (finding: Finding) => setSelected((current) => (current?.id === finding.id ? null : finding));
-  const showView = (next: ViewMode) => {
-    setSelected(null);
-    setMode(next);
-  };
+  }, [findings, scene, setSelected, setObjectLabel]);
+  const toggle = (finding: Finding) => setSelected((current) => current?.id === finding.id ? null : finding);
+  const showView = (next: ViewMode) => { setSelected(null); setMode(next); };
   const switchTask = (next: Task) => {
     clear();
     if (next === "findings") arrangement.reset();
     if (next === "compare") setAmount(0);
     setTask(next);
   };
-
   const tryLayout = (moves: NodeMove[]) => {
     setSelected(null);
     setTask("arrange");
     arrangement.load(moves);
     requestAnimationFrame(() => document.querySelector<HTMLButtonElement>('[aria-label="What to do"] [aria-pressed="true"]')?.focus());
   };
+  const look = (locus: Locus | null) => { setSelected(null); setAsked(locus ? focusOnLocus(locus) : null); };
+  return { clear, selectNode, toggle, showView, switchTask, tryLayout, look };
+}
 
-  useKeyboard(task, arrangement, clear);
+function EvidenceToggle({ available, shown, onToggle }: { available: boolean; shown: boolean; onToggle: () => void }) {
+  if (!available) return null;
+  return <Button variant="chip" aria-pressed={shown} onClick={onToggle}>
+    <Eye size={16} weight="bold" aria-hidden />
+    {shown ? "Hide scan evidence" : "Show scan evidence"}
+  </Button>;
+}
 
-  return (
-    <>
+function WallToggle({ cut, onToggle }: { cut: boolean; onToggle: () => void }) {
+  return <Button variant="chip" aria-pressed={!cut} onClick={onToggle}>{cut ? "Show full walls" : "Cut away walls"}</Button>;
+}
+
+function GeometryDownload({ url, hasMoves, comparing }: { url: string | null; hasMoves: boolean; comparing: boolean }) {
+  if (!url || hasMoves || comparing) return null;
+  return <a href={url} download="room.glb" className="rounded-lg bg-sheet px-3 py-2 text-sm font-medium text-ink-muted hover:text-ink">Export GLB</a>;
+}
+
+type WorkspaceBodyProps = WorkspaceProps & {
+  findings: Finding[]; task: Task; selected: Finding | null; focus: Focus | null; mode: ViewMode; objectLabel: string | null; dragging: boolean; amount: number; setAmount: (amount: number) => void; showScanEvidence: boolean; setShowScanEvidence: (value: boolean | ((current: boolean) => boolean)) => void; visuals: ReturnType<typeof useWorkspaceVisuals>; actions: ReturnType<typeof useWorkspaceActions>;
+};
+
+function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, findings, task, selected, focus, mode, objectLabel, dragging, amount, setAmount, showScanEvidence, setShowScanEvidence, visuals, actions }: WorkspaceBodyProps) {
+  const [cutWalls, setCutWalls] = useState(true);
+  const evidenceAvailable = lidarUrl !== null && scene.revision === 0 && task !== "arrange" && task !== "compare";
+  const displayedLidarUrl = capturedMeshUrl(lidarUrl, scene.revision, showScanEvidence && evidenceAvailable);
+  const activeMode = selected ? null : mode;
+  return <>
     <RefreshWhile pending={assessment === null && isWorking(scan)} />
     <div className="grid h-dvh grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(16rem,45dvh)_1fr] lg:grid-cols-[minmax(0,1fr)_24rem] lg:grid-rows-[auto_1fr]">
-      <WorkspaceHeader scan={scan} task={task} canCompare={comparison !== null} onTask={switchTask} />
+      <WorkspaceHeader scan={scan} task={task} canCompare={visuals.comparison !== null} onTask={actions.switchTask} />
       <section className="relative min-h-0 touch-none overflow-hidden lg:rounded-tr-2xl" aria-label="Shop model">
-        <Viewer
-          scene={shown}
-          exported={exported}
-          arrange={handlers}
-          route={routeHandles}
-          dragging={dragging}
-          glbUrl={glbUrl}
-          lidarUrl={displayedLidarUrl}
-          pose={pose}
-          selected={task === "findings" ? focus : null}
-          onSelectNode={selectNode}
-          onClearSelection={clear}
-        />
+        <Viewer scene={visuals.shown} exported={exported} arrange={visuals.handlers} route={visuals.routeHandles} dragging={dragging} cutWalls={cutWalls} glbUrl={glbUrl} lidarUrl={displayedLidarUrl} pose={visuals.pose} selected={task === "findings" ? focus : null} onSelectNode={actions.selectNode} onClearSelection={actions.clear} />
         <SurfaceLabel objectLabel={objectLabel} />
-        <div className="absolute bottom-4 left-4 flex gap-2">
-          <Button variant="chip" aria-pressed={mode === "overview" && !selected} onClick={() => showView("overview")}>
-            <ArrowsOutCardinal size={16} weight="bold" aria-hidden />
-            Whole shop
-          </Button>
-          <Button variant="chip" aria-pressed={mode === "top" && !selected} onClick={() => showView("top")}>
-            <SquareHalfBottom size={16} weight="bold" aria-hidden />
-            From above
-          </Button>
+        <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2">
+          <Button variant="chip" aria-pressed={activeMode === "overview"} onClick={() => actions.showView("overview")}><ArrowsOutCardinal size={16} weight="bold" aria-hidden />Whole shop</Button>
+          <Button variant="chip" aria-pressed={activeMode === "top"} onClick={() => actions.showView("top")}><SquareHalfBottom size={16} weight="bold" aria-hidden />From above</Button>
+          <WallToggle cut={cutWalls} onToggle={() => setCutWalls((current) => !current)} />
+          <GeometryDownload url={glbUrl} hasMoves={visuals.arrangement.hasMoves} comparing={task === "compare"} />
+          <EvidenceToggle available={evidenceAvailable} shown={showScanEvidence} onToggle={() => setShowScanEvidence((current) => !current)} />
         </div>
       </section>
       <aside className="min-h-0 overflow-y-auto px-3 pb-10 pt-4 lg:pt-0">
-        <SidePanel
-          task={task}
-          scene={scene}
-          onTryLayout={tryLayout}
-          assessment={assessment}
-          scan={scan}
-          findings={findings}
-          selected={selected}
-          arrangement={arrangement}
-          comparison={comparison}
-          amount={amount}
-          onAmount={setAmount}
-          onToggle={toggle}
-          route={route}
-          onRoute={() => switchTask("route")}
-          onLook={(locus) => { setSelected(null); setAsked(locus ? focusOnLocus(locus) : null); }}
-        />
+        <SidePanel task={task} scene={scene} onTryLayout={actions.tryLayout} assessment={assessment} scan={scan} findings={findings} selected={selected} arrangement={visuals.arrangement} comparison={visuals.comparison} amount={amount} onAmount={setAmount} onToggle={actions.toggle} route={visuals.route} onRoute={() => actions.switchTask("route")} onLook={actions.look} />
       </aside>
     </div>
-    </>
-  );
+  </>;
+}
+
+export function Workspace(props: WorkspaceProps) {
+  const findings = useMemo(() => props.assessment?.findings ?? [], [props.assessment]);
+  const { selected, setSelected, setAsked, focus } = useFocus();
+  const [mode, setMode] = useState<ViewMode>("overview");
+  const [objectLabel, setObjectLabel] = useState<string | null>(null);
+  const [task, setTask] = useState<Task>("findings");
+  const [dragging, setDragging] = useState(false);
+  const [amount, setAmount] = useState(1);
+  const [showScanEvidence, setShowScanEvidence] = useState(false);
+  const visuals = useWorkspaceVisuals(props, findings, task, amount, focus, mode, setDragging);
+  const actions = useWorkspaceActions(findings, props.scene, visuals.arrangement, setSelected, setAsked, setObjectLabel, setTask, setMode, setAmount);
+  useKeyboard(task, visuals.arrangement, actions.clear);
+  return <WorkspaceBody {...props} findings={findings} task={task} selected={selected} focus={focus} mode={mode} objectLabel={objectLabel} dragging={dragging} amount={amount} setAmount={setAmount} showScanEvidence={showScanEvidence} setShowScanEvidence={setShowScanEvidence} visuals={visuals} actions={actions} />;
 }

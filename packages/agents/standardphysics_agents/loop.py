@@ -32,7 +32,7 @@ from standardphysics_contracts.rules import Tier
 from .assess import Pass, assess
 from .copy import REPORT_READY, escalation_note
 from .evaluation.gate import GateResult, accepts
-from .fix.search import propose_fix
+from .fix.search import CandidateRejection, propose_fix
 from .router.decision import Rejected
 from .router.state import MAX_FIX_ATTEMPTS, RouterState, state_for
 from .rules import AgentRulePack, VerificationLedger, load_ledger, load_pack
@@ -92,6 +92,7 @@ class Loop:
     rules: AgentRulePack = field(default_factory=load_pack)
     ledger: VerificationLedger = field(default_factory=load_ledger)
     max_tier: Tier = 1
+    candidate_rejection: CandidateRejection | None = None
     actions_taken: tuple[RouterAction, ...] = ()
     fix_attempts: int = 0
 
@@ -134,6 +135,7 @@ def _do_fix(loop: Loop, current: Pass, decision: Decision) -> StepResult:
         ledger=loop.ledger,
         baseline=current,
         max_tier=loop.max_tier,
+        candidate_rejection=loop.candidate_rejection,
     )
     if not outcome.found or outcome.graph is None:
         return StepResult(
@@ -283,6 +285,7 @@ def run_loop(
     ledger: VerificationLedger | None = None,
     max_tier: Tier = 1,
     max_passes: int = MAX_PASSES,
+    candidate_rejection: CandidateRejection | None = None,
 ) -> list[LoopStep]:
     loop = Loop(
         graph=graph,
@@ -292,6 +295,7 @@ def run_loop(
         rules=rules or load_pack(),
         ledger=ledger if ledger is not None else load_ledger(),
         max_tier=max_tier,
+        candidate_rejection=candidate_rejection,
     )
     steps: list[LoopStep] = []
     for pass_number in range(1, max_passes + 1):

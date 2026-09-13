@@ -12,18 +12,44 @@ import argparse
 import math
 import sys
 from pathlib import Path
-from typing import Callable
+from typing import Callable, TypeVar
+
+from pydantic import BaseModel
+
+from standardphysics_contracts import (
+    LidarMesh,
+    Scenario,
+    SceneGraph,
+)
 
 from .ask import ask as ask_question
 from .ask import resolver
 from .assess import assess
-from .evaluation import evaluate, save
+from .simulation_report import simulation_result
+from .evaluation import (
+    evaluate,
+    run_accessibility_sweep,
+    save,
+    save_accessibility_sweep,
+)
+from .evaluation.accessibility_sweep import (
+    DEFAULT_EVALUATIONS,
+    DEFAULT_OUTPUT_PATH as DEFAULT_SWEEP_OUTPUT_PATH,
+    DEFAULT_SEED,
+)
 from .evaluation.scorers import LOWER_IS_BETTER
 from .loop import run_loop
 from .router import LocalPolicyRouter, TypeSafeRouter
 from .rules import RuleSpec, load_ledger, load_pack, save_ledger
 from .tracing import init as init_tracing
 from .tracing import is_live
+from .workflows import (
+    DEFAULT_PROFILES,
+    TypeSafeWorkflowConfigurationError,
+    build_workflow_suite,
+    run_typesafe_workflow_batch,
+    run_workflow_batch,
+)
 
 READ_BACK_TOLERANCE = 1e-9
 
@@ -32,6 +58,10 @@ PROVIDERS = ("stub", "pipeline")
 ROUTERS = ("typesafe", "local")
 
 DEFAULT_EVALUATION_PATH = "runs/evaluation.json"
+DEFAULT_SIMULATION_PATH = "runs/simulation.json"
+
+
+ModelT = TypeVar("ModelT", bound=BaseModel)
 
 
 def _measurements(name: str):
@@ -229,6 +259,118 @@ def _evaluate(args) -> int:
     return 0 if result.completed else 1
 
 
+def _accessibility_sweep(args) -> int:
+    result = run_accessibility_sweep(
+        evaluations=args.evaluations,
+        seed=args.seed,
+        record_runs=args.record_runs,
+    )
+    written = save_accessibility_sweep(result, Path(args.out))
+    print(
+        f"{result.evaluations} evaluations across "
+        f"{result.layouts} layouts and {result.routes} routes"
+    )
+    print(f"failures: {result.failures}")
+    for profile_id, count in result.profile_route_fits.items():
+        total = result.profile_evaluations[profile_id]
+        print(f"  {profile_id:16} {count}/{total} routes fit")
+    print(f"seed: {result.seed}")
+    print(f"digest: {result.digest}")
+    print(f"result: {written}")
+    return 0 if result.passed else 1
+
+
+def _load_json_model(path: Path, model: type[ModelT], label: str) -> ModelT | None:
+    """Read one of the measured JSON snapshots used by ``simulate``."""
+    try:
+        payload = path.read_bytes()
+    except OSError as exc:
+        print(f"could not read {label} {path}: {exc}", file=sys.stderr)
+        return None
+    try:
+        return model.model_validate_json(payload)
+    except (TypeError, ValueError) as exc:
+        print(f"could not parse {label} {path}: {exc}", file=sys.stderr)
+        return None
+
+
+
+def _simulate(args) -> int:
+    graph = _load_json_model(Path(args.graph), SceneGraph, "graph")
+    scenario = _load_json_model(Path(args.scenario), Scenario, "scenario")
+    if graph is None or scenario is None:
+        return 2
+
+    mesh = None
+    if args.lidar_mesh:
+        mesh = _load_json_model(Path(args.lidar_mesh), LidarMesh, "LiDAR mesh")
+        if mesh is None:
+            return 2
+
+    rules, ledger = load_pack(), load_ledger()
+    workflows = build_workflow_suite(graph, scenario)
+    from standardphysics_pipeline import PipelineMeasurements
+
+    measure_factory = PipelineMeasurements
+    try:
+        if args.router == "typesafe":
+            batch = run_typesafe_workflow_batch(
+                graph,
+                workflows=workflows,
+                profiles=list(DEFAULT_PROFILES),
+                samples=args.samples,
+                max_workers=args.workers,
+                measure_factory=measure_factory,
+                rules=rules,
+                ledger=ledger,
+                lidar_mesh=mesh,
+                max_tier=3,
+            )
+        else:
+            batch = run_workflow_batch(
+                graph,
+                workflows=workflows,
+                profiles=list(DEFAULT_PROFILES),
+                samples=args.samples,
+                max_workers=args.workers,
+                measure_factory=measure_factory,
+                router_factory=LocalPolicyRouter,
+                rules=rules,
+                ledger=ledger,
+                lidar_mesh=mesh,
+                max_tier=3,
+            )
+    except TypeSafeWorkflowConfigurationError as exc:
+        print(f"simulation could not start: {exc}", file=sys.stderr)
+        return 2
+    except ValueError as exc:
+        print(f"simulation configuration is invalid: {exc}", file=sys.stderr)
+        return 2
+
+    result = simulation_result(batch, rules, ledger, mesh)
+    written = Path(args.out)
+    try:
+        written.parent.mkdir(parents=True, exist_ok=True)
+        written.write_text(result.model_dump_json(indent=2) + "\n", encoding="utf-8")
+    except OSError as exc:
+        print(f"could not write simulation result {written}: {exc}", file=sys.stderr)
+        return 2
+
+    print(
+        f"{result.total_runs} trials across {len(workflows)} workflows and "
+        f"{len(DEFAULT_PROFILES)} profiles"
+    )
+    print(f"completed: {result.completed_runs}; rejected: {result.rejected_runs}")
+    print(f"result: {written}")
+    if (
+        args.router == "typesafe"
+        and result.total_runs > 0
+        and result.rejected_runs == result.total_runs
+    ):
+        return 1
+    return 0
+
+
 def _ask(args) -> int:
     pack, ledger = load_pack(), load_ledger()
     graph, scenario = _fixture_shop()
@@ -296,6 +438,8 @@ HANDLERS: dict[str, Callable[[argparse.Namespace], int]] = {
     "rules.second-check": _second_check,
     "check": _check,
     "evaluate": _evaluate,
+    "accessibility-sweep": _accessibility_sweep,
+    "simulate": _simulate,
     "loop": _loop,
     "ask": _ask,
 }
@@ -348,6 +492,34 @@ def build_parser() -> argparse.ArgumentParser:
     evaluation.add_argument(
         "--no-fixes", action="store_true", help="skip the rearrangement cases"
     )
+
+    sweep = commands.add_parser(
+        "accessibility-sweep",
+        help="stress the route search over generated rooms without network calls",
+    )
+    sweep.add_argument("--evaluations", type=int, default=DEFAULT_EVALUATIONS)
+    sweep.add_argument("--seed", type=int, default=DEFAULT_SEED)
+    sweep.add_argument("--record-runs", type=int, default=0, help="save up to 100 actual runs for replay")
+    sweep.add_argument("--out", default=str(DEFAULT_SWEEP_OUTPUT_PATH))
+
+    simulation = commands.add_parser(
+        "simulate",
+        help="screen a measured room and customer route from JSON snapshots",
+    )
+    simulation.add_argument("--graph", required=True, help="path to a SceneGraph JSON snapshot")
+    simulation.add_argument("--scenario", required=True, help="path to a Scenario JSON snapshot")
+    simulation.add_argument("--lidar-mesh", default=None, help="optional path to a captured LiDAR mesh JSON snapshot")
+    simulation.add_argument("--samples", type=int, default=1000)
+    simulation.add_argument(
+        "--workers",
+        "--max-workers",
+        dest="workers",
+        type=int,
+        default=4,
+        help="maximum number of worker threads",
+    )
+    simulation.add_argument("--router", choices=ROUTERS, default="local")
+    simulation.add_argument("--out", default=DEFAULT_SIMULATION_PATH)
 
     loop = commands.add_parser("loop", help="run the whole loop on the fixture shop")
     loop.add_argument("--provider", choices=PROVIDERS, default="pipeline")

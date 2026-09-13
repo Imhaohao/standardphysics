@@ -36,6 +36,8 @@ from .coverage import parse_coverage
 from .db import Database
 from .errors import ApiProblem
 from .layout import check_layout, save_layout
+from .simulations import queue_simulation, simulation_status
+from standardphysics_contracts import RebuildRequest, SimulationRequest, SimulationStatus, graph_hash
 from .lidar_mesh import InvalidLidarMesh, validate_lidar_mesh
 from .proposals import propose
 from .questions import answer_question
@@ -45,7 +47,7 @@ from .seed import seed_sample_shop
 from .settings import Settings
 from .stages import Stages, preview_ledger
 from .store import ArtifactStore, ArtifactTooLarge, InvalidArtifactId
-from .worker import PROCESS, Worker
+from .worker import ASSESS, PROCESS, Worker
 
 log = logging.getLogger(__name__)
 
@@ -98,6 +100,7 @@ def create_app(settings: Settings | None = None, stages: Stages | None = None, r
     _install_file_routes(app, database, store)
     _install_layout_routes(app, database, stages, worker)
     _install_route_routes(app, database, worker)
+    _install_simulation_routes(app, database, stages, worker)
 
     @app.get("/api/scans/{scan_id}/report", response_model=Report)
     def report(scan_id: uuid.UUID) -> Report:
@@ -140,6 +143,9 @@ def _install_scan_routes(app: FastAPI, database: Database, store: ArtifactStore)
         """
         with database.transaction() as connection:
             _scan_or_404(connection, scan_id)
+            running = connection.execute("SELECT 1 FROM jobs WHERE scan_id=? AND state='running'", (str(scan_id),)).fetchone()
+            if running:
+                raise ApiProblem(409, "Wait for this room's running job to finish before deleting it")
             repo.delete_scan(connection, scan_id)
         store.remove_scan(scan_id)
         return Response(status_code=204)
@@ -294,12 +300,15 @@ def _install_route_routes(app: FastAPI, database: Database, worker: Worker) -> N
 def _install_file_routes(app: FastAPI, database: Database, store: ArtifactStore) -> None:
     @app.head("/api/scans/{scan_id}/scene.glb")
     @app.get("/api/scans/{scan_id}/scene.glb")
-    def scene_glb(scan_id: uuid.UUID) -> FileResponse:
+    def scene_glb(scan_id: uuid.UUID, revision: int | None = None) -> Response:
         with database.connect() as connection:
             _scan_or_404(connection, scan_id)
-            found = repo.display_geometry(connection, scan_id)
-        response = _file_or_404(found[0] if found else None, "model/gltf-binary")
-        response.headers["X-Exported-Revision"] = str(found[1])
+            found = repo.display_geometry(connection, scan_id, revision)
+            pending = repo.display_pending(connection, scan_id)
+        response = _file_or_404(found[0], "model/gltf-binary") if found else Response(status_code=404)
+        if found:
+            response.headers["X-Exported-Revision"] = str(found[1])
+        response.headers["X-Display-Pending"] = str(pending).lower()
         return response
 
     @app.get("/api/scans/{scan_id}/lidar-mesh")
@@ -319,3 +328,28 @@ def _install_file_routes(app: FastAPI, database: Database, store: ArtifactStore)
         directory = store.scan_dir(scan_id) / "revisions"
         matches = sorted(directory.glob(f"*/renders/{finding_id}.png"), key=lambda path: int(path.parent.parent.name))
         return _file_or_404(matches[-1] if matches else None, "image/png")
+
+
+def _install_simulation_routes(app: FastAPI, database: Database, stages: Stages, worker: Worker) -> None:
+    @app.post("/api/scans/{scan_id}/simulations", response_model=SimulationStatus, status_code=202)
+    def start_simulation(scan_id: uuid.UUID, body: SimulationRequest) -> SimulationStatus:
+        return queue_simulation(database, stages, worker, scan_id, body)
+
+    @app.get("/api/scans/{scan_id}/simulations", response_model=SimulationStatus)
+    def get_simulation(scan_id: uuid.UUID, revision: int) -> SimulationStatus:
+        return simulation_status(database, scan_id, revision)
+
+    @app.post("/api/scans/{scan_id}/rebuild", response_model=SceneGraph, status_code=201)
+    def rebuild(scan_id: uuid.UUID, body: RebuildRequest) -> SceneGraph:
+        from .layout import _base, STALE_LAYOUT
+        base, latest, _ = _base(database, scan_id, body.base_revision)
+        if latest != body.base_revision:
+            raise ApiProblem(409, STALE_LAYOUT)
+        rebuilt = stages.label(base).model_copy(update={"revision": base.revision + 1, "base_hash": graph_hash(base)})
+        with database.transaction() as connection:
+            if repo.get_revision(connection, scan_id)["revision"] != base.revision:
+                raise ApiProblem(409, STALE_LAYOUT)
+            repo.save_revision(connection, rebuilt, source="rebuild", base_revision=base.revision)
+            repo.enqueue_job(connection, scan_id, ASSESS, rebuilt.revision)
+        worker.wake()
+        return rebuilt

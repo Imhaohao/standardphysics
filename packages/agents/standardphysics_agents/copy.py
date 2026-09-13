@@ -227,7 +227,11 @@ def _exit_path(observation: Observation, rule: RuleSpec) -> FindingCopy:
     if observation.satisfied:
         return FindingCopy(
             title="The way out is clear",
-            detail=f"There's a path from every seat to {way_out}.",
+            detail=(
+                "There's a path from every seat to "
+                f"{way_out}. California also requires that egress stay "
+                "continuous to a public way with compliant accessible route components."
+            ),
         )
     blockers = things(observation.facts.get("blockers", []))
     subject = f"{blockers} sit" if blockers else "Something sits"

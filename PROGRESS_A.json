@@ -1,6 +1,6 @@
 {
   "lane": "A",
-  "updated": "2026-09-13T00:53:00Z",
+  "updated": "2026-09-13T01:16:00Z",
   "done": [
     "iOS 17 Xcode project builds on the simulator",
     "device support gate and start screen",
@@ -37,12 +37,12 @@
     {"task": "coverage geometry, final reconciliation, and guidance", "model_tier": "Terra", "status": "verified"},
     {"task": "upload ordering, durable resume, UUID validation, and failed-scan recovery", "model_tier": "Terra", "status": "verified"},
     {"task": "detailed capture, recovery, device configuration, and approved local workspace", "model_tier": "Fable/Sol", "status": "implemented"},
-    {"task": "simulator tests, strict concurrency, physical installation, and adversarial review", "model_tier": "Sonnet/Luna", "status": "pending"}
+    {"task": "simulator tests, strict concurrency, physical installation, and adversarial review", "model_tier": "Sonnet/Luna", "status": "verified"}
   ],
   "repair_validation": {
-    "ios_tests_passed": 63,
-    "latest_suite": "Full merged agents 336 passed; API 42 passed; web 31 plus typecheck/stricter complexity lint/production build passed; unchanged iOS 63 passed. After final pipeline pull 1ebff37: evaluation module 33 passed and root Python 162 passed/5 expected failures. Extracted viewer/model/validation helpers to meet incoming complexity limit without changing behavior",
-    "strict_concurrency_build": "signed iOS build passed with complete concurrency and warnings as errors; test stubs use normal test settings",
+    "ios_tests_passed": 65,
+    "latest_suite": "iOS production and test targets passed 65 simulator tests with complete strict concurrency and Swift/Clang warnings as errors, including stale-remote replacement and metadata UUID linkage. Full merged agents 336 passed; API 42 passed; web 31 plus typecheck/stricter complexity lint/production build passed. After final pipeline pull 1ebff37: evaluation module 33 passed and root Python 162 passed/5 expected failures. Extracted viewer/model/validation helpers to meet incoming complexity limit without changing behavior",
+    "strict_concurrency_build": "iOS production and test targets passed with complete concurrency and Swift/Clang warnings as errors; test-only URLProtocol hooks are explicitly unsafe shared state and reset between tests",
     "device_build": "person-filtered measured reconstruction build installed and launched at 17:16 PDT",
     "real_scan": "ravida af42f6cd-d228-4dd8-8790-aff0890fee5b ready on real Lane D API; all 290 artifacts uploaded",
     "video": "AVFoundation playable, 153.84 seconds, 1280x960, 77304881 bytes",
@@ -70,6 +70,7 @@
   ],
   "needs_human": [
     "Inspect test1 close-up for remaining people and judge desk/TV surface quality",
-    "Hand the phone to a first-time scanner and watch whether the guidance works"
+    "Hand the phone to a first-time scanner and watch whether the guidance works",
+    "Time a real scan from pressing Done until its workspace is ready and confirm it stays within 60 seconds"
   ]
 }

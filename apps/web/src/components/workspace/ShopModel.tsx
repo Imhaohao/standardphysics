@@ -4,7 +4,8 @@ import { Edges, Html, useGLTF } from "@react-three/drei";
 import { useThree, type ThreeEvent } from "@react-three/fiber";
 import { Lock } from "@phosphor-icons/react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BoxGeometry, Matrix4, Mesh, Plane, Vector3, type BufferGeometry } from "three";
+import { BoxGeometry, Matrix4, Mesh, Plane, Raycaster, Vector3, type BufferGeometry, type Intersection, type Material } from "three";
+import { displayScale, needsDisplayBoxFallback } from "@/lib/display-geometry";
 import { displayMatrix, toViewerMatrix } from "@/lib/scene-matrix";
 import type { SceneGraph, SceneNode } from "@/types/contracts";
 import { MODEL, nodeColor, WALL_CUT_HEIGHT } from "./palette";
@@ -12,8 +13,9 @@ import { MODEL, nodeColor, WALL_CUT_HEIGHT } from "./palette";
 const UNIT_BOX = new BoxGeometry(1, 1, 1);
 const HIDDEN_KINDS = new Set<SceneNode["kind"]>(["door", "window", "opening"]);
 const FLOOR = new Plane(new Vector3(0, 1, 0), 0);
+const WALL_CLIP_PLANE = new Plane(new Vector3(0, -1, 0), WALL_CUT_HEIGHT);
 
-type Placed = { node: SceneNode; geometry: BufferGeometry; matrix: Matrix4 };
+type Placed = { node: SceneNode; geometry: BufferGeometry; matrix: Matrix4; sourceMaterial: Material | Material[] | null };
 
 export type ArrangeHandlers = {
   activeId: string | null;
@@ -23,27 +25,19 @@ export type ArrangeHandlers = {
   onDrop: (nodeId: string) => void;
 };
 
-/** Walls stop at the cut height, like an architect's model, so the room reads from above. */
-function cutWall(node: SceneNode, matrix: Matrix4): Matrix4 {
-  if (node.kind !== "wall" || node.dimensions.z <= WALL_CUT_HEIGHT) return matrix;
-  const base = node.transform.m[11] - node.dimensions.z / 2;
-  const squash = new Matrix4()
-    .makeTranslation(0, base, 0)
-    .multiply(new Matrix4().makeScale(1, WALL_CUT_HEIGHT / node.dimensions.z, 1))
-    .multiply(new Matrix4().makeTranslation(0, -base, 0));
-  return squash.multiply(matrix);
-}
-
 function boxMatrix(node: SceneNode): Matrix4 {
-  const scale = new Matrix4().makeScale(node.dimensions.x, node.dimensions.z, node.dimensions.y);
+  const scale = new Matrix4().makeScale(...displayScale(node));
   return toViewerMatrix(node.transform).multiply(scale);
 }
 
 function placeFromGlb(meshes: Map<string, Mesh>, node: SceneNode, exported: SceneNode | undefined): Placed {
   const mesh = meshes.get(node.id);
-  if (!mesh || !exported) return { node, geometry: UNIT_BOX, matrix: cutWall(node, boxMatrix(node)) };
+  if (!mesh || !exported) return { node, geometry: UNIT_BOX, matrix: boxMatrix(node), sourceMaterial: null };
   const matrix = displayMatrix(mesh.matrixWorld, exported.transform, node.transform);
-  return { node, geometry: mesh.geometry, matrix: cutWall(node, matrix) };
+  if (needsDisplayBoxFallback(node, mesh.geometry, matrix)) {
+    return { node, geometry: UNIT_BOX, matrix: boxMatrix(node), sourceMaterial: null };
+  }
+  return { node, geometry: mesh.geometry, matrix, sourceMaterial: mesh.material };
 }
 
 function useGlbMeshes(url: string): Map<string, Mesh> {
@@ -64,6 +58,7 @@ type ModelProps = {
   focusColor: string;
   onSelectNode: (nodeId: string) => void;
   arrange: ArrangeHandlers | null;
+  cutWalls?: boolean;
 };
 
 function floorHit(event: ThreeEvent<PointerEvent>): Vector3 | null {
@@ -128,12 +123,68 @@ function nodeState(node: SceneNode, props: Omit<ModelProps, "shown">) {
   };
 }
 
+function styledMaterial(source: Material | Material[], faded: boolean, clippingPlanes: Plane[] | null): Material | Material[] {
+  const style = (material: Material) => {
+    const copy = material.clone();
+    copy.transparent = faded || material.transparent;
+    copy.opacity = faded ? material.opacity * 0.15 : material.opacity;
+    copy.depthWrite = faded ? false : material.depthWrite;
+    copy.clippingPlanes = clippingPlanes?.map((plane) => plane.clone()) ?? null;
+    return copy;
+  };
+  return Array.isArray(source) ? source.map(style) : style(source);
+}
+
+function useSourceMaterial(source: Material | Material[] | null, faded: boolean, clipWall: boolean) {
+  const material = useMemo(
+    () => source ? styledMaterial(source, faded, clipWall ? [WALL_CLIP_PLANE] : null) : null,
+    [source, faded, clipWall],
+  );
+  useEffect(() => () => {
+    if (Array.isArray(material)) material.forEach((item) => item.dispose());
+    else material?.dispose();
+  }, [material]);
+  return material;
+}
+
+function DisplayMaterial({ source, node, faded, clipWall }: { source: Material | Material[] | null; node: SceneNode; faded: boolean; clipWall: boolean }) {
+  const material = useSourceMaterial(source, faded, clipWall);
+  if (material) return <primitive attach="material" object={material} />;
+  return <meshStandardMaterial
+    color={nodeColor(node)}
+    roughness={0.92}
+    transparent={faded}
+    opacity={faded ? 0.15 : 1}
+    depthWrite={!faded}
+    clippingPlanes={clipWall ? [WALL_CLIP_PLANE] : null}
+  />;
+}
+
+/** The renderer clips pixels, but Three's default raycast still sees them. */
+function clippedWallRaycast(this: Mesh, raycaster: Raycaster, intersections: Intersection[]) {
+  const start = intersections.length;
+  Mesh.prototype.raycast.call(this, raycaster, intersections);
+  for (let index = intersections.length - 1; index >= start; index -= 1) {
+    if (intersections[index].point.y > WALL_CUT_HEIGHT) intersections.splice(index, 1);
+  }
+}
+
+function clipsWall(node: SceneNode, cutWalls: boolean | undefined): boolean {
+  return node.kind === "wall" && (cutWalls ?? true);
+}
+
+function meshRaycast(faded: boolean, clipWall: boolean) {
+  if (faded) return () => null;
+  return clipWall ? clippedWallRaycast : undefined;
+}
+
 function ModelNode({ placed, ...props }: { placed: Placed } & Omit<ModelProps, "shown">) {
   const { node, geometry, matrix } = placed;
   const [hovered, setHovered] = useState(false);
   const { faded, outline, lockable, selectable } = nodeState(node, props);
   const drag = useDrag(node, props.arrange);
   const draggable = "onPointerDown" in drag;
+  const clipWall = clipsWall(node, props.cutWalls);
 
   function select(event: ThreeEvent<MouseEvent>) {
     event.stopPropagation();
@@ -155,18 +206,12 @@ function ModelNode({ placed, ...props }: { placed: Placed } & Omit<ModelProps, "
       onClick={selectable ? select : undefined}
       onPointerOver={() => hover(true)}
       onPointerOut={() => hover(false)}
-      raycast={faded ? () => null : undefined}
+      raycast={meshRaycast(faded, clipWall)}
       name={node.id}
       {...drag}
     >
-      <meshStandardMaterial
-        color={nodeColor(node)}
-        roughness={0.92}
-        transparent={faded}
-        opacity={faded ? 0.15 : 1}
-        depthWrite={!faded}
-      />
-      {outline && <Edges threshold={20} lineWidth={3} color={outline} renderOrder={5} />}
+      <DisplayMaterial source={placed.sourceMaterial} node={node} faded={faded} clipWall={clipWall} />
+      {outline && <Edges threshold={20} lineWidth={3} color={outline} renderOrder={5} clippingPlanes={clipWall ? [WALL_CLIP_PLANE] : null} />}
       {lockable && hovered && <LockMark node={node} />}
     </mesh>
   );
@@ -199,7 +244,7 @@ export function GlbShopModel({ url, exported, ...props }: ModelProps & { url: st
 
 export function BoxShopModel(props: ModelProps) {
   const placements = useMemo(
-    () => visibleNodes(props.shown).map((node) => ({ node, geometry: UNIT_BOX, matrix: cutWall(node, boxMatrix(node)) })),
+    () => visibleNodes(props.shown).map((node) => ({ node, geometry: UNIT_BOX, matrix: boxMatrix(node), sourceMaterial: null })),
     [props.shown],
   );
   return <ModelNodes placements={placements} {...props} />;

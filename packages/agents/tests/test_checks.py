@@ -172,11 +172,8 @@ def test_things_a_scan_cannot_see_become_questions(graph, scenario, measure, led
     result = assess(graph, scenario, measure, ledger=ledger)
     asked = {f.check_id for f in result.questions}
     assert asked == {
-        "entrance_threshold",
-        "door_hardware",
-        "door_opening_force",
-        "floor_surface",
-        "restroom_turning_space",
+        "entrance_threshold", "door_hardware", "door_opening_force",
+        "floor_surface", "restroom_turning_space",
     }
 
 

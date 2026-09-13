@@ -1,0 +1,54 @@
+{
+  "goal": "Interactive measured reconstruction and bounded TypeSafe simulation of captured rooms",
+  "git": {
+    "pulled": "279ff84",
+    "preserved_local_work": [
+      "preserve-workflow-integration-before-second-pull-2026-09-12",
+      "preserve-local-work-before-requested-pull-2026-09-12"
+    ],
+    "conflicts": "resolved preserving coverage gates and local workflow safeguards"
+  },
+  "tasks": [
+    {
+      "task": "Provider API and real-scene CLI",
+      "tier": "Luna",
+      "status": "complete; bounded image-assisted Astra finishes now in progress"
+    },
+    {
+      "task": "Clean room rendering with portals and furniture",
+      "tier": "Terra",
+      "status": "display-only geometry implemented; review invariant corrections and Blender proof in progress"
+    },
+    {
+      "task": "Contracts, candidate 3D preview, full wall toggle, verification",
+      "tier": "Frontier",
+      "status": "integration implemented; final verification pending"
+    }
+  ],
+  "proof": {
+    "typesafe_live_smoke": {
+      "model": "jev-latest",
+      "choice": "ready",
+      "confidence": 0.99,
+      "input_tokens": 302,
+      "output_tokens": 29
+    },
+    "geometry_sweep": {
+      "evaluations": 10000,
+      "layouts": 500,
+      "routes": 2500,
+      "failures": 0,
+      "result": "runs/accessibility-sweep.json"
+    },
+    "validation": {
+      "python": "616 passed, 5 xfailed",
+      "api": "66 passed",
+      "web": "34 passed before added rendering/candidate changes"
+    }
+  },
+  "reference": {
+    "url": "https://www.youtube.com/watch?v=NAKJV7V7jiY",
+    "method": "Polycam Room Mode clean parametric room with furniture placeholders, glTF to Blender; alternative textured LiDAR explicitly described as lumpy",
+    "observations": "Transcript read and room import chapters visually inspected; presenter did not verify measurement tolerances"
+  }
+}

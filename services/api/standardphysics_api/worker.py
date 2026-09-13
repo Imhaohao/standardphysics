@@ -17,6 +17,7 @@ from . import repository as repo
 from .db import Database
 from .stages import Stages
 from .store import ArtifactStore
+from .simulations import SIMULATE, run_simulation
 
 log = logging.getLogger(__name__)
 
@@ -32,6 +33,10 @@ class Worker:
 
     def start(self) -> None:
         with self.database.transaction() as connection:
+            connection.execute(
+                "UPDATE jobs SET state='failed', error='Simulation interrupted; start a new run to continue'"
+                " WHERE kind=? AND state='running'", (SIMULATE,),
+            )
             repo.requeue_interrupted_jobs(connection)
         self._thread = threading.Thread(target=self._loop, name="standardphysics-worker", daemon=True)
         self._thread.start()
@@ -68,16 +73,19 @@ class Worker:
 
     def _run(self, job) -> str | None:
         scan_id, revision = uuid.UUID(job["scan_id"]), job["revision"]
-        handler = {PROCESS: self._process, ASSESS: self._assess, DISPLAY: self._display}[job["kind"]]
+        handler = {PROCESS: self._process, ASSESS: self._assess, DISPLAY: self._display, SIMULATE: self._simulate}[job["kind"]]
         try:
             handler(scan_id, revision)
             return None
         except Exception as exc:
             log.error("job %s %s failed:\n%s", job["kind"], scan_id, traceback.format_exc())
-            if job["kind"] != DISPLAY:
+            if job["kind"] not in (DISPLAY, SIMULATE):
                 with self.database.transaction() as connection:
                     repo.set_state(connection, scan_id, "failed")
-            return f"{type(exc).__name__}: {exc}"
+            return "Simulation failed; check the server log and retry" if job["kind"] == SIMULATE else f"{type(exc).__name__}: {exc}"
+
+    def _simulate(self, scan_id: uuid.UUID, revision: int) -> None:
+        run_simulation(self.database, self.store, self.stages, scan_id, revision)
 
     def _process(self, scan_id: uuid.UUID, revision: int) -> None:
         with self.database.connect() as connection:
@@ -104,7 +112,7 @@ class Worker:
     def _display(self, scan_id: uuid.UUID, revision: int) -> None:
         with self.database.connect() as connection:
             graph = repo.graph_of(repo.get_revision(connection, scan_id, revision))
-            has_glb = repo.base_glb_path(connection, scan_id) is not None
+            has_glb = repo.get_revision(connection, scan_id, revision)["glb_path"] is not None
             assessment = repo.assessment_for_revision(connection, scan_id, revision)
             usdz = repo.artifact_of_kind(connection, scan_id, "room_usdz")
             mapping = repo.artifact_of_kind(connection, scan_id, "room_metadata")

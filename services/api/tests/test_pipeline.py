@@ -1,11 +1,58 @@
 """A real RoomPlan export and the sample shop, through every stage."""
 
 import json
+import uuid
 
 from conftest import FIXTURE_DATA, create_scan, drain, put_artifact
-from standardphysics_pipeline import glb_node_names
+from standardphysics_pipeline import glb_node_names, reconstruct
+from standardphysics_api.stages import Stages
 
 REAL = FIXTURE_DATA / "real"
+
+
+def test_default_ingest_uses_local_reconstruction_without_a_network_key(tmp_path, monkeypatch):
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    room_json = tmp_path / "room.json"
+    room_json.write_text(json.dumps({
+        "objects": [{
+            "identifier": str(uuid.uuid4()), "category": "chair", "confidence": "high",
+            "dimensions": [0.5, 0.9, 0.5],
+            "transform": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+        }],
+    }))
+
+    stages = Stages()
+    graph = stages.ingest(room_json, uuid.uuid4())
+
+    assert stages.label is reconstruct
+    assert graph.nodes[0].label == "Chair"
+    assert graph.nodes[0].labeled_by == "roomplan"
+
+
+def test_geometry_exports_the_object_graph_before_considering_a_scan(tmp_path, monkeypatch):
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    room_json = tmp_path / "room.json"
+    room_json.write_text(json.dumps({
+        "objects": [{
+            "identifier": str(uuid.uuid4()), "category": "chair", "confidence": "high",
+            "dimensions": [0.5, 0.9, 0.5],
+            "transform": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+        }],
+    }))
+    graph = Stages().ingest(room_json, uuid.uuid4())
+    out = tmp_path / "scene.glb"
+    calls = []
+
+    def export_graph(actual_graph, actual_out):
+        calls.append((actual_graph, actual_out))
+        return actual_out
+
+    def scanned_mesh(*_):
+        raise AssertionError("the scan must not replace available graph geometry")
+
+    stage = Stages(export_glb=export_graph, usdz_to_glb=scanned_mesh)
+    assert stage.geometry(graph, out, tmp_path / "room.usdz", tmp_path / "mapping.json") == out
+    assert calls == [(graph, out)]
 
 
 def _upload_real_room(client, room: str) -> str:
@@ -42,6 +89,21 @@ def test_display_geometry_falls_back_to_the_graph_when_conversion_fails(client):
 def test_a_real_scan_without_stops_has_no_assessment_yet(client):
     scan_id = _upload_real_room(client, "apple_bedroom3")
     assert client.get(f"/api/scans/{scan_id}/assessment").status_code == 404
+
+
+def test_rebuild_geometry_is_revision_pinned_and_reports_pending_work(client):
+    scan_id = _upload_real_room(client, "apple_bedroom3")
+    url = f"/api/scans/{scan_id}/scene.glb"
+    assert client.head(url).headers["X-Display-Pending"] == "false"
+    assert client.post(f"/api/scans/{scan_id}/rebuild", json={"base_revision": 0}).status_code == 201
+    waiting = client.head(url + "?revision=1")
+    assert waiting.status_code == 404
+    assert waiting.headers["X-Display-Pending"] == "true"
+    drain(client)
+    assert client.get(url).headers["X-Exported-Revision"] == "1"
+    assert client.get(url + "?revision=0").headers["X-Exported-Revision"] == "0"
+    assert client.head(url + "?revision=1").headers["X-Display-Pending"] == "false"
+    assert client.get(url + "?revision=99").status_code == 404
 
 
 def test_the_sample_shop_is_ready_with_its_findings(make_client):

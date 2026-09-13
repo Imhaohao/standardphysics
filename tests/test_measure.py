@@ -281,3 +281,28 @@ def test_a_leg_that_is_never_narrow_reports_no_run(shop):
     wide = measure.route_clear_width(graph, scenario, 3).inches
     assert wide > 36.0
     assert measure.route_run_below(graph, scenario, 3, 36.0) == 0.0
+
+
+def test_repeated_measurements_reuse_paths_but_moves_invalidate_them(shop, monkeypatch):
+    import standardphysics_pipeline.measure as module
+    graph, scenario, _ = shop
+    original = module.widest_path
+    calls = []
+
+    def counted(*args, **kwargs):
+        calls.append(1)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(module, 'widest_path', counted)
+    measure = module.PipelineMeasurements()
+    before = measure.route_clear_width(graph, scenario, 1)
+    measure.route_path_clearances(graph, scenario, 1)
+    measure.route_run_below(graph, scenario, 1, 36)
+    assert len(calls) == 1
+    from standardphysics_contracts import NodeMove, Vec3
+    from standardphysics_agents.fix import apply_moves
+    moved = apply_moves(graph, [NodeMove(node_id=graph.movable()[0].id, delta_translation=Vec3(x=0.05, y=0, z=0))])
+    measure.route_clear_width(moved, scenario, 1)
+    assert len(calls) == 2
+    assert measure.route_clear_width(graph, scenario, 1) == before
+    assert len(calls) == 2

@@ -13,6 +13,7 @@ could allow, tested first so the offer is real.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Literal
 from uuid import UUID
@@ -47,6 +48,7 @@ RELAXATION_LIMIT = 6
 """A smaller ladder when testing whether a relaxation would even help."""
 
 RelaxationKind = Literal["unlock", "set_aside"]
+CandidateRejection = Callable[[SceneGraph, SceneGraph], str | None]
 
 
 @dataclass(frozen=True)
@@ -148,6 +150,7 @@ class _Search:
     ledger: VerificationLedger
     max_tier: Tier
     baseline: Pass
+    candidate_rejection: CandidateRejection | None = None
     measured: int = 0
     rejected: list[str] = field(default_factory=list)
 
@@ -170,8 +173,14 @@ class _Search:
                 ledger=self.ledger,
                 max_tier=self.max_tier,
             )
-            if _resolves(known, pinch.finding_id, after) and accepts(self.baseline, after):
-                return candidate, rearranged
+            if not _resolves(known, pinch.finding_id, after) or not accepts(self.baseline, after):
+                continue
+            if self.candidate_rejection is not None:
+                reason = self.candidate_rejection(self.graph, rearranged)
+                if reason:
+                    self.rejected.append(reason)
+                    continue
+            return candidate, rearranged
         return None
 
 
@@ -188,6 +197,7 @@ def propose_fix(
     max_tier: Tier = 1,
     limit: int = CANDIDATE_LIMIT,
     offer_relaxation: bool = True,
+    candidate_rejection: CandidateRejection | None = None,
 ) -> FixOutcome:
     """One arrangement that clears a named finding, or one thing to ask about."""
     problems = [finding for finding in targets if finding.outcome == "problem"]
@@ -197,7 +207,8 @@ def propose_fix(
     target_ids = tuple(finding.id for finding in problems)
 
     search = _Search(
-        graph, scenario, measure, rules, ledger, max_tier, baseline=before
+        graph, scenario, measure, rules, ledger, max_tier,
+        baseline=before, candidate_rejection=candidate_rejection,
     )
     for pinch in _pinches(problems, graph):
         result = search.run(pinch, limit)
@@ -218,6 +229,7 @@ def propose_fix(
         _find_relaxation(
             graph, scenario, measure, problems,
             rules=rules, ledger=ledger, max_tier=max_tier, baseline=before,
+            candidate_rejection=candidate_rejection,
         )
         if offer_relaxation
         else None
@@ -251,6 +263,7 @@ def _find_relaxation(
     ledger: VerificationLedger,
     max_tier: Tier,
     baseline: Pass,
+    candidate_rejection: CandidateRejection | None,
 ) -> Relaxation | None:
     """One thing the owner could allow, tested before it is offered.
 
@@ -262,9 +275,11 @@ def _find_relaxation(
         found = _try_unlocking(
             graph, scenario, measure, pinch,
             rules=rules, ledger=ledger, max_tier=max_tier, baseline=baseline,
+            candidate_rejection=candidate_rejection,
         ) or _try_setting_aside(
             graph, scenario, measure, pinch,
             rules=rules, ledger=ledger, max_tier=max_tier, baseline=baseline,
+            candidate_rejection=candidate_rejection,
         )
         if found:
             return found
@@ -272,7 +287,8 @@ def _find_relaxation(
 
 
 def _try_unlocking(
-    graph, scenario, measure, pinch, *, rules, ledger, max_tier, baseline
+    graph, scenario, measure, pinch, *, rules, ledger, max_tier, baseline,
+    candidate_rejection,
 ) -> Relaxation | None:
     for node in pinch.fixed:
         opened = unlocked(graph, [node.id])
@@ -285,6 +301,7 @@ def _try_unlocking(
             opened, scenario, measure, [target],
             rules=rules, ledger=ledger, baseline=baseline,
             max_tier=max_tier, limit=RELAXATION_LIMIT, offer_relaxation=False,
+            candidate_rejection=candidate_rejection,
         )
         if outcome.found:
             return _relaxation("unlock", [node])
@@ -292,16 +309,23 @@ def _try_unlocking(
 
 
 def _try_setting_aside(
-    graph, scenario, measure, pinch, *, rules, ledger, max_tier, baseline
+    graph, scenario, measure, pinch, *, rules, ledger, max_tier, baseline,
+    candidate_rejection,
 ) -> Relaxation | None:
     from ..evaluation.gate import accepts
 
     known = {finding.id for finding in baseline.problems}
     for node in pinch.movable:
+        candidate = without(graph, [node.id])
         after = assess(
-            without(graph, [node.id]), scenario, measure,
+            candidate, scenario, measure,
             rules=rules, ledger=ledger, max_tier=max_tier,
         )
-        if _resolves(known, pinch.finding_id, after) and accepts(baseline, after):
+        rejected = (
+            candidate_rejection(graph, candidate)
+            if candidate_rejection is not None
+            else None
+        )
+        if _resolves(known, pinch.finding_id, after) and accepts(baseline, after) and not rejected:
             return _relaxation("set_aside", [node])
     return None

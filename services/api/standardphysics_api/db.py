@@ -58,6 +58,17 @@ CREATE TABLE IF NOT EXISTS scenarios (
     scan_id TEXT PRIMARY KEY REFERENCES scans(id),
     scenario_json TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS simulations (
+    scan_id TEXT NOT NULL REFERENCES scans(id),
+    revision INTEGER NOT NULL,
+    request_json TEXT NOT NULL,
+    graph_json TEXT NOT NULL,
+    scenario_json TEXT NOT NULL,
+    mesh_artifact_id TEXT,
+    completed INTEGER NOT NULL DEFAULT 0,
+    result_json TEXT,
+    PRIMARY KEY (scan_id, revision)
+);
 CREATE TABLE IF NOT EXISTS assessments (
     id TEXT PRIMARY KEY,
     scan_id TEXT NOT NULL REFERENCES scans(id),

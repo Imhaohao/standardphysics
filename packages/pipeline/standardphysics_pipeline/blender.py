@@ -20,6 +20,7 @@ from .check_blender import blender_path
 SCRIPTS = pathlib.Path(__file__).parent / "blender_scripts"
 
 TIMEOUT_SECONDS = 300
+MIN_DISPLAY_WALL_THICKNESS = 0.08
 
 
 class BlenderError(RuntimeError):
@@ -46,7 +47,7 @@ def export_glb(graph: SceneGraph, out_path: pathlib.Path) -> pathlib.Path:
     """
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as handle:
-        handle.write(graph.model_dump_json())
+        handle.write(display_graph(graph).model_dump_json())
         graph_path = handle.name
 
     output = _run("build_glb.py", ["--graph", graph_path, "--out", str(out_path)])
@@ -130,6 +131,29 @@ def glb_node_names(path: pathlib.Path) -> list[str]:
     return [node.get("name", "") for node in scene.get("nodes", [])]
 
 
+def glb_mesh_bounds(path: pathlib.Path, node_id: str) -> tuple[tuple[float, float, float], tuple[float, float, float]]:
+    """Evaluate an exported GLB in Blender and return one mesh's world bounds."""
+    output = _run("inspect_glb.py", ["--glb", str(path), "--node", node_id])
+    result = _blender_json(output)
+    if not result["mesh"]:
+        raise BlenderError(f"{node_id} did not export as a mesh")
+    return tuple(result["min"]), tuple(result["max"])
+
+
+def glb_ray_hit(path: pathlib.Path, origin: tuple[float, float, float], direction: tuple[float, float, float]) -> str | None:
+    """Cast a ray through the exported GLB in Blender and return the hit node ID."""
+    values = [str(value) for value in (*origin, *direction)]
+    output = _run("inspect_glb.py", ["--glb", str(path), "--node", "unused", "--ray", *values])
+    return _blender_json(output)["object"]
+
+
+def _blender_json(output: str) -> dict:
+    for line in reversed(output.splitlines()):
+        if line.startswith("{"):
+            return json.loads(line)
+    raise BlenderError(f"inspection did not return JSON:\n{output[-2000:]}")
+
+
 def render_finding(
     graph: SceneGraph, locus, out_path: pathlib.Path, size: tuple[int, int] = (1200, 800)
 ) -> pathlib.Path:
@@ -140,7 +164,7 @@ def render_finding(
     same information at once.
     """
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    graph_file = _write_temp(graph.model_dump_json())
+    graph_file = _write_temp(display_graph(graph).model_dump_json())
     locus_file = _write_temp(locus.model_dump_json())
 
     output = _run(
@@ -162,3 +186,14 @@ def _write_temp(payload: str) -> str:
     with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as handle:
         handle.write(payload)
         return handle.name
+
+
+def display_graph(graph: SceneGraph) -> SceneGraph:
+    """Clamp only the visual wall shell; measurements keep their original dimensions."""
+    nodes = [
+        node.model_copy(update={"dimensions": node.dimensions.model_copy(update={"y": max(node.dimensions.y, MIN_DISPLAY_WALL_THICKNESS)})})
+        if node.kind == "wall"
+        else node
+        for node in graph.nodes
+    ]
+    return graph.model_copy(update={"nodes": nodes})

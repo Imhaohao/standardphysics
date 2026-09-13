@@ -129,6 +129,12 @@ final class UploadViewModel: ObservableObject {
             guard isActive(runID) else { return }
             errorMessage = "This scan is linked to a different upload server."
             finish(runID)
+        } catch UploadClientError.remoteScanMissing {
+            guard isActive(runID) else { return }
+            state = .failed
+            try? uploadStore.record(state: .failed)
+            errorMessage = "The upload server lost this scan. Try again to upload your saved copy."
+            finish(runID)
         } catch {
             guard isActive(runID) else { return }
             if state != .ready {

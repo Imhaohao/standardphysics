@@ -9,10 +9,13 @@ import type { Scan, SceneGraph } from "@/types/contracts";
 export const dynamic = "force-dynamic";
 
 /** Whether a GLB exists, and the revision whose layout it was exported from. */
-async function glbExportedRevision(scanId: string): Promise<number | null> {
+async function glbStatus(scanId: string) {
   const response = await fetch(`${API_ORIGIN}${sceneGlbUrl(scanId)}`, { method: "HEAD", cache: "no-store" });
   const revision = response.headers.get("X-Exported-Revision");
-  return response.ok && revision !== null ? Number(revision) : null;
+  return {
+    revision: response.ok && revision !== null ? Number(revision) : null,
+    pending: response.headers.get("X-Display-Pending") === "true",
+  };
 }
 
 async function loadPrevious(scanId: string, revision: number) {
@@ -39,8 +42,9 @@ export default async function ShopPage({ params }: PageProps<"/scans/[scanId]">)
   const { scanId } = await params;
   const scan = await getScan(scanId);
   if (!scan) notFound();
-  const [scene, glbRevision] = await Promise.all([getScene(scanId), glbExportedRevision(scanId)]);
+  const [scene, geometry] = await Promise.all([getScene(scanId), glbStatus(scanId)]);
   if (!scene) return <NotMeasuredYet scan={scan} />;
+  const glbRevision = geometry.revision;
 
   const [assessment, exported, previous, scenario] = await Promise.all([
     getAssessment(scanId, scene.revision),
@@ -50,16 +54,16 @@ export default async function ShopPage({ params }: PageProps<"/scans/[scanId]">)
   ]);
   const suggestedScenario = scenario ? null : await getScenarioSuggestion(scanId);
   return (
-    <Workspace
+    <><RefreshWhile pending={geometry.pending} /><Workspace
       scan={scan}
       scene={scene}
       exported={exported}
       assessment={assessment}
       previous={previous}
-      glbUrl={glbRevision === null ? null : sceneGlbUrl(scanId)}
+      glbUrl={glbRevision === null ? null : sceneGlbUrl(scanId, glbRevision)}
       scenario={scenario}
       suggestedScenario={suggestedScenario}
       lidarUrl={scan.artifacts.some((artifact) => artifact.kind === "lidar_mesh") ? `/api/scans/${scanId}/lidar-mesh` : null}
-    />
+    /></>
   );
 }

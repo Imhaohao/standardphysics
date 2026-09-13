@@ -354,6 +354,26 @@ class TestProposals:
         )
         assert first.proposal.id == second.proposal.id
 
+    def test_an_external_workflow_regression_rejects_the_candidate(
+        self, graph, scenario, pipeline, ledger, pack
+    ):
+        before = assess(graph, scenario, pipeline, rules=pack, ledger=ledger)
+        result = propose_fix(
+            graph,
+            scenario,
+            pipeline,
+            _pinch_finding(before),
+            rules=pack,
+            ledger=ledger,
+            baseline=before,
+            limit=1,
+            offer_relaxation=False,
+            candidate_rejection=lambda base, candidate: "workflow_regression",
+        )
+
+        assert result.found is False
+        assert "workflow_regression" in result.rejected
+
 
 class TestExhaustion:
     def test_nothing_is_proposed(self, exhausted):

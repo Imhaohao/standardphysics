@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SceneNode } from "@/types/contracts";
-import { applyMoves, moveNode, withMove } from "./moves";
+import { applyMoves, candidateMoves, moveNode, withMove } from "./moves";
 
 const table: SceneNode = {
   id: "t", kind: "object", label: "Table", raw_category: "table", quality: "measured", movable: true,
@@ -33,5 +33,25 @@ describe("withMove", () => {
   it("leaves a scene with no moves untouched", () => {
     const scene = { scan_id: "s", revision: 0, base_hash: null, nodes: [table] };
     expect(applyMoves(scene, {})).toBe(scene);
+  });
+});
+
+describe("candidateMoves", () => {
+  const scene = { scan_id: "s", revision: 0, base_hash: null, nodes: [table] };
+  it("previews the exact screened translation and rotation through the existing move flow", () => {
+    const candidate = applyMoves(scene, withMove({}, "t", 0.25, -0.1, 175));
+    const moves = candidateMoves(scene, candidate)!;
+    const preview = applyMoves(scene, Object.fromEntries(moves.map((move) => [move.node_id, move])));
+    expect(rounded(preview.nodes[0].transform.m)).toEqual(rounded(candidate.nodes[0].transform.m));
+    expect(preview.nodes[0].dimensions).toEqual(table.dimensions);
+  });
+  it("refuses resized, lifted, fixed or mismatched room candidates", () => {
+    const resized = { ...table, dimensions: { ...table.dimensions, x: 2 } };
+    const lifted = moveNode(table, { node_id: "t", delta_translation: { x: 0, y: 0, z: 1 }, delta_rotation_z_degrees: 0 });
+    expect(candidateMoves(scene, { ...scene, nodes: [resized] })).toBeNull();
+    expect(candidateMoves(scene, { ...scene, nodes: [lifted] })).toBeNull();
+    expect(candidateMoves(scene, { ...scene, scan_id: "other" })).toBeNull();
+    const fixed = { ...scene, nodes: [{ ...table, movable: false }] };
+    expect(candidateMoves(fixed, applyMoves(fixed, withMove({}, "t", 1, 0, 0)))).toBeNull();
   });
 });

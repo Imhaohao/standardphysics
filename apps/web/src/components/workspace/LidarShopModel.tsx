@@ -1,17 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Html } from "@react-three/drei";
-import { Box3 } from "three";
-import { lidarGeometry, lidarMatrix, objectAtPoint, validateLidarMesh } from "@/lib/lidar-mesh";
-import type { LidarMesh, SceneGraph } from "@/types/contracts";
+import { lidarGeometry, lidarMatrix, validateLidarMesh } from "@/lib/lidar-mesh";
+import type { LidarMesh } from "@/types/contracts";
 import { MODEL } from "./palette";
 
-export function LidarShopModel({ url, scene, onSelectNode, onBounds }: {
-  url: string; scene: SceneGraph; onSelectNode: (id: string) => void; onBounds: (bounds: Box3) => void;
-}) {
+/** Captured triangles are optional visual evidence; the graph owns interaction. */
+export function LidarShopModel({ url }: { url: string }) {
   const [mesh, setMesh] = useState<LidarMesh | null>(null);
-  const [failed, setFailed] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
     async function load() {
@@ -20,46 +16,22 @@ export function LidarShopModel({ url, scene, onSelectNode, onBounds }: {
         if (!response.ok) throw new Error("Scan surfaces unavailable");
         const loaded = validateLidarMesh(await response.json());
         if (!controller.signal.aborted) setMesh(loaded);
-      } catch {
-        if (!controller.signal.aborted) setFailed(true);
-      }
+      } catch { /* Evidence must never replace the usable reconstructed view. */ }
     }
     void load();
     return () => controller.abort();
   }, [url]);
-  if (failed) return <ScanMessage alert text="Reload the page to try loading the scanned surfaces again." />;
-  if (!mesh) return <ScanMessage text="Loading scanned surfaces" />;
-  return <MeasuredSurfaces mesh={mesh} scene={scene} onSelectNode={onSelectNode} onBounds={onBounds} />;
+  return mesh ? <MeasuredSurfaces mesh={mesh} /> : null;
 }
 
-function ScanMessage({ text, alert = false }: { text: string; alert?: boolean }) {
-  return <Html center calculatePosition={(_, __, size) => [size.width / 2, size.height / 2]}>
-    <p role={alert ? "alert" : "status"} className="w-64 rounded-lg bg-sheet p-4 text-center text-ink">{text}</p>
-  </Html>;
-}
-
-function MeasuredSurfaces({ mesh, scene, onSelectNode, onBounds }: {
-  mesh: LidarMesh; scene: SceneGraph; onSelectNode: (id: string) => void; onBounds: (bounds: Box3) => void;
-}) {
+function MeasuredSurfaces({ mesh }: { mesh: LidarMesh }) {
   const parts = useMemo(() => mesh.parts.map((part) => ({
     id: part.id, geometry: lidarGeometry(part), matrix: lidarMatrix(part, mesh.floorY ?? 0),
   })), [mesh]);
   useEffect(() => () => { parts.forEach((part) => part.geometry.dispose()); }, [parts]);
-  useEffect(() => {
-    const bounds = new Box3();
-    for (const part of parts) {
-      part.geometry.computeBoundingBox();
-      bounds.union(part.geometry.boundingBox!.clone().applyMatrix4(part.matrix));
-    }
-    onBounds(bounds);
-  }, [parts, onBounds]);
   return <group>{parts.map((part) => (
-    <mesh key={part.id} geometry={part.geometry} matrix={part.matrix} matrixAutoUpdate={false}
-      onClick={(event) => {
-        event.stopPropagation();
-        onSelectNode(objectAtPoint(scene, event.point)?.id ?? "");
-      }}>
-      <meshStandardMaterial color={MODEL.ground} roughness={0.85} />
+    <mesh key={part.id} geometry={part.geometry} matrix={part.matrix} matrixAutoUpdate={false} renderOrder={-1} raycast={() => null}>
+      <meshStandardMaterial color={MODEL.ground} roughness={0.9} transparent opacity={0.1} depthWrite={false} />
     </mesh>
   ))}</group>;
 }

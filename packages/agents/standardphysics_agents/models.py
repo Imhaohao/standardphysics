@@ -90,10 +90,10 @@ class OpenRouter:
         """One call, one JSON object shaped by `schema`."""
         if not self.configured:
             return Rejected("openrouter_not_configured")
-        client = self.client()
-        if client is None:
-            return Rejected("openrouter_not_configured")
         try:
+            client = self.client()
+            if client is None:
+                return Rejected("openrouter_not_configured")
             response = client.chat.completions.create(**self._request(
                 instruction, payload, schema, schema_name
             ))

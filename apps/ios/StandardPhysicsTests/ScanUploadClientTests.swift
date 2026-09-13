@@ -82,6 +82,17 @@ final class ScanUploadClientTests: XCTestCase {
         }
     }
 
+    func testReportsWhenTheRemoteScanNoLongerExists() async throws {
+        URLProtocolStub.handler = { _ in (410, Data()) }
+
+        do {
+            _ = try await makeClient().scan(id: UUID())
+            XCTFail("Expected a missing remote scan error")
+        } catch let error as UploadClientError {
+            XCTAssertEqual(error, .remoteScanMissing)
+        }
+    }
+
     private func makeClient() -> ScanUploadClient {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [URLProtocolStub.self]
@@ -116,7 +127,9 @@ final class WorkspaceWebViewTests: XCTestCase {
 }
 
 private final class URLProtocolStub: URLProtocol {
-    static var handler: ((URLRequest) throws -> (Int, Data))?
+    // XCTest installs one handler at a time. URLProtocol invokes it on its own
+    // loading thread, so this test-only shared hook cannot be actor-isolated.
+    nonisolated(unsafe) static var handler: ((URLRequest) throws -> (Int, Data))?
 
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }

@@ -205,7 +205,7 @@
       "citation": {
         "authority": "CBC",
         "edition": "2022 California Building Code",
-        "section": "Chapter 10",
+        "section": "1009.1 and 1009.2",
         "url": "https://codes.iccsafe.org/content/CABC2022P4/chapter-10-means-of-egress"
       },
       "tier": 1,
@@ -217,8 +217,8 @@
         "route_leg"
       ],
       "evidence": "measured",
-      "source_text": "DRAFT, section not yet pinned. Chapter 10 governs means of egress. The width of exit access is scoped by 1020.2 and the egress width per occupant by 1005.3, and which one governs a small shop depends on occupant load.",
-      "review_note": "Pin the exact section and confirm the occupant load that applies to a shop of this size before enabling. An accessibility professional or the Palo Alto Building Division should confirm this one.",
+      "source_text": "1009.1 Accessible means of egress required. Accessible means of egress shall comply with this section; each accessible space is provided with at least one accessible means of egress, and where more than one means is required by 1006.2 or 1006.3, each accessible portion shall be served by the same number. 1009.2 requires each required accessible means of egress to be continuous to a public way and include accessible route elements that in California must comply with 11B-206 and 11B-402.",
+      "review_note": "This check confirms whether a clear path to the exit exists on the scan, but does not yet evaluate CBC 1005.3/1006.2 sizing, travel distance, or capacity limits.",
       "resolved_by": "moving_things"
     },
     {

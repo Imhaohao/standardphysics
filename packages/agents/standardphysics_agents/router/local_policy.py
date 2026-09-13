@@ -96,5 +96,17 @@ class LocalPolicyRouter:
         for rule in POLICY:
             payload = rule(state)
             if payload is not None:
-                return parse_decision(payload, state.findings, PROVIDER)
-        return parse_decision(_finish(state), state.findings, PROVIDER)
+                return parse_decision(
+                    payload,
+                    state.findings,
+                    PROVIDER,
+                    fixable_finding_ids=state.fixable_finding_ids,
+                    rescan_finding_ids=state.rescan_finding_ids,
+                )
+        return parse_decision(
+            _finish(state),
+            state.findings,
+            PROVIDER,
+            fixable_finding_ids=state.fixable_finding_ids,
+            rescan_finding_ids=state.rescan_finding_ids,
+        )

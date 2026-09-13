@@ -3,8 +3,8 @@ import type { LidarMesh, LidarMeshPart, SceneGraph, SceneNode } from "@/types/co
 import { toViewerMatrix } from "./scene-matrix";
 
 /** Raw triangles describe the captured room, never an edited furniture layout. */
-export function capturedMeshUrl(url: string | null, revision: number, layoutPreview: boolean): string | null {
-  return revision === 0 && !layoutPreview ? url : null;
+export function capturedMeshUrl(url: string | null, revision: number, showEvidence: boolean): string | null {
+  return revision === 0 && showEvidence ? url : null;
 }
 
 /** Raw ARKit and the viewer both use Y-up. Only the ingest floor shift applies. */

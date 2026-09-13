@@ -24,7 +24,10 @@ RULE_ID = "exit_path"
 
 EXIT_STOP_NAMES = frozenset({"exit", "exit door", "way out"})
 
-WAITING_ON = "the egress width section, pinned by a person: see the rule's review note"
+WAITING_ON = (
+    "the CBC 10 sections on accessible means of egress, "
+    "including continuity and sizing requirements"
+)
 
 
 @traced("checks.exit_path")

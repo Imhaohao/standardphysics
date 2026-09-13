@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from .geometry import Mat4, Vec3
 
@@ -20,6 +20,15 @@ confirmed: a number a person entered by hand.
 LabelSource = Literal["roomplan", "astra", "owner"]
 
 
+class DisplayAppearance(BaseModel):
+    """An inferred finish for rendering; never physical or compliance evidence."""
+
+    model_config = ConfigDict(extra="forbid")
+    base_color: str = Field(pattern=r"^#[0-9a-fA-F]{6}$")
+    material: Literal["paint", "wood", "fabric", "metal", "stone", "glass", "neutral"]
+    source: Literal["astra"] = "astra"
+
+
 class SceneNode(BaseModel):
     id: UUID
     kind: NodeKind
@@ -31,6 +40,7 @@ class SceneNode(BaseModel):
     movable: bool = False
     labeled_by: LabelSource = "roomplan"
     parent_id: UUID | None = None
+    appearance: DisplayAppearance | None = Field(default=None, exclude_if=lambda value: value is None)
 
     @property
     def touches_floor(self) -> bool:

@@ -1,14 +1,10 @@
 """TypeSafe picks the next action, and its answer drives real control flow.
 
-The request carries the schema generated from `Decision` and a summary of the
-findings. The response is handed straight to `parse_decision`, so nothing the
-service returns reaches a branch without being validated first, including a
-transport failure: that comes back as `Rejected` rather than as an exception,
-because a service being down must not be able to authorize anything either.
-
-`base_url` and `path` are settable because the event's quickstart is the source
-of truth for them, and a person collects that in the first hour along with the
-key. Point them at the quickstart's endpoint and nothing else changes.
+TypeSafe's live API evaluates typed questions. It does not accept an arbitrary
+JSON schema, so the router asks one closed-set Choice question for the next
+action and assembles eligible finding targets in code. The answer still passes
+through ``parse_decision`` and the authorization checks before it can reach a
+branch.
 """
 
 from __future__ import annotations
@@ -19,29 +15,40 @@ import urllib.error
 import urllib.request
 from typing import Any, Protocol
 
-from standardphysics_contracts import Decision, Finding
+from standardphysics_contracts import Decision
 
 from ..tracing import traced
-from .decision import Rejected, action_schema, parse_decision
+from .decision import ACTIONS, Rejected, parse_decision
 from .state import RouterState
 
 API_KEY_ENV = "TYPESAFE_API_KEY"
 BASE_URL_ENV = "TYPESAFE_BASE_URL"
 MODEL_ENV = "TYPESAFE_MODEL"
 
-DEFAULT_PATH = "/v1/structured"
+DEFAULT_BASE_URL = "https://api.typesafe.ai"
+DEFAULT_PATH = "/v1/systemone"
+DEFAULT_MODEL = "jev-latest"
 DEFAULT_TIMEOUT_SECONDS = 20.0
 
 PROVIDER = "typesafe"
 
 INSTRUCTION = (
     "You are choosing the next step for an accessibility review of a small shop. "
-    "Pick exactly one action. FIX moves furniture and may only target problems "
-    "where furniture_can_fix is true. RESCAN_AREA asks for a short follow-up "
-    "scan and may only target findings where wants_another_look is true. "
-    "ASK_OWNER needs one specific question. ESCALATE queues a problem for a "
-    "professional. DONE ends the review. Name every finding you act on."
+    "Pick exactly one action from the options. FIX moves furniture and may only "
+    "target problems where furniture_can_fix is true. RESCAN_AREA asks for a "
+    "short follow-up scan and may only target findings where wants_another_look "
+    "is true. ASK_OWNER needs one specific question. ESCALATE queues a problem "
+    "for a professional. DONE ends the review. The application supplies eligible "
+    "finding targets after the action is selected."
 )
+
+ACTION_CRITERIA = {
+    "FIX": "Move furniture to resolve one or more measured problems when furniture_can_fix is true.",
+    "RESCAN_AREA": "Request a short follow-up scan for findings marked wants_another_look.",
+    "ASK_OWNER": "Ask the owner for evidence that the scan cannot measure.",
+    "ESCALATE": "Queue measured problems that furniture cannot resolve for a professional.",
+    "DONE": "End the review when no eligible next step remains.",
+}
 
 RESPONSE_PATHS = (
     ("data",),
@@ -54,6 +61,8 @@ RESPONSE_PATHS = (
 Checked in order, and the whole body is used when none of them match, so a
 service that returns the object at the top level works without configuration.
 """
+
+_NO_TYPESAFE_ANSWER = object()
 
 
 class Transport(Protocol):
@@ -78,11 +87,40 @@ def extract_payload(body: Any) -> Any:
         body = _load(body)
     if not isinstance(body, dict):
         return body
+    choice = _typesafe_choice(body)
+    if choice is not _NO_TYPESAFE_ANSWER:
+        return {"action": choice}
     for path in RESPONSE_PATHS:
         found = _walk(body, path)
         if found is not None:
+            nested_choice = _typesafe_choice(found)
+            if nested_choice is not _NO_TYPESAFE_ANSWER:
+                return {"action": nested_choice}
             return found
     return body
+
+
+def _typesafe_choice(body: Any) -> Any:
+    """Return the live System One action answer, if this is a TypeSafe body."""
+    if isinstance(body, (str, bytes)):
+        body = _load(body)
+    if not isinstance(body, dict):
+        return _NO_TYPESAFE_ANSWER
+    answers = body.get("answers")
+    if answers is None:
+        for key in ("data", "output", "result"):
+            found = _typesafe_choice(body.get(key))
+            if found is not _NO_TYPESAFE_ANSWER:
+                return found
+        return _NO_TYPESAFE_ANSWER
+    if not isinstance(answers, dict):
+        return None
+    answer = answers.get("action")
+    if not isinstance(answer, dict):
+        return None
+    if answer.get("type") != "choice":
+        return None
+    return answer.get("choice")
 
 
 def _load(raw: str | bytes) -> Any:
@@ -116,9 +154,11 @@ class TypeSafeRouter:
         transport: Transport | None = None,
     ) -> None:
         self.api_key = api_key or os.environ.get(API_KEY_ENV)
-        self.base_url = (base_url or os.environ.get(BASE_URL_ENV) or "").rstrip("/")
-        self.path = path
-        self.model = model or os.environ.get(MODEL_ENV)
+        self.base_url = (
+            base_url or os.environ.get(BASE_URL_ENV) or DEFAULT_BASE_URL
+        ).rstrip("/")
+        self.path = path or DEFAULT_PATH
+        self.model = model or os.environ.get(MODEL_ENV) or DEFAULT_MODEL
         self.transport = transport or UrllibTransport()
 
     @property
@@ -126,14 +166,17 @@ class TypeSafeRouter:
         return bool(self.api_key and self.base_url)
 
     def request_body(self, state: RouterState) -> dict:
-        body = {
-            "instruction": INSTRUCTION,
-            "schema": action_schema(),
-            "input": state.summary(),
+        return {
+            "state": state.summary(),
+            "model": self.model,
+            "questions": {
+                "action": {
+                    "type": "choice",
+                    "instructions": INSTRUCTION,
+                    "criteria": ACTION_CRITERIA,
+                }
+            },
         }
-        if self.model:
-            body["model"] = self.model
-        return body
 
     @traced("router.typesafe")
     def decide(self, state: RouterState) -> Decision | Rejected:
@@ -142,7 +185,17 @@ class TypeSafeRouter:
         raw = self._call(self.request_body(state))
         if isinstance(raw, Rejected):
             return raw
-        decision = parse_decision(extract_payload(raw), state.findings, PROVIDER)
+        choice = _typesafe_choice(raw)
+        if choice is _NO_TYPESAFE_ANSWER:
+            return Rejected("typesafe_response_missing_answers")
+        payload = _decision_payload({"action": choice}, state)
+        decision = parse_decision(
+            payload,
+            state.findings,
+            PROVIDER,
+            fixable_finding_ids=state.fixable_finding_ids,
+            rescan_finding_ids=state.rescan_finding_ids,
+        )
         if isinstance(decision, Rejected):
             return decision
         return _authorize(decision, state)
@@ -159,6 +212,44 @@ class TypeSafeRouter:
             )
         except (urllib.error.URLError, urllib.error.HTTPError, OSError, TimeoutError):
             return Rejected("transport_error")
+
+
+def _decision_payload(payload: Any, state: RouterState) -> Any:
+    """Turn TypeSafe's one Choice answer into the contract's decision shape.
+
+    System One answers a typed question and does not generate arbitrary arrays
+    of UUIDs or free-form text. The router therefore chooses targets from the
+    measured state after the action Choice, then validates the assembled
+    payload with the same parser used by every router.
+    """
+    if not isinstance(payload, dict):
+        return payload
+    action = payload.get("action")
+    if action not in ACTIONS:
+        return payload
+
+    decision = dict(payload)
+    if action == "FIX":
+        decision["target_finding_ids"] = [
+            str(finding_id) for finding_id in state.fixable_finding_ids
+        ]
+    elif action == "RESCAN_AREA":
+        decision["target_finding_ids"] = [
+            str(finding_id) for finding_id in state.rescan_finding_ids
+        ]
+    elif action == "ASK_OWNER":
+        if state.questions:
+            finding = state.questions[0]
+            decision["target_finding_ids"] = [str(finding.id)]
+            decision["question"] = finding.title
+    elif action == "ESCALATE":
+        fixable = set(state.fixable_finding_ids)
+        decision["target_finding_ids"] = [
+            str(finding.id)
+            for finding in state.problems
+            if finding.id not in fixable
+        ]
+    return decision
 
 
 def _authorize(decision: Decision, state: RouterState) -> Decision | Rejected:

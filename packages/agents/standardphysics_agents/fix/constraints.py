@@ -198,8 +198,8 @@ def _collisions(candidate: SceneGraph, moved: list[SceneNode]) -> list[Violation
               if node.kind in SWING_KINDS]
 
     found = []
-    for node in moved:
-        found.extend(_overlaps(node, collision_shape(node), obstacles, swings))
+    for index, node in enumerate(moved):
+        found.extend(_overlaps(node, collision_shape(node), [*obstacles, *moved[index + 1:]], swings))
     return found
 
 

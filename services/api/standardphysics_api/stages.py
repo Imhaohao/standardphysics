@@ -1,9 +1,9 @@
 """Every stage a real capture goes through, each calling the lane that owns it.
 
     ingest    Lane B  parse_room_json
-    label     Lane B  Astra label and clean, passed through until it ships
+    label     Lane B  Astra label and clean, with a deterministic local fallback
     assess    Lane C  assess, with the human verification ledger
-    geometry  Lane B  usdz_to_glb through RoomPlan's mapping, else export_glb
+    geometry  Lane B  object-separated export_glb; scanned USDZ is fallback
     renders   Lane B  render_finding per locatable finding
 
 Swapping an implementation means changing one field of `Stages`. Geometry and
@@ -24,15 +24,11 @@ from standardphysics_agents import VerificationLedger, assess, load_ledger, load
 from standardphysics_agents.ask import Answer, ask
 from standardphysics_agents.fix import FixOutcome, propose_fix
 from standardphysics_contracts import Assessment, Finding, Scenario, SceneGraph
-from standardphysics_pipeline import PipelineMeasurements, blender, parse_room_json
+from standardphysics_pipeline import PipelineMeasurements, blender, parse_room_json, reconstruct
 
 log = logging.getLogger(__name__)
 
 PREVIEW_REVIEWER = "unverified preview (development only)"
-
-
-def pass_through(graph: SceneGraph) -> SceneGraph:
-    return graph
 
 
 def preview_ledger() -> VerificationLedger:
@@ -46,7 +42,7 @@ def preview_ledger() -> VerificationLedger:
 class Stages:
     ledger_factory: Callable[[], VerificationLedger] = load_ledger
     measure: PipelineMeasurements = field(default_factory=PipelineMeasurements)
-    label: Callable[[SceneGraph], SceneGraph] = pass_through
+    label: Callable[[SceneGraph], SceneGraph] = reconstruct
     export_glb: Callable[[SceneGraph, pathlib.Path], pathlib.Path] = blender.export_glb
     usdz_to_glb: Callable[..., blender.ConversionResult] = blender.usdz_to_glb
     render_finding: Callable[..., pathlib.Path] = blender.render_finding
@@ -87,15 +83,16 @@ class Stages:
         usdz: pathlib.Path | None,
         mapping: pathlib.Path | None,
     ) -> pathlib.Path | None:
-        """The scanned mesh when every object keeps its identity, else boxes from the graph."""
-        scanned = self._scanned_mesh(out, usdz, mapping)
-        if scanned is not None:
-            return scanned
+        """Object-separated graph geometry, with a fully mapped scan as fallback."""
         try:
             return self.export_glb(graph, out)
         except (FileNotFoundError, blender.BlenderError) as exc:
-            log.warning("no display geometry for %s: %s", graph.scan_id, exc)
-            return None
+            log.info("graph glb failed, trying scanned mesh: %s", exc)
+        scanned = self._scanned_mesh(out, usdz, mapping)
+        if scanned is not None:
+            return scanned
+        log.warning("no display geometry for %s", graph.scan_id)
+        return None
 
     def _scanned_mesh(
         self, out: pathlib.Path, usdz: pathlib.Path | None, mapping: pathlib.Path | None
@@ -105,10 +102,10 @@ class Stages:
         try:
             converted = self.usdz_to_glb(usdz, out, mapping)
         except (FileNotFoundError, blender.BlenderError) as exc:
-            log.info("usdz_to_glb failed, exporting from the graph: %s", exc)
+            log.info("usdz_to_glb failed after graph export: %s", exc)
             return None
         if not converted.fully_identified:
-            log.info("usdz_to_glb left %s meshes unmapped, exporting from the graph", converted.unmapped_count)
+            log.info("usdz_to_glb left %s meshes unmapped", converted.unmapped_count)
             return None
         return converted.glb_path
 

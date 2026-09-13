@@ -13,7 +13,7 @@ passes through open floor beside that seating; the diagonal distance from a
 table to the counter is not a corridor width. `fixture_as_shipped` retains
 all furniture and expects one deduplicated aisle pinch and the high counter.
 
-Every case carries the five things a scan cannot see, because those are asked
+Every case carries the scan-cannot-see items, because those are asked
 of every shop. What varies is the geometry, the labels, how sure we are of
 them, and what the loop should do next.
 

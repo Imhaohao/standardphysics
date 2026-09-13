@@ -13,11 +13,11 @@ function scannedTriangle(): LidarMesh {
 }
 
 describe("measured LiDAR surfaces", () => {
-  it("uses the captured mesh only for the original room, preserving layout editing", () => {
-    expect(capturedMeshUrl("/scan/mesh", 0, false)).toBe("/scan/mesh");
-    expect(capturedMeshUrl("/scan/mesh", 0, true)).toBeNull();
-    expect(capturedMeshUrl("/scan/mesh", 1, false)).toBeNull();
-    expect(capturedMeshUrl(null, 0, false)).toBeNull();
+  it("shows captured evidence only when requested for the original room", () => {
+    expect(capturedMeshUrl("/scan/mesh", 0, true)).toBe("/scan/mesh");
+    expect(capturedMeshUrl("/scan/mesh", 0, false)).toBeNull();
+    expect(capturedMeshUrl("/scan/mesh", 1, true)).toBeNull();
+    expect(capturedMeshUrl(null, 0, true)).toBeNull();
   });
   it("frames all measured corners even in a narrow phone viewport", () => {
     const bounds = new Box3(new Vector3(-4, 0, -3), new Vector3(4, 3, 3));

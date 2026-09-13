@@ -171,6 +171,59 @@ final class UploadViewModelTests: XCTestCase {
         XCTAssertEqual(ResumableUploadStore(captureDirectory: directory).scanID, remoteID)
     }
 
+    func testMissingPersistedRemoteCanBeReplacedFromTheSavedCapture() async throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let scan = try makeScan(in: directory)
+        let missingRemoteID = UUID()
+        let replacementRemoteID = UUID()
+        var store = ResumableUploadStore(captureDirectory: directory)
+        try store.begin(scanID: missingRemoteID, apiBaseURL: URL(string: "https://standard.physics")!)
+        var createdCount = 0
+
+        UploadURLProtocolStub.handler = { request in
+            let path = request.url!.path
+            if path.contains(missingRemoteID.uuidString) {
+                return StubResponse(status: 404, data: Data())
+            }
+            switch request.httpMethod {
+            case "POST" where path == "/api/scans":
+                createdCount += 1
+                return .scan(status: 201, id: replacementRemoteID, state: .uploading)
+            case "PUT":
+                XCTAssertTrue(path.contains(replacementRemoteID.uuidString))
+                return StubResponse(status: 201, data: Data("{}".utf8))
+            case "POST" where path.hasSuffix("/complete"):
+                return .scan(status: 200, id: replacementRemoteID, state: .ready)
+            default:
+                return StubResponse(status: 500, data: Data())
+            }
+        }
+
+        let model = UploadViewModel(
+            scan: scan,
+            name: "Tea House",
+            client: makeClient(),
+            pollInterval: .milliseconds(5)
+        )
+        model.start()
+        try await waitUntil { model.state == .failed }
+        XCTAssertEqual(
+            model.errorMessage,
+            "The upload server lost this scan. Try again to upload your saved copy."
+        )
+        XCTAssertEqual(ResumableUploadStore(captureDirectory: directory).lastServerState, .failed)
+
+        model.retry()
+        try await waitUntil { model.state == .ready }
+
+        let restored = ResumableUploadStore(captureDirectory: directory)
+        XCTAssertEqual(createdCount, 1)
+        XCTAssertEqual(restored.scanID, replacementRemoteID)
+        XCTAssertEqual(restored.previousScanIDs, [missingRemoteID])
+        XCTAssertEqual(restored.completedArtifactIDs, Set(scan.artifacts.map(\.id)))
+    }
+
     func testEndpointChangeRejectsPersistedRemoteBeforeIssuingARequest() async throws {
         let directory = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -375,7 +428,9 @@ private struct StubResponse {
 }
 
 private final class UploadURLProtocolStub: URLProtocol {
-    static var handler: ((URLRequest) throws -> StubResponse)?
+    // XCTest installs one handler at a time. URLProtocol invokes it on its own
+    // loading thread, so this test-only shared hook cannot be actor-isolated.
+    nonisolated(unsafe) static var handler: ((URLRequest) throws -> StubResponse)?
 
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
@@ -389,11 +444,12 @@ private final class UploadURLProtocolStub: URLProtocol {
                 httpVersion: nil,
                 headerFields: ["Content-Type": "application/json"]
             )!
-            let finishLoading = { [weak self] in
-                guard let self else { return }
-                self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-                self.client?.urlProtocol(self, didLoad: result.data)
-                self.client?.urlProtocolDidFinishLoading(self)
+            let protocolStub = TestSendableBox(value: self)
+            let finishLoading: @Sendable () -> Void = {
+                let stub = protocolStub.value
+                stub.client?.urlProtocol(stub, didReceive: response, cacheStoragePolicy: .notAllowed)
+                stub.client?.urlProtocol(stub, didLoad: result.data)
+                stub.client?.urlProtocolDidFinishLoading(stub)
             }
             if result.delay > 0 {
                 DispatchQueue.global().asyncAfter(deadline: .now() + result.delay, execute: finishLoading)
@@ -406,4 +462,8 @@ private final class UploadURLProtocolStub: URLProtocol {
     }
 
     override func stopLoading() {}
+}
+
+private struct TestSendableBox<Value>: @unchecked Sendable {
+    let value: Value
 }

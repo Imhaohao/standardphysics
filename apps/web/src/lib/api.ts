@@ -27,6 +27,6 @@ export const getScenario = (scanId: string) => getOptional<Scenario>(`/api/scans
 export const getAssessment = (scanId: string, revision?: number) =>
   getOptional<Assessment>(`/api/scans/${scanId}/assessment${revision === undefined ? "" : `?revision=${revision}`}`);
 
-export const sceneGlbUrl = (scanId: string) => `/api/scans/${scanId}/scene.glb`;
+export const sceneGlbUrl = (scanId: string, revision?: number) => `/api/scans/${scanId}/scene.glb${revision === undefined ? "" : `?revision=${revision}`}`;
 export const getReport = (scanId: string) => getOptional<Report>(`/api/scans/${scanId}/report`);
 export const getScenarioSuggestion = (scanId: string) => getOptional<Scenario>(`/api/scans/${scanId}/scenario/suggestion`);

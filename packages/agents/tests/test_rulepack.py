@@ -22,7 +22,11 @@ SCAN_CANNOT_SEE = {
     "entrance_threshold",
     "door_hardware",
     "door_opening_force",
+    "door_maneuvering_clearance",
     "floor_surface",
+    "protruding_objects",
+    "reach_range",
+    "dining_surface_height",
     "restroom_turning_space",
 }
 
