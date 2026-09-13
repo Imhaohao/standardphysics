@@ -21,6 +21,7 @@ from standardphysics_agents.router import (
     parse_decision,
     state_for,
 )
+from standardphysics_agents.router.typesafe import CHOICE_CRITERIA, STRUCTURED_PATH
 from standardphysics_contracts import Decision
 
 
@@ -252,8 +253,23 @@ class TestTypeSafeClient:
         assert isinstance(answer, Rejected)
         assert answer.reason == "typesafe_not_configured"
 
-    def test_the_request_carries_the_contract_schema(self, router_state):
+    def test_the_request_is_a_systemone_choice(self, router_state):
         router, transport = _router(b'{"action": "DONE"}')
+        router.decide(router_state)
+        url, body = transport.calls[0]
+        assert url.endswith("/v1/systemone")
+        assert body["questions"]["action"]["type"] == "choice"
+        assert set(body["questions"]["action"]["criteria"]) == ACTIONS
+        assert body["questions"]["action"]["criteria"] == CHOICE_CRITERIA
+
+    def test_the_structured_path_still_carries_the_contract_schema(self, router_state):
+        transport = FakeTransport(b'{"action": "DONE"}')
+        router = TypeSafeRouter(
+            api_key="test-key",
+            base_url="https://typesafe.example",
+            path=STRUCTURED_PATH,
+            transport=transport,
+        )
         router.decide(router_state)
         _, body = transport.calls[0]
         assert body["schema"] == action_schema()
@@ -274,6 +290,22 @@ class TestTypeSafeClient:
         answer = router.decide(router_state)
         assert answer.action == "FIX"
         assert answer.provider == "typesafe"
+
+    def test_a_systemone_choice_fills_legal_targets(self, router_state):
+        body = json.dumps({
+            "answers": {
+                "action": {
+                    "type": "choice",
+                    "choice": "FIX",
+                    "confidence": 0.8,
+                    "probabilities": {name: 0.2 for name in ACTIONS},
+                }
+            }
+        }).encode()
+        router, _ = _router(body)
+        answer = router.decide(router_state)
+        assert answer.action == "FIX"
+        assert answer.target_finding_ids[0] == router_state.fixable_finding_ids[0]
 
     def test_a_fix_cannot_target_a_counter_height(self, router_state):
         target = next(f for f in router_state.problems if f.check_id == "service_counter_height")

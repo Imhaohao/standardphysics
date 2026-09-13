@@ -2,7 +2,7 @@ import { BufferGeometry, Float32BufferAttribute, Matrix4, Vector3 } from "three"
 import type { LidarMesh, LidarMeshPart, SceneGraph, SceneNode } from "@/types/contracts";
 import { toViewerMatrix } from "./scene-matrix";
 
-/** Raw triangles describe the captured room, never an edited furniture layout. */
+/** Raw triangles stay as an underlay on the original room. Furniture is the object graph. */
 export function capturedMeshUrl(url: string | null, revision: number, layoutPreview: boolean): string | null {
   return revision === 0 && !layoutPreview ? url : null;
 }
