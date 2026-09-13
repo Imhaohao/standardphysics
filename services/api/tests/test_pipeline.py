@@ -3,6 +3,7 @@
 import json
 
 from conftest import FIXTURE_DATA, create_scan, drain, put_artifact
+from standardphysics_pipeline import glb_node_names
 
 REAL = FIXTURE_DATA / "real"
 
@@ -55,6 +56,19 @@ def test_the_sample_shop_is_ready_with_its_findings(make_client):
         assert 31 in widths
         assert client.get(f"/api/scans/{scan_id}/scenario").json()["stops"][0]["name"] == "Entrance"
         assert client.get(f"/api/scans/{scan_id}/scene.glb").content[:4] == b"glTF"
+
+
+def test_the_sample_shop_is_the_lawsuit_counter(make_client, tmp_path):
+    with make_client(seed=True) as client:
+        drain(client)
+        scan_id = client.get("/api/scans").json()["scans"][0]["id"]
+        scene = client.get(f"/api/scans/{scan_id}/scene").json()
+        assert {"Lowered counter section", "Card reader"} <= {node["label"] for node in scene["nodes"]}
+        glb = tmp_path / "scene.glb"
+        glb.write_bytes(client.get(f"/api/scans/{scan_id}/scene.glb").content)
+        assert {node["id"] for node in scene["nodes"]} <= set(glb_node_names(glb))
+        findings = client.get(f"/api/scans/{scan_id}/assessment").json()["findings"]
+        assert any(f["outcome"] == "problem" and "card reader" in (f["fix"] or "").lower() for f in findings)
 
 
 def test_findings_with_a_locus_get_a_render(make_client):

@@ -22,12 +22,11 @@ def test_the_fix_agent_proposes_moving_the_display_cases(make_client):
     assert result["message"]
 
 
-def test_moving_furniture_cannot_lower_the_counter(make_client):
-    client, scan_id, findings = _sample(make_client)
-    counter = next(f for f in findings if "counter is too high" in f["title"])
-    result = client.post(f"/api/scans/{scan_id}/proposals", json={"base_revision": 0, "finding_ids": [counter["id"]]}).json()
-    assert result["proposal"] is None
-    assert result["message"] == "We couldn't find an arrangement that works."
+def test_the_lowered_section_passes_and_the_register_is_the_counter_finding(make_client):
+    _, _, findings = _sample(make_client)
+    outcomes = {f["title"]: f["outcome"] for f in findings}
+    assert outcomes["The ordering counter has a section you can order from"] == "passes"
+    assert outcomes["People pay at the high counter"] == "problem"
 
 
 def test_an_unknown_finding_is_a_bad_request(make_client):

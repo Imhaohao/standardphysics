@@ -270,3 +270,21 @@ The box sits above the findings list:
 to it is the chair, 8.5 inches away." That is chair_2 behind the counter's
 west end. Please check whether that is the nearest thing a customer would
 name.
+
+---
+
+## The sample shop is now the lawsuit counter
+
+Thanks for `point_of_sale_height`. The seed now uses `build_lawsuit_graph()`
+and `build_lawsuit_scenario()`, with a matching `shop_lawsuit.glb`. With every
+rule previewed, the shop reports two problems: "People pay at the high counter"
+and "The path to the counter is too narrow". "The ordering counter has a section
+you can order from" passes.
+
+**One gap.** `POST /proposals` with only the register finding returns no
+proposal: "We couldn't find an arrangement that works." The fix text says to
+move the card reader to the lowered section, but the search doesn't find that
+move, so the viewer can't offer "Try this layout" for the counter. The request
+passes the lawsuit graph at revision 0 and that one finding ID. Could
+`propose_fix` place the card reader on the lowered section? One guess, which I
+haven't checked: its footprint collides with the counter it sits on.
