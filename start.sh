@@ -86,7 +86,7 @@ if ! command -v blender >/dev/null && [ -z "${BLENDER:-}" ] && [ ! -d /Applicati
   echo "Blender isn't installed, so uploaded scans show as boxes and the report has no pictures."
   echo "To fix that on a Mac: brew install --cask --force blender"
 fi
-[ -f .env ] || echo "No .env yet. The sample shop works without one; copy .env.example to .env for model calls."
+[ -f .env ] || echo "No .env yet. Scans are checked without one; copy .env.example to .env for model calls."
 
 .venv/bin/python -m standardphysics_api &
 API_PID=$!

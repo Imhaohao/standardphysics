@@ -26,7 +26,7 @@ You need Python 3.11 or newer and Node 20.9 or newer. From a fresh clone:
 ./start.sh
 ```
 
-That installs the Python packages into `.venv` and the web packages into `apps/web`, then starts the API on port 8787 and the web workspace at http://localhost:3000. It opens with a sample shop, so you don't need a scan, a key, or Blender to try it. Ctrl-C stops both. For the demo, `./start.sh --prod` runs a production build instead.
+That installs the Python packages into `.venv` and the web packages into `apps/web`, then starts the API on port 8787 and the web workspace at http://localhost:3000. The workspace lists scans that came off a phone. To load the two in `datasets/phone` without a phone, run `.venv/bin/python scripts/import_scan.py datasets/phone/*` while it's running. To add the sample shop, start it with `SP_SEED_SAMPLE_SHOP=1 ./start.sh`. Ctrl-C stops both. For the demo, `./start.sh --prod` runs a production build instead.
 
 Findings come only from rules a person has verified, with `.venv/bin/standardphysics-agents rules verify <rule> --by "<name>"` from Lane C. Until someone does that, `SP_PREVIEW_UNVERIFIED_RULES=1 ./start.sh` runs every rule anyway, for development only.
 
