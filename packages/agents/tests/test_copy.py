@@ -6,8 +6,6 @@ import re
 
 import pytest
 from standardphysics_agents import assess
-from standardphysics_contracts import Mat4
-from standardphysics_fixtures.shop import node_id
 
 JARGON = (
     "node", "scene graph", "confidence", "evidence", "assessment", "revision",
@@ -83,18 +81,20 @@ def test_a_fix_never_asks_the_owner_to_move_a_built_in(
     graph, scenario, pipeline, ledger
 ):
     """The ordering counter is fixed. A fix that named it would send someone
-    to shove a wall."""
+    to shove a wall. The pinch is the two display cases, which do move."""
     result = assess(graph, scenario, pipeline, ledger=ledger)
-    against_the_counter = [
-        f
-        for f in result.problems
-        if f.locus and node_id("counter") in f.locus.node_ids
-        and f.check_id == "route_clear_width"
-    ]
-    assert against_the_counter
-    for finding in against_the_counter:
+    pinches = [f for f in result.problems if f.check_id == "route_clear_width"]
+    assert pinches
+    for finding in pinches:
+        assert finding.fix
         assert "move the ordering counter" not in finding.fix.casefold()
-        assert "move the table" in finding.fix.casefold()
+        fixed = [
+            graph.by_id(nid).label.casefold()
+            for nid in (finding.locus.node_ids if finding.locus else [])
+            if not graph.by_id(nid).movable
+        ]
+        for label in fixed:
+            assert f"move the {label}" not in finding.fix.casefold()
 
 
 def test_a_fix_that_needs_a_builder_says_so_as_an_action(graph, scenario, stub, ledger):

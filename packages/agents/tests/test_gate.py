@@ -149,6 +149,35 @@ class TestAcceptance:
         assert gate.accepted
         assert gate.problems_after == 0
 
+    @pytest.mark.parametrize("require_improvement", [True, False])
+    def test_turning_a_problem_into_a_question_loses_coverage(
+        self, before, require_improvement
+    ):
+        target = before.problems[0]
+        findings = [
+            f.model_copy(update={"outcome": "question", "fix": None})
+            if f.id == target.id else f
+            for f in before.findings
+        ]
+        after = replace(
+            before, assessment=before.assessment.model_copy(update={"findings": findings})
+        )
+        gate = accepts(before, after, require_improvement=require_improvement)
+        assert not gate.accepted
+        assert f"{target.check_id} lost its measured answer" in gate.reasons
+
+    def test_losing_a_pass_is_rejected_even_when_another_problem_clears(self, before):
+        cleared = _all_clear(before)
+        target = next(f for f in before.findings if f.outcome == "passes")
+        findings = [
+            f.model_copy(update={"outcome": "question"}) if f.id == target.id else f
+            for f in cleared.findings
+        ]
+        after = replace(
+            cleared, assessment=cleared.assessment.model_copy(update={"findings": findings})
+        )
+        assert not accepts(before, after)
+
     def test_a_finding_that_vanished_is_lost_coverage_not_a_fix(self, before):
         """Deleting a check is the cheapest way to make a shop look compliant."""
         gone = _dropping(before, "service_counter_height")

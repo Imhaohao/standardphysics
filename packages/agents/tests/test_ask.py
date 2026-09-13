@@ -479,10 +479,20 @@ class TestRearranging:
         assert result.proposal is None
 
     def test_a_request_with_nowhere_to_go_says_what_is_in_the_way(self, answer):
-        result = answer("push the chairs closer together")
+        """Each display case has about six inches of room to its wall. Sixty
+        inches apart puts both of them through the plaster."""
+        result = answer("spread the display cases 60 inches apart")
         assert result.proposal is None
         assert "Try a shorter move" in result.text
         assert result.text[0].isupper()
+
+    def test_a_stated_distance_is_read_off_the_words(self, graph, scenario):
+        query = KeywordResolver().resolve(
+            "spread the display cases 60 inches apart", graph, scenario
+        )
+        assert query.kind == "REARRANGE"
+        assert query.direction == "apart"
+        assert query.distance_inches == 60.0
 
 
 class TestQuestionsItCannotRead:
@@ -525,7 +535,8 @@ class TestWhichCheckAQuestionIsAbout:
 
     def test_a_question_about_a_path_answers_about_a_path(self, answer):
         result = answer("can a wheelchair get past the display cases")
-        assert result.data["checks"] == ["route_clear_width"]
+        assert "route_clear_width" in result.data["checks"]
+        assert "service_counter_height" not in result.data["checks"]
         assert "path" in result.text
 
     def test_a_question_about_the_door_leads_with_the_width(self, answer):

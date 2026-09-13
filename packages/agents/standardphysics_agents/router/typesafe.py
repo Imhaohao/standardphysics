@@ -142,7 +142,10 @@ class TypeSafeRouter:
         raw = self._call(self.request_body(state))
         if isinstance(raw, Rejected):
             return raw
-        return parse_decision(extract_payload(raw), state.findings, PROVIDER)
+        decision = parse_decision(extract_payload(raw), state.findings, PROVIDER)
+        if isinstance(decision, Rejected):
+            return decision
+        return _authorize(decision, state)
 
     def _call(self, body: dict) -> bytes | Rejected:
         try:
@@ -156,3 +159,25 @@ class TypeSafeRouter:
             )
         except (urllib.error.URLError, urllib.error.HTTPError, OSError, TimeoutError):
             return Rejected("transport_error")
+
+
+def _authorize(decision: Decision, state: RouterState) -> Decision | Rejected:
+    """The schema is not enough: the action still has to name something it may act on."""
+    targets = set(decision.target_finding_ids)
+    if decision.action == "FIX":
+        return _authorize_fix(decision, state, targets)
+    if decision.action == "RESCAN_AREA" and not targets <= set(state.rescan_finding_ids):
+        return Rejected("rescan_targets_measured_finding")
+    if decision.action == "ESCALATE" and not targets <= {f.id for f in state.problems}:
+        return Rejected("escalate_targets_nonproblem")
+    return decision
+
+
+def _authorize_fix(
+    decision: Decision, state: RouterState, targets: set
+) -> Decision | Rejected:
+    if not state.fix_budget_left:
+        return Rejected("fix_budget_exhausted")
+    if not targets <= set(state.fixable_finding_ids):
+        return Rejected("fix_targets_unfixable_finding")
+    return decision

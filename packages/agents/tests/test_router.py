@@ -266,14 +266,32 @@ class TestTypeSafeClient:
         assert "test-key" not in sent
         assert "transform" not in sent
 
-    def test_a_real_answer_comes_back_as_a_decision(self, router_state, problem):
+    def test_a_transport_answer_comes_back_as_a_decision(self, router_state):
         body = json.dumps(
-            {"action": "FIX", "target_finding_ids": [str(problem.id)]}
+            {"action": "FIX", "target_finding_ids": [str(router_state.fixable_finding_ids[0])]}
         ).encode()
         router, _ = _router(body)
         answer = router.decide(router_state)
         assert answer.action == "FIX"
         assert answer.provider == "typesafe"
+
+    def test_a_fix_cannot_target_a_counter_height(self, router_state):
+        target = next(f for f in router_state.problems if f.check_id == "service_counter_height")
+        router, _ = _router(json.dumps({"action": "FIX", "target_finding_ids": [str(target.id)]}).encode())
+        assert router.decide(router_state) == Rejected("fix_targets_unfixable_finding")
+
+    def test_a_fix_cannot_exceed_the_attempt_budget(self, router_state):
+        from dataclasses import replace
+        router, _ = _router(json.dumps({"action": "FIX", "target_finding_ids": [str(router_state.fixable_finding_ids[0])]}).encode())
+        assert router.decide(replace(router_state, fix_attempts=3)) == Rejected("fix_budget_exhausted")
+
+    @pytest.mark.parametrize("action, reason", [
+        ("RESCAN_AREA", "rescan_targets_measured_finding"),
+        ("ESCALATE", "escalate_targets_nonproblem"),
+    ])
+    def test_a_passing_finding_cannot_authorize_followup(self, router_state, passing, action, reason):
+        router, _ = _router(json.dumps({"action": action, "target_finding_ids": [str(passing.id)]}).encode())
+        assert router.decide(router_state) == Rejected(reason)
 
     def test_a_truncated_answer_authorizes_nothing(self, router_state):
         router, _ = _router(b'{"action": "FI')

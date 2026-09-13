@@ -196,7 +196,11 @@ class KeywordResolver:
         if kind == "SPACE":
             return self._space(text)
         if kind == "REARRANGE":
-            return {"direction": _first(text, DIRECTION_WORDS)}
+            numbers = _numbers(text)
+            return {
+                "direction": _first(text, DIRECTION_WORDS),
+                "distance_inches": numbers[0] if numbers else None,
+            }
         return {}
 
     @staticmethod

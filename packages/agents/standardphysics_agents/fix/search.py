@@ -147,11 +147,14 @@ class _Search:
     rules: AgentRulePack
     ledger: VerificationLedger
     max_tier: Tier
-    baseline: set[UUID]
+    baseline: Pass
     measured: int = 0
     rejected: list[str] = field(default_factory=list)
 
     def run(self, pinch: Pinch, limit: int) -> tuple[Candidate, SceneGraph] | None:
+        from ..evaluation.gate import accepts
+
+        known = {finding.id for finding in self.baseline.problems}
         for candidate in candidates(pinch, limit):
             rearranged = apply_moves(self.graph, candidate.moves)
             broken = violations(self.graph, rearranged)
@@ -167,7 +170,7 @@ class _Search:
                 ledger=self.ledger,
                 max_tier=self.max_tier,
             )
-            if _resolves(self.baseline, pinch.finding_id, after):
+            if _resolves(known, pinch.finding_id, after) and accepts(self.baseline, after):
                 return candidate, rearranged
         return None
 
@@ -191,11 +194,10 @@ def propose_fix(
     before = baseline or assess(
         graph, scenario, measure, rules=rules, ledger=ledger, max_tier=max_tier
     )
-    known = {finding.id for finding in before.problems}
     target_ids = tuple(finding.id for finding in problems)
 
     search = _Search(
-        graph, scenario, measure, rules, ledger, max_tier, baseline=known
+        graph, scenario, measure, rules, ledger, max_tier, baseline=before
     )
     for pinch in _pinches(problems, graph):
         result = search.run(pinch, limit)
@@ -292,12 +294,14 @@ def _try_unlocking(
 def _try_setting_aside(
     graph, scenario, measure, pinch, *, rules, ledger, max_tier, baseline
 ) -> Relaxation | None:
+    from ..evaluation.gate import accepts
+
     known = {finding.id for finding in baseline.problems}
     for node in pinch.movable:
         after = assess(
             without(graph, [node.id]), scenario, measure,
             rules=rules, ledger=ledger, max_tier=max_tier,
         )
-        if _resolves(known, pinch.finding_id, after):
+        if _resolves(known, pinch.finding_id, after) and accepts(baseline, after):
             return _relaxation("set_aside", [node])
     return None

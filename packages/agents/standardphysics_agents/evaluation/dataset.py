@@ -7,13 +7,11 @@ already earned its keep twice: it caught a turn reported as zero inches wide
 where there was no route either side of it to measure, and the same corner
 reported twice on an out-and-back errand.
 
-Almost every case starts from `_base()`, which is the fixture shop with the
-seating by the counter taken out. The fixture leaves a 0.75 m band between the
-counter face and the nearest tables, and that band is the tightest thing in the
-room on most legs. A case about an aisle wants the aisle to be the tightest
-thing, so each one clears the band first and varies one dimension.
-`fixture_as_shipped` is the exception: it records what the demo shop actually
-reports, band and all.
+Almost every case starts from `_base()`, which removes the seating by the
+counter to isolate the geometry each case varies. The shipped shop's route
+passes through open floor beside that seating; the diagonal distance from a
+table to the counter is not a corridor width. `fixture_as_shipped` retains
+all furniture and expects one deduplicated aisle pinch and the high counter.
 
 Every case carries the five things a scan cannot see, because those are asked
 of every shop. What varies is the geometry, the labels, how sure we are of
@@ -120,7 +118,7 @@ def _base() -> SceneGraph:
 
 
 def _open() -> SceneGraph:
-    """A 48 in aisle, and the fixture's own 43 in counter."""
+    """A 48 in aisle, and the fixture's own 47 in counter."""
     return v.aisle(_base(), 48.0)
 
 
@@ -235,7 +233,7 @@ def _counter_cases() -> list[Case]:
     return [
         _case(
             "counter_43",
-            "The fixture counter at 43 in, against the 36 in maximum.",
+            "The fixture counter at 47 in, against the 36 in maximum.",
             _open(),
             expected_problems=COUNTER_TOO_HIGH,
             expected_inches={"service_counter_height": FIXTURE_COUNTER_INCHES},
@@ -252,14 +250,14 @@ def _counter_cases() -> list[Case]:
         _case(
             "counter_blocked",
             "A low counter with a display case parked in front of it. There is "
-            "nowhere to pull up, and the walkway past it narrows too.",
+            "nowhere to pull up, while the customer route remains wide enough.",
             v.add(
                 _clean(),
                 v.box("blocker", "Display case", (0.5, 2.87, 0.45), (0.5, 0.5, 0.9)),
             ),
-            expected_problems=frozenset({"service_counter_approach", ROUTE}),
-            forbidden_problems=COUNTER_TOO_HIGH,
-            expected_action="FIX",
+            expected_problems=frozenset({"service_counter_approach"}),
+            forbidden_problems=COUNTER_TOO_HIGH | {ROUTE},
+            expected_action="ASK_OWNER",
         ),
         _case(
             "counter_mislabelled",
@@ -276,7 +274,7 @@ def _counter_cases() -> list[Case]:
         _case(
             "counter_labelled_bar",
             "The same counter labelled a bar, which is still a service counter "
-            "and still 43 in high.",
+            "and still 47 in high.",
             v.relabel(_open(), COUNTER, "Bar"),
             expected_problems=COUNTER_TOO_HIGH,
             expected_inches={"service_counter_height": FIXTURE_COUNTER_INCHES},
@@ -497,7 +495,7 @@ def _quiet_cases() -> list[Case]:
         _case(
             "fixture_as_shipped",
             "The demo shop exactly as the fixtures build it, band of seating "
-            "by the counter and all. Two pinches and a high counter.",
+            "by the counter and all. One aisle pinch and a high counter.",
             build_graph(),
             expected_problems=frozenset({ROUTE}) | COUNTER_TOO_HIGH,
             expected_action="FIX",
@@ -512,7 +510,8 @@ def _crowding_cases() -> list[Case]:
     return [
         _case(
             "tables_crowd_the_aisle",
-            "Two tables pushed out into the walkway, which is the most\n            ordinary way a shop stops being accessible.",
+            "Two tables pushed out into the walkway, which is the most "
+            "ordinary way a shop stops being accessible.",
             v.add(
                 clean,
                 v.box("crowd_west", "Table", (-0.55, -1.5, 0.375), (0.6, 0.6, 0.75)),
@@ -583,9 +582,10 @@ def _tier_2_and_3_cases() -> list[Case]:
             "A chair left in the doorway, so there is not enough floor in "
             "front to open the door from a wheelchair at all.",
             v.add(clean, v.box("blocker", "Chair", (0.0, -3.3, 0.45), (0.45, 0.45, 0.9))),
-            expected_problems=frozenset({"door_maneuvering_clearance", ROUTE}),
+            expected_problems=frozenset({"door_maneuvering_clearance"}),
+            forbidden_problems=frozenset({ROUTE}),
             expected_questions=SCAN_CANNOT_SEE | {"reach_range"},
-            expected_action="FIX",
+            expected_action="ASK_OWNER",
             max_tier=3,
         ),
         _case(

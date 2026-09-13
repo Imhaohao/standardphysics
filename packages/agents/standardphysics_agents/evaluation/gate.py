@@ -76,7 +76,12 @@ def _completeness(before: Pass, after: Pass) -> list[str]:
 
 def _coverage(before: Pass, after: Pass) -> list[str]:
     lost = answered_checks(before) - answered_checks(after)
-    return [f"{check_id} stopped reporting" for check_id in sorted(lost)]
+    reasons = [f"{check_id} stopped reporting" for check_id in sorted(lost)]
+    answered = {f.id: f for f in before.findings if f.outcome != "question"}
+    for finding in after.questions:
+        if finding.id in answered:
+            reasons.append(f"{finding.check_id} lost its measured answer")
+    return reasons
 
 
 def _new_failures(before: Pass, after: Pass) -> list[str]:
