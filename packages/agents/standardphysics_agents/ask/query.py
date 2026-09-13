@@ -21,6 +21,7 @@ from pydantic import BaseModel
 from standardphysics_contracts import SceneGraph
 
 from ..router.decision import Rejected
+from ..strict_schema import strict_schema
 from .directions import DIRECTIONS, Direction
 
 QueryKind = Literal[
@@ -85,7 +86,14 @@ class Query(BaseModel):
 
 
 def query_schema() -> dict:
-    return Query.model_json_schema()
+    """The shape a question has to arrive in, generated from `Query`.
+
+    Strict, because the call that uses it asks the endpoint to enforce the
+    schema rather than hoping. `parse_query` still rejects anything that gets
+    through: a kind outside the set, a label naming nothing in the shop, a
+    measurement past what a shop can be.
+    """
+    return strict_schema(Query)
 
 
 def _shape(raw: object) -> Query | Rejected:

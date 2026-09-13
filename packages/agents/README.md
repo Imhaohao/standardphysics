@@ -10,18 +10,19 @@ python -m pytest packages/agents -q
 ## The shape of it
 
 ```
-rules/          the thresholds, and the ledger that decides which ones run
-checks/         one module per section, each answering one geometric question
-copy.py         every sentence the owner reads
-numbers.py      the display boundary, where inches become words
-findings.py     a measurement becomes a problem, a pass or a request
-assess.py       one pass over a shop
-ask/            any question about the room, answered from the measured model
-router/         the closed action set, validated before it authorizes anything
-fix/            rearrangements that keep the owner's furniture
-loop.py         the action choosing the branch, and the gate letting it through
-evaluation/     the labelled dataset, the scorers and the acceptance gate
-models.py       every model call, through OpenRouter
+rules/            the thresholds, and the ledger that decides which ones run
+checks/           one module per section, each answering one geometric question
+copy.py           every sentence the owner reads
+numbers.py        the display boundary, where inches become words
+findings.py       a measurement becomes a problem, a pass or a request
+assess.py         one pass over a shop
+ask/              any question about the room, answered from the measured model
+router/           the closed action set, validated before it authorizes anything
+fix/              rearrangements that keep the owner's furniture
+loop.py           the action choosing the branch, and the gate letting it through
+evaluation/       the labelled dataset, the scorers and the acceptance gate
+models.py         every model call, through OpenRouter
+strict_schema.py  the shape a model is held to, generated from the model
 ```
 
 ## The ask box
@@ -54,6 +55,17 @@ with the question has that height ignored, and there is a test that says so.
 Every answer carries a locus, so asking about the tables sends the camera to
 the tables. That is the difference between a room you can talk to and a list of
 measurements.
+
+**The endpoint enforces the shape, so a malformed answer never reaches an
+executor.** The call asks for strict structured output against `Query`, which
+`strict_schema.py` generates from the model: every property named in
+`required`, `additionalProperties: false`, and the keywords strict mode refuses
+left out. An optional field says so by being nullable, the way Pydantic already
+writes `X | None`. Handing over the raw Pydantic schema is a 400 on every call,
+and the ask box answers "we did not follow that one" when a call is refused, so
+the failure reads as a question nobody understood. `parse_query` still rejects
+what arrives: a kind outside the set, a measurement longer than a shop, a
+question that names nothing.
 
 ## Turning a check on
 
