@@ -22,8 +22,7 @@ export function lidarGeometry(part: LidarMeshPart): BufferGeometry {
 
 export function validateLidarMesh(value: unknown): LidarMesh {
   const mesh = value as LidarMesh;
-  if (!mesh || !Array.isArray(mesh.parts) || !mesh.parts.length || mesh.parts.length > 4096) throw new Error("Invalid scan surfaces");
-  if (!Number.isFinite(mesh.floorY)) throw new Error("Scan surfaces need floor alignment");
+  validateMeshHeader(mesh);
   let vertices = 0;
   let triangles = 0;
   for (const part of mesh.parts) {
@@ -35,8 +34,17 @@ export function validateLidarMesh(value: unknown): LidarMesh {
   return mesh;
 }
 
-function validatePart(part: LidarMeshPart) {
+function validateMeshHeader(mesh: LidarMesh) {
+  if (!mesh || !Array.isArray(mesh.parts) || !mesh.parts.length || mesh.parts.length > 4096) throw new Error("Invalid scan surfaces");
+  if (!Number.isFinite(mesh.floorY)) throw new Error("Scan surfaces need floor alignment");
+}
+
+function validateTransform(part: LidarMeshPart) {
   if (!part || !Array.isArray(part.transform) || part.transform.length !== 16 || !part.transform.every(Number.isFinite)) throw new Error("Invalid scan transform");
+}
+
+function validatePart(part: LidarMeshPart) {
+  validateTransform(part);
   if (!isTriples(part.vertices) || !part.vertices.every(Number.isFinite)) throw new Error("Invalid scan vertices");
   if (!isTriples(part.triangles)) throw new Error("Invalid scan faces");
   const count = part.vertices.length / 3;

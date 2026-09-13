@@ -196,6 +196,14 @@ function FindingsPanel({ scan, scene, assessment, findings, selected, onToggle, 
   );
 }
 
+function SurfaceLabel({ objectLabel, lidarUrl }: { objectLabel: string | null; lidarUrl: string | null }) {
+  return (
+    <p aria-live="polite" className="absolute left-4 top-4 rounded-lg bg-sheet px-3 py-2 text-sm text-ink">
+      {objectLabel ?? (lidarUrl ? "Scanned surfaces" : "Layout preview")}
+    </p>
+  );
+}
+
 export function Workspace({ scan, scene, exported, assessment, previous, glbUrl, lidarUrl }: WorkspaceProps) {
   const findings = useMemo(() => assessment?.findings ?? [], [assessment]);
   const [selected, setSelected] = useState<Finding | null>(null);
@@ -255,9 +263,7 @@ export function Workspace({ scan, scene, exported, assessment, previous, glbUrl,
           onSelectNode={selectNode}
           onClearSelection={clear}
         />
-        <p aria-live="polite" className="absolute left-4 top-4 rounded-lg bg-sheet px-3 py-2 text-sm text-ink">
-          {objectLabel ?? (displayedLidarUrl ? "Scanned surfaces" : "Layout preview")}
-        </p>
+        <SurfaceLabel objectLabel={objectLabel} lidarUrl={displayedLidarUrl} />
         <div className="absolute bottom-4 left-4 flex gap-2">
           <Button variant="chip" aria-pressed={mode === "overview" && !selected} onClick={() => showView("overview")}>
             <ArrowsOutCardinal size={16} weight="bold" aria-hidden />

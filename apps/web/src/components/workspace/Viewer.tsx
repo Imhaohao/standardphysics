@@ -56,8 +56,12 @@ function Lights() {
   );
 }
 
-export default function Viewer({ scene, exported, arrange, dragging, glbUrl, lidarUrl, pose, selected, onSelectNode, onClearSelection }: ViewerProps) {
-  const [measuredBounds, setMeasuredBounds] = useState<Box3 | null>(null);
+type ShopSurfacesProps = Pick<ViewerProps, "scene" | "exported" | "arrange" | "glbUrl" | "lidarUrl" | "selected" | "onSelectNode"> & {
+  onBounds: (bounds: Box3) => void;
+};
+
+function ShopSurfaces({ scene, exported, arrange, glbUrl, lidarUrl, selected, onSelectNode, onBounds }: ShopSurfacesProps) {
+  if (lidarUrl) return <LidarShopModel key={lidarUrl} url={lidarUrl} scene={scene} onSelectNode={onSelectNode} onBounds={onBounds} />;
   const focus = selected?.locus ? new Set(selected.locus.node_ids) : null;
   const modelProps = {
     shown: scene,
@@ -67,6 +71,18 @@ export default function Viewer({ scene, exported, arrange, dragging, glbUrl, lid
     arrange,
   };
   const boxes = <BoxShopModel {...modelProps} />;
+  if (!glbUrl) return boxes;
+  return (
+    <GlbFallback fallback={boxes}>
+      <Suspense fallback={boxes}>
+        <GlbShopModel url={glbUrl} exported={exported} {...modelProps} />
+      </Suspense>
+    </GlbFallback>
+  );
+}
+
+export default function Viewer({ scene, exported, arrange, dragging, glbUrl, lidarUrl, pose, selected, onSelectNode, onClearSelection }: ViewerProps) {
+  const [measuredBounds, setMeasuredBounds] = useState<Box3 | null>(null);
 
   return (
     <Canvas
@@ -90,15 +106,7 @@ export default function Viewer({ scene, exported, arrange, dragging, glbUrl, lid
         <meshStandardMaterial color={MODEL.ground} roughness={1} />
       </mesh>
       <ContactShadows position={[0, 0.001, 0]} scale={30} opacity={0.35} blur={2.4} far={3} frames={1} /></>}
-      {lidarUrl ? <LidarShopModel key={lidarUrl} url={lidarUrl} scene={scene} onSelectNode={onSelectNode} onBounds={setMeasuredBounds} /> : glbUrl ? (
-        <GlbFallback fallback={boxes}>
-          <Suspense fallback={boxes}>
-            <GlbShopModel url={glbUrl} exported={exported} {...modelProps} />
-          </Suspense>
-        </GlbFallback>
-      ) : (
-        boxes
-      )}
+      <ShopSurfaces scene={scene} exported={exported} arrange={arrange} glbUrl={glbUrl} lidarUrl={lidarUrl} selected={selected} onSelectNode={onSelectNode} onBounds={setMeasuredBounds} />
       {selected && <FindingAnnotation finding={selected} />}
     </Canvas>
   );
