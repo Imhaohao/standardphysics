@@ -21,6 +21,7 @@ from standardphysics_contracts import (
     MeasurementProvider,
     Scenario,
     SceneGraph,
+    SceneNode,
     Stop,
     Vec3,
     graph_hash,
@@ -154,6 +155,74 @@ def build_workflow_suite(
     for interaction in interactions:
         workflows.extend(_interaction_workflows(graph, scenario, interaction))
     return workflows
+
+
+def build_entrance_object_workflows(
+    graph: SceneGraph, scenario: Scenario
+) -> list[Workflow]:
+    """Route every inferred or Astra-labelled entrance to every scanned object."""
+    by_id = {node.id: node for node in graph.nodes}
+    entrance_terms = {"door", "entrance", "entry", "exit", "opening"}
+    scenario_entrances = [
+        stop
+        for stop in scenario.stops
+        if (
+            stop.anchor_node_id in by_id
+            and by_id[stop.anchor_node_id].kind in {"door", "opening"}
+        )
+        or entrance_terms & set(stop.name.casefold().replace("-", " ").split())
+    ]
+    entrances: list[Stop] = []
+    anchored_entrances: set[UUID] = set()
+    unanchored_positions: set[tuple[float, float, float]] = set()
+
+    for stop in scenario_entrances:
+        if stop.anchor_node_id is not None:
+            if stop.anchor_node_id in anchored_entrances:
+                continue
+            anchored_entrances.add(stop.anchor_node_id)
+        else:
+            position = stop.position.as_tuple()
+            if position in unanchored_positions:
+                continue
+            unanchored_positions.add(position)
+        entrances.append(stop)
+
+    for node in graph.nodes:
+        if node.kind not in {"door", "opening"} or node.id in anchored_entrances:
+            continue
+        anchored_entrances.add(node.id)
+        entrances.append(_stop_at_node(node))
+
+    existing_stops = {
+        stop.anchor_node_id: stop
+        for stop in scenario.stops
+        if stop.anchor_node_id is not None
+    }
+    workflows = []
+    for entrance_index, entrance in enumerate(entrances):
+        for target in (node for node in graph.nodes if node.kind == "object"):
+            destination = existing_stops.get(target.id) or _stop_at_node(target)
+            workflows.append(
+                Workflow(
+                    id=f"entrance-object:{entrance_index}:{target.id}",
+                    title=f"{entrance.name} to {target.label}",
+                    scenario=Scenario(
+                        name=f"{entrance.name} to {target.label}",
+                        stops=[entrance, destination],
+                    ),
+                )
+            )
+    return workflows
+
+
+def _stop_at_node(node: SceneNode) -> Stop:
+    position = node.transform.position
+    return Stop(
+        name=node.label,
+        position=Vec3(x=position.x, y=position.y, z=0.0),
+        anchor_node_id=node.id,
+    )
 
 
 def _interaction_workflows(

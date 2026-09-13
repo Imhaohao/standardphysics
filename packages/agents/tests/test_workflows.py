@@ -17,13 +17,14 @@ from standardphysics_agents.workflows import (
     TypeSafeWorkflowConfigurationError,
     Workflow,
     WorkflowBatchResult,
+    build_entrance_object_workflows,
     build_workflow_suite,
     evaluate_workflow,
     run_typesafe_workflow_batch,
     run_workflow_batch,
     workflow_candidate_rejection,
 )
-from standardphysics_contracts import LidarMesh, LidarMeshPart, WidthResult
+from standardphysics_contracts import LidarMesh, LidarMeshPart, Mat4, WidthResult
 from standardphysics_fixtures import node_id
 
 
@@ -447,3 +448,45 @@ def test_suite_builder_covers_every_stop_direction_and_task_approach(
         item.scenario.stops[-1].position == known_approach.position
         for item in task_workflows
     )
+
+
+def test_every_inferred_entrance_gets_a_route_to_every_object(
+    graph, scenario
+):
+    front_door = graph.by_id(node_id("door_front"))
+    side_opening = front_door.model_copy(
+        update={
+            "id": uuid4(),
+            "kind": "opening",
+            "label": "Side opening",
+            "transform": Mat4.translation(4.0, 0.0, 1.05),
+        }
+    )
+    graph = graph.model_copy(update={"nodes": [*graph.nodes, side_opening]})
+    entrance = scenario.stops[0].model_copy(
+        update={"name": "Main entrance", "anchor_node_id": front_door.id}
+    )
+    duplicate_exit = entrance.model_copy(update={"name": "Exit"})
+    inferred = scenario.model_copy(update={"stops": [entrance, duplicate_exit]})
+
+    workflows = build_entrance_object_workflows(graph, inferred)
+
+    object_ids = {node.id for node in graph.nodes if node.kind == "object"}
+    entrance_ids = {front_door.id, side_opening.id}
+    assert {
+        (
+            workflow.scenario.stops[0].anchor_node_id,
+            workflow.scenario.stops[-1].anchor_node_id,
+        )
+        for workflow in workflows
+    } == {
+        (entrance_id, object_id)
+        for entrance_id in entrance_ids
+        for object_id in object_ids
+    }
+    assert len(workflows) == len(entrance_ids) * len(object_ids)
+    assert next(
+        workflow
+        for workflow in workflows
+        if workflow.scenario.stops[0].anchor_node_id == front_door.id
+    ).scenario.stops[0].name == "Main entrance"

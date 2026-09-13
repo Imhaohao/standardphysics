@@ -10,7 +10,7 @@ from standardphysics_agents import (
     VerificationLedger,
     load_pack,
 )
-from standardphysics_contracts import AdaptiveRoundResult, SimulationRequest, graph_hash
+from standardphysics_contracts import AdaptiveRoundResult, Scenario, SimulationRequest, graph_hash
 from standardphysics_fixtures import build_graph, build_scenario
 
 from standardphysics_api import repository as repo
@@ -50,6 +50,28 @@ def test_screening_is_queued_snapshotted_and_does_not_save_a_layout(make_client)
         assert result['result']['converged'] is False
         assert result['result']['limitations']
         assert client.get(f'/api/scans/{scan_id}/scene').json() == before
+
+
+def test_screening_without_confirmed_route_uses_an_inferred_entrance(make_client):
+    with make_client(seed=True) as client:
+        scan_id = shop(client)
+        with client.app.state.database.transaction() as connection:
+            connection.execute("DELETE FROM scenarios WHERE scan_id=?", (scan_id,))
+
+        response = client.post(
+            f'/api/scans/{scan_id}/simulations',
+            json={'base_revision': 0, 'samples': 1, 'max_workers': 1},
+        )
+
+        assert response.status_code == 202, response.text
+        with client.app.state.database.connect() as connection:
+            snapshot = connection.execute(
+                "SELECT scenario_json FROM simulations WHERE scan_id=? AND revision=0",
+                (scan_id,),
+            ).fetchone()
+        simulation_scenario = Scenario.model_validate_json(snapshot["scenario_json"])
+        assert any(stop.name == "Entrance" for stop in simulation_scenario.stops)
+        assert client.get(f'/api/scans/{scan_id}/scenario').status_code == 404
 
 
 def test_live_trials_persist_each_result_while_local_batches_update_one_percent():

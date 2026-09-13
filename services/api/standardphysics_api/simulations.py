@@ -11,6 +11,7 @@ from standardphysics_agents import (
     TypeSafeCallBudget,
     analyze_environment_physics,
     assess,
+    build_entrance_object_workflows,
     load_pack,
     run_adaptive_redesign,
 )
@@ -41,6 +42,7 @@ from standardphysics_pipeline import PipelineMeasurements
 
 from . import repository as repo
 from .errors import ApiProblem
+from .scenario import suggest_scenario
 
 SIMULATE = "simulate"
 
@@ -79,8 +81,11 @@ def queue_simulation(database, stages, worker, scan_id: UUID, body: SimulationRe
             raise ApiProblem(404, "no scan")
         latest = repo.get_revision(connection, scan_id)
         scenario = repo.get_scenario(connection, scan_id)
-        if latest is None or scenario is None:
-            raise ApiProblem(409, "Confirm a customer route before running simulations")
+        if latest is None:
+            raise ApiProblem(409, "the shop is still being measured")
+        graph = repo.graph_of(latest)
+        if scenario is None:
+            scenario = suggest_scenario(graph)
         if latest["revision"] != body.base_revision:
             raise ApiProblem(409, "a newer layout was saved since this one started")
         active = connection.execute(
@@ -314,7 +319,10 @@ def run_simulation(database, store, stages, scan_id: UUID, revision: int) -> Non
                     (completed, str(scan_id), revision),
                 )
 
-    workflows = build_workflow_suite(graph, scenario, interactions=_interactions(graph, scenario))
+    workflows = [
+        *build_workflow_suite(graph, scenario, interactions=_interactions(graph, scenario)),
+        *build_entrance_object_workflows(graph, scenario),
+    ]
     campaign_reserve = 9 if request.exhaustive_evaluations else 0
     workflow_budget = (
         TypeSafeCallBudget(request.typesafe_call_limit - campaign_reserve)
