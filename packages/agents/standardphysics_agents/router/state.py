@@ -19,6 +19,16 @@ from ..rules import AgentRulePack
 MAX_FIX_ATTEMPTS = 3
 """After three failed proposals the loop stops proposing. Plan section 10."""
 
+ONE_SHOT_ACTIONS: frozenset[RouterAction] = frozenset({"RESCAN_AREA", "ASK_OWNER", "ESCALATE"})
+"""Actions that ask a person for something, so once per layout is enough.
+
+The local policy never repeats one on the layout it was taken on. The loop
+holds every router to the same rule: only a FIX changes the layout, so asking
+again before one has landed hands the same person the same request."""
+
+REPEATED_ACTION = "repeats_an_action_already_taken_on_this_layout"
+"""Why the loop refused an answer that breaks `ONE_SHOT_ACTIONS`."""
+
 
 @dataclass(frozen=True)
 class RouterState:
@@ -38,6 +48,14 @@ class RouterState:
     Asking the owner the same question on every pass is not a loop, it is a
     stutter.
     """
+
+    last_gate: dict | None = None
+    """What the gate said about the most recent rearrangement: whether it was
+    kept, problems and inches short before and after, and its reasons."""
+
+    last_search: dict | None = None
+    """What the most recent search measured, which hard constraints turned
+    candidates away, and whether it found anything at all."""
 
     @property
     def last_action(self) -> RouterAction | None:
@@ -64,6 +82,8 @@ class RouterState:
             "last_action": self.last_action,
             "actions_taken": list(self.actions_taken),
             "unevaluated_rules": list(self.unevaluated),
+            "last_gate": self.last_gate,
+            "last_search": self.last_search,
             "findings": [self._finding_summary(f) for f in self.findings],
         }
 
@@ -131,6 +151,8 @@ def state_for(
     fix_attempts: int = 0,
     unevaluated: tuple[str, ...] = (),
     actions_taken: tuple[RouterAction, ...] = (),
+    last_gate: dict | None = None,
+    last_search: dict | None = None,
 ) -> RouterState:
     return RouterState(
         findings=findings,
@@ -146,4 +168,6 @@ def state_for(
         ),
         unevaluated=unevaluated,
         actions_taken=actions_taken,
+        last_gate=last_gate,
+        last_search=last_search,
     )

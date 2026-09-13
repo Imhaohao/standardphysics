@@ -270,3 +270,78 @@ def test_invalid_frame_bytes_are_skipped_without_breaking_label_request(tmp_path
     content = body["messages"][1]["content"]
     assert isinstance(content, list)
     assert len(content) == 2
+
+
+class _FakeChatSpan:
+    def __init__(self, fields) -> None:
+        self.fields = fields
+        self.recorded = None
+        self.closed = False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_exc):
+        self.closed = True
+        return False
+
+    def record(self, **fields):
+        self.recorded = fields
+
+
+class _FakeConversation:
+    def __init__(self) -> None:
+        self.spans: list[_FakeChatSpan] = []
+
+    def start_llm(self, **fields):
+        span = _FakeChatSpan(fields)
+        self.spans.append(span)
+        return span
+
+    @staticmethod
+    def Message(role, content):  # noqa: N802 - matches weave.conversation.Message
+        return {"role": role, "content": content}
+
+    @staticmethod
+    def Usage(**counts):  # noqa: N802 - matches weave.conversation.Usage
+        return counts
+
+
+class _FakeWeave:
+    def __init__(self, client) -> None:
+        self.client = client
+        self.conversation = _FakeConversation()
+
+    def get_client(self):
+        return self.client
+
+
+def test_an_astra_request_is_one_chat_span_holding_counts_only(monkeypatch):
+    weave = _FakeWeave(client=object())
+    monkeypatch.setitem(__import__("sys").modules, "weave", weave)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-test-secret")
+    graph = parse_room_json({"objects": [element("storage"), element("chair")]})
+    objects = [node for node in graph.nodes if node.kind == "object"]
+    answer = model_response(patch_for(objects[0]), patch_for(objects[1], "Chair"))
+    answer["usage"] = {"prompt_tokens": 120, "completion_tokens": 30}
+
+    reconstruct_result(graph, transport=lambda *_: answer)
+
+    [span] = weave.conversation.spans
+    assert span.fields["provider_name"] == "openrouter"
+    assert span.closed
+    assert span.recorded["output_messages"] == [{"role": "assistant", "content": "2 label patches"}]
+    assert span.recorded["usage"] == {"input_tokens": 120, "output_tokens": 30}
+    kept = json.dumps(span.recorded)
+    assert "sk-or-test-secret" not in kept and "Bearer" not in kept
+
+
+def test_no_weave_client_means_no_span(monkeypatch):
+    weave = _FakeWeave(client=None)
+    monkeypatch.setitem(__import__("sys").modules, "weave", weave)
+    graph = parse_room_json({"objects": [element("storage")]})
+    objects = [node for node in graph.nodes if node.kind == "object"]
+
+    reconstruct_result(graph, transport=lambda *_: model_response(patch_for(objects[0])))
+
+    assert weave.conversation.spans == []

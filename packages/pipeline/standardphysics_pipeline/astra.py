@@ -13,11 +13,13 @@ import math
 import os
 import pathlib
 import re
+import sys
 import time
 import urllib.error
 import urllib.request
+from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Callable, Iterable, Literal, Sequence
+from typing import Any, Callable, Iterable, Iterator, Literal, Sequence
 from uuid import UUID
 
 from standardphysics_contracts import DisplayAppearance, SceneGraph, SceneNode
@@ -27,6 +29,7 @@ from .ingest import FIXED_CATEGORIES
 
 API_KEY_ENV = "OPENROUTER_API_KEY"
 MODEL_ENV = "OPENROUTER_MODEL"
+PROVIDER_NAME = "openrouter"
 BASE_URL_ENV = "OPENROUTER_BASE_URL"
 DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_MODEL = "openai/gpt-6-astra"
@@ -252,18 +255,82 @@ def _remote_patches(
     api_key = os.environ.get(API_KEY_ENV)
     if transport is None and not api_key:
         return None
+    with _model_call(len(graph.nodes)) as answered:
+        try:
+            body = _chat_body(
+                graph, frame_paths=frame_paths, poses_path=poses_path
+            )
+            payload = (transport or _openrouter_post)(
+                _chat_url(),
+                body,
+                _chat_headers(api_key or ""),
+            )
+        except (urllib.error.URLError, urllib.error.HTTPError, OSError, TimeoutError, ValueError):
+            return None
+        patches = _patches_from_model(payload, graph, allow_appearance=_body_has_images(body))
+        answered(patches, payload)
+    return patches
+
+
+@contextmanager
+def _model_call(node_count: int) -> Iterator[Callable[[list | None, Any], None]]:
+    """A Weave chat span around one Astra request, when Weave is already running.
+
+    Weave is not a dependency of this package, and the agents lane's tracing
+    helper sits above it, so this only uses a Weave that a caller has imported
+    and initialized. The span holds the node count sent and the patch count
+    returned: never the key, the headers, the photographs or the scan.
+    """
+    llm = _open_chat_span()
+
+    def answered(patches: list | None, payload: Any) -> None:
+        _record_chat(llm, node_count, patches, payload)
+
     try:
-        body = _chat_body(
-            graph, frame_paths=frame_paths, poses_path=poses_path
-        )
-        payload = (transport or _openrouter_post)(
-            _chat_url(),
-            body,
-            _chat_headers(api_key or ""),
-        )
-    except (urllib.error.URLError, urllib.error.HTTPError, OSError, TimeoutError, ValueError):
+        yield answered
+    finally:
+        _close_chat_span(llm)
+
+
+def _open_chat_span() -> Any:
+    weave = sys.modules.get("weave")
+    try:
+        if weave is None or weave.get_client() is None:
+            return None
+        model = os.environ.get(MODEL_ENV) or DEFAULT_MODEL
+        return weave.conversation.start_llm(model=model, provider_name=PROVIDER_NAME).__enter__()
+    except Exception:
         return None
-    return _patches_from_model(payload, graph, allow_appearance=_body_has_images(body))
+
+
+def _record_chat(llm: Any, node_count: int, patches: list | None, payload: Any) -> None:
+    if llm is None:
+        return
+    usage = payload.get("usage") if isinstance(payload, dict) else None
+    counts = usage if isinstance(usage, dict) else {}
+    try:
+        types = sys.modules["weave"].conversation
+        llm.record(
+            input_messages=[types.Message(role="user", content=f"{node_count} scene nodes")],
+            output_messages=[
+                types.Message(role="assistant", content=f"{len(patches or [])} label patches")
+            ],
+            usage=types.Usage(
+                input_tokens=int(counts.get("prompt_tokens") or 0),
+                output_tokens=int(counts.get("completion_tokens") or 0),
+            ),
+        )
+    except Exception:
+        return
+
+
+def _close_chat_span(llm: Any) -> None:
+    if llm is None:
+        return
+    try:
+        llm.__exit__(None, None, None)
+    except Exception:
+        return
 
 
 def _body_has_images(body: dict[str, Any]) -> bool:

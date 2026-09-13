@@ -47,7 +47,7 @@ from .evaluation.accessibility_sweep import (
 from .evaluation.accessibility_sweep import (
     DEFAULT_OUTPUT_PATH as DEFAULT_SWEEP_OUTPUT_PATH,
 )
-from .evaluation.scorers import LOWER_IS_BETTER, SCORERS
+from .evaluation.scorers import LOWER_IS_BETTER, SCORERS, loop_trajectory_ok
 from .loop import run_loop
 from .router import LocalPolicyRouter, TypeSafeRouter
 from .rules import RuleSpec, load_ledger, load_pack, save_ledger
@@ -265,7 +265,9 @@ def _evaluate(args) -> int:
         measure=_measurements(args.provider),
         rules=pack,
         ledger=ledger,
+        router=_router(args.router),
         run_fixes=not args.no_fixes,
+        version=args.version,
     )
     print(f"rule pack {result.rulepack_version}, {len(result.outcomes)} cases")
     print(f"completed: {result.completed}")
@@ -278,8 +280,8 @@ def _evaluate(args) -> int:
     print(f"per-case results: {written}")
     if result.weave_url:
         print(f"traces: {result.weave_url}")
-    if result.dataset_url:
-        print(f"rows in weave: {result.dataset_url}")
+    if result.evaluation_url:
+        print(f"evaluation in weave: {result.evaluation_url}")
     return 0 if result.completed else 1
 
 
@@ -542,7 +544,15 @@ def _loop(args) -> int:
         if gate:
             print(f"  gate: {'accepted' if gate.accepted else 'rejected'}, "
                   f"{gate.shortfall_before:.1f} in short -> {gate.shortfall_after:.1f}")
+    print(f"trajectory: {TRAJECTORY_READINGS[loop_trajectory_ok(steps, pack)]}")
     return 0
+
+
+TRAJECTORY_READINGS = {
+    1.0: "every pass after the kept rearrangement did something new",
+    0.0: "a pass repeated work or aimed a fix at something furniture cannot change",
+    None: "no rearrangement was kept, so there is no hand-off to judge",
+}
 
 
 HANDLERS: dict[str, Callable[[argparse.Namespace], int]] = {
@@ -605,6 +615,12 @@ def build_parser() -> argparse.ArgumentParser:
         "evaluate", help="score the checks against the labelled dataset"
     )
     evaluation.add_argument("--provider", choices=PROVIDERS, default="pipeline")
+    evaluation.add_argument("--router", choices=ROUTERS, default="local")
+    evaluation.add_argument(
+        "--version",
+        default=None,
+        help="the label Weave's Evals tab gives this run; defaults to the router's name",
+    )
     evaluation.add_argument("--out", default=DEFAULT_EVALUATION_PATH)
     evaluation.add_argument(
         "--no-fixes", action="store_true", help="skip the rearrangement cases"

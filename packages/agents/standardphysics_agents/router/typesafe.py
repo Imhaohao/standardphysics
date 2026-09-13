@@ -19,7 +19,7 @@ from typing import Any, Protocol
 
 from standardphysics_contracts import Decision
 
-from ..tracing import traced
+from ..tracing import record_llm, start_llm, traced
 from .decision import ACTIONS, Rejected, parse_decision
 from .state import RouterState
 
@@ -253,8 +253,24 @@ class TypeSafeRouter:
         return _load(raw) if isinstance(raw, (str, bytes)) else raw
 
     def _call(self, body: dict) -> bytes | Rejected:
+        """One request, recorded as a chat span on the loop's turn when one is open.
+
+        The span holds the state that was sent and the action that came back.
+        The headers, and the key in them, never reach it.
+        """
         if self.budget is not None and not self.budget.reserve():
             return Rejected("typesafe_call_budget_exhausted")
+        with start_llm(model=self.model, provider_name=PROVIDER) as llm:
+            raw = self._post(body)
+            record_llm(
+                llm,
+                sent=json.dumps(body.get("state", body)),
+                received=_answer_name(raw),
+                usage=_usage_of(raw),
+            )
+        return raw
+
+    def _post(self, body: dict) -> bytes | Rejected:
         try:
             return self.transport.post(
                 f"{self.base_url}{self.path}",
@@ -266,6 +282,19 @@ class TypeSafeRouter:
             )
         except (urllib.error.URLError, urllib.error.HTTPError, OSError, TimeoutError):
             return Rejected("transport_error")
+
+
+def _answer_name(raw: Any) -> str:
+    """What a trace keeps of an answer: the action chosen, or why there was none."""
+    if isinstance(raw, Rejected):
+        return f"rejected:{raw.reason}"
+    choice = _typesafe_choice(raw)
+    return choice if isinstance(choice, str) else "no_choice"
+
+
+def _usage_of(raw: Any) -> dict | None:
+    body = _load(raw) if isinstance(raw, (str, bytes)) else None
+    return body.get("usage") if isinstance(body, dict) else None
 
 
 def _decision_payload(payload: Any, state: RouterState) -> Any:

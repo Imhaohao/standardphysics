@@ -177,14 +177,27 @@ loop reads as one trace tree. The API server calls `init_tracing()` at startup
 and logs the project URL, so an upload through the web app traces itself. A key
 Weave rejects logs a warning and leaves the server running untraced.
 
+A run of the loop also shows up in Weave's Agents tab as `standardphysics-loop`:
+one conversation per run, one turn per pass, a tool span for `assess`,
+`propose_fix`, `gate` and each other branch, and a chat span for each TypeSafe
+and Astra call. Spans hold counts and verdicts, never the scene graph or a key.
+Weave's automatic model-client patching is off, so no call is recorded twice.
+
 `evaluate` writes per-case results to `runs/evaluation.json` either way, so a
-run can always be looked at again.
+run can always be looked at again. With Weave configured it also logs one eval
+per run, labelled with the router that answered:
+
+    standardphysics-agents evaluate --router local
+    standardphysics-agents evaluate --router typesafe --version typesafe-last-search
+
+`loop` ends by printing `trajectory_ok` for the run: whether every pass after the
+kept rearrangement handed something new to a person, or repeated work.
 
 ## Evaluations in Weave
 
     standardphysics-agents weave-eval
 
-The same 39 cases and the same seven scorers, run through `weave.Evaluation` so
+The same 39 cases and the same eight scorers, run through `weave.Evaluation` so
 the Evals tab holds them: a mean per scorer, the per-case table behind each
 mean, and a side by side of the configurations in
 `evaluation/weave_eval.py:DEFAULT_SETUPS`. Each configuration changes one part

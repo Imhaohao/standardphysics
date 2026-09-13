@@ -5,9 +5,10 @@ are set once rather than at each call site. A scan is the inside of somebody's
 shop, so retention is denied on every request as well as on the account, and
 the provider OpenRouter reports comes back on the answer and gets stored.
 
-Weave picks these calls up through its OpenRouter integration. OpenRouter's own
-Broadcast to Weave setting has to stay off or every call is traced twice and
-the evaluation numbers drift.
+Weave records each call as the `model.openrouter` op. Its automatic OpenRouter
+integration is switched off in `tracing.init`, because the loop opens its model
+spans by hand and a patched client would record the same call again. For the
+same reason OpenRouter's own Broadcast to Weave setting has to stay off.
 
 Nothing here is required to run. With no key configured the call reports that
 and the caller falls back to something local and labelled, the same way the
