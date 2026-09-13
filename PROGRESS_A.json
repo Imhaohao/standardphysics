@@ -23,7 +23,8 @@
     "cause": "Lane B commit 022004d intentionally added blocked-route obstacle IDs; blocked_but_movable retained its documented temporary ASK_OWNER label instead of FIX",
     "fix": "Initially corrected stale label; final pull included Lane C's simultaneous 94439b3 fix, which is preserved verbatim with its fix_should_resolve requirement. Lane A adds paired real-pipeline regression coverage, with no production agent-code diff from origin",
     "proof": "Real-pipeline paired tests pin movable barrier IDs through finding loci to FIX targets and preserve ESCALATE for fixed barriers. Before correction: 1 failed/1 passed in 4.67s; after: 2 passed in 4.81s. After rebase through ee0304a: all 336 agents tests passed in 296.25s, including routing score 1.0 and fix resolution",
-    "known_limits": "Root suite retains six pre-existing expected audit failures, including A-40 blocker attribution; selecting a FIX attempt does not certify that a proposal succeeds"
+    "final_integration": "Pulled 1ebff37, which repairs A-40 blocker attribution. Removed only its obsolete strict xfail marker; unchanged reopening assertions now pass as a required regression. Latest root suite: 162 passed/5 expected failures; complete evaluation module: 33 passed in 111.75s, including routing and fix resolution",
+    "known_limits": "Five pre-existing expected audit failures remain; selecting a FIX attempt does not certify that a proposal succeeds"
   },
   "reconstruction_plan": [
     {"task": "native ARKit people removal and reliable final mesh persistence", "model_tier": "Astra", "status": "implemented"},
@@ -40,7 +41,7 @@
   ],
   "repair_validation": {
     "ios_tests_passed": 63,
-    "latest_suite": "After rebase through ee0304a: agents 336 passed; root Python 161 passed/6 expected failures; API 42 passed; web 31 plus typecheck/stricter complexity lint/production build passed. Unchanged iOS: 63 passed. Extracted viewer/model/validation helpers to meet incoming complexity limit without changing behavior",
+    "latest_suite": "Full merged agents 336 passed; API 42 passed; web 31 plus typecheck/stricter complexity lint/production build passed; unchanged iOS 63 passed. After final pipeline pull 1ebff37: evaluation module 33 passed and root Python 162 passed/5 expected failures. Extracted viewer/model/validation helpers to meet incoming complexity limit without changing behavior",
     "strict_concurrency_build": "signed iOS build passed with complete concurrency and warnings as errors; test stubs use normal test settings",
     "device_build": "person-filtered measured reconstruction build installed and launched at 17:16 PDT",
     "real_scan": "ravida af42f6cd-d228-4dd8-8790-aff0890fee5b ready on real Lane D API; all 290 artifacts uploaded",
