@@ -167,8 +167,8 @@ const copy: Record<LoopPhase, { headline: string[]; detail: string[] }> = {
     detail: [],
   },
   improve: {
-    headline: ["Every fix", "must prove itself."],
-    detail: ["A fix only sticks if nothing new breaks", "and the shop measurably improves.", "W&B Weave traces every pass and", "scores the loop on 39 labeled cases."],
+    headline: ["Weave traces", "every pass and", "scores the loop."],
+    detail: [],
   },
 };
 
