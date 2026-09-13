@@ -26,13 +26,18 @@ from .ask import ask as ask_question
 from .ask import resolver
 from .assess import assess
 from .evaluation import (
+    DEFAULT_GRID,
     DEFAULT_SETUPS,
     evaluate,
     evaluate_in_weave,
+    log_experiments,
     previewing,
     run_accessibility_sweep,
+    run_grid,
     save,
     save_accessibility_sweep,
+    save_experiments,
+    target,
 )
 from .evaluation import dataset as labelled_cases
 from .evaluation.accessibility_sweep import (
@@ -68,6 +73,8 @@ DEFAULT_SIMULATION_PATH = "runs/simulation.json"
 
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
+
+DEFAULT_GRID_PATH = "runs/experiments.json"
 
 
 def _measurements(name: str):
@@ -235,6 +242,11 @@ NOTHING_ENABLED = (
 
 WEAVE_NOT_CONFIGURED = (
     "Weave is not configured. Set WANDB_PROJECT and WANDB_ENTITY, then try again."
+)
+
+GRID_STAYED_LOCAL = (
+    "The grid is on disk. To put it where ARIA reads it, set WANDB_API_KEY, "
+    "WANDB_ENTITY and WANDB_PROJECT, then run this again."
 )
 
 
@@ -414,6 +426,66 @@ def _mean_of(scored) -> float | None:
     return scored if isinstance(scored, (int, float)) else None
 
 
+def _experiments(args) -> int:
+    """The grid as W&B runs, which is the form ARIA reads."""
+    if not args.preview_unverified and _nothing_enabled(load_pack(), load_ledger()):
+        return 1
+    setups = previewing(DEFAULT_GRID) if args.preview_unverified else list(DEFAULT_GRID)
+    if args.dry_run:
+        for configuration in setups:
+            print(f"  {configuration.label}")
+        return 0
+    cases = labelled_cases()[: args.cases] if args.cases else None
+    experiments = run_grid(setups, cases=cases)
+    _print_grid(experiments)
+    print(f"\nthe grid: {save_experiments(experiments, Path(args.out))}")
+    _print_runs(experiments)
+    return 0 if all(e.result.completed for e in experiments) else 1
+
+
+GRID_HEADER = (
+    f"{'configuration':38} {'weakest score':28} {'error in':>9} "
+    f"{'candidates':>11} {'seconds':>8}"
+)
+
+
+def _print_grid(experiments) -> None:
+    print(f"\n{GRID_HEADER}")
+    for experiment in experiments:
+        metrics = experiment.metrics()
+        print(
+            f"{experiment.setup.label:38} {_weakest(metrics):28} "
+            f"{_reading(metrics.get('measurement_error_in')):>9} "
+            f"{metrics['candidates_measured']:>11} "
+            f"{metrics['wall_seconds']:>8.1f}"
+        )
+
+
+def _weakest(metrics: dict) -> str:
+    """The lowest of the scores where higher is better, and which one it is."""
+    scored = {
+        name: value
+        for name, value in metrics.items()
+        if name in SCORERS and name not in LOWER_IS_BETTER
+    }
+    if not scored:
+        return "nothing to score"
+    name = min(scored, key=lambda key: scored[key])
+    return f"{scored[name]:.4f} {name}"
+
+
+def _reading(value: float | None) -> str:
+    return f"{value:.4f}" if value is not None else "-"
+
+
+def _print_runs(experiments) -> None:
+    if target() is None:
+        print(GRID_STAYED_LOCAL, file=sys.stderr)
+        return
+    for url in log_experiments(experiments):
+        print(f"  {url}")
+
+
 def _ask(args) -> int:
     pack, ledger = load_pack(), load_ledger()
     graph, scenario = _fixture_shop()
@@ -484,6 +556,7 @@ HANDLERS: dict[str, Callable[[argparse.Namespace], int]] = {
     "accessibility-sweep": _accessibility_sweep,
     "simulate": _simulate,
     "weave-eval": _weave_eval,
+    "experiments": _experiments,
     "loop": _loop,
     "ask": _ask,
 }
@@ -573,6 +646,23 @@ def build_parser() -> argparse.ArgumentParser:
         "--cases", type=int, default=None, help="only the first N cases, for a quick look"
     )
     in_weave.add_argument(
+        "--preview-unverified",
+        action="store_true",
+        help="development only: score as if a person had verified every rule",
+    )
+
+    grid = commands.add_parser(
+        "experiments",
+        help="score the grid of configurations as W&B runs, for ARIA to read",
+    )
+    grid.add_argument("--out", default=DEFAULT_GRID_PATH)
+    grid.add_argument(
+        "--cases", type=int, default=None, help="only the first N cases, for a quick look"
+    )
+    grid.add_argument(
+        "--dry-run", action="store_true", help="name the configurations and stop"
+    )
+    grid.add_argument(
         "--preview-unverified",
         action="store_true",
         help="development only: score as if a person had verified every rule",

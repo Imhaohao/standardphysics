@@ -11,15 +11,17 @@ from __future__ import annotations
 import pytest
 from standardphysics_agents.evaluation import dataset
 from standardphysics_agents.evaluation.scorers import SCORERS
-from standardphysics_agents.evaluation.weave_eval import (
+from standardphysics_agents.evaluation.configuration import (
     DEFAULT_SETUPS,
     Setup,
-    evaluate_in_weave,
     previewing,
     review,
+    summary,
+)
+from standardphysics_agents.evaluation.weave_eval import (
+    evaluate_in_weave,
     rows,
     scorer,
-    summary,
 )
 
 

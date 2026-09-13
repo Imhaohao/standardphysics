@@ -111,9 +111,13 @@ def run_case(
     ledger: VerificationLedger,
     router,
     run_fixes: bool,
+    *,
+    fix_candidates: int = FIX_CANDIDATE_LIMIT,
 ) -> CaseOutcome:
     try:
-        return _run_case(case, measure, rules, ledger, router, run_fixes)
+        return _run_case(
+            case, measure, rules, ledger, router, run_fixes, fix_candidates
+        )
     except Exception as error:  # a broken case must not take the run down
         return CaseOutcome(
             case=case,
@@ -125,7 +129,9 @@ def run_case(
         )
 
 
-def _run_case(case, measure, rules, ledger, router, run_fixes) -> CaseOutcome:
+def _run_case(
+    case, measure, rules, ledger, router, run_fixes, fix_candidates
+) -> CaseOutcome:
     before = assess(
         case.graph, case.scenario, measure,
         rules=rules, ledger=ledger, max_tier=case.max_tier,
@@ -145,7 +151,7 @@ def _run_case(case, measure, rules, ledger, router, run_fixes) -> CaseOutcome:
     fix = propose_fix(
         case.graph, case.scenario, measure, before.problems,
         rules=rules, ledger=ledger, baseline=before,
-        max_tier=case.max_tier, limit=FIX_CANDIDATE_LIMIT,
+        max_tier=case.max_tier, limit=fix_candidates,
     )
     after = (
         assess(
@@ -174,6 +180,7 @@ def evaluate(
     router=None,
     cases: list[Case] | None = None,
     run_fixes: bool = True,
+    fix_candidates: int = FIX_CANDIDATE_LIMIT,
     publish: bool = True,
 ) -> EvaluationResult:
     pack = rules or load_pack()
@@ -181,8 +188,12 @@ def evaluate(
     provider = measure or _default_measurements()
     picked = cases if cases is not None else dataset()
 
+    decider = router or LocalPolicyRouter()
     outcomes = [
-        run_case(case, provider, pack, verified, router or LocalPolicyRouter(), run_fixes)
+        run_case(
+            case, provider, pack, verified, decider, run_fixes,
+            fix_candidates=fix_candidates,
+        )
         for case in picked
     ]
     per_case = {outcome.case.id: _score_case(outcome) for outcome in outcomes}
