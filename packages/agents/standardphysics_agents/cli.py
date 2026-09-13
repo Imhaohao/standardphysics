@@ -231,6 +231,8 @@ def _evaluate(args) -> int:
     print(f"per-case results: {written}")
     if result.weave_url:
         print(f"traces: {result.weave_url}")
+    if result.dataset_url:
+        print(f"rows in weave: {result.dataset_url}")
     return 0 if result.completed else 1
 
 
