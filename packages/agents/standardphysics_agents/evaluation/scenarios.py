@@ -240,6 +240,37 @@ def _decided(findings: list[Finding], pinned: float) -> Finding | None:
     return min(measured, key=lambda f: abs((f.measured_inches or 0.0) - pinned))
 
 
+STRENGTH = ("problem", "question", "passes")
+"""Which verdict speaks for a check that reported more than one finding."""
+
+
+def verdicts(outcome: CaseOutcome) -> dict[str, str]:
+    """One verdict per check: what it said about this room.
+
+    A check reports a measurement per leg of the routine, so a problem on any
+    leg is the check's answer for the room.
+    """
+    said: dict[str, str] = {}
+    for finding in outcome.result.findings:
+        seen = said.get(finding.check_id)
+        said[finding.check_id] = (
+            finding.outcome
+            if seen is None
+            else min((seen, finding.outcome), key=STRENGTH.index)
+        )
+    return said
+
+
+def held(outcome: CaseOutcome) -> dict[str, str]:
+    """Rules this room could not answer, and what each is waiting on.
+
+    A rule can be held and still have said something: `exit_path` measures a
+    width and holds the rest of the section. Holding rides alongside the
+    verdict rather than replacing it, so neither one hides the other.
+    """
+    return {gap.rule_id: gap.waiting_on for gap in outcome.result.unevaluated}
+
+
 def readings(
     swept: list[tuple[Knobs, CaseOutcome]], knob: str
 ) -> list[Reading]:
@@ -249,7 +280,7 @@ def readings(
 
 __all__ = [
     "FIXTURE_AISLE_INCHES", "LABELLED_SCORERS", "NOT_MEASURED", "PINS",
-    "ROUTINES", "Knobs", "Reading", "Routine", "as_case", "case_id",
-    "describe", "expected_inches", "reading", "readings", "room",
-    "routine_named", "run_knobs", "scores", "sweep_knob",
+    "ROUTINES", "STRENGTH", "Knobs", "Reading", "Routine", "as_case",
+    "case_id", "describe", "expected_inches", "held", "reading", "readings",
+    "room", "routine_named", "run_knobs", "scores", "sweep_knob", "verdicts",
 ]

@@ -30,6 +30,12 @@ AISLE_WIDTHS = [24.0, 30.0, 35.9, 36.0, 42.0]
 
 
 @pytest.fixture(scope="module")
+def outcome(configuration):
+    """The fixture shop as shipped, read once."""
+    return s.run_knobs(s.Knobs(), configuration)
+
+
+@pytest.fixture(scope="module")
 def swept(configuration):
     """One sweep of the aisle, read by every test in `TestSweepingOneKnob`."""
     return s.readings(
@@ -133,3 +139,29 @@ class TestSweepingOneKnob:
     def test_a_knob_no_check_answers_is_refused(self, configuration):
         with pytest.raises(KeyError):
             s.sweep_knob(s.Knobs(), "counter_side_seating", [True], configuration)
+
+
+class TestWhatEachCheckSaid:
+    def test_one_verdict_per_check(self, outcome):
+        assert set(s.verdicts(outcome).values()) <= set(s.STRENGTH)
+
+    def test_a_problem_on_any_leg_is_the_verdict(self, outcome):
+        """The route measures every leg. The shipped shop passes most of them
+        and pinches at 31 in, and the pinch is what the check said."""
+        legs = {
+            finding.outcome
+            for finding in outcome.result.findings
+            if finding.check_id == ROUTE
+        }
+        assert legs == {"problem", "passes"}
+        assert s.verdicts(outcome)[ROUTE] == "problem"
+
+    def test_a_held_rule_says_what_it_is_waiting_on(self, outcome):
+        waiting = s.held(outcome)
+        assert waiting
+        assert all(reason for reason in waiting.values())
+
+    def test_holding_does_not_hide_what_a_rule_did_answer(self, outcome):
+        """`exit_path` measures a width and holds the rest of its section."""
+        assert "exit_path" in s.held(outcome)
+        assert s.verdicts(outcome)["exit_path"] == "passes"
