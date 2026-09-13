@@ -36,11 +36,11 @@ NEIGHBOURS = tuple(
 """Half of the 26 directions; the other half comes free from symmetry."""
 
 
-def voxel_components(points: np.ndarray, voxel: float = CLUSTER_VOXEL) -> np.ndarray:
+def voxel_components(points: np.ndarray, voxel: float | None = None) -> np.ndarray:
     """A component label per point, joining points that share or touch a voxel."""
     if not len(points):
         return np.zeros(0, dtype=np.int64)
-    cells = np.floor(points / voxel).astype(np.int64)
+    cells = np.floor(points / (CLUSTER_VOXEL if voxel is None else voxel)).astype(np.int64)
     unique, inverse = np.unique(cells, axis=0, return_inverse=True)
     parent = np.arange(len(unique))
     lookup = {tuple(cell): index for index, cell in enumerate(unique)}
@@ -76,10 +76,10 @@ def dominant_cluster(
     columns: np.ndarray,
     rows: np.ndarray,
     detection: Detection,
-    voxel: float = CLUSTER_VOXEL,
+    voxel: float | None = None,
 ) -> np.ndarray:
     """The piece whose outline best matches the rectangle the detector drew."""
-    labels = voxel_components(points, voxel)
+    labels = voxel_components(points, CLUSTER_VOXEL if voxel is None else voxel)
     best_score, best = 0.0, np.zeros(len(points), dtype=bool)
     for label in np.unique(labels):
         member = labels == label
