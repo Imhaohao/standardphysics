@@ -26,7 +26,7 @@ type ViewerProps = {
   selected: Focus | null;
   onSelectNode: (nodeId: string) => void;
   onClearSelection: () => void;
-  materialMode: "captured" | "plain" | "coverage" | "scan";
+  materialMode: "reconstructed" | "captured" | "plain" | "coverage" | "scan";
   scanGlbUrl: string | null;
   staleNodeIds: string[];
   coverage: NodeTextureCoverage[];

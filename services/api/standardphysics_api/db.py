@@ -66,6 +66,8 @@ CREATE TABLE IF NOT EXISTS simulations (
     scenario_json TEXT NOT NULL,
     mesh_artifact_id TEXT,
     completed INTEGER NOT NULL DEFAULT 0,
+    cycle INTEGER NOT NULL DEFAULT 0,
+    candidate_graph_json TEXT,
     result_json TEXT,
     PRIMARY KEY (scan_id, revision)
 );
@@ -96,6 +98,11 @@ class Database:
         with self.connect() as connection:
             connection.execute("PRAGMA journal_mode=WAL")
             connection.executescript(SCHEMA)
+            columns = {row[1] for row in connection.execute("PRAGMA table_info(simulations)")}
+            if "cycle" not in columns:
+                connection.execute("ALTER TABLE simulations ADD COLUMN cycle INTEGER NOT NULL DEFAULT 0")
+            if "candidate_graph_json" not in columns:
+                connection.execute("ALTER TABLE simulations ADD COLUMN candidate_graph_json TEXT")
 
     @contextlib.contextmanager
     def connect(self) -> Iterator[sqlite3.Connection]:

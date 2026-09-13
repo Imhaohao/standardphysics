@@ -3,25 +3,27 @@ from __future__ import annotations
 import math
 import threading
 import time
+from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
-from standardphysics_contracts import LidarMesh, LidarMeshPart, WidthResult
-from standardphysics_agents.router import parse_decision
+from standardphysics_agents.router import LocalPolicyRouter, parse_decision
 from standardphysics_agents.rules import VerificationLedger
 from standardphysics_agents.workflows import (
     DEFAULT_PROFILES,
     LOW_REACH_PROFILE,
-    TypeSafeWorkflowConfigurationError,
     WHEELCHAIR_PROFILE,
     Interaction,
+    TypeSafeWorkflowConfigurationError,
     Workflow,
+    WorkflowBatchResult,
     build_workflow_suite,
     evaluate_workflow,
-    run_workflow_batch,
     run_typesafe_workflow_batch,
+    run_workflow_batch,
     workflow_candidate_rejection,
 )
+from standardphysics_contracts import LidarMesh, LidarMeshPart, WidthResult
 from standardphysics_fixtures import node_id
 
 
@@ -214,6 +216,7 @@ def test_one_thousand_ready_workflow_runs_use_bounded_parallelism(
     )
 
     assert result.total_runs == 1_000
+    assert result.violating_trials == 1_000
     assert result.completed_runs == 1_000
     assert 1 < router.peak <= 8
     assert result.action_counts == {"DONE": 1_000}
@@ -229,6 +232,107 @@ def test_one_thousand_ready_workflow_runs_use_bounded_parallelism(
     assert result.best_run is not None
     assert result.recommended_graph == graph
     assert len(result.best_run.suite_evaluations) == 1
+
+
+def test_one_thousand_trials_can_be_submitted_to_one_thousand_workers(
+    graph, scenario, stub, pack, ledger, monkeypatch
+):
+    from concurrent.futures import ThreadPoolExecutor as RealThreadPoolExecutor
+
+    requested_workers = []
+
+    def record_executor(*, max_workers):
+        requested_workers.append(max_workers)
+        # Keep the unit test lightweight while proving production receives the
+        # requested all-at-once fan-out size.
+        return RealThreadPoolExecutor(max_workers=2)
+
+    monkeypatch.setattr(
+        "standardphysics_agents.workflows.ThreadPoolExecutor", record_executor
+    )
+    workflow = Workflow(id="get-coffee", title="Get coffee", scenario=scenario)
+
+    result = run_workflow_batch(
+        graph,
+        workflows=[workflow],
+        profiles=[WHEELCHAIR_PROFILE],
+        samples=1_000,
+        max_workers=1_000,
+        measure_factory=lambda: stub,
+        router_factory=LocalPolicyRouter,
+        rules=pack,
+        ledger=ledger,
+    )
+
+    assert requested_workers == [1_000]
+    assert result.total_runs == 1_000
+
+
+def test_a_trial_with_a_final_ada_problem_is_a_violating_trial():
+    evaluation = SimpleNamespace(passed=True)
+    run = SimpleNamespace(
+        completed=True,
+        rejected=None,
+        evaluation=evaluation,
+        suite_evaluations=(evaluation,),
+        steps=(SimpleNamespace(assessment=SimpleNamespace(problems=[object()])),),
+    )
+
+    result = WorkflowBatchResult(runs=(run,), max_workers=1)
+
+    assert result.violating_trials == 1
+
+
+def test_workflow_progress_reports_whichever_trial_finishes_first(
+    graph, scenario, stub, pack, ledger, monkeypatch
+):
+    slow_started = threading.Event()
+    fast_finished = threading.Event()
+    release_slow = threading.Event()
+    progress_seen = threading.Event()
+
+    def fake_loop(graph, scenario, *args, **kwargs):
+        if scenario.name == "slow":
+            slow_started.set()
+            assert release_slow.wait(timeout=2)
+        else:
+            fast_finished.set()
+        return []
+
+    monkeypatch.setattr("standardphysics_agents.workflows.run_loop", fake_loop)
+    workflows = [
+        Workflow(id="slow", title="Slow", scenario=scenario.model_copy(update={"name": "slow"})),
+        Workflow(id="fast", title="Fast", scenario=scenario.model_copy(update={"name": "fast"})),
+    ]
+    outcome = []
+
+    def run_batch():
+        outcome.append(run_workflow_batch(
+            graph,
+            workflows=workflows,
+            profiles=[WHEELCHAIR_PROFILE],
+            samples=2,
+            max_workers=2,
+            measure_factory=lambda: stub,
+            router_factory=object,
+            rules=pack,
+            ledger=ledger,
+            on_progress=lambda completed: progress_seen.set(),
+        ))
+
+    thread = threading.Thread(target=run_batch)
+    thread.start()
+    try:
+        assert slow_started.wait(timeout=1)
+        assert fast_finished.wait(timeout=1)
+        assert progress_seen.wait(timeout=1)
+    finally:
+        release_slow.set()
+        thread.join(timeout=2)
+
+    assert not thread.is_alive()
+    assert outcome[0].total_runs == 2
+    assert outcome[0].violating_trials == 2
 
 
 def test_typesafe_batch_fails_early_when_the_api_key_is_missing(

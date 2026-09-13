@@ -9,11 +9,14 @@ from uuid import uuid4
 import pytest
 from standardphysics_agents import (
     TypeSafeCallBudget,
+    WHEELCHAIR_PROFILE,
+    Workflow,
     analyze_environment_physics,
     graph_hash,
     run_adaptive_redesign,
 )
 from standardphysics_agents.redesign import RedesignResult
+from standardphysics_agents.adaptive_redesign import _layout_evidence
 from standardphysics_agents.router import (
     ChoiceQuestion,
     SystemOneClient,
@@ -194,6 +197,66 @@ def test_adaptive_redesign_stops_on_rejection_and_never_mutates_scan(monkeypatch
     assert graph_hash(measured) == original_hash
 
 
+def test_layout_evidence_names_measured_actionable_blockers():
+    from standardphysics_agents import DEFAULT_PROFILES, build_workflow_suite
+
+    graph = build_graph()
+    evidence = _layout_evidence(
+        graph,
+        graph,
+        build_workflow_suite(graph, build_scenario()),
+        list(DEFAULT_PROFILES),
+        FixtureMeasurements(),
+        None,
+    )
+    assert evidence["actionable_failure_count"] > 0
+    failure = evidence["actionable_failures"][0]
+    assert failure["measured_width_inches"] < failure["required_width_inches"]
+    assert failure["movable_blocker_ids"]
+    assert failure["movable_blocker_labels"]
+
+
+def test_adaptive_redesign_skips_astra_without_actionable_furniture_failure(
+    monkeypatch,
+):
+    measured = build_graph()
+
+    def evidence(*args, **kwargs):
+        return {
+            "actionable_failures": [],
+            "disruption": {
+                "moved_object_count": 0,
+                "total_translation_meters": 0,
+                "fixed_objects_moved": 0,
+                "inventory_preserved": True,
+            },
+        }
+
+    def unexpected(*args, **kwargs):
+        raise AssertionError("Astra must not be called without an actionable failure")
+
+    monkeypatch.setattr(
+        "standardphysics_agents.adaptive_redesign._layout_evidence", evidence
+    )
+    monkeypatch.setattr(
+        "standardphysics_agents.adaptive_redesign.propose_redesign", unexpected
+    )
+    result = run_adaptive_redesign(
+        measured,
+        workflows=[
+            Workflow(id="room", title="Room", scenario=build_scenario())
+        ],
+        profiles=[WHEELCHAIR_PROFILE],
+        measure=FixtureMeasurements(),
+        rules=SimpleNamespace(),
+        ledger=SimpleNamespace(),
+        rounds=4,
+        budget=TypeSafeCallBudget(4),
+    )
+    assert result.astra_calls == 0
+    assert result.rounds[0].reasons == ["no_actionable_furniture_failure"]
+
+
 class _SystemOneTransport:
     def __init__(self):
         self.calls = 0
@@ -233,3 +296,95 @@ def test_typesafe_budget_is_thread_safe_and_exhaustion_makes_no_provider_call():
     with pytest.raises(SystemOneError, match="typesafe_call_budget_exhausted"):
         client.evaluate({}, {"q": question})
     assert transport.calls == 1
+
+
+def test_astra_works_on_remaining_rule_problems_with_what_the_route_trials_learned(monkeypatch):
+    from standardphysics_agents import DEFAULT_PROFILES, build_workflow_suite, load_pack
+    from standardphysics_api.stages import preview_ledger
+
+    measured = build_graph()
+    scenario = build_scenario()
+    card_reader = {"check_id": "protruding_objects", "movable_node_ids": [str(node_id("chair_1"))]}
+    trials = {"decided_by": "typesafe", "kept_moves": [{"label": "Display case"}]}
+    no_route_failures = {
+        "actionable_failures": [],
+        "disruption": {"moved_object_count": 0, "total_translation_meters": 0, "fixed_objects_moved": 0, "inventory_preserved": True},
+    }
+    monkeypatch.setattr("standardphysics_agents.adaptive_redesign._layout_evidence", lambda *args: dict(no_route_failures))
+    monkeypatch.setattr(
+        "standardphysics_agents.adaptive_redesign._rule_problem_evidence",
+        lambda *args: {"rule_problem_count": 1, "actionable_rule_problems": [card_reader], "actionable_rule_problem_count": 1},
+    )
+    astra_saw = []
+
+    def propose(current, workflows, profiles, feedback, measure, **kwargs):
+        astra_saw.extend(feedback)
+        return RedesignResult(measured.model_copy(update={"revision": 1}), "astra-test", True, ())
+
+    class RecordingJev:
+        seen = []
+
+        def rank_layouts(self, candidates):
+            self.seen.extend(candidates)
+            return (SimpleNamespace(candidate=candidates[0]), SimpleNamespace(candidate=candidates[1]))
+
+    monkeypatch.setattr("standardphysics_agents.adaptive_redesign.propose_redesign", propose)
+    jev = RecordingJev()
+    result = run_adaptive_redesign(
+        measured,
+        workflows=build_workflow_suite(measured, scenario),
+        profiles=list(DEFAULT_PROFILES),
+        measure=FixtureMeasurements(),
+        rules=load_pack(),
+        ledger=preview_ledger(),
+        rounds=2,
+        budget=TypeSafeCallBudget(2),
+        intelligence=jev,
+        scenario=scenario,
+        route_trials=trials,
+    )
+    assert result.astra_calls == 1
+    assert astra_saw[0]["route_trials"] == trials
+    assert astra_saw[0]["actionable_rule_problems"] == [card_reader]
+    assert all(candidate.usability_evidence["actionable_rule_problem_count"] == 1 for candidate in jev.seen)
+    assert "route_trials" not in jev.seen[0].usability_evidence
+
+
+def test_route_trial_evidence_names_kept_moves_and_failing_journeys():
+    from standardphysics_agents.adaptive_redesign import route_trial_evidence
+
+    measured = build_graph()
+    case = node_id("case_east")
+    moved = measured.model_copy(update={"nodes": [
+        node.model_copy(update={"transform": node.transform.model_copy(update={
+            "m": [value + (0.14 if index == 3 else 0) for index, value in enumerate(node.transform.m)]
+        })}) if node.id == case else node
+        for node in measured.nodes
+    ]})
+    failing = SimpleNamespace(workflow_title="Order a drink", profile_title="Wheelchair user", passed_trials=1, trials=4, blocking_node_ids=[str(case)])
+    passing = SimpleNamespace(workflow_title="Leave", profile_title="Walker", passed_trials=4, trials=4, blocking_node_ids=[])
+    result = SimpleNamespace(recommended_graph=moved, feedback=[failing, passing], total_runs=8, rejected_runs=1, action_counts={"FIX": 9})
+
+    evidence = route_trial_evidence(measured, result, "typesafe")
+
+    assert evidence["decided_by"] == "typesafe"
+    assert evidence["action_counts"] == {"FIX": 9}
+    [kept] = evidence["kept_moves"]
+    assert kept["node_id"] == str(case)
+    assert evidence["failing_workflow_count"] == 1
+    assert evidence["failing_workflows"][0]["blocker_labels"] == [next(n.label for n in measured.nodes if n.id == case)]
+
+
+def test_only_floor_placement_problems_count_as_astra_work():
+    from standardphysics_agents import load_pack
+    from standardphysics_agents.adaptive_redesign import PLACEMENT_CHECKS, _rule_problem_evidence
+    from standardphysics_api.stages import preview_ledger
+
+    graph = build_graph()
+    evidence = _rule_problem_evidence(graph, build_scenario(), FixtureMeasurements(), load_pack(), preview_ledger())
+
+    assert evidence["actionable_rule_problem_count"] >= 1
+    assert all(item["check_id"] in PLACEMENT_CHECKS for item in evidence["actionable_rule_problems"])
+    assert all(item["movable_labels"] for item in evidence["actionable_rule_problems"])
+    assert evidence["rule_problem_count"] >= evidence["actionable_rule_problem_count"]
+    assert _rule_problem_evidence(graph, None, FixtureMeasurements(), load_pack(), preview_ledger())["actionable_rule_problems"] == []

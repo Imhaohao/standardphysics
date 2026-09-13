@@ -59,7 +59,7 @@ def stale_node_ids(shown: SceneGraph, bake_graph: SceneGraph) -> list[UUID]:
 
 
 def _shape_fingerprint(node: SceneNode, portals: list) -> str:
-    parts: list = [node.kind, node.raw_category, _rounded(node.dimensions.as_tuple())]
+    parts: list = [node.kind, node.raw_category, _rounded(node.dimensions.as_tuple()), _visual_parts(node)]
     if node.kind in PLACEMENT_BOUND_KINDS:
         parts.append(_rounded(node.transform.m))
     if node.kind == "wall":
@@ -72,8 +72,16 @@ def _portal_fingerprints(graph: SceneGraph) -> list:
 
 
 def _placed_fingerprint(node: SceneNode) -> str:
-    parts = [str(node.id), node.kind, node.raw_category, _rounded(node.dimensions.as_tuple()), _rounded(node.transform.m)]
+    parts = [str(node.id), node.kind, node.raw_category, _rounded(node.dimensions.as_tuple()), _rounded(node.transform.m), _visual_parts(node)]
     return json.dumps(parts, separators=(",", ":"))
+
+
+def _visual_parts(node: SceneNode) -> dict:
+    """Appearance belongs in the display cache, never the measurement hash."""
+    return {
+        "appearance": node.appearance.model_dump(mode="json") if node.appearance else None,
+        "parts": [part.model_dump(mode="json") for part in node.reconstruction.parts] if node.reconstruction else None,
+    }
 
 
 def _rounded(values) -> list[float]:

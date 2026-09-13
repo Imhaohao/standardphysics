@@ -19,7 +19,7 @@ from standardphysics_contracts import PoseRecord
 
 from standardphysics_pipeline.coords import capture_to_room
 from standardphysics_pipeline.textures.camera import CameraMetadataError, PhotoCamera, camera_from_pose, load_cameras
-from standardphysics_pipeline.textures.project import DepthBuffers, triangle_depth_buffer, view_samples
+from standardphysics_pipeline.textures.project import DepthBuffers, rasterize_atlas, triangle_depth_buffer, view_samples
 
 FLOOR_HEIGHT = -1.3
 CALIBRATION = (1920, 1440)
@@ -205,3 +205,21 @@ def test_slanted_surface_cannot_bridge_a_30cm_foreground_depth_edge():
     samples = view_samples(DepthBuffers(camera, clean, None), positions, normals, 1.0)
 
     assert not samples.accepted[0]
+
+
+def test_atlas_texels_keep_per_part_base_colours_for_uncovered_regions():
+    world = np.array([
+        [[0, 0, 1], [1, 0, 1], [0, 1, 1]],
+        [[1, 0, 1], [1, 1, 1], [0, 1, 1]],
+    ], dtype=np.float32)
+    uv = np.array([
+        [[0, 0], [0.5, 0], [0, 1]],
+        [[0.5, 0], [1, 1], [0.5, 1]],
+    ], dtype=np.float32)
+    texels = rasterize_atlas(
+        world, uv, np.array([0, 0]), 16,
+        np.array([[0.4, 0.2, 0.1], [0.1, 0.2, 0.7]], dtype=np.float32),
+    )
+
+    assert np.any(np.all(np.isclose(texels.base_colours, [0.4, 0.2, 0.1]), axis=1))
+    assert np.any(np.all(np.isclose(texels.base_colours, [0.1, 0.2, 0.7]), axis=1))

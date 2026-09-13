@@ -92,11 +92,13 @@ def pinch_from(finding: Finding, graph: SceneGraph) -> Pinch | None:
         return None
 
     nodes = _nodes(graph, finding.locus.node_ids)
-    if len(nodes) < 2:
+    if not nodes:
         return None
 
     line = _measurement_line(finding)
-    if line is None:
+    if finding.locus.annotation.kind == "region":
+        centre, across = finding.locus.point, (1.0, 0.0)
+    elif line is None:
         centre, across = _axes_from_nodes(nodes)
     else:
         start, end = line

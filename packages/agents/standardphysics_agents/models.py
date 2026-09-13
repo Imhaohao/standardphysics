@@ -98,7 +98,8 @@ class OpenRouter:
                 instruction, payload, schema, schema_name
             ))
         except Exception as error:  # a third party being down decides nothing
-            return Rejected(f"model_error:{type(error).__name__}")
+            status = getattr(error, "status_code", None)
+            return Rejected(f"model_error:{type(error).__name__}" + (f":{status}" if status else ""))
         return self._answer(response)
 
     def _request(

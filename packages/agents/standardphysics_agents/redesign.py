@@ -36,18 +36,53 @@ class RedesignResult:
 
 
 INSTRUCTION = (
-    "Propose a furniture arrangement that improves the measured accessibility issues in this room. "
-    "Return floor translations in meters and rotations in degrees for existing movable object IDs only. "
+    "Propose a furniture arrangement that improves at least one actionable measured accessibility issue. "
+    "Use `actionable_failures` (blocked customer routes) and `actionable_rule_problems` (rule problems that "
+    "involve movable objects) as the authoritative issues furniture can address; each item names the movable "
+    "object IDs. `route_trials`, when present, summarizes route trials that already ran on this room: its "
+    "`kept_moves` are already applied to `room`, and `failing_workflows` shows which journeys still failed "
+    "and what blocked them. Build on those kept moves rather than undoing them. "
+    "Use only IDs in `movable_objects`. Return floor translations in meters and "
+    "rotations in degrees for one to four existing movable objects. "
     "Preserve every object's measured size, inventory, fixed fixtures, walls and doors. "
-    "Do not infer that an attractive rendering is legally compliant. Return no moves if the measured "
-    "evidence does not support a safe improvement. The application remeasures every route before accepting edits."
+    "Do not move an object merely because an unlocalized raw-mesh collision exists. Do not return a no-op move. "
+    "Do not infer that an attractive rendering is legally compliant. Return no moves if `actionable_failures` "
+    "and `actionable_rule_problems` are both empty or the evidence does not support a safe improvement. "
+    "The application remeasures every route and rule before accepting edits."
 )
 
 
 def propose_redesign(graph, workflows, profiles, feedback, measure, *, rules, ledger, model=None, collision_index=None) -> RedesignResult:
     client = model or OpenRouter()
+    movable_objects = [
+        {
+            "id": str(node.id),
+            "label": node.label,
+            "position": node.transform.position.model_dump(mode="json"),
+            "dimensions": node.dimensions.model_dump(mode="json"),
+        }
+        for node in graph.nodes
+        if node.kind == "object" and node.movable
+    ]
     answer = client.structured(INSTRUCTION, {
         "room": graph.model_dump(mode="json"),
+        "movable_objects": movable_objects,
+        "actionable_failures": [
+            failure
+            for item in feedback
+            for failure in item.get("actionable_failures", [])
+        ],
+        "actionable_rule_problems": [
+            problem
+            for item in feedback
+            for problem in item.get("actionable_rule_problems", [])
+        ],
+        "route_trials": next((item["route_trials"] for item in feedback if "route_trials" in item), None),
+        "evidence_gaps": [
+            gap
+            for item in feedback
+            for gap in item.get("evidence_gaps", [])
+        ],
         "workflow_feedback": feedback,
         "verified_rules": [rule.model_dump(mode="json") for rule in rules.enabled(ledger, max_tier=3)],
     }, RoomEdits.model_json_schema(), "room_furniture_edits")
@@ -62,9 +97,18 @@ def validate_redesign(graph, answer: ModelAnswer, workflows, profiles, measure, 
     except ValidationError:
         return RedesignResult(None, answer.model, False, ("invalid_model_edits",))
     ids = [edit.node_id for edit in edits.moves]
+    if not ids:
+        return RedesignResult(None, answer.model, False, ("no_supported_furniture_move",))
     known = {node.id for node in graph.nodes}
-    if not ids or len(ids) != len(set(ids)) or not set(ids) <= known:
-        return RedesignResult(None, answer.model, False, ("empty_duplicate_or_unknown_objects",))
+    if len(ids) != len(set(ids)):
+        return RedesignResult(None, answer.model, False, ("duplicate_objects",))
+    if not set(ids) <= known:
+        return RedesignResult(None, answer.model, False, ("unknown_objects",))
+    if all(
+        edit.dx == 0 and edit.dy == 0 and edit.rotation_degrees == 0
+        for edit in edits.moves
+    ):
+        return RedesignResult(None, answer.model, False, ("no_op_moves",))
     moves = [NodeMove(node_id=edit.node_id, delta_translation=Vec3(x=edit.dx, y=edit.dy, z=0), delta_rotation_z_degrees=edit.rotation_degrees) for edit in edits.moves]
     candidate = apply_moves(graph, moves)
     broken = violations(graph, candidate)

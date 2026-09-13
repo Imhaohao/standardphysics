@@ -213,5 +213,199 @@
       }
     ],
     "status": "Software implemented and verified; real-room photorealism and native v2 phone acceptance incomplete"
+  },
+  "object_completion": {
+    "status": "Implementation and live reconstruction verification complete; photorealism and verified ADA compliance remain incomplete",
+    "invariants": [
+      "Original dimensions/transforms/IDs and scan artifacts stay unchanged",
+      "Completed parts confined to measured object bounds",
+      "Image evidence required for inferred geometry; provenance shown",
+      "Measured graph hash excludes display reconstruction",
+      "Photo texture cache invalidates when completed geometry changes"
+    ],
+    "tasks": [
+      {
+        "task": "Contracts, cache identity, API integration, validation",
+        "tier": "Sol",
+        "status": "complete; live reconstruction verified"
+      },
+      {
+        "task": "Astra photo evidence and object parts",
+        "tier": "Terra",
+        "status": "complete; live reconstruction verified"
+      },
+      {
+        "task": "Detailed Blender geometry and materials",
+        "tier": "Terra",
+        "status": "complete; live reconstruction verified"
+      },
+      {
+        "task": "Viewer reconstructed finish mode and status",
+        "tier": "Terra",
+        "status": "complete; live reconstruction verified"
+      }
+    ],
+    "git_head": "3f61bbd",
+    "validation": {
+      "python": "841 passed,8 skipped,4 xfailed",
+      "api": "101 passed plus new captured-placement regression",
+      "web": "53 passed;typecheck/lint passed",
+      "astra": "26 focused tests passed including source image dimensions guard",
+      "final_focused": "59 passed; last provider/fallback tests34 passed"
+    },
+    "live_first_pass": {
+      "reconstructed_objects": 10,
+      "total_objects": 15,
+      "tables_reconstructed": 3,
+      "seconds": 32.85,
+      "measurements_preserved": true
+    },
+    "limitations": [
+      "Completion describes inferred visual parts, not independently measured geometry",
+      "Objects without clear photo evidence retain prior safe geometry",
+      "No exact CAD identity or unseen surface finish is claimed"
+    ],
+    "provider_verified": {
+      "model": "openai/gpt-6-astra",
+      "provider": "OpenAI",
+      "multimodal": true
+    },
+    "live_final_pass": {
+      "seconds": 54.87,
+      "revision": 3,
+      "objects": 15,
+      "reconstructed": 12,
+      "updated_reconstructions": 12,
+      "measurements_preserved": true,
+      "tables_reconstructed": 3,
+      "inferred_parts": 102,
+      "proof": "runs/object-completion/proof.json"
+    },
+    "interaction": {
+      "selection": "Folding table selected by UUID",
+      "movement": "Valid drag accepted and Save this layout enabled",
+      "cleanup": "At final inspection no unsaved move remained; latest saved revision 4 was preserved"
+    },
+    "final_texture_status": "runs/object-completion/final-texture-status.json",
+    "photo_coverage_display": "22%",
+    "final_glb": {
+      "http_status": 200,
+      "bytes": 1332220,
+      "revision": 4
+    },
+    "subagents": [
+      {
+        "name": "texture_ios",
+        "tier": "Terra",
+        "task": "Astra photo evidence and object reconstruction",
+        "status": "complete",
+        "cost": "unavailable"
+      },
+      {
+        "name": "texture_baker",
+        "tier": "Terra",
+        "task": "Blender geometry and materials",
+        "status": "complete",
+        "cost": "unavailable"
+      },
+      {
+        "name": "texture_web",
+        "tier": "Terra",
+        "task": "Viewer rendering and interactions",
+        "status": "complete",
+        "cost": "unavailable"
+      }
+    ]
+  },
+  "astra_redesign_repair": {
+    "status": "complete for actionable measured furniture failures; recent phone scan remains evidence-limited",
+    "tasks": [
+      {
+        "task": "Detailed measured failure payload and Astra gating",
+        "tier": "Sol",
+        "status": "complete"
+      },
+      {
+        "task": "Stale movable-furniture LiDAR exclusion with fixed geometry retained",
+        "tier": "Terra",
+        "status": "complete"
+      },
+      {
+        "task": "TypeSafe rounded score contract repair",
+        "tier": "Luna",
+        "status": "complete"
+      },
+      {
+        "task": "Live Astra and Jev fixture proof plus GLB export",
+        "tier": "Terra",
+        "status": "complete"
+      }
+    ],
+    "proof": {
+      "agents_tests": "614 passed",
+      "web": "60 passed; typecheck passed",
+      "live_calls": "1 Astra and 1 TypeSafe call in final proof",
+      "fixture_routes": "40 of 96 route legs passed before; 96 of 96 after",
+      "fixture_evaluations": "32 of 84 passed before; 84 of 84 after",
+      "fixture_artifact": "runs/synthetic-fixture-proof/recommended-layout.glb",
+      "actual_scan_artifact": "runs/astra-redesign-live-proof/recommended-layout.glb",
+      "actual_scan_inventory": "revision 4; 34 scene nodes; all 15 objects exported; 12 reconstructed objects; IDs and dimensions preserved",
+      "actual_scan_recommendation": "no furniture move supported by localized measured evidence; 0 Astra calls",
+      "viewer": "recent scan revision 4 rendered and orbit interaction verified"
+    },
+    "limitations": [
+      "Fixture proof is not legal certification",
+      "Recent phone scan lacks confirmed route labels and has unlocalized entrance mesh evidence",
+      "A rescan and human review of measurements and rules are required before a compliance conclusion"
+    ],
+    "subagents": []
+  },
+  "zero_violation_loop": {
+    "status": "complete",
+    "invariants": [
+      "Each cycle waits for all 1000 TypeSafe trials before repair or success",
+      "Astra receives measured failure evidence and only candidate layouts advance",
+      "The measured scan remains immutable",
+      "Success requires zero violating trials and zero deterministic ADA rule problems",
+      "The loop stops at its bounded repair limit without claiming success"
+    ],
+    "tasks": [
+      {
+        "task": "Violating-trial observable and 1000-worker fan-out",
+        "tier": "Sol",
+        "status": "complete; 2 focused tests passed"
+      },
+      {
+        "task": "Batch, Astra repair, and full verification orchestration",
+        "tier": "Terra",
+        "status": "complete; full-batch retest and false-success guards verified by 2 focused tests"
+      },
+      {
+        "task": "Public result contract and API coverage",
+        "tier": "Terra",
+        "status": "complete; generated TypeScript contract and API result assertions pass"
+      },
+      {
+        "task": "Single Start loop UI",
+        "tier": "Luna",
+        "status": "complete; request and outcome copy tests, typecheck, and lint pass"
+      },
+      {
+        "task": "Final review and verification",
+        "tier": "Terra",
+        "status": "complete; focused API and agent suites each pass 14 tests, web loop suite passes 2 tests, typecheck and lint pass, and merge audit is clean"
+      }
+    ],
+    "proof": {
+      "python_full": "934 passed, 8 skipped, 3 xfailed",
+      "agents_full": "636 passed",
+      "api_full": "111 passed",
+      "web_full": "78 passed; typecheck and lint passed",
+      "final_focused": "API 14 passed; agent workflows 14 passed; web loop 2 passed",
+      "git": "git diff --check passed; no unmerged files or conflict markers",
+      "runtime": "API on 127.0.0.1:8789; web on 127.0.0.1:3002",
+      "interrupted_run": "scan f68aa174-0c9d-534e-9283-644eb66bc62e revision 0 remains failed and was not restarted"
+    },
+    "subagents": []
   }
 }

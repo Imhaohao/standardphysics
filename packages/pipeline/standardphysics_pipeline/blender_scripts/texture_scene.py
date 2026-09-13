@@ -158,6 +158,10 @@ def place_uvs(obj, side: int, placement: tuple[int, int, int]) -> None:
 
 def base_colour(obj) -> list[float]:
     material = obj.data.materials[0] if obj.data.materials else None
+    return material_colour(material)
+
+
+def material_colour(material) -> list[float]:
     principled = material.node_tree.nodes.get("Principled BSDF") if material and material.use_nodes else None
     if principled is None:
         return [0.65, 0.64, 0.60]
@@ -165,7 +169,7 @@ def base_colour(obj) -> list[float]:
 
 
 def triangle_arrays(objects: list) -> dict[str, np.ndarray]:
-    world, uvs, owners = [], [], []
+    world, uvs, owners, colours = [], [], [], []
     for owner, obj in enumerate(objects):
         mesh = obj.data
         mesh.calc_loop_triangles()
@@ -174,10 +178,13 @@ def triangle_arrays(objects: list) -> dict[str, np.ndarray]:
             world.append([list(obj.matrix_world @ mesh.vertices[index].co) for index in triangle.vertices])
             uvs.append([list(uv[index].uv) for index in triangle.loops])
             owners.append(owner)
+            material = obj.data.materials[triangle.material_index] if triangle.material_index < len(obj.data.materials) else None
+            colours.append(material_colour(material))
     return {
         "world": np.asarray(world, dtype=np.float64).reshape(-1, 3, 3),
         "uv": np.asarray(uvs, dtype=np.float64).reshape(-1, 3, 2),
         "owner": np.asarray(owners, dtype=np.int32),
+        "base_colour": np.asarray(colours, dtype=np.float32).reshape(-1, 3),
     }
 
 

@@ -30,6 +30,7 @@ from .typesafe import (
 )
 
 PROBABILITY_SUM_TOLERANCE = 1e-4
+PROVIDER_DECIMAL_PRECISION = 2
 
 
 class ChoiceQuestion(BaseModel):
@@ -243,8 +244,16 @@ def _validate_score(answer: ScoreAnswer, question: ScoreQuestion) -> None:
         int(level) * probability
         for level, probability in answer.probabilities.items()
     )
+    # System One currently serializes scores and level probabilities to two
+    # decimals independently. A score is computed before the probabilities are
+    # rounded, so reconstructing it from the displayed distribution can differ
+    # by the combined rounding error of every weighted level.
+    rounding_unit = 0.5 * 10 ** (-PROVIDER_DECIMAL_PRECISION)
+    rounding_tolerance = rounding_unit * (
+        1 + sum(range(len(question.criteria)))
+    )
     if not math.isclose(
-        answer.score, weighted_score, rel_tol=0.0, abs_tol=PROBABILITY_SUM_TOLERANCE
+        answer.score, weighted_score, rel_tol=0.0, abs_tol=rounding_tolerance
     ):
         raise SystemOneError("response_score_inconsistent")
 

@@ -73,14 +73,15 @@ class Worker:
     def wake(self) -> None:
         self._wake.set()
 
-    def label_inputs(self, scan_id: uuid.UUID) -> tuple[list[pathlib.Path], pathlib.Path | None]:
+    def label_inputs(self, scan_id: uuid.UUID) -> tuple[list[pathlib.Path], pathlib.Path | None, pathlib.Path | None]:
         """Return uploaded frame and pose artifacts for the built-in labeler."""
         with self.database.connect() as connection:
             frames = repo.artifacts_of_kind(connection, scan_id, "frames")
             poses = repo.artifact_of_kind(connection, scan_id, "poses")
+            lidar = repo.artifact_of_kind(connection, scan_id, "lidar_mesh")
         frame_paths = [self.store.artifact_path(scan_id, artifact.id) for artifact in frames]
         poses_path = self.store.artifact_path(scan_id, poses.id) if poses is not None else None
-        return frame_paths, poses_path
+        return frame_paths, poses_path, self.store.artifact_path(scan_id, lidar.id) if lidar else None
 
     def drain(self) -> None:
         """Run every queued job on the calling thread. Tests use this."""
@@ -133,14 +134,13 @@ class Worker:
     def _process(self, scan_id: uuid.UUID, revision: int) -> None:
         with self.database.connect() as connection:
             room_json = repo.artifact_of_kind(connection, scan_id, "room_json")
-            mesh = repo.artifact_of_kind(connection, scan_id, "lidar_mesh")
-        frame_paths, poses_path = self.label_inputs(scan_id)
+        frame_paths, poses_path, lidar_mesh_path = self.label_inputs(scan_id)
         graph = self.stages.ingest(
             self.store.artifact_path(scan_id, room_json.id),
             scan_id,
             frame_paths=frame_paths,
             poses_path=poses_path,
-            lidar_mesh_path=self.store.artifact_path(scan_id, mesh.id) if mesh is not None else None,
+            lidar_mesh_path=lidar_mesh_path,
         )
         with self.database.transaction() as connection:
             repo.save_revision(connection, graph, source="ingest")

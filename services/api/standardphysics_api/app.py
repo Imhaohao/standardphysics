@@ -10,7 +10,7 @@ from typing import Annotated
 
 from fastapi import FastAPI, Header, Request, Response
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from standardphysics_agents import init_tracing, project_url, shutdown_tracing
 from standardphysics_contracts import (
     Artifact,
@@ -46,6 +46,7 @@ from .labels import mark_counter, unmark_counter
 from .layout import check_layout, save_layout
 from .lidar_mesh import InvalidLidarMesh, validate_lidar_mesh
 from .loop_run import run as run_loop_on
+from .loop_run import stream as stream_loop_on
 from .proposals import propose
 from .questions import answer_question
 from .replays import install_replay_routes
@@ -318,6 +319,13 @@ def _install_layout_routes(app: FastAPI, database: Database, stages: Stages, wor
     def fix_what_it_can(scan_id: uuid.UUID, body: LoopRequest) -> LoopResult:
         return run_loop_on(database, stages, scan_id, body)
 
+    @app.post("/api/scans/{scan_id}/loop/stream")
+    def fix_what_it_can_as_it_goes(scan_id: uuid.UUID, body: LoopRequest) -> StreamingResponse:
+        lines = stream_loop_on(database, stages, scan_id, body)
+        # no-transform stops a compressing proxy from holding lines back until the loop ends.
+        headers = {"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"}
+        return StreamingResponse(lines, media_type="application/x-ndjson", headers=headers)
+
     @app.post("/api/scans/{scan_id}/proposals", response_model=ProposalResult)
     def proposal(scan_id: uuid.UUID, body: ProposalRequest) -> ProposalResult:
         return propose(database, stages, scan_id, body)
@@ -397,9 +405,12 @@ def _install_simulation_routes(app: FastAPI, database: Database, stages: Stages,
         base, latest, _ = _base(database, scan_id, body.base_revision)
         if latest != body.base_revision:
             raise ApiProblem(409, STALE_LAYOUT)
-        frame_paths, poses_path = worker.label_inputs(scan_id)
+        frame_paths, poses_path, lidar_mesh_path = worker.label_inputs(scan_id)
+        with database.connect() as connection:
+            captured_row = repo.get_revision(connection, scan_id, 0)
+        captured = repo.graph_of(captured_row) if captured_row else None
         rebuilt = stages.label_scan(
-            base, frame_paths=frame_paths, poses_path=poses_path
+            base, frame_paths=frame_paths, poses_path=poses_path, lidar_mesh_path=lidar_mesh_path, capture_graph=captured
         ).model_copy(update={"revision": base.revision + 1, "base_hash": graph_hash(base)})
         with database.transaction() as connection:
             if repo.get_revision(connection, scan_id)["revision"] != base.revision:

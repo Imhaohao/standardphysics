@@ -1,6 +1,6 @@
 "use client";
 
-import { ChartPieSlice, CircleNotch, Cube, CubeTransparent, DownloadSimple, ImageSquare, Scan, Square, SquareHalfBottom, Wall } from "@phosphor-icons/react";
+import { ChartPieSlice, CircleNotch, Cube, CubeTransparent, DownloadSimple, ImageSquare, Scan, Shapes, Square, SquareHalfBottom, Wall } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { IconButton, IconLink } from "@/components/ui/IconButton";
@@ -8,7 +8,7 @@ import { textureStatusView } from "@/lib/texture-status";
 import type { TextureStatus } from "@/types/contracts";
 
 export type ViewMode = "overview" | "top";
-export type MaterialMode = "captured" | "plain" | "coverage" | "scan";
+export type MaterialMode = "reconstructed" | "captured" | "plain" | "coverage" | "scan";
 
 const ICON_SIZE = 18;
 
@@ -63,6 +63,7 @@ export type Textures = {
   mode: MaterialMode;
   onMode: (mode: MaterialMode) => void;
   onRequest: () => void;
+  reconstruction: { count: number; pending: boolean };
 };
 
 function coverageLabel(status: TextureStatus) {
@@ -109,13 +110,25 @@ function BuiltModes({ textures, status }: { textures: Textures; status: TextureS
   );
 }
 
-function MaterialGroup({ textures }: { textures: Textures }) {
-  const { status } = textures;
-  if (!status) return null;
+function ReconstructedMode({ textures }: { textures: Textures }) {
+  const { count, pending } = textures.reconstruction;
+  if (count === 0) return null;
+  const label = pending ? "Updating reconstructed objects from photos" : `Reconstructed objects, ${count} inferred from photos`;
+  return (
+    <>
+      <IconButton label={label} aria-pressed={textures.mode === "reconstructed"} onClick={() => textures.onMode("reconstructed")}>
+        {pending ? <CircleNotch size={ICON_SIZE} className="animate-spin" aria-hidden /> : <Shapes size={ICON_SIZE} aria-hidden />}
+      </IconButton>
+      {pending && <span className="sr-only" role="status">{label}</span>}
+    </>
+  );
+}
+
+function PhotoModes({ textures, status }: { textures: Textures; status: TextureStatus }) {
   const view = textureStatusView(status);
   const hasBuild = status.build !== null;
   return (
-    <DockGroup label="Materials">
+    <>
       <IconButton
         label={photoLabel(textures, status, view.message)}
         aria-pressed={hasBuild && textures.mode === "captured"}
@@ -127,6 +140,17 @@ function MaterialGroup({ textures }: { textures: Textures }) {
       {hasBuild && <BuiltModes textures={textures} status={status} />}
       <TextureAction textures={textures} actionLabel={view.actionLabel} />
       {view.working && <span className="sr-only" role="status">{view.message}</span>}
+    </>
+  );
+}
+
+function MaterialGroup({ textures }: { textures: Textures }) {
+  const { status } = textures;
+  if (!status && textures.reconstruction.count === 0) return null;
+  return (
+    <DockGroup label="Materials">
+      <ReconstructedMode textures={textures} />
+      {status && <PhotoModes textures={textures} status={status} />}
     </DockGroup>
   );
 }

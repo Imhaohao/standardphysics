@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .geometry import Mat4, Vec3
 
@@ -30,6 +30,37 @@ class DisplayAppearance(BaseModel):
     source: Literal["astra"] = "astra"
 
 
+class DisplayPart(BaseModel):
+    """A completed visual part inside the measured object's normalized bounds."""
+
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+    name: str = Field(min_length=1, max_length=60)
+    primitive: Literal["box", "cylinder", "ellipsoid"]
+    center: list[float] = Field(min_length=3, max_length=3)
+    size: list[float] = Field(min_length=3, max_length=3)
+    axis: Literal["x", "y", "z"] = "z"
+    bevel: float = Field(default=0.02, ge=0, le=0.2)
+    base_color: str = Field(pattern=r"^#[0-9a-fA-F]{6}$")
+    material: Literal["paint", "wood", "fabric", "metal", "stone", "glass", "neutral"]
+
+    @model_validator(mode="after")
+    def within_measured_bounds(self) -> DisplayPart:
+        if any(size <= 0 or abs(center) + size / 2 > 0.50001 for center, size in zip(self.center, self.size)):
+            raise ValueError("display parts must stay inside the measured object bounds")
+        return self
+
+
+class DisplayReconstruction(BaseModel):
+    """Photo-informed completion. Never a recovered measurement or verified clearance."""
+
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+    source: Literal["astra"] = "astra"
+    summary: str = Field(min_length=1, max_length=300)
+    confidence: float = Field(ge=0, le=1)
+    evidence_frame_ids: list[str] = Field(min_length=1, max_length=6)
+    parts: list[DisplayPart] = Field(min_length=1, max_length=32)
+
+
 class SceneNode(BaseModel):
     id: UUID
     kind: NodeKind
@@ -42,6 +73,7 @@ class SceneNode(BaseModel):
     labeled_by: LabelSource = "roomplan"
     parent_id: UUID | None = None
     appearance: DisplayAppearance | None = Field(default=None, exclude_if=lambda value: value is None)
+    reconstruction: DisplayReconstruction | None = Field(default=None, exclude_if=lambda value: value is None)
 
     @property
     def touches_floor(self) -> bool:

@@ -228,6 +228,53 @@ class TestStrictSystemOneClient:
                 },
             )
 
+    def test_independently_rounded_live_score_is_accepted(self):
+        body = json.dumps(
+            {
+                "model": "jev-1.13.0",
+                "answers": {
+                    "q": {
+                        "type": "score",
+                        "score": 0.03,
+                        "legend": {
+                            "0": "barrier",
+                            "1": "uncertain",
+                            "2": "improvement",
+                            "3": "broad improvement",
+                        },
+                        "probabilities": {
+                            "0": 0.98,
+                            "1": 0.02,
+                            "2": 0.0,
+                            "3": 0.0,
+                        },
+                        "confidence": 0.97,
+                    }
+                },
+                "usage": {"input_tokens": 1, "output_tokens": 1},
+            }
+        ).encode()
+        client = SystemOneClient(
+            api_key="key",
+            base_url="https://typesafe.example",
+            transport=ScriptedTransport(body),
+        )
+        result = client.evaluate(
+            "state",
+            {
+                "q": ScoreQuestion(
+                    instructions="Rate",
+                    criteria=[
+                        "barrier",
+                        "uncertain",
+                        "improvement",
+                        "broad improvement",
+                    ],
+                )
+            },
+        )
+        assert result.answers["q"].score == 0.03
+
 
 class TestPerceptionAndEvidence:
     def test_classifies_only_into_the_closed_object_set(self):

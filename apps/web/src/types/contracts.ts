@@ -3,6 +3,14 @@
  * Change the Pydantic models instead, then regenerate.
  */
 
+/**
+ * One line of `POST /api/scans/{scan_id}/loop/stream`, which reports each pass as it finishes.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "LoopEvent".
+ */
+export type LoopEvent = LoopStarted | LoopPassFinished | LoopFinished | LoopFailed;
+
 export interface StandardPhysicsContracts {
   [k: string]: unknown;
 }
@@ -257,6 +265,51 @@ export interface DisplayAppearance {
   source: "astra";
 }
 /**
+ * A completed visual part inside the measured object's normalized bounds.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "DisplayPart".
+ */
+export interface DisplayPart {
+  axis: "x" | "y" | "z";
+  base_color: string;
+  bevel: number;
+  /**
+   * @minItems 3
+   * @maxItems 3
+   */
+  center: [number, number, number, ...number[]];
+  material: "paint" | "wood" | "fabric" | "metal" | "stone" | "glass" | "neutral";
+  name: string;
+  primitive: "box" | "cylinder" | "ellipsoid";
+  /**
+   * @minItems 3
+   * @maxItems 3
+   */
+  size: [number, number, number, ...number[]];
+}
+/**
+ * Photo-informed completion. Never a recovered measurement or verified clearance.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "DisplayReconstruction".
+ */
+export interface DisplayReconstruction {
+  confidence: number;
+  /**
+   * @minItems 1
+   * @maxItems 6
+   */
+  evidence_frame_ids: [string, ...string[]];
+  /**
+   * @minItems 1
+   * @maxItems 32
+   */
+  parts: [DisplayPart, ...DisplayPart[]];
+  source: "astra";
+  summary: string;
+}
+/**
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
  * via the `definition` "EnvironmentPhysicsResult".
  */
@@ -386,6 +439,25 @@ export interface LidarMeshPart {
   vertices: [number, number, number, ...number[]];
 }
 /**
+ * Sent before the first pass runs.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "LoopStarted".
+ */
+export interface LoopStarted {
+  base_revision: number;
+  decided_by: string;
+  kind: "started";
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "LoopPassFinished".
+ */
+export interface LoopPassFinished {
+  kind: "pass";
+  loop_pass: LoopPass;
+}
+/**
  * One trip round the loop: what the router chose and what came of it.
  *
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
@@ -404,13 +476,12 @@ export interface LoopPass {
   questions: number;
 }
 /**
- * Run Lane C's loop on this layout until it clears what it can or stops.
- *
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
- * via the `definition` "LoopRequest".
+ * via the `definition` "LoopFinished".
  */
-export interface LoopRequest {
-  base_revision: number;
+export interface LoopFinished {
+  kind: "finished";
+  result: LoopResult;
 }
 /**
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
@@ -421,6 +492,25 @@ export interface LoopResult {
   decided_by: string;
   moves: NodeMove[];
   passes: LoopPass[];
+}
+/**
+ * The loop broke partway through; nothing was saved.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "LoopFailed".
+ */
+export interface LoopFailed {
+  error: string;
+  kind: "failed";
+}
+/**
+ * Run Lane C's loop on this layout until it clears what it can or stops.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "LoopRequest".
+ */
+export interface LoopRequest {
+  base_revision: number;
 }
 /**
  * Row-major 4x4 transform.
@@ -668,6 +758,7 @@ export interface SceneNode {
   parent_id: string | null;
   quality: "measured" | "needs_another_look" | "confirmed";
   raw_category: string;
+  reconstruction?: DisplayReconstruction | null;
   transform: Mat4;
 }
 /**
@@ -756,15 +847,18 @@ export interface SimulationResult {
   action_counts: {
     [k: string]: number;
   };
+  ada_rule_violations: number;
   adaptive_rounds: AdaptiveRoundResult[];
   astra_calls: number;
   completed_runs: number;
+  converged: boolean;
   exhaustive_evaluations: number;
   exhaustive_outcomes: {
     [k: string]: number;
   };
   feedback: SimulationFeedback[];
   limitations: string[];
+  loop_cycles: number;
   mesh_checked: boolean;
   physics: EnvironmentPhysicsResult | null;
   preview: boolean;
@@ -781,6 +875,7 @@ export interface SimulationResult {
   total_runs: number;
   typesafe_calls: number;
   unique_layouts: number;
+  violating_trials: number;
 }
 /**
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
@@ -788,7 +883,9 @@ export interface SimulationResult {
  */
 export interface SimulationStatus {
   base_revision: number;
+  candidate_graph: SceneGraph | null;
   completed: number;
+  cycle: number;
   error: string | null;
   exhaustive_evaluations: number;
   result: SimulationResult | null;

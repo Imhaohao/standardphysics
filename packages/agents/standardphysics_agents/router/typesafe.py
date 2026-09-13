@@ -41,7 +41,9 @@ INSTRUCTION = (
     "short follow-up scan and may only target findings where wants_another_look "
     "is true. ASK_OWNER needs one specific question. ESCALATE queues a problem "
     "for a professional. DONE ends the review. The application supplies eligible "
-    "finding targets after the action is selected."
+    "finding targets after the action is selected. Prioritize FIX for measured "
+    "problems; unrelated evidence questions do not prevent testing furniture "
+    "placements. Never repeat a scan request or owner question already issued."
 )
 
 ACTION_CRITERIA = {
@@ -51,6 +53,21 @@ ACTION_CRITERIA = {
     "ESCALATE": "Queue measured problems that furniture cannot resolve for a professional.",
     "DONE": "End the review when no eligible next step remains.",
 }
+
+
+def available_actions(state: RouterState) -> dict[str, str]:
+    """Only offer work that can still change this run's outcome."""
+    eligible = set()
+    if state.fixable_finding_ids and state.fix_budget_left:
+        eligible.add("FIX")
+    if state.rescan_finding_ids and "RESCAN_AREA" not in state.actions_taken:
+        eligible.add("RESCAN_AREA")
+    if state.questions and "ASK_OWNER" not in state.actions_taken:
+        eligible.add("ASK_OWNER")
+    if any(f.id not in state.fixable_finding_ids for f in state.problems) and "ESCALATE" not in state.actions_taken:
+        eligible.add("ESCALATE")
+    return {action: rubric for action, rubric in ACTION_CRITERIA.items()
+            if action in (eligible or {"DONE"})}
 
 RESPONSE_PATHS = (
     ("data",),
@@ -211,7 +228,7 @@ class TypeSafeRouter:
                 "action": {
                     "type": "choice",
                     "instructions": INSTRUCTION,
-                    "criteria": ACTION_CRITERIA,
+                    "criteria": available_actions(state),
                 }
             },
         }
@@ -315,6 +332,8 @@ def _authorize(decision: Decision, state: RouterState) -> Decision | Rejected:
         return Rejected("rescan_targets_measured_finding")
     if decision.action == "ESCALATE" and not targets <= {f.id for f in state.problems}:
         return Rejected("escalate_targets_nonproblem")
+    if decision.action not in available_actions(state):
+        return Rejected("action_not_available")
     return decision
 
 

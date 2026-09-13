@@ -6,6 +6,7 @@ import { Lock } from "@phosphor-icons/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BoxGeometry, Matrix4, Mesh, MeshStandardMaterial, Plane, Raycaster, Vector3, type BufferGeometry, type Intersection, type Material } from "three";
 import { canUseCapturedGlbGeometry, displayScale } from "@/lib/display-geometry";
+import { groupGlbPrimitives } from "@/lib/glb-parts";
 import { displayMatrix, toViewerMatrix } from "@/lib/scene-matrix";
 import type { SceneGraph, SceneNode } from "@/types/contracts";
 import { MODEL, nodeColor, WALL_CUT_HEIGHT } from "./palette";
@@ -30,31 +31,31 @@ function boxMatrix(node: SceneNode): Matrix4 {
   return toViewerMatrix(node.transform).multiply(scale);
 }
 
-// eslint-disable-next-line complexity
-function placeFromGlb(meshes: Map<string, Mesh>, node: SceneNode, exported: SceneNode | undefined, stale: boolean): Placed | null {
-  const mesh = meshes.get(node.id);
-  // RoomPlan floor shells can have a zero axis. Only draw a floor when the GLB
-  // supplies real triangles; a unit-box fallback would make a black slab.
-  if ((!mesh || !exported) && node.kind === "floor") return null;
-  if (!mesh || !exported) return { node, geometry: UNIT_BOX, matrix: boxMatrix(node), sourceMaterial: null };
-  const matrix = displayMatrix(mesh.matrixWorld, exported.transform, node.transform);
-  if (!canUseCapturedGlbGeometry(node, mesh.geometry, matrix, stale)) {
-    if (node.kind === "floor" && !stale) return null;
-    return { node, geometry: UNIT_BOX, matrix: boxMatrix(node), sourceMaterial: null };
-  }
-  return { node, geometry: mesh.geometry, matrix, sourceMaterial: mesh.material };
+function fallbackPlacement(node: SceneNode): Placed {
+  return { node, geometry: UNIT_BOX, matrix: boxMatrix(node), sourceMaterial: null };
 }
 
-function useGlbMeshes(url: string): Map<string, Mesh> {
+// eslint-disable-next-line complexity
+function placeFromGlb(meshes: Mesh[] | undefined, node: SceneNode, exported: SceneNode | undefined, stale: boolean): Placed[] {
+  // RoomPlan floor shells can have a zero axis. Only draw a floor when the GLB
+  // supplies real triangles; a unit-box fallback would make a black slab.
+  if ((!meshes || !exported) && node.kind === "floor") return [];
+  if (!meshes || !exported || stale) return [fallbackPlacement(node)];
+  const placed = meshes.flatMap((mesh) => {
+    const matrix = displayMatrix(mesh.matrixWorld, exported.transform, node.transform);
+    if (!canUseCapturedGlbGeometry(node, mesh.geometry, matrix, false)) return [];
+    return [{ node, geometry: mesh.geometry, matrix, sourceMaterial: mesh.material }];
+  });
+  if (placed.length > 0) return placed;
+  return node.kind === "floor" ? [] : [fallbackPlacement(node)];
+}
+
+function useGlbMeshes(url: string, nodeIds: Set<string>): Map<string, Mesh[]> {
   const { scene } = useGLTF(url);
   return useMemo(() => {
     scene.updateMatrixWorld(true);
-    const found = new Map<string, Mesh>();
-    scene.traverse((object) => {
-      if (object instanceof Mesh) found.set(object.name, object);
-    });
-    return found;
-  }, [scene]);
+    return groupGlbPrimitives(scene, nodeIds);
+  }, [scene, nodeIds]);
 }
 
 type ModelProps = {
@@ -64,7 +65,7 @@ type ModelProps = {
   onSelectNode: (nodeId: string) => void;
   arrange: ArrangeHandlers | null;
   cutWalls?: boolean;
-  materialMode?: "captured" | "plain" | "coverage";
+  materialMode?: "reconstructed" | "captured" | "plain" | "coverage";
   staleNodeIds?: Set<string>;
   coverage?: Map<string, number>;
 };
@@ -248,8 +249,8 @@ function ModelNodes({ placements, ...props }: { placements: Placed[] } & Omit<Mo
   useEffect(() => invalidate(), [placements, props.focus, props.arrange, invalidate]);
   return (
     <group>
-      {placements.map((placed) => (
-        <ModelNode key={placed.node.id} placed={placed} {...props} />
+      {placements.map((placed, index) => (
+        <ModelNode key={`${placed.node.id}-${index}`} placed={placed} {...props} />
       ))}
     </group>
   );
@@ -260,10 +261,11 @@ function visibleNodes(scene: SceneGraph, includeFloors = false): SceneNode[] {
 }
 
 export function GlbShopModel({ url, exported, ...props }: ModelProps & { url: string; exported: SceneGraph }) {
-  const meshes = useGlbMeshes(url);
+  const nodeIds = useMemo(() => new Set(exported.nodes.map((node) => node.id)), [exported.nodes]);
+  const meshes = useGlbMeshes(url, nodeIds);
   const placements = useMemo(() => {
     const exportedById = new Map(exported.nodes.map((node) => [node.id, node]));
-    return visibleNodes(props.shown, true).map((node) => placeFromGlb(meshes, node, exportedById.get(node.id), props.staleNodeIds?.has(node.id) ?? false)).filter((placed): placed is Placed => placed !== null);
+    return visibleNodes(props.shown, true).flatMap((node) => placeFromGlb(meshes.get(node.id), node, exportedById.get(node.id), props.staleNodeIds?.has(node.id) ?? false));
   }, [meshes, exported, props.shown, props.staleNodeIds]);
   return <ModelNodes placements={placements} {...props} />;
 }

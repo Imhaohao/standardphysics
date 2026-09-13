@@ -45,6 +45,7 @@ class Texels:
     positions: np.ndarray
     normals: np.ndarray
     owners: np.ndarray
+    base_colours: np.ndarray
 
     def __len__(self) -> int:
         return len(self.rows)
@@ -79,28 +80,33 @@ def face_normals(world: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return cross / np.maximum(length, 1e-12)[:, None], length / 2
 
 
-def rasterize_atlas(world: np.ndarray, uv: np.ndarray, owners: np.ndarray, size: int) -> Texels:
+def rasterize_atlas(
+    world: np.ndarray, uv: np.ndarray, owners: np.ndarray, size: int,
+    base_colours: np.ndarray | None = None,
+) -> Texels:
     """Every texel centre inside a triangle, with the surface point and owner it lands on.
 
     UV v runs up and image rows run down, so row = (1 - v) * size, with texel
     centres at integer coordinates.
     """
     normals, areas = face_normals(world)
+    if base_colours is None:
+        base_colours = np.full((len(world), 3), 0.65, dtype=np.float32)
     pieces = [
-        _triangle_texels(world[index], uv[index], normals[index], owners[index], size)
+        _triangle_texels(world[index], uv[index], normals[index], owners[index], base_colours[index], size)
         for index in np.flatnonzero(areas > 1e-10)
     ]
     pieces = [piece for piece in pieces if piece is not None]
     if not pieces:
         empty = np.empty((0, 3), dtype=np.float32)
-        return Texels(np.empty(0, np.int32), np.empty(0, np.int32), empty, empty, np.empty(0, np.int32))
-    rows, columns, positions, normals_out, owners_out = (np.concatenate(parts) for parts in zip(*pieces))
+        return Texels(np.empty(0, np.int32), np.empty(0, np.int32), empty, empty, np.empty(0, np.int32), empty)
+    rows, columns, positions, normals_out, owners_out, colours_out = (np.concatenate(parts) for parts in zip(*pieces))
     _, last = np.unique((rows.astype(np.int64) * size + columns)[::-1], return_index=True)
     keep = len(rows) - 1 - last
-    return Texels(rows[keep], columns[keep], positions[keep], normals_out[keep], owners_out[keep])
+    return Texels(rows[keep], columns[keep], positions[keep], normals_out[keep], owners_out[keep], colours_out[keep])
 
 
-def _triangle_texels(world, uv, normal, owner, size):
+def _triangle_texels(world, uv, normal, owner, colour, size):
     x = uv[:, 0] * size - 0.5
     y = (1.0 - uv[:, 1]) * size - 0.5
     column_range = np.arange(max(0, int(np.floor(x.min()))), min(size - 1, int(np.ceil(x.max()))) + 1)
@@ -123,6 +129,7 @@ def _triangle_texels(world, uv, normal, owner, size):
         positions,
         np.repeat(normal[None].astype(np.float32), count, axis=0),
         np.full(count, owner, dtype=np.int32),
+        np.repeat(np.asarray(colour, dtype=np.float32)[None], count, axis=0),
     )
 
 

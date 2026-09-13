@@ -132,6 +132,8 @@ class TextureBuild(BaseModel):
     coverage: TextureCoverage
     frames_used: int
     seconds: float
+    scan_glb_url: str | None = None
+    """The room as it was scanned, painted from the photos, when the build produced one."""
 
 
 class TextureRequest(BaseModel):

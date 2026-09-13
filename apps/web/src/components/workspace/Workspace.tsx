@@ -28,6 +28,7 @@ import { type Arrangement, useArrangement } from "./useArrangement";
 import { SimulationPanel } from "./SimulationPanel";
 import { type MaterialMode, type ViewMode, ViewerDock } from "./ViewerDock";
 import { isTextureRefreshing, textureStatusMatches } from "@/lib/texture-status";
+import { viewerSourcePlan } from "@/lib/viewer-source";
 import type { TextureStatus } from "@/types/contracts";
 
 const Viewer = dynamic(() => import("./Viewer"), {
@@ -175,6 +176,7 @@ type SidePanelProps = {
   task: Task;
   scene: SceneGraph;
   onTryLayout: (moves: NodeMove[]) => void;
+  onPreviewLayout: (moves: NodeMove[]) => void;
   assessment: Assessment | null;
   scan: Scan;
   findings: Finding[];
@@ -189,7 +191,7 @@ type SidePanelProps = {
   onLook: (locus: Locus | null) => void;
 };
 
-function SidePanel({ task, scene, onTryLayout, assessment, scan, findings, selected, arrangement, comparison, amount, onAmount, onToggle, route, onRoute, onLook }: SidePanelProps) {
+function SidePanel({ task, scene, onTryLayout, onPreviewLayout, assessment, scan, findings, selected, arrangement, comparison, amount, onAmount, onToggle, route, onRoute, onLook }: SidePanelProps) {
   const scope: CheckScope = { rulesChecked: assessment?.rules_checked ?? null, routeConfirmed: route.confirmed };
   if (task === "compare" && comparison) return <ComparePanel comparison={comparison} amount={amount} onAmount={onAmount} scope={scope} />;
   if (task === "arrange") return <ArrangePanel arrangement={arrangement} fallbackFindings={findings} scope={scope} />;
@@ -197,7 +199,7 @@ function SidePanel({ task, scene, onTryLayout, assessment, scan, findings, selec
   return (
     <>
       <AskBox scanId={scan.id} revision={scene.revision} onLook={onLook} onTry={onTryLayout} />
-      <SimulationPanel key={`${scan.id}-${scene.revision}`} scanId={scan.id} scene={scene} onTryLayout={onTryLayout} />
+      <SimulationPanel key={`${scan.id}-${scene.revision}`} scanId={scan.id} scene={scene} onTryLayout={onTryLayout} onPreviewLayout={onPreviewLayout} />
       <FindingsPanel scan={scan} scene={scene} assessment={assessment} findings={findings} selected={selected} onToggle={onToggle} onTryLayout={onTryLayout} route={route} onRoute={onRoute} />
     </>
   );
@@ -217,10 +219,9 @@ function RoutePrompt({ onRoute }: { onRoute: () => void }) {
   );
 }
 
-/** Above the findings: confirm the route first, then let the loop fix what furniture can. */
-function NextStep({ scan, scene, findings, route, onRoute, onTryLayout }: Omit<FindingsPanelProps, "assessment" | "selected" | "onToggle">) {
+/** Above the findings: confirm the route first, then the improvement loop can start whenever you like. */
+function NextStep({ scan, scene, route, onRoute, onTryLayout }: Omit<FindingsPanelProps, "assessment" | "selected" | "onToggle" | "findings">) {
   if (!route.confirmed) return scan.state === "ready" ? <RoutePrompt onRoute={onRoute} /> : null;
-  if (!hasProblems(findings)) return null;
   return <LoopRun key={scene.revision} scanId={scan.id} revision={scene.revision} onTry={onTryLayout} />;
 }
 
@@ -230,7 +231,7 @@ function FindingsPanel({ scan, scene, assessment, findings, selected, onToggle, 
   }
   return (
     <div className="flex flex-col gap-5">
-      <NextStep scan={scan} scene={scene} findings={findings} route={route} onRoute={onRoute} onTryLayout={onTryLayout} />
+      <NextStep scan={scan} scene={scene} route={route} onRoute={onRoute} onTryLayout={onTryLayout} />
       {findings.length === 0 ? (
         <p className="px-3 text-ink-muted">{scanStatus(scan, assessment, route.confirmed)}</p>
       ) : (
@@ -253,8 +254,6 @@ function usePicked(scene: SceneGraph) {
   const node = picked ? scene.nodes.find((candidate) => candidate.id === picked.id) ?? null : null;
   return { setPicked, node, label: node?.label ?? picked?.label ?? null };
 }
-
-const hasProblems = (findings: Finding[]) => findings.some((finding) => finding.outcome === "problem");
 
 const canMarkCounter = (task: Task, scan: Scan) => task === "findings" && scan.state === "ready";
 
@@ -287,6 +286,7 @@ function useWorkspaceVisuals(props: WorkspaceProps, findings: Finding[], task: T
 }
 
 function useWorkspaceActions(findings: Finding[], scene: SceneGraph, arrangement: Arrangement, setSelected: (finding: Finding | null | ((current: Finding | null) => Finding | null)) => void, setAsked: (focus: Focus | null) => void, setPicked: (picked: Picked | null) => void, setTask: (task: Task) => void, setMode: (mode: ViewMode) => void, setAmount: (amount: number) => void) {
+  const preview = arrangement.preview;
   const clear = useCallback(() => { setSelected(null); setAsked(null); setPicked(null); }, [setSelected, setAsked, setPicked]);
   const selectNode = useCallback((nodeId: string) => {
     setSelected(findingForNode(findings, nodeId) ?? null);
@@ -306,8 +306,12 @@ function useWorkspaceActions(findings: Finding[], scene: SceneGraph, arrangement
     arrangement.load(moves);
     requestAnimationFrame(() => document.querySelector<HTMLButtonElement>('[aria-label="What to do"] [aria-pressed="true"]')?.focus());
   };
+  const previewLayout = useCallback((moves: NodeMove[]) => {
+    setSelected(null);
+    preview(moves);
+  }, [preview, setSelected]);
   const look = (locus: Locus | null) => { setSelected(null); setAsked(locus ? focusOnLocus(locus) : null); };
-  return { clear, selectNode, toggle, showView, switchTask, tryLayout, look };
+  return { clear, selectNode, toggle, showView, switchTask, tryLayout, previewLayout, look };
 }
 
 function usePhotoTextures(scanId: string, revision: number, initial: TextureStatus | null) {
@@ -376,21 +380,31 @@ type WorkspaceBodyProps = WorkspaceProps & {
 // eslint-disable-next-line complexity
 function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, textureStatus, findings, task, selected, focus, mode, picked, dragging, amount, setAmount, showScanEvidence, setShowScanEvidence, visuals, actions }: WorkspaceBodyProps) {
   const [cutWalls, setCutWalls] = useState(true);
-  const [materialMode, setMaterialMode] = useState<MaterialMode>("captured");
+  const [chosenMaterialMode, setChosenMaterialMode] = useState<MaterialMode | null>(null);
   const textures = usePhotoTextures(scan.id, scene.revision, textureStatus);
   const evidenceAvailable = lidarUrl !== null && scene.revision === 0 && task !== "arrange" && task !== "compare";
   const displayedLidarUrl = capturedMeshUrl(lidarUrl, scene.revision, showScanEvidence && evidenceAvailable);
   const activeMode = selected ? null : mode;
   const photoBuild = textures.status?.build ?? null;
-  const sourceGlbUrl = photoBuild?.glb_url ?? glbUrl;
   const scanGlbUrl = photoBuild?.scan_glb_url ?? null;
-  const sourceGraph = photoBuild?.bake_graph ?? exported;
+  const reconstructionCount = scene.nodes.filter((node) => node.reconstruction !== null && node.reconstruction !== undefined).length;
+  const materialMode = chosenMaterialMode ?? (reconstructionCount > 0 ? "reconstructed" : "captured");
+  const reconstructionPending = reconstructionCount > 0 && exported.revision !== scene.revision;
+  const cleanGlbUrl = reconstructionPending ? null : glbUrl;
+  const sourcePlan = viewerSourcePlan({
+    materialMode,
+    hasCleanGlb: cleanGlbUrl !== null,
+    hasPhotoBuild: photoBuild !== null,
+    staleNodeIds: textures.status?.stale_node_ids ?? [],
+  });
+  const sourceGlbUrl = sourcePlan.usePhotoBuild ? photoBuild?.glb_url ?? null : cleanGlbUrl;
+  const sourceGraph = sourcePlan.usePhotoBuild ? photoBuild?.bake_graph ?? exported : exported;
   return <>
     <RefreshWhile pending={assessment === null && isWorking(scan)} />
     <div className="grid h-dvh grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(16rem,45dvh)_1fr] lg:grid-cols-[minmax(0,1fr)_24rem] lg:grid-rows-[auto_1fr]">
       <WorkspaceHeader scan={scan} task={task} canCompare={visuals.comparison !== null} onTask={actions.switchTask} />
       <section className="relative min-h-0 touch-none overflow-hidden lg:rounded-tr-2xl" aria-label="Shop model">
-        <Viewer scene={visuals.shown} exported={sourceGraph} arrange={visuals.handlers} route={visuals.routeHandles} dragging={dragging} cutWalls={cutWalls} glbUrl={sourceGlbUrl} scanGlbUrl={scanGlbUrl} lidarUrl={displayedLidarUrl} pose={visuals.pose} selected={task === "findings" ? focus : null} onSelectNode={actions.selectNode} onClearSelection={actions.clear} materialMode={photoBuild ? materialMode : "plain"} staleNodeIds={textures.status?.stale_node_ids ?? []} coverage={photoBuild?.coverage.nodes ?? []} />
+        <Viewer scene={visuals.shown} exported={sourceGraph} arrange={visuals.handlers} route={visuals.routeHandles} dragging={dragging} cutWalls={cutWalls} glbUrl={sourceGlbUrl} scanGlbUrl={scanGlbUrl} lidarUrl={displayedLidarUrl} pose={visuals.pose} selected={task === "findings" ? focus : null} onSelectNode={actions.selectNode} onClearSelection={actions.clear} materialMode={sourcePlan.materialMode} staleNodeIds={sourcePlan.staleNodeIds} coverage={photoBuild?.coverage.nodes ?? []} />
         <PickedObject
           scanId={scan.id}
           revision={scene.revision}
@@ -402,12 +416,12 @@ function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, te
           activeMode={activeMode}
           onView={actions.showView}
           visibility={{ cutWalls, onToggleWalls: () => setCutWalls((current) => !current), evidenceAvailable, evidenceShown: showScanEvidence, onToggleEvidence: () => setShowScanEvidence((current) => !current) }}
-          textures={{ status: textures.status, requesting: textures.requesting, error: textures.error, mode: materialMode, onMode: setMaterialMode, onRequest: () => { void textures.request(); } }}
+          textures={{ status: textures.status, requesting: textures.requesting, error: textures.error, mode: materialMode, onMode: setChosenMaterialMode, onRequest: () => { void textures.request(); }, reconstruction: { count: reconstructionCount, pending: reconstructionPending } }}
           downloadUrl={sourceGlbUrl && !visuals.arrangement.hasMoves && task !== "compare" ? sourceGlbUrl : null}
         />
       </section>
       <aside className="min-h-0 overflow-y-auto px-3 pb-10 pt-4 lg:pt-0">
-        <SidePanel task={task} scene={scene} onTryLayout={actions.tryLayout} assessment={assessment} scan={scan} findings={findings} selected={selected} arrangement={visuals.arrangement} comparison={visuals.comparison} amount={amount} onAmount={setAmount} onToggle={actions.toggle} route={visuals.route} onRoute={() => actions.switchTask("route")} onLook={actions.look} />
+        <SidePanel task={task} scene={scene} onTryLayout={actions.tryLayout} onPreviewLayout={actions.previewLayout} assessment={assessment} scan={scan} findings={findings} selected={selected} arrangement={visuals.arrangement} comparison={visuals.comparison} amount={amount} onAmount={setAmount} onToggle={actions.toggle} route={visuals.route} onRoute={() => actions.switchTask("route")} onLook={actions.look} />
       </aside>
     </div>
   </>;

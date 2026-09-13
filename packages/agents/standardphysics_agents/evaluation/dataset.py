@@ -265,7 +265,8 @@ def _counter_cases() -> list[Case]:
             ),
             expected_problems=frozenset({"service_counter_approach"}),
             forbidden_problems=COUNTER_TOO_HIGH | {ROUTE},
-            expected_action="ASK_OWNER",
+            expected_action="FIX",
+            fix_should_resolve=True,
         ),
         _case(
             "counter_mislabelled",

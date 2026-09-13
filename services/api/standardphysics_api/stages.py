@@ -6,7 +6,7 @@
     assess    Lane C  assess, with the human verification ledger
     geometry  Lane B  object-separated export_glb; scanned USDZ is fallback
     renders   Lane B  render_finding per locatable finding
-    loop      Lane C  run_loop, routed by TypeSafe when configured
+    loop      Lane C  loop_steps, routed by TypeSafe when configured
 
 Swapping an implementation means changing one field of `Stages`. Geometry and
 renders need Blender and run after the scan is ready, so a slow export never
@@ -19,7 +19,7 @@ import json
 import logging
 import pathlib
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 
 from standardphysics_agents import (
@@ -30,9 +30,9 @@ from standardphysics_agents import (
     assess,
     load_ledger,
     load_pack,
-    run_loop,
 )
 from standardphysics_agents.ask import Answer, ask
+from standardphysics_agents.loop import loop_steps
 from standardphysics_agents.fix import FixOutcome, propose_fix
 from standardphysics_contracts import Assessment, Finding, Scenario, SceneGraph, Stop, Vec3
 from standardphysics_pipeline import PipelineMeasurements, blender, parse_room_json, reconstruct
@@ -119,7 +119,7 @@ class Stages:
         lidar_mesh_path: pathlib.Path | None = None,
     ) -> SceneGraph:
         graph = parse_room_json(json.loads(room_json.read_bytes()), scan_id=scan_id)
-        graph = self.label_scan(graph, frame_paths=frame_paths, poses_path=poses_path)
+        graph = self.label_scan(graph, frame_paths=frame_paths, poses_path=poses_path, lidar_mesh_path=lidar_mesh_path)
         return self.discover_scan(graph, frame_paths=frame_paths, poses_path=poses_path,
                                   lidar_mesh_path=lidar_mesh_path)
 
@@ -158,6 +158,8 @@ class Stages:
         *,
         frame_paths: list[pathlib.Path] | None = None,
         poses_path: pathlib.Path | None = None,
+        lidar_mesh_path: pathlib.Path | None = None,
+        capture_graph: SceneGraph | None = None,
     ) -> SceneGraph:
         """Run the default Astra labeler with uploaded evidence when available.
 
@@ -167,7 +169,22 @@ class Stages:
         seam or expose paths to a custom implementation.
         """
         if self.label is reconstruct:
-            return reconstruct(graph, frame_paths=frame_paths, poses_path=poses_path)
+            captured = {node.id: node for node in capture_graph.nodes} if capture_graph else {}
+            # Furniture may have moved since these photos were captured.
+            evidence_graph = graph.model_copy(update={
+                "capture_to_room": graph.capture_to_room or (capture_graph.capture_to_room if capture_graph else None),
+                "nodes": [
+                    node.model_copy(update={"transform": captured[node.id].transform}) if node.id in captured else node
+                    for node in graph.nodes
+                ],
+            })
+            result = reconstruct(
+                evidence_graph, frame_paths=frame_paths, poses_path=poses_path, lidar_mesh_path=lidar_mesh_path
+            )
+            placements = {node.id: node.transform for node in graph.nodes}
+            return result.model_copy(update={"nodes": [
+                node.model_copy(update={"transform": placements[node.id]}) for node in result.nodes
+            ]})
         return self.label(graph)
 
     def assess(self, graph: SceneGraph, scenario: Scenario | None, pass_number: int) -> Assessment:
@@ -188,13 +205,15 @@ class Stages:
             ledger = self.ledger_factory()
             return propose_fix(graph, scenario, self.search_measure, targets, rules=load_pack(), ledger=ledger)
 
-    def loop(self, graph: SceneGraph, scenario: Scenario) -> tuple[str, list[LoopStep]]:
-        """Lane C's loop on the search cache: the router's name, and every pass it ran."""
+    def loop(self, graph: SceneGraph, scenario: Scenario) -> tuple[str, Iterator[LoopStep]]:
+        """Lane C's loop on the search cache: the router's name, and each pass as it finishes."""
         router = self.router_factory()
+        return router.provider, self._loop_steps(graph, scenario, router)
+
+    def _loop_steps(self, graph: SceneGraph, scenario: Scenario, router) -> Iterator[LoopStep]:
         with self._search_lock:
             ledger = self.ledger_factory()
-            steps = run_loop(graph, scenario, self.search_measure, router, rules=load_pack(), ledger=ledger)
-        return router.provider, steps
+            yield from loop_steps(graph, scenario, self.search_measure, router, rules=load_pack(), ledger=ledger)
 
     def ask(self, text: str, graph: SceneGraph, scenario: Scenario) -> Answer:
         """Lane C's ask box, on the search cache."""

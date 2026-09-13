@@ -17,7 +17,7 @@ class RebuildRequest(BaseModel):
 
 class SimulationRequest(RebuildRequest):
     samples: int = Field(default=1000, ge=1, le=10000)
-    max_workers: int = Field(default=4, ge=1, le=16)
+    max_workers: int = Field(default=4, ge=1, le=1000)
     router: Literal["local", "typesafe"] = "local"
     refine_with_astra: bool = False
     typesafe_call_limit: int = Field(default=3000, ge=1, le=50000)
@@ -124,6 +124,10 @@ class SimulationResult(BaseModel):
     rules_total: int
     preview: bool
     mesh_checked: bool
+    loop_cycles: int = Field(default=0, ge=0)
+    violating_trials: int = Field(default=0, ge=0)
+    ada_rule_violations: int = Field(default=0, ge=0)
+    converged: bool = False
     redesign_model: str | None = None
     redesign_accepted: bool = False
     redesign_reasons: list[str] = []
@@ -135,6 +139,16 @@ class SimulationResult(BaseModel):
     exhaustive_outcomes: dict[str, int] = {}
     limitations: list[str]
 
+    @model_validator(mode="after")
+    def convergence_requires_zero_violations(self) -> SimulationResult:
+        if self.violating_trials > self.total_runs:
+            raise ValueError("violating_trials cannot exceed total_runs")
+        if self.converged and self.loop_cycles == 0:
+            raise ValueError("converged results must come from a completed loop batch")
+        if self.converged and (self.violating_trials or self.ada_rule_violations):
+            raise ValueError("converged results must have zero violations")
+        return self
+
 
 class SimulationStatus(BaseModel):
     base_revision: int
@@ -142,6 +156,8 @@ class SimulationStatus(BaseModel):
     router: Literal["local", "typesafe"]
     samples: int
     completed: int
+    cycle: int = Field(default=0, ge=0)
+    candidate_graph: SceneGraph | None = None
     typesafe_call_limit: int = 0
     exhaustive_evaluations: int = 0
     error: str | None = None

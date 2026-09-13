@@ -112,6 +112,7 @@ def bake_textures(inputs: BakeInputs) -> BakeResult:
         world = triangles["world"]
         uv = triangles["uv"]
         owners = triangles["owner"]
+        face_colours = triangles["base_colour"] if "base_colour" in triangles else None
         meta = json.loads(meta_path.read_text())
         atlas_count = int(meta["atlas_count"])
         if atlas_count > MAX_ATLASES:
@@ -124,15 +125,20 @@ def bake_textures(inputs: BakeInputs) -> BakeResult:
         node_meta = meta["nodes"]
         atlas_by_owner = np.asarray([node["atlas"] for node in node_meta], dtype=np.int32)
         base_by_owner = np.asarray([node["base_colour"] for node in node_meta], dtype=np.float32)
+        if face_colours is None:
+            face_colours = base_by_owner[owners]
         covered_by_owner = np.zeros(len(node_meta), dtype=np.int64)
         texels_by_owner = np.zeros(len(node_meta), dtype=np.int64)
         atlas_paths: list[pathlib.Path] = []
         masks: list[pathlib.Path] = []
         for atlas in range(atlas_count):
             selection = atlas_by_owner[owners] == atlas
-            texels = rasterize_atlas(world[selection], uv[selection], owners[selection], ATLAS_SIZE)
+            texels = rasterize_atlas(
+                world[selection], uv[selection], owners[selection], ATLAS_SIZE,
+                face_colours[selection],
+            )
             atlas_image, covered, reachable = _bake_atlas(
-                texels, base_by_owner, cameras, images, clean_buffers, lidar_buffers, gains, quality
+                texels, cameras, images, clean_buffers, lidar_buffers, gains, quality
             )
             for owner in np.unique(texels.owners):
                 own = texels.owners == owner
@@ -339,11 +345,11 @@ def _lidar_triangles(path: pathlib.Path | None, capture_to_room: list[float], wo
 
 
 def _bake_atlas(
-    texels, base_by_owner, cameras, images, clean_buffers, lidar_buffers, gains, quality
+    texels, cameras, images, clean_buffers, lidar_buffers, gains, quality
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """The painted atlas, which texels received colour, and which could ever have."""
     image = np.zeros((ATLAS_SIZE, ATLAS_SIZE, 3), dtype=np.float32)
-    image[texels.rows, texels.columns] = to_linear(base_by_owner[texels.owners])
+    image[texels.rows, texels.columns] = to_linear(texels.base_colours)
     views = TopViews(len(texels))
     reachable = np.zeros(len(texels), dtype=bool)
     for camera, photo, clean, lidar, gain, view_quality in zip(cameras, images, clean_buffers, lidar_buffers, gains, quality):

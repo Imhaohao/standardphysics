@@ -15,7 +15,7 @@ import json
 import sys
 
 import bpy
-from math import cos, radians
+from math import cos, pi, radians
 from mathutils import Matrix, Vector
 
 KIND_ORDER = ["floor", "wall", "window", "opening", "door", "object"]
@@ -39,18 +39,21 @@ def clear() -> None:
 
 def material_for(node: dict):
     appearance = node.get("appearance") or {}
-    key = "%s:%s:%s:%s" % (
-        appearance.get("base_color"), appearance.get("material"), node["kind"], node.get("raw_category"),
+    return material_for_finish(
+        appearance.get("base_color") or default_colour(node),
+        appearance.get("material", "neutral"),
     )
+
+
+def material_for_finish(colour: str, finish: str):
+    key = f"finish:{colour.lower()}:{finish}"
     if key in MATERIALS:
         return MATERIALS[key]
-    colour = appearance.get("base_color") or default_colour(node)
     material = bpy.data.materials.new(key)
     material.use_nodes = True
     principled = material.node_tree.nodes.get("Principled BSDF")
     if principled:
         principled.inputs["Base Color"].default_value = hex_colour(colour)
-        finish = appearance.get("material", "neutral")
         principled.inputs["Roughness"].default_value = {"metal": 0.28, "glass": 0.14, "wood": 0.52, "fabric": 0.9}.get(finish, 0.72)
         principled.inputs["Metallic"].default_value = 0.8 if finish == "metal" else 0.0
         if finish == "glass":
@@ -95,6 +98,60 @@ def add_box(node: dict, center: tuple[float, float, float], size: tuple[float, f
     obj = bpy.context.active_object
     obj.matrix_world = node_matrix(node) @ Matrix.Translation(center) @ Matrix.Diagonal((*size, 1.0))
     obj.data.materials.append(material_for(node))
+    return obj
+
+
+def _part_values(node: dict, part: dict) -> tuple[tuple[float, float, float], tuple[float, float, float]]:
+    dimensions = node_dimensions(node)
+    center = tuple(part["center"][index] * dimensions[index] for index in range(3))
+    size = tuple(part["size"][index] * dimensions[index] for index in range(3))
+    return center, size
+
+
+def _cylinder_rotation(axis: str) -> Matrix:
+    if axis == "x":
+        return Matrix.Rotation(pi / 2, 4, "Y")
+    if axis == "y":
+        return Matrix.Rotation(-pi / 2, 4, "X")
+    return Matrix.Identity(4)
+
+
+def _cylinder_scale(axis: str, size: tuple[float, float, float]) -> tuple[float, float, float]:
+    if axis == "x":
+        return size[2], size[1], size[0]
+    if axis == "y":
+        return size[0], size[2], size[1]
+    return size
+
+
+def _round_part(obj, part: dict, size: tuple[float, float, float]) -> None:
+    width = min(size) * part.get("bevel", 0.0)
+    if width <= 0:
+        return
+    bevel = obj.modifiers.new("soft edges", "BEVEL")
+    bevel.width = width
+    bevel.segments = 3
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.modifier_apply(modifier=bevel.name)
+
+
+def add_reconstruction_part(node: dict, part: dict):
+    """A visual completion constrained to the node's measured local envelope."""
+    center, size = _part_values(node, part)
+    primitive = part["primitive"]
+    if primitive == "box":
+        bpy.ops.mesh.primitive_cube_add(size=1.0)
+        transform = Matrix.Diagonal((*size, 1.0))
+    elif primitive == "cylinder":
+        bpy.ops.mesh.primitive_cylinder_add(vertices=24, radius=0.5, depth=1.0)
+        transform = _cylinder_rotation(part.get("axis", "z")) @ Matrix.Diagonal((*_cylinder_scale(part.get("axis", "z"), size), 1.0))
+    else:
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=24, ring_count=12, radius=0.5)
+        transform = Matrix.Diagonal((*size, 1.0))
+    obj = bpy.context.active_object
+    obj.matrix_world = node_matrix(node) @ Matrix.Translation(center) @ transform
+    obj.data.materials.append(material_for_finish(part["base_color"], part["material"]))
+    _round_part(obj, part, size)
     return obj
 
 
@@ -212,6 +269,9 @@ def wall_parts(wall: dict, portals: list[dict]) -> list:
 
 
 def furniture_parts(node: dict) -> list:
+    reconstruction = node.get("reconstruction")
+    if reconstruction and reconstruction.get("parts"):
+        return [add_reconstruction_part(node, part) for part in reconstruction["parts"]]
     width, depth, height = node_dimensions(node)
     category = node.get("raw_category")
     floor = -height / 2
