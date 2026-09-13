@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 from standardphysics_contracts import SceneGraph, SceneNode, Vec3
 from standardphysics_pipeline import footprint, gap_between
-from standardphysics_pipeline.footprints import Polygon
+from standardphysics_pipeline.footprints import Polygon, contains_point, floor_polygon, polygon_bounds
 from standardphysics_pipeline.occupancy import blocks_floor
 
 from ..hashing import inventory
@@ -95,14 +95,7 @@ def _inventory_changes(
 def floor_bounds(graph: SceneGraph) -> tuple[float, float, float, float] | None:
     for node in graph.nodes:
         if node.kind == "floor":
-            centre = node.transform.position
-            half_x, half_y = node.dimensions.x / 2, node.dimensions.y / 2
-            return (
-                centre.x - half_x,
-                centre.y - half_y,
-                centre.x + half_x,
-                centre.y + half_y,
-            )
+            return polygon_bounds(floor_polygon(node))
     return None
 
 
@@ -137,17 +130,14 @@ def interior_bounds(graph: SceneGraph) -> tuple[float, float, float, float] | No
 
 
 def _off_the_floor(candidate: SceneGraph, moved: list[SceneNode]) -> list[Violation]:
-    bounds = floor_bounds(candidate)
-    if bounds is None:
+    floor = next((node for node in candidate.nodes if node.kind == "floor"), None)
+    if floor is None:
         return []
-    min_x, min_y, max_x, max_y = bounds
+    boundary = floor_polygon(floor)
     found = []
     for node in moved:
         for x, y in footprint(node):
-            if not (
-                min_x - FLOOR_MARGIN <= x <= max_x + FLOOR_MARGIN
-                and min_y - FLOOR_MARGIN <= y <= max_y + FLOOR_MARGIN
-            ):
+            if not contains_point(boundary, (x, y), FLOOR_MARGIN):
                 found.append(
                     Violation(
                         "left_the_floor", str(node.id), node.label, blocker="wall"

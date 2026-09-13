@@ -112,6 +112,14 @@ def artifact_of_kind(connection: sqlite3.Connection, scan_id: uuid.UUID, kind: s
     return Artifact(id=row["id"], kind=row["kind"], sha256=row["sha256"], bytes=row["bytes"]) if row else None
 
 
+def artifacts_of_kind(connection: sqlite3.Connection, scan_id: uuid.UUID, kind: str) -> list[Artifact]:
+    rows = connection.execute(
+        "SELECT id, kind, sha256, bytes FROM artifacts WHERE scan_id = ? AND kind = ? ORDER BY created_at, id",
+        (str(scan_id), kind),
+    ).fetchall()
+    return [Artifact(id=row["id"], kind=row["kind"], sha256=row["sha256"], bytes=row["bytes"]) for row in rows]
+
+
 def insert_artifact(connection: sqlite3.Connection, scan_id: uuid.UUID, artifact: Artifact) -> None:
     connection.execute(
         "INSERT INTO artifacts (scan_id, id, kind, sha256, bytes, created_at) VALUES (?, ?, ?, ?, ?, ?)",

@@ -12,7 +12,9 @@ from uuid import UUID
 
 import numpy as np
 
-from standardphysics_contracts import SceneGraph, SceneNode, Vec3, to_meters, to_meters
+from standardphysics_contracts import SceneGraph, SceneNode, Vec3, to_meters
+
+from .footprints import floor_polygon, polygon_bounds
 
 CELL_SIZE = 0.025
 """25 mm. Fine enough that quantisation stays near half an inch."""
@@ -132,6 +134,13 @@ def _rotation_2d(node: SceneNode) -> tuple[float, float]:
 
 
 def _bounds(graph: SceneGraph) -> tuple[float, float, float, float]:
+    floor = next((node for node in graph.nodes if node.kind == "floor"), None)
+    if floor is not None:
+        min_x, min_y, max_x, max_y = polygon_bounds(floor_polygon(floor))
+        return (
+            min_x - OUTSIDE_MARGIN, min_y - OUTSIDE_MARGIN,
+            max_x + OUTSIDE_MARGIN, max_y + OUTSIDE_MARGIN,
+        )
     xs, ys = [], []
     for node in graph.nodes:
         p = node.transform.position
@@ -231,8 +240,22 @@ def _bound_the_world(
     floor = next((node for node in graph.nodes if node.kind == "floor"), None)
     if floor is None:
         return
-    walkable = _inside_box(floor, world_x, world_y, OUTSIDE_MARGIN, OUTSIDE_MARGIN)
+    walkable = _inside_convex_polygon(floor_polygon(floor), world_x, world_y, OUTSIDE_MARGIN)
     occupied[~walkable] = True
+
+
+def _inside_convex_polygon(polygon, world_x: np.ndarray, world_y: np.ndarray, margin: float) -> np.ndarray:
+    """Vectorized convex containment for the transformed floor boundary."""
+    if len(polygon) < 3:
+        return np.zeros(world_x.shape, dtype=bool)
+    area = sum(start[0] * end[1] - end[0] * start[1] for start, end in zip(polygon, polygon[1:] + polygon[:1]))
+    direction = 1 if area >= 0 else -1
+    inside = np.ones(world_x.shape, dtype=bool)
+    for start, end in zip(polygon, polygon[1:] + polygon[:1]):
+        edge_x, edge_y = end[0] - start[0], end[1] - start[1]
+        cross = edge_x * (world_y - start[1]) - edge_y * (world_x - start[0])
+        inside &= direction * cross >= -margin * (edge_x * edge_x + edge_y * edge_y) ** 0.5
+    return inside
 
 
 def _cell_centres(grid: Grid) -> tuple[np.ndarray, np.ndarray]:

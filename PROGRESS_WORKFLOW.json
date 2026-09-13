@@ -1,28 +1,31 @@
 {
   "goal": "Interactive measured reconstruction and bounded TypeSafe simulation of captured rooms",
   "git": {
-    "pulled": "279ff84",
+    "pulled": "1955734",
     "preserved_local_work": [
+      "preserve-photo-labeling-before-upstream-sync-2026-09-12",
       "preserve-workflow-integration-before-second-pull-2026-09-12",
       "preserve-local-work-before-requested-pull-2026-09-12"
     ],
-    "conflicts": "resolved preserving coverage gates and local workflow safeguards"
+    "conflicts": "resolved preserving coverage gates and local workflow safeguards",
+    "merge_head": "9329041",
+    "pushed": false
   },
   "tasks": [
     {
       "task": "Provider API and real-scene CLI",
       "tier": "Luna",
-      "status": "complete; bounded image-assisted Astra finishes now in progress"
+      "status": "complete; bounded Astra and TypeSafe adapters verified"
     },
     {
       "task": "Clean room rendering with portals and furniture",
       "tier": "Terra",
-      "status": "display-only geometry implemented; review invariant corrections and Blender proof in progress"
+      "status": "complete; projected floor boundaries and zero-thickness export shells fixed; valid browser table drag accepted"
     },
     {
       "task": "Contracts, candidate 3D preview, full wall toggle, verification",
       "tier": "Frontier",
-      "status": "integration implemented; final verification pending"
+      "status": "complete; revision3 rebuild, valid movement, final tests verified"
     }
   ],
   "proof": {
@@ -41,14 +44,58 @@
       "result": "runs/accessibility-sweep.json"
     },
     "validation": {
-      "python": "616 passed, 5 xfailed",
-      "api": "66 passed",
-      "web": "34 passed before added rendering/candidate changes"
-    }
+      "python": "644 passed, 4 xfailed",
+      "api": "76 passed",
+      "web": "40 passed; typecheck and lint passed"
+    },
+    "browser": {
+      "scan_id": "35510a7a-ab73-47e1-9707-66b882e52116",
+      "revision": 3,
+      "astra_labeled_objects": 16,
+      "export_revision": 3,
+      "selection": "chair selected",
+      "movement": "unsafe drag blocked and preview restored",
+      "black_floor_artifact": "fixed; measured floor omitted from display, neutral ground retained",
+      "live_proof": "runs/test1-browser-rebuild-proof.json",
+      "valid_drag": "table move accepted, Save this layout enabled; original restored",
+      "export_bytes": 102276,
+      "final_rebuild": "completed through Next proxy with bounded Astra request"
+    },
+    "actual_room_simulation": {
+      "runs": 1000,
+      "completed": 1000,
+      "rejected": 0,
+      "unique_layouts": 1,
+      "workflows": 21,
+      "profiles": 4,
+      "rules_checked": 0,
+      "mesh_checked": true,
+      "artifact": "runs/test1-cli-simulation.json"
+    },
+    "floor_projection": "measured floor is transformed from local X/Z into world X/Y; polygon boundary used for occupancy and furniture checks"
   },
   "reference": {
     "url": "https://www.youtube.com/watch?v=NAKJV7V7jiY",
     "method": "Polycam Room Mode clean parametric room with furniture placeholders, glTF to Blender; alternative textured LiDAR explicitly described as lumpy",
     "observations": "Transcript read and room import chapters visually inspected; presenter did not verify measurement tolerances"
-  }
+  },
+  "limitations": [
+    "Both existing scan bundles have no photos or video; appearance recovery not live-verified.",
+    "No confirmed route or human-reviewed rule ledger; results are screening, not ADA certification.",
+    "Initial standalone Astra check used truthful fallback; subsequent browser rebuild used Astra for all 16 objects."
+  ],
+  "subagents": [
+    {
+      "name": "provider_check",
+      "tier": "Luna",
+      "status": "complete",
+      "cost": "unavailable"
+    },
+    {
+      "name": "reconstruction",
+      "tier": "Terra",
+      "status": "complete",
+      "cost": "unavailable"
+    }
+  ]
 }

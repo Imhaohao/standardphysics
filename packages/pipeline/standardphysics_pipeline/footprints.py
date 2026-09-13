@@ -42,6 +42,74 @@ def footprint(node: SceneNode) -> Polygon:
     ]
 
 
+def floor_polygon(node: SceneNode) -> Polygon:
+    """The horizontal projection of all eight corners of a floor node.
+
+    RoomPlan floors are frequently zero-depth shells whose local X/Z plane is
+    rotated into the world's X/Y plane. Their dimensions alone therefore do
+    not say where customers can stand. The measured transform remains the
+    authority; this derives a convex ground polygon from it.
+    """
+    half_x, half_y, half_z = node.dimensions.x / 2, node.dimensions.y / 2, node.dimensions.z / 2
+    m = node.transform.m
+    points = []
+    for local_x in (-half_x, half_x):
+        for local_y in (-half_y, half_y):
+            for local_z in (-half_z, half_z):
+                points.append((
+                    m[0] * local_x + m[1] * local_y + m[2] * local_z + m[3],
+                    m[4] * local_x + m[5] * local_y + m[6] * local_z + m[7],
+                ))
+    return _convex_hull(points)
+
+
+def polygon_bounds(polygon: Polygon) -> tuple[float, float, float, float]:
+    return (
+        min(x for x, _ in polygon), min(y for _, y in polygon),
+        max(x for x, _ in polygon), max(y for _, y in polygon),
+    )
+
+
+def contains_point(polygon: Polygon, point: Point, margin: float = 0.0) -> bool:
+    """Whether a point is inside a convex polygon, allowing a small edge slack."""
+    if len(polygon) < 3:
+        return False
+    direction = 1 if _signed_area(polygon) >= 0 else -1
+    x, y = point
+    for start, end in _edges(polygon):
+        edge_x, edge_y = end[0] - start[0], end[1] - start[1]
+        cross = edge_x * (y - start[1]) - edge_y * (x - start[0])
+        if direction * cross < -margin * math.hypot(edge_x, edge_y):
+            return False
+    return True
+
+
+def _convex_hull(points: list[Point]) -> Polygon:
+    """Monotone-chain hull keeps a floor boundary ordered without an AABB."""
+    unique = sorted(set(points))
+    if len(unique) <= 2:
+        return unique
+
+    def turn(origin: Point, first: Point, second: Point) -> float:
+        return (first[0] - origin[0]) * (second[1] - origin[1]) - (first[1] - origin[1]) * (second[0] - origin[0])
+
+    lower: Polygon = []
+    for point in unique:
+        while len(lower) >= 2 and turn(lower[-2], lower[-1], point) <= 0:
+            lower.pop()
+        lower.append(point)
+    upper: Polygon = []
+    for point in reversed(unique):
+        while len(upper) >= 2 and turn(upper[-2], upper[-1], point) <= 0:
+            upper.pop()
+        upper.append(point)
+    return lower[:-1] + upper[:-1]
+
+
+def _signed_area(polygon: Polygon) -> float:
+    return sum(start[0] * end[1] - end[0] * start[1] for start, end in _edges(polygon)) / 2
+
+
 def _point_to_segment(point: Point, a: Point, b: Point) -> float:
     px, py = point
     ax, ay = a

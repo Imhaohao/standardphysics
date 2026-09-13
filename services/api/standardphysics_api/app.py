@@ -38,6 +38,7 @@ from .errors import ApiProblem
 from .labels import mark_counter, unmark_counter
 from .layout import check_layout, save_layout
 from .simulations import queue_simulation, simulation_status
+from .replays import install_replay_routes
 from standardphysics_contracts import RebuildRequest, SimulationRequest, SimulationStatus, graph_hash
 from .lidar_mesh import InvalidLidarMesh, validate_lidar_mesh
 from .proposals import propose
@@ -102,6 +103,7 @@ def create_app(settings: Settings | None = None, stages: Stages | None = None, r
     _install_layout_routes(app, database, stages, worker)
     _install_route_routes(app, database, worker)
     _install_simulation_routes(app, database, stages, worker)
+    install_replay_routes(app, database, store)
     _install_label_routes(app, database, worker)
 
     @app.get("/api/scans/{scan_id}/report", response_model=Report)
@@ -359,7 +361,10 @@ def _install_simulation_routes(app: FastAPI, database: Database, stages: Stages,
         base, latest, _ = _base(database, scan_id, body.base_revision)
         if latest != body.base_revision:
             raise ApiProblem(409, STALE_LAYOUT)
-        rebuilt = stages.label(base).model_copy(update={"revision": base.revision + 1, "base_hash": graph_hash(base)})
+        frame_paths, poses_path = worker.label_inputs(scan_id)
+        rebuilt = stages.label_scan(
+            base, frame_paths=frame_paths, poses_path=poses_path
+        ).model_copy(update={"revision": base.revision + 1, "base_hash": graph_hash(base)})
         with database.transaction() as connection:
             if repo.get_revision(connection, scan_id)["revision"] != base.revision:
                 raise ApiProblem(409, STALE_LAYOUT)

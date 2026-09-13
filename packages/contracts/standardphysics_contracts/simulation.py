@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from typing import Literal
+from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 from .scene import SceneGraph
 
@@ -58,3 +59,31 @@ class SimulationStatus(BaseModel):
     completed: int
     error: str | None = None
     result: SimulationResult | None = None
+
+
+class ReplayChapter(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    seconds: float = Field(ge=0, allow_inf_nan=False)
+    task: str = Field(min_length=1)
+    evaluation: int = Field(ge=1)
+    outcome: Literal["route_blocked", "out_of_reach", "route_and_reach_fit"]
+
+
+class SimulationReplay(BaseModel):
+    """A saved functional campaign, separate from live legal screening jobs."""
+
+    model_config = ConfigDict(extra="forbid")
+    scan_id: UUID
+    revision: int = Field(ge=0)
+    graph_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    report_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    video_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    evaluations: int = Field(ge=1)
+    unique_layouts: int = Field(ge=1)
+    connectivity_builds: int = Field(ge=1)
+    typesafe_calls: int = Field(ge=0)
+    task_source: str
+    duration_seconds: float = Field(gt=0, allow_inf_nan=False)
+    selection: str
+    chapters: list[ReplayChapter] = Field(min_length=1)
+    limitations: list[str]

@@ -381,6 +381,16 @@ export interface RebuildRequest {
   base_revision: number;
 }
 /**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "ReplayChapter".
+ */
+export interface ReplayChapter {
+  evaluation: number;
+  outcome: "route_blocked" | "out_of_reach" | "route_and_reach_fit";
+  seconds: number;
+  task: string;
+}
+/**
  * Everything the printed report shows, in one response.
  *
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
@@ -519,6 +529,31 @@ export interface SimulationFeedback {
   trials: number;
   unreachable_interaction_trials: number;
   workflow_title: string;
+}
+/**
+ * A saved functional campaign, separate from live legal screening jobs.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "SimulationReplay".
+ */
+export interface SimulationReplay {
+  /**
+   * @minItems 1
+   */
+  chapters: [ReplayChapter, ...ReplayChapter[]];
+  connectivity_builds: number;
+  duration_seconds: number;
+  evaluations: number;
+  graph_hash: string;
+  limitations: string[];
+  report_sha256: string;
+  revision: number;
+  scan_id: string;
+  selection: string;
+  task_source: string;
+  typesafe_calls: number;
+  unique_layouts: number;
+  video_sha256: string;
 }
 /**
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema

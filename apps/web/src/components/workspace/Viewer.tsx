@@ -1,6 +1,5 @@
 "use client";
 
-import { ContactShadows } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { Component, Suspense, type ReactNode } from "react";
 import type { ViewerPose } from "@/lib/camera";
@@ -100,11 +99,10 @@ export default function Viewer({ scene, exported, arrange, route, dragging, cutW
       <color attach="background" args={["#f6f5f1"]} />
       <Lights />
       <CameraRig pose={pose} locked={dragging} bounds={null} />
-      <><mesh rotation-x={-Math.PI / 2} position-y={-0.002} receiveShadow>
+      <mesh rotation-x={-Math.PI / 2} position-y={-0.002} receiveShadow>
         <planeGeometry args={[80, 80]} />
         <meshStandardMaterial color={MODEL.ground} roughness={1} />
       </mesh>
-      <ContactShadows position={[0, 0.001, 0]} scale={30} opacity={0.35} blur={2.4} far={3} frames={1} /></>
       <ShopSurfaces scene={scene} exported={exported} arrange={arrange} glbUrl={glbUrl} lidarUrl={lidarUrl} selected={selected} onSelectNode={onSelectNode} cutWalls={cutWalls} />
       {selected && <FindingAnnotation finding={selected} />}
       {route && <StopMarkers route={route} />}

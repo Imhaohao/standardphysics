@@ -189,11 +189,22 @@ def _write_temp(payload: str) -> str:
 
 
 def display_graph(graph: SceneGraph) -> SceneGraph:
-    """Clamp only the visual wall shell; measurements keep their original dimensions."""
+    """Clamp visual-only zero-depth shells; measurements keep their original dimensions."""
     nodes = [
-        node.model_copy(update={"dimensions": node.dimensions.model_copy(update={"y": max(node.dimensions.y, MIN_DISPLAY_WALL_THICKNESS)})})
-        if node.kind == "wall"
-        else node
+        _display_node(node)
         for node in graph.nodes
     ]
     return graph.model_copy(update={"nodes": nodes})
+
+
+def _display_node(node):
+    if node.kind == "wall":
+        return node.model_copy(update={"dimensions": node.dimensions.model_copy(update={"y": max(node.dimensions.y, MIN_DISPLAY_WALL_THICKNESS)})})
+    if node.kind == "floor":
+        dimensions = node.dimensions.model_copy(update={
+            axis: MIN_DISPLAY_WALL_THICKNESS
+            for axis in ("x", "y", "z")
+            if getattr(node.dimensions, axis) == 0.0
+        })
+        return node.model_copy(update={"dimensions": dimensions})
+    return node

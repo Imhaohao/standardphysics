@@ -241,6 +241,7 @@ def main() -> None:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--evaluations", type=int, default=2_000_000)
     parser.add_argument("--seed", type=int, default=20260913)
+    parser.add_argument("--replay-decisions", type=Path, help="reuse a saved task order without TypeSafe calls")
     args = parser.parse_args()
     # Reuse the application env loader without opening or mutating its database.
     from standardphysics_api.settings import Settings
@@ -254,8 +255,18 @@ def main() -> None:
         suite, source = propose_tasks(graph)
         saved = {"source": source, **suite.model_dump(mode="json")}
         _save(args.tasks, saved)
+    planner: Callable = choose_task
+    if args.replay_decisions:
+        plan = json.loads(args.replay_decisions.read_text())
+        task_order = [batch["task_id"] for batch in plan["batches"]]
+        if len(task_order) != len(suite.tasks) or set(task_order) != {task.id for task in suite.tasks}:
+            raise ValueError("saved plan must contain every task exactly once")
+        def replay_planner(remaining, history):
+            task = next(task for task in remaining if task.id == task_order[len(history)])
+            return task, {"source": "saved TypeSafe order", "calls": 0}
+        planner = replay_planner
     result = run_campaign(graph, mesh, suite, evaluations=args.evaluations,
-                          seed=args.seed, output=args.out)
+                          seed=args.seed, output=args.out, planner=planner)
     result["task_generation"] = saved.get("source")
     result["sources"] = {name: {"path": str(path.resolve()), "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
                          for name, path in (("graph", args.graph), ("mesh", args.mesh), ("tasks", args.tasks))}

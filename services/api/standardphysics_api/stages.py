@@ -64,8 +64,33 @@ class Stages:
     _assess_lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
     _search_lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
-    def ingest(self, room_json: pathlib.Path, scan_id) -> SceneGraph:
+    def ingest(
+        self,
+        room_json: pathlib.Path,
+        scan_id,
+        *,
+        frame_paths: list[pathlib.Path] | None = None,
+        poses_path: pathlib.Path | None = None,
+    ) -> SceneGraph:
         graph = parse_room_json(json.loads(room_json.read_bytes()), scan_id=scan_id)
+        return self.label_scan(graph, frame_paths=frame_paths, poses_path=poses_path)
+
+    def label_scan(
+        self,
+        graph: SceneGraph,
+        *,
+        frame_paths: list[pathlib.Path] | None = None,
+        poses_path: pathlib.Path | None = None,
+    ) -> SceneGraph:
+        """Run the default Astra labeler with uploaded evidence when available.
+
+        ``Stages.label`` remains a one-argument injection point for tests and
+        callers with a custom labeler.  Only the built-in reconstruct function
+        receives artifact paths, so adding photo evidence does not change that
+        seam or expose paths to a custom implementation.
+        """
+        if self.label is reconstruct:
+            return reconstruct(graph, frame_paths=frame_paths, poses_path=poses_path)
         return self.label(graph)
 
     def assess(self, graph: SceneGraph, scenario: Scenario | None, pass_number: int) -> Assessment:

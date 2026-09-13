@@ -1,6 +1,6 @@
 {
   "lane": "C",
-  "updated": "2026-09-13T03:33:11.195218+00:00",
+  "updated": "2026-09-13T04:15:38.301291+00:00",
   "done": [
     "rule pack: 18 rules, thresholds in the units the standard is written in, the quoted sentence behind each, and every other number the section states",
     "human verification ledger binding rule id, section, threshold and unit, so editing a threshold switches its check off",
@@ -120,29 +120,87 @@
     }
   },
   "bread_test_campaign": {
-    "status": "in progress",
+    "status": "complete",
     "scan_id": "5067a214-1b87-4460-82f7-10b08a9e44be",
     "tasks": [
       {
         "task": "Astra anchored scenario generation",
         "tier": "Astra",
-        "status": "in progress"
+        "status": "complete"
       },
       {
         "task": "Two million distinct scan route and reach evaluations",
         "tier": "Local numerical",
-        "status": "in progress"
+        "status": "complete"
       },
       {
         "task": "Ten 3D dual-camera task replays",
         "tier": "Local Blender",
-        "status": "in progress"
+        "status": "complete"
       },
       {
         "task": "Validation and provenance",
         "tier": "Sol",
-        "status": "in progress"
+        "status": "complete"
       }
+    ],
+    "source": "runs/bread-test/campaign.json",
+    "camera_preview": "runs/bread-test/frames",
+    "results": {
+      "evaluations": 2000000,
+      "unique_layouts": 1,
+      "tasks": 10,
+      "profiles": 4,
+      "target_placements_per_task": 25,
+      "astra_calls_for_task_suite": 1,
+      "typesafe_calls_in_final_campaign": 9,
+      "exact_reproduction_with_no_new_model_calls": true,
+      "video": "runs/bread-test/bread-test-dual-camera.mp4",
+      "manifest": "runs/bread-test/bread-test-dual-camera.json",
+      "report": "runs/bread-test/campaign.json",
+      "verification": "runs/bread-test/verification.json",
+      "video_seconds": 56,
+      "video_resolution": "1920x1080",
+      "subagents": []
+    },
+    "limitations": [
+      "Body cylinders and shoulder reach spheres approximate mobility; no articulated collision or grasp/keyboard ability claim.",
+      "The filmed medicine, computer and other props are hypothetical placements on actual scanned tables.",
+      "Third-person rendering uses an upper-surface camera cutaway; all checks retain full collision geometry.",
+      "Scenario counts measure distinct start/approach/target/task/profile queries using four precomputed scan connectivity maps, not two million separate BFS builds.",
+      "Human legal rule verification remains separate from this functional geometry campaign."
     ]
+  },
+  "bread_test_replay_integration": {
+    "status": "complete",
+    "plan": [
+      {
+        "task": "Trace saved campaign and app boundaries",
+        "tier": "Sol",
+        "status": "complete"
+      },
+      {
+        "task": "Expose revision-bound replay and native video page",
+        "tier": "Terra",
+        "status": "complete"
+      },
+      {
+        "task": "Verify import isolation, seek playback and typechecks",
+        "tier": "Local tools",
+        "status": "complete"
+      }
+    ],
+    "subagents": [],
+    "result": {
+      "scan_id": "5067a214-1b87-4460-82f7-10b08a9e44be",
+      "revision": 0,
+      "url": "http://127.0.0.1:3001/scans/5067a214-1b87-4460-82f7-10b08a9e44be/replay?revision=0",
+      "published": "services/api/var/scans/5067a214-1b87-4460-82f7-10b08a9e44be/revisions/0/replay",
+      "tests": "13 API tests; 40 web tests; Python mypy, TypeScript typecheck, scoped ESLint and complexity checks passed",
+      "browser": "1080p playback, keyboard chapter seek to 8 seconds, paused seeking, 320px viewport with no horizontal overflow",
+      "model_calls": 0,
+      "subagents": [],
+      "preview": "Isolated web preview because the existing server uses a different scan database; source changes remain in apps/web."
+    }
   }
 }

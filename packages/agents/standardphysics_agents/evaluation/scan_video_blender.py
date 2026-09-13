@@ -253,6 +253,7 @@ def render(args):
     graph = json.loads(args.graph.read_text())
     captured = json.loads(args.mesh.read_text())
     bpy.ops.wm.read_factory_settings(use_empty=True)
+    bpy.context.preferences.filepaths.save_version = 0
     scene = bpy.context.scene
     scene.render.engine = 'BLENDER_WORKBENCH'
     scene.render.resolution_x,scene.render.resolution_y = CAMERA_SIZE

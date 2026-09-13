@@ -11,7 +11,8 @@ import type { SceneGraph, SceneNode } from "@/types/contracts";
 import { MODEL, nodeColor, WALL_CUT_HEIGHT } from "./palette";
 
 const UNIT_BOX = new BoxGeometry(1, 1, 1);
-const HIDDEN_KINDS = new Set<SceneNode["kind"]>(["door", "window", "opening"]);
+/** Viewer supplies one stable ground plane; RoomPlan floors are often rotated zero-depth shells. */
+const HIDDEN_KINDS = new Set<SceneNode["kind"]>(["door", "window", "opening", "floor"]);
 const FLOOR = new Plane(new Vector3(0, 1, 0), 0);
 const WALL_CLIP_PLANE = new Plane(new Vector3(0, -1, 0), WALL_CUT_HEIGHT);
 
@@ -129,7 +130,7 @@ function styledMaterial(source: Material | Material[], faded: boolean, clippingP
     copy.transparent = faded || material.transparent;
     copy.opacity = faded ? material.opacity * 0.15 : material.opacity;
     copy.depthWrite = faded ? false : material.depthWrite;
-    copy.clippingPlanes = clippingPlanes?.map((plane) => plane.clone()) ?? null;
+    copy.clippingPlanes = clippingPlanes?.map((plane) => plane.clone()) ?? material.clippingPlanes?.map((plane) => plane.clone()) ?? null;
     return copy;
   };
   return Array.isArray(source) ? source.map(style) : style(source);

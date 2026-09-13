@@ -9,9 +9,10 @@ from standardphysics_pipeline import Grid
 
 from standardphysics_agents.evaluation.scan_campaign import (
     TaskDomain, bfs_path, evaluate_domain, make_replay, unique_indices,
+    task_domain,
 )
 from standardphysics_agents.evaluation.scan_space import (
-    BodyProfile, ScanSpace, floor_polygon, world_triangles,
+    BodyProfile, ScanSpace, build_spaces, floor_polygon, world_triangles,
 )
 from standardphysics_agents.evaluation.scan_tasks import ScanTask, TaskSuite, choose_task, validate_tasks
 from standardphysics_agents.router.typesafe import TypeSafeRouter
@@ -102,3 +103,40 @@ def test_model_cannot_anchor_a_task_to_an_unknown_scan_object():
     suite = TaskSuite(tasks=tasks)
     with pytest.raises(ValueError, match='scanned table'):
         validate_tasks(suite, SceneGraph(scan_id=uuid4(),revision=0,nodes=[]))
+
+
+def test_target_placements_include_edges_without_hanging_props_off_the_table():
+    table_id = uuid4()
+    node = SceneNode(id=table_id,kind='object',label='Table',raw_category='table',
+                     dimensions=Vec3(x=1,y=1,z=.8),transform=Mat4.translation(2,2,.4),
+                     movable=True,quality='measured')
+    graph = SceneGraph(scan_id=uuid4(),revision=0,nodes=[node])
+    occupied = np.zeros((40,40),dtype=bool)
+    occupied[15:25,15:25] = True
+    mask = ~occupied
+    grid = Grid(0,0,.1,occupied,np.full(occupied.shape,-1),[])
+    labels,_ = ndimage.label(mask)
+    space = ScanSpace(grid,mask.astype(float),mask,labels,np.argwhere(mask),
+                      BodyProfile('test',.3,1.3,1.2,1,.6),0)
+    domain = task_domain(graph,space,task(node_id=table_id))
+    assert len(domain.targets) == 25
+    assert domain.targets[:,:2].min(axis=0) == pytest.approx([1.54,1.54])
+    assert domain.targets[:,:2].max(axis=0) == pytest.approx([2.46,2.46])
+    assert np.all(domain.targets[:,2] == pytest.approx(.825))
+
+
+def test_actual_mesh_height_blocks_a_tall_body_but_not_a_lower_body():
+    floor = SceneNode(id=uuid4(),kind='floor',label='Floor',raw_category='floor',
+                      dimensions=Vec3(x=4,y=4,z=0),transform=Mat4.translation(2,2,0),
+                      movable=False,quality='measured')
+    graph = SceneGraph(scan_id=uuid4(),revision=0,nodes=[floor])
+    mesh = LidarMesh.model_validate({'floorY':0, 'parts':[{'id':str(uuid4()),
+        'transform':[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1],
+        'vertices':[2,1.4,0, 2,1.4,-4, 2,1.6,-4, 2,1.6,0],
+        'triangles':[0,1,2,0,2,3]}]})
+    profiles = (BodyProfile('low',.3,1.3,1.1,1,.6),BodyProfile('tall',.3,1.8,1.6,1.4,.6))
+    low,tall = build_spaces(graph,mesh,profiles,cell_size=.1)
+    point = low.grid.to_cell(2,2)
+    assert low.traversable[point]
+    assert not tall.traversable[point]
+    assert not np.any(tall.traversable & ~low.traversable)

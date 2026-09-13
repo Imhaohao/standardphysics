@@ -9,6 +9,7 @@ first process's jobs.
 from __future__ import annotations
 
 import logging
+import pathlib
 import threading
 import traceback
 import uuid
@@ -50,6 +51,15 @@ class Worker:
     def wake(self) -> None:
         self._wake.set()
 
+    def label_inputs(self, scan_id: uuid.UUID) -> tuple[list[pathlib.Path], pathlib.Path | None]:
+        """Return uploaded frame and pose artifacts for the built-in labeler."""
+        with self.database.connect() as connection:
+            frames = repo.artifacts_of_kind(connection, scan_id, "frames")
+            poses = repo.artifact_of_kind(connection, scan_id, "poses")
+        frame_paths = [self.store.artifact_path(scan_id, artifact.id) for artifact in frames]
+        poses_path = self.store.artifact_path(scan_id, poses.id) if poses is not None else None
+        return frame_paths, poses_path
+
     def drain(self) -> None:
         """Run every queued job on the calling thread. Tests use this."""
         while self.run_once():
@@ -90,7 +100,13 @@ class Worker:
     def _process(self, scan_id: uuid.UUID, revision: int) -> None:
         with self.database.connect() as connection:
             room_json = repo.artifact_of_kind(connection, scan_id, "room_json")
-        graph = self.stages.ingest(self.store.artifact_path(scan_id, room_json.id), scan_id)
+        frame_paths, poses_path = self.label_inputs(scan_id)
+        graph = self.stages.ingest(
+            self.store.artifact_path(scan_id, room_json.id),
+            scan_id,
+            frame_paths=frame_paths,
+            poses_path=poses_path,
+        )
         with self.database.transaction() as connection:
             repo.save_revision(connection, graph, source="ingest")
         self._assess(scan_id, graph.revision)

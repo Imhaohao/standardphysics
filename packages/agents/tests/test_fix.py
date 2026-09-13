@@ -25,7 +25,7 @@ from standardphysics_contracts import (
     to_meters,
 )
 from standardphysics_fixtures.shop import FIX_SHIFT_INCHES, node_id
-from standardphysics_pipeline import PipelineMeasurements, footprint, gap_between
+from standardphysics_pipeline import PipelineMeasurements, contains_point, floor_polygon, footprint, gap_between, polygon_bounds
 
 CASE_EAST = node_id("case_east")
 CASE_WEST = node_id("case_west")
@@ -147,6 +147,33 @@ class TestHardConstraints:
             [NodeMove(node_id=node_id("chair_1"), delta_translation=Vec3(x=0.0, y=20.0, z=0.0))],
         )
         assert "left_the_floor" in _kinds(graph, outside)
+
+    def test_a_real_rotated_roomplan_floor_accepts_inside_moves_and_rejects_its_aabb_corner(self):
+        floor = SceneNode(
+            id=node_id("test1_floor"), kind="floor", label="Floor", raw_category="floor",
+            dimensions=Vec3(x=11.220307, y=0.0, z=10.557267),
+            transform=Mat4(m=[
+                0.9996333, 0.0, -0.027079854, -3.1393082,
+                0.027079882, 0.0, 0.9996333, 0.77995247,
+                0.0, -1.0, 0.0, 0.0,
+                0.0, 0.0, 0.0, 1.0,
+            ]),
+        )
+        chair = _node("test1_chair", "object", "Chair", (-3.14, 0.78, 0.5), (0.4, 0.4, 1.0), True)
+        graph = SceneGraph(scan_id=node_id("test1_room"), nodes=[floor, chair])
+
+        inside = apply_moves(graph, [NodeMove(node_id=chair.id, delta_translation=Vec3(x=0.5, y=0.0, z=0.0))])
+        assert "left_the_floor" not in _kinds(graph, inside)
+
+        boundary = floor_polygon(floor)
+        min_x, min_y, _, _ = polygon_bounds(boundary)
+        aabb_corner = (min_x + 0.02, min_y + 0.02)
+        assert not contains_point(boundary, aabb_corner)
+        false_pass = apply_moves(graph, [NodeMove(
+            node_id=chair.id,
+            delta_translation=Vec3(x=aabb_corner[0] - chair.transform.position.x, y=aabb_corner[1] - chair.transform.position.y, z=0.0),
+        )])
+        assert "left_the_floor" in _kinds(graph, false_pass)
 
     def test_parking_in_front_of_the_door_is_rejected(self, graph):
         door = graph.by_id(DOOR)

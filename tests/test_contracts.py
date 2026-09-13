@@ -46,3 +46,20 @@ def test_graph_hash_changes_when_a_node_moves():
     before = graph_hash(graph)
     graph.by_id(node_id("case_east")).transform.m[3] += 0.01
     assert graph_hash(graph) != before
+
+
+def test_inferred_finishes_never_change_the_measured_layout_fingerprint():
+    import pytest
+    from pydantic import ValidationError
+    from standardphysics_contracts import DisplayAppearance, graph_hash
+    from standardphysics_fixtures import build_graph
+
+    graph = build_graph()
+    assert "appearance" not in graph.nodes[0].model_dump()
+    finish = DisplayAppearance(base_color="#8d6348", material="wood")
+    decorated = graph.model_copy(update={"nodes": [node.model_copy(update={"appearance": finish}) for node in graph.nodes]})
+    assert graph_hash(decorated) == graph_hash(graph)
+    with pytest.raises(ValidationError):
+        DisplayAppearance.model_validate({"base_color": "red", "material": "wood"})
+    with pytest.raises(ValidationError):
+        DisplayAppearance.model_validate({"base_color": "#8d6348", "material": "wood", "dimensions": {"x": 2}})

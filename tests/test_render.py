@@ -45,6 +45,20 @@ def test_display_graph_gives_a_zero_thickness_wall_a_visual_shell_only():
     assert displayed.by_id(wall.id).dimensions.y == MIN_DISPLAY_WALL_THICKNESS
 
 
+def test_display_graph_gives_a_zero_thickness_floor_a_visual_shell_only():
+    graph = build_graph()
+    floor = next(node for node in graph.nodes if node.kind == "floor")
+    zero_floor = floor.model_copy(update={"dimensions": floor.dimensions.model_copy(update={"y": 0.0, "z": 0.0})})
+    measured = graph.model_copy(update={"nodes": [zero_floor if node.id == floor.id else node for node in graph.nodes]})
+
+    displayed = display_graph(measured)
+
+    assert measured.by_id(floor.id).dimensions.y == 0.0
+    assert displayed.by_id(floor.id).dimensions.y == MIN_DISPLAY_WALL_THICKNESS
+    assert measured.by_id(floor.id).dimensions.z == 0.0
+    assert displayed.by_id(floor.id).dimensions.z == MIN_DISPLAY_WALL_THICKNESS
+
+
 @pytest.fixture
 def finding_locus():
     graph, scenario = build_graph(), build_scenario()
@@ -107,9 +121,9 @@ def test_rotated_wall_portals_cut_only_aligned_overlapping_openings(tmp_path):
     glb = export_glb(scene, tmp_path / "portals.glb")
 
     # Two overlapping, wall-aligned portals make one open span through the wall.
-    assert glb_ray_hit(glb, (0, -3, 1), (0, 1, 0)) is None
+    assert glb_ray_hit(glb, (-3, 0, 1), (1, 0, 0)) is None
     # The nearby portal is perpendicular to the wall and must not cut it.
-    assert glb_ray_hit(glb, (0, 0.8, 1), (0, 1, 0)) == str(wall.id)
+    assert glb_ray_hit(glb, (-3, 1.5, 1), (1, 0, 0)) == str(wall.id)
 
 
 def test_the_camera_stays_inside_the_room(finding_locus):

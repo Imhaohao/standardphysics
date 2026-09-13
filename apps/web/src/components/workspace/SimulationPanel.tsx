@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { getSimulation, rebuildRoom, SimulationRequestError, startSimulation } from "@/lib/simulation-client";
@@ -189,6 +190,7 @@ export function SimulationPanel({ scanId, scene, onTryLayout }: { scanId: string
     <section className="space-y-3 px-3 py-4" aria-label="Rebuild and route trials">
       <div className="space-y-1">
         <h2 className="font-semibold">Rebuild and route trials</h2>
+        <Link className="inline-block py-2 text-sm text-accent underline underline-offset-4" href={`/scans/${scanId}/replay?revision=${scene.revision}`}>Watch recorded runs</Link>
         <p className="text-sm text-ink-muted">Rebuild creates clean, selectable furniture from the scan. Astra can suggest labels and finishes when connected. Shapes and finishes are visual approximations; checks use measured dimensions.</p>
       </div>
       <SimulationControls routerName={simulation.routerName} refineWithAstra={simulation.refineWithAstra} rebuilding={simulation.rebuilding} active={isActive(simulation.status) || simulation.starting} onRouter={simulation.setRouterName} onRefine={simulation.setRefineWithAstra} onRebuild={simulation.rebuild} onRun={simulation.run} />

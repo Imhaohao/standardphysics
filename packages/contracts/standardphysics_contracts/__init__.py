@@ -1,4 +1,4 @@
-from .simulation import RebuildRequest, SimulationFeedback, SimulationRequest, SimulationResult, SimulationStatus
+from .simulation import RebuildRequest, ReplayChapter, SimulationFeedback, SimulationReplay, SimulationRequest, SimulationResult, SimulationStatus
 from .api import (
     ApiError,
     AskAnswer,
@@ -30,7 +30,7 @@ from .scan import Artifact, ArtifactKind, Scan, ScanState, SurfaceCoverage
 from .scene import DisplayAppearance, LabelSource, NodeKind, Quality, Scenario, SceneGraph, SceneNode, Stop
 
 __all__ = [
-    "RebuildRequest", "SimulationFeedback", "SimulationRequest", "SimulationResult", "SimulationStatus",
+    "RebuildRequest", "ReplayChapter", "SimulationFeedback", "SimulationReplay", "SimulationRequest", "SimulationResult", "SimulationStatus",
     "Annotation",
     "AnnotationKind",
     "ApiError",

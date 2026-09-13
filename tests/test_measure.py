@@ -7,7 +7,7 @@ checks are measuring something other than what they think.
 
 import pytest
 
-from standardphysics_contracts import to_inches, to_meters
+from standardphysics_contracts import Mat4, SceneGraph, SceneNode, Vec3, to_inches, to_meters
 from standardphysics_fixtures import (
     FIX_SHIFT_INCHES,
     PINCH_INCHES,
@@ -15,9 +15,9 @@ from standardphysics_fixtures import (
     build_scenario,
     node_id,
 )
-from standardphysics_pipeline.footprints import footprint, gap_between, gap_between_nodes
+from standardphysics_pipeline.footprints import contains_point, floor_polygon, footprint, gap_between, gap_between_nodes, polygon_bounds
 from standardphysics_pipeline.measure import PipelineMeasurements
-from standardphysics_pipeline.occupancy import BLOCKING_HEIGHT, blocks_floor, build_grid
+from standardphysics_pipeline.occupancy import BLOCKING_HEIGHT, OUTSIDE_MARGIN, blocks_floor, build_grid
 from standardphysics_pipeline.routes import clearance_map, widest_path
 
 
@@ -102,6 +102,39 @@ def test_grid_marks_the_walls(shop):
     graph, _, _ = shop
     grid = build_grid(graph)
     assert grid.occupied.any()
+
+
+def _test1_floor() -> SceneNode:
+    """The actual rotated zero-depth floor returned by browser rebuild test1."""
+    return SceneNode(
+        id=node_id("test1_floor"), kind="floor", label="Floor", raw_category="floor",
+        dimensions=Vec3(x=11.220307, y=0.0, z=10.557267),
+        transform=Mat4(m=[
+            0.9996333, 0.0, -0.027079854, -3.1393082,
+            0.027079882, 0.0, 0.9996333, 0.77995247,
+            0.0, -1.0, 0.0, 0.0,
+            0.0, 0.0, 0.0, 1.0,
+        ]),
+    )
+
+
+def test_rotated_zero_depth_floor_bounds_the_grid_by_its_world_polygon():
+    floor = _test1_floor()
+    polygon = floor_polygon(floor)
+    min_x, min_y, max_x, max_y = polygon_bounds(polygon)
+    aabb_corner = (min_x + 0.02, min_y + 0.02)
+    assert not contains_point(polygon, aabb_corner)
+
+    grid = build_grid(SceneGraph(scan_id=node_id("test1_grid"), nodes=[floor]))
+    assert grid.origin_x == pytest.approx(min_x - OUTSIDE_MARGIN)
+    assert grid.origin_y == pytest.approx(min_y - OUTSIDE_MARGIN)
+    assert grid.to_cell(max_x + OUTSIDE_MARGIN - 0.01, max_y + OUTSIDE_MARGIN - 0.01) <= (grid.shape[0] - 1, grid.shape[1] - 1)
+
+
+def test_a_degenerate_floor_fails_closed_instead_of_opening_a_walkable_strip():
+    floor = _test1_floor().model_copy(update={"dimensions": Vec3(x=0.0, y=0.0, z=0.0)})
+    grid = build_grid(SceneGraph(scan_id=node_id("degenerate_floor"), nodes=[floor]))
+    assert grid.occupied.all()
 
 
 def test_occupied_cells_name_an_object_or_are_the_world_edge(shop):
