@@ -115,3 +115,22 @@ def test_the_counter_stands_as_high_as_the_one_in_the_lawsuit():
     top = counter.transform.position.z + counter.dimensions.z / 2
     assert COUNTER_HEIGHT_INCHES == 47.0
     assert round(to_inches(top), 6) == 47.0
+
+
+def test_the_lawsuit_variant_matches_the_complaint():
+    """A lowered section exists, and the card reader sits on the 47 inch part."""
+    from standardphysics_fixtures import build_lawsuit_graph, build_lawsuit_scenario
+
+    graph = build_lawsuit_graph()
+    assert len(graph.nodes) == 21
+    counter_stop = next(stop for stop in build_lawsuit_scenario().stops if stop.name == "Counter")
+    high, low = graph.by_id(node_id("counter")), graph.by_id(node_id("counter_lowered"))
+    reader = graph.by_id(node_id("card_reader"))
+    top = lambda node: to_inches(node.transform.position.z + node.dimensions.z / 2)
+    assert round(top(high), 6) == 47.0
+    assert round(top(low), 6) == 36.0 and round(to_inches(low.dimensions.x), 6) == 36.0
+    assert round(to_inches(reader.transform.position.z - reader.dimensions.z / 2), 6) == 47.0
+    high_west = high.transform.position.x - high.dimensions.x / 2
+    assert reader.transform.position.x - reader.dimensions.x / 2 > high_west
+    assert reader.movable and not high.movable and not low.movable
+    assert high_west < counter_stop.position.x < high.transform.position.x + high.dimensions.x / 2

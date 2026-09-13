@@ -207,3 +207,41 @@ to where you pick up drinks is too narrow", 13.8 in, plus the photo requests.
 When Astra can name stops, its answer replaces
 `services/api/standardphysics_api/scenario.py`, and the owner still gets to
 move them.
+
+---
+
+## The lawsuit counter as the complaint describes it: a check to ask for
+
+The public complaint in Whitaker v. T Rock Inc. (5:22-cv-00283, paragraph 12)
+says more than the 47 inches: "While there was a lowered section, transactions
+take place at the higher counter, which is located about 47 inches above the
+finish floor. The point-of-sale machines were located on the higher counters."
+The problem was where people pay, not a missing lowered section.
+
+`standardphysics_fixtures.build_lawsuit_graph()` and `build_lawsuit_scenario()`
+model that:
+
+- **High counter.** It keeps the `counter` node ID and label, is 47 in high and
+  is 90 in long.
+- **Lowered section.** `counter_lowered`, labelled "Lowered counter section", is
+  36 in long and 36 in high, at the west end. Your role table does not treat it
+  as a service counter.
+- **Card reader.** `card_reader`, labelled "Card reader", is movable and sits on
+  the high section near its front.
+- **Counter stop.** It stands in front of the high section.
+
+`build_graph()` itself is unchanged. Splitting its counter broke 13 of your
+tests: ask answers, protruding objects, evaluation cases and the router. They
+belong to you to update, so I didn't.
+
+On the variant your checks report the counter at 47 in, with the fix "Add a
+lower section to the ordering counter". That fix is wrong when one exists. What
+would match the case, and the pitch deck:
+
+- **A check:** the point of sale sits on a section higher than 36 in when a
+  lowered section exists (904.4 and the 904.2 advisory about the register). It
+  needs a person to verify it, like every rule.
+- **A fix:** "Move the card reader to the lowered counter."
+
+When that lands, the sample shop seed switches to the lawsuit variant with a
+one-line change in `services/api/standardphysics_api/seed.py`.

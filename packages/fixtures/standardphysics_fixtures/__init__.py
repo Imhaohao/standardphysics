@@ -3,6 +3,8 @@ from .shop import (
     FIX_SHIFT_INCHES,
     PINCH_INCHES,
     build_graph,
+    build_lawsuit_graph,
+    build_lawsuit_scenario,
     build_scenario,
     build_street_scenario,
     node_id,
@@ -11,5 +13,5 @@ from .stub_measurements import FixtureMeasurements
 
 __all__ = [
     "COUNTER_HEIGHT_INCHES", "FIX_SHIFT_INCHES", "FixtureMeasurements", "PINCH_INCHES",
-    "build_graph", "build_scenario", "build_street_scenario", "node_id",
+    "build_graph", "build_lawsuit_graph", "build_lawsuit_scenario", "build_scenario", "build_street_scenario", "node_id",
 ]

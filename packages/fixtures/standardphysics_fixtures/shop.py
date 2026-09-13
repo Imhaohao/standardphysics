@@ -1,8 +1,13 @@
 """A synthetic boba shop with a 47-inch ordering counter and a 31-inch pinch.
 
-The counter is the one from Whitaker v. T Rock Inc., N.D. Cal. No.
-5:22-cv-00283: the complaint (paragraph 12) puts the counter at about 47
-inches, and ADA 2010 904.4.1 allows 36. That finding leads the demo.
+The counter height is the one from Whitaker v. T Rock Inc., N.D. Cal. No.
+5:22-cv-00283: the complaint (paragraph 12) puts it at about 47 inches, and ADA
+2010 904.4.1 allows 36.
+
+`build_lawsuit_graph` follows the complaint more closely. There was a lowered
+section, but transactions took place at the higher counter, where the
+point-of-sale machines sat. That variant has both sections and a card reader on
+the high one.
 
 Two display cases run from the side walls toward the middle and leave exactly
 31 inches between them, on the only path from the door to the counter. That is
@@ -40,6 +45,12 @@ CASE_DEPTH = 0.6
 CASE_HEIGHT = 0.9
 
 COUNTER_HEIGHT = to_meters(47.0)
+COUNTER_LENGTH = 3.2
+LOWERED_HEIGHT = to_meters(36.0)
+LOWERED_LENGTH = to_meters(36.0)
+"""A section 36 in long and 36 in high, the minimum 904.4.1 describes."""
+
+CARD_READER_SIZE = (0.2, 0.16, 0.08)
 
 FIX_SHIFT_INCHES = 5.0
 """Moving the east case this far east opens the gap to 36 inches."""
@@ -124,6 +135,23 @@ def _furniture() -> list[SceneNode]:
     return nodes
 
 
+def _lawsuit_counter() -> list[SceneNode]:
+    """The high counter, its lowered section at the west end, and the card reader on the high part."""
+    west, east = -COUNTER_LENGTH / 2, COUNTER_LENGTH / 2
+    split = west + LOWERED_LENGTH
+    depth, centre_y = 0.7, 3.6
+    reader_x = split + 0.3
+    reader_y = centre_y - depth / 2 + CARD_READER_SIZE[1] / 2 + 0.05
+    return [
+        _box("counter", "object", "Ordering counter", "storage",
+             ((split + east) / 2, centre_y, COUNTER_HEIGHT / 2), (east - split, depth, COUNTER_HEIGHT), False),
+        _box("counter_lowered", "object", "Lowered counter section", "storage",
+             ((west + split) / 2, centre_y, LOWERED_HEIGHT / 2), (LOWERED_LENGTH, depth, LOWERED_HEIGHT), False),
+        _box("card_reader", "object", "Card reader", "storage",
+             (reader_x, reader_y, COUNTER_HEIGHT + CARD_READER_SIZE[2] / 2), CARD_READER_SIZE, True),
+    ]
+
+
 def build_graph() -> SceneGraph:
     nodes = _walls()
     nodes.append(
@@ -136,7 +164,7 @@ def build_graph() -> SceneGraph:
     )
     nodes.append(
         _box("counter", "object", "Ordering counter", "storage",
-             (0.0, 3.6, COUNTER_HEIGHT / 2), (3.2, 0.7, COUNTER_HEIGHT), False)
+             (0.0, 3.6, COUNTER_HEIGHT / 2), (COUNTER_LENGTH, 0.7, COUNTER_HEIGHT), False)
     )
     nodes += _display_cases()
     nodes += _furniture()
@@ -180,3 +208,24 @@ def build_street_scenario() -> Scenario:
                  anchor_node_id=node_id("counter")),
         ],
     )
+
+
+def build_lawsuit_graph() -> SceneGraph:
+    """The shop with the counter as the complaint describes it.
+
+    The high counter keeps the `counter` node ID, so checks written against the
+    plain shop still find it.
+    """
+    graph = build_graph()
+    nodes = [node for node in graph.nodes if node.id != node_id("counter")] + _lawsuit_counter()
+    return graph.model_copy(update={"nodes": nodes})
+
+
+def build_lawsuit_scenario() -> Scenario:
+    """The plain route, with the Counter stop in front of the high section, where people pay."""
+    scenario = build_scenario()
+    stops = [
+        stop.model_copy(update={"position": Vec3(x=0.3, y=3.1, z=0.0)}) if stop.name == "Counter" else stop
+        for stop in scenario.stops
+    ]
+    return scenario.model_copy(update={"stops": stops})

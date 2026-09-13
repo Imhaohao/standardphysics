@@ -53,3 +53,13 @@ counters." Paragraphs 2, 3 and 8 name Happy Lemon at 919 Story Rd., San Jose,
 and a December 2021 visit. The fixture's 47 in, the paragraph and the `5:`
 prefix all hold. Whether the pitch should name the business and plaintiff is
 for the team, and I have raised it with Brendan.
+
+## A-48 and A-49
+
+- **A-48.** Lane A's `a6e14f7` burst added `lidar_mesh` to `ArtifactKind`,
+  along with the `LidarMesh` contract and its validation, so the manifests now
+  validate. Lane D reviewed those contract additions and kept them.
+- **A-49.** Fixed in `edfa652`. A real scan gets a suggested route from
+  `GET /api/scans/{id}/scenario/suggestion`. `PUT /api/scans/{id}/scenario`
+  saves the route the owner confirms and queues the assessment. On `ravida` that
+  produces findings. `services/api/tests/test_route.py` covers both phone scans.
