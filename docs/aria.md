@@ -57,9 +57,17 @@ nine runs and about three minutes. The grid saves to `runs/experiments.json`
 first and uploads second, so a missing key costs the upload rather than the
 numbers.
 
-`WANDB_API_KEY`, `WANDB_ENTITY` and `WANDB_PROJECT` from `.env` decide where the
-runs land. It is the same project Weave traces into, so the traces and the
-experiments sit together.
+`WANDB_PROJECT` decides where the runs land, and it is the same project Weave
+traces into, so the traces and the experiments sit together. Signing in works
+either way: `WANDB_API_KEY` in `.env`, or `wandb login` once on the machine.
+
+`WANDB_ENTITY` is the team that owns the project. Leave it empty and wandb uses
+the default entity of whoever signed in, which is their personal one — the runs
+land, and ARIA will not answer about them. The command prints the entity and
+project it used, so check that line says the team.
+
+Nothing is uploaded until one of those is set. Until then the command says so
+and writes the grid to disk, which is how the numbers below were produced.
 
 Every check is off until a person has read its section and confirmed its number,
 and a grid with no checks enabled scores nothing. `--preview-unverified` scores
@@ -72,7 +80,8 @@ and it records that in the config.
 |---|---|
 | The W&B project is a team project, not a personal one | ARIA only works in team projects |
 | An org admin turns on **Smart features** under Settings, Privacy | Account access |
-| `WANDB_API_KEY`, `WANDB_ENTITY`, `WANDB_PROJECT` in `.env` on the demo machine | Account access |
+| `wandb login`, or `WANDB_API_KEY` in `.env` on the demo machine | Account access |
+| `WANDB_PROJECT` and `WANDB_ENTITY` pointing at that team project | Account access |
 
 ARIA needs W&B Multi-tenant Cloud. Open it with **Ask ARIA** at the top right of
 the project.
@@ -100,7 +109,9 @@ access as the rest.
 
 ## What the grid says already
 
-Nine runs, 39 cases each, rules scored as verified, on an M2 Pro.
+Nine runs of the grid on disk, 39 cases each, rules scored as verified, on
+an M2 Pro. These were run without an account, so they are in
+`runs/experiments.json` rather than in W&B.
 
 | Cell size | Weakest score | Measurements | Seconds |
 |---|---|---|---|

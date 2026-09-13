@@ -21,8 +21,12 @@ from standardphysics_agents.evaluation.configuration import (
 from standardphysics_agents.evaluation.experiments import (
     DEFAULT_GRID,
     GRID_AXES,
+    NOT_INSTALLED,
+    NOT_SIGNED_IN,
+    NO_PROJECT,
     TABLE_COLUMNS,
     Counted,
+    blocker,
     grid,
     log_experiments,
     run_experiment,
@@ -64,6 +68,11 @@ class FakeWandb:
     def __init__(self):
         self.runs: list[FakeRun] = []
         self.refuse = False
+        self.key: str | None = None
+
+    def login(self, prompt=True, verify=True):
+        """What wandb answers when asked whether it already holds a key."""
+        return self.key is not None
 
     def init(self, **arguments):
         if self.refuse:
@@ -246,11 +255,13 @@ class TestWithoutAnAccount:
         monkeypatch.delenv("WANDB_PROJECT")
         assert log_experiments([experiment]) == []
         assert wandb.runs == []
+        assert blocker() == NO_PROJECT
 
-    def test_no_key_logs_nothing(self, wandb, experiment, monkeypatch):
+    def test_no_key_and_no_login_logs_nothing(self, wandb, experiment, monkeypatch):
         monkeypatch.delenv("WANDB_API_KEY")
-        assert target() is None
+        assert blocker() == NOT_SIGNED_IN
         assert log_experiments([experiment]) == []
+        assert wandb.runs == []
 
     def test_a_refused_key_leaves_the_numbers_alone(self, wandb, experiment):
         wandb.refuse = True
@@ -263,8 +274,45 @@ class TestWithoutAnAccount:
         monkeypatch.setitem(sys.modules, "wandb", None)
         monkeypatch.setenv("WANDB_API_KEY", "not-a-real-key")
         monkeypatch.setenv("WANDB_PROJECT", "standardphysics")
-        with pytest.raises(RuntimeError, match="observability"):
-            log_experiments([experiment])
+        assert blocker() == NOT_INSTALLED
+        assert log_experiments([experiment]) == []
+
+
+class TestSigningIn:
+    """The gate this module keeps: a run is only attempted where wandb can
+    authenticate on its own. Asking for a key in the environment and nowhere
+    else is what left a project reading zero runs after a `wandb login`."""
+
+    def test_a_login_counts_without_a_key_in_the_environment(
+        self, wandb, experiment, monkeypatch
+    ):
+        monkeypatch.delenv("WANDB_API_KEY")
+        wandb.key = "from-netrc"
+        assert blocker() is None
+        assert log_experiments([experiment]) == [FakeRun.url]
+
+    def test_a_key_in_the_environment_counts_on_its_own(self, wandb, experiment):
+        assert wandb.key is None
+        assert blocker() is None
+
+    def test_writing_to_a_directory_needs_neither(
+        self, wandb, experiment, monkeypatch
+    ):
+        monkeypatch.delenv("WANDB_API_KEY")
+        monkeypatch.setenv("WANDB_MODE", "offline")
+        assert blocker() is None
+
+    def test_a_project_is_still_required(self, wandb, monkeypatch):
+        monkeypatch.delenv("WANDB_PROJECT")
+        wandb.key = "from-netrc"
+        assert blocker() == NO_PROJECT
+
+    def test_the_team_may_be_left_to_wandb(self, wandb, experiment, monkeypatch):
+        """wandb falls back to the default entity, which is personal, and ARIA
+        only answers in a team project. The command prints where they went."""
+        monkeypatch.delenv("WANDB_ENTITY")
+        log_experiments([experiment])
+        assert wandb.runs[0].arguments["entity"] is None
 
 
 class TestTheGridOnDisk:
@@ -363,7 +411,7 @@ class TestAgainstTheRealSdk:
         monkeypatch.setenv("WANDB_MODE", "offline")
         monkeypatch.setenv("WANDB_DIR", str(tmp_path))
         monkeypatch.setenv("WANDB_SILENT", "true")
-        monkeypatch.setenv("WANDB_API_KEY", "offline-placeholder")
+        monkeypatch.delenv("WANDB_API_KEY", raising=False)
         monkeypatch.setenv("WANDB_ENTITY", "team")
         monkeypatch.setenv("WANDB_PROJECT", "shop-review")
         yield tmp_path

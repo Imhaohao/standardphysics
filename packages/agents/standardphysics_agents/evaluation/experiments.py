@@ -47,6 +47,8 @@ from .scorers import LOWER_IS_BETTER, SCORERS
 
 KEY_ENV = "WANDB_API_KEY"
 
+MODE_ENV = "WANDB_MODE"
+
 GROUP = "shop-review-grid"
 
 JOB_TYPE = "evaluation"
@@ -218,21 +220,80 @@ def run_grid(
     ]
 
 
+NO_PROJECT = (
+    "Set WANDB_PROJECT to the project these runs belong in, and WANDB_ENTITY "
+    "to the team that owns it."
+)
+
+NOT_INSTALLED = (
+    "Install the SDK: python -m pip install -e 'packages/agents[observability]'."
+)
+
+NOT_SIGNED_IN = "Sign in with wandb login, or put WANDB_API_KEY in .env."
+
+
 def target(
     project: str | None = None, entity: str | None = None
 ) -> tuple[str, str | None] | None:
-    """The project ARIA reads, or nothing when there is no account to read it.
+    """Which project and team to log to, or nothing when no project is named.
 
     `WANDB_PROJECT` holds either a name or `entity/name`, because that is what
-    `weave.init` takes and the two share one project.
+    `weave.init` takes and the two share one project. The team may be left to
+    wandb, which falls back to the default entity of whoever is signed in —
+    worth knowing, because that default is a personal entity and ARIA only
+    answers in a team project.
     """
     name = project or os.environ.get(PROJECT_ENV)
-    if not name or not os.environ.get(KEY_ENV):
+    if not name:
         return None
     team = entity or os.environ.get(ENTITY_ENV)
     if "/" in name:
         team, name = name.split("/", 1)
     return name, team
+
+
+def signed_in(module: Any) -> bool:
+    """Whether wandb can authenticate without asking anybody.
+
+    A key in the environment, a `wandb login` that wrote one to `~/.netrc`, or
+    a run going to a directory instead of to the cloud. `wandb.init` prompts
+    for a key when it finds none, which would hang a command nobody is
+    watching, so this is asked before init rather than caught after it.
+    """
+    if os.environ.get(KEY_ENV) or os.environ.get(MODE_ENV) == "offline":
+        return True
+    return _holds_a_key(module)
+
+
+def _holds_a_key(module: Any) -> bool:
+    """`login(prompt=False)` is how current wandb answers this without asking.
+
+    Older versions answer with `wandb.api.api_key`, which current ones warn
+    about, so it is the fallback rather than the first ask. `verify` stays off
+    because this decides whether to try, and a key the server rejects is
+    already handled where the run is made.
+    """
+    login = getattr(module, "login", None)
+    if login is not None:
+        try:
+            return bool(login(prompt=False, verify=False))
+        except TypeError:
+            pass
+    return bool(getattr(getattr(module, "api", None), "api_key", None))
+
+
+def blocker(
+    project: str | None = None, entity: str | None = None
+) -> str | None:
+    """What to do so these runs land in W&B, or nothing when they will."""
+    if target(project, entity) is None:
+        return NO_PROJECT
+    module = _import_wandb()
+    if module is None:
+        return NOT_INSTALLED
+    if not signed_in(module):
+        return NOT_SIGNED_IN
+    return None
 
 
 def log_experiments(
@@ -248,10 +309,10 @@ def log_experiments(
     key, an SDK that moved. None of them may discard numbers that have already
     been computed, so a failure is logged and the local record stands.
     """
-    where = target(project, entity)
-    if where is None:
+    if blocker(project, entity) is not None:
         return []
-    module = _wandb()
+    where = target(project, entity)
+    module = _import_wandb()
     urls = []
     for experiment in experiments:
         url = _log_one(module, experiment, where, group)
@@ -317,20 +378,17 @@ def save_experiments(experiments: list[Experiment], path: Path) -> Path:
     return path
 
 
-def _wandb() -> Any:
+def _import_wandb() -> Any | None:
     try:
         import wandb
-    except ImportError as error:
-        raise RuntimeError(
-            "The experiment grid needs: "
-            "python -m pip install -e 'packages/agents[observability]'"
-        ) from error
+    except ImportError:
+        return None
     return wandb
 
 
 __all__ = [
-    "DEFAULT_GRID", "GRID_AXES", "GROUP", "JOB_TYPE", "KEY_ENV", "NOTES",
-    "TABLE_COLUMNS", "TAGS", "Counted", "Experiment", "grid",
-    "log_experiments", "run_experiment", "run_grid", "save_experiments",
-    "target",
+    "DEFAULT_GRID", "GRID_AXES", "GROUP", "JOB_TYPE", "KEY_ENV", "MODE_ENV",
+    "NOTES", "NOT_INSTALLED", "NOT_SIGNED_IN", "NO_PROJECT", "TABLE_COLUMNS",
+    "TAGS", "Counted", "Experiment", "blocker", "grid", "log_experiments",
+    "run_experiment", "run_grid", "save_experiments", "signed_in", "target",
 ]

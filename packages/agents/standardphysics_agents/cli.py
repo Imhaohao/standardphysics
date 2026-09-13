@@ -30,6 +30,7 @@ from .evaluation import (
     DEFAULT_SETUPS,
     evaluate,
     evaluate_in_weave,
+    blocker,
     log_experiments,
     previewing,
     run_accessibility_sweep,
@@ -244,10 +245,8 @@ WEAVE_NOT_CONFIGURED = (
     "Weave is not configured. Set WANDB_PROJECT and WANDB_ENTITY, then try again."
 )
 
-GRID_STAYED_LOCAL = (
-    "The grid is on disk. To put it where ARIA reads it, set WANDB_API_KEY, "
-    "WANDB_ENTITY and WANDB_PROJECT, then run this again."
-)
+GRID_STAYED_LOCAL = "The grid is on disk. To put it where ARIA reads it: "
+
 
 
 def _nothing_enabled(pack, ledger) -> bool:
@@ -479,9 +478,12 @@ def _reading(value: float | None) -> str:
 
 
 def _print_runs(experiments) -> None:
-    if target() is None:
-        print(GRID_STAYED_LOCAL, file=sys.stderr)
+    reason = blocker()
+    if reason is not None:
+        print(f"{GRID_STAYED_LOCAL}{reason}", file=sys.stderr)
         return
+    project, team = target()
+    print(f"\n{len(experiments)} runs in {team or 'your default entity'}/{project}")
     for url in log_experiments(experiments):
         print(f"  {url}")
 
