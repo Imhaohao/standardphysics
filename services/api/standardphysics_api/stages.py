@@ -32,8 +32,8 @@ from standardphysics_agents import (
     load_pack,
 )
 from standardphysics_agents.ask import Answer, ask
-from standardphysics_agents.loop import loop_steps
 from standardphysics_agents.fix import FixOutcome, propose_fix
+from standardphysics_agents.loop import loop_steps
 from standardphysics_contracts import Assessment, Finding, Scenario, SceneGraph, Stop, Vec3
 from standardphysics_pipeline import PipelineMeasurements, blender, parse_room_json, reconstruct
 from standardphysics_pipeline.discovery import DiscoveryError, DiscoveryInputs, DiscoveryResult, discover_objects
