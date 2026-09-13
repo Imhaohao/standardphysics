@@ -808,6 +808,7 @@ export interface TextureBuild {
   coverage_mask_urls: string[];
   frames_used: number;
   glb_url: string;
+  scan_glb_url: string | null;
   seconds: number;
 }
 /**

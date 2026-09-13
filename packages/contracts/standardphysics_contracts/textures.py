@@ -118,6 +118,13 @@ class TextureCoverage(BaseModel):
 class TextureBuild(BaseModel):
     build_id: str
     glb_url: str
+    scan_glb_url: str | None = None
+    """The scanned surface itself, in colour, when it could be painted.
+
+    The boxes are what a check measures and what an owner drags. This is what
+    the room looks like: the LiDAR mesh with every vertex given the colour of
+    the photo that saw it best.
+    """
     coverage_mask_urls: list[str]
     """One grayscale mask per atlas, in atlas order: white where photos reached."""
     bake_graph: SceneGraph

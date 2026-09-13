@@ -10,6 +10,7 @@ import { CameraRig } from "./CameraRig";
 import { MODEL, outcomeColor } from "./palette";
 import { type ArrangeHandlers, BoxShopModel, GlbShopModel } from "./ShopModel";
 import { LidarShopModel } from "./LidarShopModel";
+import { PaintedScan } from "./PaintedScan";
 import { type RouteHandles, StopMarkers } from "./StopMarkers";
 
 type ViewerProps = {
@@ -25,7 +26,8 @@ type ViewerProps = {
   selected: Focus | null;
   onSelectNode: (nodeId: string) => void;
   onClearSelection: () => void;
-  materialMode: "captured" | "plain" | "coverage";
+  materialMode: "captured" | "plain" | "coverage" | "scan";
+  scanGlbUrl: string | null;
   staleNodeIds: string[];
   coverage: NodeTextureCoverage[];
 };
@@ -61,22 +63,29 @@ function Lights() {
   );
 }
 
-type ShopSurfacesProps = Pick<ViewerProps, "scene" | "exported" | "arrange" | "glbUrl" | "lidarUrl" | "selected" | "onSelectNode" | "cutWalls" | "materialMode" | "staleNodeIds" | "coverage">;
+type ShopSurfacesProps = Pick<ViewerProps, "scene" | "exported" | "arrange" | "glbUrl" | "scanGlbUrl" | "lidarUrl" | "selected" | "onSelectNode" | "cutWalls" | "materialMode" | "staleNodeIds" | "coverage">;
 
-function ShopSurfaces({ scene, exported, arrange, glbUrl, lidarUrl, selected, onSelectNode, cutWalls, materialMode, staleNodeIds, coverage }: ShopSurfacesProps) {
-  const focus = selected?.locus ? new Set(selected.locus.node_ids) : null;
-  const modelProps = {
+function modelPropsFor({ scene, arrange, selected, onSelectNode, cutWalls, materialMode, staleNodeIds, coverage }: ShopSurfacesProps) {
+  return {
     shown: scene,
-    focus,
+    focus: selected?.locus ? new Set(selected.locus.node_ids) : null,
     focusColor: selected ? outcomeColor(selected.outcome) : MODEL.accent,
     onSelectNode,
     arrange,
     cutWalls,
-    materialMode,
+    // The boxes never render the scan: it replaces them. They appear in that
+    // mode only as the fallback while the scan loads, and plain is right there.
+    materialMode: materialMode === "scan" ? ("plain" as const) : materialMode,
     staleNodeIds: new Set(staleNodeIds),
     coverage: new Map(coverage.map((entry) => [entry.node_id, entry.textured_fraction])),
   };
+}
+
+function ShopSurfaces(props: ShopSurfacesProps) {
+  const { exported, glbUrl, scanGlbUrl, lidarUrl, materialMode } = props;
+  const modelProps = modelPropsFor(props);
   const boxes = <BoxShopModel {...modelProps} />;
+  if (materialMode === "scan" && scanGlbUrl) return <ScannedRoom url={scanGlbUrl} whileLoading={boxes} />;
   const reconstructed = !glbUrl ? boxes : (
     <GlbFallback key={glbUrl} fallback={boxes}>
       <Suspense fallback={boxes}>
@@ -87,7 +96,24 @@ function ShopSurfaces({ scene, exported, arrange, glbUrl, lidarUrl, selected, on
   return <group>{lidarUrl && <LidarShopModel key={lidarUrl} url={lidarUrl} />}{reconstructed}</group>;
 }
 
-export default function Viewer({ scene, exported, arrange, route, dragging, cutWalls, glbUrl, lidarUrl, pose, selected, onSelectNode, onClearSelection, materialMode, staleNodeIds, coverage }: ViewerProps) {
+/**
+ * The room as it was scanned, shown instead of the boxes rather than with them.
+ *
+ * Two surfaces a few centimetres apart fight over every pixel, and the boxes
+ * miss the real surfaces by inches, so drawing both at once gives a room that
+ * flickers. The boxes stand in only while the scan is on its way.
+ */
+function ScannedRoom({ url, whileLoading }: { url: string; whileLoading: ReactNode }) {
+  return (
+    <group>
+      <GlbFallback key={url} fallback={whileLoading}>
+        <Suspense fallback={whileLoading}><PaintedScan url={url} /></Suspense>
+      </GlbFallback>
+    </group>
+  );
+}
+
+export default function Viewer({ scene, exported, arrange, route, dragging, cutWalls, glbUrl, scanGlbUrl, lidarUrl, pose, selected, onSelectNode, onClearSelection, materialMode, staleNodeIds, coverage }: ViewerProps) {
   return (
     <Canvas
       frameloop="demand"
@@ -109,7 +135,7 @@ export default function Viewer({ scene, exported, arrange, route, dragging, cutW
         <planeGeometry args={[80, 80]} />
         <meshStandardMaterial color={MODEL.ground} roughness={1} />
       </mesh>
-      <ShopSurfaces scene={scene} exported={exported} arrange={arrange} glbUrl={glbUrl} lidarUrl={lidarUrl} selected={selected} onSelectNode={onSelectNode} cutWalls={cutWalls} materialMode={materialMode} staleNodeIds={staleNodeIds} coverage={coverage} />
+      <ShopSurfaces scene={scene} exported={exported} arrange={arrange} glbUrl={glbUrl} scanGlbUrl={scanGlbUrl} lidarUrl={lidarUrl} selected={selected} onSelectNode={onSelectNode} cutWalls={cutWalls} materialMode={materialMode} staleNodeIds={staleNodeIds} coverage={coverage} />
       {selected && <FindingAnnotation finding={selected} />}
       {route && <StopMarkers route={route} />}
     </Canvas>

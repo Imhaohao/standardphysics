@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import pathlib
 import re
 import shutil
@@ -15,13 +16,16 @@ from pydantic import ValidationError
 from standardphysics_contracts import PhotoManifest, PoseRecord, SceneGraph, TextureBuild, TextureRequest, TextureStatus
 from standardphysics_pipeline.ingest import capture_to_room_from_payload
 from standardphysics_pipeline.textures import BakeInputs, bake_graph_for, stale_node_ids, texture_build_key
+from standardphysics_pipeline.textures.scan_colour import paint_the_scan
 
 from . import repository as repo
 from .errors import ApiProblem
 
+log = logging.getLogger(__name__)
+
 TEXTURE = "texture"
 BUILD_KEY = re.compile(r"^[0-9a-f]{64}$")
-ASSET_NAME = re.compile(r"^(scene\.glb|coverage-[0-3]\.png)$")
+ASSET_NAME = re.compile(r"^(scene\.glb|scan\.glb|coverage-[0-3]\.png)$")
 MAX_METADATA_BYTES = 4_000_000
 
 
@@ -195,6 +199,35 @@ def maybe_queue_texture(database, store, worker, scan_id, revision=None):
             raise
 
 
+def _paint_the_scan(store, scan_id, graph, inputs, out_dir) -> bool:
+    """Colour the captured surface as well as the boxes, when there is a mesh to colour.
+
+    The boxes are what a check measures and an owner drags, and they are the
+    wrong thing to photograph: a generated top misses the surface under it by
+    inches, so a photo laid on it slides. The scan is the surface, so this is
+    the one that looks like the room. It is display only and never blocks a
+    build; a capture without a mesh simply has no scan to show.
+    """
+    if not inputs["lidar"]:
+        return False
+    try:
+        painted = paint_the_scan(
+            mesh_path=store.artifact_path(scan_id, inputs["lidar"]),
+            poses_path=store.artifact_path(scan_id, inputs["poses"]),
+            frame_paths={key: store.artifact_path(scan_id, value) for key, value in inputs["frames"].items()},
+            capture_to_room=graph.capture_to_room,
+            out_path=out_dir / "scan.glb",
+        )
+    except (ValueError, OSError, RuntimeError) as error:
+        log.warning("no coloured scan for %s: %s", scan_id, error)
+        return False
+    log.info(
+        "painted %.0f%% of the scan for %s from %d photos in %.0fs",
+        painted.painted_fraction * 100, scan_id, painted.photos_used, painted.seconds,
+    )
+    return painted.glb_path.is_file()
+
+
 def run_texture(database, store, stages, scan_id, build_id):
     with database.connect() as connection:
         row = connection.execute("SELECT * FROM texture_builds WHERE id=? AND scan_id=?", (build_id, str(scan_id))).fetchone()
@@ -223,7 +256,14 @@ def run_texture(database, store, stages, scan_id, build_id):
             for mask in baked.coverage_mask_paths:
                 if mask.parent != temporary or not mask.is_file() or not ASSET_NAME.fullmatch(mask.name):
                     raise ValueError("baker produced an invalid coverage mask")
-            result = TextureBuild(build_id=row["build_key"], glb_url=prefix + "/scene.glb", coverage_mask_urls=[prefix + "/" + path.name for path in baked.coverage_mask_paths], bake_graph=graph, coverage=baked.coverage, frames_used=baked.frames_used, seconds=baked.seconds)
+            scan_glb = _paint_the_scan(store, scan_id, graph, inputs, temporary)
+            result = TextureBuild(
+                build_id=row["build_key"], glb_url=prefix + "/scene.glb",
+                scan_glb_url=prefix + "/scan.glb" if scan_glb else None,
+                coverage_mask_urls=[prefix + "/" + path.name for path in baked.coverage_mask_paths],
+                bake_graph=graph, coverage=baked.coverage,
+                frames_used=baked.frames_used, seconds=baked.seconds,
+            )
             (temporary / "result.json").write_text(result.model_dump_json())
             temporary.rename(destination)
         finally:

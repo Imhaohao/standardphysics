@@ -26,9 +26,14 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from ..lidar import load_mesh, triangles_in_arkit_world, vertices_in_arkit_world
-from .camera import PhotoCamera
+from ..lidar import load_mesh
+from .camera import PhotoCamera, load_cameras
 from .project import bilinear, depth_buffer, to_linear, to_srgb
+
+MAX_PHOTOS = 60
+"""Photos read for colour. Every vertex keeps only its best view, so more
+photos raise coverage and never blend; this is where the gain flattens."""
+MAX_PHOTO_EDGE = 1600
 
 SEEN_TOLERANCE = 0.05
 """How close to the nearest scanned surface a vertex must be to count as seen."""
@@ -161,3 +166,53 @@ def write_scan_glb(scan: ColouredScan, out_path: pathlib.Path) -> pathlib.Path:
     if "SCAN_GLB_WRITTEN" not in output:
         raise RuntimeError(f"Blender did not write the scan:\n{output[-1500:]}")
     return out_path
+
+
+@dataclass(frozen=True)
+class ScanPaint:
+    glb_path: pathlib.Path
+    painted_fraction: float
+    photos_used: int
+    seconds: float
+
+
+def _evenly_spread(cameras: list[PhotoCamera], limit: int) -> list[PhotoCamera]:
+    if len(cameras) <= limit:
+        return cameras
+    picks = np.linspace(0, len(cameras) - 1, limit).round().astype(int)
+    return [cameras[index] for index in dict.fromkeys(picks.tolist())]
+
+
+def _photo(path: pathlib.Path) -> np.ndarray:
+    from PIL import Image
+
+    with Image.open(path) as opened:
+        image = opened.convert("RGB")
+        image.thumbnail((MAX_PHOTO_EDGE, MAX_PHOTO_EDGE), Image.Resampling.LANCZOS)
+        return np.asarray(image, dtype=np.float32) / 255.0
+
+
+def paint_the_scan(
+    mesh_path: pathlib.Path,
+    poses_path: pathlib.Path,
+    frame_paths: dict[str, pathlib.Path],
+    capture_to_room,
+    out_path: pathlib.Path,
+) -> ScanPaint:
+    """The captured surface, coloured from the photos, as a glTF the viewer can show."""
+    import time
+
+    started = time.monotonic()
+    vertices, triangles = scan_geometry(mesh_path, capture_to_room)
+    cameras = [
+        camera for camera in load_cameras(poses_path, frame_paths, capture_to_room)
+        if frame_paths.get(camera.frame_id, pathlib.Path()).is_file()
+    ]
+    cameras = _evenly_spread(cameras, MAX_PHOTOS)
+    if not cameras:
+        raise ValueError("no stored photo has a usable camera pose")
+    resized = [camera.resized(*_photo(frame_paths[camera.frame_id]).shape[1::-1]) for camera in cameras]
+    images = [_photo(frame_paths[camera.frame_id]) for camera in cameras]
+    scan = unused_vertices_removed(colour_the_scan(vertices, triangles, resized, images))
+    write_scan_glb(scan, out_path)
+    return ScanPaint(out_path, scan.painted_fraction, len(cameras), time.monotonic() - started)
