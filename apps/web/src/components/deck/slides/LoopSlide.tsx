@@ -159,7 +159,7 @@ function LoopDiagram({ phase }: { phase: LoopPhase }) {
 
 const copy: Record<LoopPhase, { headline: string[]; detail: string[] }> = {
   loop: {
-    headline: ["Standard Physics", "is an agent loop."],
+    headline: ["Standard Physics", "is a controlled,", "observable", "agentic loop."],
     detail: ["It checks the shop, decides, acts,", "and checks again until the problems clear."],
   },
   decide: {
