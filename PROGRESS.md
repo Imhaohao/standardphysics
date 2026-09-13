@@ -52,6 +52,8 @@ The audit fixes code only in files no lane agent is actively changing. For lanes
 | `7b72fdc` D: take the wall-clock limit out of the layout test | D | Pass | Resolves A-38 |
 | `a10d6da` D: fix the audit's Lane D findings A-29 through A-39 | D | Pass with notes | Resolves A-29, A-31, A-33, A-35, A-37, A-39; A-30 documented; A-36 partly; introduces A-43; A-44 |
 | `a00eda7` B: put agents and api on the local test path | B | Pass | Lets a plain local `pytest` import the audit tests' Lane C and API modules; 153 passed and 7 expected failures after it |
+| `fff9e60` D: find a layout that fixes a finding, then try it | D | Pass with notes | A-45 |
+| `2b0e2b0` D: the fixture counter stands 47 inches | D | Pass with notes | A-46; edits Lane C's `dataset.py` and `test_checks.py` again, as A-18 records; rule threshold still 36 in |
 
 `609db3d`, `9028d14`, `b90e570`, `d3f7d95` and `1a06655` change only the plan and lane documents. A-1 covers the lane document errors from `9028d14`.
 
@@ -303,3 +305,13 @@ Medium. `open`. Lane D. Introduced by `a10d6da`.
 Medium. `open`. Lane D.
 
 Until a person reviews the rule pack every check is off, and `assess` returns an assessment with no findings. Reproduced at `a10d6da` with the default ledger: the sample shop is `ready` and its assessment has 0 findings. `scanStatus` turns an assessment with nothing needing attention into "Everything we checked passes", which the shops page has shown since `2fad000` and the workspace shows since `a10d6da`'s change for A-33. Nothing was checked, so it reads as a clean pass. `assess(...).unevaluated` records why, but the assess stage only logs it. Carrying the count of evaluated rules into the assessment, and saying that no rules are switched on yet when it is zero, would keep an unchecked scan from looking compliant.
+
+### A-45 Asking for a fix stalls every drag check for about three seconds
+Low. `open`. Lane D.
+
+`fff9e60`'s `Stages.propose` runs Lane C's fix search inside the same lock as `assess`, which the layout check also takes. Measured at `2b0e2b0` on the sample shop with the preview rules: a layout check alone takes 1.49 s, one proposal takes 3.33 s, and a layout check sent 0.3 s after a proposal starts takes 4.21 s. Queued assessments wait behind a proposal the same way. The lock protects Lane B's measurement cache, so giving the fix search its own `PipelineMeasurements` would likely let a drag check run alongside it.
+
+### A-46 The lawsuit behind the fixture counter is only partly verified
+Low. `open`. Lane D.
+
+`2b0e2b0` sets the fixture counter to 47 in and cites Whitaker v. T Rock Inc., N.D. Cal. No. 5:22-cv-00283, complaint paragraph 12. The case exists: CourtListener lists Whitaker v. T Rock Inc., 22-cv-00283-JST, filed January 14, 2022, over the Happy Lemon shop in San Jose. The 47 in figure, the paragraph number and the `5:` division prefix could not be confirmed from public sources, because the complaint is behind PACER. Search results also describe the plaintiff as a serial ADA filer, including a dismissal reported by CBS San Francisco. Before the pitch names a real business and plaintiff, someone should read the complaint and decide whether this is the example to lead with.

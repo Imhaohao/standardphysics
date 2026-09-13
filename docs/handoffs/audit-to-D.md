@@ -61,3 +61,9 @@ Verified by running code: the A-29, A-31 and A-35 tests pass without their marke
 - **A-43, medium, introduced here, pinned.** `complete` on a `failed` scan sets `measuring` but requeues only failed `process` jobs. When `assess` was the job that failed, nothing runs and the scan stays `measuring`, so the app waits forever. Requeue whichever job failed, or leave the scan `failed` when there is nothing to retry.
 - **A-44, medium.** With no rule verified, the sample shop is `ready` with 0 findings, and `scanStatus` says "Everything we checked passes" on both the shops page and the workspace. Say that no rules are switched on yet instead.
 - **A-36, partly fixed.** `X-Exported-Revision` is right for boxes. A GLB converted from the USDZ holds the original layout whatever revision's job made it, so it should report revision 0.
+
+## `fff9e60` and `2b0e2b0`
+
+- **A-45, low.** A proposal holds the assess lock for about 3.3 s on the sample shop, so a drag check sent during one took 4.21 s instead of 1.49 s. Giving the fix search its own measurement provider would likely let drags run alongside it.
+- **A-46, low.** The case is real (CourtListener: Whitaker v. T Rock Inc., 22-cv-00283-JST, Happy Lemon, San Jose), but the 47 in figure, paragraph 12 and the `5:` prefix could not be confirmed without the complaint. Read it before the pitch names the business, and weigh that search results describe the plaintiff as a serial filer.
+- `2b0e2b0` edits two numbers in Lane C's files. The handoff says so and the change is mechanical, but it is the cross-lane edit A-18 records.
