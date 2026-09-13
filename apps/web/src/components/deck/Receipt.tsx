@@ -36,10 +36,10 @@ const paperPrinting: Variants = {
 
 export function Receipt() {
   return (
-    <div className="flex w-receipt min-w-fit flex-col items-stretch text-caption">
+    <div className="flex w-receipt min-w-fit flex-col items-stretch text-caption drop-shadow-2xl">
       <div aria-hidden className="relative z-10 h-4 rounded-full bg-ink shadow-lg" />
       <div className="-mt-2 overflow-hidden px-4">
-        <motion.div variants={paperPrinting} className="receipt-tear bg-paper-raised px-6 pt-8 pb-10 shadow-xl">
+        <motion.div variants={paperPrinting} className="receipt-tear bg-paper-raised px-6 pt-8 pb-10">
           <p className="text-center font-display font-bold">{facts.lawsuit.shortName}</p>
           <dl className="mt-4 border-t border-dashed border-rule pt-4 font-display figures-tabular">
             {receiptRows.map((row) => (
