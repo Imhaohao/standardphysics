@@ -65,7 +65,7 @@ install_python() {
   [ "$(cat "$stamp" 2>/dev/null)" = "$wanted" ] && return
   echo "Installing Python packages"
   install_into_venv -e . -e packages/contracts -e packages/fixtures -e packages/pipeline \
-    -e "packages/agents[observability]" -e "services/api[test]"
+    -e "packages/agents[observability,notebook]" -e "services/api[test]"
   echo "$wanted" >"$stamp"
 }
 

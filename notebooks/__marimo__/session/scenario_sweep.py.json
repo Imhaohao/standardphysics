@@ -1,0 +1,334 @@
+{
+  "version": "1",
+  "metadata": {
+    "marimo_version": "0.24.2",
+    "script_metadata_hash": null
+  },
+  "cells": [
+    {
+      "id": "Hbol",
+      "code_hash": "68c4623e31b678551a127b32a7092b85",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "MJUe",
+      "code_hash": "ef1b23ee25eb628a96013977cf65e310",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "vblA",
+      "code_hash": "4275efaaa15c85460ab2d75e88d0fb46",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "bkHC",
+      "code_hash": "a9e817d61e6bb5d93a534affd1ba4227",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "lEQa",
+      "code_hash": "d36c382f454f53f4d0c7a591e49e20cf",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"one-shop-one-knob-at-a-time\">One shop, one knob at a time</h1>\n<span class=\"paragraph\">Move a slider and the shop changes shape. The same checks the server\nruns read the new room, so a measurement that appears here is the\nmeasurement an owner would be shown.</span></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "PKri",
+      "code_hash": "870537399b6eb3f8f36aaa274b5b0c93",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "<div style='display: flex;flex: 1;flex-direction: column;justify-content: flex-start;align-items: normal;flex-wrap: nowrap;gap: 0.75rem'><marimo-ui-element object-id='PKri-0' random-id='f162d764-dd4a-03e0-07df-cb549574f0a6'><marimo-dropdown data-initial-value='[&quot;Order a drink&quot;]' data-label='&quot;&#92;u003cspan class=&#92;&quot;markdown prose dark:prose-invert contents&#92;&quot;&#92;u003e&#92;u003cspan class=&#92;&quot;paragraph&#92;&quot;&#92;u003eRoutine&#92;u003c/span&#92;u003e&#92;u003c/span&#92;u003e&quot;' data-options='[&quot;Order a drink&quot;,&quot;Walk in from the street&quot;]' data-allow-select-none='false' data-searchable='false' data-full-width='false' data-disabled='false'></marimo-dropdown></marimo-ui-element><marimo-ui-element object-id='PKri-1' random-id='181181d6-f0f2-419b-4ee8-ea48210eac8a'><marimo-slider data-initial-value='31.0' data-label='&quot;&#92;u003cspan class=&#92;&quot;markdown prose dark:prose-invert contents&#92;&quot;&#92;u003e&#92;u003cspan class=&#92;&quot;paragraph&#92;&quot;&#92;u003eGap between the display cases&#92;u003c/span&#92;u003e&#92;u003c/span&#92;u003e&quot;' data-start='24.0' data-stop='72.0' data-step='0.5' data-steps='[]' data-debounce='false' data-disabled='false' data-orientation='&quot;horizontal&quot;' data-show-value='true' data-include-input='false' data-full-width='false'></marimo-slider></marimo-ui-element><marimo-ui-element object-id='PKri-2' random-id='e96de61d-3511-5bec-8726-eb643dafa211'><marimo-slider data-initial-value='47.0' data-label='&quot;&#92;u003cspan class=&#92;&quot;markdown prose dark:prose-invert contents&#92;&quot;&#92;u003e&#92;u003cspan class=&#92;&quot;paragraph&#92;&quot;&#92;u003eCounter height&#92;u003c/span&#92;u003e&#92;u003c/span&#92;u003e&quot;' data-start='28.0' data-stop='52.0' data-step='0.5' data-steps='[]' data-debounce='false' data-disabled='false' data-orientation='&quot;horizontal&quot;' data-show-value='true' data-include-input='false' data-full-width='false'></marimo-slider></marimo-ui-element><marimo-ui-element object-id='PKri-3' random-id='067db7fc-778f-4f65-fedd-d5186621921a'><marimo-slider data-initial-value='35.5' data-label='&quot;&#92;u003cspan class=&#92;&quot;markdown prose dark:prose-invert contents&#92;&quot;&#92;u003e&#92;u003cspan class=&#92;&quot;paragraph&#92;&quot;&#92;u003eFront door opening&#92;u003c/span&#92;u003e&#92;u003c/span&#92;u003e&quot;' data-start='26.0' data-stop='44.0' data-step='0.5' data-steps='[]' data-debounce='false' data-disabled='false' data-orientation='&quot;horizontal&quot;' data-show-value='true' data-include-input='false' data-full-width='false'></marimo-slider></marimo-ui-element><marimo-ui-element object-id='PKri-4' random-id='6e216b2b-914a-bc63-175f-245d95a36e1e'><marimo-switch data-initial-value='true' data-label='&quot;&#92;u003cspan class=&#92;&quot;markdown prose dark:prose-invert contents&#92;&quot;&#92;u003e&#92;u003cspan class=&#92;&quot;paragraph&#92;&quot;&#92;u003eKeep the seating by the counter&#92;u003c/span&#92;u003e&#92;u003c/span&#92;u003e&quot;' data-disabled='false'></marimo-switch></marimo-ui-element></div>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "Xref",
+      "code_hash": "1c1ff457fb1454787d4575bc9f552f77",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "SFPL",
+      "code_hash": "487159cc920b9bd454f45ab971186066",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "BYtC",
+      "code_hash": "bb9f11404fdec9673fd7a9e6dab15234",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "RGSE",
+      "code_hash": "52e6d171c113d7c4a1ae2a572eb3968e",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "Kclp",
+      "code_hash": "cf8e6107d410e9cc58953357eedc6d7c",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "emfo",
+      "code_hash": "ace75e9ff1c5b5d0d3af5afcb3a160d6",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"what-the-checks-found\">What the checks found</h2></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "Hstk",
+      "code_hash": "8f11a26c653d6f7ac22a6aa0759ffc1b",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "\n    <div style=\"display:flex;align-items:baseline;gap:2rem;flex-wrap:wrap\">\n      <div>\n        <div style=\"font-size:3rem;line-height:1;font-variant-numeric:tabular-nums;\n                    color:#1b1c1e\">\n          0.000 in</div>\n        <div style=\"font-size:0.875rem;color:#5d5e61;max-width:24rem;\n                    margin-top:0.35rem\">\n          between the dimensions these sliders set and the dimensions the\n          pipeline measured in the room they built.\n        </div>\n      </div>\n      <dl style=\"margin:0;font-size:0.875rem;color:#5d5e61;\n                 display:grid;grid-template-columns:auto auto;gap:0.3rem 1rem\">\n        <dt>Questions asked</dt>\n        <dd style=\"margin:0;font-variant-numeric:tabular-nums;\n                   color:#1b1c1e\">100%</dd>\n        <dt>Counter and door found</dt>\n        <dd style=\"margin:0;font-variant-numeric:tabular-nums;\n                   color:#1b1c1e\">100%</dd>\n        <dt>What the loop would do next</dt>\n        <dd style=\"margin:0;color:#1b1c1e\">fix</dd>\n      </dl>\n    </div>\n    "
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "nWHF",
+      "code_hash": "6bee5a0db02466b9a9d9528aabb3af5f",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "\n    <ul style=\"padding:0;margin:0\">\n    <li style=\"padding:0.75rem 0.9rem;background:#fcfbf8;\n               border-radius:0.5rem;\n               box-shadow:inset 3px 0 0 #c8372d;\n               margin-bottom:0.4rem;list-style:none\">\n      <div style=\"color:#1b1c1e;font-weight:600\">The ordering counter is too high to order from</div>\n      <div style=\"color:#5d5e61;font-size:0.875rem;margin-top:0.2rem\">\n        It's 47 inches high. Ordering from a wheelchair needs 36 inches or lower.\n      </div>\n      <div style=\"color:#8a8a88;font-size:0.8125rem;margin-top:0.2rem\">\n        2010 ADA Standards for Accessible Design 904.4.1\n      </div>\n    </li>\n    \n    <li style=\"padding:0.75rem 0.9rem;background:#fcfbf8;\n               border-radius:0.5rem;\n               box-shadow:inset 3px 0 0 #c8372d;\n               margin-bottom:0.4rem;list-style:none\">\n      <div style=\"color:#1b1c1e;font-weight:600\">The path to the counter is too narrow</div>\n      <div style=\"color:#5d5e61;font-size:0.875rem;margin-top:0.2rem\">\n        It's 31 inches at the tightest point. Wheelchairs need 36 inches.\n      </div>\n      <div style=\"color:#8a8a88;font-size:0.8125rem;margin-top:0.2rem\">\n        2010 ADA Standards for Accessible Design 403.5.1\n      </div>\n    </li>\n    </ul>\n    <p style=\"color:#8a8a88;font-size:0.875rem;margin-top:0.6rem\">\n      6 other measurements came back inside their limit.\n    </p>\n    "
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "iLit",
+      "code_hash": "91cecbf730795cb512284ca5a08eea86",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"where-it-changes\">Where it changes</h2></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "ZHCJ",
+      "code_hash": "dd5f5afe12e8171243033106cd730375",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "<div style='display: flex;flex: 1;flex-direction: row;justify-content: flex-start;align-items: normal;flex-wrap: nowrap;gap: 2rem'><marimo-ui-element object-id='ZHCJ-0' random-id='5e2d9ab8-db3e-da8c-ee38-3a40c1abe26a'><marimo-dropdown data-initial-value='[&quot;Gap between the display cases&quot;]' data-label='&quot;&#92;u003cspan class=&#92;&quot;markdown prose dark:prose-invert contents&#92;&quot;&#92;u003e&#92;u003cspan class=&#92;&quot;paragraph&#92;&quot;&#92;u003eSweep&#92;u003c/span&#92;u003e&#92;u003c/span&#92;u003e&quot;' data-options='[&quot;Gap between the display cases&quot;,&quot;Counter height&quot;,&quot;Front door opening&quot;]' data-allow-select-none='false' data-searchable='false' data-full-width='false' data-disabled='false'></marimo-dropdown></marimo-ui-element><marimo-ui-element object-id='ZHCJ-1' random-id='140f0d22-c33d-2359-fa29-c0ce49cfd8b2'><marimo-slider data-initial-value='13' data-label='&quot;&#92;u003cspan class=&#92;&quot;markdown prose dark:prose-invert contents&#92;&quot;&#92;u003e&#92;u003cspan class=&#92;&quot;paragraph&#92;&quot;&#92;u003eReadings across the range&#92;u003c/span&#92;u003e&#92;u003c/span&#92;u003e&quot;' data-start='5' data-stop='25' data-step='1' data-steps='[]' data-debounce='false' data-disabled='false' data-orientation='&quot;horizontal&quot;' data-show-value='true' data-include-input='false' data-full-width='false'></marimo-slider></marimo-ui-element></div>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "ROlb",
+      "code_hash": "21209d0901a86a4440b1a90419d8566c",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "qnkX",
+      "code_hash": "9a4cbd20ee52c583f74b083098e16b66",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "TqIu",
+      "code_hash": "6dd5af761cf1aec5a7fd45ef5c7cf103",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "Vxnm",
+      "code_hash": "2fbd1b4803351510da766cd7355caf22",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "DnEU",
+      "code_hash": "e46000fae7fec0d74da5d8a38e79b2c3",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "ulZA",
+      "code_hash": "207e0c7088cfe7618a630df8785ce46c",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "ecfG",
+      "code_hash": "577244797aca75a8b6dba5a83bc896e0",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "<div style='display: flex;flex: 1;flex-direction: column;justify-content: flex-start;align-items: normal;flex-wrap: nowrap;gap: 0.5rem'><span class=\"markdown prose dark:prose-invert contents\"><span class=\"paragraph\">Each row is a check. Its bar covers the settings it reported a problem at.</span></span><div style=\"display:flex;gap:1.5rem;font-size:0.875rem;color:#5d5e61;margin-bottom:0.5rem;flex-wrap:wrap\"><span style=\"display:inline-flex;align-items:center;gap:0.4rem\"><span style=\"width:18px;height:6px;border-radius:3px;background:#c8372d\"></span>Reported a problem</span><span style=\"display:inline-flex;align-items:center;gap:0.4rem\"><span style=\"width:18px;height:3px;border-radius:3px;background:#2e7d4f\"></span>Inside its limit</span></div><svg viewBox=\"0 0 720 262\" width=\"100%\" role=\"img\" aria-label=\"What each check said as the gap between the display cases changes.\" style=\"max-width:720px;overflow:visible\"><title>What each check said as the gap between the display cases changes.</title><rect x=\"321.0\" y=\"55.0\" width=\"78.4\" height=\"13\" rx=\"4\" fill=\"#c8372d\" /><rect x=\"401.4\" y=\"60.0\" width=\"303.6\" height=\"3\" rx=\"1.5\" fill=\"#2e7d4f\" /><rect x=\"321.0\" y=\"82.0\" width=\"384.0\" height=\"13\" rx=\"4\" fill=\"#c8372d\" /><rect x=\"321.0\" y=\"114.0\" width=\"384.0\" height=\"3\" rx=\"1.5\" fill=\"#2e7d4f\" /><rect x=\"321.0\" y=\"141.0\" width=\"384.0\" height=\"3\" rx=\"1.5\" fill=\"#2e7d4f\" /><rect x=\"321.0\" y=\"168.0\" width=\"384.0\" height=\"3\" rx=\"1.5\" fill=\"#2e7d4f\" /><rect x=\"321.0\" y=\"195.0\" width=\"384.0\" height=\"3\" rx=\"1.5\" fill=\"#2e7d4f\" /><text x=\"0\" y=\"65.5\" font-size=\"13\" fill=\"#1b1c1e\">The path is too narrow</text><text x=\"0\" y=\"92.5\" font-size=\"13\" fill=\"#1b1c1e\">The counter is too high to order from</text><text x=\"0\" y=\"119.5\" font-size=\"13\" fill=\"#8a8a88\">The doorway is too narrow</text><text x=\"0\" y=\"146.5\" font-size=\"13\" fill=\"#8a8a88\">The way out is blocked</text><text x=\"0\" y=\"173.5\" font-size=\"13\" fill=\"#8a8a88\">There is nowhere to pass another customer</text><text x=\"0\" y=\"200.5\" font-size=\"13\" fill=\"#8a8a88\">There is not enough room to pull up to the counter</text><line x1=\"416.5\" y1=\"42.0\" x2=\"416.5\" y2=\"216.0\" stroke=\"#f6f5f1\" stroke-width=\"4\"  /><line x1=\"416.5\" y1=\"42.0\" x2=\"416.5\" y2=\"216.0\" stroke=\"#1b1c1e\" stroke-width=\"1.5\"  /><text x=\"416.5\" y=\"18.0\" font-size=\"12\" fill=\"#1b1c1e\" text-anchor=\"middle\">36 in asked for</text><line x1=\"376.3\" y1=\"42.0\" x2=\"376.3\" y2=\"216.0\" stroke=\"#f6f5f1\" stroke-width=\"4\"  /><line x1=\"376.3\" y1=\"42.0\" x2=\"376.3\" y2=\"216.0\" stroke=\"#2f5e9e\" stroke-width=\"1.5\" stroke-dasharray=\"3 3\" /><text x=\"376.3\" y=\"34.0\" font-size=\"12\" fill=\"#2f5e9e\" text-anchor=\"middle\">31 in now</text><line x1=\"320\" y1=\"216.0\" x2=\"706\" y2=\"216.0\" stroke=\"#e3e0d8\" stroke-width=\"1\" /><text x=\"320.0\" y=\"234.0\" font-size=\"12\" fill=\"#8a8a88\" text-anchor=\"middle\" style=\"font-variant-numeric:tabular-nums\">24</text><text x=\"368.2\" y=\"234.0\" font-size=\"12\" fill=\"#8a8a88\" text-anchor=\"middle\" style=\"font-variant-numeric:tabular-nums\">30</text><text x=\"416.5\" y=\"234.0\" font-size=\"12\" fill=\"#8a8a88\" text-anchor=\"middle\" style=\"font-variant-numeric:tabular-nums\">36</text><text x=\"464.8\" y=\"234.0\" font-size=\"12\" fill=\"#8a8a88\" text-anchor=\"middle\" style=\"font-variant-numeric:tabular-nums\">42</text><text x=\"513.0\" y=\"234.0\" font-size=\"12\" fill=\"#8a8a88\" text-anchor=\"middle\" style=\"font-variant-numeric:tabular-nums\">48</text><text x=\"561.2\" y=\"234.0\" font-size=\"12\" fill=\"#8a8a88\" text-anchor=\"middle\" style=\"font-variant-numeric:tabular-nums\">54</text><text x=\"609.5\" y=\"234.0\" font-size=\"12\" fill=\"#8a8a88\" text-anchor=\"middle\" style=\"font-variant-numeric:tabular-nums\">60</text><text x=\"657.8\" y=\"234.0\" font-size=\"12\" fill=\"#8a8a88\" text-anchor=\"middle\" style=\"font-variant-numeric:tabular-nums\">66</text><text x=\"706.0\" y=\"234.0\" font-size=\"12\" fill=\"#8a8a88\" text-anchor=\"middle\" style=\"font-variant-numeric:tabular-nums\">72</text><text x=\"513.0\" y=\"253.0\" font-size=\"12\" fill=\"#5d5e61\" text-anchor=\"middle\">Gap between the display cases (inches)</text></svg></div>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "Pvdt",
+      "code_hash": "bc9eff2de5a18978151b89e68ca6b999",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"what-we-could-not-answer\">What we could not answer</h2></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "ZBYS",
+      "code_hash": "d03ed76e12aed75216deb7a4d6b899b4",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "<div style='display: flex;flex: 1;flex-direction: column;justify-content: flex-start;align-items: normal;flex-wrap: nowrap;gap: 0.75rem'>\n    <div style=\"font-size:0.9375rem;color:#5d5e61\">\n      <p style=\"color:#1b1c1e;margin:0 0 0.4rem\">\n        Things a scan cannot see, which somebody has to answer.\n      </p>\n      <ul style=\"margin:0 0 1rem;padding-left:1.1rem\"><li style=\"margin-bottom:0.3rem\">Send a photo of the front door handle<span style=\"color:#8a8a88\"> \u2014 Straight on, close enough to see its shape. We'll check it opens with a closed fist and sits between 34 and 48 inches up.</span></li><li style=\"margin-bottom:0.3rem\">Push the front door open with one finger and tell us if it gives<span style=\"color:#8a8a88\"> \u2014 A door should open with 5 pounds of push, and one finger is about right for that.</span></li><li style=\"margin-bottom:0.3rem\">Send a photo of the front doorway from the side<span style=\"color:#8a8a88\"> \u2014 Get the floor and the bottom of the door in frame. We'll measure the step and check it against the half inch the standard allows.</span></li><li style=\"margin-bottom:0.3rem\">Send a photo of the floor just inside the front door<span style=\"color:#8a8a88\"> \u2014 Include any mat. We'll check it lies flat, stays put, and that carpet is no thicker than half an inch.</span></li><li style=\"margin-bottom:0.3rem\">Send a photo of the customer restroom from the doorway<span style=\"color:#8a8a88\"> \u2014 Stand in the door and get the whole room in. We'll check there's a 60 inch circle to turn around in.</span></li></ul>\n      <p style=\"color:#1b1c1e;margin:0 0 0.4rem\">\n        Rules this room did not settle.\n      </p>\n      <ul style=\"margin:0;padding-left:1.1rem\"><li style=\"margin-bottom:0.3rem\">The way out is blocked<span style=\"color:#8a8a88\"> \u2014 waiting on the CBC 10 sections on accessible means of egress, including continuity and sizing requirements</span></li><li style=\"margin-bottom:0.3rem\">There is not enough room to turn this corner<span style=\"color:#8a8a88\"> \u2014 waiting on a turn with route either side of it to measure: one zone came back at zero</span></li></ul>\n    </div>\n    <marimo-ui-element object-id='SFPL-0' random-id='1634e5f5-5959-85fd-90b3-bfc713fcdcd0'><marimo-switch data-initial-value='true' data-label='&quot;&#92;u003cspan class=&#92;&quot;markdown prose dark:prose-invert contents&#92;&quot;&#92;u003e&#92;u003cspan class=&#92;&quot;paragraph&#92;&quot;&#92;u003eRead every rule as verified, so every check runs&#92;u003c/span&#92;u003e&#92;u003c/span&#92;u003e&quot;' data-disabled='false'></marimo-switch></marimo-ui-element><span class=\"markdown prose dark:prose-invert contents\"><span class=\"paragraph\">Nobody has read a section on this machine yet, so these numbers come from thresholds no reviewer has confirmed. <code>standardphysics-agents rules review --by \"&lt;name&gt;\"</code> is where that happens.</span></span></div>"
+          }
+        }
+      ],
+      "console": []
+    }
+  ]
+}

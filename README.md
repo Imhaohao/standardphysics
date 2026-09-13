@@ -18,6 +18,7 @@ Owners spend less on consultants and more time building the shop of their dreams
 | Lane D, contracts, API, web | [`docs/lanes/LANE_D.md`](docs/lanes/LANE_D.md) |
 | Anyone writing UI or copy | [`CLAUDE.md`](CLAUDE.md), then section 2 of the plan |
 | Anyone pointing ARIA at the evaluation | [`docs/aria.md`](docs/aria.md) |
+| Anyone opening the reactive notebook | [`docs/marimo.md`](docs/marimo.md) |
 
 ## Setup
 
@@ -38,6 +39,14 @@ To run the tests:
 .venv/bin/python -m pytest packages/agents services/api/tests -q
 (cd apps/web && npm run lint && npm run typecheck && npm run test)
 ```
+
+To move the shop's dimensions by hand and watch the same checks read the new room:
+
+```bash
+.venv/bin/marimo edit notebooks/scenario_sweep.py
+```
+
+That is a marimo notebook, installed by `./start.sh`. [`docs/marimo.md`](docs/marimo.md) says what each slider does.
 
 Lane B additionally needs Blender 5.x. `brew install --cask --force blender` — the `--force` matters, because a plain install silently does nothing when Blender was installed by hand.
 
