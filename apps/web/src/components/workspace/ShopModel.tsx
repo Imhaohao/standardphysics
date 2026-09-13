@@ -13,7 +13,6 @@ import { MODEL, nodeColor, WALL_CUT_HEIGHT } from "./palette";
 const UNIT_BOX = new BoxGeometry(1, 1, 1);
 /** Viewer supplies one stable ground plane; RoomPlan floors are often rotated zero-depth shells. */
 const HIDDEN_KINDS = new Set<SceneNode["kind"]>(["door", "window", "opening"]);
-const FLOOR = new Plane(new Vector3(0, 1, 0), 0);
 const WALL_CLIP_PLANE = new Plane(new Vector3(0, -1, 0), WALL_CUT_HEIGHT);
 
 type Placed = { node: SceneNode; geometry: BufferGeometry; matrix: Matrix4; sourceMaterial: Material | Material[] | null };
@@ -70,8 +69,13 @@ type ModelProps = {
   coverage?: Map<string, number>;
 };
 
-function floorHit(event: ThreeEvent<PointerEvent>): Vector3 | null {
-  return event.ray.intersectPlane(FLOOR, new Vector3());
+/** A level plane at the height the piece was grabbed, so it stays under the pointer instead of the floor below it. */
+function grabPlane(event: ThreeEvent<PointerEvent>): Plane {
+  return new Plane(new Vector3(0, 1, 0), -event.point.y);
+}
+
+function planeHit(event: ThreeEvent<PointerEvent>, plane: Plane): Vector3 | null {
+  return event.ray.intersectPlane(plane, new Vector3());
 }
 
 function setCursor(cursor: string) {
@@ -80,17 +84,19 @@ function setCursor(cursor: string) {
 
 function useDrag(node: SceneNode, arrange: ArrangeHandlers | null) {
   const from = useRef<Vector3 | null>(null);
+  const plane = useRef<Plane | null>(null);
   if (!arrange || !node.movable || node.kind !== "object") return {};
   return {
     onPointerDown(event: ThreeEvent<PointerEvent>) {
       event.stopPropagation();
       (event.target as unknown as Element).setPointerCapture(event.pointerId);
-      from.current = floorHit(event);
+      plane.current = grabPlane(event);
+      from.current = planeHit(event, plane.current);
       arrange.onGrab(node.id);
       setCursor("grabbing");
     },
     onPointerMove(event: ThreeEvent<PointerEvent>) {
-      const hit = from.current && floorHit(event);
+      const hit = from.current && plane.current && planeHit(event, plane.current);
       if (!from.current || !hit) return;
       arrange.onDrag(node.id, hit.x - from.current.x, -(hit.z - from.current.z));
       from.current = hit;
