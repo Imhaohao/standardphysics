@@ -5,9 +5,10 @@ changes, so asking again on every rebuild spends real money to receive the same
 answer, and a scan reprocessed three times costs three times as much for
 nothing.
 
-Entries are keyed by the photo's own bytes and the model that read them, so a
-different model, or a re-shot frame, asks afresh while everything else is read
-from disk. The cache never invents an answer: a miss simply asks.
+Entries are keyed by the photo's own bytes, the model that read them, and which
+way up it was shown, so a different model, a re-shot frame, or a correction to
+how the picture is turned all ask afresh while everything else is read from
+disk. The cache never invents an answer: a miss simply asks.
 """
 
 from __future__ import annotations
@@ -29,16 +30,18 @@ class DetectionCache:
         self.directory = pathlib.Path(directory)
         self.model = model
 
-    def _entry(self, image_path: pathlib.Path) -> pathlib.Path | None:
+    def _entry(self, image_path: pathlib.Path, orientation: str) -> pathlib.Path | None:
         try:
             digest = hashlib.sha256(pathlib.Path(image_path).read_bytes()).hexdigest()
         except OSError:
             return None
-        key = hashlib.sha256(f"{CACHE_VERSION}|{self.model}|{digest}".encode()).hexdigest()
+        key = hashlib.sha256(
+            f"{CACHE_VERSION}|{self.model}|{orientation}|{digest}".encode()
+        ).hexdigest()
         return self.directory / f"{key}.json"
 
-    def get(self, image_path: pathlib.Path, frame_id: str) -> list[Detection] | None:
-        entry = self._entry(image_path)
+    def get(self, image_path: pathlib.Path, frame_id: str, orientation: str = "") -> list[Detection] | None:
+        entry = self._entry(image_path, orientation)
         if entry is None or not entry.is_file():
             return None
         try:
@@ -47,8 +50,8 @@ class DetectionCache:
             return None
         return [_detection(item, frame_id) for item in stored]
 
-    def put(self, image_path: pathlib.Path, detections: list[Detection]) -> None:
-        entry = self._entry(image_path)
+    def put(self, image_path: pathlib.Path, detections: list[Detection], orientation: str = "") -> None:
+        entry = self._entry(image_path, orientation)
         if entry is None:
             return
         try:

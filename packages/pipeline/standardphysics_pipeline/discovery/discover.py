@@ -23,6 +23,7 @@ wrong measurement.
 from __future__ import annotations
 
 import concurrent.futures
+import json
 import logging
 import os
 import pathlib
@@ -108,7 +109,9 @@ def discover_objects(inputs: DiscoveryInputs, *, transport: Transport | None = N
         raise DiscoveryError("the scan has no capture_to_room transform, so photos cannot be projected")
     points = _mesh_points(inputs)
     cameras = _cameras(inputs, graph)
-    detections, failures = _detect_all(cameras, inputs.frame_paths, transport, _cache_for(inputs))
+    detections, failures = _detect_all(
+        cameras, inputs.frame_paths, transport, _cache_for(inputs), _orientations(inputs.poses_path)
+    )
     buffers = {camera.frame_id: depth_buffer(camera, points) for camera in cameras}
     removal = without_people(
         points, graph,
@@ -160,6 +163,19 @@ def _evenly_spread(cameras: list[PhotoCamera], limit: int) -> list[PhotoCamera]:
     return [cameras[index] for index in dict.fromkeys(picks.tolist())]
 
 
+def _orientations(poses_path: pathlib.Path) -> dict[str, str]:
+    """Which way up the phone was for each frame, so the model is shown it upright."""
+    try:
+        payload = json.loads(pathlib.Path(poses_path).read_bytes())
+    except (OSError, ValueError):
+        return {}
+    return {
+        item["frame_id"]: item.get("orientation", "")
+        for item in payload
+        if isinstance(item, dict) and item.get("frame_id")
+    }
+
+
 def _cache_for(inputs: DiscoveryInputs) -> DetectionCache | None:
     if inputs.cache_dir is None:
         return None
@@ -171,13 +187,17 @@ def _detect_all(
     frame_paths: dict[str, pathlib.Path],
     transport: Transport | None,
     cache: DetectionCache | None,
+    orientations: dict[str, str],
 ) -> tuple[dict[str, list[Detection]], list[str]]:
     detections: dict[str, list[Detection]] = {}
     failures: list[str] = []
-    wanted = _not_already_read(cameras, frame_paths, cache, detections)
+    wanted = _not_already_read(cameras, frame_paths, cache, detections, orientations)
     with concurrent.futures.ThreadPoolExecutor(max_workers=DETECTION_WORKERS) as pool:
         futures = {
-            pool.submit(detect_objects, frame_paths[frame_id], frame_id, transport=transport): frame_id
+            pool.submit(
+                detect_objects, frame_paths[frame_id], frame_id,
+                orientation=orientations.get(frame_id, ""), transport=transport,
+            ): frame_id
             for frame_id in wanted
         }
         for future in concurrent.futures.as_completed(futures):
@@ -189,7 +209,7 @@ def _detect_all(
                 failures.append(f"{frame_id}: {error}")
                 continue
             if cache is not None:
-                cache.put(frame_paths[frame_id], detections[frame_id])
+                cache.put(frame_paths[frame_id], detections[frame_id], orientations.get(frame_id, ""))
     log.info("read %d photos, %d already known", len(wanted), len(cameras) - len(wanted))
     return detections, failures
 
@@ -199,10 +219,13 @@ def _not_already_read(
     frame_paths: dict[str, pathlib.Path],
     cache: DetectionCache | None,
     into: dict[str, list[Detection]],
+    orientations: dict[str, str],
 ) -> list[str]:
     wanted = []
     for camera in cameras:
-        stored = cache.get(frame_paths[camera.frame_id], camera.frame_id) if cache else None
+        stored = cache.get(
+            frame_paths[camera.frame_id], camera.frame_id, orientations.get(camera.frame_id, "")
+        ) if cache else None
         if stored is None:
             wanted.append(camera.frame_id)
         else:

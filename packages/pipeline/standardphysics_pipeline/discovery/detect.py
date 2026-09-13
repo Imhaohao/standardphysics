@@ -5,10 +5,16 @@ terminal, a monitor or a laptop reaches us as unclaimed LiDAR and nothing
 else. This asks a grounding model what is in the picture and where, and the
 answer is a pixel rectangle we can turn back into mesh points.
 
-**Pixels are sensor pixels.** Frames are stored exactly as the camera
-delivered them and the pose intrinsics describe that same grid, so the image
-goes to the model unrotated and every box comes back scaled to the stored
-resolution. Rotating here would silently shear every box against the camera.
+**The model is shown the room the way up a person saw it.** Frames are stored
+exactly as the camera delivered them, which on a phone held upright is on its
+side. A detector shown a sideways photo reads a person on a sofa as lying down
+and the laptop on their knees as a chair or a box. So the image is turned
+upright for the model using the interface orientation the phone recorded.
+
+**Boxes come back in sensor pixels.** The pose intrinsics describe the stored
+sensor grid, so every rectangle is turned back into it before anything projects
+through it. The turn is undone exactly once, here, and nothing downstream
+knows the photo was ever rotated.
 
 **Boxes arrive as Gemini writes them**: `[ymin, xmin, ymax, xmax]`, each value
 0-1000 of the image's height or width. Asking for the convention the model was
@@ -149,22 +155,38 @@ class Detection:
         return (columns >= left) & (columns <= right) & (rows >= top) & (rows <= bottom)
 
 
+QUARTER_TURNS_CLOCKWISE = {
+    "portrait": 1,
+    "portrait_upside_down": 3,
+    "landscape_left": 2,
+    "landscape_right": 0,
+}
+"""How far the stored sensor image turns clockwise to stand the room upright.
+
+`landscape_right` is how the sensor is mounted, so it needs no turn at all.
+An orientation we do not recognise is left alone rather than guessed at.
+"""
+
+
 @dataclass(frozen=True)
 class EncodedFrame:
     jpeg: bytes
     width: int
     height: int
-    """The stored sensor resolution the boxes are scaled back to."""
+    """The stored sensor resolution the boxes are turned back into."""
+    turns: int = 0
+    """Quarter turns clockwise applied before the model saw it."""
 
 
 def detect_objects(
     image_path: pathlib.Path,
     frame_id: str,
     *,
+    orientation: str = "landscape_right",
     transport: Transport | None = None,
 ) -> list[Detection]:
     """Every object the model finds in one frame, boxed in that frame's stored pixels."""
-    frame = encode_frame(image_path)
+    frame = encode_frame(image_path, orientation)
     api_key = os.environ.get(API_KEY_ENV, "")
     if transport is None and not api_key:
         raise DetectionError(f"{API_KEY_ENV} is not set, so no frame can be read")
@@ -184,8 +206,8 @@ def _backoff(attempt: int) -> float:
     return FIRST_BACKOFF_SECONDS * (BACKOFF_GROWTH ** (attempt - 1)) * (0.5 + random.random())
 
 
-def encode_frame(image_path: pathlib.Path) -> EncodedFrame:
-    """The frame as JPEG under the size cap, never rotated, with its stored resolution kept."""
+def encode_frame(image_path: pathlib.Path, orientation: str = "landscape_right") -> EncodedFrame:
+    """The frame as JPEG under the size cap, stood upright, with its sensor resolution kept."""
     from PIL import Image
 
     source = pathlib.Path(image_path)
@@ -199,8 +221,11 @@ def encode_frame(image_path: pathlib.Path) -> EncodedFrame:
     except (OSError, ValueError) as error:
         raise DetectionError(f"unreadable frame {source.name}: {error}") from error
     stored_width, stored_height = image.width, image.height
+    turns = QUARTER_TURNS_CLOCKWISE.get(orientation, 0)
+    for _ in range(turns):
+        image = image.transpose(Image.Transpose.ROTATE_270)
     image.thumbnail((MAX_IMAGE_EDGE, MAX_IMAGE_EDGE), Image.Resampling.LANCZOS)
-    return EncodedFrame(_compressed(image), stored_width, stored_height)
+    return EncodedFrame(_compressed(image), stored_width, stored_height, turns)
 
 
 def _compressed(image) -> bytes:
@@ -289,6 +314,7 @@ def _one_detection(item: dict[str, Any], frame: EncodedFrame, frame_id: str) -> 
 
 
 def _pixel_box(values: Any, frame: EncodedFrame) -> tuple[float, float, float, float] | None:
+    """A model box, in the picture it saw, turned back into stored sensor pixels."""
     if not isinstance(values, (list, tuple)) or len(values) != 4:
         return None
     try:
@@ -299,6 +325,8 @@ def _pixel_box(values: Any, frame: EncodedFrame) -> tuple[float, float, float, f
     left, right = sorted((_clamped(left), _clamped(right)))
     if (right - left) < MIN_BOX_FRACTION or (bottom - top) < MIN_BOX_FRACTION:
         return None
+    for _ in range(frame.turns):
+        left, top, right, bottom = top, 1.0 - right, bottom, 1.0 - left
     return (
         left * frame.width, top * frame.height,
         right * frame.width, bottom * frame.height,

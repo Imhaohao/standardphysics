@@ -16,3 +16,11 @@ keeps the test repeatable, free to run, and clear of anybody's face.
 
 `packages/pipeline/tests/test_discovery_on_a_real_scan.py` reads this and skips
 when it is absent.
+
+**The detections here were read from sideways photos.** The phone was held
+upright and stores its frames as the sensor delivers them, on their side, and
+discovery did not turn them upright before asking. So these answers name a
+laptop on somebody's knees a chair. They are kept because the test reads
+structure from them rather than meaning: that a real mesh and real poses
+produce objects of a sensible size in sensible places. Re-record them against
+upright frames when there is budget, and the names will be worth reading too.

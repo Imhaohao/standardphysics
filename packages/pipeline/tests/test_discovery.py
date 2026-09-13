@@ -290,3 +290,37 @@ class TestCountingSeparateLooks:
     def test_frames_that_never_saw_it_do_not_count(self):
         cameras = self._cameras([(0.0, -1.0, 1.2), (1.4, -1.0, 1.2)])
         assert _viewpoints(self._object(["frame-0000"]), cameras) == 1
+
+
+class TestShowingTheModelTheRoomUpright:
+    """A phone held upright stores its photos on their side, and a detector
+    shown a sideways room reads the laptop on someone's knees as a chair."""
+
+    def _portrait(self):
+        return EncodedFrame(jpeg=b"", width=1920, height=1440, turns=1)
+
+    def test_a_box_the_model_drew_comes_back_in_sensor_pixels(self):
+        """Turning the picture clockwise puts the sensor's top-left at the top-right."""
+        # The model's whole frame must map to the whole sensor frame.
+        assert _pixel_box([0, 0, 1000, 1000], self._portrait()) == pytest.approx((0.0, 0.0, 1920.0, 1440.0))
+
+    def test_the_top_left_of_the_upright_picture_is_the_bottom_left_of_the_sensor(self):
+        left, top, right, bottom = _pixel_box([0, 0, 100, 100], self._portrait())
+        assert (left, right) == pytest.approx((0.0, 192.0))
+        assert (top, bottom) == pytest.approx((1296.0, 1440.0))
+
+    def test_a_frame_needing_no_turn_is_left_exactly_as_it_is(self):
+        flat = EncodedFrame(jpeg=b"", width=1000, height=500, turns=0)
+        assert _pixel_box([100, 200, 300, 600], flat) == pytest.approx((200.0, 50.0, 600.0, 150.0))
+
+    def test_four_turns_is_the_same_as_none(self):
+        once = EncodedFrame(jpeg=b"", width=1000, height=500, turns=1)
+        spun = EncodedFrame(jpeg=b"", width=1000, height=500, turns=5)
+        assert _pixel_box([100, 200, 300, 600], spun) == pytest.approx(_pixel_box([100, 200, 300, 600], once))
+
+    def test_every_orientation_the_phone_reports_is_known(self):
+        from standardphysics_pipeline.discovery.detect import QUARTER_TURNS_CLOCKWISE
+
+        assert set(QUARTER_TURNS_CLOCKWISE) == {
+            "portrait", "portrait_upside_down", "landscape_left", "landscape_right",
+        }

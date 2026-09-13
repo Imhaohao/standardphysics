@@ -344,10 +344,18 @@ def _grouped_mean(groups: np.ndarray, values: np.ndarray, count: int) -> np.ndar
     return np.stack([np.bincount(groups, weights=values[:, channel], minlength=count) for channel in range(3)], axis=1) / sizes
 
 
-def pad_gutters(image: np.ndarray, filled: np.ndarray) -> np.ndarray:
-    """Spread island edge colors outward so filtering at chart borders never pulls in the background."""
+def pad_gutters(image: np.ndarray, filled: np.ndarray, passes: int = GUTTER_PASSES) -> np.ndarray:
+    """Spread island edge colors outward so filtering at chart borders never pulls in the background.
+
+    Used a second way, over the texels photos actually reached, this closes the
+    speckle a strict occlusion test leaves behind. A tabletop seen past the
+    clutter standing on it keeps every texel the clutter hid, and those texels
+    held base colour, so a photographed table came out flecked with brown. A
+    few passes fill those specks from their neighbours. It changes only what is
+    displayed: the coverage mask still records where photos genuinely landed.
+    """
     image, filled = image.copy(), filled.copy()
-    for _ in range(GUTTER_PASSES):
+    for _ in range(passes):
         total = np.zeros_like(image)
         count = np.zeros(filled.shape, dtype=np.float32)
         for axis, step in ((0, 1), (0, -1), (1, 1), (1, -1)):
