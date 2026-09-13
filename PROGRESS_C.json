@@ -1,6 +1,6 @@
 {
   "lane": "C",
-  "updated": "2026-09-13T05:21:36Z",
+  "updated": "2026-09-13T08:17:36Z",
   "done": [
     "rule pack: 18 rules, thresholds in the units the standard is written in, the quoted sentence behind each, and every other number the section states",
     "human verification ledger binding rule id, section, threshold and unit, so editing a threshold switches its check off",
@@ -33,9 +33,13 @@
     "point_of_sale_height: when a lowered section exists, the finding is the register on the high part, not a missing portion",
     "407 Lane C tests",
     "workflow simulation: all-directions route suites, four functional avatar profiles, forward-facing paths, RoomPlan plus raw-mesh collision evidence, target reach checks, 1,000-trial bounded TypeSafe batches, aggregate design feedback, full-suite layout ranking, and a no-workflow-regression gate on furniture proposals",
-    "a key Weave turns away leaves tracing off and logs why, instead of raising (feb65b4)"
+    "a key Weave turns away leaves tracing off and logs why, instead of raising (feb65b4)",
+    "the OpenAI SDK is a declared dependency: without it a model call raised ModuleNotFoundError and the ask box 500d whenever a key was set (2cc1667)",
+    "weave-eval: the same 39 cases and 7 scorers through weave.Evaluation, three configurations compared in the Evals tab, scoring still defined once in scorers.py (6ae3aa0)",
+    "the schema a model is held to is generated in the subset strict structured output accepts, so the ask box's model resolver can succeed at all: every property required, additionalProperties false, refused keywords dropped (582befd)",
+    "publish_to_weave returns the dataset's real URL from Weave's own path builder, and a run carries it on disk and prints it (e02bc1d)"
   ],
-  "in_progress": "wire workflow feedback and avatar paths into the Lane D HTTP/report/viewer surfaces",
+  "in_progress": null,
   "blocked_on": null,
   "ready_for_others": [
     "standardphysics_agents.findings_for(graph, scenario) -> list[Finding], and RULEPACK_VERSION",

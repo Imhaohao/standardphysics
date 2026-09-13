@@ -13,7 +13,7 @@ did not complete cannot accept anything.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -47,6 +47,9 @@ class EvaluationResult:
     scores: dict[str, float] = field(default_factory=dict)
     per_case: dict[str, dict[str, float | None]] = field(default_factory=dict)
     weave_url: str | None = None
+    dataset_url: str | None = None
+    """Where the rows went, once they have gone. `None` until then, and after a
+    publish a third party refused."""
 
     @property
     def failures(self) -> list[str]:
@@ -63,7 +66,7 @@ class EvaluationResult:
                 "problems": sorted(outcome.reported_problems),
                 "expected_problems": sorted(outcome.case.expected_problems),
                 "questions": sorted(outcome.reported_questions),
-                "action": _action_name(outcome),
+                "action": action_name(outcome),
                 "expected_action": outcome.case.expected_action,
                 "fix": outcome.fix.message if outcome.fix else None,
                 "gate_accepted": outcome.gate.accepted if outcome.gate else None,
@@ -74,7 +77,7 @@ class EvaluationResult:
         ]
 
 
-def _action_name(outcome: CaseOutcome) -> str | None:
+def action_name(outcome: CaseOutcome) -> str | None:
     decision = outcome.decision
     if decision is None:
         return None
@@ -193,7 +196,7 @@ def evaluate(
         weave_url=project_url(),
     )
     if publish and is_live():
-        publish_to_weave(result)
+        return replace(result, dataset_url=publish_to_weave(result))
     return result
 
 
@@ -216,6 +219,7 @@ def save(result: EvaluationResult, path: Path) -> Path:
                 "scores": result.scores,
                 "lower_is_better": sorted(LOWER_IS_BETTER),
                 "weave_url": result.weave_url,
+                "dataset_url": result.dataset_url,
                 "cases": result.rows(),
             },
             indent=2,
@@ -230,18 +234,22 @@ def save(result: EvaluationResult, path: Path) -> Path:
 def publish_to_weave(result: EvaluationResult) -> str | None:
     """The same rows, in the place the traces are.
 
-    Every failure mode here is a third party's: no account, no network, an SDK
-    that moved. None of them may stop an evaluation that has already run, so
+    Returns where they landed, so a run can say it. Every failure mode here is
+    a third party's: no account, no network, an SDK that moved the accessor
+    this reads. None of them may stop an evaluation that has already run, so
     this reports that it did not publish and the local record stands.
     """
     try:
         import weave
+        from weave.trace import urls
 
         published = weave.publish(
             weave.Dataset(
                 name=f"standardphysics-{result.rulepack_version}", rows=result.rows()
             )
         )
-        return getattr(published, "ui_url", None)
+        return urls.object_version_path(
+            published.entity, published.project, published.name, published.digest
+        )
     except Exception:
         return None
