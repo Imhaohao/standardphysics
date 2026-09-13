@@ -31,7 +31,7 @@ async function loadExported(scanId: string, scene: SceneGraph, glbRevision: numb
 function NotMeasuredYet({ scan }: { scan: Scan }) {
   return (
     <main className="mx-auto max-w-2xl px-5 py-20">
-      <h1 className="text-3xl font-bold">{scan.name}</h1>
+      <h1 className="heading-display text-3xl">{scan.name}</h1>
       <p className="mt-4 text-lg text-ink-muted">{scanStatus(scan, null, false)}</p>
       <RefreshWhile pending={scan.state !== "failed"} />
     </main>

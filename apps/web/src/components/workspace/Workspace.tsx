@@ -140,7 +140,7 @@ function WorkspaceHeader({ scan, task, canCompare, onTask }: HeaderProps) {
       <Link href="/" className="rounded-lg p-2 text-ink-muted hover:bg-ink/5 hover:text-ink" aria-label="Your shops">
         <ArrowLeft size={20} weight="bold" />
       </Link>
-      <h1 className="min-w-0 flex-1 truncate text-lg font-semibold">{scan.name}</h1>
+      <h1 className="heading-display min-w-0 flex-1 truncate text-lg">{scan.name}</h1>
       <Link
         href={`/scans/${scan.id}/report`}
         className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-ink-muted hover:bg-ink/5 hover:text-ink"

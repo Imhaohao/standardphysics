@@ -38,7 +38,7 @@ export default async function ReplayPage({ params, searchParams }: PageProps<"/s
   return <main className="mx-auto max-w-6xl space-y-8 px-4 py-8 sm:px-8">
     <Link className="inline-block py-2 text-accent underline underline-offset-4" href={`/scans/${scanId}`}>Back to {scan.name}</Link>
     <div className="space-y-3">
-      <h1 className="text-3xl font-semibold">{scan.name} recorded runs</h1>
+      <h1 className="heading-display text-3xl">{scan.name} recorded runs</h1>
       <p className="text-ink-muted">Recorded against room revision {revision}.</p>
     </div>
     {replay ? <>

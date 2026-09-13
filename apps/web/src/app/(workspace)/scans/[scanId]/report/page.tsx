@@ -85,7 +85,7 @@ function WhatWeChecked({ scenario, passes, rules }: { scenario: Scenario | null;
   const measured = legs(scenario);
   return (
     <section className="mt-12 break-inside-avoid">
-      <h2 className="text-2xl font-semibold">What we checked</h2>
+      <h2 className="heading-display text-2xl">What we checked</h2>
       {measured.length > 0 && (
         <>
           <h3 className="mt-6 font-semibold">Paths measured</h3>
@@ -122,7 +122,7 @@ function ProblemsSection({ problems }: { problems: Finding[] }) {
   if (problems.length === 0) return null;
   return (
     <section className="mt-12">
-      <h2 className="text-2xl font-semibold">What to fix</h2>
+      <h2 className="heading-display text-2xl">What to fix</h2>
       <div className="mt-4">
         {problems.map((finding) => (
           <ProblemBlock key={finding.id} finding={finding} />
@@ -136,7 +136,7 @@ function NextStepsSection({ questions }: { questions: Finding[] }) {
   if (questions.length === 0) return null;
   return (
     <section className="mt-12 break-inside-avoid">
-      <h2 className="text-2xl font-semibold">Next steps</h2>
+      <h2 className="heading-display text-2xl">Next steps</h2>
       <ol className="mt-4 flex list-decimal flex-col gap-4 pl-5">
         {questions.map((finding) => (
           <li key={finding.id}>
@@ -179,7 +179,7 @@ export default async function ReportPage({ params }: PageProps<"/scans/[scanId]/
       <PreviewNotice preview={report.preview} />
       <header className="grid items-end gap-6 sm:grid-cols-[1fr_9rem]">
         <div>
-          <h1 className="text-4xl font-bold leading-tight">{scan.name}</h1>
+          <h1 className="heading-display text-4xl">{scan.name}</h1>
           <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-ink-muted">
             <dt>Checked</dt>
             <dd className="text-ink">{longDate.format(checkedOn)}</dd>
