@@ -196,7 +196,7 @@ function MeetSara() {
   return (
     <>
       <h2 className="font-display text-headline font-extrabold">
-        <MaskedLines lines={["Meet Sara."]} delay={0.1} />
+        <MaskedLines lines={["Sara."]} delay={0.1} />
       </h2>
       <p className="mt-deck-rise font-display text-lede font-bold text-ink-muted">
         <MaskedLines lines={["She runs Happy Lemon,", "a boba shop in San Jose."]} delay={0.5} />
