@@ -71,6 +71,41 @@ def _union(parent: np.ndarray, first: int, second: int) -> None:
         parent[first_root] = second_root
 
 
+SURFACE_BIN = 0.015
+"""Height bins for finding the shelf or tabletop a thing is standing on."""
+SURFACE_SHARE = 0.18
+"""A height holding this share of the points is a surface, not an object."""
+SURFACE_SKIN = 0.025
+"""Points within this of that height are the surface itself."""
+
+
+def without_the_surface_beneath(points: np.ndarray) -> np.ndarray:
+    """The points with the flat surface they rest on taken out.
+
+    A laptop on a desk touches the desk, so a cluster grown through contact
+    swallows the whole desktop and fits a wide flat slab to it. The desk should
+    have been removed already as something RoomPlan measured, but its box misses
+    the real surface by inches on a real capture, so the desktop survives as
+    unclaimed and takes the laptop with it.
+
+    A surface gives itself away by shape: a great many points at one height,
+    spread over an area no object of that thickness would be. Removing that
+    band leaves whatever was standing on it, free of the thing it stands on.
+    """
+    if len(points) < MIN_CLUSTER_POINTS:
+        return np.ones(len(points), dtype=bool)
+    heights = points[:, 2]
+    low, high = float(heights.min()), float(heights.max())
+    if high - low < SURFACE_SKIN * 2:
+        return np.ones(len(points), dtype=bool)
+    counts, edges = np.histogram(heights, bins=np.arange(low, high + SURFACE_BIN, SURFACE_BIN))
+    if not len(counts) or counts.max() < len(points) * SURFACE_SHARE:
+        return np.ones(len(points), dtype=bool)
+    surface = edges[int(np.argmax(counts))] + SURFACE_BIN / 2
+    keep = np.abs(heights - surface) > SURFACE_SKIN
+    return keep if keep.sum() >= MIN_CLUSTER_POINTS else np.ones(len(points), dtype=bool)
+
+
 def dominant_cluster(
     points: np.ndarray,
     columns: np.ndarray,

@@ -30,7 +30,7 @@ import numpy as np
 from standardphysics_contracts import Mat4, Vec3
 
 from ..textures.camera import PhotoCamera
-from .clusters import dominant_cluster
+from .clusters import dominant_cluster, without_the_surface_beneath
 from .detect import Detection
 
 NEAR_LIMIT = 0.05
@@ -119,6 +119,9 @@ def carve(view: FrameView, detection: Detection) -> CarvedBox | None:
     if len(chosen) < MIN_POINTS:
         return None
     chosen = chosen[nearest_band(view.depth[chosen])]
+    if len(chosen) < MIN_POINTS:
+        return None
+    chosen = chosen[without_the_surface_beneath(view.points[chosen])]
     if len(chosen) < MIN_POINTS:
         return None
     chosen = chosen[dominant_cluster(view.points[chosen], view.columns[chosen], view.rows[chosen], detection)]

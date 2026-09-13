@@ -21,7 +21,7 @@ from standardphysics_contracts import Mat4, SceneGraph, SceneNode, Vec3
 from standardphysics_pipeline.coords import capture_to_room
 from standardphysics_pipeline.discovery.boxes import claimed_by_any, inside, resting_parent, structure_points
 from standardphysics_pipeline.discovery.carve import FrameView, carve, fit_box
-from standardphysics_pipeline.discovery.clusters import voxel_components
+from standardphysics_pipeline.discovery.clusters import voxel_components, without_the_surface_beneath
 from standardphysics_pipeline.discovery.detect import Detection, _pixel_box, EncodedFrame
 from standardphysics_pipeline.discovery.discover import _viewpoints, _worth_keeping
 from standardphysics_pipeline.discovery.merge import DiscoveredObject
@@ -340,3 +340,23 @@ class TestNotReDiscoveringTheRoom:
     def test_furniture_and_clutter_still_count(self):
         for name in ("laptop", "payment terminal", "kettlebell", "backpack", "desk"):
             assert _worth_keeping(self._object(name), graph_of(), viewpoints=9), name
+
+
+class TestLeavingBehindWhatAThingRestsOn:
+    def test_a_laptop_on_a_desktop_is_separated_from_it(self):
+        """The desktop goes entirely. The laptop keeps everything but the
+        layer of itself that is touching, which is the price of the cut."""
+        desktop = slab((0.0, 0.0, 0.74), (1.2, 0.6, 0.02))
+        laptop = slab((0.0, 0.0, 0.80), (0.3, 0.2, 0.10))
+        points = np.vstack([desktop, laptop])
+        kept = points[without_the_surface_beneath(points)]
+        assert kept[:, 2].min() > 0.75
+        assert 0.6 < len(kept) / len(laptop) <= 1.0
+        assert len(kept) < len(desktop)
+
+    def test_an_object_standing_alone_keeps_all_its_points(self):
+        chair = slab((0.0, 0.0, 0.45), (0.5, 0.5, 0.9))
+        assert without_the_surface_beneath(chair).all()
+
+    def test_too_few_points_to_judge_are_left_alone(self):
+        assert without_the_surface_beneath(slab((0.0, 0.0, 1.0), (0.05, 0.05, 0.05))).all()
