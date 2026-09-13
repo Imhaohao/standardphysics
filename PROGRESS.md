@@ -51,6 +51,7 @@ The audit fixes code only in files no lane agent is actively changing. For lanes
 | `6841172` D: before and after, scrubbing between two layouts | D | Pass with notes | A-42 |
 | `7b72fdc` D: take the wall-clock limit out of the layout test | D | Pass | Resolves A-38 |
 | `a10d6da` D: fix the audit's Lane D findings A-29 through A-39 | D | Pass with notes | Resolves A-29, A-31, A-33, A-35, A-37, A-39; A-30 documented; A-36 partly; introduces A-43; A-44 |
+| `a00eda7` B: put agents and api on the local test path | B | Pass | Lets a plain local `pytest` import the audit tests' Lane C and API modules; 153 passed and 7 expected failures after it |
 
 `609db3d`, `9028d14`, `b90e570`, `d3f7d95` and `1a06655` change only the plan and lane documents. A-1 covers the lane document errors from `9028d14`.
 
