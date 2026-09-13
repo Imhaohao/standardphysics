@@ -10,13 +10,14 @@ const VARIANTS: Record<Variant, string> = {
 
 export function Button({
   variant = "quiet",
+  squared = false,
   className = "",
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; squared?: boolean }) {
   return (
     <button
       type="button"
-      className={`inline-flex items-center gap-2 rounded-lg font-medium transition-colors duration-150 ${VARIANTS[variant]} ${className}`}
+      className={`inline-flex items-center gap-2 ${squared ? "rounded-none" : "rounded-lg"} font-medium transition-colors duration-150 ${VARIANTS[variant]} ${className}`}
       {...props}
     />
   );
