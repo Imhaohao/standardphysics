@@ -18,7 +18,7 @@
     "native-size simulator visual verification",
     "signed device build installed and launched on the paired iPhone 17 Pro"
   ],
-  "in_progress": "test1 upload verified; Lane D merges resolved; final agent tests and push pending",
+  "in_progress": "test1 upload verified; Lane D merges resolved; push paused for an incoming agent evaluation failure",
   "reconstruction_plan": [
     {"task": "native ARKit people removal and reliable final mesh persistence", "model_tier": "Astra", "status": "implemented"},
     {"task": "thorough coverage: closer views, more area and viewpoints", "model_tier": "Terra", "status": "verified"},
@@ -34,7 +34,7 @@
   ],
   "repair_validation": {
     "ios_tests_passed": 63,
-    "latest_suite": "merged iOS 63; web 28 plus typecheck/lint/production build; API 41; root Python 154 passed and 7 expected failures; agent suite running",
+    "latest_suite": "merged iOS 63; latest web 31 plus typecheck/lint; production build passed before incoming 20f54d9; API 41 and root Python 154 passed/7 expected failures before 20f54d9; agent suite 262 passed/1 failed (router_action_match 0.96875 vs 1.0)",
     "strict_concurrency_build": "signed iOS build passed with complete concurrency and warnings as errors; test stubs use normal test settings",
     "device_build": "person-filtered measured reconstruction build installed and launched at 17:16 PDT",
     "real_scan": "ravida af42f6cd-d228-4dd8-8790-aff0890fee5b ready on real Lane D API; all 290 artifacts uploaded",
@@ -54,7 +54,7 @@
     "glb_metadata": "HEAD returns exported revision without streaming geometry; test and production verified",
     "review_disposition": "missing mesh floor metadata and load failures remain explicit errors to avoid guessed alignment or silent box substitution; empty final snapshots preserve prior mesh with a recovery notice"
   },
-  "blocked_on": null,
+  "blocked_on": "Repository protocol prohibits push while another lane's tests fail. TestTheRun.test_the_router_picks_the_right_action_every_time at packages/agents/tests/test_evaluation.py:148 fails on incoming agent/fixture code unchanged by Lane A. Merges through abb3cf6 are resolved and local commits preserved; no push yet.",
   "ready_for_others": [
     "Lane A produces room.json and RoomPlan metadata mapping from a real scan",
     "Lane A uploads the services/api/openapi.json artifact contract",
