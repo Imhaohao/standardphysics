@@ -161,6 +161,10 @@
   translate: -50% -50%;
 }
 
+@utility app-capture-wide {
+  width: min(78vw, 128vh);
+}
+
 @utility step-badge {
   width: 1.2em;
   height: 1.2em;

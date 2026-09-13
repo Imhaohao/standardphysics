@@ -4,11 +4,12 @@ import { ArrowsClockwise, ListChecks, Scales, Wrench, type Icon } from "@phospho
 import { AnimatePresence, animate, motion, useMotionValue, useTransform, type Variants } from "motion/react";
 import { useEffect } from "react";
 import { easeDrawn, exitTransition } from "@/lib/motion";
+import { AppCapture } from "../AppCapture";
 import { MaskedLines } from "../primitives";
 import type { SlideProps } from "../slides";
 
-type LoopPhase = "loop" | "decide" | "improve";
-const loopPhases: LoopPhase[] = ["loop", "decide", "improve"];
+type LoopPhase = "loop" | "decide" | "test" | "improve";
+const loopPhases: LoopPhase[] = ["loop", "decide", "test", "improve"];
 
 const RING = { cx: 500, cy: 470, r: 300 };
 const NODE_RADIUS = 92;
@@ -166,6 +167,10 @@ const copy: Record<LoopPhase, { headline: string[]; detail: string[] }> = {
     headline: ["TypeSafe picks", "the next move."],
     detail: [],
   },
+  test: {
+    headline: ["Every fix is", "tested before", "Sara sees it."],
+    detail: ["The agent moves furniture", "in the model, re-checks the", "shop, and keeps a change only", "if nothing new breaks."],
+  },
   improve: {
     headline: ["Weave traces", "every pass and", "scores the loop."],
     detail: [],
@@ -190,7 +195,7 @@ function LoopCopy({ phase }: { phase: LoopPhase }) {
 export function LoopSlide({ step }: SlideProps) {
   const phase = loopPhases[Math.min(step, loopPhases.length - 1)];
   return (
-    <div className="deck-gutter grid h-full grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] items-center gap-deck-gap">
+    <div className={`deck-gutter grid h-full items-center gap-deck-gap transition-[grid-template-columns] duration-700 ${phase === "test" ? "grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]" : "grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]"}`}>
       <div>
         <AnimatePresence mode="wait" initial={false}>
           <motion.div key={phase} initial="enter" animate="present" exit="exit">
@@ -198,8 +203,16 @@ export function LoopSlide({ step }: SlideProps) {
           </motion.div>
         </AnimatePresence>
       </div>
-      <div className="h-deck-art">
-        <LoopDiagram phase={phase} />
+      <div className="flex h-deck-art items-center">
+        <AnimatePresence mode="wait" initial={false}>
+          {phase === "test" ? (
+            <AppCapture key="fix-loop" video="/deck/fix-loop.mp4" alt="Standard Physics running Fix what I can: it moves a display case, re-measures, keeps the change, and tries two more moves that it rejects" />
+          ) : (
+            <motion.div key="diagram" className="size-full" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <LoopDiagram phase={phase} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
