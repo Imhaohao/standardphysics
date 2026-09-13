@@ -22,7 +22,7 @@ from scipy import ndimage
 
 from standardphysics_contracts import Vec3, to_inches, to_meters
 
-from .occupancy import Grid
+from .occupancy import Grid, occupancy_excluding
 
 NEIGHBOURS = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
 
@@ -290,7 +290,7 @@ def what_sealed_the_route(
     grid: Grid,
     start: tuple[int, int],
     goal: tuple[int, int],
-    movable: set[UUID] | None = None,
+    graph=None,
 ) -> list[UUID]:
     """The objects standing between a start and an unreachable goal.
 
@@ -317,27 +317,43 @@ def what_sealed_the_route(
     candidates = _owners_touching(grid, regions == here) & _owners_touching(
         grid, regions == there
     )
+    movable = {node.id for node in graph.movable()} if graph else set()
     opening = [
-        owner for owner in candidates if _would_open(grid, owner, start, goal)
+        owner
+        for owner in candidates
+        if _would_open(grid, owner, start, goal, graph)
     ]
 
     # Walls border both pockets and technically "open" the route, because with
     # one gone you can step outside and come back in through the front door.
-    # That is true and useless. What the owner needs to hear about is the thing
-    # they could actually move, so furniture is named ahead of structure.
-    return _nearest_owners(grid, opening or candidates, goal, movable or set())
+    # That is true and useless. If anything movable seals the route, name only
+    # those: they are what the owner can act on, and a fix agent given a wall
+    # has nothing to try.
+    actionable = [o for o in opening if grid.node_ids[o] in movable]
+    return _nearest_owners(grid, actionable or opening or candidates, goal, movable)
 
 
 def _would_open(
-    grid: Grid, owner: int, start: tuple[int, int], goal: tuple[int, int]
+    grid: Grid,
+    owner: int,
+    start: tuple[int, int],
+    goal: tuple[int, int],
+    graph=None,
 ) -> bool:
     """Whether taking this one object away reconnects the two sides.
 
     The exact question a shop owner is asking, and the only way to tell a
     shelving unit standing across the aisle from the walls that happen to
     border both halves of the room.
+
+    Needs the graph to be honest. Freeing cells by `grid.owner` frees whatever
+    that node claimed first, which where two objects overlap includes cells the
+    other one still covers.
     """
-    free = ~grid.occupied | (grid.owner == owner)
+    if graph is None:
+        free = ~grid.occupied | (grid.owner == owner)
+    else:
+        free = ~occupancy_excluding(graph, grid, grid.node_ids[owner])
     regions, _ = ndimage.label(free)
     return regions[start] != 0 and regions[start] == regions[goal]
 

@@ -119,7 +119,7 @@ class PipelineMeasurements:
                     grid,
                     grid.to_cell(start.x, start.y),
                     grid.to_cell(goal.x, goal.y),
-                    movable={node.id for node in graph.movable()},
+                    graph=graph,
                 ),
                 reachable=False,
             )

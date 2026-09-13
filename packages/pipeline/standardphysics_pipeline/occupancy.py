@@ -233,3 +233,39 @@ def _bound_the_world(
         return
     walkable = _inside_box(floor, world_x, world_y, OUTSIDE_MARGIN, OUTSIDE_MARGIN)
     occupied[~walkable] = True
+
+
+def _cell_centres(grid: Grid) -> tuple[np.ndarray, np.ndarray]:
+    rows, cols = grid.shape
+    xs = grid.origin_x + (np.arange(cols) + 0.5) * grid.cell_size
+    ys = grid.origin_y + (np.arange(rows) + 0.5) * grid.cell_size
+    return np.meshgrid(xs, ys)
+
+
+def occupancy_excluding(graph: SceneGraph, grid: Grid, node_id) -> np.ndarray:
+    """The same floor with one object taken away.
+
+    `grid.owner` records a single owner per cell and the first node to claim a
+    cell keeps it, so it cannot answer this. Where two objects overlap, freeing
+    one node's cells by owner also frees cells the other still covers, and a
+    route reads as open when it is still sealed.
+
+    Rasterising the remaining nodes answers the question honestly. The grid's
+    origin and cell size are reused so the result lines up with the original
+    cell for cell.
+    """
+    world_x, world_y = _cell_centres(grid)
+    occupied = np.zeros(grid.shape, dtype=bool)
+
+    for node in graph.nodes:
+        if node.id == node_id or not blocks_floor(node):
+            continue
+        occupied |= _inside_box(node, world_x, world_y)
+
+    for node in graph.nodes:
+        if node.id != node_id and node.kind in CUTS_THROUGH_WALLS:
+            grow_x, grow_y = _bite(node)
+            occupied[_inside_box(node, world_x, world_y, grow_x, grow_y)] = False
+
+    _bound_the_world(occupied, graph, world_x, world_y)
+    return occupied
