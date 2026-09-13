@@ -9,10 +9,22 @@ const STATE_LABEL: Record<Scan["state"], string> = {
   failed: "This scan didn't go through. Scan the shop again.",
 };
 
-export function scanStatus(scan: Scan, assessment: Assessment | null): string {
+const RULES_WAITING = "Checks start once a person reviews the rules";
+
+/** What ran: how many rules a person has verified, and whether the paths were part of it. */
+export type CheckScope = { rulesChecked: number | null; routeConfirmed: boolean };
+
+/** An empty list of problems, said only as widely as the checks that actually ran. */
+export function allClearSentence(scope: CheckScope, passes: string): string {
+  if (scope.rulesChecked === 0) return RULES_WAITING;
+  if (!scope.routeConfirmed) return `${passes} so far. Mark the customer route to check the paths too.`;
+  return passes;
+}
+
+export function scanStatus(scan: Scan, assessment: Assessment | null, routeConfirmed: boolean): string {
   if (scan.state !== "ready" || assessment === null) return STATE_LABEL[scan.state];
-  if (assessment.rules_checked === 0) return "Checks start once a person reviews the rules";
   const attention = countNeedingAttention(assessment.findings);
-  if (attention === 0) return "Everything we checked passes";
-  return attention === 1 ? "1 thing to look at" : `${attention} things to look at`;
+  if (attention === 1) return "1 thing to look at";
+  if (attention > 1) return `${attention} things to look at`;
+  return allClearSentence({ rulesChecked: assessment.rules_checked, routeConfirmed }, "Everything we checked passes");
 }

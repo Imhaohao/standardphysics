@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { FloorPlan } from "@/components/FloorPlan";
 import { ScanShopButton } from "@/components/ScanShopButton";
-import { getAssessment, getScene, listScans } from "@/lib/api";
+import { getAssessment, getScenario, getScene, listScans } from "@/lib/api";
 import { countNeedingAttention } from "@/lib/findings";
 import { scanStatus } from "@/lib/scan-status";
 import type { Scan } from "@/types/contracts";
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 const dateFormat = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" });
 
 async function ShopRow({ scan }: { scan: Scan }) {
-  const [scene, assessment] = await Promise.all([getScene(scan.id), getAssessment(scan.id)]);
+  const [scene, assessment, scenario] = await Promise.all([getScene(scan.id), getAssessment(scan.id), getScenario(scan.id)]);
   const needsWork = assessment !== null && assessment.rules_checked !== 0 && countNeedingAttention(assessment.findings) > 0;
 
   return (
@@ -28,7 +28,7 @@ async function ShopRow({ scan }: { scan: Scan }) {
           <p className="mt-1 text-ink-muted">{dateFormat.format(new Date(scan.created_at))}</p>
           <p className={`mt-3 flex items-center gap-2 font-medium ${needsWork ? "text-ink" : "text-ink-muted"}`}>
             {needsWork && <span className="size-2 rounded-full bg-problem" aria-hidden />}
-            {scanStatus(scan, assessment)}
+            {scanStatus(scan, assessment, scenario !== null)}
           </p>
         </div>
       </Link>

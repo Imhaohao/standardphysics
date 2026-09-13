@@ -35,6 +35,10 @@ export function proposeFix(scanId: string, baseRevision: number, findingIds: str
   return sendJson<ProposalResult>(`/api/scans/${scanId}/proposals`, { base_revision: baseRevision, finding_ids: findingIds });
 }
 
+export function setCounter(scanId: string, baseRevision: number, nodeId: string, isCounter: boolean) {
+  return sendJson<SceneGraph>(`/api/scans/${scanId}/revisions/${baseRevision}/counters/${nodeId}`, undefined, isCounter ? "PUT" : "DELETE");
+}
+
 export function confirmRoute(scanId: string, scenario: Scenario) {
   return sendJson<Scenario>(`/api/scans/${scanId}/scenario`, scenario, "PUT");
 }
