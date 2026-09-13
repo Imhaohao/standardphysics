@@ -1,12 +1,21 @@
 import type { LayoutCheckResult, NodeMove, SceneGraph } from "@/types/contracts";
 
+export class ApiRefusal extends Error {
+  constructor(readonly status: number, readonly error: string) {
+    super(error);
+  }
+}
+
 async function postJson<T>(url: string, body: unknown): Promise<T> {
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!response.ok) throw new Error(`${url} answered ${response.status}`);
+  if (!response.ok) {
+    const detail = await response.json().catch(() => ({ error: "" }));
+    throw new ApiRefusal(response.status, String(detail.error ?? ""));
+  }
   return (await response.json()) as T;
 }
 

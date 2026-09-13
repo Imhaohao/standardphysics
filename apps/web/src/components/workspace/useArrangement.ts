@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { checkLayout, saveLayout } from "@/lib/layout-client";
+import { ApiRefusal, checkLayout, saveLayout } from "@/lib/layout-client";
 import { applyMoves, type MoveSet, withMove } from "@/lib/moves";
 import type { LayoutCheckResult, SceneGraph } from "@/types/contracts";
 
@@ -80,8 +80,15 @@ export function useArrangement(scanId: string, scene: SceneGraph) {
       router.refresh();
       setTimeout(() => router.refresh(), 3000);
       return true;
-    } catch {
-      setProblem("That layout couldn't be saved. Check the pieces marked in red.");
+    } catch (error) {
+      const stale = error instanceof ApiRefusal && error.status === 409 && error.error.startsWith("a newer layout");
+      if (stale) {
+        reset();
+        router.refresh();
+        setProblem("Someone saved a newer layout, so we loaded it. Make your moves again on this one.");
+      } else {
+        setProblem("That layout couldn't be saved. Check the pieces marked in red.");
+      }
       return false;
     } finally {
       setSaving(false);

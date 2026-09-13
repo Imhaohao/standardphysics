@@ -10,6 +10,7 @@ from standardphysics_contracts import Report, ReviewedRule
 from . import repository as repo
 from .db import Database
 from .errors import ApiProblem
+from .stages import PREVIEW_REVIEWER
 
 
 def reviewed_rules(ledger: VerificationLedger) -> list[ReviewedRule]:
@@ -18,7 +19,7 @@ def reviewed_rules(ledger: VerificationLedger) -> list[ReviewedRule]:
         entry = ledger.entry_for(rule)
         if entry is None or not ledger.verifies(rule):
             continue
-        check = rule.as_check().model_copy(update={"verified_by_human": True})
+        check = rule.as_check().model_copy(update={"verified_by_human": entry.verified_by != PREVIEW_REVIEWER})
         reviewed.append(ReviewedRule(
             check=check, verified_by=entry.verified_by, verified_at=entry.verified_at,
             second_check_by=entry.second_check_by,
@@ -40,4 +41,5 @@ def build_report(database: Database, ledger: VerificationLedger, scan_id: uuid.U
         scenario=scenario,
         assessment=assessment,
         rules=reviewed_rules(ledger),
+        preview=any(entry.verified_by == PREVIEW_REVIEWER for entry in ledger.entries),
     )

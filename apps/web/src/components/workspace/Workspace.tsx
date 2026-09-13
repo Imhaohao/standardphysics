@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { overviewPose, poseFromLocus, topDownPose, type ViewerPose } from "@/lib/camera";
 import { interpolateLayout } from "@/lib/compare";
 import { findingForNode, groupFindings } from "@/lib/findings";
+import { scanStatus } from "@/lib/scan-status";
 import { METERS_PER_INCH } from "@/lib/moves";
 import type { Assessment, Finding, Scan, SceneGraph } from "@/types/contracts";
 import { ArrangePanel } from "./ArrangePanel";
@@ -149,6 +150,7 @@ function WorkspaceHeader({ scan, task, canCompare, onTask }: HeaderProps) {
 
 type SidePanelProps = {
   task: Task;
+  checked: boolean;
   scan: Scan;
   findings: Finding[];
   selected: Finding | null;
@@ -159,17 +161,13 @@ type SidePanelProps = {
   onToggle: (finding: Finding) => void;
 };
 
-function SidePanel({ task, scan, findings, selected, arrangement, comparison, amount, onAmount, onToggle }: SidePanelProps) {
+function SidePanel({ task, checked, scan, findings, selected, arrangement, comparison, amount, onAmount, onToggle }: SidePanelProps) {
   if (task === "compare" && comparison) return <ComparePanel comparison={comparison} amount={amount} onAmount={onAmount} />;
   if (task === "arrange") return <ArrangePanel arrangement={arrangement} fallbackFindings={findings} />;
   if (findings.length > 0) {
     return <FindingsList groups={groupFindings(findings)} selectedId={selected?.id ?? null} onSelect={onToggle} />;
   }
-  return (
-    <p className="px-3 text-ink-muted">
-      {scan.state === "ready" ? "Findings show up here once the shop is checked." : "Checking your shop"}
-    </p>
-  );
+  return <p className="px-3 text-ink-muted">{scanStatus(scan, checked ? 0 : null)}</p>;
 }
 
 export function Workspace({ scan, scene, exported, assessment, previous, glbUrl }: WorkspaceProps) {
@@ -231,6 +229,7 @@ export function Workspace({ scan, scene, exported, assessment, previous, glbUrl 
       <aside className="min-h-0 overflow-y-auto px-3 pb-10 pt-4 lg:pt-0">
         <SidePanel
           task={task}
+          checked={assessment !== null}
           scan={scan}
           findings={findings}
           selected={selected}

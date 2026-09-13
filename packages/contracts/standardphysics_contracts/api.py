@@ -82,3 +82,5 @@ class Report(BaseModel):
     scenario: Scenario | None
     assessment: Assessment | None
     rules: list[ReviewedRule]
+    preview: bool = False
+    """Built from rules no person has reviewed, for development only."""

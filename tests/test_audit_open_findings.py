@@ -176,7 +176,6 @@ def test_a40_every_object_named_for_a_sealed_route_would_reopen_it():
         assert PipelineMeasurements().route_clear_width(graph, scenario, 0).reachable
 
 
-@pytest.mark.xfail(strict=True, reason="A-29: a scan that fails processing can never be processed again")
 def test_a29_a_failed_scan_is_processed_again_once_a_readable_room_arrives(tmp_path):
     with _api_client(tmp_path) as client:
         body = {"name": "Corner cafe", "device_model": "iPhone17,1", "duration_seconds": 60.0}
@@ -189,9 +188,6 @@ def test_a29_a_failed_scan_is_processed_again_once_a_readable_room_arrives(tmp_p
         assert _finalize_and_process(client, scan_id) == "ready"
 
 
-@pytest.mark.xfail(
-    strict=True, raises=AssertionError, reason="A-31: renders sort revision directories as text, so 9 beats 10"
-)
 def test_a31_a_render_comes_from_the_newest_revision(tmp_path):
     with _api_client(tmp_path, seed_sample_shop=True) as client:
         scan_id = _sample_shop_id(client)
@@ -204,9 +200,6 @@ def test_a31_a_render_comes_from_the_newest_revision(tmp_path):
         assert client.get(f"/api/scans/{scan_id}/renders/{finding_id}.png").content == b"revision 10"
 
 
-@pytest.mark.xfail(
-    strict=True, raises=AssertionError, reason="A-35: a save that loses a race on the same base still returns 201"
-)
 def test_a35_a_save_that_loses_the_race_is_refused(tmp_path, monkeypatch):
     with _api_client(tmp_path, seed_sample_shop=True) as client:
         scan_id = _sample_shop_id(client)

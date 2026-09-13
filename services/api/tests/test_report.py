@@ -21,3 +21,12 @@ def test_an_unreviewed_rule_pack_lists_no_rules(make_client):
         drain(client)
         scan_id = client.get("/api/scans").json()["scans"][0]["id"]
         assert client.get(f"/api/scans/{scan_id}/report").json()["rules"] == []
+
+
+def test_a_preview_report_says_so_and_claims_no_human_review(make_client):
+    with make_client(seed=True) as client:
+        drain(client)
+        scan_id = client.get("/api/scans").json()["scans"][0]["id"]
+        report = client.get(f"/api/scans/{scan_id}/report").json()
+        assert report["preview"] is True
+        assert not any(rule["check"]["verified_by_human"] for rule in report["rules"])

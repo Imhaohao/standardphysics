@@ -136,6 +136,11 @@ export default async function ReportPage({ params }: PageProps<"/scans/[scanId]/
         <PrintButton />
       </div>
 
+      {report.preview && (
+        <p className="mb-8 rounded-lg bg-ink px-4 py-3 font-semibold text-paper">
+          Preview report. The rules in it are waiting for a person to review them.
+        </p>
+      )}
       <header className="grid items-end gap-6 sm:grid-cols-[1fr_9rem]">
         <div>
           <h1 className="text-4xl font-bold leading-tight">{scan.name}</h1>

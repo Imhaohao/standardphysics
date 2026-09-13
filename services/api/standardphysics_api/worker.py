@@ -1,7 +1,9 @@
 """One background thread that runs queued jobs in order.
 
-Jobs are claimed atomically, so a job runs once even when two API processes
-share a database. A job interrupted by a restart is queued again at startup.
+Run one API process per database. Jobs are claimed atomically, and at startup
+every job left running is queued again, on the assumption that the process that
+claimed it has stopped. A second process on the same database would rerun the
+first process's jobs.
 """
 
 from __future__ import annotations

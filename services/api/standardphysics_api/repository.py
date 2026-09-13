@@ -91,7 +91,7 @@ def find_artifact(connection: sqlite3.Connection, scan_id: uuid.UUID, artifact_i
 
 def artifact_of_kind(connection: sqlite3.Connection, scan_id: uuid.UUID, kind: str) -> Artifact | None:
     row = connection.execute(
-        "SELECT id, kind, sha256, bytes FROM artifacts WHERE scan_id = ? AND kind = ? ORDER BY created_at LIMIT 1",
+        "SELECT id, kind, sha256, bytes FROM artifacts WHERE scan_id = ? AND kind = ? ORDER BY created_at DESC LIMIT 1",
         (str(scan_id), kind),
     ).fetchone()
     return Artifact(id=row["id"], kind=row["kind"], sha256=row["sha256"], bytes=row["bytes"]) if row else None
@@ -143,6 +143,14 @@ def finish_job(connection: sqlite3.Connection, job_id: int, error: str | None = 
     connection.execute("UPDATE jobs SET state = ?, error = ? WHERE id = ?", (state, error, job_id))
 
 
+def retry_failed_processing(connection: sqlite3.Connection, scan_id: uuid.UUID) -> None:
+    connection.execute("UPDATE scans SET state = 'measuring' WHERE id = ?", (str(scan_id),))
+    connection.execute(
+        "UPDATE jobs SET state = 'queued', error = NULL WHERE scan_id = ? AND kind = 'process' AND state = 'failed'",
+        (str(scan_id),),
+    )
+
+
 def requeue_interrupted_jobs(connection: sqlite3.Connection) -> None:
     connection.execute("UPDATE jobs SET state = 'queued' WHERE state = 'running'")
 
@@ -154,8 +162,9 @@ def save_revision(
     base_revision: int | None = None,
     glb_path: str | None = None,
 ) -> None:
+    verb = "INSERT INTO" if source == "owner" else "INSERT OR IGNORE INTO"
     connection.execute(
-        "INSERT OR IGNORE INTO revisions"
+        f"{verb} revisions"
         " (scan_id, revision, graph_hash, graph_json, source, base_revision, glb_path, created_at)"
         " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         (str(graph.scan_id), graph.revision, graph_hash(graph), graph.model_dump_json(),
@@ -179,13 +188,19 @@ def graph_of(row: sqlite3.Row) -> SceneGraph:
     return SceneGraph.model_validate_json(row["graph_json"])
 
 
-def base_glb_path(connection: sqlite3.Connection, scan_id: uuid.UUID) -> str | None:
+def display_geometry(connection: sqlite3.Connection, scan_id: uuid.UUID) -> tuple[str, int] | None:
+    """The newest GLB, and the revision whose layout it was exported from."""
     row = connection.execute(
-        "SELECT glb_path FROM revisions WHERE scan_id = ? AND glb_path IS NOT NULL"
+        "SELECT glb_path, revision FROM revisions WHERE scan_id = ? AND glb_path IS NOT NULL"
         " ORDER BY revision DESC LIMIT 1",
         (str(scan_id),),
     ).fetchone()
-    return row["glb_path"] if row else None
+    return (row["glb_path"], row["revision"]) if row else None
+
+
+def base_glb_path(connection: sqlite3.Connection, scan_id: uuid.UUID) -> str | None:
+    found = display_geometry(connection, scan_id)
+    return found[0] if found else None
 
 
 def set_glb_path(connection: sqlite3.Connection, scan_id: uuid.UUID, revision: int, path: str) -> None:

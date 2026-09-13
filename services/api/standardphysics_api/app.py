@@ -142,6 +142,9 @@ def _accept_staged(database, store, scan_id, artifact_id, kind, claimed, staged)
 def _finalize(database: Database, store: ArtifactStore, scan_id: uuid.UUID) -> tuple[Scan, bool]:
     with database.transaction() as connection:
         scan = _scan_or_404(connection, scan_id)
+        if scan.state == "failed":
+            repo.retry_failed_processing(connection, scan_id)
+            return repo.get_scan(connection, scan_id), True
         if scan.state != "uploading":
             return scan, False
         missing = repo.missing_required(scan)
@@ -208,8 +211,10 @@ def _install_workspace_routes(app: FastAPI, database: Database, store: ArtifactS
     def scene_glb(scan_id: uuid.UUID) -> FileResponse:
         with database.connect() as connection:
             _scan_or_404(connection, scan_id)
-            path = repo.base_glb_path(connection, scan_id)
-        return _file_or_404(path, "model/gltf-binary")
+            found = repo.display_geometry(connection, scan_id)
+        response = _file_or_404(found[0] if found else None, "model/gltf-binary")
+        response.headers["X-Exported-Revision"] = str(found[1])
+        return response
 
     @app.get("/api/scans/{scan_id}/scenario", response_model=Scenario)
     def scenario(scan_id: uuid.UUID) -> Scenario:
@@ -240,7 +245,7 @@ def _install_workspace_routes(app: FastAPI, database: Database, store: ArtifactS
         if revision is None:
             raise ApiProblem(404, "not ready")
         directory = store.scan_dir(scan_id) / "revisions"
-        matches = sorted(directory.glob(f"*/renders/{finding_id}.png"))
+        matches = sorted(directory.glob(f"*/renders/{finding_id}.png"), key=lambda path: int(path.parent.parent.name))
         return _file_or_404(matches[-1] if matches else None, "image/png")
 
 

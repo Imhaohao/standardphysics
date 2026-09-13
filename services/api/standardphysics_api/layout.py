@@ -26,6 +26,8 @@ from .errors import ApiProblem
 from .stages import Stages
 from .worker import ASSESS, Worker
 
+STALE_LAYOUT = "a newer layout was saved since this one started"
+
 
 def _base(database: Database, scan_id: uuid.UUID, base_revision: int):
     with database.connect() as connection:
@@ -59,14 +61,15 @@ def check_layout(database: Database, stages: Stages, scan_id: uuid.UUID, body: L
 
 
 def save_layout(database: Database, worker: Worker, scan_id: uuid.UUID, body: SaveLayoutRequest) -> SceneGraph:
-    base, latest, _ = _base(database, scan_id, body.base_revision)
-    if body.base_revision != latest:
-        raise ApiProblem(409, "the layout changed since this was started")
+    base, _, _ = _base(database, scan_id, body.base_revision)
     candidate, blocked = _candidate(base, body.moves)
     if blocked:
         raise ApiProblem(409, "that layout breaks a hard constraint", need=[b.detail for b in blocked])
-    saved = candidate.model_copy(update={"revision": latest + 1})
+    saved = candidate.model_copy(update={"revision": body.base_revision + 1})
     with database.transaction() as connection:
+        latest = repo.get_revision(connection, scan_id)["revision"]
+        if latest != body.base_revision:
+            raise ApiProblem(409, STALE_LAYOUT)
         repo.save_revision(connection, saved, source="owner", base_revision=body.base_revision)
         repo.enqueue_job(connection, scan_id, ASSESS, saved.revision)
     worker.wake()

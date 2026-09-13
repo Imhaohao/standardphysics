@@ -269,6 +269,7 @@ export interface Proposal {
  */
 export interface Report {
   assessment: Assessment | null;
+  preview: boolean;
   rules: ReviewedRule[];
   scan: Scan;
   scenario: Scenario | null;
