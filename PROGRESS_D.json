@@ -1,6 +1,6 @@
 {
   "lane": "D",
-  "updated": "2026-09-13T00:29:57Z",
+  "updated": "2026-09-13T02:03:17Z",
   "done": [
     "contracts and fixture shop (21bbc65)",
     "Stop.anchor_node_id and WidthResult.needs_measurement (audit A-6, A-9)",
@@ -19,9 +19,14 @@
     "before and after scrub between layouts, with what moved and what it fixed",
     "fix suggestions from Lane C's propose_fix, loaded into Move furniture with Try this layout",
     "fixture counter at 47 in, as in Whitaker v. T Rock Inc.; shop.glb and shop.usdz rebuilt",
-    "audit findings A-29 to A-39 and A-42 to A-44 fixed; A-30 documented"
+    "audit findings A-29 to A-39 and A-42 to A-44 fixed; A-30 documented",
+    "pitch deck merged into apps/web at /present, sources byte-identical",
+    "customer route for real scans: suggestion from geometry, owner confirms in the viewer, then checks run (audit A-49)",
+    "lawsuit counter variant: lowered section and card reader, build_lawsuit_graph",
+    "ask box on Lane C's ask(), with camera focus and Try this layout",
+    "fix searches and questions on their own measurement cache (audit A-45)"
   ],
-  "in_progress": "release: merge the pitch deck into apps/web, one-command start, phone width, print, copy pass",
+  "in_progress": "release: one-command start, phone width, print, copy pass",
   "blocked_on": null,
   "ready_for_others": [
     "python -m standardphysics_api serves the real upload contract on :8787 (Lane A can point API_BASE_URL at the demo machine)",
@@ -34,7 +39,10 @@
     "GET /api/scans/{id}/report",
     "POST /api/scans/{id}/proposals",
     "Assessment.rules_checked",
-    "standardphysics_fixtures.COUNTER_HEIGHT_INCHES"
+    "standardphysics_fixtures.COUNTER_HEIGHT_INCHES",
+    "GET /api/scans/{id}/scenario/suggestion and PUT /api/scans/{id}/scenario",
+    "POST /api/scans/{id}/ask",
+    "standardphysics_fixtures.build_lawsuit_graph and build_lawsuit_scenario"
   ],
   "needs_human": [
     "Verify the rule pack thresholds (Lane C's cli rules verify). Until then real scans report no findings; SP_PREVIEW_UNVERIFIED_RULES=1 is for development only",
