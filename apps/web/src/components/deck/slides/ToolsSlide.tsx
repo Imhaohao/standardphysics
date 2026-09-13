@@ -152,7 +152,7 @@ const copy: Record<ToolsPhase, { headline: string[]; detail: string[]; source: s
   },
   aria: {
     headline: ["ARIA found", "where the fix", "agent needed", "more options."],
-    detail: ["On a 20 mm grid, 16 options found", "78% of fixes, up from 44%."],
+    detail: [],
     source: "fix_resolves_finding, Standard Physics evaluation grid, docs/aria.md",
   },
   marimo: {
