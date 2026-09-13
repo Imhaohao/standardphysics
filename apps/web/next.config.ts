@@ -7,6 +7,9 @@ const repositoryRoot = path.join(__dirname, "..", "..");
 const nextConfig: NextConfig = {
   devIndicators: false,
   allowedDevOrigins: ["*.local", "10.*.*.*", "192.168.*.*", "172.*.*.*"],
+  experimental: {
+    proxyTimeout: 120_000,
+  },
   turbopack: {
     root: repositoryRoot,
   },
