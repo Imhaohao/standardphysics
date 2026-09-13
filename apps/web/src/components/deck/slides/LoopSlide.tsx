@@ -208,7 +208,7 @@ export function LoopSlide({ step }: SlideProps) {
           {phase === "test" ? (
             <AppCapture key="fix-loop" video="/deck/fix-loop.mp4" alt="Standard Physics running Fix what I can: it moves a display case, re-measures, keeps the change, and tries two more moves that it rejects" />
           ) : (
-            <motion.div key="diagram" className="size-full" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div key="diagram" className="size-full" initial="enter" animate="present" exit="exit">
               <LoopDiagram phase={phase} />
             </motion.div>
           )}
