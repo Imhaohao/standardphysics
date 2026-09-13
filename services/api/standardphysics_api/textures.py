@@ -37,23 +37,74 @@ def validate_manifest(payload: bytes) -> PhotoManifest:
     return PhotoManifest.model_validate_json(payload)
 
 
+def _poses_of(connection, store, scan_id):
+    """The stored poses artifact and its projectable records, or nothing."""
+    poses = repo.artifact_of_kind(connection, scan_id, "poses")
+    if poses is None:
+        return None, {}
+    records = [PoseRecord.model_validate(item) for item in json.loads(_metadata(store.artifact_path(scan_id, poses.id)))]
+    cameras = {item.frame_id: item for item in records if item.projectable}
+    if len(cameras) != sum(item.projectable for item in records):
+        raise ValueError("duplicate camera frame ids")
+    return poses, cameras
+
+
+def _inputs_from_poses(connection, store, scan_id):
+    """Build inputs from the poses when the phone's manifest never arrived.
+
+    The manifest exists to say the upload finished. The poses say which photos
+    the walk took, and every stored artifact was checksummed on the way in, so
+    a scan whose every projectable pose has its photo is just as complete. A
+    capture that reached us whole should not wait on a second copy of its own
+    index.
+    """
+    poses, cameras = _poses_of(connection, store, scan_id)
+    if poses is None or not cameras:
+        return "needs_photos", None, None
+    frames, shas = {}, {}
+    for frame_id in sorted(cameras):
+        artifact = repo.find_artifact(connection, scan_id, frame_id)
+        if artifact is None or artifact.kind != "frames":
+            return "waiting_for_photos", None, None
+        frames[frame_id], shas[frame_id] = artifact.id, artifact.sha256
+    return "not_started", _built(connection, scan_id, poses, frames, shas), None
+
+
+def _built(connection, scan_id, poses, frames: dict, shas: dict) -> dict:
+    """The bake inputs, keyed by the photos themselves.
+
+    The key has to name the same build whether the phone's manifest arrived or
+    the poses stood in for it, or one capture bakes twice under two names.
+    """
+    lidar = repo.artifact_of_kind(connection, scan_id, "lidar_mesh")
+    digest = hashlib.sha256(poses.sha256.encode())
+    for frame_id in sorted(shas):
+        digest.update(frame_id.encode())
+        digest.update(shas[frame_id].encode())
+    digest.update((lidar.sha256 if lidar else "").encode())
+    return {
+        "poses": poses.id, "frames": frames,
+        "lidar": lidar.id if lidar else None, "digest": digest.hexdigest(),
+    }
+
+
 def _inputs(connection, store, scan_id):
     manifest_artifact = repo.artifact_of_kind(connection, scan_id, "photo_manifest")
     if manifest_artifact is None:
-        state = "waiting_for_photos" if repo.artifact_of_kind(connection, scan_id, "frames") else "needs_photos"
-        return state, None, None
+        if not repo.artifact_of_kind(connection, scan_id, "frames"):
+            return "needs_photos", None, None
+        try:
+            return _inputs_from_poses(connection, store, scan_id)
+        except (ValueError, TypeError, OSError, ValidationError) as error:
+            return "failed", None, str(error)[:300]
     try:
         manifest = validate_manifest(_metadata(store.artifact_path(scan_id, manifest_artifact.id)))
-        poses = repo.artifact_of_kind(connection, scan_id, "poses")
+        poses, cameras = _poses_of(connection, store, scan_id)
         if poses is None:
             return "waiting_for_photos", None, None
         if poses.sha256 != manifest.poses_sha256:
             raise ValueError("photo manifest does not match camera poses")
-        records = [PoseRecord.model_validate(item) for item in json.loads(_metadata(store.artifact_path(scan_id, poses.id)))]
-        cameras = {item.frame_id: item for item in records if item.projectable}
-        if len(cameras) != sum(item.projectable for item in records):
-            raise ValueError("duplicate camera frame ids")
-        frames = {}
+        frames, shas = {}, {}
         for frame in manifest.frames:
             artifact = repo.find_artifact(connection, scan_id, frame.frame_id)
             if artifact is None:
@@ -62,10 +113,8 @@ def _inputs(connection, store, scan_id):
                 raise ValueError("photo manifest does not match uploaded images")
             if frame.frame_id not in cameras:
                 raise ValueError("photo lacks synchronized version 2 camera metadata; capture again")
-            frames[frame.frame_id] = artifact.id
-        lidar = repo.artifact_of_kind(connection, scan_id, "lidar_mesh")
-        digest = hashlib.sha256((manifest_artifact.sha256 + (lidar.sha256 if lidar else "")).encode()).hexdigest()
-        return "not_started", {"poses": poses.id, "frames": frames, "lidar": lidar.id if lidar else None, "digest": digest}, None
+            frames[frame.frame_id], shas[frame.frame_id] = artifact.id, artifact.sha256
+        return "not_started", _built(connection, scan_id, poses, frames, shas), None
     except (ValueError, TypeError, OSError, ValidationError) as error:
         return "failed", None, str(error)[:300]
 
