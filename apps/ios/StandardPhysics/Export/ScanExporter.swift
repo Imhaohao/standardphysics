@@ -176,4 +176,10 @@ enum CaptureLibrary {
             return leftDate > rightDate
         }
     }
+
+    /// Removes a scan's folder from this phone. The room, the walkthrough and
+    /// the upload receipt all live inside it, so one call clears the lot.
+    static func remove(_ scan: CapturedScan) throws {
+        try FileManager.default.removeItem(at: scan.directory)
+    }
 }

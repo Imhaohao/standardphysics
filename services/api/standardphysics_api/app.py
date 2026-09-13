@@ -8,7 +8,7 @@ import pathlib
 import uuid
 from typing import Annotated
 
-from fastapi import FastAPI, Header, Request
+from fastapi import FastAPI, Header, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from standardphysics_contracts import (
@@ -92,7 +92,7 @@ def create_app(settings: Settings | None = None, stages: Stages | None = None, r
     app = FastAPI(title="Standard Physics API", version="0.1.0", lifespan=lifespan)
     app.state.database, app.state.store, app.state.worker = database, store, worker
     _install_error_handlers(app)
-    _install_scan_routes(app, database)
+    _install_scan_routes(app, database, store)
     _install_upload_routes(app, database, store, worker)
     _install_workspace_routes(app, database, store)
     _install_file_routes(app, database, store)
@@ -113,7 +113,7 @@ def _scan_or_404(connection, scan_id: uuid.UUID) -> Scan:
     return scan
 
 
-def _install_scan_routes(app: FastAPI, database: Database) -> None:
+def _install_scan_routes(app: FastAPI, database: Database, store: ArtifactStore) -> None:
     @app.post("/api/scans", status_code=201, response_model=Scan)
     def create_scan(body: CreateScanRequest) -> Scan:
         with database.transaction() as connection:
@@ -129,6 +129,20 @@ def _install_scan_routes(app: FastAPI, database: Database) -> None:
     def get_scan(scan_id: uuid.UUID) -> Scan:
         with database.connect() as connection:
             return _scan_or_404(connection, scan_id)
+
+    @app.delete("/api/scans/{scan_id}", status_code=204)
+    def delete_scan(scan_id: uuid.UUID) -> Response:
+        """Remove a scan and everything stored for it.
+
+        The rows go first and the files second. A stored file with no scan row
+        is invisible and reclaimable; a scan row whose files have gone is a
+        listing that breaks the moment anyone opens it.
+        """
+        with database.transaction() as connection:
+            _scan_or_404(connection, scan_id)
+            repo.delete_scan(connection, scan_id)
+        store.remove_scan(scan_id)
+        return Response(status_code=204)
 
 
 def _accept_staged(database, store, scan_id, artifact_id, kind, claimed, staged) -> tuple[int, Artifact]:

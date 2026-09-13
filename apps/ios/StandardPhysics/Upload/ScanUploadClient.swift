@@ -108,6 +108,18 @@ struct ScanUploadClient {
             throw UploadClientError.unexpectedResponse
         }
     }
+
+    /// Removes a scan from the server. A scan that is already gone counts as
+    /// deleted: the phone asked for it to not be there, and it is not there.
+    func delete(id: UUID) async throws {
+        var request = URLRequest(url: baseURL.appendingPathComponent("api/scans/\(id.uuidString)"))
+        request.httpMethod = "DELETE"
+        let (_, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else { return }
+        guard http.statusCode == 204 || http.statusCode == 404 else {
+            throw UploadClientError.unexpectedResponse
+        }
+    }
 }
 
 enum SHA256Digest {

@@ -77,6 +77,21 @@ def scan_exists(connection: sqlite3.Connection, scan_id: uuid.UUID) -> bool:
     return connection.execute("SELECT 1 FROM scans WHERE id = ?", (str(scan_id),)).fetchone() is not None
 
 
+CHILD_TABLES = ("assessments", "scenarios", "revisions", "jobs", "artifacts")
+"""Everything that references a scan, deepest first.
+
+SQLite does not enforce the foreign keys by default, so leaving a child row
+behind would not fail loudly. It would sit in the database pointing at a scan
+that no longer exists until something joined on it.
+"""
+
+
+def delete_scan(connection: sqlite3.Connection, scan_id: uuid.UUID) -> None:
+    for table in CHILD_TABLES:
+        connection.execute(f"DELETE FROM {table} WHERE scan_id = ?", (str(scan_id),))
+    connection.execute("DELETE FROM scans WHERE id = ?", (str(scan_id),))
+
+
 def set_state(connection: sqlite3.Connection, scan_id: uuid.UUID, state: str) -> None:
     connection.execute("UPDATE scans SET state = ? WHERE id = ?", (state, str(scan_id)))
 

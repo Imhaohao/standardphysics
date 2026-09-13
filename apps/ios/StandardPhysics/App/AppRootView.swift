@@ -14,6 +14,7 @@ final class AppModel: ObservableObject {
 
     @Published var screen: Screen = .start
     @Published private(set) var savedScans = CaptureLibrary.all()
+    @Published var deletionMessage: String?
     @Published private(set) var captureSessionID = UUID()
     @Published private(set) var recoveryDirectories: [URL] = []
     @Published private(set) var recoveryMessage: String?
@@ -67,6 +68,25 @@ final class AppModel: ObservableObject {
         uploads[scan.id] = model
         model.start()
         screen = .upload(model)
+    }
+
+    /// Removes a scan from this phone, and from the server if it got there.
+    ///
+    /// The phone is cleared first and the server is not reported on. The owner
+    /// asked for the scan to be gone, and where the bytes were is our problem:
+    /// a line about a server still holding a copy answers a question nobody
+    /// asked and leaves them worrying about it.
+    func deleteScan(_ scan: CapturedScan) async {
+        let remoteID = ResumableUploadStore(captureDirectory: scan.directory).scanID
+        uploads[scan.id] = nil
+        do { try CaptureLibrary.remove(scan) } catch {
+            deletionMessage = "That scan could not be removed. Try again."
+            return
+        }
+        savedScans = CaptureLibrary.all()
+
+        guard let remoteID, let baseURL = AppEnvironment.apiBaseURL else { return }
+        try? await ScanUploadClient(baseURL: baseURL).delete(id: remoteID)
     }
 
     func refreshSavedScanStates() async {
@@ -162,7 +182,14 @@ private struct StartView: View {
                         Button("Connection") { model.screen = .connection }
                             .buttonStyle(AppButtonStyle(.secondary))
                         if !model.savedScans.isEmpty {
-                            SavedScansView(scans: model.savedScans) { model.screen = .review($0) }
+                            SavedScansView(
+                                scans: model.savedScans,
+                                select: { model.screen = .review($0) },
+                                delete: { scan in Task { await model.deleteScan(scan) } }
+                            )
+                        }
+                        if let message = model.deletionMessage {
+                            Text(message).foregroundStyle(AppTheme.mutedInk)
                         }
                         ForEach(model.recoveryDirectories, id: \.self) { directory in
                             Button("Recover saved room") {
@@ -183,36 +210,136 @@ private struct StartView: View {
 private struct SavedScansView: View {
     let scans: [CapturedScan]
     let select: (CapturedScan) -> Void
+    let delete: (CapturedScan) -> Void
+
+    @State private var pendingDeletion: CapturedScan?
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.small) {
             Text("Saved scans")
                 .font(.title2.bold())
             ForEach(scans) { scan in
-                Button { select(scan) } label: {
-                    HStack(spacing: AppTheme.Spacing.compact) {
-                        Image(systemName: "cube.transparent")
-                            .font(.title2)
-                            .foregroundStyle(AppTheme.accent)
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(scan.name ?? "Shop scan")
-                                .font(.headline)
-                            Text(ResumableUploadStore(captureDirectory: scan.directory).historyText)
-                                .font(.subheadline)
-                                .foregroundStyle(AppTheme.mutedInk)
-                        }
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(AppTheme.Spacing.card)
-                    .background(AppTheme.panel)
-                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.control, style: .continuous))
-                }
-                .buttonStyle(.plain)
+                SavedScanRow(
+                    scan: scan,
+                    select: { select(scan) },
+                    requestDelete: { pendingDeletion = scan }
+                )
             }
         }
         .padding(.top, AppTheme.Spacing.compact)
+        .confirmationDialog(
+            "Delete this scan?",
+            isPresented: .init(
+                get: { pendingDeletion != nil },
+                set: { if !$0 { pendingDeletion = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                if let scan = pendingDeletion { delete(scan) }
+                pendingDeletion = nil
+            }
+            Button("Keep it", role: .cancel) { pendingDeletion = nil }
+        } message: {
+            Text("The room, the walkthrough and the findings all go with it.")
+        }
+    }
+}
+
+/// One saved scan. Swipe it left, or press the trash.
+///
+/// Swipe alone is not enough: it is invisible until someone already knows to
+/// try it. The button is what makes the gesture discoverable, so the two ship
+/// together rather than either on its own.
+private struct SavedScanRow: View {
+    let scan: CapturedScan
+    let select: () -> Void
+    let requestDelete: () -> Void
+
+    @State private var offset: CGFloat = 0
+    @GestureState private var dragging: CGFloat = 0
+
+    private let revealWidth: CGFloat = 96
+    private let triggerDistance: CGFloat = 72
+
+    var body: some View {
+        ZStack(alignment: .trailing) {
+            deleteTrack
+            card
+                .offset(x: min(0, offset + dragging))
+                .gesture(swipe)
+                .animation(.snappy(duration: 0.22), value: offset)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.control, style: .continuous))
+    }
+
+    private var deleteTrack: some View {
+        Button(action: confirm) {
+            Text("Delete")
+                .font(.headline)
+                .foregroundStyle(.white)
+                .frame(width: revealWidth)
+                .frame(maxHeight: .infinity)
+                .background(AppTheme.warning)
+        }
+        .buttonStyle(.plain)
+        .accessibilityHidden(offset == 0)
+    }
+
+    private var swipe: some Gesture {
+        DragGesture(minimumDistance: 18)
+            .updating($dragging) { value, state, _ in
+                state = min(0, value.translation.width)
+            }
+            .onEnded { value in
+                let travelled = -value.translation.width
+                if travelled > triggerDistance {
+                    offset = 0
+                    confirm()
+                } else {
+                    offset = 0
+                }
+            }
+    }
+
+    private func confirm() {
+        offset = 0
+        requestDelete()
+    }
+
+    private var card: some View {
+        HStack(spacing: 0) {
+            Button(action: select) {
+                        HStack(spacing: AppTheme.Spacing.compact) {
+                            Image(systemName: "cube.transparent")
+                                .font(.title2)
+                                .foregroundStyle(AppTheme.accent)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(scan.name ?? "Shop scan")
+                                    .font(.headline)
+                                Text(ResumableUploadStore(captureDirectory: scan.directory).historyText)
+                                    .font(.subheadline)
+                                    .foregroundStyle(AppTheme.mutedInk)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+
+            Button(action: confirm) {
+                Image(systemName: "trash")
+                    .font(.title3)
+                    .foregroundStyle(AppTheme.mutedInk)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Delete \(scan.name ?? "this scan")")
+        }
+        .padding(AppTheme.Spacing.card)
+        .background(AppTheme.panel)
     }
 }
 

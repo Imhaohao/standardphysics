@@ -1,42 +1,36 @@
-# B to A: I need one real room.json, early
+# B to A: I touched your lane, at Boris's request
 
-The ingest parser is written against Apple's **documented** shape, not against
-a real export. It is the only part of Lane B that is guessing, and it is
-guessing about something only you can settle.
+He asked for delete on the saved scans page while you were away, and said
+everyone is subscribed to pushes so changes are fine. Flagging it rather than
+letting you find it in a diff.
 
-## What I need
+## What changed in `apps/ios`
 
-One `room.json` from any scan — your desk, a corridor, thirty seconds of
-anything. Commit it to `packages/fixtures/standardphysics_fixtures/data/real/`.
-It does not need to be a shop and it does not need to be good. I need to see
-the actual bytes.
+- `CaptureLibrary.remove(_:)` in `ScanExporter.swift` — removes one capture
+  directory.
+- `ScanUploadClient.delete(id:)` — `DELETE /api/scans/{id}`. A 404 counts as
+  success: the phone asked for the scan to not be there, and it is not there.
+- `AppModel.deleteScan(_:)` in `AppRootView.swift` — clears the phone first,
+  then the server, and says nothing about the server either way.
+- `SavedScanRow`, a new private view, replacing the inline row markup in
+  `SavedScansView`. Swipe left past 72pt or press the trash, then confirm.
 
-Send it the moment the first export succeeds, ahead of the upload flow. If
-uploading is not working yet, AirDrop it and commit it by hand.
+Two judgement calls you may want to revisit:
 
-## What I am unsure about
+**Swipe is a custom `DragGesture`, not `.swipeActions`.** Saved scans live in a
+`VStack` inside a `ScrollView`, and `.swipeActions` only works inside a `List`.
+Converting to a `List` there meant nesting scroll views, so the gesture is hand
+rolled: reveal track behind, 96pt wide, triggers at 72.
 
-**How Swift encodes the category enums.** A category could arrive as `"table"`,
-as `{"table": {}}`, or as `{"door": {"isOpen": false}}` when the case carries an
-associated value. The parser accepts all three, but I do not know which one you
-actually produce, or whether `Surface.Category` and `Object.Category` agree.
+**The trash button stays alongside the swipe.** Swipe alone is invisible until
+someone already knows to try it, and the repo's UI rules are explicit about
+controls that only explain themselves after you use them.
 
-**Whether `simd_float4x4` really serialises as four columns.** I convert on that
-assumption, and it matters: read column-major data as row-major and every
-object in the shop lands at the origin. The parser will not warn you, the model
-will just be wrong.
+## What it does not do
 
-**The exact top-level key names.** I read `walls`, `doors`, `windows`,
-`openings`, `floors`, `objects`. If the encoder nests these under `sections` or
-a `story`, I will find nothing and raise.
+Nothing is queued for retry if the server is unreachable. The capture leaves the
+phone regardless, so a scan the server still holds becomes invisible to the
+owner. If you want that reconciled, it belongs in your upload store rather than
+in the row.
 
-## Also worth capturing
-
-`coverage.json` is yours to define, but please key it by the same element UUIDs
-RoomPlan gives the surfaces, so the rescan prompts can point at a specific wall.
-
-And the `metadataURL` mapping from the USDZ export. USD prim names cannot be
-UUIDs — hyphens are stripped and leading digits are illegal, so they collide
-into `Cube_001`. I hit this building the fixture and worked around it with an
-explicit map; RoomPlan's metadata file is the real version of that, and without
-it nothing downstream can tie a mesh back to the object a check is about.
+`xcodebuild` succeeds on the iPhone 17 Pro simulator.

@@ -50,6 +50,20 @@ class ArtifactStore:
     def scan_dir(self, scan_id: uuid.UUID) -> pathlib.Path:
         return self.root / "scans" / str(scan_id)
 
+    def remove_scan(self, scan_id: uuid.UUID) -> None:
+        """Delete everything stored for one scan.
+
+        The path is built from the scan UUID alone and checked against the
+        root, the same way a read is, so a delete can never walk out of the
+        store.
+        """
+        import shutil
+
+        target = self.scan_dir(scan_id)
+        if not str(target).startswith(str(self.root)):
+            raise InvalidArtifactId(str(scan_id))
+        shutil.rmtree(target, ignore_errors=True)
+
     async def stage(self, scan_id: uuid.UUID, chunks: AsyncIterator[bytes]) -> StagedUpload:
         """Stream a body to a temp file beside its destination while hashing it."""
         directory = self.scan_dir(scan_id) / "artifacts"
