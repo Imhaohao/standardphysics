@@ -4,9 +4,11 @@ import type { MotionValue } from "motion/react";
 import { useEffect, useRef } from "react";
 
 const DOT_GROWTH_WINDOW = 0.06;
+const FIELD_MARGIN_PX = 14;
 
 type Dot = { x: number; y: number; threshold: number; unpaid: boolean };
-type FieldLayout = { dots: Dot[]; radius: number; highlighted: Dot | null };
+type FieldGrid = { columns: number; pitch: number; left: number; top: number };
+type FieldLayout = { dots: Dot[]; radius: number; highlighted: Dot | null; grid: FieldGrid; paidCount: number };
 export type FieldOrigin = { x: number; y: number };
 
 function noiseAt(index: number) {
@@ -14,19 +16,16 @@ function noiseAt(index: number) {
   return scatter - Math.floor(scatter);
 }
 
-function scrambledShare(index: number) {
-  let value = Math.imul(index ^ 0x9e3779b9, 0x85ebca6b);
-  value = Math.imul(value ^ (value >>> 13), 0xc2b2ae35);
-  value ^= value >>> 16;
-  return (value >>> 0) / 4294967296;
-}
-
 function layoutDots(count: number, width: number, height: number, origin: FieldOrigin, unpaidShare: number): FieldLayout {
-  const columns = Math.ceil(Math.sqrt((count * width) / height));
+  const margin = FIELD_MARGIN_PX;
+  const innerWidth = width - margin * 2;
+  const innerHeight = height - margin * 2;
+  const columns = Math.ceil(Math.sqrt((count * innerWidth) / innerHeight));
   const rows = Math.ceil(count / columns);
-  const pitch = Math.min(width / columns, height / rows);
+  const pitch = Math.min(innerWidth / columns, innerHeight / rows);
   const offset = { x: (width - columns * pitch) / 2, y: (height - rows * pitch) / 2 };
   const center = { x: origin.x * width, y: origin.y * height };
+  const paidCount = Math.round(count * (1 - unpaidShare));
   const farthest = Math.hypot(Math.max(center.x, width - center.x), Math.max(center.y, height - center.y));
 
   let highlighted: Dot | null = null;
@@ -35,14 +34,14 @@ function layoutDots(count: number, width: number, height: number, origin: FieldO
     const x = offset.x + ((index % columns) + 0.5) * pitch;
     const y = offset.y + (Math.floor(index / columns) + 0.5) * pitch;
     const distance = Math.hypot(x - center.x, y - center.y);
-    const dot = { x, y, threshold: ((distance / farthest) * 0.85 + noiseAt(index) * 0.15) * (1 - DOT_GROWTH_WINDOW), unpaid: scrambledShare(index) < unpaidShare };
+    const dot = { x, y, threshold: ((distance / farthest) * 0.85 + noiseAt(index) * 0.15) * (1 - DOT_GROWTH_WINDOW), unpaid: index >= paidCount };
     if (distance < closest) {
       closest = distance;
       highlighted = dot;
     }
     return dot;
   });
-  return { dots, radius: pitch * 0.36, highlighted };
+  return { dots, radius: pitch * 0.36, highlighted, grid: { columns, pitch, left: offset.x, top: offset.y }, paidCount };
 }
 
 function grownRadius(dot: Dot, radius: number, progress: number) {
@@ -63,7 +62,7 @@ class FieldPainter {
   private order: Dot[] = [];
   private unpaid: Dot[] = [];
   private settledCount = 0;
-  private layout: FieldLayout = { dots: [], radius: 0, highlighted: null };
+  private layout: FieldLayout = { dots: [], radius: 0, highlighted: null, grid: { columns: 1, pitch: 1, left: 0, top: 0 }, paidCount: 0 };
 
   constructor(private readonly colors: FieldColors) {
     this.settled = document.createElement("canvas");
@@ -131,7 +130,38 @@ class FieldPainter {
     context.beginPath();
     for (const dot of this.unpaid) addDot(context, dot, this.layout.radius + 0.6);
     context.fill();
+    this.outlinePaid(context, Math.min(fade, 1));
     context.restore();
+  }
+
+  private outlinePaid(context: CanvasRenderingContext2D, alpha: number) {
+    const { columns, pitch, left, top } = this.layout.grid;
+    const fullRows = Math.floor(this.layout.paidCount / columns);
+    const extra = this.layout.paidCount % columns;
+    const pad = FIELD_MARGIN_PX / 2 + 1;
+    const right = left + columns * pitch + pad;
+    const x0 = left - pad;
+    const y0 = top - pad;
+    const fullBottom = top + fullRows * pitch;
+    const extraRight = left + extra * pitch + pad;
+    const extraBottom = fullBottom + pitch + pad;
+    context.globalAlpha = alpha;
+    context.strokeStyle = this.colors.tape;
+    context.lineWidth = 5;
+    context.lineJoin = "round";
+    context.beginPath();
+    context.moveTo(x0, y0);
+    context.lineTo(right, y0);
+    context.lineTo(right, fullBottom);
+    if (extra > 0) {
+      context.lineTo(extraRight, fullBottom);
+      context.lineTo(extraRight, extraBottom);
+      context.lineTo(x0, extraBottom);
+    } else {
+      context.lineTo(x0, fullBottom + pad);
+    }
+    context.closePath();
+    context.stroke();
   }
 
   private paintHighlight(context: CanvasRenderingContext2D, showHighlight: boolean) {
@@ -190,6 +220,7 @@ export function DotField({ count, progress, origin, showHighlight = true, onHigh
     }
 
     repaintRef.current = () => render(progress.get());
+    resize();
     const observer = new ResizeObserver(resize);
     observer.observe(canvas);
     const unsubscribe = progress.on("change", render);
