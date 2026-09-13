@@ -131,7 +131,7 @@ def _(aisle, counter, door, routine, scenarios, seating):
 def _(load_ledger, load_pack, mo):
     nothing_verified = not load_pack().enabled(load_ledger(), max_tier=1)
     preview = mo.ui.switch(
-        value=nothing_verified,
+        value=True,
         label="Read every rule as verified, so every check runs",
     )
     return nothing_verified, preview
@@ -741,18 +741,7 @@ def _(captures, mo, scan):
         ],
         gap=0.75,
     )
-    return (
-        destination,
-        direction,
-        distance,
-        origin,
-        piece,
-        pieces,
-        places,
-        rescan,
-        scanned,
-        suggested,
-    )
+    return destination, direction, distance, origin, piece, rescan
 
 
 @app.cell
@@ -897,16 +886,7 @@ def _(floor_polygon, footprint, math, rotation_about_z):
         )
         return f"{drawn}Z"
 
-    return (
-        PLAN,
-        closed_path,
-        on_plan,
-        outline_of,
-        plan_frame,
-        room_extent,
-        square_to_the_walls,
-        turned,
-    )
+    return closed_path, on_plan, outline_of, plan_frame
 
 
 @app.cell
@@ -1016,11 +996,9 @@ def _(PALETTE, closed_path, outline_of):
         ghost,
         haloed,
         piece_shape,
-        runs_of,
         stop_mark,
-        trace,
-        wall_line,
         walked,
+        wall_line,
         way_in,
     )
 
@@ -1077,8 +1055,8 @@ def _(
     scale_bar,
     stop_mark,
     verdict_colour,
-    wall_line,
     walked,
+    wall_line,
     way_in,
 ):
     ROUTE_CHECK = "route_clear_width"
@@ -1167,16 +1145,7 @@ def _(
             f"{stops}{scale_bar(frame)}</svg>"
         )
 
-    return (
-        CUT_INTO_A_WALL,
-        ROUTE_CHECK,
-        displaced,
-        furniture,
-        piece_stroke,
-        plan,
-        shell,
-        what_was_measured,
-    )
+    return ROUTE_CHECK, plan
 
 
 @app.cell
@@ -1223,7 +1192,7 @@ def _(PALETTE, aim, captures, mo, plan, same_stop, scan, scans, survey):
         )
 
     mo.vstack([plan_view(), mo.Html(provenance_block())], gap=0)
-    return plan_caption, plan_view, provenance_block, provenance_row
+    return
 
 
 @app.cell
@@ -1334,18 +1303,7 @@ def _(PALETTE, ROUTE_CHECK, aim, captures, mo, rescan, rule_title, survey):
         )
 
     reading_view()
-    return (
-        STRAY_ENOUGH_TO_SAY,
-        next_move,
-        off_the_floor,
-        reading_block,
-        reading_view,
-        refusal_block,
-        requirement,
-        tightest,
-        what_the_number_is,
-        withheld_block,
-    )
+    return
 
 
 @app.cell
@@ -1452,14 +1410,17 @@ def _(
         )
 
     nudge_view()
-    return (
-        nothing_to_draw,
-        nudge_note,
-        nudge_rows,
-        nudge_view,
-        other_pieces,
-        rests_on_the_piece,
-    )
+    return
+
+
+@app.cell
+def _():
+    return
+
+
+@app.cell
+def _():
+    return
 
 
 if __name__ == "__main__":

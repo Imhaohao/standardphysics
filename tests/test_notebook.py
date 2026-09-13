@@ -135,19 +135,29 @@ class TestTheCaptureSection:
         assert all(min(node.dimensions.x, node.dimensions.y) == 0.0 for node in walls)
         assert "stroke-width" in ran["plan_view"]().text
 
-    def test_the_stretch_off_the_floor_is_drawn_as_an_aside(self, ran):
-        """This capture's walls do not close, so the widest path leaves the
-        building. Drawing it like the rest would call a walk around the block
-        the trip."""
+    def test_the_trip_is_drawn_through_the_room(self, ran):
+        """This capture's walls do not close and the ground outside them is
+        wide open, so a route offered that ground would be a walk around the
+        block rather than the trip."""
         captures, aim, survey = ran["captures"], ran["aim"], ran["survey"]
         path = captures.walked_path(survey)
-        inside = captures.on_the_floor(captures.room(aim), path)
-        assert not all(inside)
+        assert path
+        assert all(captures.on_the_floor(captures.room(aim), path))
+
+    def test_a_route_that_does_leave_the_floor_is_drawn_as_an_aside(self, ran):
+        """A stop outside, or two the floor cannot join, still puts a stretch
+        of the route outdoors. Drawing that like the rest would present a walk
+        around the building as the trip."""
+        path = ran["captures"].walked_path(ran["survey"])
+        half = len(path) // 2
+        inside = [True] * half + [False] * (len(path) - half)
         runs = ran["runs_of"](path, inside)
         assert {on_floor for on_floor, _ in runs} == {True, False}
 
     def test_the_headline_number_says_where_it_was_taken(self, ran):
-        assert "off the scanned floor" in ran["reading_block"](ran["survey"])
+        reading = ran["reading_block"](ran["survey"])
+        assert "tightest point of this trip" in reading
+        assert "off the scanned floor" not in reading
 
     def test_a_confidence_the_scan_withheld_is_named(self, ran):
         """A check that measured something and asked anyway is listed by name,

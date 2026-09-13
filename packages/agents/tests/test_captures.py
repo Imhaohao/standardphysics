@@ -204,12 +204,12 @@ class TestWhereTheRouteWent:
         ends = c.pinch_line(reviewed, ROUTE)
         assert ends is not None and len(ends) == 2
 
-    def test_an_open_capture_lets_the_route_leave_the_building(self, aim, reviewed):
-        """These walls do not close, so the widest path goes around the
-        outside. The plan draws that stretch differently rather than showing a
-        walk around the block as the trip."""
+    def test_an_open_capture_is_still_walked_through_the_room(self, aim, reviewed):
+        """These walls do not close, and the ground outside them is the widest
+        corridor in the scan. A trip between two stops in the room has to be
+        measured through the room anyway."""
         graph = c.room(aim)
-        assert c.strayed(graph, c.walked_path(reviewed)) > 0.5
+        assert c.strayed(graph, c.walked_path(reviewed)) == 0.0
 
     def test_a_step_on_the_floor_reads_as_on_the_floor(self, aim, reviewed):
         graph = c.room(aim)

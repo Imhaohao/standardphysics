@@ -424,13 +424,12 @@ quantises at 25 mm, so a step right along the edge is still on it."""
 def on_the_floor(graph: SceneGraph, path: list[Vec3]) -> list[bool]:
     """Whether each step of a path landed on the scanned floor.
 
-    A capture whose walls do not close leaves open ground outside the
-    building, and the widest path search will happily use it: the grid marks a
-    cell free wherever nothing occupies it, and a wide opening is a way out.
-    The shipped fixture cannot show this, because its four walls enclose the
-    room. On a real scan it is the difference between a route through the shop
-    and a walk around the block, so the plan draws the two differently rather
-    than presenting both as the trip.
+    `routes.widest_path` keeps a trip inside the room while the scanned floor
+    joins its two stops, so a route that left the floor is one the room could
+    not answer: a stop standing outside, or two stops the floor cannot connect
+    without going around. That is the difference between a route through the
+    shop and a walk around the block, so the plan draws the two differently
+    rather than presenting both as the trip.
     """
     outline = floor_outline(graph)
     if outline is None:

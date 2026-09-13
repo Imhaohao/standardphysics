@@ -70,17 +70,56 @@ def clearance_map(grid: Grid) -> np.ndarray:
     return ndimage.distance_transform_edt(~grid.occupied) * grid.cell_size
 
 
-def _nearest_free(grid: Grid, clearance: np.ndarray, cell: tuple[int, int]):
+def _nearest(walkable: np.ndarray, cell: tuple[int, int]):
     """Snap a stop that landed inside furniture out to open floor."""
+    rows, cols = walkable.shape
     row, col = cell
-    if grid.contains(row, col) and not grid.occupied[row, col]:
+    if 0 <= row < rows and 0 <= col < cols and walkable[row, col]:
         return row, col
-    free = np.argwhere(~grid.occupied)
+    free = np.argwhere(walkable)
     if free.size == 0:
         return None
     distances = np.abs(free[:, 0] - row) + np.abs(free[:, 1] - col)
     nearest = free[int(np.argmin(distances))]
     return int(nearest[0]), int(nearest[1])
+
+
+def _stands_indoors(grid: Grid, cell: tuple[int, int]) -> bool:
+    """Whether a stop is on the scanned floor rather than the ground outside."""
+    return (
+        grid.indoors is not None
+        and grid.contains(*cell)
+        and bool(grid.indoors[cell])
+    )
+
+
+def _connected(walkable: np.ndarray, start, goal) -> bool:
+    regions, _ = ndimage.label(walkable)
+    return regions[start] != 0 and regions[start] == regions[goal]
+
+
+def _route_world(grid: Grid, start, goal):
+    """The cells a route may use, with its two stops snapped into them.
+
+    `occupancy.OUTSIDE_MARGIN` keeps open ground beyond the walls so a customer
+    arriving from the street has somewhere to stand. Nothing is out there, which
+    makes it the widest corridor in the capture, so a scan whose walls do not
+    close sends the search out through the gap and around the building: on the
+    Apple living room sample 92 per cent of the route ran outdoors, and the
+    width it reported was the width of the garden.
+
+    A trip between two stops in the room is a trip through the room, so the
+    outside is held back for it. It opens again when the room cannot answer on
+    its own: a stop standing outside, or a goal the floor genuinely cannot
+    reach without leaving.
+    """
+    free = ~grid.occupied
+    if _stands_indoors(grid, start) and _stands_indoors(grid, goal):
+        inside = free & grid.indoors
+        here, there = _nearest(inside, start), _nearest(inside, goal)
+        if here is not None and there is not None and _connected(inside, here, there):
+            return inside, here, there
+    return free, _nearest(free, start), _nearest(free, goal)
 
 
 def _exempt_mask(
@@ -111,8 +150,7 @@ def widest_path(
     extra_exempt: np.ndarray | None = None,
 ) -> PathResult:
     """Bottleneck Dijkstra: maximise the smallest clearance along the route."""
-    start = _nearest_free(grid, clearance, start)
-    goal = _nearest_free(grid, clearance, goal)
+    walkable, start, goal = _route_world(grid, start, goal)
     if start is None or goal is None:
         return PathResult(0.0, None, [], reachable=False)
 
@@ -139,7 +177,7 @@ def widest_path(
         row, col = cell
         for d_row, d_col in NEIGHBOURS:
             neighbour = (row + d_row, col + d_col)
-            if not grid.contains(*neighbour) or grid.occupied[neighbour]:
+            if not grid.contains(*neighbour) or not walkable[neighbour]:
                 continue
             candidate = min(width, search_field[neighbour])
             if candidate > best[neighbour]:

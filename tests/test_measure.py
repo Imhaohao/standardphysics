@@ -174,6 +174,44 @@ def test_a_route_can_come_in_from_the_street(shop):
     assert result.inches == pytest.approx(PINCH_INCHES, abs=1e-6)
 
 
+def _open_a_wall(graph):
+    """Take a side wall out, the way a scan that missed one leaves the room."""
+    walls = [node for node in graph.nodes if node.kind == "wall"]
+    west = min(walls, key=lambda node: node.transform.position.x)
+    graph.nodes.remove(west)
+    return west
+
+
+def test_a_gap_in_the_walls_does_not_send_the_route_outside(shop):
+    """Open ground beyond the floor is the widest corridor in any capture, so
+    a bottleneck search offered a way out will take it and report the width of
+    the garden. Both of these stops are in the room, so the trip is too."""
+    graph, scenario, measure = shop
+    _open_a_wall(graph)
+    polygon = floor_polygon(next(n for n in graph.nodes if n.kind == "floor"))
+    path = measure.route_clear_width(graph, scenario, 0).path
+    assert path
+    assert all(contains_point(polygon, (step.x, step.y), 0.05) for step in path)
+
+
+def test_a_stop_outside_still_reaches_the_ground_it_stands_on(shop):
+    """Holding the outside back cannot strand a customer arriving from the
+    street: the floor only confines a trip whose two stops are both on it."""
+    from standardphysics_contracts import Scenario, Stop, Vec3
+
+    graph, _, measure = shop
+    polygon = floor_polygon(next(n for n in graph.nodes if n.kind == "floor"))
+    street = Scenario(
+        name="From the street",
+        stops=[
+            Stop(name="Street", position=Vec3(x=0.0, y=-5.0, z=0.0)),
+            Stop(name="Counter", position=Vec3(x=-0.8, y=3.1, z=0.0)),
+        ],
+    )
+    path = measure.route_clear_width(graph, street, 0).path
+    assert any(not contains_point(polygon, (step.x, step.y)) for step in path)
+
+
 def test_the_search_does_not_wander_off_into_the_padding(shop):
     """An open door lets the search leave the building. Beyond the floor the
     grid is empty space with excellent clearance, so an unbounded search
