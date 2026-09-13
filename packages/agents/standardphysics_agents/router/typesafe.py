@@ -19,17 +19,21 @@ import urllib.error
 import urllib.request
 from typing import Any, Protocol
 
-from standardphysics_contracts import Decision, Finding
+from standardphysics_contracts import Decision
 
 from ..tracing import traced
-from .decision import Rejected, action_schema, parse_decision
+from .decision import ACTIONS, Rejected, action_schema, parse_decision
 from .state import RouterState
 
 API_KEY_ENV = "TYPESAFE_API_KEY"
 BASE_URL_ENV = "TYPESAFE_BASE_URL"
 MODEL_ENV = "TYPESAFE_MODEL"
+PATH_ENV = "TYPESAFE_PATH"
 
-DEFAULT_PATH = "/v1/structured"
+DEFAULT_BASE_URL = "https://api.typesafe.ai"
+DEFAULT_PATH = "/v1/systemone"
+STRUCTURED_PATH = "/v1/structured"
+DEFAULT_CHOICE_MODEL = "jev-latest"
 DEFAULT_TIMEOUT_SECONDS = 20.0
 
 PROVIDER = "typesafe"
@@ -43,7 +47,16 @@ INSTRUCTION = (
     "professional. DONE ends the review. Name every finding you act on."
 )
 
+CHOICE_CRITERIA = {
+    "FIX": "Move furniture to clear a measured problem furniture can fix.",
+    "RESCAN_AREA": "Ask for another look at thin or uncertain coverage.",
+    "ASK_OWNER": "Ask the owner one specific measurement or photo question.",
+    "ESCALATE": "Queue a remaining problem for a professional.",
+    "DONE": "End the review and report what is known.",
+}
+
 RESPONSE_PATHS = (
+    ("answers", "action"),
     ("data",),
     ("output",),
     ("result",),
@@ -111,13 +124,13 @@ class TypeSafeRouter:
         self,
         api_key: str | None = None,
         base_url: str | None = None,
-        path: str = DEFAULT_PATH,
+        path: str | None = None,
         model: str | None = None,
         transport: Transport | None = None,
     ) -> None:
         self.api_key = api_key or os.environ.get(API_KEY_ENV)
-        self.base_url = (base_url or os.environ.get(BASE_URL_ENV) or "").rstrip("/")
-        self.path = path
+        self.base_url = (base_url or os.environ.get(BASE_URL_ENV) or DEFAULT_BASE_URL).rstrip("/")
+        self.path = path or os.environ.get(PATH_ENV) or DEFAULT_PATH
         self.model = model or os.environ.get(MODEL_ENV)
         self.transport = transport or UrllibTransport()
 
@@ -125,7 +138,23 @@ class TypeSafeRouter:
     def configured(self) -> bool:
         return bool(self.api_key and self.base_url)
 
+    @property
+    def uses_choice(self) -> bool:
+        return self.path.rstrip("/").endswith("systemone")
+
     def request_body(self, state: RouterState) -> dict:
+        if self.uses_choice:
+            return {
+                "state": state.summary(),
+                "model": self.model or DEFAULT_CHOICE_MODEL,
+                "questions": {
+                    "action": {
+                        "type": "choice",
+                        "instructions": INSTRUCTION,
+                        "criteria": CHOICE_CRITERIA,
+                    }
+                },
+            }
         body = {
             "instruction": INSTRUCTION,
             "schema": action_schema(),
@@ -142,7 +171,8 @@ class TypeSafeRouter:
         raw = self._call(self.request_body(state))
         if isinstance(raw, Rejected):
             return raw
-        decision = parse_decision(extract_payload(raw), state.findings, PROVIDER)
+        payload = complete_choice(extract_payload(raw), state)
+        decision = parse_decision(payload, state.findings, PROVIDER)
         if isinstance(decision, Rejected):
             return decision
         return _authorize(decision, state)
@@ -159,6 +189,63 @@ class TypeSafeRouter:
             )
         except (urllib.error.URLError, urllib.error.HTTPError, OSError, TimeoutError):
             return Rejected("transport_error")
+
+
+def complete_choice(payload: Any, state: RouterState) -> Any:
+    """Turn a System One Choice into a Decision object parse_decision can check.
+
+    The live API returns an action name, not finding IDs. The backend names the
+    legal targets for that action. A Decision-shaped payload is left alone.
+    """
+    if not isinstance(payload, dict):
+        return payload
+    action = _choice_action(payload)
+    if action is None:
+        return payload
+    if _already_named(payload, action):
+        return {**payload, "action": action}
+    completed: dict[str, Any] = {
+        "action": action,
+        "rationale": _optional_text(payload, "rationale"),
+    }
+    completed.update(_targets_for(action, state))
+    return completed
+
+
+def _choice_action(payload: dict) -> str | None:
+    raw = payload.get("action") or payload.get("choice")
+    return raw if isinstance(raw, str) and raw in ACTIONS else None
+
+
+def _already_named(payload: dict, action: str) -> bool:
+    if action in {"FIX", "RESCAN_AREA", "ESCALATE"}:
+        return bool(payload.get("target_finding_ids"))
+    if action == "ASK_OWNER":
+        return bool(payload.get("question"))
+    return True
+
+
+def _targets_for(action: str, state: RouterState) -> dict:
+    if action == "FIX":
+        return {"target_finding_ids": [str(item) for item in state.fixable_finding_ids[:1]]}
+    if action == "RESCAN_AREA":
+        return {"target_finding_ids": [str(item) for item in state.rescan_finding_ids[:1]]}
+    if action == "ESCALATE":
+        return {"target_finding_ids": [str(item.id) for item in state.problems[:1]]}
+    if action == "ASK_OWNER":
+        return {"question": _owner_question(state)}
+    return {}
+
+
+def _owner_question(state: RouterState) -> str:
+    if state.questions:
+        return state.questions[0].detail[:400]
+    return "We need a measurement we do not have."
+
+
+def _optional_text(payload: dict, key: str) -> str | None:
+    value = payload.get(key)
+    return value if isinstance(value, str) else None
 
 
 def _authorize(decision: Decision, state: RouterState) -> Decision | Rejected:
