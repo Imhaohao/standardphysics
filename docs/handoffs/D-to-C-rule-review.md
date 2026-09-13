@@ -8,7 +8,7 @@ The ledger at `packages/agents/standardphysics_agents/rules/data/verification.js
 |---|---|
 | Who reads | One reviewer reads each section and types the number back. PLAN section 8: "Every threshold is verified against primary source text by a human, and a second person checks the citation." |
 | Who checks | A second, different person opens the same links, confirms the section number and the quote, and records a second check. |
-| Rules | 14 tier 1 rules. 12 get recorded tonight and 2 are held. |
+| Rules | 14 tier 1 rules. 13 get recorded tonight and 1 is held. |
 | Time | This is an estimate. Each rule is one quote to compare with one linked paragraph, so plan on about an hour for the reader and half an hour for the second person. |
 
 Paths below are shortened. `agents/` is `packages/agents/standardphysics_agents/`, `checks/` is `packages/agents/standardphysics_agents/checks/`, and `pipeline/` is `packages/pipeline/standardphysics_pipeline/`. Code line numbers are at `a98cefd`. Nothing under `packages/` changed between `256ced3` and `a98cefd`.
@@ -326,7 +326,7 @@ Every 2010 Standards quote below was copied from the DOJ page, [ada.gov 2010 Sta
 - **Fix owner:** Lane C. Either ask about an interior door, or cite the California section after someone reads it. Changing the section means verifying this rule again.
 - **Verdict:** Verify, fix logic
 
-## Hold
+## Keep for the demo
 
 ### `point_of_sale_height`
 
@@ -347,9 +347,11 @@ Every 2010 Standards quote below was copied from the DOJ page, [ada.gov 2010 Sta
   904.4 and 904.4.1 are quoted under `service_counter_height`.
 - **Match:** No. The pack's advisory sentence does not appear in the 2010 Standards. The pack says to "locate the cash register at the accessible section of the counter". Advisory 904.2 says to "locate the accessible counter close to the cash register". Neither 904.4 nor 904.4.1 mentions a register. The 36 in number itself matches, because 904.4.1 and 904.4.2 both set "36 inches (915 mm) high maximum".
 - **What the check does:** `checks/service_counter.py:130-163` runs only when a lowered section stands beside a counter. It finds each card reader or register whose footprint touches a counter section and fails when that section is over 36 in. It reads the portion size from `service_counter_height`'s rule (`service_counter.py:132-135`), so it uses that rule's numbers even when `service_counter_height` has no ledger entry.
-- **To unblock:** Lane C replaces the misquote with the Advisory 904.2 wording above. A person then decides what requirement backs a red finding here. Advisory 227.3 comes closest, and it is also advisory text. PLAN section 8 names an accessibility professional for calls like this. If the citation moves to another section, verify against that section.
-- **Effect of holding:** "People pay at the high counter" disappears from the sample shop until this rule is verified.
-- **Verdict:** Hold
+- **Decision:** Brendan decided on 2026-09-12 to keep this rule for the demo, so record it tonight like the others. The sample shop keeps "People pay at the high counter". Brendan's decision reached this sheet through the other Lane D session.
+- **Still to fix:** Lane C replaces the misquote in `source_text` with the Advisory 904.2 wording above, and ideally adds Advisory 227.3, so the report cites words that appear in the 2010 Standards. The ledger entry binds only id, section, threshold and unit, so that fix leaves it valid as long as the section stays 904.4.
+- **Verdict:** Keep for the demo (Brendan, 2026-09-12)
+
+## Hold
 
 ### `exit_path`
 
@@ -382,7 +384,7 @@ Every 2010 Standards quote below was copied from the DOJ page, [ada.gov 2010 Sta
 | `service_counter_height` | ADA 2010 904.4.1 | Verify, fix logic | | |
 | `service_counter_approach` | ADA 2010 305.3 | Verify, fix logic | | |
 | `door_opening_force` | ADA 2010 404.2.9 | Verify, fix logic | | |
-| `point_of_sale_height` | ADA 2010 904.4 | Hold | | |
+| `point_of_sale_height` | ADA 2010 904.4 | Keep for the demo (Brendan, 2026-09-12) | | |
 | `exit_path` | CBC 2022 Chapter 10 | Hold | | |
 
 ## Sources fetched for this sheet

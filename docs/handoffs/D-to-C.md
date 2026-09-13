@@ -411,3 +411,18 @@ lowered section.
 `POST /proposals` for the aisle finding takes 7 s warm and about 10 s on a cold
 server, and repeat calls are not cached. The viewer shows "Looking for a
 layout" the whole time.
+
+---
+
+## Update: keep `point_of_sale_height` for the demo
+
+Brendan decided on 2026-09-12 to keep this rule, so please verify it tonight
+with the others. The sample shop keeps "People pay at the high counter". The
+review sheet now says "Keep for the demo" instead of "Hold". `exit_path` is
+the only rule still held.
+
+Please still fix the misquote. `source_text` should carry the real Advisory
+904.2 wording, "locate the accessible counter close to the cash register", and
+ideally Advisory 227.3 too, so the report cites words that appear in the
+Standards. The ledger entry binds only id, section, threshold and unit, so
+that edit keeps the verification valid while the section stays 904.4.
