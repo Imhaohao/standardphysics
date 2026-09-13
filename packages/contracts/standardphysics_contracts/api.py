@@ -7,11 +7,12 @@ against, and the mock server's error bodies.
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from .findings import Finding
+from .findings import Finding, Locus
 from .loop import Assessment, NodeMove, Proposal
 from .rules import Check
 from .scan import Scan
@@ -101,3 +102,21 @@ class ProposalResult(BaseModel):
     """The sentence to show: the fix, or that no arrangement works."""
     question: str | None = None
     """One thing the owner could allow, when nothing works as things stand."""
+
+
+class AskRequest(BaseModel):
+    base_revision: int
+    text: str = Field(min_length=1, max_length=500)
+
+
+class AskAnswer(BaseModel):
+    """Lane C's answer to a question about the shop, in wire form."""
+
+    text: str
+    understood: bool
+    kind: str | None = None
+    subjects: list[UUID] = []
+    locus: Locus | None = None
+    data: dict[str, Any] = {}
+    proposal: Proposal | None = None
+    findings: list[Finding] = []

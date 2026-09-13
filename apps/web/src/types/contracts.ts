@@ -46,36 +46,22 @@ export interface Artifact {
   stored_path: string | null;
 }
 /**
+ * Lane C's answer to a question about the shop, in wire form.
+ *
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
- * via the `definition` "Assessment".
+ * via the `definition` "AskAnswer".
  */
-export interface Assessment {
-  created_at: string;
-  decision: Decision | null;
+export interface AskAnswer {
+  data: {
+    [k: string]: unknown;
+  };
   findings: Finding[];
-  graph_hash: string;
-  graph_revision: number;
-  id: string;
-  pass_number: number;
-  rulepack_version: string;
-  rules_checked: number | null;
-  scan_id: string;
-  weave_run_url: string | null;
-}
-/**
- * TypeSafe's structured output, after validation.
- *
- * An action that fails validation authorizes nothing.
- *
- * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
- * via the `definition` "Decision".
- */
-export interface Decision {
-  action: "FIX" | "RESCAN_AREA" | "ASK_OWNER" | "ESCALATE" | "DONE";
-  provider: string;
-  question: string | null;
-  rationale: string | null;
-  target_finding_ids: string[];
+  kind: string | null;
+  locus: Locus | null;
+  proposal: Proposal | null;
+  subjects: string[];
+  text: string;
+  understood: boolean;
 }
 /**
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
@@ -126,6 +112,74 @@ export interface CameraPose {
   fov_degrees: number;
   position: Vec3;
   target: Vec3;
+}
+/**
+ * Movable nodes only. No resize, no fixture movement, no leaving the floor.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "Proposal".
+ */
+export interface Proposal {
+  base_graph_hash: string;
+  id: string;
+  inventory_after: {
+    [k: string]: number;
+  };
+  inventory_before: {
+    [k: string]: number;
+  };
+  moves: NodeMove[];
+  rationale: string;
+  targets: string[];
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "NodeMove".
+ */
+export interface NodeMove {
+  delta_rotation_z_degrees: number;
+  delta_translation: Vec3;
+  node_id: string;
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "AskRequest".
+ */
+export interface AskRequest {
+  base_revision: number;
+  text: string;
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "Assessment".
+ */
+export interface Assessment {
+  created_at: string;
+  decision: Decision | null;
+  findings: Finding[];
+  graph_hash: string;
+  graph_revision: number;
+  id: string;
+  pass_number: number;
+  rulepack_version: string;
+  rules_checked: number | null;
+  scan_id: string;
+  weave_run_url: string | null;
+}
+/**
+ * TypeSafe's structured output, after validation.
+ *
+ * An action that fails validation authorizes nothing.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "Decision".
+ */
+export interface Decision {
+  action: "FIX" | "RESCAN_AREA" | "ASK_OWNER" | "ESCALATE" | "DONE";
+  provider: string;
+  question: string | null;
+  rationale: string | null;
+  target_finding_ids: string[];
 }
 /**
  * A hard constraint a layout breaks, from Lane C's fix constraints.
@@ -193,15 +247,6 @@ export interface LayoutCheckRequest {
   base_revision: number;
   moves: NodeMove[];
   sequence: number;
-}
-/**
- * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
- * via the `definition` "NodeMove".
- */
-export interface NodeMove {
-  delta_rotation_z_degrees: number;
-  delta_translation: Vec3;
-  node_id: string;
 }
 /**
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
@@ -296,25 +341,6 @@ export interface Mat4 {
     number,
     ...number[]
   ];
-}
-/**
- * Movable nodes only. No resize, no fixture movement, no leaving the floor.
- *
- * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
- * via the `definition` "Proposal".
- */
-export interface Proposal {
-  base_graph_hash: string;
-  id: string;
-  inventory_after: {
-    [k: string]: number;
-  };
-  inventory_before: {
-    [k: string]: number;
-  };
-  moves: NodeMove[];
-  rationale: string;
-  targets: string[];
 }
 /**
  * Ask the fix agent for a layout that clears these findings.

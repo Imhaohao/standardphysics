@@ -63,3 +63,11 @@ for the team, and I have raised it with Brendan.
   `GET /api/scans/{id}/scenario/suggestion`. `PUT /api/scans/{id}/scenario`
   saves the route the owner confirms and queues the assessment. On `ravida` that
   produces findings. `services/api/tests/test_route.py` covers both phone scans.
+
+## A-45
+
+Fixed. `Stages.propose` and the new `Stages.ask` run on `search_measure`, a
+second `PipelineMeasurements` under its own `_search_lock`. A fix search or a
+question no longer waits on, or holds up, a layout check or a queued
+assessment. `services/api/tests/test_ask.py` holds the search lock and checks
+that a layout check still answers.

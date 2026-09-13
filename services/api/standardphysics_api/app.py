@@ -14,6 +14,8 @@ from fastapi.responses import FileResponse, JSONResponse
 from standardphysics_contracts import (
     Artifact,
     ArtifactKind,
+    AskAnswer,
+    AskRequest,
     Assessment,
     CreateScanRequest,
     LayoutCheckRequest,
@@ -36,6 +38,7 @@ from .errors import ApiProblem
 from .layout import check_layout, save_layout
 from .lidar_mesh import InvalidLidarMesh, validate_lidar_mesh
 from .proposals import propose
+from .questions import answer_question
 from .report import build_report
 from .route import confirm, suggestion
 from .seed import seed_sample_shop
@@ -250,6 +253,10 @@ def _install_layout_routes(app: FastAPI, database: Database, stages: Stages, wor
     @app.post("/api/scans/{scan_id}/layout-checks", response_model=LayoutCheckResult)
     def layout_check(scan_id: uuid.UUID, body: LayoutCheckRequest) -> LayoutCheckResult:
         return check_layout(database, stages, scan_id, body)
+
+    @app.post("/api/scans/{scan_id}/ask", response_model=AskAnswer)
+    def ask_about_the_shop(scan_id: uuid.UUID, body: AskRequest) -> AskAnswer:
+        return answer_question(database, stages, scan_id, body)
 
     @app.post("/api/scans/{scan_id}/proposals", response_model=ProposalResult)
     def proposal(scan_id: uuid.UUID, body: ProposalRequest) -> ProposalResult:

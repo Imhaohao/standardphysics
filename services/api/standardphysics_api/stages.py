@@ -21,6 +21,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from standardphysics_agents import VerificationLedger, assess, load_ledger, load_pack
+from standardphysics_agents.ask import Answer, ask
 from standardphysics_agents.fix import FixOutcome, propose_fix
 from standardphysics_contracts import Assessment, Finding, Scenario, SceneGraph
 from standardphysics_pipeline import PipelineMeasurements, blender, parse_room_json
@@ -49,7 +50,11 @@ class Stages:
     export_glb: Callable[[SceneGraph, pathlib.Path], pathlib.Path] = blender.export_glb
     usdz_to_glb: Callable[..., blender.ConversionResult] = blender.usdz_to_glb
     render_finding: Callable[..., pathlib.Path] = blender.render_finding
+    search_measure: PipelineMeasurements = field(default_factory=PipelineMeasurements)
+    """A second cache for fix searches and questions, so neither holds up a drag check."""
+
     _assess_lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+    _search_lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
     def ingest(self, room_json: pathlib.Path, scan_id) -> SceneGraph:
         graph = parse_room_json(json.loads(room_json.read_bytes()), scan_id=scan_id)
@@ -66,8 +71,14 @@ class Stages:
 
     def propose(self, graph: SceneGraph, scenario: Scenario, targets: list[Finding]) -> FixOutcome:
         """Lane C's fix agent: one arrangement that clears the targets, or one thing to ask."""
-        with self._assess_lock:
-            return propose_fix(graph, scenario, self.measure, targets, rules=load_pack(), ledger=self.ledger_factory())
+        with self._search_lock:
+            ledger = self.ledger_factory()
+            return propose_fix(graph, scenario, self.search_measure, targets, rules=load_pack(), ledger=ledger)
+
+    def ask(self, text: str, graph: SceneGraph, scenario: Scenario) -> Answer:
+        """Lane C's ask box, on the search cache."""
+        with self._search_lock:
+            return ask(text, graph, scenario, self.search_measure, ledger=self.ledger_factory())
 
     def geometry(
         self,

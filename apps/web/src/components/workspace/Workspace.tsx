@@ -7,11 +7,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { overviewPose, poseFromLocus, topDownPose, type ViewerPose } from "@/lib/camera";
 import { interpolateLayout } from "@/lib/compare";
-import { findingForNode, groupFindings } from "@/lib/findings";
+import { findingForNode, type Focus, focusOnLocus, groupFindings } from "@/lib/findings";
+import { AskBox } from "./AskBox";
 import { scanStatus } from "@/lib/scan-status";
 import { METERS_PER_INCH } from "@/lib/moves";
 import { capturedMeshUrl } from "@/lib/lidar-mesh";
-import type { Assessment, Finding, NodeMove, Scan, Scenario, SceneGraph } from "@/types/contracts";
+import type { Assessment, Finding, Locus, NodeMove, Scan, Scenario, SceneGraph } from "@/types/contracts";
 import { RoutePanel } from "./RoutePanel";
 import type { RouteHandles } from "./StopMarkers";
 import { type RouteState, useRoute } from "./useRoute";
@@ -49,7 +50,7 @@ function isWorking(scan: Scan): boolean {
 }
 type Task = "findings" | "arrange" | "compare" | "route";
 
-function poseFor(scene: SceneGraph, selected: Finding | null, mode: ViewMode): ViewerPose {
+function poseFor(scene: SceneGraph, selected: Focus | null, mode: ViewMode): ViewerPose {
   if (selected?.locus) return poseFromLocus(selected.locus.camera);
   return mode === "top" ? topDownPose(scene) : overviewPose(scene);
 }
@@ -180,14 +181,18 @@ type SidePanelProps = {
   onToggle: (finding: Finding) => void;
   route: RouteState;
   onRoute: () => void;
+  onLook: (locus: Locus | null) => void;
 };
 
-function SidePanel({ task, scene, onTryLayout, assessment, scan, findings, selected, arrangement, comparison, amount, onAmount, onToggle, route, onRoute }: SidePanelProps) {
+function SidePanel({ task, scene, onTryLayout, assessment, scan, findings, selected, arrangement, comparison, amount, onAmount, onToggle, route, onRoute, onLook }: SidePanelProps) {
   if (task === "compare" && comparison) return <ComparePanel comparison={comparison} amount={amount} onAmount={onAmount} />;
   if (task === "arrange") return <ArrangePanel arrangement={arrangement} fallbackFindings={findings} />;
   if (task === "route") return <RoutePanel route={route} />;
   return (
-    <FindingsPanel scan={scan} scene={scene} assessment={assessment} findings={findings} selected={selected} onToggle={onToggle} onTryLayout={onTryLayout} route={route} onRoute={onRoute} />
+    <>
+      <AskBox scanId={scan.id} revision={scene.revision} onLook={onLook} onTry={onTryLayout} />
+      <FindingsPanel scan={scan} scene={scene} assessment={assessment} findings={findings} selected={selected} onToggle={onToggle} onTryLayout={onTryLayout} route={route} onRoute={onRoute} />
+    </>
   );
 }
 
@@ -239,9 +244,17 @@ function useRouteHandles(task: Task, route: RouteState, setDragging: (on: boolea
   );
 }
 
+/** The finding picked from the list, or else the subject of the last question. */
+function useFocus() {
+  const [selected, setSelected] = useState<Finding | null>(null);
+  const [asked, setAsked] = useState<Focus | null>(null);
+  const focus: Focus | null = selected ?? asked;
+  return { selected, setSelected, setAsked, focus };
+}
+
 export function Workspace({ scan, scene, exported, assessment, previous, glbUrl, lidarUrl, scenario, suggestedScenario }: WorkspaceProps) {
   const findings = useMemo(() => assessment?.findings ?? [], [assessment]);
-  const [selected, setSelected] = useState<Finding | null>(null);
+  const { selected, setSelected, setAsked, focus } = useFocus();
   const [mode, setMode] = useState<ViewMode>("overview");
   const [objectLabel, setObjectLabel] = useState<string | null>(null);
   const [task, setTask] = useState<Task>("findings");
@@ -251,17 +264,17 @@ export function Workspace({ scan, scene, exported, assessment, previous, glbUrl,
   const comparison = comparisonFor(arrangement, scene, findings, previous);
   const comparing = task === "compare" && comparison !== null;
   const shown = comparing ? interpolateLayout(comparison.before, comparison.after, amount) : arrangement.shown;
-  const pose = useMemo(() => poseFor(scene, selected, mode), [scene, selected, mode]);
+  const pose = useMemo(() => poseFor(scene, focus, mode), [scene, focus, mode]);
   const handlers = useArrangeHandlers(task === "arrange", arrangement, setDragging);
   const route = useRoute(scan.id, scenario, suggestedScenario);
   const routeHandles = useRouteHandles(task, route, setDragging);
 
   const displayedLidarUrl = capturedMeshUrl(lidarUrl, scene.revision, task === "arrange" || task === "compare");
-  const clear = useCallback(() => { setSelected(null); setObjectLabel(null); }, []);
+  const clear = useCallback(() => { setSelected(null); setAsked(null); setObjectLabel(null); }, [setSelected, setAsked]);
   const selectNode = useCallback((nodeId: string) => {
     setSelected(findingForNode(findings, nodeId) ?? null);
     setObjectLabel(scene.nodes.find((node) => node.id === nodeId)?.label ?? "Scanned surface");
-  }, [findings, scene]);
+  }, [findings, scene, setSelected]);
   const toggle = (finding: Finding) => setSelected((current) => (current?.id === finding.id ? null : finding));
   const showView = (next: ViewMode) => {
     setSelected(null);
@@ -297,7 +310,7 @@ export function Workspace({ scan, scene, exported, assessment, previous, glbUrl,
           glbUrl={glbUrl}
           lidarUrl={displayedLidarUrl}
           pose={pose}
-          selected={task === "findings" ? selected : null}
+          selected={task === "findings" ? focus : null}
           onSelectNode={selectNode}
           onClearSelection={clear}
         />
@@ -329,6 +342,7 @@ export function Workspace({ scan, scene, exported, assessment, previous, glbUrl,
           onToggle={toggle}
           route={route}
           onRoute={() => switchTask("route")}
+          onLook={(locus) => { setSelected(null); setAsked(locus ? focusOnLocus(locus) : null); }}
         />
       </aside>
     </div>

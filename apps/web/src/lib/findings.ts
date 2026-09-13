@@ -1,4 +1,4 @@
-import type { Finding } from "@/types/contracts";
+import type { Finding, Locus } from "@/types/contracts";
 
 export type FindingGroups = { problems: Finding[]; questions: Finding[]; passes: Finding[] };
 
@@ -22,4 +22,11 @@ export function formatInches(inches: number): string {
 
 export function countNeedingAttention(findings: Finding[]): number {
   return findings.filter((finding) => finding.outcome !== "passes").length;
+}
+
+/** What the viewer frames and highlights: a finding, or the subject of a question. */
+export type Focus = Pick<Finding, "locus" | "outcome" | "required_inches">;
+
+export function focusOnLocus(locus: Locus): Focus {
+  return { locus, outcome: "question", required_inches: null };
 }

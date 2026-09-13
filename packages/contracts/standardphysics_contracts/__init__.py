@@ -1,5 +1,7 @@
 from .api import (
     ApiError,
+    AskAnswer,
+    AskRequest,
     Blocked,
     CreateScanRequest,
     LayoutCheckRequest,
@@ -30,6 +32,8 @@ __all__ = [
     "Annotation",
     "AnnotationKind",
     "ApiError",
+    "AskAnswer",
+    "AskRequest",
     "Artifact",
     "ArtifactKind",
     "Assessment",

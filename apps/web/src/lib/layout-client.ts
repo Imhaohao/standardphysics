@@ -1,4 +1,4 @@
-import type { LayoutCheckResult, NodeMove, ProposalResult, Scenario, SceneGraph } from "@/types/contracts";
+import type { AskAnswer, LayoutCheckResult, NodeMove, ProposalResult, Scenario, SceneGraph } from "@/types/contracts";
 
 export class ApiRefusal extends Error {
   constructor(readonly status: number, readonly error: string) {
@@ -37,4 +37,8 @@ export function proposeFix(scanId: string, baseRevision: number, findingIds: str
 
 export function confirmRoute(scanId: string, scenario: Scenario) {
   return sendJson<Scenario>(`/api/scans/${scanId}/scenario`, scenario, "PUT");
+}
+
+export function askAboutShop(scanId: string, baseRevision: number, text: string) {
+  return sendJson<AskAnswer>(`/api/scans/${scanId}/ask`, { base_revision: baseRevision, text });
 }

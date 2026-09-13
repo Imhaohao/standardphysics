@@ -4,7 +4,8 @@ import { Html, Line } from "@react-three/drei";
 import { useMemo } from "react";
 import { Color, DoubleSide, Shape, Vector2, Vector3 } from "three";
 import { toViewer } from "@/lib/coordinates";
-import type { Finding, Locus } from "@/types/contracts";
+import type { Focus } from "@/lib/findings";
+import type { Locus } from "@/types/contracts";
 import { MODEL, outcomeColor } from "./palette";
 
 const LIFT = 0.012;
@@ -74,7 +75,7 @@ function Path({ locus, required }: { locus: Locus; required: number | null }) {
   return <Line points={points} vertexColors={colors.map((c) => new Color(c))} lineWidth={5} depthTest={false} />;
 }
 
-export function FindingAnnotation({ finding }: { finding: Finding }) {
+export function FindingAnnotation({ finding }: { finding: Focus }) {
   const locus = finding.locus;
   if (!locus) return null;
   const color = outcomeColor(finding.outcome);

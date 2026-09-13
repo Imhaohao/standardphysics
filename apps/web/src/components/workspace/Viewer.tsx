@@ -5,7 +5,8 @@ import { Canvas } from "@react-three/fiber";
 import { Component, Suspense, useState, type ReactNode } from "react";
 import { Box3 } from "three";
 import type { ViewerPose } from "@/lib/camera";
-import type { Finding, SceneGraph } from "@/types/contracts";
+import type { Focus } from "@/lib/findings";
+import type { SceneGraph } from "@/types/contracts";
 import { FindingAnnotation } from "./Annotation";
 import { CameraRig } from "./CameraRig";
 import { MODEL, outcomeColor } from "./palette";
@@ -22,7 +23,7 @@ type ViewerProps = {
   glbUrl: string | null;
   lidarUrl: string | null;
   pose: ViewerPose;
-  selected: Finding | null;
+  selected: Focus | null;
   onSelectNode: (nodeId: string) => void;
   onClearSelection: () => void;
 };

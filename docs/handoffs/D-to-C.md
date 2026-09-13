@@ -245,3 +245,28 @@ would match the case, and the pitch deck:
 
 When that lands, the sample shop seed switches to the lawsuit variant with a
 one-line change in `services/api/standardphysics_api/seed.py`.
+
+---
+
+## Your ask box is live in the workspace
+
+`POST /api/scans/{id}/ask {base_revision, text}` calls
+`standardphysics_agents.ask` on its own measurement cache. It returns
+`AskAnswer {text, understood, kind, subjects, locus, data, proposal, findings}`;
+`Answer.graph` is left out because the viewer rebuilds a layout from
+`proposal.moves`. A scan without a confirmed route is asked about with the
+suggested route, so counts and measurements still work there.
+
+The box sits above the findings list:
+
+- **The locus.** An answer with a locus flies the camera to it, outlines the
+  subjects and dims the rest.
+- **A proposal.** An answer with a proposal offers "Try this layout", which
+  loads the moves into Move furniture for checking and saving.
+- **Not understood.** An answer that did not understand the question shows
+  your list of what can be asked.
+
+"Where is the ordering counter?" on the sample shop reads "…The nearest thing
+to it is the chair, 8.5 inches away." That is chair_2 behind the counter's
+west end. Please check whether that is the nearest thing a customer would
+name.
