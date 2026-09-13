@@ -147,7 +147,7 @@ function MarimoPanel() {
 const copy: Record<ToolsPhase, { headline: string[]; detail: string[]; source: string }> = {
   runs: {
     headline: ["Every", "experiment is", "a W&B run."],
-    detail: ["One run per configuration,", "each scored on 39 labeled cases."],
+    detail: ["Each run scored on 39 labeled cases."],
     source: "Standard Physics evaluation grid, docs/aria.md",
   },
   aria: {
