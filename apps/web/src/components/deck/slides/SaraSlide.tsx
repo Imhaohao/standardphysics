@@ -133,7 +133,7 @@ const phases: Phase[] = ["meet", "sued", "damages", "others"];
 
 const lawsuitCount = facts.adaLawsuitsFiled2025.value;
 const SARAS_SHOP = 1;
-const FIELD = { collapseSeconds: 0.8, fillDelay: 0.55, fillSeconds: 2, flightSeconds: 2.2 };
+const FIELD = { collapseSeconds: 0.8, fillDelay: 0.55, fillSeconds: 2, flightSeconds: 3.8 };
 const SHOP_IN_FIELD: FieldOrigin = { x: 0.5, y: 0.86 };
 
 const crushedDocumentY = documentOffset(1 - CRUSH.squash * (1 - ROOF_TOP));
@@ -252,7 +252,7 @@ function SaraShopScene({ phase }: { phase: Phase }) {
       <LawsuitDocument phase={phase} />
       <AnimatePresence>
         {phase === "damages" && (
-          <motion.div key="receipt" initial="enter" animate="present" exit="exit" className="absolute inset-x-0 top-0 z-20 flex justify-center pt-deck-rise">
+          <motion.div key="receipt" initial="enter" animate="present" exit="exit" className="absolute inset-x-0 top-0 z-20 flex justify-center pt-deck-printer">
             <Receipt />
           </motion.div>
         )}
@@ -268,13 +268,18 @@ function SaraShopScene({ phase }: { phase: Phase }) {
  * The dot's flight, in fractions of the art box. It leaves the shop counterclockwise along an ellipse that swings
  * left over the middle of the slide, comes back around, and eases onto its place in the field over the last stretch.
  */
-const FLIGHT = { centerX: 0.05, centerY: 0.5, radiusX: 0.9, radiusY: 0.416, startDegrees: 60, settleFrom: 0.72, popScale: 1.6 };
+const FLIGHT = { radiusX: 0.42, radiusY: 0.24, startDegrees: 60, settleFrom: 0.72, popScale: 1.6 };
+const startRadians = (FLIGHT.startDegrees * Math.PI) / 180;
+const ORBIT_CENTER = {
+  x: SHOP_IN_FIELD.x - FLIGHT.radiusX * Math.cos(startRadians),
+  y: SHOP_IN_FIELD.y - FLIGHT.radiusY * Math.sin(startRadians),
+};
 
 const smoothstep = (value: number) => value * value * (3 - 2 * value);
 
 function flightPoint(progress: number, landing: FieldOrigin): FieldOrigin {
   const angle = ((FLIGHT.startDegrees - progress * 360) * Math.PI) / 180;
-  const orbit = { x: FLIGHT.centerX + FLIGHT.radiusX * Math.cos(angle), y: FLIGHT.centerY + FLIGHT.radiusY * Math.sin(angle) };
+  const orbit = { x: ORBIT_CENTER.x + FLIGHT.radiusX * Math.cos(angle), y: ORBIT_CENTER.y + FLIGHT.radiusY * Math.sin(angle) };
   const settle = smoothstep(Math.max(0, (progress - FLIGHT.settleFrom) / (1 - FLIGHT.settleFrom)));
   return { x: orbit.x + (landing.x - orbit.x) * settle, y: orbit.y + (landing.y - orbit.y) * settle };
 }
