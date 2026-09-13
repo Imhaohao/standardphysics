@@ -143,3 +143,30 @@ Weave rejects logs a warning and leaves the server running untraced.
 
 `evaluate` writes per-case results to `runs/evaluation.json` either way, so a
 run can always be looked at again.
+
+## Evaluations in Weave
+
+    standardphysics-agents weave-eval
+
+The same 39 cases and the same seven scorers, run through `weave.Evaluation` so
+the Evals tab holds them: a mean per scorer, the per-case table behind each
+mean, and a side by side of the configurations in
+`evaluation/weave_eval.py:DEFAULT_SETUPS`. Each configuration changes one part
+of the system without touching what a correct answer is, so the difference
+between two columns says what that part is worth.
+
+Swapping Lane B's pipeline for the fixtures' simplified stand-in is the sharpest
+of them. On the shipped shop the stand-in agrees; across the 39 cases, which
+move the geometry, it merges axis-aligned boxes along a straight leg and gets a
+mean error of 8 inches, `finding_precision` of 0.38 against the pipeline's 1.00,
+and a different router action on 13% of cases. Nearly all of the score rests on
+measuring the room.
+
+Scoring stays in `evaluation/scorers.py`. A scorer reads a whole `CaseOutcome`,
+which is more than a dataset row can hold, so each Weave scorer reports the
+number that module computed instead of recomputing it from the row.
+
+`--cases N` scores the first N for a quick look. `--preview-unverified` scores
+as if a person had verified every rule, which is development only and the same
+escape hatch as the server's `SP_PREVIEW_UNVERIFIED_RULES`: without it, a rule
+nobody has read is not scored.

@@ -17,13 +17,14 @@ from typing import Callable
 from .ask import ask as ask_question
 from .ask import resolver
 from .assess import assess
-from .evaluation import evaluate, save
-from .evaluation.scorers import LOWER_IS_BETTER
+from .evaluation import DEFAULT_SETUPS, evaluate, evaluate_in_weave, previewing, save
+from .evaluation import dataset as labelled_cases
+from .evaluation.scorers import LOWER_IS_BETTER, SCORERS
 from .loop import run_loop
 from .router import LocalPolicyRouter, TypeSafeRouter
 from .rules import RuleSpec, load_ledger, load_pack, save_ledger
 from .tracing import init as init_tracing
-from .tracing import is_live
+from .tracing import is_live, project_url
 
 READ_BACK_TOLERANCE = 1e-9
 
@@ -197,6 +198,10 @@ NOTHING_ENABLED = (
     'No checks are enabled. Run: rules review --by "<name>"'
 )
 
+WEAVE_NOT_CONFIGURED = (
+    "Weave is not configured. Set WANDB_PROJECT and WANDB_ENTITY, then try again."
+)
+
 
 def _nothing_enabled(pack, ledger) -> bool:
     if pack.enabled(ledger, max_tier=1):
@@ -227,6 +232,37 @@ def _evaluate(args) -> int:
     if result.weave_url:
         print(f"traces: {result.weave_url}")
     return 0 if result.completed else 1
+
+
+def _weave_eval(args) -> int:
+    """Every configuration against every case, left in Weave's Evals tab."""
+    if not is_live():
+        print(WEAVE_NOT_CONFIGURED, file=sys.stderr)
+        return 1
+    if not args.preview_unverified and _nothing_enabled(load_pack(), load_ledger()):
+        return 1
+    setups = previewing(DEFAULT_SETUPS) if args.preview_unverified else DEFAULT_SETUPS
+    cases = labelled_cases()[: args.cases] if args.cases else None
+    for label, result in evaluate_in_weave(setups, cases=cases).items():
+        print(f"\n{label}")
+        _print_weave_scores(result)
+    print(f"\nevals: {project_url()}")
+    return 0
+
+
+def _print_weave_scores(result: dict) -> None:
+    for name in sorted(SCORERS):
+        mean = _mean_of(result.get(name))
+        direction = "lower is better" if name in LOWER_IS_BETTER else ""
+        reading = f"{mean:.4f}" if mean is not None else "nothing to score"
+        print(f"  {name:24} {reading:>16}  {direction}")
+
+
+def _mean_of(scored) -> float | None:
+    """Weave summarizes a numeric scorer as {"mean": value}."""
+    if isinstance(scored, dict):
+        return scored.get("mean")
+    return scored if isinstance(scored, (int, float)) else None
 
 
 def _ask(args) -> int:
@@ -296,6 +332,7 @@ HANDLERS: dict[str, Callable[[argparse.Namespace], int]] = {
     "rules.second-check": _second_check,
     "check": _check,
     "evaluate": _evaluate,
+    "weave-eval": _weave_eval,
     "loop": _loop,
     "ask": _ask,
 }
@@ -347,6 +384,19 @@ def build_parser() -> argparse.ArgumentParser:
     evaluation.add_argument("--out", default=DEFAULT_EVALUATION_PATH)
     evaluation.add_argument(
         "--no-fixes", action="store_true", help="skip the rearrangement cases"
+    )
+
+    in_weave = commands.add_parser(
+        "weave-eval",
+        help="score every configuration in Weave, where the Evals tab compares them",
+    )
+    in_weave.add_argument(
+        "--cases", type=int, default=None, help="only the first N cases, for a quick look"
+    )
+    in_weave.add_argument(
+        "--preview-unverified",
+        action="store_true",
+        help="development only: score as if a person had verified every rule",
     )
 
     loop = commands.add_parser("loop", help="run the whole loop on the fixture shop")

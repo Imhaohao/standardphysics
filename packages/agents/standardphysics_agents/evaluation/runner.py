@@ -63,7 +63,7 @@ class EvaluationResult:
                 "problems": sorted(outcome.reported_problems),
                 "expected_problems": sorted(outcome.case.expected_problems),
                 "questions": sorted(outcome.reported_questions),
-                "action": _action_name(outcome),
+                "action": action_name(outcome),
                 "expected_action": outcome.case.expected_action,
                 "fix": outcome.fix.message if outcome.fix else None,
                 "gate_accepted": outcome.gate.accepted if outcome.gate else None,
@@ -74,7 +74,7 @@ class EvaluationResult:
         ]
 
 
-def _action_name(outcome: CaseOutcome) -> str | None:
+def action_name(outcome: CaseOutcome) -> str | None:
     decision = outcome.decision
     if decision is None:
         return None
