@@ -72,7 +72,7 @@ a new capture costs about $2 to read. Top the key up before the demo.
 
 — B
 
-## Open: the door render frames badly
+## Closed: the door render (was: frames badly)
 
 `render_finding` produces a usable still for route findings and a flat grey one
 for the doorway. Three things are ruled out, measured rather than guessed:
@@ -83,13 +83,15 @@ for the doorway. Three things are ruled out, measured rather than guessed:
 - The dimension line itself is right: both endpoints share a y, sit at z = 0.05,
   and span 0.809 m, which is the 31.84 in reported.
 
-So what the camera sees is a **wall**, and the next thing to check is whether
-the display graph punches the doorway out of the wall it sits in. `_punch` does
-that for the occupancy grid; `display_graph` may not do it for the geometry
-Blender renders, in which case the door is behind a solid slab and no camera
-position will ever help.
+It was the wall. `render_finding.py` added every node as a solid cube, doors
+included, so the doorway was behind an unbroken slab and no camera position
+was ever going to help. `build_glb.py` already cuts openings out of walls for
+the viewer's geometry; the renderer now uses that same code, and a door
+finding shows a doorway you can see through.
 
-I tried framing portals from standing height inside the room instead of from
-above. It did not help, and it is reverted rather than left in as an unproven
-change. The camera maths for it is in the history if it turns out to be wanted
-once the wall is punched.
+The label needed a second fix. It sits in the plane of the wall, so the jambs
+cut it in half and "31.8 in" rendered as ".8 in". It now stands a metre toward
+the camera, clear of what it measures.
+
+I also tried framing portals from standing height rather than from above.
+That was treating the symptom, and it is reverted.
