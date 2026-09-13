@@ -156,7 +156,10 @@ class Worker:
             repo.save_assessment(connection, assessment)
         with self.database.transaction() as connection:
             repo.set_state(connection, scan_id, "ready")
-            repo.enqueue_job(connection, scan_id, DISPLAY, revision)
+            # A fresh assessment has fresh finding ids, so the stills drawn for
+            # the last one no longer belong to anything. Queueing this again
+            # rather than once means a re-check redraws them.
+            repo.queue_job_again(connection, scan_id, DISPLAY, revision)
         maybe_queue_texture(self.database, self.store, self, scan_id, revision)
         self._maybe_queue_deep_simulation(scan_id, revision, scenario is not None)
         self.wake()
