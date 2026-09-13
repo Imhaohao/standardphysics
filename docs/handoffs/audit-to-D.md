@@ -53,3 +53,11 @@ The browser's `moveNode` matches Lane C's `move_node`, pointer deltas reach the 
 
 - **A-38 is fixed in `7b72fdc`.**
 - **A-42, low.** Right after a save the page pairs revision 1's layout with revision 0's assessment, because it asks for the latest assessment rather than the scene's revision. Before and after then show the same findings until the queued assessment lands and the page happens to refresh. Request `assessment?revision=<scene.revision>` and show "Checking" on a 404.
+
+## `a10d6da`, checked
+
+Verified by running code: the A-29, A-31 and A-35 tests pass without their markers, eight concurrent saves on one base give one 201 and seven 409s, and a preview report has `preview: true` with no rule marked `verified_by_human`. A-33 and A-37 read correctly, and A-30 as documented is accepted.
+
+- **A-43, medium, introduced here, pinned.** `complete` on a `failed` scan sets `measuring` but requeues only failed `process` jobs. When `assess` was the job that failed, nothing runs and the scan stays `measuring`, so the app waits forever. Requeue whichever job failed, or leave the scan `failed` when there is nothing to retry.
+- **A-44, medium.** With no rule verified, the sample shop is `ready` with 0 findings, and `scanStatus` says "Everything we checked passes" on both the shops page and the workspace. Say that no rules are switched on yet instead.
+- **A-36, partly fixed.** `X-Exported-Revision` is right for boxes. A GLB converted from the USDZ holds the original layout whatever revision's job made it, so it should report revision 0.

@@ -50,6 +50,7 @@ The audit fixes code only in files no lane agent is actively changing. For lanes
 | `022004d` B: name what sealed a blocked route, and measure runs outside the exemption | B | **Fail** | CI red by design (A-41); A-40; run lengths match the handoff |
 | `6841172` D: before and after, scrubbing between two layouts | D | Pass with notes | A-42 |
 | `7b72fdc` D: take the wall-clock limit out of the layout test | D | Pass | Resolves A-38 |
+| `a10d6da` D: fix the audit's Lane D findings A-29 through A-39 | D | Pass with notes | Resolves A-29, A-31, A-33, A-35, A-37, A-39; A-30 documented; A-36 partly; introduces A-43; A-44 |
 
 `609db3d`, `9028d14`, `b90e570`, `d3f7d95` and `1a06655` change only the plan and lane documents. A-1 covers the lane document errors from `9028d14`.
 
@@ -213,17 +214,17 @@ High. `fixed in 0aa64b8`. Lane D.
 `7aa85c8` adds the "Web and contracts" workflow, and its first run fails at `npm run typecheck` with `src/app/layout.tsx(9,50): error TS2304: Cannot find name 'LayoutProps'`. `LayoutProps<"/">` is a route type Next.js generates into `.next/types`, and both `.next/` and `next-env.d.ts` are gitignored. The workflow runs `tsc --noEmit` before `next build`, so nothing has generated the type when `tsc` reads it. Generating the route types first, or typechecking after the build, would fix it. The "Generated types match the contracts" job in the same workflow passes. `0aa64b8` runs `next typegen` before `tsc`, and the workflow passes.
 
 ### A-29 A scan that fails processing can never be processed again
-Medium. `open`. Lane D.
+Medium. `fixed in a10d6da`. Lane D.
 
 `a260626` marks a scan `failed` when its process job raises, and nothing queues it again. Reproduced at `a260626` with a `room.json` that is not JSON: the scan goes `failed`. The iOS app shows "Try the upload again" for that state, but its retry re-sends the same IDs and bytes, which return 200, and `complete` returns the scan still `failed` because it only acts on `uploading`. A readable `room.json` under the same ID is refused with 409. Under a new ID it is stored with 201, but `complete` still returns `failed`, and the worker would read the oldest `room_json` anyway (`artifact_of_kind` orders by `created_at`). Pinned in `tests/test_audit_open_findings.py` using the new ID path; if Lane D picks another recovery design, replace the test with one for that design.
 
 ### A-30 Starting a second API process runs the other process's jobs again
-Low. `open`. Lane D.
+Low. `documented in a10d6da`, accepted: the demo runs one process. Lane D.
 
 `worker.py` says a job runs once even when two API processes share a database, but `Worker.start` requeues every `running` job, including jobs another live process is running. Reproduced at `a260626`: worker A claims the process job, worker B starts, and both run it. `python -m standardphysics_api` starts one process, so this only bites if a second one is started against the same `var/`. A lease with an expiry, or requeueing only jobs owned by this process, would match the docstring.
 
 ### A-31 A finding's render can come from an older revision
-Medium. `open`. Lane D. Reachable since `a9ce65c`.
+Medium. `fixed in a10d6da`. Lane D.
 
 `GET /api/scans/{id}/renders/{finding}.png` picks `sorted(glob("*/renders/<finding>.png"))[-1]`. The revision directories sort as strings, so revision `9` sorts after `10`, and finding IDs do not include the revision (`findings.py` hashes the scan ID and rule key). Once a scan passes ten revisions, a finding shows its revision 9 image. When this was found no endpoint created a revision. The same route answers `not ready` for an unknown scan where every other route says `no scan`.
 
@@ -239,7 +240,7 @@ Both lanes fixed it within two minutes. Lane C's `586f765` skips a turn with a m
 The new 2.5 m minimum route for a turn was checked against a 36 in turn in rooms 2.5 to 4.0 m deep: every room that reported a turn before `0f0e01b` still does, with the same at-turn width.
 
 ### A-33 The viewer says a failed scan is still being checked
-Low. `open`. Lane D.
+Low. `fixed in a10d6da`. Lane D.
 
 `Workspace.tsx` shows "Checking your shop" whenever a scan has a scene, no findings, and a state other than `ready`. A scan whose ingest succeeded and whose assess failed is `failed` with a scene, so it reads as in progress forever. That is the sample shop on `master` right now, because of A-32. A `ready` scan with no findings shows "Findings show up here once the shop is checked", which contradicts the shops page's "Everything we checked passes" for the same scan; with no rules verified, every real scan lands there. Read from the diff: the list page uses `scanStatus`, the workspace does not.
 
@@ -251,17 +252,19 @@ Low. `open`. Lane B and Lane C.
 Since `d74f0e7`, `turn_detail` returns None for a partly measured turn unless the caller passes `require_measured=False`. Lane C's `586f765` records such a turn as unevaluated, but only when it receives one, so that path no longer runs. Checked at `d74f0e7` on the fixture shop: leg 1's turn exists with `require_measured=False`, the assessment's unevaluated list holds only `exit_path`, and no turn finding is reported. Neither the owner nor the team is told a turn was seen and not checked, so a turn nobody measured reads the same as no turn. Both lanes' handoffs suggest turning it into a question for the owner.
 
 ### A-35 Two saves on the same layout both succeed, and one is lost
-Medium. `open`. Lane D.
+Medium. `fixed in a10d6da`. Lane D.
 
 `save_layout` in `layout.py` compares `base_revision` with the latest revision outside the write transaction, then inserts with `INSERT OR IGNORE`. A save whose check passes before another save writes the same revision has its insert silently ignored, and still returns 201 with its own layout as the new revision. Reproduced at `9be20af` by landing a save that moves `case_west` inside a save that moves `case_east`, both on revision 0: both return revision 1, and the stored revision 1 holds only the `case_west` move. Two clients saving on the same base at nearly the same moment can hit it. Checking the latest revision inside the transaction, and treating an ignored insert as a conflict, would fix it. Pinned in `tests/test_audit_open_findings.py`.
 
 ### A-36 A box model exported from a later revision is moved twice
-Low. `open`. Lane D.
+Low. `partly fixed in a10d6da`. Lane D.
 
 `945b8a4`'s `page.tsx` passes revision 0 to the viewer as the layout the GLB was exported from. The worker exports display geometry on the first display job that finds no GLB, and when the scanned mesh cannot be converted it falls back to boxes built from that job's revision (`worker.py` `_display`, `stages.geometry`). If revision 0 exported nothing, for example with Blender missing, and a later saved revision exports boxes, those boxes already stand where that revision put them, and `displayMatrix` applies the move from revision 0 again. The scanned-mesh path is unaffected, because the USDZ always holds the original layout. Read from the diffs of `a260626` and `945b8a4`. Recording which revision a GLB was exported from, and giving the viewer that graph, would close it.
 
+`a10d6da` serves `X-Exported-Revision` from the revision whose job wrote the GLB, and the viewer places meshes from that layout. That fixes boxes. A scanned mesh converted from the USDZ always holds the original layout, though, and `_store_geometry` records the job's revision for both paths, so when the first successful conversion happens on a later revision the viewer now places those meshes from the wrong layout. Read from `a10d6da`.
+
 ### A-37 A save refused as stale tells the owner to fix red pieces, and every retry fails
-Low. `open`. Lane D.
+Low. `fixed in a10d6da`. Lane D.
 
 `useArrangement.save` answers every failure with "That layout couldn't be saved. Check the pieces marked in red." A 409 for a stale base, meaning someone else saved first, marks nothing red. The page only refreshes after a successful save, so `scene.revision` stays stale and every retry sends the same base and gets 409 again until the page is reloaded. Read from `945b8a4`. Telling the two 409s apart by their `error` body, and refreshing the scene on a stale base, would let the owner recover. A-35 is the race the server's check misses; this is the refusal it does make.
 
@@ -271,7 +274,7 @@ High. `fixed in 7b72fdc`. Lane D.
 `test_the_documented_fix_clears_the_aisle` in `services/api/tests/test_layout.py` asserts that one layout check finishes in under 3.0 s. Lane D's own profile in `9be20af` puts a check at 1.7 to 2.3 s on a development machine, and CI took 3.42 s at `9be20af`, so the API step fails with 1 failed and 28 passed. CI failed on both `a9ce65c` and `9be20af`, every run finished since the test arrived. The speed-up Lane D asked Lane B for, routing each leg once per layout, is the real fix. Until then, a time limit on shared CI runners belongs in a benchmark, not the unit suite.
 
 ### A-39 A preview report says a person verified every rule
-Medium. `open`. Lane D.
+Medium. `fixed in a10d6da`. Lane D.
 
 `report.py` sets `check.verified_by_human = True` on every rule the ledger verifies, and `preview_ledger` records every rule under the reviewer "unverified preview (development only)". Reproduced at `d201984` with the preview ledger: all 17 rules come back with `verified_by_human: true`. The printed table shows the preview reviewer's name, but the contract field says the opposite, and nothing at the top of the printed report marks it as a preview. Setting the flag from whether the reviewer is the preview reviewer, and marking a preview report at the top, would keep the two from disagreeing.
 
@@ -289,3 +292,13 @@ High. `open`. Lane C label, Lane B change.
 Low. `open`. Lane D.
 
 `page.tsx` loads the latest assessment that exists, and `6841172` compares it with the previous revision's own assessment. A save writes the new revision at once and assesses it in a queued job, so until that job finishes the scene is the new revision while the latest assessment is still the old one. Reproduced at `6841172` on the sample shop: right after saving the documented fix, `scene` is revision 1, `assessment` is revision 0, and `assessment?revision=1` answers 404. With the preview rules, the panel then shows 3 things to fix on both sides of a layout that clears one, and "Fixed by this layout" is empty. The page refreshes once more after 3 s, so a slower assessment leaves it stale until a reload. Asking for `assessment?revision=<scene revision>` and showing "Checking" on a 404 would keep the two sides honest.
+
+### A-43 Retrying a scan whose assessment failed leaves it measuring forever
+Medium. `open`. Lane D. Introduced by `a10d6da`.
+
+`a10d6da`'s retry in `_finalize` sets any `failed` scan to `measuring` but requeues only failed `process` jobs. A scan also fails when its `assess` job raises, and then nothing is queued. Reproduced at `a10d6da` on the sample shop with an `assess` stage that raises: the scan is `failed` with one failed `assess` job, `complete` answers `measuring`, and after the worker drains the scan is still `measuring` with the same failed job. The iOS app polls until a scan is ready or failed, so it would wait forever. Before `a10d6da` the same scan stayed `failed`. Pinned in `tests/test_audit_open_findings.py`: with `assess` still broken, a retried scan must end `failed`, not `measuring`.
+
+### A-44 With no rule verified, a scan reads "Everything we checked passes"
+Medium. `open`. Lane D.
+
+Until a person reviews the rule pack every check is off, and `assess` returns an assessment with no findings. Reproduced at `a10d6da` with the default ledger: the sample shop is `ready` and its assessment has 0 findings. `scanStatus` turns an assessment with nothing needing attention into "Everything we checked passes", which the shops page has shown since `2fad000` and the workspace shows since `a10d6da`'s change for A-33. Nothing was checked, so it reads as a clean pass. `assess(...).unevaluated` records why, but the assess stage only logs it. Carrying the count of evaluated rules into the assessment, and saying that no rules are switched on yet when it is zero, would keep an unchecked scan from looking compliant.

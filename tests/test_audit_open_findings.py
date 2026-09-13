@@ -216,6 +216,24 @@ def test_a35_a_save_that_loses_the_race_is_refused(tmp_path, monkeypatch):
         assert client.post(f"/api/scans/{scan_id}/revisions", json=mine).status_code == 409
 
 
+def _assess_that_raises(*args, **kwargs):
+    raise RuntimeError("the audit's broken assess stage")
+
+
+@pytest.mark.xfail(
+    strict=True, raises=AssertionError, reason="A-43: retrying a scan whose assess failed leaves it measuring forever"
+)
+def test_a43_a_retried_scan_whose_assessment_still_fails_ends_failed(tmp_path):
+    with _api_client(tmp_path, seed_sample_shop=True) as client:
+        client.app.state.worker.stages.assess = _assess_that_raises
+        scan_id = _sample_shop_id(client)
+        client.app.state.worker.drain()
+        assert client.get(f"/api/scans/{scan_id}").json()["state"] == "failed"
+        client.post(f"/api/scans/{scan_id}/complete")
+        client.app.state.worker.drain()
+        assert client.get(f"/api/scans/{scan_id}").json()["state"] == "failed"
+
+
 @pytest.mark.parametrize("room", ["apple_bedroom3", "apple_livingroom"])
 def test_a25_furniture_in_a_real_export_blocks_the_floor(room):
     """Fixed in 5d09e4d, which stands the room on its floor during ingest."""
