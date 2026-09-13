@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 
 import pytest
+from standardphysics_fixtures.shop import node_id
 from standardphysics_agents.evaluation import (
     LOWER_IS_BETTER,
     SCORERS,
@@ -21,7 +22,7 @@ from standardphysics_agents.evaluation.scorers import (
     measurement_error_in,
     router_action_match,
 )
-from standardphysics_agents.router import LocalPolicyRouter, Rejected
+from standardphysics_agents.router import LocalPolicyRouter, Rejected, state_for
 
 EXPECTED_SCORERS = {
     "finding_precision",
@@ -82,6 +83,46 @@ class TestTheDataset:
     def test_no_case_both_expects_and_forbids_the_same_check(self):
         for case in dataset():
             assert not (case.expected_problems & case.forbidden_problems), case.id
+
+
+class TestBlockedRouteRouting:
+    @pytest.mark.parametrize(
+        ("case_id", "expected_action"),
+        [("blocked_but_movable", "FIX"), ("blocked_solid", "ESCALATE")],
+    )
+    def test_blockers_reach_the_router(
+        self, case_id, expected_action, pack, ledger, pipeline
+    ):
+        case = by_id(case_id)
+        width = pipeline.route_clear_width(case.graph, case.scenario, 0)
+        assert not width.reachable
+        assert width.blocking_node_ids
+
+        outcome = run_case(case, pipeline, pack, ledger, LocalPolicyRouter(), False)
+        assert outcome.error is None
+        state = state_for(outcome.result.findings, case.graph, pack)
+        decision = outcome.decision
+        assert decision is not None
+        assert not isinstance(decision, Rejected)
+        assert decision.action == expected_action
+
+        if expected_action == "FIX":
+            barriers = {node_id("bar_west"), node_id("bar_east")}
+            assert set(width.blocking_node_ids) == barriers
+            targets = [
+                f for f in outcome.result.problems
+                if f.id in decision.target_finding_ids
+            ]
+            assert targets
+            for finding in targets:
+                assert finding.locus is not None
+                assert set(finding.locus.node_ids) == barriers
+            assert set(decision.target_finding_ids) <= set(state.fixable_finding_ids)
+        else:
+            assert not state.fixable_finding_ids
+
+        assert case.expected_action == expected_action
+        assert router_action_match(outcome) == 1.0
 
 
 class TestTheScorers:

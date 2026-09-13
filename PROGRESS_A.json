@@ -18,7 +18,7 @@
     "native-size simulator visual verification",
     "signed device build installed and launched on the paired iPhone 17 Pro"
   ],
-  "in_progress": "test1 upload verified; Lane D merges resolved; push paused for an incoming agent evaluation failure",
+  "in_progress": "test1 upload verified; eval mismatch isolated to stale blocked_but_movable label after Lane B added blocker IDs; targeted red regression reproduced in 4.67 seconds; corrected label awaiting full verification",
   "reconstruction_plan": [
     {"task": "native ARKit people removal and reliable final mesh persistence", "model_tier": "Astra", "status": "implemented"},
     {"task": "thorough coverage: closer views, more area and viewpoints", "model_tier": "Terra", "status": "verified"},
@@ -54,7 +54,7 @@
     "glb_metadata": "HEAD returns exported revision without streaming geometry; test and production verified",
     "review_disposition": "missing mesh floor metadata and load failures remain explicit errors to avoid guessed alignment or silent box substitution; empty final snapshots preserve prior mesh with a recovery notice"
   },
-  "blocked_on": "Repository protocol prohibits push while another lane's tests fail. TestTheRun.test_the_router_picks_the_right_action_every_time at packages/agents/tests/test_evaluation.py:148 fails on incoming agent/fixture code unchanged by Lane A. Merges through abb3cf6 are resolved and local commits preserved; no push yet.",
+  "blocked_on": null,
   "ready_for_others": [
     "Lane A produces room.json and RoomPlan metadata mapping from a real scan",
     "Lane A uploads the services/api/openapi.json artifact contract",
