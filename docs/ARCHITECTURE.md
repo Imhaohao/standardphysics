@@ -11,8 +11,8 @@ them and so would questions, and that was supposed to be emergent.
 It is not. It moves the closed set down one level and leaves it there.
 
 `rests_on` is an ontological claim, not a measurement. So is `inside`. So is
-the `NodeKind` enum of wall, door, window, opening, floor and object, which 68
-places in this repository branch on today. A room full of things those words
+the `NodeKind` enum of wall, door, window, opening, floor and object. Ninety-one
+places in this repository ask what kind of thing something is. A room full of things those words
 fit works. A room full of things they do not fit fails exactly the way the
 eight question kinds failed, and for the same reason: somebody decided in
 advance what kinds of thing exist.
@@ -204,12 +204,63 @@ refusal to compare across units, and the select / when / measure evaluator.
 4. **Rules as a pack** over layers 1 and 2, with ADA as the first pack.
 5. **Proof**, described below, running throughout rather than at the end.
 
+## What the experiment showed
+
+The claim that a model can write a predicate nobody gave it was tested rather
+than argued, against the real `datasets/phone/test1` scan with every label
+stripped. The model got the operator list and the grammar, no example
+predicate, and no word for what it was being asked to find.
+
+| Asked for | What it wrote | Right? |
+|---|---|---|
+| things sitting on the lowest surface | footprint has real extent, and bottom within 5 cm of zero | yes: 16 of 26, every chair, table and storage unit, no walls or floor |
+| things held up by something other than the lowest surface | gap along gravity under 5 cm, footprint overlap over 0.3, and the supporter itself off the floor | the predicate is right; it selects nothing, because nothing in this scan is stacked |
+| things precariously balanced | supported, but footprint overlap between 0 and 0.3 | the predicate is right, and again nothing in this scan qualifies |
+
+It invented support and precarious balance from geometry alone. That part of
+the architecture is real, and it is the part everything else depends on.
+
+Three things the experiment also settled, none of them comfortable:
+
+**Composition needs a frontier model.** `qwen3-235b`, `deepseek-v4-flash`,
+`gpt-5.6-luna` and `gemini-3.5-flash-lite` were all given the same three
+questions. They invented operators that do not exist, emitted malformed JSON,
+and wrote predicates that select the floor as precariously balanced. Adding a
+repair round fixed the syntax and not the reasoning. Only the frontier model
+was correct. So the provider policy inverts for this workload: composition is
+OpenRouter, and Fireworks keeps the volume work that is per-frame rather than
+per-question.
+
+**The verifier has a hole.** It catches an empty answer and a number the model
+invented. It cannot catch a well-formed predicate that is simply wrong, which
+is exactly what the cheap models produced. Nothing short of judging the answer
+against the scene catches that, which is why the held-out suite is not optional
+polish.
+
+**The data is the blocker, not the model.** RoomPlan boxes furniture standing
+on a floor, so `test1` and `ravida` contain nothing stacked at all. The
+predicates for support and balance are correct and unexercised. Until there are
+scans of somewhere with things on top of other things, the interesting half of
+this cannot be proved.
+
 ## How this gets proved
 
 A checklist of files deleted and greps returning nothing is something to game.
 The proof has to be empirical and held out.
 
-**A generated suite.** A model is shown a scanned scene and writes eighty
+**Real scans only.** No synthetic scene is ever used to test. Not a fixture
+shop, not a hand-built room in a test file, not a generated one. A synthetic
+scene contains exactly the structure whoever wrote it thought to put there,
+which is the assumption this whole design exists to remove, so passing against
+one proves nothing. The fixture boba shop and the hand-built rooms in
+`tests/test_primitives.py` and `tests/test_scene_tree.py` are synthetic and go.
+
+This has a cost worth stating plainly: the two scans in `datasets/phone` are a
+room of tables and chairs with nothing stacked, so more real scans are a
+dependency, not a nicety. Somewhere cluttered, somewhere with things resting on
+other things, somewhere with writing on a surface.
+
+**A generated suite.** A model is shown a real scanned scene and writes eighty
 questions a person might really ask about it, under a hard diversity
 constraint: no two may be answerable by the same approach. One counts things.
 One asks what some surface says. One asks how to rearrange a space for another
@@ -232,3 +283,26 @@ which is the part a system that games the suite fails hardest.
 every coined name replaced by a nonsense token. Structural questions must score
 the same. Any drop is something keyed to English names for earthly objects, and
 names the exact defect this whole plan exists to remove.
+
+Scrambling a real scan's names is not synthetic data. The geometry is
+untouched; only the words are, and the words are what is being tested.
+
+## What it costs
+
+Measured, not estimated: one composition on the frontier model took about 3,000
+tokens in and 4,600 out, which is roughly five cents. That sets the budget for
+everything else.
+
+| Run | Compositions | Cost |
+|---|---|---|
+| full suite, 80 questions, two scenes, scrambled as well | 320 | about $17 |
+| smoke suite, 20 questions, one scene | 20 | about $1 |
+
+The full suite therefore costs most of a $20 budget every time it runs, and
+$4.60 of that budget is already spent. So the smoke suite runs during
+development and the full suite runs when something is ready to be believed,
+with every composition cached by question and scene so a re-run costs nothing
+for the parts that did not change.
+
+Set a spending limit on the key. There is none on it today, which is the only
+reason a loop could spend the budget in an afternoon.

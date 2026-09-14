@@ -67,7 +67,7 @@ different names, and nothing above has to change.
 Today `SceneNode.parent_id` exists and `discovery.boxes.resting_parent` fills it
 one level deep by testing whether one box floats above another's top face.
 `NodeKind` is a six-member list of wall, door, window, opening, floor and
-object, and 68 places in the code branch on it. All of that is the assumption
+object, and 91 places in the code ask what kind of thing something is. All of that is the assumption
 this requirement removes.
 
 ### 4. Answer anything, and show the answer
@@ -123,6 +123,12 @@ the job. That decision is written down per call site, not left to whoever is
 editing.
 
 ## The bar this is held to
+
+**Never test on synthetic data.** Not a fixture shop, not a hand-built room in
+a test file, not a generated one. A synthetic scene contains exactly the
+structure whoever wrote it thought to put in, which is the assumption this
+whole design exists to remove, so passing against one proves nothing at all.
+Real scans only, and more of them than the two we have.
 
 A checklist of deleted files and greps that come back empty is something to
 game. What counts is a held-out suite: a model writes eighty questions about a
