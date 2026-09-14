@@ -39,6 +39,7 @@ from standardphysics_contracts import (
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import repository as repo
+from .auth import install_auth, owner_of
 from .coverage import parse_coverage
 from .db import Database
 from .errors import ApiProblem
@@ -67,6 +68,16 @@ def _start_tracing(settings: Settings) -> None:
     """Weave sees the whole run: seeding, uploads, checks and every model call."""
     if init_tracing(settings.weave_project, settings.weave_entity):
         log.info("this run is traced to %s", project_url())
+
+
+def _seed_demo_account(database: Database, store: ArtifactStore, settings: Settings) -> None:
+    """Put the sample shop behind a real account, and say how to sign in as it."""
+    seed_sample_shop(database, store, settings.seed_owner_email, settings.seed_owner_password)
+    log.warning(
+        "sample shop seeded. Sign in as %s with password %s",
+        settings.seed_owner_email,
+        settings.seed_owner_password,
+    )
 
 
 def _problem_response(exc: ApiProblem) -> JSONResponse:
@@ -102,7 +113,7 @@ def create_app(settings: Settings | None = None, stages: Stages | None = None, r
             log.warning("SP_PREVIEW_UNVERIFIED_RULES is on: findings come from rules no person has verified")
         _start_tracing(settings)
         if settings.seed_sample_shop:
-            seed_sample_shop(database, store)
+            _seed_demo_account(database, store, settings)
         if run_worker:
             worker.start()
         yield
@@ -113,6 +124,7 @@ def create_app(settings: Settings | None = None, stages: Stages | None = None, r
     app = FastAPI(title="Standard Physics API", version="0.1.0", lifespan=lifespan)
     app.state.database, app.state.store, app.state.worker = database, store, worker
     _install_error_handlers(app)
+    install_auth(app, database)
     _install_scan_routes(app, database, store)
     _install_upload_routes(app, database, store, worker)
     _install_workspace_routes(app, database, store)
@@ -140,15 +152,15 @@ def _scan_or_404(connection, scan_id: uuid.UUID) -> Scan:
 
 def _install_scan_routes(app: FastAPI, database: Database, store: ArtifactStore) -> None:
     @app.post("/api/scans", status_code=201, response_model=Scan)
-    def create_scan(body: CreateScanRequest) -> Scan:
+    def create_scan(body: CreateScanRequest, request: Request) -> Scan:
         with database.transaction() as connection:
-            scan_id = repo.insert_scan(connection, body)
+            scan_id = repo.insert_scan(connection, body, owner_of(request).id)
             return repo.get_scan(connection, scan_id)
 
     @app.get("/api/scans", response_model=ScanList)
-    def list_scans() -> ScanList:
+    def list_scans(request: Request) -> ScanList:
         with database.connect() as connection:
-            return ScanList(scans=repo.list_scans(connection))
+            return ScanList(scans=repo.list_scans(connection, owner_of(request).id))
 
     @app.get("/api/scans/{scan_id}", response_model=Scan)
     def get_scan(scan_id: uuid.UUID) -> Scan:

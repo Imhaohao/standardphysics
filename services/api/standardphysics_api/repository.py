@@ -51,14 +51,15 @@ def _scan(connection: sqlite3.Connection, row: sqlite3.Row) -> Scan:
 def insert_scan(
     connection: sqlite3.Connection,
     request: CreateScanRequest,
+    owner_id: uuid.UUID,
     scan_id: uuid.UUID | None = None,
     state: str = "uploading",
 ) -> uuid.UUID:
     scan_id = scan_id or uuid.uuid4()
     connection.execute(
-        "INSERT INTO scans (id, name, created_at, device_model, duration_seconds, state)"
-        " VALUES (?, ?, ?, ?, ?, ?)",
-        (str(scan_id), request.name, now(), request.device_model, request.duration_seconds, state),
+        "INSERT INTO scans (id, name, created_at, device_model, duration_seconds, state, owner_id)"
+        " VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (str(scan_id), request.name, now(), request.device_model, request.duration_seconds, state, str(owner_id)),
     )
     return scan_id
 
@@ -68,8 +69,18 @@ def get_scan(connection: sqlite3.Connection, scan_id: uuid.UUID) -> Scan | None:
     return _scan(connection, row) if row else None
 
 
-def list_scans(connection: sqlite3.Connection) -> list[Scan]:
-    rows = connection.execute("SELECT * FROM scans ORDER BY created_at DESC").fetchall()
+def scan_owner(connection: sqlite3.Connection, scan_id: uuid.UUID) -> uuid.UUID | None:
+    """Who owns this scan, or None when the scan is missing or unclaimed."""
+    row = connection.execute("SELECT owner_id FROM scans WHERE id = ?", (str(scan_id),)).fetchone()
+    if row is None or row["owner_id"] is None:
+        return None
+    return uuid.UUID(row["owner_id"])
+
+
+def list_scans(connection: sqlite3.Connection, owner_id: uuid.UUID) -> list[Scan]:
+    rows = connection.execute(
+        "SELECT * FROM scans WHERE owner_id = ? ORDER BY created_at DESC", (str(owner_id),)
+    ).fetchall()
     return [_scan(connection, row) for row in rows]
 
 
