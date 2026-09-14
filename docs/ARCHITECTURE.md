@@ -1,261 +1,234 @@
 # How the app gets there
 
-The plan behind [`MISSION.md`](MISSION.md). It names what exists, what it has
-to become, and the order that keeps the tests green on the way.
+The plan behind [`MISSION.md`](MISSION.md).
 
-## The two abstractions everything else hangs off
+## The mistake this plan corrects
 
-Both of the hard requirements collapse to the same shape of problem, and both
-have the same answer.
+The first version of this document said the centre of the system was a library
+of named primitives: `objects_on`, `text_on`, `height_of`. Rules would compose
+them and so would questions, and that was supposed to be emergent.
 
-**A rule is data, not a function.** Today `RuleSpec` carries a threshold and a
-citation, and a hand-written function in `checks/` knows which surfaces to
-measure for it. That is why there are eighteen rules. If a rule instead names a
-*measurement primitive* and its arguments, one evaluator runs every rule, and
-adding a provision means writing down what it requires.
+It is not. It moves the closed set down one level and leaves it there.
 
-**A question is a plan, not a kind.** Today `ask/query.py` parses into one of
-eight kinds and dispatches to one of eight executors. If a model instead
-composes a plan out of the same primitives, the code stops knowing what kinds
-of question exist.
+`rests_on` is an ontological claim, not a measurement. So is `inside`. So is
+the `NodeKind` enum of wall, door, window, opening, floor and object, which 68
+places in this repository branch on today. A room full of things those words
+fit works. A room full of things they do not fit fails exactly the way the
+eight question kinds failed, and for the same reason: somebody decided in
+advance what kinds of thing exist.
 
-So the centre of the system is one library of typed primitives that read the
-scene and take measurements. Rules compose them. Questions compose them. Adding
-a primitive widens both at once.
+The test is not a dorm room. It is a place where the objects have no names we
+know, standing in relations we have no words for, under physics we did not
+assume. Nothing in the system may depend on the world being a room on Earth.
+
+## What is actually fixed, and what must not be
+
+The way out is to notice that two very different things were being mixed
+together.
+
+**Geometry is universal.** That the volume of one measured region lying inside
+another's hull is 0.97, or that the signed gap between two surfaces along the
+measured gravity vector is two millimetres, is true on any planet. It carries
+no claim about what either thing is.
+
+**Ontology is not.** That the first thing is "inside" the second, or that it is
+a "pen", or that the gap means it "rests on" it, is interpretation. It belongs
+to a world, and it has to be produced from evidence rather than declared in a
+`Literal`.
+
+So the system has three layers, and only the bottom one is closed.
 
 ```
-                    ┌──────────────────────┐
-   ADA provisions ──▶  primitive library   ◀── questions from the ask box
-   (rules as data) │  scene reads +        │   (plans from a model)
-                    │  measurements        │
-                    └──────────┬───────────┘
-                               │ every number, with provenance
-                    ┌──────────▼───────────┐
-                    │  the measured scene  │
-                    └──────────────────────┘
+  ┌───────────────────────────────────────────────────────────┐
+  │ 3  Composition    a question arrives, and an expression    │
+  │                   is written to answer it. New predicates  │
+  │                   are authored here, not looked up.        │
+  ├───────────────────────────────────────────────────────────┤
+  │ 2  Interpretation entities and relations, coined from      │
+  │                   evidence and stored as data. Open.       │
+  │                   Every one carries the geometry that      │
+  │                   justifies it.                            │
+  ├───────────────────────────────────────────────────────────┤
+  │ 1  Substrate      measured regions and the operators over  │
+  │                   them. Closed, mathematical, nameless.    │
+  └───────────────────────────────────────────────────────────┘
 ```
 
-## Phase 0 — Foundations
+The one rule from the old plan that survives untouched: **the model supplies
+structure, the engine supplies values.** A model may say which regions to
+compare and how; it may never say what the comparison returned.
 
-### 0.1 Two providers with a written policy
+## Layer 1 — Substrate
 
-`models.py` sends every call to OpenRouter. Fireworks does not exist in the
-codebase yet.
+What the scan measured, before anything is named. Not objects: regions. A
+region is a spatially coherent piece of the measured field with an id and
+nothing else asserted about it.
 
-New `packages/agents/standardphysics_agents/providers/`:
+The operators over regions are the closed set, and they are closed because
+mathematics is:
 
-| File | Holds |
+```
+regions()                      every measured region
+hull(r) / bounds(r) / volume(r) / area(r) / centroid(r)
+principal_axes(r)              the directions the region actually extends along
+overlap_fraction(a, b)         how much of a lies within b
+gap(a, b, along)               signed distance between surfaces in a direction
+relative_offset(a, b)          one region's pose in the other's frame
+adjacency(a, b)                do their surfaces meet, and over what area
+free_space(from, to)           the widths a body could pass through
+gravity()                      the direction the phone measured, not an assumption
+frames_seeing(r)               which captures observed this region
+image_of(r, frame)             the pixels
+markings_on(r)                 glyphs found on a surface, and what they read as
+```
+
+Nothing there says wall, floor, counter or up. `gravity()` returns a measured
+vector because the phone has an IMU, not because down is a concept the code
+believes in; a scan taken where that reading is meaningless returns a region
+field the rest of the system can still work over.
+
+`markings_on` is the closest call. Reading glyphs is nearly ontology. It stays
+in the substrate because what it asserts is only that this surface carries
+these marks and here is the image they came from, which is a measurement.
+Whether the marks are a whiteboard's homework or a warning in a language nobody
+has seen is layer 2's problem.
+
+## Layer 2 — Interpretation
+
+A model reads the substrate and coins what it finds. Two things it produces,
+both stored as data:
+
+**Entities.** A region, a name the model chose, and its confidence. The name is
+a free string. There is no enum, so nothing prevents "bed", "whiteboard", or a
+word invented on the spot for a thing with no earthly equivalent.
+
+**Relations.** A named edge between two entities, with the geometric predicate
+that justifies it attached:
+
+```
+{ "name": "rests on",
+  "from": "region-12", "to": "region-7",
+  "because": {
+    "all": [
+      {"op": "gap", "a": "$from", "b": "$to", "along": "gravity", "under": 0.005},
+      {"op": "overlap_fraction", "a": "footprint($from)", "b": "footprint($to)", "over": 0.5}
+    ]
+  },
+  "confidence": 0.94 }
+```
+
+`rests on` is a string the model coined for this scan, and `because` is a
+substrate expression the engine can re-run. That is the whole difference from
+what I built: the relation is discovered and justified rather than declared in
+a `Literal`, so a scan of somewhere strange produces relations with names we do
+not have and predicates we did not anticipate, and every layer above carries
+them without change.
+
+Relations that recur get cached, which is why a dorm room still ends up with
+something very like `rests_on` everywhere. It was found, not assumed.
+
+**Nothing above this layer may branch on a name.** A name is for showing a
+person. Code that needs to know whether one thing is on another re-runs the
+predicate.
+
+## Layer 3 — Composition
+
+A question arrives. The model is given the substrate operators, the entities
+and relations this scan produced, and an expression language whose atoms are
+those operators.
+
+It writes an expression. The engine evaluates it against real geometry.
+
+The important part is that the model can **author a predicate nobody
+anticipated**. Asked which things are precariously balanced, it does not need a
+`precariously_balanced` primitive to exist. It composes one: the supported
+region's centroid projects outside the supporting region's footprint by some
+fraction, and the contact area is small relative to the mass above it. That
+expression is evaluated, not believed.
+
+That is what "emergent" has to mean. Not a rich menu of primitives, but the
+ability to write a predicate that was never on any menu.
+
+The expression language is small and total. Map, filter, reduce, compare,
+arithmetic, and the substrate operators as atoms. It cannot loop unboundedly,
+open a file or reach the network. A model writing an expression can therefore
+be given a lot of freedom safely, because the worst an expression can do is
+return the wrong answer, which the next stage catches.
+
+**Presentation is composed the same way.** A view is an expression producing
+geometry to highlight, spans to measure, rows to tabulate, or a rearrangement
+to show. There is no list of question types with a renderer each.
+
+**Verification is separate and adversarial.** Before anything renders, a
+different pass checks that every entity referenced exists in this scan, that
+every number in the answer came from an evaluated expression rather than from
+the model's text, and that the view is non-empty. A failure re-plans once with
+the reason attached. A second failure says what was tried and what could not be
+established. An empty screen is a bug; a confident wrong answer is worse.
+
+## What this means for the rules
+
+ADA is a domain pack, not the engine. Its provisions select elements by
+predicate over interpreted entities rather than by a role enum, and the pack
+declares the world it assumes. The engine that runs it has nothing in it about
+counters or doorways, which is what lets the same engine carry a different
+standard, or none.
+
+The select / when / measure expression already built is the right shape. What
+has to change is that its steps become substrate expressions rather than calls
+to named semantic primitives.
+
+## What has to be undone
+
+Written down plainly, because I built some of it last night:
+
+| Built | Why it has to change |
 |---|---|
-| `protocol.py` | `Provider`: `structured(prompt, schema)`, `vision(images, prompt, schema)` |
-| `fireworks.py` | Fireworks client, open-weights models |
-| `openrouter.py` | the existing client, moved |
-| `policy.py` | every workload, its provider, and the reason |
+| `Relation` as a four-member `Literal` | becomes a free string with an attached predicate |
+| `NodeKind` as a six-member `Literal`, and the 68 places that branch on it | becomes a coined name nothing branches on |
+| `objects_on`, `objects_inside`, `text_on`, `what_carries` | become substrate expressions, composed rather than called |
+| `find_objects` matching on label words | becomes selection by predicate, with names for display only |
 
-`policy.py` is the whole point: a named workload resolves to a provider, and
-the reason is a string in the table rather than a decision someone made once.
-
-| Workload | Provider | Why |
-|---|---|---|
-| `detect` | Fireworks | per-frame open-vocabulary detection, hundreds of calls per scan |
-| `ocr` | Fireworks | reading text off surfaces, one call per candidate region |
-| `label` | Fireworks | naming a carved box from a crop |
-| `plan` | OpenRouter | composing a tool plan from an arbitrary question |
-| `view` | OpenRouter | choosing how to present a result |
-| `layout` | OpenRouter | proposing a rearrangement under constraints |
-
-A new call site adds a row. A call that could run on open weights and does not
-is a defect in the table, not a preference.
-
-### 0.2 The harness that says whether any of this works
-
-Ten people calling it immaculate is the bar, and the way to get there is to
-measure before they do. `packages/agents/standardphysics_agents/evaluation/`
-already runs sweeps; it gains two suites.
-
-**Object recall.** For each scan in `datasets/phone`, a person lists every
-object they can see. The suite scores what discovery found against that list.
-The number to move is recall, not the count of boxes.
-
-**Question suite.** Every question in `MISSION.md` plus many more, each with the
-shape of a correct answer rather than an exact string: which nodes it must
-reference, which primitives must appear in the plan, whether a number is
-required. An answer that renders nothing scores zero.
-
-## Phase 1 — The scene
-
-### 1.1 A real tree
-
-`SceneNode.parent_id` exists. `discovery/boxes.py:resting_parent` fills it one
-level deep by testing whether a box floats above another box's top face, and
-only for discovered objects.
-
-Contract changes in `packages/contracts/standardphysics_contracts/scene.py`:
-
-- `relation: Literal["rests_on", "inside", "mounted_on", "part_of"] | None`,
-  so the edge says what kind of attachment it is. A blanket rests on a bed; a
-  pen is inside a cup; a poster is mounted on a wall.
-- `SceneGraph` validates the tree: every `parent_id` resolves, no cycles, and
-  the chain ends at a floor or a wall.
-- `SurfaceText`: what a surface says, where on it, and which frames read it.
-
-Containment needs its own test. Support asks whether the underside of one box
-sits within a tolerance of another's top face; containment asks whether a box
-lies inside another's volume, which `boxes.contained_fraction` can already
-measure and nothing calls for this purpose.
-
-### 1.2 Discovery that finds everything
-
-`discovery/discover.py` walks the capture once over evenly spread frames and
-returns quietly when an input is missing. Three changes:
-
-- **Frames by coverage, not by count.** Pick frames so every surface of the
-  room is seen from somewhere, using the coverage the phone already records.
-- **Text.** A pass that finds text regions and projects them onto the node
-  whose surface they land on. This is what makes "what did it say on my
-  whiteboard" answerable, and it is a capability the app does not have at all.
-- **Loud failure.** A scan that cannot be discovered says so and marks the
-  objects it could not name, rather than producing a room with holes in it.
-
-### 1.3 An export that carries the tree
-
-`blender_scripts/build_glb.py` flattens the graph. The GLB has to keep the
-parent chain, so the model that reaches the browser is the scene, not a pile of
-boxes at the same level.
-
-## Phase 2 — Every provision
-
-### 2.1 The primitive library
-
-New `packages/pipeline/standardphysics_pipeline/primitives/`. Each primitive is
-typed, takes the scene and named arguments, and returns a measurement carrying
-what it measured and where, so a finding can always point at the thing.
-
-A first set, drawn from what the standard actually asks about:
-
-```
-clear_width(path)                     height_above_floor(surface)
-clear_floor_space(at, approach)       knee_and_toe_clearance(under)
-turning_space(region)                 protrusion(node)
-door_clear_width(door)                maneuvering_clearance(door, approach, side)
-change_in_level(edge)                 running_slope(surface) / cross_slope(surface)
-operable_part_height(node)            reach_depth(to, over)
-```
-
-`checks/` collapses into this. The measurement logic in `route_width.py`,
-`turn_width.py`, `door_width.py` and the rest moves into primitives, and the
-bespoke check files go.
-
-### 2.2 A rule that names its measurement
-
-The first draft of this plan had a rule name one primitive and a threshold.
-Reading `checks/service_counter.py` showed that is too thin: real provisions
-pick out elements, sometimes apply only under a condition, and only then
-measure. 904.4.1 asks about counters; whether the point of sale sits on the
-lowered section applies only when a lowered section exists.
-
-So an expression has three parts, and `$element` is the node under
-consideration:
-
-```
-select:     {primitive: "elements_of_role", arguments: {role: "sales_counter"}}
-when:       {primitive: "has_lowered_section", arguments: {node_id: "$element"}}
-measure:    {primitive: "height_of", arguments: {node_id: "$element"}}
-comparison: at_most
-threshold:  36
-unit:       in
-scope:      {space_types: ["public_accommodation"]}
-```
-
-`select` and `when` are primitives too, returning nodes and a truth, which is
-why the vocabulary has those return types. One evaluator runs any rule with
-this shape, and it refuses a measurement that answers in the wrong unit rather
-than comparing square inches against a rule written in inches.
-
-Provisions too tangled even for this keep a hand-written check, declared as
-such on the rule. An escape hatch with a name is honest; a default is not. `scope` is what stops a dorm room
-being told it fails a service-counter rule: Title III governs public
-accommodations, a bedroom is not one, and a finding that does not apply is
-worse than no finding.
-
-Some provisions cannot be measured from a scan at all, such as braille on
-signage or the audibility of an alarm. Those get a record saying so rather than
-being silently absent, because the honest answer to "do you check everything" is
-a list of what is checked, what is not, and why.
-
-### 2.3 Getting the standard in
-
-Authoring a few hundred provisions by hand is the job Phase 2 exists to make
-possible. A model reads a section and proposes the record; the threshold is
-then confirmed against the source text by the same mechanism
-`scripts/verify_rulepack.py` already uses, so no number reaches a shop owner
-without having been checked against the sentence it came from.
-
-Coverage becomes a number: provisions in the standard, provisions expressed,
-provisions measurable from a scan.
-
-## Phase 3 — The ask box that knows nothing
-
-Four stages, none of which contains the word "pen" or "whiteboard".
-
-```
-question ─▶ plan ─▶ execute ─▶ compose view ─▶ verify ─▶ render
-             │         │            │            │
-          model     code only     model        code only
-```
-
-**Plan.** The model gets the question, a summary of the scene, and the schemas
-of every primitive. It emits a sequence of calls. Unknown primitive or unknown
-node id is a rejection before anything runs.
-
-**Execute.** Code runs the plan against the real scene. Every result carries
-provenance. The model has supplied no numbers and cannot.
-
-**Compose.** The model gets the results back and emits a view built from
-generic display primitives, none of which is tied to a kind of question:
-
-| Primitive | Shows |
-|---|---|
-| `highlight` | named nodes, with a camera that frames them |
-| `measurement` | a span between two points, with its number |
-| `table` | rows drawn from results |
-| `annotation` | text anchored to a node |
-| `layout_diff` | the same room before and after a set of moves |
-| `prose` | a sentence, when a sentence is genuinely the answer |
-
-"Are all of the pens in my dorm room?" resolves to a highlight over the nodes
-whose parent chain reaches the room, plus a count. "What did it say on my
-whiteboard?" resolves to an annotation carrying the `SurfaceText` read off that
-node. "How could I arrange this room if another roommate moved in?" resolves to
-a `layout_diff`. None of those three mappings is written down anywhere; they
-fall out of the primitives.
-
-**Verify.** Before anything renders, code checks that every node id exists, that
-every number traces to a primitive result rather than to the model, that the
-view has content, and that what it claims matches what was returned. A failure
-re-plans once with the reason attached. A second failure says what it tried and
-could not do. An empty screen is a bug, never an outcome.
-
-### What gets deleted
-
-`ask/query.py` and the eight executors (`dimensions`, `inventory`, `places`,
-`shapes`, `space`, `spans`, `standards`, `layout`) go, along with `subjects.py`
-and the closed `QueryKind` set. Their measurement logic moves into primitives
-first, so the deletion never crosses a green test run.
-
-## Phase 4 — The ten-user bar
-
-- Blender in the image, because an uploaded scan currently renders as grey
-  boxes and a report with no pictures.
-- The open audit findings in `PROGRESS.md`, starting with A-14 and A-15, which
-  are why `turn_clear_width` is switched off.
-- Every scan in `datasets/phone` through the whole path, end to end, with the
-  object-recall and question suites run against the result.
-- Ten people, their own rooms, and what they say.
+What survives, because none of it assumed a world: the tree walk over whatever
+edges exist, evidence and provenance on every result, fail-closed calling, the
+refusal to compare across units, and the select / when / measure evaluator.
 
 ## Order of work
 
-Phase 0 first, because the policy table and the harness are what make the rest
-measurable. Then Phase 1, because rules and questions both read the scene and a
-scene with no tree limits both. Then Phase 2 and Phase 3 in parallel: they
-share the primitive library, and once it exists they do not block each other.
-Phase 4 runs throughout rather than at the end.
+1. **Substrate first.** Region segmentation and the operator set, with the
+   operators tested against geometry rather than against a room.
+2. **Interpretation.** The coining pass, and the predicate store. A relation
+   nobody wrote down in advance has to survive a round trip.
+3. **Composition.** The expression language, the planner, the view composer,
+   the verifier.
+4. **Rules as a pack** over layers 1 and 2, with ADA as the first pack.
+5. **Proof**, described below, running throughout rather than at the end.
+
+## How this gets proved
+
+A checklist of files deleted and greps returning nothing is something to game.
+The proof has to be empirical and held out.
+
+**A generated suite.** A model is shown a scanned scene and writes eighty
+questions a person might really ask about it, under a hard diversity
+constraint: no two may be answerable by the same approach. One counts things.
+One asks what some surface says. One asks how to rearrange a space for another
+occupant. One asks something nobody anticipated.
+
+**Held out.** The questions are generated against scenes the implementation was
+not developed on, and are regenerated for each run, so they cannot be memorised
+or special-cased.
+
+**Graded against the scene, not against a string.** A judge sees the question,
+the answer, the view and the real scene data, and scores whether it was
+answered, whether every number traces to an evaluated expression, and whether
+the view shows something.
+
+**Some questions have no answer.** Around one in eight is unanswerable from the
+scan. Saying so is a pass. Producing a confident answer anyway is a failure,
+which is the part a system that games the suite fails hardest.
+
+**The scrambled run.** The same suite runs against a copy of the scene with
+every coined name replaced by a nonsense token. Structural questions must score
+the same. Any drop is something keyed to English names for earthly objects, and
+names the exact defect this whole plan exists to remove.

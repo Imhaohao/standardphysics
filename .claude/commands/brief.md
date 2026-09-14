@@ -8,54 +8,70 @@ This is the brief every agent working on this repository builds against. It is
 not a completion condition: `/goal` is the built-in that carries one of those.
 
 The target is not a demo and not a prize. Standard Physics runs in production,
-ten people scan their own rooms with it, and every one of them says it is
-immaculate and does everything it is supposed to do. Work that does not move
-toward that is not worth doing.
+ten people scan their own spaces with it, and every one of them says it is
+immaculate and does everything it is supposed to do.
 
-Four things have to be true:
+## The one idea
 
-1. **Every ADA provision is checked**, not the eighteen we hand-wrote. A rule
-   is data naming a measurement primitive, so adding a provision means writing
-   down what it requires. A rule that does not apply to this kind of room does
-   not run.
-2. **Every object in a scan is identified**, named, measured and placed,
-   including the text written on it.
-3. **The scene is a real 3D model** with a real tree. The blanket rests on the
-   bed, the bed rests on the floor, the pens are inside the cup.
-4. **Any question is answerable.** A model plans the answer out of primitives
-   and composes the view out of generic display pieces. No question kind, no
-   intent, and no subject appears in the source. Nothing renders until code has
-   verified it references real nodes and carries real data.
+Scan an alien planet with it. Things nobody has a name for, standing in
+relations nobody has a word for, under physics we did not assume. Everything in
+this repository has to survive that.
 
-Two rules that never bend:
+So there are three layers, and only the bottom one is closed:
 
-- **The model never supplies a number about the room.** Judgment comes from the
-  model, measurements come from the scene and the measurement provider.
-- **Nothing reaches the screen unverified.** An empty screen is a bug, not an
-  outcome.
+1. **Substrate.** Measured regions and the operators over them: hulls, volumes,
+   overlap fractions, signed gaps along a measured direction, free space,
+   adjacency, which frames saw what, glyphs on a surface. Mathematics, so it is
+   the same everywhere. Nothing here says wall, floor or up.
+2. **Interpretation.** A model coins entities and relations from the substrate
+   and stores them as data. A name is a free string. A relation carries the
+   substrate predicate that justifies it, so anything needing the truth re-runs
+   the predicate rather than trusting the word.
+3. **Composition.** A question arrives and a model writes an expression over
+   the substrate to answer it, authoring predicates nobody anticipated. Asked
+   which things are precariously balanced, it builds that test out of
+   centroids, footprints and contact areas rather than needing someone to have
+   written `precariously_balanced` first.
 
-Providers: Fireworks with open weights for volume work (detection, OCR,
-labelling), OpenRouter for frontier reasoning (planning, view composition,
-layout). A call goes to OpenRouter only when open weights cannot do it, and the
-reason lives in `providers/policy.py`.
+## What this rules out
 
-The existing app cuts corners everywhere. Restructure it rather than extending
-it, and delete what is in the way.
+- No `Literal` of kinds, relations, question types, intents or roles. If you
+  are about to write one, you are rebuilding the thing this brief exists to
+  remove.
+- No code above layer 2 branching on a name. Names are for showing a person.
+- No primitive per example. The three questions in `MISSION.md` are examples;
+  a primitive built for each is the same failure one level down.
 
-$ARGUMENTS
+## What never bends
+
+- **The model supplies structure, the engine supplies values.** A model says
+  which regions to compare and how. It never says what the comparison returned,
+  and no number in an answer comes from model text.
+- **Nothing renders unverified.** Every entity referenced exists in this scan,
+  every number traces to an evaluated expression, the view has content. A
+  failure re-plans once, then says what it could not establish. An empty screen
+  is a bug and a confident wrong answer is worse.
+
+## Providers
+
+Fireworks with open weights for volume work: per-region labelling, glyph
+reading, embeddings. OpenRouter for frontier reasoning: coining entities and
+relations, writing expressions, composing views. A call goes to OpenRouter only
+when open weights cannot do it, and the reason lives in `providers/policy.py`.
 
 ## Proving work is done
 
 `/goal` judges a condition from what lands in the conversation, not by reading
-files itself. So every claim has to be shown, not asserted:
+files itself. A claim nobody demonstrated did not happen.
 
-- Run `.venv/bin/python -m pytest -q` and `.venv/bin/python -m ruff check .`
-  and let the output land in the transcript.
-- For web work, run `npm run lint`, `npm run typecheck` and `npm run test` in
-  `apps/web`.
-- When a claim is about code that no longer exists, show the `grep` that comes
-  back empty.
-- When a claim is about behaviour, add a test that fails before the change and
-  passes after, and show both runs.
+- Run the checks and let the output land in the transcript: `.venv/bin/python
+  -m pytest -q`, `.venv/bin/python -m ruff check .`, and in `apps/web`, `npm
+  run lint && npm run typecheck && npm run test`.
+- A claim about behaviour needs a test that failed before and passes after.
+  Show both runs.
+- Never weaken, skip, xfail or delete a test to make a check pass.
+- A structural check is never the proof on its own. Deleting a file and showing
+  an empty grep says nothing about whether the app answers anything. The proof
+  is the held-out suite in `MISSION.md`, scored against real scenes.
 
-Never weaken, skip or delete a test to make a check pass.
+$ARGUMENTS

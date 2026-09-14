@@ -48,15 +48,27 @@ means the text on its surface was read and kept.
 ### 3. Build a real 3D model of whatever was scanned
 
 Scan a dorm room and the result should read like a Blender scene of that room.
-The blanket is a separate object from the bed. The bed is a separate object
-from the floor. The blanket rests on the bed, the bed rests on the floor, and
-the model knows that chain.
+The blanket is a separate object from the bed, the bed is separate from the
+floor, and the model knows the chain that holds them up.
+
+The dorm room is an example, not the specification. The same scan of somewhere
+nobody has been should produce the same quality of model: things we have no
+name for, standing in relations we have no word for, held together by whatever
+actually holds them together there. If the structure the app can represent is a
+list somebody wrote down in advance, it fails the moment it meets a world that
+list did not cover.
+
+So the relations are discovered, not declared. `rests on` is a name a model
+coined for a dorm room because a geometric predicate held between two measured
+regions, and the predicate is stored alongside the name so anything that needs
+to know can re-run it. Somewhere stranger, different predicates hold and get
+different names, and nothing above has to change.
 
 Today `SceneNode.parent_id` exists and `discovery.boxes.resting_parent` fills it
-one level deep, for discovered objects, by testing whether one box floats above
-another's top face. Containment is not modelled at all, so pens in a cup on a
-desk are three unrelated boxes. The scene has to carry a real tree, support and
-containment both, and the exported model has to carry it too.
+one level deep by testing whether one box floats above another's top face.
+`NodeKind` is a six-member list of wall, door, window, opening, floor and
+object, and 68 places in the code branch on it. All of that is the assumption
+this requirement removes.
 
 ### 4. Answer anything, and show the answer
 
@@ -71,10 +83,19 @@ eight executors. Anything outside that set is rejected. None of the three
 questions above is in the set, and adding them as a ninth, tenth and eleventh
 kind is the same mistake as writing a check per ADA provision.
 
-The code must not know what kinds of questions exist. A model reads the
-question, composes an answer out of primitives that can read the scene and take
-measurements, and chooses how to present it out of generic display primitives.
-Nothing about pens, whiteboards or roommates appears anywhere in the source.
+Those three are examples. They are not the specification either, and building
+a primitive per example is the same failure one level down: a question about
+something nobody listed fails exactly the way a ninth question kind would.
+
+The code must not know what kinds of question exist, and it must not know what
+kinds of thing exist either. A model reads the question and writes an
+expression over measured geometry, authoring whatever predicate the question
+needs rather than picking one off a list. Asked which things are precariously
+balanced, it composes that test out of centroids, footprints and contact areas
+instead of needing someone to have written `precariously_balanced` first.
+
+Nothing about pens, whiteboards or roommates appears anywhere in the source,
+and neither does anything about walls, floors or counters.
 
 Two constraints hold that together:
 
@@ -100,6 +121,20 @@ well: planning an answer, composing a view, proposing a layout.
 A call goes to OpenRouter only when an open-source model on Fireworks cannot do
 the job. That decision is written down per call site, not left to whoever is
 editing.
+
+## The bar this is held to
+
+A checklist of deleted files and greps that come back empty is something to
+game. What counts is a held-out suite: a model writes eighty questions about a
+scanned scene, no two answerable the same way, regenerated each run so they
+cannot be memorised. A judge scores each answer against the real scene rather
+than against an expected string. Around one in eight of the questions has no
+answer in the scan, and saying so is a pass while answering confidently is a
+failure.
+
+The same suite then runs against the scene with every coined name replaced by a
+nonsense token. Structural questions have to score the same. Any drop is
+something keyed to English names for earthly objects.
 
 ## What this requires
 
