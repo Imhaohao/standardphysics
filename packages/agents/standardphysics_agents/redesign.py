@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from uuid import UUID
+
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from standardphysics_contracts import NodeMove, SceneGraph, Vec3
 

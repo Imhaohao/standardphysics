@@ -11,12 +11,12 @@ does not load the rule ledger or label a generated layout ADA compliant.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
 import hashlib
 import json
 import math
-from pathlib import Path
 import time
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
 
 import numpy as np
 from scipy import ndimage

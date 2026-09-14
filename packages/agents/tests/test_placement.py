@@ -4,13 +4,12 @@ import json
 from pathlib import Path
 
 import pytest
-
 from standardphysics_agents import assess
 from standardphysics_agents.evaluation.gate import accepts
 from standardphysics_agents.fix import apply_moves, pinch_from, propose_fix, violations
 from standardphysics_agents.fix.placement import placements
 from standardphysics_agents.router import state_for
-from standardphysics_contracts import SceneGraph, Scenario
+from standardphysics_contracts import Scenario, SceneGraph
 from standardphysics_pipeline import PipelineMeasurements
 
 

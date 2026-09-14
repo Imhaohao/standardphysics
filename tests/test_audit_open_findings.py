@@ -14,14 +14,9 @@ import uuid
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
-
 import standardphysics_fixtures
+from fastapi.testclient import TestClient
 from standardphysics_agents import VerificationLedger
-from standardphysics_api import layout
-from standardphysics_api.app import create_app
-from standardphysics_api.settings import Settings
-from standardphysics_api.stages import Stages
 from standardphysics_contracts import (
     Mat4,
     SaveLayoutRequest,
@@ -37,6 +32,11 @@ from standardphysics_pipeline import blender
 from standardphysics_pipeline.ingest import parse_room_json
 from standardphysics_pipeline.measure import PipelineMeasurements
 from standardphysics_pipeline.occupancy import blocks_floor
+
+from standardphysics_api import layout
+from standardphysics_api.app import create_app
+from standardphysics_api.settings import Settings
+from standardphysics_api.stages import Stages
 
 THICKNESS = 0.1
 DEPTH = 4.0

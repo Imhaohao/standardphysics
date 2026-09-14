@@ -16,7 +16,7 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from standardphysics_contracts import Mat4, SceneGraph, SceneNode, Vec3
+from standardphysics_contracts import Mat4, SceneGraph, SceneNode
 
 from .coords import capture_to_room, dimensions_to_z_up, transform_from_arkit
 

@@ -37,8 +37,8 @@ from ..lidar import LidarMeshError, room_cloud
 from ..textures.camera import CameraMetadataError, PhotoCamera, load_cameras
 from ..textures.project import depth_buffer
 from .boxes import claimed_by_any, contained_fraction, resting_parent
-from .carve import FrameView, carve
 from .cache import DetectionCache
+from .carve import FrameView, carve
 from .detect import DEFAULT_MODEL, MODEL_ENV, Detection, DetectionError, Transport, detect_objects
 from .merge import Candidate, DiscoveredObject, merge_candidates
 from .people import without_people

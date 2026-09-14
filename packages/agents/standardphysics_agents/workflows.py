@@ -33,8 +33,8 @@ from .assess import Pass, assess
 from .loop import Loop, LoopStep, StepResult, _do_fix, run_loop
 from .mesh_collision import MeshCollisionIndex
 from .router import LocalPolicyRouter, TypeSafeRouter
-from .tracing import suspend_tracing
 from .rules import AgentRulePack, VerificationLedger, load_ledger, load_pack
+from .tracing import suspend_tracing
 
 MAX_WORKFLOW_WORKERS = 1_000
 

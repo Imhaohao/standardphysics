@@ -38,6 +38,7 @@ from standardphysics_contracts import (
 )
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from . import accounts
 from . import repository as repo
 from .auth import install_auth, owner_of
 from .coverage import parse_coverage
@@ -112,6 +113,10 @@ def create_app(settings: Settings | None = None, stages: Stages | None = None, r
         if settings.preview_unverified_rules:
             log.warning("SP_PREVIEW_UNVERIFIED_RULES is on: findings come from rules no person has verified")
         _start_tracing(settings)
+        with database.transaction() as connection:
+            expired = accounts.drop_expired_sessions(connection)
+        if expired:
+            log.info("cleared %d expired session(s)", expired)
         if settings.seed_sample_shop:
             _seed_demo_account(database, store, settings)
         if run_worker:
@@ -139,6 +144,17 @@ def create_app(settings: Settings | None = None, stages: Stages | None = None, r
     @app.get("/api/scans/{scan_id}/report", response_model=Report)
     def report(scan_id: uuid.UUID) -> Report:
         return build_report(database, stages.ledger_factory(), scan_id)
+
+    @app.get("/health")
+    def health() -> dict[str, str]:
+        """Reachable without a session, so a load balancer can ask.
+
+        It touches the database, because a process that is listening but cannot
+        read its own scans is not healthy in any way that matters.
+        """
+        with database.connect() as connection:
+            connection.execute("SELECT 1 FROM scans LIMIT 1").fetchone()
+        return {"status": "ok"}
 
     return app
 
@@ -177,7 +193,9 @@ def _install_scan_routes(app: FastAPI, database: Database, store: ArtifactStore)
         """
         with database.transaction() as connection:
             _scan_or_404(connection, scan_id)
-            running = connection.execute("SELECT 1 FROM jobs WHERE scan_id=? AND state='running'", (str(scan_id),)).fetchone()
+            running = connection.execute(
+                "SELECT 1 FROM jobs WHERE scan_id=? AND state='running'", (str(scan_id),)
+            ).fetchone()
             if running:
                 raise ApiProblem(409, "Wait for this room's running job to finish before deleting it")
             repo.delete_scan(connection, scan_id)
@@ -422,7 +440,8 @@ def _install_simulation_routes(app: FastAPI, database: Database, stages: Stages,
             captured_row = repo.get_revision(connection, scan_id, 0)
         captured = repo.graph_of(captured_row) if captured_row else None
         rebuilt = stages.label_scan(
-            base, frame_paths=frame_paths, poses_path=poses_path, lidar_mesh_path=lidar_mesh_path, capture_graph=captured
+            base, frame_paths=frame_paths, poses_path=poses_path,
+            lidar_mesh_path=lidar_mesh_path, capture_graph=captured,
         ).model_copy(update={"revision": base.revision + 1, "base_hash": graph_hash(base)})
         with database.transaction() as connection:
             if repo.get_revision(connection, scan_id)["revision"] != base.revision:

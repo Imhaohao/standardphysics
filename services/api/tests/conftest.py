@@ -5,10 +5,11 @@ import uuid
 
 import pytest
 from fastapi.testclient import TestClient
+from standardphysics_pipeline import blender
+
 from standardphysics_api.app import create_app
 from standardphysics_api.settings import Settings
 from standardphysics_api.stages import Stages, preview_ledger
-from standardphysics_pipeline import blender
 
 REPO = pathlib.Path(__file__).resolve().parents[3]
 FIXTURE_DATA = REPO / "packages/fixtures/standardphysics_fixtures/data"
