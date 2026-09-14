@@ -1,10 +1,13 @@
 ---
-description: The standing goal for Standard Physics. Read before planning any work.
+description: The standing brief for Standard Physics. Read before planning any work.
 ---
 
 Read `docs/MISSION.md` and `docs/ARCHITECTURE.md` before you plan anything.
 
-The goal is not a demo and not a prize. Standard Physics runs in production,
+This is the brief every agent working on this repository builds against. It is
+not a completion condition: `/goal` is the built-in that carries one of those.
+
+The target is not a demo and not a prize. Standard Physics runs in production,
 ten people scan their own rooms with it, and every one of them says it is
 immaculate and does everything it is supposed to do. Work that does not move
 toward that is not worth doing.
@@ -40,3 +43,19 @@ The existing app cuts corners everywhere. Restructure it rather than extending
 it, and delete what is in the way.
 
 $ARGUMENTS
+
+## Proving work is done
+
+`/goal` judges a condition from what lands in the conversation, not by reading
+files itself. So every claim has to be shown, not asserted:
+
+- Run `.venv/bin/python -m pytest -q` and `.venv/bin/python -m ruff check .`
+  and let the output land in the transcript.
+- For web work, run `npm run lint`, `npm run typecheck` and `npm run test` in
+  `apps/web`.
+- When a claim is about code that no longer exists, show the `grep` that comes
+  back empty.
+- When a claim is about behaviour, add a test that fails before the change and
+  passes after, and show both runs.
+
+Never weaken, skip or delete a test to make a check pass.
