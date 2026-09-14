@@ -147,17 +147,32 @@ bespoke check files go.
 
 ### 2.2 A rule that names its measurement
 
-`RuleSpec` gains a measurement expression and a scope:
+The first draft of this plan had a rule name one primitive and a threshold.
+Reading `checks/service_counter.py` showed that is too thin: real provisions
+pick out elements, sometimes apply only under a condition, and only then
+measure. 904.4.1 asks about counters; whether the point of sale sits on the
+lowered section applies only when a lowered section exists.
+
+So an expression has three parts, and `$element` is the node under
+consideration:
 
 ```
-measurement: {primitive: "height_above_floor", args: {surface: "$element"}}
-scope:       {space_types: ["public_accommodation"], element: "sales_counter"}
-comparison:  at_most
-threshold:   36
-unit:        in
+select:     {primitive: "elements_of_role", arguments: {role: "sales_counter"}}
+when:       {primitive: "has_lowered_section", arguments: {node_id: "$element"}}
+measure:    {primitive: "height_of", arguments: {node_id: "$element"}}
+comparison: at_most
+threshold:  36
+unit:       in
+scope:      {space_types: ["public_accommodation"]}
 ```
 
-One evaluator runs any rule with this shape. `scope` is what stops a dorm room
+`select` and `when` are primitives too, returning nodes and a truth, which is
+why the vocabulary has those return types. One evaluator runs any rule with
+this shape, and it refuses a measurement that answers in the wrong unit rather
+than comparing square inches against a rule written in inches.
+
+Provisions too tangled even for this keep a hand-written check, declared as
+such on the rule. An escape hatch with a name is honest; a default is not. `scope` is what stops a dorm room
 being told it fails a service-counter rule: Title III governs public
 accommodations, a bedroom is not one, and a finding that does not apply is
 worse than no finding.
