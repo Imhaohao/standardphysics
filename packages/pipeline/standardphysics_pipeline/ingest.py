@@ -109,6 +109,7 @@ def _parent(element: dict) -> uuid.UUID | None:
 def _node(element: dict, kind: str, index: int) -> SceneNode:
     category = _enum_name(element.get("category", kind), "category")
     width, height, depth = _vector(element["dimensions"], "dimensions")
+    parent = _parent(element)
 
     return SceneNode(
         id=_identifier(element, f"{kind}-{index}"),
@@ -120,7 +121,8 @@ def _node(element: dict, kind: str, index: int) -> SceneNode:
         quality=_quality(element),
         movable=_is_movable(kind, category),
         labeled_by="roomplan",
-        parent_id=_parent(element),
+        parent_id=parent,
+        relation="cut_into" if parent is not None else None,
     )
 
 

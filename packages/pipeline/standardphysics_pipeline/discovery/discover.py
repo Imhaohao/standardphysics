@@ -291,6 +291,7 @@ def _worth_keeping(object_: DiscoveredObject, graph: SceneGraph, viewpoints: int
 
 
 def _node_for(object_: DiscoveredObject, graph: SceneGraph, viewpoints: int) -> SceneNode:
+    resting = resting_parent(object_.box, graph)
     return SceneNode(
         id=_stable_id(graph.scan_id, object_),
         kind="object",
@@ -301,7 +302,8 @@ def _node_for(object_: DiscoveredObject, graph: SceneGraph, viewpoints: int) -> 
         quality="measured" if viewpoints >= CONFIDENT_VIEWS else "needs_another_look",
         movable=object_.movable,
         labeled_by="discovery",
-        parent_id=resting_parent(object_.box, graph),
+        parent_id=resting,
+        relation="rests_on" if resting is not None else None,
     )
 
 
