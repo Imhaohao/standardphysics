@@ -78,6 +78,54 @@ def _options(node: SceneNode, space: Polygon) -> list[NodeMove]:
     return options
 
 
+def _groups(pieces: list) -> list[tuple]:
+    """Which pieces to try together.
+
+    Single moves first, then every pair, and the whole set when there are more
+    than two, because a space of zero width can need two things moved before any
+    single move shows an improvement.
+    """
+    groups: list[tuple] = [(node,) for node in pieces]
+    if len(pieces) > 2:
+        groups.append(tuple(pieces))
+    groups.extend(combinations(pieces, 2))
+    return groups
+
+
+def _expand(graph: SceneGraph, node, moves_for_node, beam: list[list[NodeMove]]) -> list[list[NodeMove]]:
+    """Every legal way to add one more move for this node to each route in the beam."""
+    expanded = []
+    for moves in beam:
+        accepted = 0
+        occupied = set()
+        for move in moves_for_node:
+            position = move_node(node, move).transform.position
+            # Keep different destinations in the beam, not eight near-identical
+            # rotations of one parking spot.
+            key = (round(position.x / 0.2), round(position.y / 0.2))
+            if key in occupied:
+                continue
+            trial = [*moves, move]
+            if violations(graph, apply_moves(graph, trial)):
+                continue
+            expanded.append(trial)
+            occupied.add(key)
+            accepted += 1
+            if accepted == OPTIONS_PER_PIECE:
+                break
+    return expanded
+
+
+def _beam_for(graph: SceneGraph, group: tuple, options: dict) -> list[list[NodeMove]]:
+    beam: list[list[NodeMove]] = [[]]
+    for node in group:
+        expanded = _expand(graph, node, options[node.id], beam)
+        beam = sorted(expanded, key=lambda moves: _candidate(moves).disruption)[:BEAM_WIDTH]
+        if not beam:
+            break
+    return beam
+
+
 def placements(graph: SceneGraph, pinch: Pinch, finding: Finding,
                rules: AgentRulePack, limit: int) -> list[Candidate]:
     if limit <= 0 or not pinch.fixable:
@@ -86,38 +134,8 @@ def placements(graph: SceneGraph, pinch: Pinch, finding: Finding,
     pieces = sorted(pinch.movable, key=lambda n: str(n.id))[:MAX_PIECES]
     options = {node.id: _options(node, space) for node in pieces}
     found = []
-    # Single moves first; then joint placements even when no individual move
-    # improves a zero-width space. Intermediate guesses are never published.
-    groups = [(node,) for node in pieces]
-    if len(pieces) > 2:
-        groups.append(tuple(pieces))
-    groups.extend(combinations(pieces, 2))
-    for group in groups:
-        beam: list[list[NodeMove]] = [[]]
-        for node in group:
-            expanded = []
-            for moves in beam:
-                accepted = 0
-                occupied = set()
-                for move in options[node.id]:
-                    position = move_node(node, move).transform.position
-                    # Keep different destinations in the beam, not eight
-                    # near-identical rotations of one parking spot.
-                    key = (round(position.x / 0.2), round(position.y / 0.2))
-                    if key in occupied:
-                        continue
-                    trial = [*moves, move]
-                    if violations(graph, apply_moves(graph, trial)):
-                        continue
-                    expanded.append(trial)
-                    occupied.add(key)
-                    accepted += 1
-                    if accepted == OPTIONS_PER_PIECE:
-                        break
-            beam = sorted(expanded, key=lambda moves: _candidate(moves).disruption)[:BEAM_WIDTH]
-            if not beam:
-                break
-        found.extend(_candidate(moves) for moves in beam)
+    for group in _groups(pieces):
+        found.extend(_candidate(moves) for moves in _beam_for(graph, group, options))
         if len(found) >= limit:
             break
     return found[:limit]
