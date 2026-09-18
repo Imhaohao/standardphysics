@@ -7,10 +7,10 @@ than watched once by eye. CI has no keys, so the account is stood in for.
 import sys
 
 import pytest
-from conftest import no_blender_stages, sign_up
 from fastapi.testclient import TestClient
 from standardphysics_agents import tracing
 
+from conftest import no_blender_stages, sign_up
 from standardphysics_api.app import create_app
 from standardphysics_api.settings import Settings
 

@@ -1,11 +1,11 @@
 import json
 import uuid
 
-from conftest import drain, no_blender_stages
 from standardphysics_agents import LocalPolicyRouter
 from standardphysics_contracts import NodeMove, Vec3
 from standardphysics_fixtures import node_id
 
+from conftest import drain, no_blender_stages
 from standardphysics_api.loop_run import combine_moves
 
 

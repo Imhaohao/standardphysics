@@ -3,7 +3,6 @@ from __future__ import annotations
 from types import SimpleNamespace
 from uuid import UUID
 
-from conftest import drain, no_blender_stages
 from standardphysics_agents import (
     AdaptiveRedesignResult,
     TypeSafeCallBudget,
@@ -13,6 +12,7 @@ from standardphysics_agents import (
 from standardphysics_contracts import AdaptiveRoundResult, Scenario, SimulationRequest, graph_hash
 from standardphysics_fixtures import build_graph, build_scenario
 
+from conftest import drain, no_blender_stages
 from standardphysics_api import repository as repo
 from standardphysics_api.simulations import _progress_stride, _run_accessibility_loop
 from standardphysics_api.stages import preview_ledger

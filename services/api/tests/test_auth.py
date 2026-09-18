@@ -9,8 +9,8 @@ that covers most of the surface covers none of it.
 import uuid
 
 import pytest
-from conftest import OWNER_EMAIL, OWNER_PASSWORD, create_scan, sign_in, sign_out, sign_up
 
+from conftest import OWNER_EMAIL, OWNER_PASSWORD, create_scan, sign_in, sign_out, sign_up
 from standardphysics_api import accounts
 from standardphysics_api.auth import COOKIE_NAME
 
