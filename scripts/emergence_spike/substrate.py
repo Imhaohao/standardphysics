@@ -4,15 +4,19 @@ Regions are nameless. The operators are geometry only. Nothing here knows what
 a chair is, and nothing defines 'rests on' or 'balanced' — the point of the
 experiment is whether a model can write those itself.
 """
-import json, math, pathlib, sys
-sys.path.insert(0, "/home/user/standardphysics/packages/pipeline")
+import json
+import math
+import pathlib
+
 from standardphysics_pipeline.ingest import parse_room_json
+
+ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 GRAVITY = [0.0, 0.0, -1.0]  # measured up-axis of the scan is +z
 
 
 def load(name):
-    graph = parse_room_json(json.loads(pathlib.Path(f"/home/user/standardphysics/datasets/phone/{name}/room.json").read_text()))
+    graph = parse_room_json(json.loads(ROOT.joinpath("datasets", "phone", name, "room.json").read_text()))
     regions = {}
     truth = {}
     for index, node in enumerate(graph.nodes):

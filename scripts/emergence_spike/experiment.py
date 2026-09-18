@@ -3,8 +3,11 @@
 It gets the operator list and the grammar. It does not get the word 'rests on',
 any example predicate, or any label from the scan. The regions are nameless.
 """
-import json, os, sys, urllib.request
-sys.path.insert(0, "/tmp/claude-0/-home-user-standardphysics/fcf20089-0f67-52be-aee3-fcbd8ccab05f/scratchpad/spike")
+import json
+import os
+import sys
+import urllib.request
+
 from substrate import Refused, load, select
 
 GRAMMAR = """
@@ -83,6 +86,7 @@ def main():
     total_in = total_out = 0
     for question, tag in QUESTIONS:
         text = ""
+        failure = None
         try:
             for attempt in range(2):
                 try:
