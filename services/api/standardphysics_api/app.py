@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import json
 import logging
 import pathlib
 import uuid
@@ -40,7 +41,9 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import accounts
 from . import repository as repo
+from .architecture_export import install_architecture_export_routes
 from .auth import install_auth, owner_of
+from .combine import SaveCombineRequest, save_combine
 from .coverage import parse_coverage
 from .db import Database
 from .errors import ApiProblem
@@ -57,6 +60,7 @@ from .route import confirm, suggestion
 from .seed import seed_sample_shop
 from .settings import Settings
 from .simulations import queue_simulation, simulation_status
+from .splats import install_splat_routes
 from .stages import Stages, preview_ledger
 from .store import ArtifactStore, ArtifactTooLarge, InvalidArtifactId
 from .textures import install_texture_routes, maybe_queue_texture, validate_manifest
@@ -130,15 +134,18 @@ def create_app(settings: Settings | None = None, stages: Stages | None = None, r
     app.state.database, app.state.store, app.state.worker = database, store, worker
     _install_error_handlers(app)
     install_auth(app, database)
+    install_architecture_export_routes(app, database)
     _install_scan_routes(app, database, store)
     _install_upload_routes(app, database, store, worker)
     _install_workspace_routes(app, database, store)
+    _install_combine_routes(app, database, store, worker)
     _install_file_routes(app, database, store)
     _install_layout_routes(app, database, stages, worker)
     _install_route_routes(app, database, worker)
     _install_simulation_routes(app, database, stages, worker)
     install_replay_routes(app, database, store)
     install_texture_routes(app, database, store, worker)
+    install_splat_routes(app, database, store)
     _install_label_routes(app, database, worker)
 
     @app.get("/api/scans/{scan_id}/report", response_model=Report)
@@ -333,6 +340,21 @@ def _install_workspace_routes(app: FastAPI, database: Database, store: ArtifactS
         if found is None:
             raise ApiProblem(404, "not ready")
         return found
+
+
+def _install_combine_routes(app: FastAPI, database: Database, store: ArtifactStore, worker: Worker) -> None:
+    @app.get("/api/scans/{scan_id}/rooms")
+    def rooms(scan_id: uuid.UUID) -> dict:
+        with database.connect() as connection:
+            _scan_or_404(connection, scan_id)
+        manifest = store.scan_dir(scan_id) / "rooms.json"
+        if not manifest.exists():
+            return {"rooms": []}
+        return json.loads(manifest.read_text())
+
+    @app.post("/api/scans/{scan_id}/combine", response_model=SceneGraph, status_code=201)
+    def combine(scan_id: uuid.UUID, body: SaveCombineRequest) -> SceneGraph:
+        return save_combine(database, worker, scan_id, body)
 
 
 

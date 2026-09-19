@@ -2,19 +2,23 @@ import { Matrix4, Vector3, type BufferGeometry } from "three";
 import type { SceneNode } from "@/types/contracts";
 
 export const MIN_DISPLAY_WALL_THICKNESS = 0.08;
+export const MAX_DISPLAY_WALL_HEIGHT = 2.8;
 const SINGULAR_SCALE = 0.000001;
 
 /** Rendering keeps a visible wall shell without changing the measured graph. */
 export function displayScale(node: SceneNode): [number, number, number] {
   const depth = node.kind === "wall" ? Math.max(node.dimensions.y, MIN_DISPLAY_WALL_THICKNESS) : node.dimensions.y;
-  return [node.dimensions.x, node.dimensions.z, depth];
+  const height = node.kind === "wall" ? Math.min(node.dimensions.z, MAX_DISPLAY_WALL_HEIGHT) : node.dimensions.z;
+  return [node.dimensions.x, height, depth];
 }
+
+const SCRATCH_SIZE = new Vector3();
 
 /** Cached GLBs made with a zero scale cannot be repaired by a transform alone. */
 export function needsDisplayBoxFallback(node: SceneNode, geometry: BufferGeometry, matrix: Matrix4): boolean {
   if (node.kind !== "wall") return false;
-  geometry.computeBoundingBox();
-  const size = geometry.boundingBox?.getSize(new Vector3());
+  if (!geometry.boundingBox) geometry.computeBoundingBox();
+  const size = geometry.boundingBox?.getSize(SCRATCH_SIZE);
   if (!size || Math.min(size.x, size.y, size.z) <= SINGULAR_SCALE) return true;
   const elements = matrix.elements;
   const axisLengths = [

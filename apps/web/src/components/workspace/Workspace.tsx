@@ -12,7 +12,7 @@ import { AskBox } from "./AskBox";
 import { type CheckScope, scanStatus } from "@/lib/scan-status";
 import { METERS_PER_INCH } from "@/lib/moves";
 import { capturedMeshUrl } from "@/lib/lidar-mesh";
-import type { Assessment, Finding, Locus, NodeMove, Scan, Scenario, SceneGraph } from "@/types/contracts";
+import type { Assessment, Finding, Locus, NodeMove, Scan, Scenario, SceneGraph, SceneNode } from "@/types/contracts";
 import { RoutePanel } from "./RoutePanel";
 import type { RouteHandles } from "./StopMarkers";
 import { type RouteState, useRoute } from "./useRoute";
@@ -23,13 +23,20 @@ import { FindingsList } from "./FindingsList";
 import { FixSuggestion } from "./FixSuggestion";
 import { LoopRun } from "./LoopRun";
 import { PickedObject } from "./PickedObject";
+import { WheelchairHud } from "./WheelchairHud";
+import type { WheelchairState } from "./WheelchairController";
 import type { ArrangeHandlers } from "./ShopModel";
 import { type Arrangement, useArrangement } from "./useArrangement";
+import { type Combine, useCombine } from "./useCombine";
+import { CombinePanel } from "./CombinePanel";
+import type { RoomGroup } from "@/lib/room-groups";
 import { SimulationPanel } from "./SimulationPanel";
 import { type MaterialMode, type ViewMode, ViewerDock } from "./ViewerDock";
 import { isTextureRefreshing, textureStatusMatches } from "@/lib/texture-status";
 import { viewerSourcePlan } from "@/lib/viewer-source";
 import type { TextureStatus } from "@/types/contracts";
+import type { CapturedSplats } from "@/lib/captured-splats";
+import { DEFAULT_WHEELCHAIR_PROFILE, wheelchairProfile, type WheelchairProfile } from "@/lib/wheelchair-motion";
 
 const Viewer = dynamic(() => import("./Viewer"), {
   ssr: false,
@@ -49,12 +56,14 @@ type WorkspaceProps = {
   scenario: Scenario | null;
   suggestedScenario: Scenario | null;
   textureStatus: TextureStatus | null;
+  rooms: RoomGroup[];
+  capturedSplats?: CapturedSplats | null;
 };
 
 function isWorking(scan: Scan): boolean {
   return scan.state === "uploading" || scan.state === "measuring" || scan.state === "checking";
 }
-type Task = "findings" | "arrange" | "compare" | "route";
+type Task = "findings" | "arrange" | "combine" | "compare" | "route";
 
 function poseFor(scene: SceneGraph, selected: Focus | null, mode: ViewMode): ViewerPose {
   if (selected?.locus) return poseFromLocus(selected.locus.camera);
@@ -82,31 +91,35 @@ const NUDGES: Record<string, [number, number]> = {
   ArrowRight: [1, 0],
 };
 
-function arrangeKey(event: KeyboardEvent, arrangement: Arrangement) {
+function nudgeFor(event: KeyboardEvent, nudge: (dx: number, dy: number, degrees: number) => void) {
   const inches = (event.shiftKey ? 6 : 1) * METERS_PER_INCH;
-  const nudge = NUDGES[event.key];
-  if (nudge) {
+  const move = NUDGES[event.key];
+  if (move) {
     event.preventDefault();
-    arrangement.nudge(nudge[0] * inches, nudge[1] * inches, 0);
+    nudge(move[0] * inches, move[1] * inches, 0);
   } else if (event.key === "r" || event.key === "R") {
-    arrangement.nudge(0, 0, event.shiftKey ? -15 : 15);
+    nudge(0, 0, event.shiftKey ? -15 : 15);
   }
 }
 
-function useKeyboard(task: Task, arrangement: Arrangement, clear: () => void) {
+function useKeyboard(task: Task, arrangement: Arrangement, combine: Combine, clear: () => void, wheelchairMode: boolean) {
   useEffect(() => {
+    if (wheelchairMode) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         clear();
         arrangement.setActiveId(null);
+        combine.setActiveRoom(null);
         return;
       }
-      const typing = (event.target as HTMLElement).closest("input, textarea, nav");
-      if (task === "arrange" && arrangement.activeId && !typing) arrangeKey(event, arrangement);
+      const typing = event.target instanceof HTMLElement && event.target.closest("input, textarea, select, nav, [contenteditable=true]");
+      if (typing) return;
+      if (task === "arrange" && arrangement.activeId) nudgeFor(event, arrangement.nudge);
+      if (task === "combine" && combine.activeRoom) nudgeFor(event, combine.nudge);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [task, arrangement, clear]);
+  }, [task, arrangement, combine, clear, wheelchairMode]);
 }
 
 function useArrangeHandlers(enabled: boolean, arrangement: Arrangement, setDragging: (on: boolean) => void) {
@@ -132,15 +145,45 @@ function useArrangeHandlers(enabled: boolean, arrangement: Arrangement, setDragg
   );
 }
 
-type HeaderProps = { scan: Scan; task: Task; canCompare: boolean; onTask: (task: Task) => void };
+const EMPTY_SET = new Set<string>();
 
-function WorkspaceHeader({ scan, task, canCompare, onTask }: HeaderProps) {
+function useCombineHandlers(enabled: boolean, combine: Combine, setDragging: (on: boolean) => void) {
+  const { activeRoom, onGrab, onDrag } = combine;
+  return useMemo<ArrangeHandlers | null>(
+    () =>
+      !enabled
+        ? null
+        : {
+            activeId: activeRoom,
+            blockedIds: EMPTY_SET,
+            onGrab: (nodeId) => {
+              onGrab(nodeId);
+              setDragging(true);
+            },
+            onDrag,
+            onDrop: () => setDragging(false),
+          },
+    [enabled, activeRoom, onGrab, onDrag, setDragging],
+  );
+}
+
+type HeaderProps = { scan: Scan; revision: number; task: Task; canCompare: boolean; canCombine: boolean; onTask: (task: Task) => void };
+
+function WorkspaceHeader({ scan, revision, task, canCompare, canCombine, onTask }: HeaderProps) {
   return (
     <header className="flex flex-wrap items-center gap-3 px-3 py-3 lg:col-span-2">
       <Link href="/" className="rounded-lg p-2 text-ink-muted hover:bg-ink/5 hover:text-ink" aria-label="Your shops">
         <ArrowLeft size={20} weight="bold" />
       </Link>
       <h1 className="heading-display min-w-0 flex-1 truncate text-lg">{scan.name}</h1>
+      <a
+        href={`/api/scans/${scan.id}/architecture.zip?revision=${revision}`}
+        download
+        title="Download the saved floor plan and measurement evidence"
+        className="rounded-lg px-3 py-2 text-sm font-medium text-ink-muted hover:bg-ink/5 hover:text-ink"
+      >
+        Floor plan
+      </a>
       <Link
         href={`/scans/${scan.id}/report`}
         className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-ink-muted hover:bg-ink/5 hover:text-ink"
@@ -157,6 +200,12 @@ function WorkspaceHeader({ scan, task, canCompare, onTask }: HeaderProps) {
           <HandGrabbing size={16} weight="bold" className="hidden sm:block" aria-hidden />
           Move furniture
         </Button>
+        {canCombine && (
+          <Button variant="chip" aria-pressed={task === "combine"} onClick={() => onTask("combine")}>
+            <HandGrabbing size={16} weight="bold" className="hidden sm:block" aria-hidden />
+            Combine rooms
+          </Button>
+        )}
         <Button variant="chip" aria-pressed={task === "route"} onClick={() => onTask("route")}>
           <MapPin size={16} weight="bold" className="hidden sm:block" aria-hidden />
           Customer route
@@ -182,6 +231,7 @@ type SidePanelProps = {
   findings: Finding[];
   selected: Finding | null;
   arrangement: Arrangement;
+  combine: Combine;
   comparison: Comparison | null;
   amount: number;
   onAmount: (value: number) => void;
@@ -191,10 +241,11 @@ type SidePanelProps = {
   onLook: (locus: Locus | null) => void;
 };
 
-function SidePanel({ task, scene, onTryLayout, onPreviewLayout, assessment, scan, findings, selected, arrangement, comparison, amount, onAmount, onToggle, route, onRoute, onLook }: SidePanelProps) {
+function SidePanel({ task, scene, onTryLayout, onPreviewLayout, assessment, scan, findings, selected, arrangement, combine, comparison, amount, onAmount, onToggle, route, onRoute, onLook }: SidePanelProps) {
   const scope: CheckScope = { rulesChecked: assessment?.rules_checked ?? null, routeConfirmed: route.confirmed };
   if (task === "compare" && comparison) return <ComparePanel comparison={comparison} amount={amount} onAmount={onAmount} scope={scope} />;
   if (task === "arrange") return <ArrangePanel arrangement={arrangement} fallbackFindings={findings} scope={scope} />;
+  if (task === "combine") return <CombinePanel combine={combine} />;
   if (task === "route") return <RoutePanel route={route} />;
   return (
     <>
@@ -277,12 +328,15 @@ function useFocus() {
 
 function useWorkspaceVisuals(props: WorkspaceProps, findings: Finding[], task: Task, amount: number, focus: Focus | null, mode: ViewMode, setDragging: (on: boolean) => void) {
   const arrangement = useArrangement(props.scan.id, props.scene);
+  const combine = useCombine(props.scan.id, props.scene, props.rooms);
   const comparison = comparisonFor(arrangement, props.scene, findings, props.previous);
-  const shown = task === "compare" && comparison ? interpolateLayout(comparison.before, comparison.after, amount) : arrangement.shown;
+  const shown = task === "combine" ? combine.shown : (task === "compare" && comparison ? interpolateLayout(comparison.before, comparison.after, amount) : arrangement.shown);
   const pose = useMemo(() => poseFor(props.scene, focus, mode), [props.scene, focus, mode]);
-  const handlers = useArrangeHandlers(task === "arrange", arrangement, setDragging);
+  const arrangeHandlers = useArrangeHandlers(task === "arrange", arrangement, setDragging);
+  const combineHandlers = useCombineHandlers(task === "combine", combine, setDragging);
+  const handlers = task === "combine" ? combineHandlers : arrangeHandlers;
   const route = useRoute(props.scan.id, props.scenario, props.suggestedScenario);
-  return { arrangement, comparison, shown, pose, handlers, route, routeHandles: useRouteHandles(task, route, setDragging) };
+  return { arrangement, combine, comparison, shown, pose, handlers, dragAllNodes: task === "combine", route, routeHandles: useRouteHandles(task, route, setDragging) };
 }
 
 function useWorkspaceActions(findings: Finding[], scene: SceneGraph, arrangement: Arrangement, setSelected: (finding: Finding | null | ((current: Finding | null) => Finding | null)) => void, setAsked: (focus: Focus | null) => void, setPicked: (picked: Picked | null) => void, setTask: (task: Task) => void, setMode: (mode: ViewMode) => void, setAmount: (amount: number) => void) {
@@ -378,17 +432,53 @@ type WorkspaceBodyProps = WorkspaceProps & {
 
 // The workspace deliberately coordinates several independent panels around one model.
 // eslint-disable-next-line complexity
-function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, textureStatus, findings, task, selected, focus, mode, picked, dragging, amount, setAmount, showScanEvidence, setShowScanEvidence, visuals, actions }: WorkspaceBodyProps) {
+function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, textureStatus, capturedSplats, findings, task, selected, focus, mode, picked, dragging, amount, setAmount, showScanEvidence, setShowScanEvidence, visuals, actions }: WorkspaceBodyProps) {
   const [cutWalls, setCutWalls] = useState(true);
   const [chosenMaterialMode, setChosenMaterialMode] = useState<MaterialMode | null>(null);
+  const [wheelchairMode, setWheelchairMode] = useState(false);
+  const [wheelchairState, setWheelchairState] = useState<WheelchairState | null>(null);
+  const [profile, setProfile] = useState<WheelchairProfile>(DEFAULT_WHEELCHAIR_PROFILE);
+  const [dockTarget, setDockTarget] = useState<SceneNode | null>(null);
+  const [splatError, setSplatError] = useState<string | null>(null);
+  useKeyboard(task, visuals.arrangement, visuals.combine, actions.clear, wheelchairMode);
+
+  const toggleWheelchairMode = useCallback(() => {
+    setWheelchairMode((curr) => !curr);
+  }, []);
+
+  const exitWheelchairMode = useCallback(() => {
+    setWheelchairMode(false);
+    setDockTarget(null);
+  }, []);
+
+  const handleDockWheelchair = useCallback((node: SceneNode) => {
+    setDockTarget(node);
+  }, []);
+
+  const handleClearWheelchairDock = useCallback(() => {
+    setDockTarget(null);
+  }, []);
+
+  const handleWheelchairSelectNode = useCallback((node: SceneNode) => {
+    actions.selectNode(node.id);
+  }, [actions]);
+
+  const handleWheelchairProfile = useCallback((next: WheelchairProfile) => {
+    setProfile(wheelchairProfile(next));
+  }, []);
+
   const textures = usePhotoTextures(scan.id, scene.revision, textureStatus);
   const evidenceAvailable = lidarUrl !== null && scene.revision === 0 && task !== "arrange" && task !== "compare";
   const displayedLidarUrl = capturedMeshUrl(lidarUrl, scene.revision, showScanEvidence && evidenceAvailable);
   const activeMode = selected ? null : mode;
   const photoBuild = textures.status?.build ?? null;
   const scanGlbUrl = photoBuild?.scan_glb_url ?? null;
+  const captureAllowed = task === "findings" || task === "route";
+  const splatAssets = captureAllowed && capturedSplats?.revision === scene.revision ? capturedSplats.assets : undefined;
+  const hasSplats = Boolean(splatAssets?.length);
   const reconstructionCount = scene.nodes.filter((node) => node.reconstruction !== null && node.reconstruction !== undefined).length;
-  const materialMode = chosenMaterialMode ?? (reconstructionCount > 0 ? "reconstructed" : "captured");
+  const preferredMode = chosenMaterialMode ?? (hasSplats ? "scan" : reconstructionCount > 0 ? "reconstructed" : (scanGlbUrl ? "scan" : "captured"));
+  const materialMode = !captureAllowed && preferredMode === "scan" ? "plain" : preferredMode;
   const reconstructionPending = reconstructionCount > 0 && exported.revision !== scene.revision;
   const cleanGlbUrl = reconstructionPending ? null : glbUrl;
   const sourcePlan = viewerSourcePlan({
@@ -401,27 +491,72 @@ function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, te
   const sourceGraph = sourcePlan.usePhotoBuild ? photoBuild?.bake_graph ?? exported : exported;
   return <>
     <RefreshWhile pending={assessment === null && isWorking(scan)} />
-    <div className="grid h-dvh grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(16rem,45dvh)_1fr] lg:grid-cols-[minmax(0,1fr)_24rem] lg:grid-rows-[auto_1fr]">
-      <WorkspaceHeader scan={scan} task={task} canCompare={visuals.comparison !== null} onTask={actions.switchTask} />
+    <div className={`grid h-dvh grid-cols-[minmax(0,1fr)] ${wheelchairMode ? "grid-rows-[auto_minmax(0,1fr)]" : "grid-rows-[auto_minmax(16rem,45dvh)_1fr] lg:grid-cols-[minmax(0,1fr)_24rem] lg:grid-rows-[auto_1fr]"}`}>
+      <WorkspaceHeader scan={scan} revision={scene.revision} task={task} canCompare={visuals.comparison !== null} canCombine={visuals.combine.rooms.length > 1} onTask={actions.switchTask} />
       <section className="relative min-h-0 touch-none overflow-hidden lg:rounded-tr-2xl" aria-label="Shop model">
-        <Viewer scene={visuals.shown} exported={sourceGraph} arrange={visuals.handlers} route={visuals.routeHandles} dragging={dragging} cutWalls={cutWalls} glbUrl={sourceGlbUrl} scanGlbUrl={scanGlbUrl} lidarUrl={displayedLidarUrl} pose={visuals.pose} selected={task === "findings" ? focus : null} onSelectNode={actions.selectNode} onClearSelection={actions.clear} materialMode={sourcePlan.materialMode} staleNodeIds={sourcePlan.staleNodeIds} coverage={photoBuild?.coverage.nodes ?? []} />
+        <Viewer
+          scene={visuals.shown}
+          exported={sourceGraph}
+          arrange={wheelchairMode ? null : visuals.handlers}
+          dragAllNodes={visuals.dragAllNodes}
+          lightweight={task === "combine"}
+          route={visuals.routeHandles}
+          dragging={dragging}
+          cutWalls={wheelchairMode ? false : cutWalls}
+          glbUrl={sourceGlbUrl}
+          scanGlbUrl={scanGlbUrl}
+          splatAssets={splatAssets}
+          onSplatError={setSplatError}
+          lidarUrl={displayedLidarUrl}
+          pose={visuals.pose}
+          selected={task === "findings" ? focus : null}
+          onSelectNode={actions.selectNode}
+          onClearSelection={actions.clear}
+          materialMode={sourcePlan.materialMode}
+          staleNodeIds={sourcePlan.staleNodeIds}
+          coverage={photoBuild?.coverage.nodes ?? []}
+          wheelchairMode={wheelchairMode}
+          wheelchairProfile={profile}
+          onWheelchairStateChange={setWheelchairState}
+          wheelchairDockTarget={dockTarget}
+          onClearWheelchairDock={handleClearWheelchairDock}
+          onWheelchairSelectNode={handleWheelchairSelectNode}
+          onWheelchairExit={exitWheelchairMode}
+        />
+        {splatError && materialMode === "scan" && <p role="status" className="absolute left-4 top-4 max-w-sm rounded-lg bg-sheet/95 p-3 text-sm text-ink-muted">{splatError} Showing the measured model.</p>}
+        {hasSplats && materialMode === "scan" && !splatError && !wheelchairMode && (
+          <p role="status" className="pointer-events-none absolute left-4 top-4 max-w-sm rounded-lg bg-sheet/90 px-3 py-2 text-xs text-ink-muted shadow-sm">
+            Photographic preview · Gaps and blur remain. Measurements use scan geometry.
+          </p>
+        )}
         <PickedObject
           scanId={scan.id}
           revision={scene.revision}
-          label={picked.label}
-          node={picked.node}
+          label={wheelchairMode ? null : picked.label}
+          node={wheelchairMode ? null : picked.node}
           editable={canMarkCounter(task, scan)}
+        />
+        <WheelchairHud
+          active={wheelchairMode}
+          state={wheelchairState}
+          onExit={exitWheelchairMode}
+          onDock={handleDockWheelchair}
+          onSelectNode={actions.selectNode}
+          profile={profile}
+          onProfileChange={handleWheelchairProfile}
         />
         <ViewerDock
           activeMode={activeMode}
           onView={actions.showView}
+          wheelchairMode={wheelchairMode}
+          onToggleWheelchair={toggleWheelchairMode}
           visibility={{ cutWalls, onToggleWalls: () => setCutWalls((current) => !current), evidenceAvailable, evidenceShown: showScanEvidence, onToggleEvidence: () => setShowScanEvidence((current) => !current) }}
-          textures={{ status: textures.status, requesting: textures.requesting, error: textures.error, mode: materialMode, onMode: setChosenMaterialMode, onRequest: () => { void textures.request(); }, reconstruction: { count: reconstructionCount, pending: reconstructionPending } }}
+          textures={{ status: textures.status, requesting: textures.requesting, error: textures.error, mode: materialMode, onMode: setChosenMaterialMode, onRequest: () => { void textures.request(); }, reconstruction: { count: reconstructionCount, pending: reconstructionPending }, capturedSplats: hasSplats }}
           downloadUrl={sourceGlbUrl && !visuals.arrangement.hasMoves && task !== "compare" ? sourceGlbUrl : null}
         />
       </section>
-      <aside className="min-h-0 overflow-y-auto px-3 pb-10 pt-4 lg:pt-0">
-        <SidePanel task={task} scene={scene} onTryLayout={actions.tryLayout} onPreviewLayout={actions.previewLayout} assessment={assessment} scan={scan} findings={findings} selected={selected} arrangement={visuals.arrangement} comparison={visuals.comparison} amount={amount} onAmount={setAmount} onToggle={actions.toggle} route={visuals.route} onRoute={() => actions.switchTask("route")} onLook={actions.look} />
+      <aside hidden={wheelchairMode} className="min-h-0 overflow-y-auto px-3 pb-10 pt-4 lg:pt-0">
+        <SidePanel task={task} scene={scene} onTryLayout={actions.tryLayout} onPreviewLayout={actions.previewLayout} assessment={assessment} scan={scan} findings={findings} selected={selected} arrangement={visuals.arrangement} combine={visuals.combine} comparison={visuals.comparison} amount={amount} onAmount={setAmount} onToggle={actions.toggle} route={visuals.route} onRoute={() => actions.switchTask("route")} onLook={actions.look} />
       </aside>
     </div>
   </>;
@@ -438,6 +573,5 @@ export function Workspace(props: WorkspaceProps) {
   const [showScanEvidence, setShowScanEvidence] = useState(false);
   const visuals = useWorkspaceVisuals(props, findings, task, amount, focus, mode, setDragging);
   const actions = useWorkspaceActions(findings, props.scene, visuals.arrangement, setSelected, setAsked, picked.setPicked, setTask, setMode, setAmount);
-  useKeyboard(task, visuals.arrangement, actions.clear);
   return <WorkspaceBody {...props} findings={findings} task={task} selected={selected} focus={focus} mode={mode} picked={picked} dragging={dragging} amount={amount} setAmount={setAmount} showScanEvidence={showScanEvidence} setShowScanEvidence={setShowScanEvidence} visuals={visuals} actions={actions} />;
 }

@@ -147,7 +147,7 @@ def unused_vertices_removed(scan: ColouredScan) -> ColouredScan:
     )
 
 
-def write_scan_glb(scan: ColouredScan, out_path: pathlib.Path) -> pathlib.Path:
+def write_scan_glb(scan: ColouredScan, out_path: pathlib.Path, max_triangles: int | None = None) -> pathlib.Path:
     """Hand the coloured scan to Blender, which writes the glTF the viewer reads."""
     import tempfile
 
@@ -162,7 +162,10 @@ def write_scan_glb(scan: ColouredScan, out_path: pathlib.Path) -> pathlib.Path:
             triangles=scan.triangles.astype(np.int32),
             colours=scan.colours.astype(np.float32),
         )
-        output = _run("colour_scan.py", ["--scan", str(archive), "--out", str(out_path)])
+        command = ["--scan", str(archive), "--out", str(out_path)]
+        if max_triangles is not None:
+            command.extend(["--max-triangles", str(max_triangles)])
+        output = _run("colour_scan.py", command)
     if "SCAN_GLB_WRITTEN" not in output:
         raise RuntimeError(f"Blender did not write the scan:\n{output[-1500:]}")
     return out_path

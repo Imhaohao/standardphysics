@@ -1,6 +1,6 @@
 "use client";
 
-import { ChartPieSlice, CircleNotch, Cube, CubeTransparent, DownloadSimple, ImageSquare, Scan, Shapes, Square, SquareHalfBottom, Wall } from "@phosphor-icons/react";
+import { ChartPieSlice, CircleNotch, Cube, CubeTransparent, DownloadSimple, ImageSquare, Scan, Shapes, Square, SquareHalfBottom, Wall, Wheelchair } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { IconButton, IconLink } from "@/components/ui/IconButton";
@@ -20,15 +20,34 @@ function DockGroup({ label, children }: { label: string; children: ReactNode }) 
   );
 }
 
-function CameraGroup({ activeMode, onView }: { activeMode: ViewMode | null; onView: (mode: ViewMode) => void }) {
+function CameraGroup({
+  activeMode,
+  onView,
+  wheelchairMode,
+  onToggleWheelchair,
+}: {
+  activeMode: ViewMode | null;
+  onView: (mode: ViewMode) => void;
+  wheelchairMode?: boolean;
+  onToggleWheelchair?: () => void;
+}) {
   return (
     <DockGroup label="Camera">
-      <IconButton label="Whole shop" aria-pressed={activeMode === "overview"} onClick={() => onView("overview")}>
+      <IconButton label="Whole shop" aria-pressed={!wheelchairMode && activeMode === "overview"} onClick={() => onView("overview")}>
         <Cube size={ICON_SIZE} aria-hidden />
       </IconButton>
-      <IconButton label="From above" aria-pressed={activeMode === "top"} onClick={() => onView("top")}>
+      <IconButton label="From above" aria-pressed={!wheelchairMode && activeMode === "top"} onClick={() => onView("top")}>
         <SquareHalfBottom size={ICON_SIZE} aria-hidden />
       </IconButton>
+      {onToggleWheelchair && (
+        <IconButton
+          label={wheelchairMode ? "Exit wheelchair view" : "Wheelchair navigation (seated eye height 1.15 m)"}
+          aria-pressed={wheelchairMode}
+          onClick={onToggleWheelchair}
+        >
+          <Wheelchair size={ICON_SIZE} weight={wheelchairMode ? "bold" : "regular"} aria-hidden />
+        </IconButton>
+      )}
     </DockGroup>
   );
 }
@@ -64,6 +83,7 @@ export type Textures = {
   onMode: (mode: MaterialMode) => void;
   onRequest: () => void;
   reconstruction: { count: number; pending: boolean };
+  capturedSplats?: boolean;
 };
 
 function coverageLabel(status: TextureStatus) {
@@ -91,7 +111,7 @@ function photoLabel(textures: Textures, status: TextureStatus, statusMessage: st
 function BuiltModes({ textures, status }: { textures: Textures; status: TextureStatus }) {
   return (
     <>
-      {status.build?.scan_glb_url && (
+      {status.build?.scan_glb_url && !textures.capturedSplats && (
         <IconButton
           label="The room as it was scanned"
           aria-pressed={textures.mode === "scan"}
@@ -146,9 +166,10 @@ function PhotoModes({ textures, status }: { textures: Textures; status: TextureS
 
 function MaterialGroup({ textures }: { textures: Textures }) {
   const { status } = textures;
-  if (!status && textures.reconstruction.count === 0) return null;
+  if (!status && textures.reconstruction.count === 0 && !textures.capturedSplats) return null;
   return (
     <DockGroup label="Materials">
+      {textures.capturedSplats && <IconButton label="Photographic preview" aria-pressed={textures.mode === "scan"} onClick={() => textures.onMode("scan")}><Scan size={ICON_SIZE} aria-hidden /></IconButton>}
       <ReconstructedMode textures={textures} />
       {status && <PhotoModes textures={textures} status={status} />}
     </DockGroup>
@@ -161,12 +182,14 @@ type ViewerDockProps = {
   visibility: Visibility;
   textures: Textures;
   downloadUrl: string | null;
+  wheelchairMode?: boolean;
+  onToggleWheelchair?: () => void;
 };
 
-export function ViewerDock({ activeMode, onView, visibility, textures, downloadUrl }: ViewerDockProps) {
+export function ViewerDock({ activeMode, onView, visibility, textures, downloadUrl, wheelchairMode, onToggleWheelchair }: ViewerDockProps) {
   return (
     <div className="absolute bottom-4 left-4 flex max-w-[calc(100%-2rem)] flex-wrap items-center gap-3 rounded-xl bg-sheet/95 p-1 shadow-float">
-      <CameraGroup activeMode={activeMode} onView={onView} />
+      <CameraGroup activeMode={activeMode} onView={onView} wheelchairMode={wheelchairMode} onToggleWheelchair={onToggleWheelchair} />
       <VisibilityGroup visibility={visibility} />
       <MaterialGroup textures={textures} />
       {downloadUrl && (

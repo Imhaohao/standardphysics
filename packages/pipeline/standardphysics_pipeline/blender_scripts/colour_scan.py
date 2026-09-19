@@ -21,6 +21,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--scan", required=True)
     parser.add_argument("--out", required=True)
+    parser.add_argument("--max-triangles", type=int, default=MAX_TRIANGLES)
     return parser.parse_args(argv)
 
 
@@ -50,15 +51,15 @@ def paint(obj) -> None:
     obj.data.materials.append(material)
 
 
-def thin(obj, triangle_count: int) -> None:
+def thin(obj, triangle_count: int, max_triangles: int = MAX_TRIANGLES) -> None:
     """Bring the scan down to something a phone can draw, colour and all."""
-    if triangle_count <= MAX_TRIANGLES:
+    if triangle_count <= max_triangles:
         return
     bpy.ops.object.select_all(action="DESELECT")
     obj.select_set(True)
     bpy.context.view_layer.objects.active = obj
     modifier = obj.modifiers.new("thin", "DECIMATE")
-    modifier.ratio = MAX_TRIANGLES / triangle_count
+    modifier.ratio = max_triangles / triangle_count
     bpy.ops.object.modifier_apply(modifier="thin")
     print(f"THINNED {triangle_count} -> {len(obj.data.polygons)}")
 
@@ -69,7 +70,7 @@ def main() -> None:
     archive = np.load(args.scan)
     obj = build(archive["vertices"], archive["triangles"], archive["colours"])
     paint(obj)
-    thin(obj, len(archive["triangles"]))
+    thin(obj, len(archive["triangles"]), max_triangles=args.max_triangles)
     bpy.ops.export_scene.gltf(
         filepath=args.out, export_format="GLB", use_selection=False,
         export_yup=True, export_apply=True,

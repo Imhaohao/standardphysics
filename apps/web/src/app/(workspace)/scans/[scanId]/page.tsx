@@ -1,12 +1,17 @@
 import { notFound } from "next/navigation";
 import { RefreshWhile } from "@/components/RefreshWhile";
 import { Workspace } from "@/components/workspace/Workspace";
-import { getAssessment, getScan, getScenario, getScenarioSuggestion, getScene, getTextureStatus, headSceneGlb, sceneGlbUrl } from "@/lib/api";
+import { getAssessment, getCapturedSplats, getRooms, getScan, getScenario, getScenarioSuggestion, getScene, getTextureStatus, headSceneGlb, sceneGlbUrl } from "@/lib/api";
 import { scanStatus } from "@/lib/scan-status";
 import type { Scan, SceneGraph } from "@/types/contracts";
+import type { RoomGroup } from "@/lib/room-groups";
 import { requireSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
+
+async function roomsFor(scanId: string): Promise<RoomGroup[]> {
+  return (await getRooms(scanId))?.rooms ?? [];
+}
 
 /** Whether a GLB exists, and the revision whose layout it was exported from. */
 async function glbStatus(scanId: string) {
@@ -47,14 +52,16 @@ export default async function ShopPage({ params }: PageProps<"/scans/[scanId]">)
   if (!scene) return <NotMeasuredYet scan={scan} />;
   const glbRevision = geometry.revision;
 
-  const [assessment, exported, previous, scenario, textureStatus] = await Promise.all([
+  const [assessment, exported, previous, scenario, textureStatus, capturedSplats] = await Promise.all([
     getAssessment(scanId, scene.revision),
     loadExported(scanId, scene, glbRevision),
     scene.revision === 0 ? null : loadPrevious(scanId, scene.revision - 1),
     getScenario(scanId),
     getTextureStatus(scanId, scene.revision),
+    getCapturedSplats(scanId, scene.revision),
   ]);
   const suggestedScenario = scenario ? null : await getScenarioSuggestion(scanId);
+  const rooms = await roomsFor(scanId);
   return (
     <><RefreshWhile pending={geometry.pending} /><Workspace
       scan={scan}
@@ -64,9 +71,11 @@ export default async function ShopPage({ params }: PageProps<"/scans/[scanId]">)
       previous={previous}
       glbUrl={glbRevision === null ? null : sceneGlbUrl(scanId, glbRevision)}
       textureStatus={textureStatus}
+      capturedSplats={capturedSplats}
       scenario={scenario}
       suggestedScenario={suggestedScenario}
       lidarUrl={scan.artifacts.some((artifact) => artifact.kind === "lidar_mesh") ? `/api/scans/${scanId}/lidar-mesh` : null}
+      rooms={rooms}
     /></>
   );
 }

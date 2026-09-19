@@ -1,5 +1,6 @@
 "use client";
 
+import "@/lib/patch-user-timing";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, type ReactNode } from "react";
 import { PaperInkController } from "./PaperInkController";

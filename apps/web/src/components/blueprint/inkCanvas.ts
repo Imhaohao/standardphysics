@@ -61,20 +61,30 @@ export function prefersReducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-export function renderInkFrame(brush: SchematicBrush, paint: HTMLCanvasElement, live: HTMLCanvasElement, palette: InkPalette, reducedMotion: boolean) {
+// eslint-disable-next-line complexity
+export function renderInkFrame(brush: SchematicBrush, paint: HTMLCanvasElement, live: HTMLCanvasElement, palette: InkPalette, reducedMotion: boolean, hadActiveLive = { current: true }) {
   const finished = reducedMotion ? brush.takeAll() : brush.tick();
-  const paintContext = context2d(paint);
-  for (const stamp of finished) renderStamp(paintContext, stamp, Infinity, palette);
-  clearCanvas(live);
-  const liveContext = context2d(live);
-  const now = performance.now();
-  for (const stamp of brush.activeStamps) renderStamp(liveContext, stamp, now, palette);
+  if (finished.length > 0) {
+    const paintContext = context2d(paint);
+    for (const stamp of finished) renderStamp(paintContext, stamp, Infinity, palette);
+  }
+  const hasActive = brush.activeStamps.length > 0;
+  if (hasActive || hadActiveLive.current) {
+    clearCanvas(live);
+    hadActiveLive.current = hasActive;
+    if (hasActive) {
+      const liveContext = context2d(live);
+      const now = performance.now();
+      for (const stamp of brush.activeStamps) renderStamp(liveContext, stamp, now, palette);
+    }
+  }
 }
 
 export function startInkLoop(brush: SchematicBrush, paint: HTMLCanvasElement, live: HTMLCanvasElement, palette: InkPalette) {
   const reducedMotion = prefersReducedMotion();
+  const hadActiveLive = { current: true };
   let frame = requestAnimationFrame(function loop() {
-    renderInkFrame(brush, paint, live, palette, reducedMotion);
+    renderInkFrame(brush, paint, live, palette, reducedMotion, hadActiveLive);
     frame = requestAnimationFrame(loop);
   });
   return () => cancelAnimationFrame(frame);

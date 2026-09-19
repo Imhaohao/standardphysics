@@ -35,6 +35,19 @@ export function saveLayout(scanId: string, baseRevision: number, moves: NodeMove
   return sendJson<SceneGraph>(`/api/scans/${scanId}/revisions`, { base_revision: baseRevision, moves });
 }
 
+export type CombineRoom = {
+  node_ids: string[];
+  yaw_degrees: number;
+  tx: number;
+  ty: number;
+  cx: number;
+  cy: number;
+};
+
+export function saveCombine(scanId: string, baseRevision: number, rooms: CombineRoom[]) {
+  return sendJson<SceneGraph>(`/api/scans/${scanId}/combine`, { base_revision: baseRevision, rooms });
+}
+
 export function proposeFix(scanId: string, baseRevision: number, findingIds: string[]) {
   return sendJson<ProposalResult>(`/api/scans/${scanId}/proposals`, { base_revision: baseRevision, finding_ids: findingIds });
 }

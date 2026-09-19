@@ -1,6 +1,6 @@
 import { BoxGeometry, Matrix4 } from "three";
 import { describe, expect, it } from "vitest";
-import { canUseCapturedGlbGeometry, displayScale, hasUsableFloorMesh, MIN_DISPLAY_WALL_THICKNESS, needsDisplayBoxFallback } from "./display-geometry";
+import { canUseCapturedGlbGeometry, displayScale, hasUsableFloorMesh, MAX_DISPLAY_WALL_HEIGHT, MIN_DISPLAY_WALL_THICKNESS, needsDisplayBoxFallback } from "./display-geometry";
 import type { SceneNode } from "@/types/contracts";
 
 const wall: SceneNode = {
@@ -14,6 +14,11 @@ describe("display-only wall geometry", () => {
   it("gives a zero-thickness measured wall a visible shell without rewriting its dimensions", () => {
     expect(displayScale(wall)).toEqual([4, 2.4, MIN_DISPLAY_WALL_THICKNESS]);
     expect(wall.dimensions.y).toBe(0);
+  });
+
+  it("clamps tall walls to MAX_DISPLAY_WALL_HEIGHT for display", () => {
+    const tallWall: SceneNode = { ...wall, dimensions: { x: 4, y: 0, z: 3.8 } };
+    expect(displayScale(tallWall)).toEqual([4, MAX_DISPLAY_WALL_HEIGHT, MIN_DISPLAY_WALL_THICKNESS]);
   });
 
   it("replaces cached GLB wall geometry with a singular mesh or transform", () => {

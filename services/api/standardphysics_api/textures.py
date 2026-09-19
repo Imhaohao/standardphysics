@@ -307,6 +307,7 @@ def install_texture_routes(app: FastAPI, database, store, worker):
     def start(scan_id: uuid.UUID, body: TextureRequest):
         return queue_texture(database, store, worker, scan_id, body.revision, retry=True)
 
+    @app.head("/api/scans/{scan_id}/textures/{build_key}/{filename}")
     @app.get("/api/scans/{scan_id}/textures/{build_key}/{filename}")
     def asset(scan_id: uuid.UUID, build_key: str, filename: str):
         if not BUILD_KEY.fullmatch(build_key) or not ASSET_NAME.fullmatch(filename):

@@ -20,6 +20,7 @@ from mathutils import Matrix, Vector
 
 KIND_ORDER = ["floor", "wall", "window", "opening", "door", "object"]
 MIN_DISPLAY_WALL_THICKNESS = 0.08
+MAX_DISPLAY_WALL_HEIGHT = 2.8
 PORTAL_TOLERANCE = 0.12
 PORTAL_ALIGNMENT = cos(radians(45))
 MATERIALS: dict[str, object] = {}
@@ -88,7 +89,8 @@ def node_matrix(node: dict) -> Matrix:
 def node_dimensions(node: dict) -> tuple[float, float, float]:
     dimensions = node["dimensions"]
     thickness = max(dimensions["y"], MIN_DISPLAY_WALL_THICKNESS) if node["kind"] == "wall" else dimensions["y"]
-    return dimensions["x"], thickness, dimensions["z"]
+    height = min(dimensions["z"], MAX_DISPLAY_WALL_HEIGHT) if node["kind"] == "wall" else dimensions["z"]
+    return dimensions["x"], thickness, height
 
 
 def add_box(node: dict, center: tuple[float, float, float], size: tuple[float, float, float]):
@@ -237,9 +239,12 @@ def merge_intervals(intervals: list[tuple[float, float]]) -> list[tuple[float, f
 
 
 def wall_parts(wall: dict, portals: list[dict]) -> list:
+    orig_height = wall["dimensions"]["z"]
     width, depth, height = node_dimensions(wall)
     along, across, length, thickness = wall_axes(wall)
     inverse = node_matrix(wall).inverted()
+    z_floor = -orig_height / 2
+    z_top = z_floor + height
     openings = []
     for portal in portals:
         if not portal_overlaps_wall(portal, wall, inverse):
@@ -247,7 +252,7 @@ def wall_parts(wall: dict, portals: list[dict]) -> list:
         local = inverse @ Vector((portal["transform"]["m"][3], portal["transform"]["m"][7], portal["transform"]["m"][11], 1.0))
         along_half, _, vertical_half = portal_half_extents(portal, inverse, along, across)
         start, end = max(-length / 2, local[along] - along_half), min(length / 2, local[along] + along_half)
-        lower, upper = max(-height / 2, local[2] - vertical_half), min(height / 2, local[2] + vertical_half)
+        lower, upper = max(z_floor, local[2] - vertical_half), min(z_top, local[2] + vertical_half)
         if end > start and upper > lower:
             openings.append((start, end, lower, upper))
     cuts = sorted({-length / 2, length / 2, *(edge for opening in openings for edge in opening[:2])})
@@ -255,8 +260,8 @@ def wall_parts(wall: dict, portals: list[dict]) -> list:
     for start, end in zip(cuts, cuts[1:]):
         middle = (start + end) / 2
         vertical = merge_intervals([(lower, upper) for left, right, lower, upper in openings if left <= middle <= right])
-        cursor = -height / 2
-        for lower, upper in [*vertical, (height / 2, height / 2)]:
+        cursor = z_floor
+        for lower, upper in [*vertical, (z_top, z_top)]:
             low, high = cursor, lower
             if high > low:
                 center = [0.0, 0.0, (low + high) / 2]

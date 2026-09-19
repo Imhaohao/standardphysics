@@ -554,18 +554,11 @@
     {
       "id": "lgWD",
       "code_hash": null,
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
+      "outputs": [],
       "console": []
     },
     {
-      "id": "FbXf",
+      "id": "yOPj",
       "code_hash": null,
       "outputs": [],
       "console": []

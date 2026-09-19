@@ -1,5 +1,7 @@
 import { cookies } from "next/headers";
 import type { Assessment, Report, Scan, ScanList, Scenario, SceneGraph, SimulationReplay, TextureStatus } from "@/types/contracts";
+import type { RoomGroup } from "./room-groups";
+import type { CapturedSplats } from "./captured-splats";
 import { API_ORIGIN } from "./api-origin";
 
 export class NotReady extends Error {}
@@ -56,3 +58,9 @@ export const getSimulationReplay = (scanId: string, revision: number) =>
   getOptional<SimulationReplay>(`/api/scans/${scanId}/revisions/${revision}/replay`);
 export const getTextureStatus = (scanId: string, revision: number) =>
   getOptional<TextureStatus>(`/api/scans/${scanId}/textures?revision=${revision}`);
+
+export const getRooms = (scanId: string) =>
+  getOptional<{ rooms: RoomGroup[] }>(`/api/scans/${scanId}/rooms`);
+
+export const getCapturedSplats = (scanId: string, revision: number) =>
+  getOptional<CapturedSplats>(`/api/scans/${scanId}/splats?revision=${revision}`);
