@@ -1,0 +1,80 @@
+{
+  "run_id": "r001",
+  "objective": "Implement the evaluator first, freeze a fair pilot, and build a deterministic surface-Gaussian candidate. Evaluate against matched baselines under the frozen experiment policy; deliver evidence and an honest conclusion.",
+  "plan": "docs/deepseek-overnight-lidar-render-plan.txt",
+  "policy": "docs/deepseek-lidar-experiment-policy.json",
+  "status": "evaluator_and_surface_splats_implemented",
+  "updated_at": "2026-09-20",
+  "environment": {
+    "hardware": "Apple M5 Pro",
+    "ram_gib": 48,
+    "os": "macOS 26.5.1",
+    "python": "3.12.1",
+    "numpy": "2.4.6",
+    "numba": "0.66.0",
+    "scipy": "1.18.0",
+    "pillow": "12.3.0",
+    "torch": "2.13.0",
+    "git_head": "d23294380dca3c00a2cbef36b0d33dc494e2e084",
+    "branch": "feat/moffett-outlets",
+    "cuda_allowed": false,
+    "verify_note": "hardware read from sysctl/sw_vers at run time, not copied from a research table"
+  },
+  "policy_freeze": {
+    "policy_sha256": "2c663fad382486699907d5f48d393617c276476559f0d4ea763814f2ca601b38",
+    "plan_sha256": "d9c6d4cc5eea396273c7bd3f61e82d0f391cf88365b2c71ad9492f543d6f4c62",
+    "frozen": true,
+    "note": "policy JSON read at evaluator-freeze time; hash recorded before candidate runs"
+  },
+  "phases": {
+    "phase0_evaluator": {
+      "status": "tested",
+      "gate": "Gate 0: evaluator fixtures pass, benchmark protocol frozen, baseline replayable",
+      "artifacts": [
+        "packages/pipeline/standardphysics_pipeline/render_efficiency/metrics.py",
+        "packages/pipeline/standardphysics_pipeline/render_efficiency/scoring.py",
+        "packages/pipeline/standardphysics_pipeline/render_efficiency/manifest.py",
+        "packages/pipeline/standardphysics_pipeline/render_efficiency/__init__.py",
+        "packages/pipeline/tests/test_render_efficiency.py"
+      ],
+      "tests": "20 passed in test_render_efficiency.py (identical=50, added error, nonfinite, wrong resolution, empty/thin mask, missing image, altered/duplicate/shortened view, coverage, gates)",
+      "evaluator_hash": "3f26723add5a711d0efae08f31ff5c3ad152f29516458990393dd473861e0b44",
+      "next_action": "implement pilot freezer and deterministic build_surface_splats entry point"
+    },
+    "phase1_freeze_pilot": {
+      "status": "tested",
+      "gate": "Gate 1: fixed manifests, reviewed real detail, reproducible B0 baseline",
+      "artifacts": [
+        "scripts/freeze_render_pilot.py",
+        "runs/moffett/render-efficiency/r001/pilot-manifest.json"
+      ],
+      "achieved": { "train": 32, "validation": 8, "test": 8, "disjoint": true },
+      "split_independence_reviewed": false,
+      "note": "deterministic trajectory-stride split produced and disjointness verified; near-duplicate grouping and a real visual review of separation remain before Gate 1 closes. B0 baseline not yet run."
+    },
+    "phase2_calibration": {
+      "status": "planned",
+      "gate": "Gate 2: projection/visibility fixtures + real alignment limitations"
+    },
+    "phase3_surface_splats": {
+      "status": "tested",
+      "gate": "Gate 3: deterministic source-supported surface splat export",
+      "artifacts": [
+        "packages/pipeline/standardphysics_pipeline/render_efficiency/surface_splats.py",
+        "packages/pipeline/standardphysics_pipeline/render_efficiency/builder.py",
+        "packages/pipeline/tests/test_surface_splats.py",
+        "scripts/build_surface_splats.py"
+      ],
+      "tests": "16 passed in test_surface_splats.py (tangent frames, covariance, quaternion, SH0 roundtrip, degenerate rejection, sample cap, colour interpolation, PLY export, nonfinite rejection)",
+      "smoke_run": "scripts/build_surface_splats.py center --cameras 8 --max-samples 20000 --spacing 0.05 produced 20000 splats in 4.4s wall",
+      "note": "geometry/covariance/export core built and verified; best-view colour wired via colour_the_scan; SPZ compression and Spark roundtrip remain for Gate 3."
+    },
+    "phase4_msplat": {
+      "status": "planned",
+      "gate": "Gate 4: optional compatible backend trial or precise capability blocker"
+    }
+  },
+  "trials": [],
+  "ledger": [],
+  "status_note": "Phase 0 (evaluator) and the Phase 3 deterministic surface-Gaussian core are implemented and tested; a deterministic pilot split is produced but its independence is not yet visually reviewed. B0 baseline, calibration fixtures, and SPZ->Spark roundtrip remain. No candidate has an eligible score yet."
+}
