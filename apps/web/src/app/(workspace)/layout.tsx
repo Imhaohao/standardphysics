@@ -11,8 +11,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={appFontVariables}>
-      <body className="min-h-dvh">
+    <html lang="en" className={appFontVariables} suppressHydrationWarning>
+      <body className="min-h-dvh" suppressHydrationWarning>
         <PaperInk>{children}</PaperInk>
       </body>
     </html>
