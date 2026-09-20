@@ -9,7 +9,7 @@
     "G0": "passed",
     "G1": "passed",
     "G2": "passed",
-    "G3": "open",
+    "G3": "passed",
     "G4": "open",
     "G5": "open",
     "G6": "open",
@@ -219,6 +219,96 @@
         "services/api/tests/test_crop_routes.py": "9f130e49d8ec72164ee5b928afc8b8376a40691d6f19461396a6521b85e43792"
       },
       "review_identity": "self_review"
+    },
+    "GEO-01": {
+      "test_id": "GEO-01",
+      "gate_id": "G3",
+      "evidence_kind": "fixture",
+      "source_hash": "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+      "input_hashes": ["ffbf5b2db456356be5a55a22faa1da705653aee2e873714b636665e3d85836c7"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_surface_geometry.py -k test_geo_01",
+      "started_at": "2026-09-20T14:23:58-07:00",
+      "finished_at": "2026-09-20T14:23:59-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Visible same-wall support is not rejected because normalized-ray distance exceeds camera Z",
+      "actual_behavior": "Off-axis same-wall points compared against camera-Z buffer depth without Euclidean distance inflation; verified support assigned.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/surface_attach.py": "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+        "packages/pipeline/tests/test_surface_geometry.py": "ffbf5b2db456356be5a55a22faa1da705653aee2e873714b636665e3d85836c7"
+      },
+      "review_identity": "self_review"
+    },
+    "GEO-02": {
+      "test_id": "GEO-02",
+      "gate_id": "G3",
+      "evidence_kind": "fixture",
+      "source_hash": "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+      "input_hashes": ["ffbf5b2db456356be5a55a22faa1da705653aee2e873714b636665e3d85836c7"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_surface_geometry.py -k test_geo_02",
+      "started_at": "2026-09-20T14:23:58-07:00",
+      "finished_at": "2026-09-20T14:23:59-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "No verified support assigned through occluder",
+      "actual_behavior": "Foreground occluder triggers is_occluded=True; detection marked occluded and not verified support.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/surface_attach.py": "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+        "packages/pipeline/tests/test_surface_geometry.py": "ffbf5b2db456356be5a55a22faa1da705653aee2e873714b636665e3d85836c7"
+      },
+      "review_identity": "self_review"
+    },
+    "GEO-03": {
+      "test_id": "GEO-03",
+      "gate_id": "G3",
+      "evidence_kind": "fixture",
+      "source_hash": "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+      "input_hashes": ["ffbf5b2db456356be5a55a22faa1da705653aee2e873714b636665e3d85836c7"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_surface_geometry.py -k test_geo_03",
+      "started_at": "2026-09-20T14:23:58-07:00",
+      "finished_at": "2026-09-20T14:23:59-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Missing visibility retained as uncertainty; no verified-LiDAR/clear-reach pass",
+      "actual_behavior": "All-infinite depth buffer results in roomplan_plane and needs_verification; grazing angles detected and added to uncertainty.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/surface_attach.py": "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+        "packages/pipeline/tests/test_surface_geometry.py": "ffbf5b2db456356be5a55a22faa1da705653aee2e873714b636665e3d85836c7"
+      },
+      "review_identity": "self_review"
+    },
+    "GEO-04": {
+      "test_id": "GEO-04",
+      "gate_id": "G3",
+      "evidence_kind": "fixture",
+      "source_hash": "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+      "input_hashes": ["ffbf5b2db456356be5a55a22faa1da705653aee2e873714b636665e3d85836c7"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_surface_geometry.py -k test_geo_04",
+      "started_at": "2026-09-20T14:23:58-07:00",
+      "finished_at": "2026-09-20T14:23:59-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Inferred plane provenance; not measured triangle support",
+      "actual_behavior": "Box-face intersection without LiDAR mesh confirmation assigns roomplan_plane and needs_verification.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/surface_attach.py": "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+        "packages/pipeline/tests/test_surface_geometry.py": "ffbf5b2db456356be5a55a22faa1da705653aee2e873714b636665e3d85836c7"
+      },
+      "review_identity": "self_review"
+    },
+    "GEO-05": {
+      "test_id": "GEO-05",
+      "gate_id": "G3",
+      "evidence_kind": "fixture",
+      "source_hash": "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+      "input_hashes": ["ffbf5b2db456356be5a55a22faa1da705653aee2e873714b636665e3d85836c7"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_surface_geometry.py -k test_geo_05",
+      "started_at": "2026-09-20T14:23:58-07:00",
+      "finished_at": "2026-09-20T14:23:59-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "One explicit coordinate convention and transform applied once; correct expected positions",
+      "actual_behavior": "Nonidentity capture_to_room applied consistently; sockets localized in explicit room coordinates matching camera projection.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/surface_attach.py": "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+        "packages/pipeline/tests/test_surface_geometry.py": "ffbf5b2db456356be5a55a22faa1da705653aee2e873714b636665e3d85836c7"
+      },
+      "review_identity": "self_review"
     }
   },
   "mutation_receipts": {},
@@ -246,6 +336,14 @@
       "status": "passed",
       "summary": "Gate G2 passed. Added specific DetectionAuthError, DetectionSchemaError, DetectionTransientError and non-retry of auth/schema errors. Updated DetectionCache to preserve all detection metadata and bumped version to 2. Implemented authenticated crop route in FastAPI with path-traversal prevention. Verified DET-01, DET-02, DET-03, CACHE-01, CROP-01, AUTH-01.",
       "next_action": "Execute Gate G3: Support Geometry and Uncertainty (GEO-01, GEO-02, GEO-03, GEO-04, GEO-05)."
+    },
+    {
+      "checkpoint_id": "CP-03",
+      "time": "2026-09-20T14:24:00-07:00",
+      "gate": "G3",
+      "status": "passed",
+      "summary": "Gate G3 passed. Verified that camera-Z buffer is compared with camera-Z depth without Euclidean distance inflation (GEO-01); genuine foreground occluders prevent verified support (GEO-02); missing/infinite depth and grazing angles are retained as uncertainty (GEO-03); RoomPlan box-face only gets roomplan_plane inferred provenance (GEO-04); nonidentity transforms and socket coordinates evaluated correctly (GEO-05).",
+      "next_action": "Execute Gate G4: Multi-View Reconciliation and Owner Decisions (MERGE-01 through MERGE-05)."
     }
   ]
 }
