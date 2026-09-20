@@ -10,7 +10,7 @@
     "G1": "passed",
     "G2": "passed",
     "G3": "passed",
-    "G4": "open",
+    "G4": "passed",
     "G5": "open",
     "G6": "open",
     "G7": "open",
@@ -309,6 +309,96 @@
         "packages/pipeline/tests/test_surface_geometry.py": "ffbf5b2db456356be5a55a22faa1da705653aee2e873714b636665e3d85836c7"
       },
       "review_identity": "self_review"
+    },
+    "MERGE-01": {
+      "test_id": "MERGE-01",
+      "gate_id": "G4",
+      "evidence_kind": "fixture",
+      "source_hash": "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+      "input_hashes": ["9a62477bce0a2a3435217139ba871fb595f55890817d40798b8892851415c7b0"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_reconcile_outlets.py -k test_merge_01",
+      "started_at": "2026-09-20T14:26:00-07:00",
+      "finished_at": "2026-09-20T14:26:04-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "One identity with both source observations; no unsupported socket inference",
+      "actual_behavior": "Two distinct consistent views merge into one identity with both source observations; independent viewpoint verified support assigned.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/reconcile.py": "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+        "packages/pipeline/tests/test_reconcile_outlets.py": "9a62477bce0a2a3435217139ba871fb595f55890817d40798b8892851415c7b0"
+      },
+      "review_identity": "self_review"
+    },
+    "MERGE-02": {
+      "test_id": "MERGE-02",
+      "gate_id": "G4",
+      "evidence_kind": "fixture",
+      "source_hash": "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+      "input_hashes": ["9a62477bce0a2a3435217139ba871fb595f55890817d40798b8892851415c7b0"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_reconcile_outlets.py -k test_merge_02",
+      "started_at": "2026-09-20T14:26:00-07:00",
+      "finished_at": "2026-09-20T14:26:04-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Distinct fixtures do not collapse through proximity or transitive weak evidence",
+      "actual_behavior": "Nearby plates separated by >0.06m, opposite wall normals, and ambiguous A-B-C chains do not collapse.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/reconcile.py": "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+        "packages/pipeline/tests/test_reconcile_outlets.py": "9a62477bce0a2a3435217139ba871fb595f55890817d40798b8892851415c7b0"
+      },
+      "review_identity": "self_review"
+    },
+    "MERGE-03": {
+      "test_id": "MERGE-03",
+      "gate_id": "G4",
+      "evidence_kind": "fixture",
+      "source_hash": "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+      "input_hashes": ["9a62477bce0a2a3435217139ba871fb595f55890817d40798b8892851415c7b0"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_reconcile_outlets.py -k test_merge_03",
+      "started_at": "2026-09-20T14:26:00-07:00",
+      "finished_at": "2026-09-20T14:26:04-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Positive camera depth alone does not authorize merge",
+      "actual_behavior": "Reprojection check ensures 3D center projects inside recorded 2D sensor bounding box before merge is authorized.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/reconcile.py": "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+        "packages/pipeline/tests/test_reconcile_outlets.py": "9a62477bce0a2a3435217139ba871fb595f55890817d40798b8892851415c7b0"
+      },
+      "review_identity": "self_review"
+    },
+    "MERGE-04": {
+      "test_id": "MERGE-04",
+      "gate_id": "G4",
+      "evidence_kind": "fixture",
+      "source_hash": "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+      "input_hashes": ["9a62477bce0a2a3435217139ba871fb595f55890817d40798b8892851415c7b0"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_reconcile_outlets.py -k test_merge_04",
+      "started_at": "2026-09-20T14:26:00-07:00",
+      "finished_at": "2026-09-20T14:26:04-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Owner decision and all relevant uncertainty survive, or explicit conflict; result cannot silently become detected/verified",
+      "actual_behavior": "Owner rejection status rejected_by_user strictly preserved across pairwise and cluster merges; all uncertainty reasons unioned.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/reconcile.py": "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+        "packages/pipeline/tests/test_reconcile_outlets.py": "9a62477bce0a2a3435217139ba871fb595f55890817d40798b8892851415c7b0"
+      },
+      "review_identity": "self_review"
+    },
+    "MERGE-05": {
+      "test_id": "MERGE-05",
+      "gate_id": "G4",
+      "evidence_kind": "fixture",
+      "source_hash": "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+      "input_hashes": ["9a62477bce0a2a3435217139ba871fb595f55890817d40798b8892851415c7b0"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_reconcile_outlets.py -k test_merge_05",
+      "started_at": "2026-09-20T14:26:00-07:00",
+      "finished_at": "2026-09-20T14:26:04-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "No inflated independent-view count or duplicated evidence; stable replay identity",
+      "actual_behavior": "Permuted order of observation feeds produces identical deterministic UUID5, exact matching coordinates, and deduplicated evidence frames.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/reconcile.py": "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+        "packages/pipeline/tests/test_reconcile_outlets.py": "9a62477bce0a2a3435217139ba871fb595f55890817d40798b8892851415c7b0"
+      },
+      "review_identity": "self_review"
     }
   },
   "mutation_receipts": {},
@@ -344,6 +434,14 @@
       "status": "passed",
       "summary": "Gate G3 passed. Verified that camera-Z buffer is compared with camera-Z depth without Euclidean distance inflation (GEO-01); genuine foreground occluders prevent verified support (GEO-02); missing/infinite depth and grazing angles are retained as uncertainty (GEO-03); RoomPlan box-face only gets roomplan_plane inferred provenance (GEO-04); nonidentity transforms and socket coordinates evaluated correctly (GEO-05).",
       "next_action": "Execute Gate G4: Multi-View Reconciliation and Owner Decisions (MERGE-01 through MERGE-05)."
+    },
+    {
+      "checkpoint_id": "CP-04",
+      "time": "2026-09-20T14:26:00-07:00",
+      "gate": "G4",
+      "status": "passed",
+      "summary": "Gate G4 passed. Verified multi-view reconciliation: two consistent views merge with combined observations and independent viewpoint check (MERGE-01); nearby plates, opposite walls, and ambiguous chains do not collapse (MERGE-02); reprojection check ensures sensor box bounds center before merging (MERGE-03); owner rejection and uncertainty reasons strictly survive merge (MERGE-04); permutation-invariant deterministic ID and clustering (MERGE-05).",
+      "next_action": "Execute Gate G5: Personal Reach & Local Elevation (REACH-01 through REACH-06)."
     }
   ]
 }
