@@ -12,7 +12,7 @@
     "gate_d": "complete",
     "gate_e": "complete",
     "gate_f": "complete",
-    "gate_g": "deferred"
+    "gate_g": "complete"
   },
   "missing_configuration": [
     "DISCOVERY_API_KEY",
@@ -115,9 +115,15 @@
     },
     {
       "phase": "Phase G: secondary semantic corrections",
-      "status": "deferred",
-      "time": "2026-09-20T03:13:00-07:00",
-      "note": "Deferred per prompt Section 10 instructions; outlet-finding core path is fully implemented and verified."
+      "status": "complete",
+      "time": "2026-09-20T13:46:00-07:00",
+      "artifacts": [
+        "packages/pipeline/standardphysics_pipeline/discovery/semantic_corrections.py",
+        "packages/pipeline/standardphysics_pipeline/discovery/__init__.py",
+        "packages/pipeline/tests/test_semantic_corrections.py"
+      ],
+      "tests": "6 passed in test_semantic_corrections.py (photo-supported sofa/table corrections, length heuristic rejection, whiteboard wall attachment, collision preservation, owner edit protection)",
+      "next_action": "All feature gates A through G complete and verified."
     }
   ]
 }
