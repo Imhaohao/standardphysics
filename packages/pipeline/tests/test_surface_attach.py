@@ -150,3 +150,60 @@ class TestSurfaceAttachmentProjection:
         # Wall is an obstacle; outlet must NOT be in obstacles!
         assert wall in obstacles
         assert outlet_node not in obstacles
+
+    def test_grazing_rays_flagged_with_uncertainty(self):
+        # Wall at Y=2.0 with normal (0, -1, 0)
+        wall = wall_node((0.0, 2.0, 1.25), (10.0, 0.1, 2.5))
+        graph = SceneGraph(scan_id=uuid.uuid4(), nodes=[wall], capture_to_room=capture_to_room(0.0))
+        # Camera at (5.0, 0.5, 1.25) looking towards (0.0, 2.0, 1.25)
+        # Direction has dx = -5, dy = 1.5. cos(angle) = 1.5 / sqrt(25 + 2.25) = 1.5 / 5.22 ≈ 0.287 -> grazing!
+        # Make angle even shallower: Camera at (8.0, 0.5, 1.25) looking towards (0.0, 2.0, 1.25):
+        # dx = -8, dy = 1.5 -> cos(angle) = 1.5 / sqrt(64 + 2.25) = 1.5 / 8.14 ≈ 0.184 < 0.2588
+        cam = camera_at((8.0, 0.5, 1.25), (0.0, 2.0, 1.25))
+        detection = Detection("f1", "outlet", (300.0, 220.0, 340.0, 260.0), False, 0.95, category="outlet")
+        attachment, node = attach_detection_to_surface(detection, cam, graph)
+        assert attachment.localization_quality == "needs_verification"
+        assert any("grazing angle" in r for r in attachment.uncertainty_reasons)
+
+    def test_near_edge_mixed_supports_flagged(self):
+        # Wall from X = -1.0 to +1.0 at Y = 2.0 (width 2.0m)
+        wall = wall_node((0.0, 2.0, 1.25), (2.0, 0.1, 2.5))
+        graph = SceneGraph(scan_id=uuid.uuid4(), nodes=[wall], capture_to_room=capture_to_room(0.0))
+        # Camera at (0.9, 0.0, 1.25) looking at (0.9, 2.0, 1.25) - very close to right edge at X=1.0
+        cam = camera_at((0.9, 0.0, 1.25), (0.9, 2.0, 1.25))
+        # Wide detection box spanning across the edge of the wall (some rays hit wall X < 1.0, some miss X > 1.0)
+        detection = Detection("f1", "outlet", (150.0, 200.0, 500.0, 280.0), False, 0.90, category="outlet")
+        attachment, node = attach_detection_to_surface(detection, cam, graph)
+        # Should flag partial coverage near surface edge
+        assert any("edge or mesh boundary" in r or "mixed support" in r for r in attachment.uncertainty_reasons)
+
+    def test_stale_revision_rejection(self):
+        wall = wall_node((0.0, 2.0, 1.25), (3.0, 0.1, 2.5))
+        graph = SceneGraph(scan_id=uuid.uuid4(), revision=5, nodes=[wall], capture_to_room=capture_to_room(0.0))
+        cam = camera_at((0.0, 0.0, 1.0), (0.0, 2.0, 1.0))
+        detection = Detection("f1", "outlet", (300.0, 220.0, 340.0, 260.0), False, 0.95, category="outlet")
+
+        # Passing stale expected_revision=4 raises ValueError
+        with pytest.raises(ValueError, match="stale scene graph revision"):
+            attach_detection_to_surface(detection, cam, graph, expected_revision=4)
+
+        # Matching expected_revision=5 succeeds
+        attachment, node = attach_detection_to_surface(detection, cam, graph, expected_revision=5)
+        assert attachment is not None
+
+    def test_thin_mounted_objects_preserved_while_carving_rejects_slivers(self):
+        from standardphysics_pipeline.discovery.carve import SLIVER_EXTENT
+
+        wall = wall_node((0.0, 2.0, 1.25), (3.0, 0.1, 2.5))
+        graph = SceneGraph(scan_id=uuid.uuid4(), nodes=[wall], capture_to_room=capture_to_room(0.0))
+        cam = camera_at((0.0, 0.0, 1.0), (0.0, 2.0, 1.0))
+        detection = Detection("f1", "outlet", (300.0, 220.0, 340.0, 260.0), False, 0.95, category="outlet")
+
+        attachment, outlet_node = attach_detection_to_surface(detection, cam, graph)
+        # Outlet thickness is 0.03m (3 cm), which is thinner than SLIVER_EXTENT (0.035m / 3.5cm)
+        assert outlet_node.dimensions.y == 0.03
+        assert outlet_node.dimensions.y < SLIVER_EXTENT
+        # Surface attachment preserves it without discarding
+        assert attachment.support_type == "lidar_surface"
+        assert outlet_node.kind == "outlet"
+

@@ -119,7 +119,7 @@ def merge_two_nodes(node_a: SceneNode, node_b: SceneNode, cameras: dict[str, Pho
         r for r in att_a.uncertainty_reasons
         if "single viewpoint" not in r
     ]
-    if not independent_views and len(merged_obs) == 1:
+    if not independent_views:
         if not any("single viewpoint" in r for r in uncertainty_reasons):
             uncertainty_reasons.append("single viewpoint observation; not independently verified from separate angle")
 

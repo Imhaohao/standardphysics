@@ -301,5 +301,100 @@ describe("wheelchair motion geometry", () => {
       expect(resShort.reachStatus).toBe("outside_reach");
       expect(resLong.reachStatus).toBe("within_reach");
     });
+
+    it("blocks wheelchair navigation through a narrow passage narrower than chair footprint", () => {
+      // Two wall segments with a gap of 0.60 m between them (X from -5 to -0.3, and X from 0.3 to 5)
+      const leftWall = node({ id: "left-wall", kind: "wall", dimensions: { x: 4.7, y: 0.2, z: 3 }, x: -2.65, y: 2 });
+      const rightWall = node({ id: "right-wall", kind: "wall", dimensions: { x: 4.7, y: 0.2, z: 3 }, x: 2.65, y: 2 });
+      const narrowGeometry = wheelchairMotionGeometry([floor, leftWall, rightWall]);
+      // Wheelchair radius 0.40m (diameter 0.80m > 0.60m gap)
+      const sweep = sweepWheelchairInGeometry({ x: 0, z: 0 }, { x: 0, z: -4 }, narrowGeometry, 0.40);
+      expect(sweep.reached).toBe(false);
+    });
+
+    it("blocks approach to an outlet on the far side of a wall", () => {
+      // Outlet is at y=2.1 with normal pointing away (+y in RoomPlan -> -z in Three.js)
+      const farSideOutlet: SceneNode = {
+        ...outlet,
+        id: "far-side-outlet",
+        transform: { m: [1, 0, 0, 0, 0, 1, 0, 2.1, 0, 0, 1, 0.45, 0, 0, 0, 1] },
+        attachment: {
+          ...outlet.attachment!,
+          normal: { x: 0, y: 1, z: 0 }, // Normal points into +y (far side)
+        },
+      };
+      const geometry = wheelchairMotionGeometry([floor, wall, farSideOutlet]);
+      const profile = wheelchairProfile({ collisionRadius: 0.35 });
+      // Chair is at y=0 (near side). Moving to the far side requires crossing the solid wall.
+      const res = assessOutletAccessibility({ x: 0, z: 0 }, farSideOutlet, geometry, profile);
+      expect(res.approachStatus).toBe("blocked");
+      expect(res.unresolvedReasons.some((r) => r.includes("obstructed") || r.includes("No valid"))).toBe(true);
+    });
+
+    it("computes target height relative to local finished floor, not world origin", () => {
+      // Raised platform floor at z = 0.40m
+      const raisedFloor = node({
+        id: "raised-floor",
+        kind: "floor",
+        dimensions: { x: 10, y: 10, z: 0.05 },
+        transform: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0.40, 0, 0, 0, 1],
+      });
+      // Outlet at world z = 0.85m
+      const elevatedOutlet: SceneNode = {
+        ...outlet,
+        id: "elevated-outlet",
+        transform: { m: [1, 0, 0, 0, 0, 1, 0, 1.9, 0, 0, 1, 0.85, 0, 0, 0, 1] },
+      };
+      const geometry = wheelchairMotionGeometry([raisedFloor, wall, elevatedOutlet]);
+      const profile = wheelchairProfile({
+        collisionRadius: 0.35,
+        reach: { maxReachDistance: 0.80, minReachHeight: 0.38, maxReachHeight: 1.22 },
+      });
+      const res = assessOutletAccessibility({ x: 0, z: 0 }, elevatedOutlet, geometry, profile);
+      // Target height above floor should be 0.85 - 0.40 = 0.45m, NOT 0.85m!
+      expect(res.targetHeightAboveFloor).toBeCloseTo(0.45, 2);
+      expect(res.reachStatus).toBe("within_reach");
+    });
+
+    it("returns outside_reach when outlet is behind deep furniture", () => {
+      // Deep desk (1.2m deep along Y) placed in front of wall outlet at Y=1.9
+      const deepDesk = node({ id: "deep-desk", kind: "object", dimensions: { x: 1.5, y: 1.2, z: 0.75 }, x: 0, y: 1.3 });
+      const geometry = wheelchairMotionGeometry([floor, wall, deepDesk, outlet]);
+      const profile = wheelchairProfile({
+        collisionRadius: 0.35,
+        reach: { maxReachDistance: 0.50, minReachHeight: 0.38, maxReachHeight: 1.22 },
+      });
+      const res = assessOutletAccessibility({ x: 0, z: 0 }, outlet, geometry, profile);
+      // Chair can approach the room, but stopping position is stopped by desk, so reach to wall outlet exceeds 0.50m
+      expect(res.reachStatus).toBe("outside_reach");
+      expect(res.unresolvedReasons.some((r) => r.includes("exceeds maximum modeled reach"))).toBe(true);
+    });
+
+    it("flags uncertainty when reach distance is close to the threshold (90-100%)", () => {
+      const geometry = wheelchairMotionGeometry([floor, wall, outlet]);
+      // The stopping candidate chosen closest to chair at (0,0) is at dist = 0.65m from outlet.
+      // With maxReachDistance = 0.70m, reachDistance (0.65m) is within 90%-100% of maxReach (0.63m - 0.70m).
+      const borderlineProfile = wheelchairProfile({
+        collisionRadius: 0.35,
+        reach: { maxReachDistance: 0.70, minReachHeight: 0.38, maxReachHeight: 1.22 },
+      });
+      const res = assessOutletAccessibility({ x: 0, z: 0 }, outlet, geometry, borderlineProfile);
+      expect(res.reachStatus).toBe("needs_verification");
+      expect(res.unresolvedReasons.some((r) => r.includes("close to threshold"))).toBe(true);
+    });
+
+    it("invalidates approach from clear to blocked after an obstacle is introduced", () => {
+      const profile = wheelchairProfile({ collisionRadius: 0.35 });
+      const initialGeometry = wheelchairMotionGeometry([floor, wall, outlet]);
+      const initialRes = assessOutletAccessibility({ x: 0, z: 0 }, outlet, initialGeometry, profile);
+      expect(initialRes.approachStatus).toBe("clear");
+
+      // Move a barrier directly in the path between start and outlet
+      const barrier = node({ id: "barrier", kind: "object", dimensions: { x: 8, y: 0.5, z: 2 }, y: 1.0 });
+      const updatedGeometry = wheelchairMotionGeometry([floor, wall, barrier, outlet]);
+      const updatedRes = assessOutletAccessibility({ x: 0, z: 0 }, outlet, updatedGeometry, profile);
+      expect(updatedRes.approachStatus).toBe("blocked");
+    });
   });
 });
+

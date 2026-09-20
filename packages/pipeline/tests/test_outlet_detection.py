@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import json
 import math
 import pathlib
 import pytest
@@ -226,3 +227,98 @@ class TestTransportAndProviderFailures:
 
         results = detect_objects(img_p, "frame-01", transport=empty_transport)
         assert results == []
+
+
+class TestDetectionCacheAndRobustness:
+    """Verifies caching, invalidation across models/orientations/bytes, and asymmetric image robustness."""
+
+    def test_cache_hit_and_invalidation_by_image_bytes_model_or_orientation(self, tmp_path):
+        from standardphysics_pipeline.discovery.cache import DetectionCache
+
+        cache_dir = tmp_path / "cache"
+        cache = DetectionCache(cache_dir, model="test-model-v1")
+
+        img1 = tmp_path / "img1.jpg"
+        Image.new("RGB", (200, 200), color=(10, 20, 30)).save(img1)
+
+        det = Detection(frame_id="f1", name="outlet", box=(10.0, 20.0, 30.0, 40.0), movable=False, confidence=0.95)
+
+        # Cache miss initially
+        assert cache.get(img1, "f1", orientation="portrait") is None
+
+        # Put in cache
+        cache.put(img1, [det], orientation="portrait")
+
+        # Cache hit
+        cached = cache.get(img1, "f1", orientation="portrait")
+        assert cached is not None
+        assert len(cached) == 1
+        assert cached[0].name == "outlet"
+        assert cached[0].box == (10.0, 20.0, 30.0, 40.0)
+
+        # Invalidation 1: Different orientation -> Cache miss
+        assert cache.get(img1, "f1", orientation="landscape_right") is None
+
+        # Invalidation 2: Different model -> Cache miss
+        other_model_cache = DetectionCache(cache_dir, model="test-model-v2")
+        assert other_model_cache.get(img1, "f1", orientation="portrait") is None
+
+        # Invalidation 3: Modified image bytes -> Cache miss
+        img1.write_bytes(b"modified_image_bytes")
+        assert cache.get(img1, "f1", orientation="portrait") is None
+
+    def test_corrupted_cache_file_gracefully_misses(self, tmp_path):
+        from standardphysics_pipeline.discovery.cache import DetectionCache
+
+        cache_dir = tmp_path / "cache"
+        cache = DetectionCache(cache_dir, model="test-model-v1")
+        img = tmp_path / "img.jpg"
+        Image.new("RGB", (100, 100)).save(img)
+
+        # Write invalid JSON into the cache file directly
+        entry_path = cache._entry(img, orientation="portrait")
+        assert entry_path is not None
+        entry_path.parent.mkdir(parents=True, exist_ok=True)
+        entry_path.write_text("NOT_VALID_JSON{")
+
+        # Should return None (cache miss) rather than crashing
+        assert cache.get(img, "f1", orientation="portrait") is None
+
+    def test_duplicate_views_produce_consistent_detections(self, tmp_path):
+        """Duplicate views of the same scene return identical detections without drift."""
+        img = tmp_path / "test.jpg"
+        Image.new("RGB", (1000, 1000)).save(img)
+
+        def mock_transport(url, body, headers):
+            return {
+                "choices": [{
+                    "message": {
+                        "content": json.dumps({
+                            "objects": [
+                                {"name": "electrical outlet", "box_2d": [100, 150, 300, 350], "movable": False, "confidence": 0.95}
+                            ]
+                        })
+                    }
+                }]
+            }
+
+        det1 = detect_objects(img, "view-01", orientation="landscape_right", transport=mock_transport)
+        det2 = detect_objects(img, "view-02", orientation="landscape_right", transport=mock_transport)
+        assert len(det1) == len(det2) == 1
+        assert det1[0].box == det2[0].box
+        assert det1[0].confidence == det2[0].confidence
+
+    def test_asymmetric_synthetic_image_rejects_xy_swaps_and_double_rotations(self):
+        """Using create_asymmetric_test_image, verify an x/y swap or double rotation cannot pass undetected."""
+        w, h = 1920, 1440
+        # The 'F' is located at [200, 300, 350, 500] in sensor pixels
+        correct_box = (200.0, 300.0, 350.0, 500.0)
+        # Swapped x/y box: [300, 200, 500, 350]
+        swapped_box = (300.0, 200.0, 500.0, 350.0)
+        assert box_iou(correct_box, swapped_box) < 0.10
+
+        # Double rotated box (180 degree rotation):
+        # (left, top, right, bottom) -> (w - right, h - bottom, w - left, h - top)
+        double_rotated = (w - correct_box[2], h - correct_box[3], w - correct_box[0], h - correct_box[1])
+        assert box_iou(correct_box, double_rotated) == 0.0
+

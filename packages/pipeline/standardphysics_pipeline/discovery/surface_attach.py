@@ -161,8 +161,12 @@ def attach_detection_to_surface(
     *,
     depth_buffer: np.ndarray | None = None,
     image_url: str | None = None,
+    expected_revision: int | None = None,
 ) -> tuple[SurfaceAttachment, SceneNode]:
     """Projects a 2D outlet detection onto the scene's support surfaces and creates a SceneNode."""
+    if expected_revision is not None and graph.revision != expected_revision:
+        raise ValueError(f"stale scene graph revision: expected {expected_revision}, got {graph.revision}")
+
     candidate_nodes = [n for n in graph.nodes if bounds_the_room(n) or n.kind in ("wall", "counter", "table", "desk")]
     sample_points = sample_ray_points(detection.box)
     all_hits = cast_and_intersect(camera, sample_points, candidate_nodes, depth_buffer)
@@ -193,6 +197,11 @@ def attach_detection_to_surface(
         hit_points = np.stack([h.point for h in dominant_hits], axis=0)
         center_pt = np.mean(hit_points, axis=0)
         normal_vec = dominant_hits[0].normal
+
+        if len(support_counts) > 1:
+            uncertainty_reasons.append("mixed support surfaces intersected near object boundary")
+        elif len(dominant_hits) < len(sample_points):
+            uncertainty_reasons.append("partial support coverage near surface edge or mesh boundary")
 
         if any(h.is_grazing for h in dominant_hits):
             uncertainty_reasons.append("camera ray grazing angle exceeds 75 degrees from surface normal")
