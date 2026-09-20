@@ -14,7 +14,7 @@
     "G5": "passed",
     "G6": "passed",
     "G7": "passed",
-    "G8": "open",
+    "G8": "passed",
     "G9": "open",
     "G10": "open"
   },
@@ -765,9 +765,128 @@
         "apps/web/src/components/workspace/OutletUi.test.ts": "214fb3745e1b1ac34477fd5a8bbc50340da5aa61836827b29fa899ee9f802048"
       },
       "review_identity": "self_review"
+    },
+    "MUTATIONS-01": {
+      "test_id": "MUTATIONS-01",
+      "gate_id": "G8",
+      "evidence_kind": "fixture",
+      "source_hash": "214fb3745e1b1ac34477fd5a8bbc50340da5aa61836827b29fa899ee9f802048",
+      "input_hashes": [
+        "84086dd906631d626da81289f6140a1c5e59ed9aed0b56e50b4a071dda9c32ea",
+        "2fce2b73a71ead820f333d18a2ccfb5e7d8f505d0b7667f39db702fda4b38b94",
+        "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+        "9c7824d0591587b3173a10215d138e42fe677cdd52b01b0abd7cb5016494ca14",
+        "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+        "38575b9b37f2930947a4be3edf4011e69fafa10da2dd4cb4a5bbe04e66d4252f"
+      ],
+      "command_or_ui_action": "Targeted mutation checks M01 through M08",
+      "started_at": "2026-09-20T14:46:44-07:00",
+      "finished_at": "2026-09-20T14:48:20-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "8/8 trigger behavior assertions, not compile errors; original working-tree content preserved",
+      "actual_behavior": "8/8 mutants caused behavioral assertion failures in LIST-01, PIPE-01, GEO-01, REACH-03, ROUTE-04, MERGE-04, PERSIST-01, and UI-02. All original source files restored with exact sha256 hashes.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/components/workspace/OutletPanel.tsx": "84086dd906631d626da81289f6140a1c5e59ed9aed0b56e50b4a071dda9c32ea",
+        "packages/pipeline/standardphysics_pipeline/discovery/discover.py": "2fce2b73a71ead820f333d18a2ccfb5e7d8f505d0b7667f39db702fda4b38b94",
+        "packages/pipeline/standardphysics_pipeline/discovery/surface_attach.py": "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+        "apps/web/src/lib/wheelchair-motion.ts": "9c7824d0591587b3173a10215d138e42fe677cdd52b01b0abd7cb5016494ca14",
+        "packages/pipeline/standardphysics_pipeline/discovery/reconcile.py": "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+        "services/api/standardphysics_api/labels.py": "38575b9b37f2930947a4be3edf4011e69fafa10da2dd4cb4a5bbe04e66d4252f",
+        "apps/web/src/components/workspace/OutletUi.test.ts": "214fb3745e1b1ac34477fd5a8bbc50340da5aa61836827b29fa899ee9f802048"
+      },
+      "review_identity": "self_review"
     }
   },
-  "mutation_receipts": {},
+  "mutation_receipts": {
+    "M01": {
+      "mutation_id": "M01",
+      "target_test_id": "LIST-01",
+      "file": "apps/web/src/components/workspace/OutletPanel.tsx",
+      "original_hash": "84086dd906631d626da81289f6140a1c5e59ed9aed0b56e50b4a071dda9c32ea",
+      "restored_hash": "84086dd906631d626da81289f6140a1c5e59ed9aed0b56e50b4a071dda9c32ea",
+      "diff": "- return isOutletNode(n);\\n+ return node.attachment !== null;",
+      "command": "npm test -- src/components/workspace/OutletPanel.test.ts -t LIST-01",
+      "status": "killed",
+      "assertion_failure": "AssertionError: expected [ { id: 'node-1', …(9) }, …(1) ] to have a length of +0 but got 2"
+    },
+    "M02": {
+      "mutation_id": "M02",
+      "target_test_id": "PIPE-01",
+      "file": "packages/pipeline/standardphysics_pipeline/discovery/discover.py",
+      "original_hash": "2fce2b73a71ead820f333d18a2ccfb5e7d8f505d0b7667f39db702fda4b38b94",
+      "restored_hash": "2fce2b73a71ead820f333d18a2ccfb5e7d8f505d0b7667f39db702fda4b38b94",
+      "diff": "- reconciled_outlets = reconcile_outlets(existing_outlets + outlet_nodes, cam_by_id)\\n+ reconciled_outlets: list[SceneNode] = []",
+      "command": "pytest packages/pipeline/tests/test_discover_outlets.py -k test_pipe_01",
+      "status": "killed",
+      "assertion_failure": "AssertionError: Expected 1 outlet node, got 0: []"
+    },
+    "M03": {
+      "mutation_id": "M03",
+      "target_test_id": "GEO-01",
+      "file": "packages/pipeline/standardphysics_pipeline/discovery/surface_attach.py",
+      "original_hash": "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+      "restored_hash": "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+      "diff": "- hit_z = float(camera.to_camera(h.point.reshape(1, 3))[0, 2])\\n+ hit_z = float(h.t)",
+      "command": "pytest packages/pipeline/tests/test_surface_geometry.py -k test_geo_01",
+      "status": "killed",
+      "assertion_failure": "AssertionError: assert 'roomplan_plane' == 'lidar_surface'"
+    },
+    "M04": {
+      "mutation_id": "M04",
+      "target_test_id": "REACH-03",
+      "file": "apps/web/src/lib/wheelchair-motion.ts",
+      "original_hash": "9c7824d0591587b3173a10215d138e42fe677cdd52b01b0abd7cb5016494ca14",
+      "restored_hash": "9c7824d0591587b3173a10215d138e42fe677cdd52b01b0abd7cb5016494ca14",
+      "diff": "- unresolvedReasons.push(\\\"No modeled floor under target; local floor elevation unknown.\\\");\\n+ targetHeightAboveFloor = targetHeight;",
+      "command": "npm test -- src/lib/wheelchair-motion.test.ts -t REACH-03",
+      "status": "killed",
+      "assertion_failure": "AssertionError: expected 0.45 to be null"
+    },
+    "M05": {
+      "mutation_id": "M05",
+      "target_test_id": "ROUTE-04",
+      "file": "apps/web/src/lib/wheelchair-motion.ts",
+      "original_hash": "9c7824d0591587b3173a10215d138e42fe677cdd52b01b0abd7cb5016494ca14",
+      "restored_hash": "9c7824d0591587b3173a10215d138e42fe677cdd52b01b0abd7cb5016494ca14",
+      "diff": "- return segmentIntersectsRect(reachFromPoint, targetPos, obs);\\n+ return containsPoint(obs, reachFromPoint) || containsPoint(obs, targetPos);",
+      "command": "npm test -- src/lib/wheelchair-motion.test.ts -t ROUTE-04",
+      "status": "killed",
+      "assertion_failure": "AssertionError: expected 'within_reach' not to be 'within_reach'"
+    },
+    "M06": {
+      "mutation_id": "M06",
+      "target_test_id": "MERGE-04",
+      "file": "packages/pipeline/standardphysics_pipeline/discovery/reconcile.py",
+      "original_hash": "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+      "restored_hash": "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+      "diff": "- if any(n.attachment and n.attachment.review_status == \\\"rejected_by_user\\\" for n in cluster):\\n-     merged_review_status = \\\"rejected_by_user\\\"\\n+ if any(n.attachment and n.attachment.review_status == \\\"confirmed_by_user\\\" for n in cluster):\\n+     merged_review_status = \\\"confirmed_by_user\\\"\\n+ else:\\n+     merged_review_status = \\\"detected\\\"",
+      "command": "pytest packages/pipeline/tests/test_reconcile_outlets.py -k test_merge_04",
+      "status": "killed",
+      "assertion_failure": "AssertionError: assert 'detected' == 'rejected_by_user'"
+    },
+    "M07": {
+      "mutation_id": "M07",
+      "target_test_id": "PERSIST-01",
+      "file": "services/api/standardphysics_api/labels.py",
+      "original_hash": "38575b9b37f2930947a4be3edf4011e69fafa10da2dd4cb4a5bbe04e66d4252f",
+      "restored_hash": "38575b9b37f2930947a4be3edf4011e69fafa10da2dd4cb4a5bbe04e66d4252f",
+      "diff": "- repo.save_revision(connection, saved, source=\\\"owner\\\", base_revision=base_revision)\\n- repo.enqueue_job(connection, scan_id, ASSESS, saved.revision)\\n- return saved\\n+ return base.model_copy(update={\\\"nodes\\\": nodes, \\\"revision\\\": base_revision})",
+      "command": "pytest services/api/tests/test_outlet_review_and_export.py -k test_persist_01",
+      "status": "killed",
+      "assertion_failure": "AssertionError: assert 1 == (0 + 2)"
+    },
+    "M08": {
+      "mutation_id": "M08",
+      "target_test_id": "UI-02",
+      "file": "apps/web/src/components/workspace/OutletUi.test.ts",
+      "original_hash": "214fb3745e1b1ac34477fd5a8bbc50340da5aa61836827b29fa899ee9f802048",
+      "restored_hash": "214fb3745e1b1ac34477fd5a8bbc50340da5aa61836827b29fa899ee9f802048",
+      "diff": "- { x: candidatePoint.x - from.x, z: candidatePoint.z - from.z }\\n+ { x: genericDock.x - from.x, z: genericDock.z - from.z }",
+      "command": "npm test -- src/components/workspace/OutletUi.test.ts -t UI-02",
+      "status": "killed",
+      "assertion_failure": "AssertionError: expected -1.2399999999999998 to be close to -1.25, received difference is 0.010000000000000231, but expected 0.0005"
+    }
+  },
   "checkpoints": [
     {
       "checkpoint_id": "CP-00",
@@ -832,6 +951,14 @@
       "status": "passed",
       "summary": "Gate G7 passed. UI and persistence: Owner review persists to SQLite creating new sequential revision with review_status (PERSIST-01); stale base revision returns 409 Conflict (REV-01); architecture export includes local floor height, review status, and crop reference (EXPORT-01); architecture zip requires owner auth (AUTH-02); outlet list shows reach assessment, distance, height, and review status (UI-01); Drive Here / approach preview uses evaluated candidate approach point (UI-02); personal reach profile bounds adjustable in UI with immediate reach updates (UI-03); review status changes persist through API call and update scene (UI-04).",
       "next_action": "Execute Gate G8: Mutations M01 through M08."
+    },
+    {
+      "checkpoint_id": "CP-08",
+      "time": "2026-09-20T14:48:30-07:00",
+      "gate": "G8",
+      "status": "passed",
+      "summary": "Gate G8 passed. All eight required targeted mutations M01 through M08 executed in isolation and killed with behavioral assertion failures (100% kill rate: 8/8). Original source files preserved and verified with matching SHA256 hashes.",
+      "next_action": "Execute Gate G9: Actual Moffett Acceptance — No Fixture Substitution (REAL-01 through REAL-04)."
     }
   ]
 }
