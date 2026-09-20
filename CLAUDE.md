@@ -2,6 +2,8 @@ Shared UI and design guidance for everyone working on this repo. Claude Code pic
 
 When making code changes, don't write summary markdown files or create copies of files (like .backup or .pre-features); I have Git and don't need them.
 
+Commit to git whenever a feature is finished and verified (typecheck + tests pass), without waiting to be asked. One commit per feature, message describing the change. Use the default git user. Branch first if on the default branch. Never push unless asked.
+
 Always use tools to understand problems better; avoid guessing or manufacturing data/statistics.
 
 When building UIs and apps:
