@@ -55,6 +55,7 @@ def main():
     parser.add_argument("--tangent-factor", type=float, default=0.75)
     parser.add_argument("--normal-ratio", type=float, default=0.1)
     parser.add_argument("--cameras", type=int, default=60)
+    parser.add_argument("--tag", type=str, default="", help="Suffix for the output directory, so repeats do not collide")
     args = parser.parse_args()
 
     started = time.monotonic()
@@ -88,7 +89,8 @@ def main():
         max_samples=args.max_samples,
     )
 
-    out_dir = args.output / args.room / f"surface-splats-s{args.seed}"
+    folder = f"surface-splats-s{args.seed}" + (f"-{args.tag}" if args.tag else "")
+    out_dir = args.output / args.room / folder
     ply = out_dir / "surface-splats.ply"
     result.gaussians.export_ply(ply)
 

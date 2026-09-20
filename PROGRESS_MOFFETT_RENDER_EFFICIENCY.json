@@ -3,8 +3,8 @@
   "objective": "Implement the evaluator first, freeze a fair pilot, and build a deterministic surface-Gaussian candidate. Evaluate against matched baselines under the frozen experiment policy; deliver evidence and an honest conclusion.",
   "plan": "docs/deepseek-overnight-lidar-render-plan.txt",
   "policy": "docs/deepseek-lidar-experiment-policy.json",
-  "status": "b0_and_candidate_run_no_eligible_score",
-  "updated_at": "2026-09-20",
+  "status": "plan_executed_no_eligible_score_honest_blocker",
+  "updated_at": "2026-09-20T13:35:00-07:00",
   "environment": {
     "hardware": "Apple M5 Pro",
     "ram_gib": 48,
@@ -37,97 +37,117 @@
         "packages/pipeline/standardphysics_pipeline/render_efficiency/__init__.py",
         "packages/pipeline/tests/test_render_efficiency.py"
       ],
-      "tests": "20 passed in test_render_efficiency.py (identical=50, added error, nonfinite, wrong resolution, empty/thin mask, missing image, altered/duplicate/shortened view, coverage, gates)",
-      "evaluator_hash": "3f26723add5a711d0efae08f31ff5c3ad152f29516458990393dd473861e0b44",
-      "next_action": "implement pilot freezer and deterministic build_surface_splats entry point"
+      "tests": "46 passed across test_render_efficiency/test_surface_splats/test_surface_calibration",
+      "evaluator_hash": "5283a976b72ebfbee027c51ce03286c19deafc303a4514d5bbe347dde0d1b35c",
+      "next_action": "done"
     },
     "phase1_freeze_pilot": {
       "status": "rendered",
-      "gate": "Gate 1: fixed manifests, reviewed real detail, reproducible B0 baseline",
-      "artifacts": [
-        "scripts/freeze_render_pilot.py",
-        "scripts/build_render_pilot_dataset.py",
-        "runs/moffett/render-efficiency/r001/pilot-manifest.json",
-        "runs/moffett/render-efficiency/r001/pilot-dataset/",
-        "runs/moffett/render-efficiency/r001/b0-brush/"
-      ],
-      "achieved": { "train": 32, "validation": 8, "test": 8, "disjoint": true },
-      "split_independence_reviewed": false,
-      "b0_baseline": {
+      "version": 2,
+      "note": "v1 split failed independence review (gaps 1-3 poses); v2 resplit with separated windows, min cross-group gap 24 poses verified 30/24/271; agent re-review says separated_enough_to_proceed; outlet frames in final test; ROIs preregistered before scoring.",
+      "b0_baseline_v2": {
         "engine": "Brush v0.3.0",
         "steps": 7000,
         "sh_degree": 0,
         "seed": 1729,
-        "splats": 1446532,
-        "wall_seconds": 253.59,
-        "peak_rss_bytes": 850198528,
-        "spz_bytes": 24522736,
-        "mean_masked_psnr_db": 16.494627303004183,
-        "mean_full_psnr_db": 16.461940421621243,
-        "mean_masked_ssim": 0.5831103484508323,
-        "worst_masked_psnr_db": 11.421320017175532,
-        "eval_views": 8,
-        "eval_metric_source": "scripts/evaluate_pilot.py from r001/b0-brush/eval_7000 PNGs",
-        "note": "7000-step SH0 matched pilot baseline; prior 400-image/30k/SH2 runs were ~18.6 dB and are not comparable"
-      },
-      "note": "deterministic trajectory-stride split produced and disjointness verified; near-duplicate grouping and a real visual review of separation remain, so Gate 1 independence is not closed."
+        "splats_range": [
+          1731349,
+          1766844
+        ],
+        "wall_median_seconds": 253.58,
+        "peak_rss_max_bytes": 892289024,
+        "spz_max_bytes": 29933961,
+        "native_eval": {
+          "mean_masked_psnr_db": 11.42376729014341,
+          "mean_masked_ssim": 0.3164536758988264,
+          "worst_masked_psnr_db": 4.873347180046734,
+          "views": 8,
+          "source": "scripts/evaluate_pilot.py on b0-v2-r2/eval_7000 vs pilot-dataset-v2"
+        },
+        "leakage_note": "zero Brush-eval views overlap the v2 train split"
+      }
     },
     "phase2_calibration": {
-      "status": "planned",
-      "gate": "Gate 2: projection/visibility fixtures + real alignment limitations",
-      "note": "synthetic tangent/covariance/degenerate-normal fixtures covered by test_surface_splats.py; real photo-edge reprojection review not performed"
+      "status": "rendered",
+      "synthetic": "tangent_factor=0.5, opacity=0.5 frozen after plane sweep; (0.75,0.3) first pick overridden as oversaturated; calibration-synthetic.json",
+      "real_edge_audit": "needs_inspection: metric carries no signal above translated-map control; no transforms/splats changed; edge-audit.json"
     },
     "phase3_surface_splats": {
       "status": "rendered",
-      "gate": "Gate 3: deterministic source-supported surface splat export",
-      "artifacts": [
-        "packages/pipeline/standardphysics_pipeline/render_efficiency/surface_splats.py",
-        "packages/pipeline/standardphysics_pipeline/render_efficiency/builder.py",
-        "packages/pipeline/tests/test_surface_splats.py",
-        "scripts/build_surface_splats.py"
-      ],
-      "tests": "16 passed in test_surface_splats.py (tangent frames, covariance, quaternion, SH0 roundtrip, degenerate rejection, sample cap, colour interpolation, PLY export, nonfinite rejection)",
-      "candidate": {
-        "splats": 150000,
-        "wall_seconds": 12.702,
-        "peak_rss_bytes": 2840788992,
-        "spz_bytes": 1851399,
-        "spz_roundtrip": "PLY -> SPZ via existing converter validated",
-        "note": "candidate quality P/U/R null: no common renderer; candidate builds from full source mesh + full-res photos, so T/M are not a same-workload match with B0"
-      }
+      "frozen_config": {
+        "samples": 150000,
+        "spacing_m": 0.02,
+        "tangent_factor": 0.5,
+        "opacity": 0.5,
+        "seed": 1729,
+        "cameras": 40
+      },
+      "candidate_medians": {
+        "wall_median_seconds": 12.45,
+        "peak_rss_max_bytes": 3167846400,
+        "spz_bytes": 1851400
+      },
+      "spz_roundtrip": "PLY -> SPZ converter validated; spz python package loads 150000 splats matching provenance",
+      "ablation_300k": "built (c4: 3 699 707-byte SPZ); not scored",
+      "quality_null_reason": "no validated common renderer (Spark wasm harness could not reproduce Brush native render, best corr 0.28 vs gate 0.6); 32 paired renders invalidated and archived"
     },
     "phase4_msplat": {
-      "status": "deferred",
-      "gate": "Gate 4: optional compatible backend trial or precise capability blocker",
-      "note": "optional external backend not attempted this run; would require clone + 45-min install cap + license review"
+      "status": "rendered",
+      "note": "build success via cmake + Xcode Metal Toolchain; commit 6b81971 v1.1.4; Apache-2.0 (one MIT file); per-frame intrinsics supported; training not run (dataset adapter is next step); audit.json + build.log recorded"
     }
   },
   "trials": [],
   "ledger": [
     {
-      "config_id": "b0",
+      "config_id": "b0-v1-r1..r3",
       "kind": "baseline",
-      "status": "eligible_for_self_eval_only",
-      "splats": 1446532,
-      "wall_seconds": 253.59,
-      "peak_rss_bytes": 850198528,
-      "spz_bytes": 24522736,
-      "mean_masked_psnr_db": 16.494627303004183,
-      "mean_masked_ssim": 0.5831103484508323,
-      "quality_p_u_r_null_for_cross_comparison": true
+      "status": "invalidated_superseded",
+      "note": "v1 split failed independence review; benchmark version bumped to 2"
     },
     {
-      "config_id": "candidate-surface-s1729",
+      "config_id": "candidate-c1..c3",
       "kind": "candidate",
-      "status": "rejected_no_eligible_score",
-      "splats": 150000,
-      "wall_seconds": 12.702,
-      "peak_rss_bytes": 2840788992,
-      "spz_bytes": 1851399,
-      "mean_masked_psnr_db": null,
-      "mean_masked_ssim": null,
-      "rejection_reason": "P/U/R unavailable (no common renderer) and F unmeasured; cannot satisfy hard gates or a selection lane"
+      "status": "invalidated_superseded",
+      "note": "built with tangent 0.75 before synthetic calibration froze 0.5"
+    },
+    {
+      "config_id": "b0-v2-r1..r3",
+      "kind": "baseline",
+      "status": "baseline",
+      "t_median_s": 253.58,
+      "m_max_bytes": 892289024,
+      "z_max_bytes": 29933961
+    },
+    {
+      "config_id": "candidate-c5..c7",
+      "kind": "candidate",
+      "status": "structured_but_ineligible",
+      "t_median_s": 12.45,
+      "m_max_bytes": 3167846400,
+      "z_max_bytes": 1851400,
+      "quality": null,
+      "ineligibility": [
+        "F null (no honest frame timing)",
+        "P/U/R null (no validated common renderer)",
+        "coverage H unavailable",
+        "efficiency lane M_C<=M_B fails"
+      ]
+    },
+    {
+      "config_id": "candidate-c4",
+      "kind": "ablation",
+      "status": "unscored_ablation",
+      "note": "300k samples, 3 699 707-byte SPZ"
+    },
+    {
+      "config_id": "renderer-probe",
+      "kind": "infrastructure",
+      "status": "blocked",
+      "note": "Spark headless harness could not match Brush native render; capability blocker recorded in probe-gate-report.json"
     }
   ],
-  "status_note": "B0 (Brush 7000-step SH0 pilot) and the deterministic candidate both ran and were compressed to SPZ. B0 self-evaluates at 16.49 dB / 0.583 SSIM. The candidate is 13x smaller and ~19x faster to build but its quality is unmeasured (no common renderer), so no eligible score or selection. Full honest writeup in docs/moffett-render-efficiency-results.txt."
+  "status_note": "All four phases executed with evidence: v2 split reviewed as separated, synthetic parameters frozen, edge audit recorded, B0 v2 reproduced 3x with native held-out eval (11.42 dB / 0.316 SSIM), candidate built 3x and ablated, msplat built and audited. Honest blockers: no validated common renderer and no honest F timing, so the candidate has no eligible score; invalidated renders archived. Full writeup in docs/moffett-render-efficiency-results.txt.",
+  "benchmark_version": 2,
+  "evaluator_hash": "5283a976b72ebfbee027c51ce03286c19deafc303a4514d5bbe347dde0d1b35c",
+  "evaluator_hash_note": "v2 includes added calibration.py; recorded before any candidate score computation"
 }
