@@ -548,8 +548,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CAPTURE_API_BASE_URL = "https://standardphysics-api.fly.dev";
-				CAPTURE_WORKSPACE_BASE_URL = "https://standardphysics-web.fly.dev";
+				CAPTURE_API_BASE_URL = "";
+				CAPTURE_WORKSPACE_BASE_URL = "";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = StandardPhysics/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -624,8 +624,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CAPTURE_API_BASE_URL = "https://standardphysics-api.fly.dev";
-				CAPTURE_WORKSPACE_BASE_URL = "https://standardphysics-web.fly.dev";
+				CAPTURE_API_BASE_URL = "";
+				CAPTURE_WORKSPACE_BASE_URL = "";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = StandardPhysics/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (

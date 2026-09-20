@@ -1,104 +1,121 @@
 # Running Standard Physics for real shops
 
-Two Fly apps from the one image in `Dockerfile`. `standardphysics-api` holds
-the scans and runs the reconstruction worker; `standardphysics-web` serves the
-workspace and proxies `/api` to the API over Fly's private network.
+One Ubuntu Droplet, one Block Storage volume, three containers from the image
+in `Dockerfile`. Caddy terminates TLS and is the only thing bound to a public
+port; the API holds the scans and runs the reconstruction worker; the
+workspace serves the pages.
 
 The phone talks to the API directly rather than through the workspace, because
 a scan bundle can reach the 1 GB ceiling in `Settings.max_artifact_bytes` and
 there is no reason to push that through a Next rewrite.
 
 ```
- iPhone ──── https://standardphysics-api.fly.dev ──┐
-                                                   ├── API + worker + /data volume
- Browser ─── https://standardphysics-web.fly.dev ──┘   (private 6PN hop)
+ iPhone ──── https://api.<your domain> ───┐
+                                          ├── Caddy ──┬── api  + /mnt volume
+ Browser ─── https://app.<your domain> ───┘           └── web
 ```
 
-## Before the first deploy
+Everything lives in `deploy/digitalocean/`.
 
-You need the Fly CLI and an account with a card on file. Volumes and always-on
-machines are not in the free allowance.
+## What you need first
+
+- **A domain.** Two names, one for the API and one for the workspace. The
+  iPhone app refuses a plain `http://` address for anything but a machine on
+  the local network, so a bare IP will not do: Let's Encrypt does not issue
+  certificates for IP addresses.
+- **A Droplet.** Ubuntu 24.04, 2 vCPU and 4 GB. The workspace is a Next build
+  and a 2 GB box runs out of memory partway through it; `setup.sh` adds swap,
+  which covers the gap but does not replace the memory.
+- **A Block Storage volume**, 10 GB to start, attached to that Droplet. Scans
+  go on it rather than the Droplet's own disk so the box can be rebuilt or
+  resized without losing a shop.
+
+## Provision the box
+
+Point both names at the Droplet's public IP in DNS and let them resolve.
+Caddy asks Let's Encrypt for a certificate on its first start, and that fails
+if the names do not already point here.
+
+Then, on the Droplet as root:
 
 ```bash
-brew install flyctl
-fly auth login
+git clone https://github.com/Imhaohao/standardphysics.git
+cd standardphysics/deploy/digitalocean
+VOLUME_NAME=standardphysics_scans ./setup.sh
 ```
 
-Create both apps without deploying, so the secrets are in place before any
-code runs:
-
-```bash
-fly apps create standardphysics-api
-fly apps create standardphysics-web
-```
+That installs Docker, mounts the volume, adds swap, closes every port but SSH
+and the two Caddy needs, and turns on unattended security updates. It never
+formats a disk that already holds a filesystem, so running it again on a box
+with scans on it is safe.
 
 ## Secrets
 
-Only the API reads these. The workspace holds no keys.
-
 ```bash
-fly secrets set --app standardphysics-api \
-  APP_SESSION_SECRET="$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')" \
-  OPENROUTER_API_KEY=... \
-  OPENROUTER_MODEL=openai/gpt-6-astra \
-  DISCOVERY_API_KEY=... \
-  DISCOVERY_BASE_URL=... \
-  DISCOVERY_MODEL=...
+cp env.example .env
+$EDITOR .env
 ```
 
-Set a spend limit on the OpenRouter account before the first shop scans
-anything, and turn on zero data retention. Every scan sends photographs of
+Fill in the two domains, `SCANS_PATH` as the script printed it, and the keys.
+Generate the session secret on the box:
+
+```bash
+python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+Set a spend limit on the OpenRouter account and turn on zero data retention
+before the first shop scans anything. Every scan sends photographs of
 somebody's business to that endpoint.
 
-`WANDB_API_KEY`, `WANDB_ENTITY` and `WANDB_PROJECT` are optional. Without them
-the server runs untraced, which is the right setting for a deployment holding
-real shops.
+Leave `WANDB_*` empty. Tracing a deployment that holds real shops sends their
+rooms somewhere else.
 
-## Deploy
-
-Both commands run from the repository root, because the build context is the
-whole repo:
+## Start it
 
 ```bash
-fly deploy --config deploy/fly/api.toml --dockerfile Dockerfile .
-fly deploy --config deploy/fly/web.toml --dockerfile Dockerfile .
+docker compose up -d --build
+docker compose logs -f caddy    # watch the certificate arrive
+curl https://<your api domain>/health
 ```
 
-The first API deploy creates the 10 GB volume named in `[[mounts]]`. Check it
-came up:
+The first build takes a while: it installs the Python packages and builds the
+workspace on the box.
+
+## Updating
 
 ```bash
-curl https://standardphysics-api.fly.dev/health
-fly logs --app standardphysics-api
+git pull
+docker compose up -d --build
 ```
 
-## One machine, on purpose
+The API restarts, which interrupts any reconstruction in flight. Those jobs
+are requeued on the next start by `requeue_interrupted_jobs`, so an update
+during a busy afternoon costs time rather than a scan.
 
-The database is SQLite on the volume and the worker claims jobs from it, so a
-second machine would be a second database and two workers racing the same
-queue. `fly scale count 1 --app standardphysics-api` is the only correct
-number until the store moves to Postgres.
+## One container holds the database
 
-The API also never autostops. A machine stopped for idleness is a machine
-stopped in the middle of a reconstruction, since that work happens long after
-the upload connection closed. The workspace has no such problem and suspends
-when nobody is using it.
+The database is SQLite on the volume and the worker claims jobs from it, so
+the API is one container and stays one container. Two would be two workers
+racing the same queue. Moving the store to Postgres is what lifts that, and
+is worth doing when more than one person is scanning at a time.
 
 ## Backups
 
 A volume snapshot is not a database backup: SQLite may be mid-write when the
-snapshot is taken. Fly takes daily volume snapshots and keeps them for a set
-window, which is a floor to fall back on rather than a plan. Check the
-retention on your volume with `fly volumes list`. For a real copy:
+snapshot is taken. DigitalOcean's snapshots are a floor to fall back on, not
+the plan. For a real copy:
 
 ```bash
-fly ssh console --app standardphysics-api \
-  -C "/opt/venv/bin/python -c \"import sqlite3;s=sqlite3.connect('/data/standardphysics.sqlite3');d=sqlite3.connect('/data/backup.sqlite3');s.backup(d)\""
-fly sftp get /data/backup.sqlite3 --app standardphysics-api
+docker compose exec api /opt/venv/bin/python -c \
+  "import sqlite3; s=sqlite3.connect('/data/standardphysics.sqlite3'); \
+   d=sqlite3.connect('/data/backup.sqlite3'); s.backup(d)"
+scp root@<droplet>:/mnt/standardphysics_scans/backup.sqlite3 .
 ```
 
-The scan artifacts live beside it under `/data` and are the larger half. Until
-they are on object storage, losing the volume loses the rooms.
+The scan artifacts sit beside it under the same mount and are the larger half.
+Until they are on Spaces or another object store, losing the volume loses the
+rooms. `doctl compute volume-action snapshot` schedules nothing on its own, so
+put it in cron or take one before each update.
 
 ## Pointing the app at it
 
@@ -106,28 +123,24 @@ The iPhone app ships with both addresses compiled in, set in
 `apps/ios/project.yml`:
 
 ```
-CAPTURE_API_BASE_URL: https://standardphysics-api.fly.dev
-CAPTURE_WORKSPACE_BASE_URL: https://standardphysics-web.fly.dev
+CAPTURE_API_BASE_URL: https://api.<your domain>
+CAPTURE_WORKSPACE_BASE_URL: https://app.<your domain>
 ```
 
 The connection screen stays in the app for development, and an owner never has
-to open it. Once the apps answer on a custom domain, change these two values
-and ship a build; `AppEnvironment` prefers anything already saved in
-`UserDefaults`, so a phone that was pointed at a laptop keeps pointing there
-until someone clears it.
+to open it. `AppEnvironment` prefers anything already saved in `UserDefaults`,
+so a phone that was pointed at a laptop keeps pointing there until someone
+clears it.
 
 ## Cost
 
-Four things are billed, and only the last one moves with use:
-
 | | |
 |---|---|
-| API machine | shared-cpu-2x, 2 GB, never stopped |
-| Workspace machine | shared-cpu-1x, 1 GB, suspended when idle |
-| Volume | 10 GB |
+| Droplet | 2 vCPU, 4 GB, Ubuntu 24.04 |
+| Block Storage | 10 GB, grows with the shops |
+| Domain | one, two records |
 | Model calls | per scan |
 
-Fly prices the machines and the volume, and `fly platform vm-sizes` plus their
-calculator give the current numbers. Measure the model calls yourself with
-`scripts/scan_cost.py`, which reads what OpenRouter actually billed for one
-scan rather than estimating it.
+DigitalOcean prices the first two and publishes current rates. Measure the
+model calls yourself with `scripts/scan_cost.py`, which reads what OpenRouter
+actually billed for one scan rather than estimating it.

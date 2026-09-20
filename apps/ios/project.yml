@@ -54,8 +54,14 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.standardphysics.capture
         TARGETED_DEVICE_FAMILY: "1,2"
-        CAPTURE_API_BASE_URL: https://standardphysics-api.fly.dev
-        CAPTURE_WORKSPACE_BASE_URL: https://standardphysics-web.fly.dev
+        # Fill both in before archiving for TestFlight or the App Store, with
+        # the two names from docs/DEPLOY.md. Empty is the right value while
+        # there is no server: AppEnvironment falls back to the connection
+        # screen, which is what a developer pointing the phone at a laptop
+        # wants and what an owner must never see. A build shipped with these
+        # empty is a build App Review cannot sign in to.
+        CAPTURE_API_BASE_URL: ""
+        CAPTURE_WORKSPACE_BASE_URL: ""
     scheme:
       testTargets:
         - StandardPhysicsTests

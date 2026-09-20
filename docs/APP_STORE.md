@@ -12,7 +12,7 @@ account, a hosted server and a phone with LiDAR.
 | | Where |
 |---|---|
 | Team, bundle id, deployment target | `apps/ios/project.yml` |
-| Server addresses compiled in | `CAPTURE_API_BASE_URL`, `CAPTURE_WORKSPACE_BASE_URL` |
+| Where the server addresses go | `CAPTURE_API_BASE_URL`, `CAPTURE_WORKSPACE_BASE_URL`, empty until there is a domain |
 | App icon, light, dark and tinted | `apps/ios/scripts/make_app_icon.py` |
 | Export compliance answered | `ITSAppUsesNonExemptEncryption: false` |
 | Devices without ARKit excluded | `UIRequiredDeviceCapabilities` |
@@ -36,8 +36,8 @@ cannot sign in to.
 
 In App Store Connect, create the app record with bundle id
 `com.standardphysics.capture`, and set the privacy policy URL to
-`https://standardphysics-web.fly.dev/privacy`. Make sure the address on that
-page can receive mail before you submit; App Review does write to it.
+`https://app.<your domain>/privacy`. Make sure the address on that page can
+receive mail before you submit; App Review does write to it.
 
 ## Archive and upload
 
@@ -88,15 +88,16 @@ sentence instead of an app. Say so plainly in the notes:
 > Deleting the account is on the home screen, under the shop name, as required
 > by 5.1.1(v). The demo account is restored between reviews, so please do use it.
 
-Seed that demo account on the server with a password you choose:
+Seed that demo account on the Droplet with a password you choose, in
+`deploy/digitalocean/.env`:
 
-```bash
-fly secrets set --app standardphysics-api \
-  SP_SEED_SAMPLE_SHOP=1 SP_SEED_OWNER_PASSWORD='<a password you pick>'
+```
+SP_SEED_SAMPLE_SHOP=1
+SP_SEED_OWNER_PASSWORD=<a password you pick>
 ```
 
-Turn `SP_SEED_SAMPLE_SHOP` off again once the app is live, so a synthetic shop
-never appears beside real ones.
+Then `docker compose up -d` to pick it up. Take the two lines out again once
+the app is live, so a synthetic shop never appears beside real ones.
 
 ## Screenshots
 
