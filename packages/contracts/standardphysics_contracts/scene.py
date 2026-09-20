@@ -195,7 +195,7 @@ class SceneNode(BaseModel):
         return not lies_flat(self)
 
 
-SHEET_THICKNESS = 0.2
+SHEET_THICKNESS = 0.05
 """How thin a region has to be to read as a sheet rather than a solid, in metres."""
 
 SHEET_AREA = 1.0
