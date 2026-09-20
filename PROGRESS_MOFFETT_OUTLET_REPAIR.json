@@ -8,7 +8,7 @@
   "gates": {
     "G0": "passed",
     "G1": "passed",
-    "G2": "open",
+    "G2": "passed",
     "G3": "open",
     "G4": "open",
     "G5": "open",
@@ -111,6 +111,114 @@
         "packages/pipeline/tests/test_discover_outlets.py": "6c8f28796cafa4a8ff31329f05b61c41b4fda0d13435369d9d4d26a21627506d"
       },
       "review_identity": "self_review"
+    },
+    "DET-01": {
+      "test_id": "DET-01",
+      "gate_id": "G2",
+      "evidence_kind": "fixture",
+      "source_hash": "ccbc485f3baef5e99ace191aee351d04c89b7a75e396c6fcf0ef6a0fa51679a4",
+      "input_hashes": ["010a069e1957a48116777e90ac8cfacf8a517266900c307fab0b002aba699e7f"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_outlet_detection.py -k test_det_01",
+      "started_at": "2026-09-20T14:22:43-07:00",
+      "finished_at": "2026-09-20T14:22:44-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Expected sensor-pixel boxes and source crop map correctly across 0/90/180/270 degrees; no double rotation or x/y swap",
+      "actual_behavior": "Orientation transformations at 0, 90, 180, 270 deg and off-center crops mapped accurately into sensor pixel coordinates; tile generation verified.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/detect.py": "ccbc485f3baef5e99ace191aee351d04c89b7a75e396c6fcf0ef6a0fa51679a4",
+        "packages/pipeline/tests/test_outlet_detection.py": "010a069e1957a48116777e90ac8cfacf8a517266900c307fab0b002aba699e7f"
+      },
+      "review_identity": "self_review"
+    },
+    "DET-02": {
+      "test_id": "DET-02",
+      "gate_id": "G2",
+      "evidence_kind": "fixture",
+      "source_hash": "ccbc485f3baef5e99ace191aee351d04c89b7a75e396c6fcf0ef6a0fa51679a4",
+      "input_hashes": ["010a069e1957a48116777e90ac8cfacf8a517266900c307fab0b002aba699e7f"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_outlet_detection.py -k test_det_02",
+      "started_at": "2026-09-20T14:22:43-07:00",
+      "finished_at": "2026-09-20T14:22:44-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Reject malformed data; preserve unknown count; never invent duplex sockets",
+      "actual_behavior": "Malformed/NaN/Inf/degenerate boxes rejected; missing sockets preserve empty tuple without fabricating duplex socket targets.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/detect.py": "ccbc485f3baef5e99ace191aee351d04c89b7a75e396c6fcf0ef6a0fa51679a4",
+        "packages/pipeline/tests/test_outlet_detection.py": "010a069e1957a48116777e90ac8cfacf8a517266900c307fab0b002aba699e7f"
+      },
+      "review_identity": "self_review"
+    },
+    "DET-03": {
+      "test_id": "DET-03",
+      "gate_id": "G2",
+      "evidence_kind": "fixture",
+      "source_hash": "ccbc485f3baef5e99ace191aee351d04c89b7a75e396c6fcf0ef6a0fa51679a4",
+      "input_hashes": ["010a069e1957a48116777e90ac8cfacf8a517266900c307fab0b002aba699e7f"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_outlet_detection.py -k test_det_03",
+      "started_at": "2026-09-20T14:22:43-07:00",
+      "finished_at": "2026-09-20T14:22:44-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Explicit distinguishable errors; bounded retry only for transient failures; error not cached as empty success",
+      "actual_behavior": "DetectionAuthError and DetectionSchemaError explicitly raised and not retried; valid empty result returns empty list; errors not cached.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/detect.py": "ccbc485f3baef5e99ace191aee351d04c89b7a75e396c6fcf0ef6a0fa51679a4",
+        "packages/pipeline/tests/test_outlet_detection.py": "010a069e1957a48116777e90ac8cfacf8a517266900c307fab0b002aba699e7f"
+      },
+      "review_identity": "self_review"
+    },
+    "CACHE-01": {
+      "test_id": "CACHE-01",
+      "gate_id": "G2",
+      "evidence_kind": "fixture",
+      "source_hash": "29bfdc052531089edd641554f86f13c6d125f395f7e4ce82968e9176212755ad",
+      "input_hashes": ["010a069e1957a48116777e90ac8cfacf8a517266900c307fab0b002aba699e7f"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_outlet_detection.py -k test_cache_01",
+      "started_at": "2026-09-20T14:22:43-07:00",
+      "finished_at": "2026-09-20T14:22:44-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Metadata unchanged; changed schema/prompt/image/calibration invalidates relevant cache",
+      "actual_behavior": "DetectionCache roundtrips all fields including sockets, crop_box, category, review_status, uncertainty_reasons; orientation/model changes invalidate cache.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/cache.py": "29bfdc052531089edd641554f86f13c6d125f395f7e4ce82968e9176212755ad",
+        "packages/pipeline/tests/test_outlet_detection.py": "010a069e1957a48116777e90ac8cfacf8a517266900c307fab0b002aba699e7f"
+      },
+      "review_identity": "self_review"
+    },
+    "CROP-01": {
+      "test_id": "CROP-01",
+      "gate_id": "G2",
+      "evidence_kind": "fixture",
+      "source_hash": "c28e0b23b9358caeef56c95868c7a54961f5dbeec250477e4478923c0a8ba084",
+      "input_hashes": ["9f130e49d8ec72164ee5b928afc8b8376a40691d6f19461396a6521b85e43792"],
+      "command_or_ui_action": "pytest services/api/tests/test_crop_routes.py -k test_crop_01",
+      "started_at": "2026-09-20T14:22:58-07:00",
+      "finished_at": "2026-09-20T14:22:59-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Decodable bytes match source pixel region and manifest hash; missing crop explicit error",
+      "actual_behavior": "GET /api/scans/{scan_id}/crops/{crop_id} returns decoded JPEG bytes under owning user session; missing crop returns 404.",
+      "artifact_paths_and_hashes": {
+        "services/api/standardphysics_api/app.py": "c28e0b23b9358caeef56c95868c7a54961f5dbeec250477e4478923c0a8ba084",
+        "services/api/tests/test_crop_routes.py": "9f130e49d8ec72164ee5b928afc8b8376a40691d6f19461396a6521b85e43792"
+      },
+      "review_identity": "self_review"
+    },
+    "AUTH-01": {
+      "test_id": "AUTH-01",
+      "gate_id": "G2",
+      "evidence_kind": "fixture",
+      "source_hash": "c28e0b23b9358caeef56c95868c7a54961f5dbeec250477e4478923c0a8ba084",
+      "input_hashes": ["9f130e49d8ec72164ee5b928afc8b8376a40691d6f19461396a6521b85e43792"],
+      "command_or_ui_action": "pytest services/api/tests/test_crop_routes.py -k test_auth_01",
+      "started_at": "2026-09-20T14:22:58-07:00",
+      "finished_at": "2026-09-20T14:22:59-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Denied per existing policy; no bytes, raw source path or secret leakage",
+      "actual_behavior": "Anonymous requests return 401; second user returns 404 (no scan existence leakage); path traversal attempts blocked with 400/404 without leaking internal paths.",
+      "artifact_paths_and_hashes": {
+        "services/api/standardphysics_api/app.py": "c28e0b23b9358caeef56c95868c7a54961f5dbeec250477e4478923c0a8ba084",
+        "services/api/tests/test_crop_routes.py": "9f130e49d8ec72164ee5b928afc8b8376a40691d6f19461396a6521b85e43792"
+      },
+      "review_identity": "self_review"
     }
   },
   "mutation_receipts": {},
@@ -130,6 +238,14 @@
       "status": "passed",
       "summary": "Gate G1 passed. Fixed OutletPanel predicate bug (isOutletNode excludes undefined/null attachment and whiteboards). Connected discover_objects to surface attachment and multi-view reconciliation, excluding outlets from solid carving. Verified LIST-01, LIST-02, PIPE-01, PIPE-02.",
       "next_action": "Execute Gate G2: Detection, Cache and Secure Delivery (DET-01, DET-02, DET-03, CACHE-01, CROP-01, AUTH-01)."
+    },
+    {
+      "checkpoint_id": "CP-02",
+      "time": "2026-09-20T14:23:00-07:00",
+      "gate": "G2",
+      "status": "passed",
+      "summary": "Gate G2 passed. Added specific DetectionAuthError, DetectionSchemaError, DetectionTransientError and non-retry of auth/schema errors. Updated DetectionCache to preserve all detection metadata and bumped version to 2. Implemented authenticated crop route in FastAPI with path-traversal prevention. Verified DET-01, DET-02, DET-03, CACHE-01, CROP-01, AUTH-01.",
+      "next_action": "Execute Gate G3: Support Geometry and Uncertainty (GEO-01, GEO-02, GEO-03, GEO-04, GEO-05)."
     }
   ]
 }

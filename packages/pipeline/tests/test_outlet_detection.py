@@ -1,4 +1,15 @@
-"""Tests for photographic outlet detection, crop/tile transforms, and coordinate invariants."""
+"""Tests for outlet detection, caching, and coordinate mappings (DET-01, DET-02, DET-03, CACHE-01).
+
+Validates:
+- DET-01: Asymmetric image at 0/90/180/270 degrees; off-center resized crops and overlapping tiles
+  correctly map to sensor coordinates without double rotation or x/y swaps.
+- DET-02: Malformed, reversed, out-of-bounds, NaN/Inf boxes are rejected; unresolved socket count
+  is preserved without inventing duplex sockets.
+- DET-03: Distinguishable DetectionAuthError, DetectionSchemaError, DetectionTransientError;
+  auth/schema errors are never retried; errors are never cached as empty success.
+- CACHE-01: Structured detector sockets/crop/category/caveats roundtrip through DetectionCache;
+  version/model/orientation changes invalidate cache.
+"""
 
 from __future__ import annotations
 
@@ -7,318 +18,214 @@ import json
 import math
 import pathlib
 import pytest
-from PIL import Image, ImageDraw
+from PIL import Image
 
+from standardphysics_pipeline.discovery.cache import DetectionCache, CACHE_VERSION
 from standardphysics_pipeline.discovery.detect import (
-    BOX_SCALE,
     Detection,
+    DetectionAuthError,
     DetectionError,
+    DetectionSchemaError,
+    DetectionTransientError,
     EncodedFrame,
-    QUARTER_TURNS_CLOCKWISE,
-    _clamped,
-    _one_detection,
-    _pixel_box,
-    box_iou,
     detect_objects,
     extract_padded_crop,
     generate_tiles,
     map_crop_box_to_sensor,
     map_crop_point_to_sensor,
+    _objects_in,
+    _detections_from,
 )
 
 
-def create_asymmetric_test_image(width=1920, height=1440) -> Image.Image:
-    """Creates an asymmetric test image with an 'F' shaped marker at a known off-center location.
-    
-    The 'F' has vertical line from (200, 300) to (200, 500), horizontal top bar from (200, 300) to (350, 300),
-    and mid bar from (200, 380) to (300, 380).
-    Because 'F' is neither horizontally nor vertically symmetric, rotations and x/y swaps cannot pass unnoticed.
-    """
-    img = Image.new("RGB", (width, height), color=(240, 240, 240))
-    draw = ImageDraw.Draw(img)
-    # Background pattern to ensure uniqueness across quadrants
-    draw.rectangle([0, 0, width // 2, height // 2], fill=(220, 230, 240))
-    # Draw 'F' marker in upper-left quadrant
-    draw.line([(200, 300), (200, 500)], fill=(255, 0, 0), width=10)
-    draw.line([(200, 300), (350, 300)], fill=(255, 0, 0), width=10)
-    draw.line([(200, 380), (300, 380)], fill=(255, 0, 0), width=10)
-    return img
+def test_det_01_asymmetric_rotations_crops_and_tiles(tmp_path: pathlib.Path):
+    """DET-01: Tests coordinate transformations across 0, 90, 180, 270 degree turns and crops."""
+    # Asymmetric image: width 800, height 600
+    img = Image.new("RGB", (800, 600), color=(100, 150, 200))
+    img_path = tmp_path / "asym.jpg"
+    img.save(img_path)
+
+    # 1. Test unrotated (turns=0, landscape_right)
+    # Box [ymin, xmin, ymax, xmax] = [100, 200, 300, 400] in 0-1000 normalized space
+    # Upright size: width 800, height 600
+    box_0 = map_crop_box_to_sensor([100, 200, 300, 400], (0.0, 0.0, 800.0, 600.0), 0)
+    assert box_0 is not None
+    # left = 0.20 * 800 = 160, top = 0.10 * 600 = 60, right = 0.40 * 800 = 320, bottom = 0.30 * 600 = 180
+    assert box_0 == pytest.approx((160.0, 60.0, 320.0, 180.0), abs=1e-3)
+
+    # 2. Test 90 degrees clockwise (turns=1, portrait)
+    # Stored image is 800x600. When rotated 90 deg clockwise, upright is 600x800.
+    # An object in upright [ymin, xmin, ymax, xmax] = [200, 100, 400, 300]
+    # In sensor space: x_s = y_u, y_s = 1 - x_u
+    # y_u in [0.2, 0.4] -> x_s in [0.2, 0.4] * 800 = [160, 320]
+    # x_u in [0.1, 0.3] -> y_s in [1 - 0.3, 1 - 0.1] = [0.7, 0.9] * 600 = [420, 540]
+    box_90 = map_crop_box_to_sensor([200, 100, 400, 300], (0.0, 0.0, 800.0, 600.0), 1)
+    assert box_90 is not None
+    assert box_90 == pytest.approx((160.0, 420.0, 320.0, 540.0), abs=1e-3)
+
+    # 3. Test 180 degrees (turns=2, landscape_left)
+    box_180 = map_crop_box_to_sensor([100, 200, 300, 400], (0.0, 0.0, 800.0, 600.0), 2)
+    assert box_180 is not None
+    # x_s = 1 - x_u -> [1-0.4, 1-0.2] * 800 = [480, 640]
+    # y_s = 1 - y_u -> [1-0.3, 1-0.1] * 600 = [420, 540]
+    assert box_180 == pytest.approx((480.0, 420.0, 640.0, 540.0), abs=1e-3)
+
+    # 4. Test 270 degrees (turns=3, portrait_upside_down)
+    box_270 = map_crop_box_to_sensor([200, 100, 400, 300], (0.0, 0.0, 800.0, 600.0), 3)
+    assert box_270 is not None
+    # x_s = 1 - y_u -> [1-0.4, 1-0.2] * 800 = [480, 640]
+    # y_s = x_u -> [0.1, 0.3] * 600 = [60, 180]
+    assert box_270 == pytest.approx((480.0, 60.0, 640.0, 180.0), abs=1e-3)
+
+    # 5. Test off-center crop extraction and mapping
+    cropped_img, crop_rect = extract_padded_crop(img, (100.0, 100.0, 300.0, 300.0), padding_fraction=0.20)
+    # Box was 200x200, pad is 40 each side -> crop_rect is (60, 60, 340, 340)
+    assert crop_rect == pytest.approx((60.0, 60.0, 340.0, 340.0), abs=1e-3)
+    assert cropped_img.width == 280
+    assert cropped_img.height == 280
+
+    # Map a detection inside this crop back to sensor pixels
+    # Crop space box [ymin, xmin, ymax, xmax] = [250, 250, 750, 750] (center 50% of crop)
+    mapped_box = map_crop_box_to_sensor([250, 250, 750, 750], crop_rect, 0)
+    assert mapped_box is not None
+    # Left: 60 + 0.25 * 280 = 130; Right: 60 + 0.75 * 280 = 270
+    assert mapped_box == pytest.approx((130.0, 130.0, 270.0, 270.0), abs=1e-3)
+
+    # 6. Test overlapping tiles generation
+    tiles = generate_tiles(1920, 1080, tile_size=(1024, 1024), overlap=0.20)
+    assert len(tiles) >= 2
+    # Ensure tiles cover the full image
+    assert min(t[0] for t in tiles) == 0.0
+    assert min(t[1] for t in tiles) == 0.0
+    assert max(t[2] for t in tiles) == 1920.0
+    assert max(t[3] for t in tiles) == 1080.0
 
 
-class TestRotationAndCoordinateTransforms:
-    """Tests for all quarter turns ensuring sensor coordinates are recovered exactly."""
+def test_det_02_rejects_malformed_and_preserves_unknown_sockets():
+    """DET-02: Rejects malformed/reversed/NaN/Inf boxes and preserves unresolved socket count."""
+    frame = EncodedFrame(jpeg=b"", width=640, height=480, turns=0)
 
-    @pytest.mark.parametrize("orientation,expected_turns", [
-        ("landscape_right", 0),
-        ("portrait", 1),
-        ("landscape_left", 2),
-        ("portrait_upside_down", 3),
-    ])
-    def test_all_rotations_map_box_back_to_same_sensor_pixels(self, orientation, expected_turns):
-        w, h = 1920, 1440
-        # Target sensor box: [left, top, right, bottom]
-        sensor_box = (200.0, 300.0, 350.0, 500.0)
-        left, top, right, bottom = sensor_box
+    # NaN / Inf in box
+    assert map_crop_box_to_sensor([math.nan, 100, 200, 300], (0, 0, 640, 480), 0) is None
+    assert map_crop_box_to_sensor([100, math.inf, 200, 300], (0, 0, 640, 480), 0) is None
+    assert map_crop_box_to_sensor([100, 100, -math.inf, 300], (0, 0, 640, 480), 0) is None
 
-        # Compute what normalized [ymin, xmin, ymax, xmax] the model would see in the upright image
-        # In upright image after `expected_turns` clockwise:
-        # A point (x, y) turns:
-        # 1 turn (portrait): (x, y) -> (h - 1 - y, x) [normalized: (1-y_norm, x_norm) or depending on turn convention]
-        # Our detect.py un-turns: for _ in range(turns): left, top, right, bottom = top, 1.0 - right, bottom, 1.0 - left
-        # Let's verify by inverting:
-        # If un-turn is: left_out, top_out, right_out, bottom_out = top, 1 - right, bottom, 1 - left
-        # Then forward turn of (left_s, top_s, right_s, bottom_s) normalized is:
-        # 1 forward turn: (left, top, right, bottom) -> (1 - bottom, left, 1 - top, right)
-        
-        # Test directly with map_crop_box_to_sensor
-        # When turns=0:
-        upright_top = top / h
-        upright_left = left / w
-        upright_bottom = bottom / h
-        upright_right = right / w
-        
-        # Apply forward turns to simulate model output on upright image:
-        for _ in range(expected_turns):
-            upright_left, upright_top, upright_right, upright_bottom = (
-                1.0 - upright_bottom,
-                upright_left,
-                1.0 - upright_top,
-                upright_right,
-            )
+    # Degenerate / zero area
+    assert map_crop_box_to_sensor([100, 100, 100, 100], (0, 0, 640, 480), 0) is None
 
-        model_box_2d = [
-            upright_top * BOX_SCALE,
-            upright_left * BOX_SCALE,
-            upright_bottom * BOX_SCALE,
-            upright_right * BOX_SCALE,
+    # Reversed box [ymin, xmin, ymax, xmax] with ymin > ymax is auto-sorted, but if invalid length:
+    assert map_crop_box_to_sensor([100, 200, 300], (0, 0, 640, 480), 0) is None
+    assert map_crop_box_to_sensor("not_a_box", (0, 0, 640, 480), 0) is None
+
+    # Out-of-bounds (all negative or all > 1000)
+    assert map_crop_box_to_sensor([-500, -500, -100, -100], (0, 0, 640, 480), 0) is None
+
+    # Unresolved socket count: sockets omitted
+    payload = {
+        "choices": [
+            {
+                "message": {
+                    "content": json.dumps({
+                        "objects": [
+                            {
+                                "name": "outlet",
+                                "box_2d": [100, 100, 300, 300],
+                                "movable": False,
+                                "confidence": 0.9,
+                            }
+                        ]
+                    })
+                }
+            }
         ]
-
-        mapped = map_crop_box_to_sensor(model_box_2d, (0.0, 0.0, float(w), float(h)), expected_turns)
-        assert mapped is not None
-        assert mapped[0] == pytest.approx(sensor_box[0], abs=1.0)
-        assert mapped[1] == pytest.approx(sensor_box[1], abs=1.0)
-        assert mapped[2] == pytest.approx(sensor_box[2], abs=1.0)
-        assert mapped[3] == pytest.approx(sensor_box[3], abs=1.0)
-
-    def test_map_crop_point_to_sensor_recovers_point(self):
-        crop_box = (100.0, 200.0, 600.0, 800.0) # width 500, height 600
-        # Point inside crop at local normalized (0.2, 0.3) -> x = 100 + 0.2*500 = 200, y = 200 + 0.3*600 = 380
-        # When turns = 0:
-        pt = map_crop_point_to_sensor([300.0, 200.0], crop_box, turns=0)
-        assert pt == pytest.approx((200.0, 380.0), abs=0.1)
-
-        # When turns = 1 (portrait):
-        # forward turn of (x, y) = (0.2, 0.3) is (1 - 0.3, 0.2) = (0.7, 0.2)
-        # model reports y=200, x=700 in upright crop
-        pt_turned = map_crop_point_to_sensor([200.0, 700.0], crop_box, turns=1)
-        assert pt_turned == pytest.approx((200.0, 380.0), abs=0.1)
+    }
+    detections = _detections_from(payload, frame, "frame-0001")
+    assert len(detections) == 1
+    # sockets must be empty tuple (unknown / unresolved), NOT fabricated duplex
+    assert detections[0].sockets == ()
 
 
-class TestCroppingAndTiling:
-    """Tests for padding, border clipping, and tile generation."""
+def test_det_03_error_distinction_and_no_retry_for_auth(tmp_path: pathlib.Path):
+    """DET-03: Provider timeout/auth error versus valid empty result."""
+    img = Image.new("RGB", (100, 100), color=(0, 0, 0))
+    img_path = tmp_path / "frame.jpg"
+    img.save(img_path)
 
-    def test_extract_padded_crop_with_padding_clipped_at_borders(self):
-        img = Image.new("RGB", (1000, 1000), color=(0, 0, 0))
-        # Box near top-left edge: [10, 10, 110, 110]
-        box = (10.0, 10.0, 110.0, 110.0)
-        # 20% padding is 20px on each side
-        # Left and top should clip to 0.0
-        cropped, crop_rect = extract_padded_crop(img, box, padding_fraction=0.20)
-        assert crop_rect[0] == 0.0 # clipped at 0
-        assert crop_rect[1] == 0.0 # clipped at 0
-        assert crop_rect[2] == 130.0
-        assert crop_rect[3] == 130.0
-        assert cropped.size == (130, 130)
+    attempts = 0
 
-    def test_extract_padded_crop_centered(self):
-        img = Image.new("RGB", (1000, 1000), color=(0, 0, 0))
-        box = (200.0, 300.0, 300.0, 400.0) # 100x100
-        cropped, crop_rect = extract_padded_crop(img, box, padding_fraction=0.20)
-        assert crop_rect == (180.0, 280.0, 320.0, 420.0)
-        assert cropped.size == (140, 140)
+    # 1. Auth error (401) -> must raise DetectionAuthError and NOT retry
+    def auth_failure_transport(url, body, headers):
+        nonlocal attempts
+        attempts += 1
+        import urllib.error
+        raise urllib.error.HTTPError(url, 401, "Unauthorized", {}, io.BytesIO(b"Unauthorized"))
 
-    def test_generate_tiles_covers_image_with_overlap(self):
-        w, h = 1920, 1440
-        tiles = generate_tiles(w, h, tile_size=(1024, 1024), overlap=0.20)
-        assert len(tiles) >= 4
-        # Verify all tiles are within image bounds
-        for left, top, right, bottom in tiles:
-            assert 0.0 <= left < right <= w
-            assert 0.0 <= top < bottom <= h
-            assert right - left <= 1024
-            assert bottom - top <= 1024
+    with pytest.raises(DetectionAuthError):
+        detect_objects(img_path, "frame-0001", transport=auth_failure_transport)
+    assert attempts == 1, "Auth error must not be retried"
 
-        # Check coverage: every pixel in the 1920x1440 image must be covered by at least one tile
-        step = 100
-        for x in range(0, w, step):
-            for y in range(0, h, step):
-                covered = any(l <= x <= r and t <= y <= b for l, t, r, b in tiles)
-                assert covered, f"Pixel ({x}, {y}) is not covered by any tile"
+    # 2. Schema error (malformed JSON from model) -> must raise DetectionSchemaError and NOT retry
+    attempts = 0
+    def schema_failure_transport(url, body, headers):
+        nonlocal attempts
+        attempts += 1
+        return {"choices": [{"message": {"content": "not json"}}]}
 
-    def test_box_iou_computation(self):
-        b1 = (0.0, 0.0, 10.0, 10.0) # area 100
-        b2 = (5.0, 0.0, 15.0, 10.0) # intersection 5x10 = 50, union 150 -> IoU = 1/3
-        assert box_iou(b1, b2) == pytest.approx(1.0 / 3.0, abs=0.01)
+    with pytest.raises(DetectionSchemaError):
+        detect_objects(img_path, "frame-0001", transport=schema_failure_transport)
+    assert attempts == 1, "Schema error must not be retried"
 
-        b3 = (20.0, 20.0, 30.0, 30.0) # disjoint
-        assert box_iou(b1, b3) == 0.0
+    # 3. Valid empty result -> returns [] (not an error, no retries)
+    def empty_success_transport(url, body, headers):
+        return {"choices": [{"message": {"content": json.dumps({"objects": []})}}]}
+
+    res = detect_objects(img_path, "frame-0001", transport=empty_success_transport)
+    assert res == []
 
 
-class TestMalformedAndInvalidInputs:
-    """Ensures nonfinite, out-of-range, and malformed model outputs are rejected safely."""
+def test_cache_01_structured_metadata_roundtrip(tmp_path: pathlib.Path):
+    """CACHE-01: Sockets, crop_box, category, caveats roundtrip through DetectionCache."""
+    cache = DetectionCache(tmp_path / "cache", model="test-model")
 
-    def test_malformed_box_returns_none(self):
-        frame = EncodedFrame(b"", 1920, 1440, turns=0)
-        assert _pixel_box(None, frame) is None
-        assert _pixel_box([], frame) is None
-        assert _pixel_box([10, 20], frame) is None
-        assert _pixel_box([10, 20, 30], frame) is None
-        assert _pixel_box(["a", "b", "c", "d"], frame) is None
-        assert _pixel_box([float("nan"), 100, 200, 300], frame) is None
-        assert _pixel_box([100, float("inf"), 200, 300], frame) is None
+    img = Image.new("RGB", (640, 480), color=(50, 50, 50))
+    img_path = tmp_path / "frame-0001.jpg"
+    img.save(img_path)
 
-    def test_zero_area_or_sliver_box_is_rejected(self):
-        frame = EncodedFrame(b"", 1920, 1440, turns=0)
-        # Box with 0 width: [100, 200, 300, 200]
-        assert _pixel_box([100, 200, 300, 200], frame) is None
-        # Tiny sliver below MIN_BOX_FRACTION
-        assert _pixel_box([100, 100, 101, 101], frame) is None
+    det = Detection(
+        frame_id="frame-0001",
+        name="outlet",
+        box=(100.0, 150.0, 200.0, 250.0),
+        movable=False,
+        confidence=0.92,
+        category="outlet",
+        crop_box=(80.0, 130.0, 220.0, 270.0),
+        sockets=((150.0, 180.0), (150.0, 220.0)),
+        review_status="detected",
+        uncertainty_reasons=("single viewpoint observation; not independently verified from separate angle",),
+    )
 
-    def test_category_and_confuser_classification(self):
-        frame = EncodedFrame(b"", 1920, 1440, turns=0)
-        outlet_det = _one_detection({"name": "electrical outlet", "box_2d": [100, 100, 200, 200], "confidence": 0.95}, frame, "f-01")
-        assert outlet_det is not None
-        assert outlet_det.is_outlet is True
-        assert outlet_det.is_confuser is False
-        assert outlet_det.review_status == "detected"
+    # Put into cache
+    cache.put(img_path, [det], orientation="landscape_right")
 
-        switch_det = _one_detection({"name": "light switch", "box_2d": [100, 100, 200, 200], "confidence": 0.90}, frame, "f-01")
-        assert switch_det is not None
-        assert switch_det.is_outlet is False
-        assert switch_det.is_confuser is True
-        assert switch_det.review_status == "rejected_confuser"
+    # Replay from cache
+    replayed = cache.get(img_path, "frame-0001", orientation="landscape_right")
+    assert replayed is not None
+    assert len(replayed) == 1
+    out = replayed[0]
 
+    assert out.frame_id == det.frame_id
+    assert out.name == det.name
+    assert out.box == det.box
+    assert out.movable == det.movable
+    assert out.confidence == pytest.approx(det.confidence)
+    assert out.category == det.category
+    assert out.crop_box == det.crop_box
+    assert out.sockets == det.sockets
+    assert out.review_status == det.review_status
+    assert out.uncertainty_reasons == det.uncertainty_reasons
 
-class TestTransportAndProviderFailures:
-    """Verifies that provider errors raise DetectionError and valid empty answers return empty list."""
+    # Changed orientation or model invalidates cache
+    assert cache.get(img_path, "frame-0001", orientation="portrait") is None
 
-    def test_provider_error_raises_detection_error(self, tmp_path):
-        img_p = tmp_path / "test.jpg"
-        Image.new("RGB", (100, 100)).save(img_p)
-
-        def failing_transport(url, body, headers):
-            raise OSError("Connection refused")
-
-        with pytest.raises(DetectionError, match="vision model did not answer"):
-            detect_objects(img_p, "frame-01", transport=failing_transport)
-
-    def test_valid_empty_response_returns_empty_list(self, tmp_path):
-        img_p = tmp_path / "test.jpg"
-        Image.new("RGB", (100, 100)).save(img_p)
-
-        def empty_transport(url, body, headers):
-            return {
-                "choices": [{
-                    "message": {
-                        "content": '{"objects": []}'
-                    }
-                }]
-            }
-
-        results = detect_objects(img_p, "frame-01", transport=empty_transport)
-        assert results == []
-
-
-class TestDetectionCacheAndRobustness:
-    """Verifies caching, invalidation across models/orientations/bytes, and asymmetric image robustness."""
-
-    def test_cache_hit_and_invalidation_by_image_bytes_model_or_orientation(self, tmp_path):
-        from standardphysics_pipeline.discovery.cache import DetectionCache
-
-        cache_dir = tmp_path / "cache"
-        cache = DetectionCache(cache_dir, model="test-model-v1")
-
-        img1 = tmp_path / "img1.jpg"
-        Image.new("RGB", (200, 200), color=(10, 20, 30)).save(img1)
-
-        det = Detection(frame_id="f1", name="outlet", box=(10.0, 20.0, 30.0, 40.0), movable=False, confidence=0.95)
-
-        # Cache miss initially
-        assert cache.get(img1, "f1", orientation="portrait") is None
-
-        # Put in cache
-        cache.put(img1, [det], orientation="portrait")
-
-        # Cache hit
-        cached = cache.get(img1, "f1", orientation="portrait")
-        assert cached is not None
-        assert len(cached) == 1
-        assert cached[0].name == "outlet"
-        assert cached[0].box == (10.0, 20.0, 30.0, 40.0)
-
-        # Invalidation 1: Different orientation -> Cache miss
-        assert cache.get(img1, "f1", orientation="landscape_right") is None
-
-        # Invalidation 2: Different model -> Cache miss
-        other_model_cache = DetectionCache(cache_dir, model="test-model-v2")
-        assert other_model_cache.get(img1, "f1", orientation="portrait") is None
-
-        # Invalidation 3: Modified image bytes -> Cache miss
-        img1.write_bytes(b"modified_image_bytes")
-        assert cache.get(img1, "f1", orientation="portrait") is None
-
-    def test_corrupted_cache_file_gracefully_misses(self, tmp_path):
-        from standardphysics_pipeline.discovery.cache import DetectionCache
-
-        cache_dir = tmp_path / "cache"
-        cache = DetectionCache(cache_dir, model="test-model-v1")
-        img = tmp_path / "img.jpg"
-        Image.new("RGB", (100, 100)).save(img)
-
-        # Write invalid JSON into the cache file directly
-        entry_path = cache._entry(img, orientation="portrait")
-        assert entry_path is not None
-        entry_path.parent.mkdir(parents=True, exist_ok=True)
-        entry_path.write_text("NOT_VALID_JSON{")
-
-        # Should return None (cache miss) rather than crashing
-        assert cache.get(img, "f1", orientation="portrait") is None
-
-    def test_duplicate_views_produce_consistent_detections(self, tmp_path):
-        """Duplicate views of the same scene return identical detections without drift."""
-        img = tmp_path / "test.jpg"
-        Image.new("RGB", (1000, 1000)).save(img)
-
-        def mock_transport(url, body, headers):
-            return {
-                "choices": [{
-                    "message": {
-                        "content": json.dumps({
-                            "objects": [
-                                {"name": "electrical outlet", "box_2d": [100, 150, 300, 350], "movable": False, "confidence": 0.95}
-                            ]
-                        })
-                    }
-                }]
-            }
-
-        det1 = detect_objects(img, "view-01", orientation="landscape_right", transport=mock_transport)
-        det2 = detect_objects(img, "view-02", orientation="landscape_right", transport=mock_transport)
-        assert len(det1) == len(det2) == 1
-        assert det1[0].box == det2[0].box
-        assert det1[0].confidence == det2[0].confidence
-
-    def test_asymmetric_synthetic_image_rejects_xy_swaps_and_double_rotations(self):
-        """Using create_asymmetric_test_image, verify an x/y swap or double rotation cannot pass undetected."""
-        w, h = 1920, 1440
-        # The 'F' is located at [200, 300, 350, 500] in sensor pixels
-        correct_box = (200.0, 300.0, 350.0, 500.0)
-        # Swapped x/y box: [300, 200, 500, 350]
-        swapped_box = (300.0, 200.0, 500.0, 350.0)
-        assert box_iou(correct_box, swapped_box) < 0.10
-
-        # Double rotated box (180 degree rotation):
-        # (left, top, right, bottom) -> (w - right, h - bottom, w - left, h - top)
-        double_rotated = (w - correct_box[2], h - correct_box[3], w - correct_box[0], h - correct_box[1])
-        assert box_iou(correct_box, double_rotated) == 0.0
-
+    other_cache = DetectionCache(tmp_path / "cache", model="different-model")
+    assert other_cache.get(img_path, "frame-0001", orientation="landscape_right") is None

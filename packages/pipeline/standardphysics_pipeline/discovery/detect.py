@@ -145,6 +145,18 @@ class DetectionError(RuntimeError):
     """The frame could not be read, or the model did not answer."""
 
 
+class DetectionAuthError(DetectionError):
+    """Authentication or authorization failure (401, 403, missing key). Never retried."""
+
+
+class DetectionSchemaError(DetectionError):
+    """Malformed schema or unreadable model response. Never retried."""
+
+
+class DetectionTransientError(DetectionError):
+    """Rate limit (429), server error (500/502/503/504), network timeout. Retried with bounded backoff."""
+
+
 @dataclass(frozen=True)
 class Detection:
     frame_id: str
@@ -218,11 +230,13 @@ def detect_objects(
     frame = encode_frame(image_path, orientation)
     api_key = _api_key()
     if transport is None and not api_key:
-        raise DetectionError(f"neither {API_KEY_ENV} nor {FALLBACK_KEY_ENV} is set, so no frame can be read")
+        raise DetectionAuthError(f"neither {API_KEY_ENV} nor {FALLBACK_KEY_ENV} is set, so no frame can be read")
     body = _request_body(frame)
     for attempt in range(1, MAX_ATTEMPTS + 1):
         try:
             return _detections_from(_post(transport, body, api_key), frame, frame_id)
+        except (DetectionAuthError, DetectionSchemaError):
+            raise
         except DetectionError:
             if attempt == MAX_ATTEMPTS:
                 raise
@@ -303,7 +317,17 @@ def _post(transport: Transport | None, body: dict[str, Any], api_key: str) -> di
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     try:
         return (transport or _openrouter_post)(url, body, headers)
-    except (urllib.error.URLError, OSError, TimeoutError, ValueError) as error:
+    except DetectionError:
+        raise
+    except urllib.error.HTTPError as error:
+        if error.code in (401, 403):
+            raise DetectionAuthError(f"the vision model rejected authentication: HTTP {error.code}") from error
+        if error.code in (400, 422):
+            raise DetectionSchemaError(f"the vision model rejected request schema: HTTP {error.code}") from error
+        raise DetectionTransientError(f"the vision model had a transient HTTP error: HTTP {error.code}") from error
+    except (urllib.error.URLError, TimeoutError) as error:
+        raise DetectionTransientError(f"the vision model timed out or network failed: {error}") from error
+    except (OSError, ValueError) as error:
         raise DetectionError(f"the vision model did not answer: {error}") from error
 
 
@@ -329,13 +353,13 @@ def _objects_in(payload: dict[str, Any]) -> list[dict[str, Any]]:
     try:
         content = payload["choices"][0]["message"]["content"]
     except (KeyError, IndexError, TypeError) as error:
-        raise DetectionError(f"the vision model returned no message: {error}") from error
+        raise DetectionSchemaError(f"the vision model returned no message: {error}") from error
     if isinstance(content, list):
         content = "".join(part.get("text", "") for part in content if isinstance(part, dict))
     try:
         objects = json.loads(content)["objects"]
     except (ValueError, KeyError, TypeError) as error:
-        raise DetectionError(f"the vision model returned unreadable objects: {error}") from error
+        raise DetectionSchemaError(f"the vision model returned unreadable objects: {error}") from error
     return objects if isinstance(objects, list) else []
 
 

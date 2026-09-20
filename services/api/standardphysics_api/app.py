@@ -441,6 +441,22 @@ def _install_file_routes(app: FastAPI, database: Database, store: ArtifactStore)
         matches = sorted(directory.glob(f"*/renders/{finding_id}.png"), key=lambda path: int(path.parent.parent.name))
         return _file_or_404(matches[-1] if matches else None, "image/png")
 
+    @app.get("/api/scans/{scan_id}/crops/{crop_id}")
+    def get_crop(scan_id: uuid.UUID, crop_id: str) -> FileResponse:
+        with database.connect() as connection:
+            _scan_or_404(connection, scan_id)
+        if "/" in crop_id or "\\" in crop_id or ".." in crop_id:
+            raise ApiProblem(400, "invalid crop id")
+        filename = crop_id if (crop_id.endswith(".jpg") or crop_id.endswith(".png")) else f"{crop_id}.jpg"
+        crops_dir = (store.scan_dir(scan_id) / "crops").resolve()
+        crop_path = (crops_dir / filename).resolve()
+        if not str(crop_path).startswith(str(crops_dir)):
+            raise ApiProblem(400, "invalid crop path")
+        if not crop_path.is_file():
+            raise ApiProblem(404, "crop not found")
+        media_type = "image/png" if filename.endswith(".png") else "image/jpeg"
+        return FileResponse(crop_path, media_type=media_type)
+
 
 def _install_simulation_routes(app: FastAPI, database: Database, stages: Stages, worker: Worker) -> None:
     @app.post("/api/scans/{scan_id}/simulations", response_model=SimulationStatus, status_code=202)

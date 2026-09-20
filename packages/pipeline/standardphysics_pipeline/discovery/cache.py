@@ -20,7 +20,7 @@ from dataclasses import asdict
 
 from .detect import Detection
 
-CACHE_VERSION = "1"
+CACHE_VERSION = "2"
 
 
 class DetectionCache:
@@ -68,4 +68,9 @@ def _detection(item: dict, frame_id: str) -> Detection:
         box=tuple(item["box"]),
         movable=bool(item["movable"]),
         confidence=float(item["confidence"]),
+        category=item.get("category", "object"),
+        crop_box=tuple(item["crop_box"]) if item.get("crop_box") else None,
+        sockets=tuple(tuple(s) for s in item.get("sockets", ())),
+        review_status=item.get("review_status", "detected"),
+        uncertainty_reasons=tuple(item.get("uncertainty_reasons", ())),
     )
