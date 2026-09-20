@@ -1,0 +1,30 @@
+# The workspace people open in a browser. Deploy from the repository root:
+#
+#   fly deploy --config deploy/fly/web.toml --dockerfile Dockerfile .
+#
+# Stateless, so it may stop when nobody is looking and start again on the next
+# request. It reaches the API over Fly's private network, which means scans
+# never leave the datacenter on their way between the two.
+app = "standardphysics-web"
+primary_region = "sjc"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[processes]
+  app = "web"
+
+[env]
+  PORT = "3000"
+  SP_API_ORIGIN = "http://standardphysics-api.internal:8787"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = "suspend"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"

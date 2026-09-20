@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { SheetFrame } from "@/components/blueprint/SheetFrame";
@@ -30,6 +31,11 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
               <SheetField label="Measured against">ADA 2010 Standards</SheetField>
               <SheetField label="You need">An iPhone with LiDAR</SheetField>
             </dl>
+            <p className="text-sm text-ink-muted">
+              <Link href="/privacy" className="underline decoration-rule underline-offset-2">
+                What a scan of your shop contains, and how to delete it
+              </Link>
+            </p>
           </div>
           <AuthForm initialMode={wantsAnAccount ? "sign-up" : "sign-in"} />
         </div>

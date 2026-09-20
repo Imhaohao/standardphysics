@@ -1,3 +1,4 @@
+import { DeleteAccountButton } from "@/components/auth/DeleteAccountButton";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { SheetField } from "@/components/blueprint/SheetField";
 import { ScanShopButton } from "@/components/ScanShopButton";
@@ -14,6 +15,7 @@ export function HomeTitleBlock({ session, className = "" }: { session: Session; 
       <div className="flex flex-col items-start gap-3 p-4">
         <ScanShopButton />
         <SignOutButton />
+        <DeleteAccountButton />
       </div>
     </section>
   );

@@ -36,6 +36,7 @@
 		713304160FEAF00570DD4668 /* OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 29D039B41C8F6BE0EB2C67D7 /* OFL.txt */; };
 		75C17C86ACC84F5A8841278B /* CoverageEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27785166F1CA3E6AACF4C012 /* CoverageEngineTests.swift */; };
 		78589EC893CD951BDC0B4396 /* ResumableUploadStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C6263A656172ADAE5138BF /* ResumableUploadStore.swift */; };
+		7E88E95F4EEB81132EF2A0E3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8F25B66322A8547361197B53 /* Assets.xcassets */; };
 		812ABC8C0C2FCD7648188442 /* SceneCaptureConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46525BF5D2C5213EB7FED758 /* SceneCaptureConfiguration.swift */; };
 		837EBEDE2B395F2129F29D8A /* DraftingPaper.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFCDE194CA8E81C8F043EE76 /* DraftingPaper.swift */; };
 		850EE6F0C14C7ABDB7A9FB7F /* ScanExportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5281D7312D6F754DBC7B8377 /* ScanExportTests.swift */; };
@@ -102,6 +103,7 @@
 		81AACA30446540582EBA1366 /* ScanObjectLocator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanObjectLocator.swift; sourceTree = "<group>"; };
 		8B47F7A7DD60C5B93AABEAF7 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		8D8A97F1C401D6495E52BD85 /* CaptureSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureSessionStore.swift; sourceTree = "<group>"; };
+		8F25B66322A8547361197B53 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		9AA3EF92FB3C776BBFC316A2 /* FrameRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameRecorder.swift; sourceTree = "<group>"; };
 		9B07A989AF5FC994A8CD0AAA /* LidarMeshRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LidarMeshRecorder.swift; sourceTree = "<group>"; };
 		AB85814D71BB5E268CE101E1 /* AppRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRootView.swift; sourceTree = "<group>"; };
@@ -181,6 +183,7 @@
 		37FC49868356C76BDE07409F /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				8F25B66322A8547361197B53 /* Assets.xcassets */,
 				7C86286108BAD9DF536B8F94 /* Info.plist */,
 				8B47F7A7DD60C5B93AABEAF7 /* LaunchScreen.storyboard */,
 				AD0148C5F81831278467D543 /* Fonts */,
@@ -335,11 +338,11 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					7B17C7B55F7837EC54D13401 = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = K4Z2L5279D;
 						ProvisioningStyle = Automatic;
 					};
 					9074F9A122414A6C03A2B9E8 = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = K4Z2L5279D;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -378,6 +381,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7E88E95F4EEB81132EF2A0E3 /* Assets.xcassets in Resources */,
 				21EC357BB646034CFA5A333B /* AtkinsonHyperlegibleMono-Medium.ttf in Resources */,
 				359D768BFC5DBB7E9EC8CBB4 /* AtkinsonHyperlegibleMono-Regular.ttf in Resources */,
 				64F682303274D92E0E95F53D /* Karla-Bold.ttf in Resources */,
@@ -511,7 +515,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = K4Z2L5279D;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -544,8 +548,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CAPTURE_API_BASE_URL = "";
-				CAPTURE_WORKSPACE_BASE_URL = "";
+				CAPTURE_API_BASE_URL = "https://standardphysics-api.fly.dev";
+				CAPTURE_WORKSPACE_BASE_URL = "https://standardphysics-web.fly.dev";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = StandardPhysics/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -594,7 +598,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = K4Z2L5279D;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -620,8 +624,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CAPTURE_API_BASE_URL = "";
-				CAPTURE_WORKSPACE_BASE_URL = "";
+				CAPTURE_API_BASE_URL = "https://standardphysics-api.fly.dev";
+				CAPTURE_WORKSPACE_BASE_URL = "https://standardphysics-web.fly.dev";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = StandardPhysics/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (

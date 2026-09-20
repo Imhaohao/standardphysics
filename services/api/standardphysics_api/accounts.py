@@ -154,6 +154,16 @@ def owner_for_session(connection: sqlite3.Connection, token: str) -> Owner | Non
     return _owner(row) if row else None
 
 
+def delete_owner(connection: sqlite3.Connection, owner_id: uuid.UUID) -> None:
+    """Remove the account itself, after its scans have already gone.
+
+    The sessions go first so that a token cannot outlive the row it points at,
+    even for the moment between the two statements.
+    """
+    connection.execute("DELETE FROM sessions WHERE owner_id = ?", (str(owner_id),))
+    connection.execute("DELETE FROM owners WHERE id = ?", (str(owner_id),))
+
+
 def drop_expired_sessions(connection: sqlite3.Connection) -> int:
     cursor = connection.execute("DELETE FROM sessions WHERE expires_at <= ?", (_now().isoformat(),))
     return cursor.rowcount

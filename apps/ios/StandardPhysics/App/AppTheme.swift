@@ -124,7 +124,7 @@ extension Color {
 }
 
 struct AppButtonStyle: ButtonStyle {
-    enum Variant { case primary, secondary, capture }
+    enum Variant { case primary, secondary, destructive, capture }
     let variant: Variant
     @Environment(\.isEnabled) private var isEnabled
 
@@ -135,7 +135,7 @@ struct AppButtonStyle: ButtonStyle {
             .font(AppTheme.Typography.control)
             .frame(maxWidth: .infinity)
             .padding(.vertical, AppTheme.Spacing.control)
-            .foregroundStyle(variant == .secondary ? AppTheme.ink : AppTheme.onDark)
+            .foregroundStyle(label)
             .background(background(pressed: configuration.isPressed))
             .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.control, style: .continuous))
             .opacity(isEnabled ? 1 : 0.45)
@@ -143,10 +143,20 @@ struct AppButtonStyle: ButtonStyle {
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 
+    /// Red names the consequence, it does not fill the button. A destructive
+    /// action sits on the same quiet surface as any other secondary control.
+    private var label: Color {
+        switch variant {
+        case .secondary: AppTheme.ink
+        case .destructive: AppTheme.problem
+        case .primary, .capture: AppTheme.onDark
+        }
+    }
+
     private func background(pressed: Bool) -> Color {
         switch variant {
         case .primary: pressed ? AppTheme.ink.opacity(0.78) : AppTheme.ink
-        case .secondary: pressed ? AppTheme.secondaryPressed : AppTheme.secondaryIdle
+        case .secondary, .destructive: pressed ? AppTheme.secondaryPressed : AppTheme.secondaryIdle
         case .capture: pressed ? AppTheme.captureProgress : AppTheme.captureChrome
         }
     }
