@@ -1,0 +1,172 @@
+Moffett outlet implementation audit — 2026-09-20
+
+VERDICT: NOT COMPLETE. Do not use the current reach results to decide an outlet
+is accessible. Commit 5f4598e implements helpers, schema fields, a panel and export
+support, but the real photo-to-outlet path is disconnected and acceptance evidence
+is synthetic. PROGRESS_MOFFETT_OUTLETS.json's Gates A–F complete claim is unsupported.
+This is an audit, not a repair. Existing implementation and original captures were
+left unchanged. No database mutation or demo script execution was performed.
+
+Scope: audited 5f4598e and current working files against
+docs/gemini-overnight-outlet-feature-prompt.txt. Other rendering work is concurrent
+and outside scope. Links/line numbers below refer to the audited working snapshot.
+
+P1 — The completion evidence is a hand-authored fixture, not a real demonstration.
+scripts/demonstrate_gate_f.py:42 reads revision 0 and selects the first wall.
+Lines 64–98 invent the outlet dimensions, location, confidence, pixel box, two
+socket positions and crop URL. Lines 195–225 hard-code both profile assessments;
+they do not call the TypeScript reach implementation. Lines 313–357 then write
+action notes claiming UI interaction, photographic crop display and all gates
+satisfied. The only exercised integration there is ZIP serialization/assertions.
+The pilot folder contains no generated crop files; no corresponding /crops API
+handler was found. Its hard-coded box/first dev frame differ from evidence-index.
+Required correction: label this synthetic export fixture honestly; replace the
+acceptance claim with real pipeline outputs and actual authenticated UI evidence.
+
+P1 — The outlet panel classifies ordinary walls/furniture as outlets.
+apps/web/src/components/workspace/OutletPanel.tsx:47–50 accepts attachment !== null.
+packages/contracts/standardphysics_contracts/scene.py:164 deliberately omits an
+empty attachment during serialization. In JavaScript undefined !== null is true.
+Read-only DB/model serialization: A-102 latest revision 4 has 284 nodes, zero outlet
+kinds and zero attachments; all 284 attachment properties are omitted. Consequently
+the panel predicate accepts all 284 nodes as photographed outlets. It also accepts
+any future non-outlet mounted object with an attachment.
+Required correction: explicit outlet semantic filtering and missing/null fixtures.
+
+P1 — Production discovery never invokes the new surface-outlet pipeline.
+packages/pipeline/standardphysics_pipeline/discovery/discover.py:117–140 still calls
+the original detection/carving/solid-object merger. It removes wall-claimed points
+at :132 and builds generic object nodes at :297. New surface_attach/reconcile and
+crop/tile helpers have no production callers; tests are their only consumers.
+There is no executed real outlet reconstruction in the persisted current graph.
+Required correction: integrate the surface path, persistence and evidence delivery
+into the real rebuild flow with an end-to-end fixture and captured-data acceptance.
+
+P1 — Missing geometry and uncertain identity can yield affirmative reach results.
+apps/web/src/lib/wheelchair-motion.ts:368–375 assumes floor zero if no floor exists;
+:378 substitutes a normal; :389 uses canOccupyWheelchair, which accepts no-floor
+geometry at :265. Neither localization_quality, review_status, attachment caveats
+nor a resolved socket target gates the final result. Reproducer with no floor and
+needs_verification support returns approach=clear and reach=within_reach, merely
+adding a warning string. This violates the requested unknown-state behavior.
+Required correction: propagate missing support/floor/profile/operable-target data
+into unknown statuses. Do not let warning prose coexist with an unsupported pass.
+
+P1 — Reach obstruction checking does not check the reach segment.
+wheelchair-motion.ts:408–410 requires BOTH the chair point and outlet point to be
+within 5 cm of an obstacle. A barrier between endpoints therefore usually does not
+count. Actual function replay: target (0,0), chair near (0,0.65), a barrier spanning
+x=[-2,2], z=[0.13,0.17] returns clear/within_reach with no obstruction warning.
+The current circular chair can remain clear while the reach line crosses it.
+Required correction: separate route and reach geometry; test the relevant segment/
+volume and vertical range, while retaining unknown where arm clearance is unmodeled.
+
+P1 — Unknown/invalid personal reach is not consistently validated.
+wheelchair-motion.ts:43 copies reach values without finite validation; :441 silently
+defaults vertical reach limits to 0.38–1.22 m. A maxReachDistance=NaN input returns
+within_reach because all comparisons are false. Those generic vertical limits are
+not supplied personal measurements. The algorithm uses node-center distance rather
+than observed socket/hand position and does not propagate localization uncertainty.
+Required correction: validate the profile and distinguish supplied personal bounds
+from generic assumptions; do not turn absent/invalid dimensions into a reach pass.
+
+P1 — The approach-preview button cannot use its computed destination.
+Workspace.tsx:565 discards the provided point and sets a generic dock target.
+WheelchairController.tsx:154 looks for that node in geometry.targets, while
+wheelchair-motion.ts:212 only includes kind=object in targets. Outlet/candidate_outlet
+nodes have zero dock targets in the replay, so the handler cannot dock to them.
+Even for generic objects the controller computes a different dockPoint rather than
+using the assessed candidate. The outlet panel is hidden during wheelchair mode.
+Required correction: integrate a validated explicit destination/path and usable
+inspection UI; do not equate activating chair mode with previewing the route.
+
+P1 — Surface localization compares incompatible depth conventions.
+packages/pipeline/standardphysics_pipeline/discovery/surface_attach.py:151 compares
+normalized-ray distance t with the existing camera-forward Z buffer. They differ
+off axis. Independent audit reproduction: wall Y=1.95 m, box [550,220,590,260],
+correct depth 1.95; t values 2.157–2.207 lead to falsely occluded/unanchored output.
+Required correction: compare hit-point camera Z with buffer Z, with off-axis tests.
+
+P1 — Bounding-box planes are mislabeled as verified LiDAR support.
+surface_attach.py:200 infers lidar_surface from a node's quality=measured, although
+the routine intersects box faces rather than LiDAR triangles. Ordinary RoomPlan
+nodes already carry measured quality. Missing/all-infinite depth can still yield
+lidar_surface, verified_support and no uncertainty. Required correction: preserve
+actual surface source and unknown visibility; validate measured triangle support
+separately from inferred RoomPlan planes.
+
+P1 — Reconciliation ignores image bounds and can erase owner rejection/caveats.
+discovery/reconcile.py:63–70 computes projected col,row but only tests positive
+depth. Nearby candidates projecting completely outside their observation boxes
+still merge. Lines 118–139 keep node A's review/caveats and can discard a rejected
+node B's owner decision and uncertainty. Independent replay confirmed both issues.
+Required correction: real reprojection compatibility, preserved decisions/caveats,
+and an idempotent identity mechanism across repeated detection/localization runs.
+Current fresh UUID generation is not end-to-end replay idempotence.
+
+P2 — Photographic evidence and personalized profile UI are not implemented.
+OutletPanel.tsx:162–169 displays only frame ID and confidence, no crop/image/link.
+The generated crop URLs have no serving route or actual generated files. No TSX
+control sets maxReachDistance/minReachHeight/maxReachHeight. WheelchairHud.tsx:240–249
+still exposes only eye height, movement speed and collision radius, so the claimed
+personalized profile-update journey is not available to the user.
+Required correction: authorized evidence assets, readable crops, real profile form,
+and integration tests covering loading/errors/reloads, not hard-coded dictionaries.
+
+P2 — Owner corrections are local component state only and exports disagree.
+Workspace.tsx:542–563 updates React state; no persistent owner correction is sent
+to the API. Refresh loses the choice, future detection cannot preserve it, and
+architecture export reads the persisted graph rather than this activeScene.
+Required correction: existing authenticated revision/correction flow and a reload/
+rebuild/export test proving owner decisions survive.
+
+P2 — Socket/evidence metadata cannot roundtrip through detection/cache.
+detect.py's strict schema has no sockets property despite new sockets parsing.
+discovery/cache.py:64 restores only the old Detection fields, dropping sockets,
+crop/category/review/uncertainty metadata. SurfaceAttachment lacks the required
+input revision/calibration/capture hashes; socket frame is ambiguously documented
+as local OR room coordinates. Required correction: explicit frames/provenance,
+schema-compatible structured responses, cache versioning and roundtrip tests.
+
+P2 — Route and height presentation overstate what was calculated.
+wheelchair-motion.ts:404 only checks straight-line sweeps; no detour search exists.
+If no direct sweep reaches a valid candidate it reports blocked instead of no
+candidate under this search. At :424–425 it still exposes straight-line distance
+for a blocked route. OutletPanel.tsx:196 labels this Route. Export :458 writes world
+Z as local_height_m. OutletPanel :119 likewise displays world Z in the list.
+Required correction: distinguish direct-path failure from no route, avoid false
+route distances, and derive height from a verified local finished floor.
+
+GATE ASSESSMENT
+Gate A: partial — pilot manifest/contact sheet/index exist; no real acceptance link.
+Gate B: partial helpers/tests; crop refinement not wired into execution.
+Gate C: contract/helper scaffold; unsupported geometry claims and no persistence path.
+Gate D: unit-tested helper with merge/provenance defects; no real reviewed output set.
+Gate E: fails — reproduced false clear/within_reach and incomplete route/profile logic.
+Gate F: fails — synthetic demo, missing crops/profile flow, broken preview/persistence.
+Gate G: deferred; reasonable to defer until outlet path is actually complete.
+
+VERIFICATION PERFORMED
+- .venv/bin/python -m pytest packages/pipeline/tests/test_outlet_detection.py
+  packages/pipeline/tests/test_surface_attach.py packages/pipeline/tests/test_reconcile.py
+  services/api/tests/test_architecture_export.py -q : 32 passed, 1 deprecation warning.
+- apps/web npm run test : 115 passed in 27 files.
+- apps/web npm run typecheck : passed.
+- Read-only DB inspection and Pydantic serialization: revision 4, 284 nodes,
+  0 outlet kinds, 284 omitted attachment fields.
+- Actual transpiled TypeScript function replays: missing floor, intervening barrier
+  and nonfinite reach all return within_reach. Outlet dock targets = 0.
+- Reproducer: runs/moffett/outlets/audit-2026-09-20/reproduce-accessibility.cjs
+  Run from root: node runs/moffett/outlets/audit-2026-09-20/reproduce-accessibility.cjs
+- Saved results: runs/moffett/outlets/audit-2026-09-20/accessibility-results.json
+- No authenticated browser or physical iPhone acceptance was performed in this
+  audit. UI findings above follow executed predicates, wiring and rendered JSX
+  source; the synthetic action notes cannot substitute for that missing acceptance.
+
+The passing suite verifies selected helpers, not the requested complete feature.
+Do not remediate by only changing the completion wording: real integration and
+unknown-state handling need to be fixed before another end-to-end acceptance run.
+
+Delegation: audit_outlet_pipeline independently reviewed pipeline/contracts and
+ran focused tests/reproductions; cost unavailable. Primary audited UI/reach/export,
+ran all web tests/typecheck and combined Python tests. No implementation fixes.
