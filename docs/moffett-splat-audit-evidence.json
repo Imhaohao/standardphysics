@@ -1,0 +1,55 @@
+{
+  "audited_at": "2026-09-20T06:12:13.666611+00:00",
+  "repository_head": "5b48faa6389abb6d91c695146163d11394eb5157",
+  "scope": "Audit and build plan only; existing implementation files not edited",
+  "proposal_sha256": "ad1d48868ab3bf45e63bb3b2e05ae80dff19d0bb05a8c9217f25d174ff4d2313",
+  "reviewed_files": {
+    "scripts/train_deepfusion_splats.py": "4b9b5dc2ac567a3cdf9e5fc9b66177606b90335d642a5cd6c8e8832ba535be7c",
+    "scripts/train_structured_splats.py": "7a9b80bcb72cfb1392290e68350c53429721b432111c2448dffa33b7696a0ac0",
+    "scripts/run_splats.py": "50ac71d703242d742cf966ec06ae60c99c56c1f797cfe2303ed85bdaf975d708",
+    "packages/pipeline/standardphysics_pipeline/splats/deep_fusion.py": "3eaef458f340520b353a3b8d35f505741bc84a36aefaef848f1d07c5329be486",
+    "packages/pipeline/standardphysics_pipeline/splats/deep_gaussian_model.py": "555d9632d76be02bfbf9fe6202182b670ed5342b16cf3e282143ee820eb5a63d",
+    "packages/pipeline/standardphysics_pipeline/splats/feature_extractor.py": "efa867615ff730605bdf70d398f2e3a7d11bdfade3f2edb73dd8cb5bebde81da",
+    "packages/pipeline/tests/test_deep_fusion.py": "ec0a8128d85ddaac65195e1eb22a68041edbb48e35c42bef45fa82a607dadd86",
+    "packages/pipeline/standardphysics_pipeline/textures/camera.py": "2bf00d7fa2c9f327b4d47d79ed73a1033b593d71de452aa1b30c931822ff4b8c",
+    "packages/pipeline/standardphysics_pipeline/textures/project.py": "eb519b4a2bae9a439673e0fb20e42026a89ab99bcaafa98c52ce6d8c16d52494",
+    "services/api/standardphysics_api/splats.py": "6d929d3ca9b365ed647fa68309bd910c722c8b7d2b258784a1cfba46e8596a49"
+  },
+  "primary_sources": [
+    {
+      "url": "https://arxiv.org/html/2311.03620v1",
+      "evidence": "Detection architecture and Appendix B hardware/training; no explicit alignment in fusion"
+    },
+    {
+      "url": "https://openaccess.thecvf.com/content/CVPR2022/papers/Li_DeepFusion_Lidar-Camera_Deep_Fusion_for_Multi-Modal_3D_Object_Detection_CVPR_2022_paper.pdf",
+      "evidence": "Object detection; InverseAug/LearnableAlign; Table6 0.32s V100 inference"
+    },
+    {
+      "url": "https://arxiv.org/abs/2403.14627",
+      "evidence": "Actual learned Gaussian reconstruction; 22fps benchmark not an Apple/full-room claim"
+    },
+    {
+      "url": "https://arxiv.org/abs/2312.12337",
+      "evidence": "Actual learned Gaussian reconstruction from image pairs"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/donydchen/mvsplat/main/README.md",
+      "evidence": "CUDA installation, pretrained checkpoints, A100 training"
+    }
+  ],
+  "validation": {
+    "command": ".venv/bin/python -m pytest packages/pipeline/tests/test_deep_fusion.py -q",
+    "result": "5 passed in 1.12s",
+    "limits": "Basic plumbing only; no real reconstruction, MPS benchmark or production acceptance proved",
+    "typecheck": "Not applicable to text/JSON-only audit edits; no production code altered"
+  },
+  "verdict": "Do not promote random-weight scaffold. Benchmark deterministic calibrated surface Gaussians before optional learned reconstruction. No guaranteed speed/realism claim.",
+  "agents": [
+    {
+      "name": "audit_splat_plan_repo",
+      "tier": "Luna",
+      "work": "Read-only repository claim audit",
+      "cost": "unavailable"
+    }
+  ]
+}

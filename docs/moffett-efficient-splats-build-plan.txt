@@ -1,0 +1,339 @@
+AUDIT AND BUILD PLAN: LOWER-COMPUTE GAUSSIAN SPLATTING
+Reviewed 2026-09-19 against the supplied proposal, current workspace and primary sources.
+
+DECISION
+
+Do not implement the proposal as a proven “Google DeepFusion” reconstruction pipeline.
+Its useful idea is calibrated LiDAR/photo fusion. Its claimed Gaussian predictor,
+speed advantage, Apple compatibility and guaranteed visual improvements are not
+established by the cited papers. Build a small, deterministic surface-Gaussian
+baseline first. It is a hypothesis to benchmark, not a promise of photorealism.
+
+The existing Brush/Spark path already produces and displays genuine Gaussian splats.
+This plan changes how candidate splats are constructed, not the viewer format or
+the measured model used for collision and accessibility evidence.
+
+1. CLAIM AUDIT
+
+SUPPORTED: FusionViT is a hierarchical CameraViT/LidarViT/MixViT 3D object detector.
+The paper says explicit pixel-to-point alignment is unnecessary in its fusion
+design. Appendix B reports an RTX A6000, 60 epochs and 50% dataset sampling [1].
+This does not establish that arbitrary handheld use is impossible, or that a
+multi-GPU cluster is required. Its reported experiments concern traffic detection.
+
+SUPPORTED WITH CORRECTION: DeepFusion uses InverseAug and LearnableAlign for
+LiDAR-camera 3D object detection [2]. LearnableAlign attends from a deep voxel
+feature to corresponding camera features. The proposed attention across views
+for individual surface points is a new adaptation, not the published algorithm.
+
+UNSUPPORTED: DeepFusion directly predicts useful Gaussian positions, covariances,
+opacity or spherical harmonics. Neither cited detector establishes this. New
+Gaussian heads require reconstruction supervision and training, or compatible
+trained weights. A pretrained image backbone alone does not train the heads.
+
+MISLABELED: InverseAug reverses recorded training augmentations, in reverse order.
+It does not solve ARKit drift, exposure, moving people or calibration errors, and
+is not the name for ordinary room-to-camera conversion. With no synthetic training
+augmentation there is no InverseAug stage to add; reuse PhotoCamera.project.
+
+UNSUPPORTED: 10–50x fewer FLOPs, milliseconds per frame, full-room reconstruction
+under 60 seconds, fine-tuning under two minutes, or working Apple/edge deployment.
+DeepFusion Table 6 reports 0.32 seconds on a V100 for its detection benchmark,
+versus 0.16 seconds for the single-modal baseline and 0.28 for InputFusion [2].
+Those numbers neither benchmark Gaussian reconstruction nor demonstrate a speed
+win over Brush. The public code link is TensorFlow/Lingvo, not this new PyTorch port.
+
+MISLEADING COMPLEXITY COMPARISON: Dense attention has a quadratic token term;
+localized aggregation can reduce that term. Whole-pipeline work still includes
+image decoding, feature extraction, candidate-view search, projection, visibility,
+surface sampling, rendering, fitting and export. Naively projecting P points into
+M views costs O(P*M); bounded K-view aggregation does not remove that search cost.
+The current scaffold stores keys and values for every point/view: at P=150,000,
+M=32, D=64, float32, those two arrays alone occupy about 2.46 GB decimal, before
+the original lists, stack copies, image features and temporary products.
+
+FALSE GUARANTEE: Surface-aligned scales “eliminate” needles and floaters. Hard
+constraints can prevent specified shapes or displacement, but cannot correct
+wrong geometry, normals, poses, occlusion or unsupported colors. A soft loss is
+not a strict constraint, especially if never optimized.
+
+INCONSISTENT SHAPE RULES: max(s)/min(s) <= 3 across all axes conflicts with a thin
+surface splat whose normal-axis scale is <= tangent scale/3, except at a boundary
+case. Bound the two tangent scales relative to each other; give the thickness its
+own bounded range. Do not prohibit useful flat splats while claiming to create them.
+
+UNSUPPORTED: Multi-view feature variance determines view-dependent appearance,
+or consistency alone determines opacity. SH fitting needs viewing directions and
+sufficient angular support. Exposure, motion and misregistration also create
+variance. Opacity depends on sampling density and compositing as well as evidence.
+
+UNSUPPORTED CAUSAL CLAIM: Brush is “blind gradient descent” that causes the defects.
+Our Brush runs use calibrated views, LiDAR initialization and masks. Observed
+blur/floaters and roughly 18.6–18.8 dB scores do not identify their unique cause.
+The high-resolution 30k trial ran approximately an hour; “15–30 minutes per room”
+is not a reliable universal baseline. Hitting a configured splat cap does not
+prove that the cap caused the visual ceiling.
+
+2. WHAT CURRENT CODE ACTUALLY DOES
+
+The proposed filenames now exist in the workspace, including untracked work.
+This audit did not modify them or treat them as production-ready.
+
+Critical blockers before calling the current scaffold a learned reconstruction:
+
+- scripts/train_deepfusion_splats.py:159–173 constructs fresh random weights and
+  invokes predict_splats. No checkpoint load, optimizer, photometric training or
+  learned-model lineage is present. A fast random forward pass is not reconstruction.
+- splats/deep_fusion.py:112–160 checks camera frustum membership, not occlusion.
+  No depth buffer or person mask is used. Out-of-view is not the same as hidden.
+- The all-invalid-view softmax uses equal finite negative scores, producing uniform
+  weights rather than zeros. A later fallback prevents using that aggregate, but
+  does not satisfy the proposal's zero-attention contract. Test this explicitly.
+- Its Torch-to-NumPy projection detaches geometry and copies it to CPU. It cannot
+  supply a differentiable camera/position projection for the proposed fine-tuning.
+- deep_gaussian_model.py:175–225 has unconstrained learned scales and random
+  rotations; its anisotropy loss is not applied. Rotations are not aligned to normals.
+- Unseen opacity is merely reduced by two logits; unseen points are not necessarily
+  removed or transparent. There is no evidence-based visibility/opacity guarantee.
+- Only SH0 is exported. sh_rest exists in a container but is not written to PLY.
+  A trained head may legitimately predict SH coefficients directly; the error is
+  absent training, not that every SH head must first output RGB. Deterministically
+  sampled RGB must use the renderer's explicit RGB-to-SH convention.
+- The CLI can continue after camera-loading failures, treats compression failure
+  as a warning, writes outputs directly and lacks the promised provenance/manifest.
+- --seed seeds NumPy sampling, not the Torch network; it does not make the learned
+  outputs reproducible. MPS availability is device selection, not a benchmark.
+
+Five existing test_deep_fusion.py tests passed during this audit. They establish
+basic shapes, simple projection, normalized quaternions and a written PLY header.
+They do not establish trained weights, occlusion handling, color fidelity, hard
+shape bounds, rendering quality, MPS training or sub-minute performance.
+
+Reuse existing ownership rather than adding duplicate camera or export systems:
+
+- textures/camera.py: PhotoCamera, load_cameras, resized/project, per-frame intrinsics.
+  It already handles ARKit -Z forward to pixel +Z forward and room transforms.
+- textures/scan_colour.py: scan_geometry, vertex_normals and photo-color baseline.
+- textures/project.py: depth buffers, triangle depth rasterization, view_samples,
+  bilinear sampling, TopViews, exposure utilities and color conversions.
+- textures/surface_photos.py: existing triangle visibility implementation and tests.
+  Choose one suitable implementation after fixtures; do not stack incompatible gates.
+- scripts/train_structured_splats.py: initialization and SH0 encoding, not training.
+- scripts/compress_moffett_splat.py: atomic output/provenance and converter checks.
+- services/api/standardphysics_api/splats.py: safe filenames, rigid transforms,
+  revision/hash validation and existing authenticated asset delivery.
+- GaussianSplatScan/Spark and current viewer source selection: retain as consumers.
+
+Paths above are relative to the repository; splats/ means
+packages/pipeline/standardphysics_pipeline/splats/ and textures/ means its sibling.
+Observed repository HEAD: 5b48faa, with additional uncommitted work; snapshot hashes
+are in docs/moffett-splat-audit-evidence.json.
+
+3. PROPOSED BUILD: CALIBRATED SURFACE GAUSSIANS
+
+Captures -> fixed measured surface -> visible photo samples -> surface Gaussians
+         -> PLY/SPZ candidate -> existing Spark viewer -> measured comparison gate
+
+Collision, measurement and architecture export continue reading the measured
+scene graph. Gaussian appearance never becomes evidence of ADA compliance or a
+centimetre-accurate surface measurement.
+
+Stage 0 — Freeze the benchmark and protect the current work.
+
+Create an experiment directory with capture/image/pose/mask hashes, transforms,
+hardware/software versions and explicit training/evaluation frame IDs. Preserve
+all originals and revision assets. Existing center held-out views remain a useful
+diagnostic, but add spatially separated held-out sections: adjacent video frames
+alone can exaggerate generalization. Ensure evaluated frames are not color inputs.
+Fix the same independently reviewed person masks and static-region masks for all
+comparisons. Always show full images too, so masking cannot hide missing content.
+
+Start on one center-room patch with both an easy textured surface and a difficult
+thin edge/outlet. Baselines: existing colored LiDAR surface, a best-photo surface
+Gaussian variant, and the published Brush variant. Record a full-scene Brush
+reference separately; do not claim an algorithm speed win by comparing 32 reduced
+images with 400 full-resolution images without disclosing the quality/workload gap.
+
+Gate: inputs, axes and benchmark views are reproducible; preserve prior outputs.
+
+Stage 1 — Make the current experimental entry point honest.
+
+Coordinate with the owner of the untracked scaffold before changing it. A learned
+mode must require a compatible trained checkpoint, verified schema/hash and known
+training provenance, or explicitly run training. No silent random-weight inference.
+Missing/invalid cameras, empty valid observations, nonfinite arrays and requested
+compression failures must fail clearly. A geometry-only output must be explicitly
+named as such. No automatic publication from an experimental CLI.
+
+Do not implement new neural heads as the prerequisite for the deterministic path.
+Keep any research scaffold separate from the measured baseline; avoid branding our
+custom method as Google's implementation. Deterministic CLI name: build_surface_splats.
+
+Stage 2 — Construct a conservative, visibility-checked color baseline.
+
+Use the measured triangle mesh for occlusion, not only sparse sampled seeds.
+Load it and calibrated cameras through canonical helpers. Confirm projected edges
+against real images before constructing splats. Preserve per-frame intrinsics,
+stored sensor image orientation and each room's accepted transform exactly once.
+
+Select candidate photos by coverage, baseline/view angle, sharpness and resolution;
+time stride alone is insufficient. Reject people/moving regions, out-of-image points
+and depth-occluded samples. Unknown depth is unknown visibility; record/reject it
+conservatively rather than assume visible. Thin objects and uncertain normals need
+explicit fixture tests. Existing coarse depth gates previously lost coverage, so
+do not blindly reuse a default resolution or erosion setting.
+
+Process point blocks and stream images; retain only bounded top-K observations
+per surface sample (initial experiment K=4–8). Do not allocate P*M*D features.
+First use best-view RGB as an auditable baseline. Add robust weighted fusion only
+if it beats best-view sharpness without doubling edges. Reject inconsistent samples
+rather than averaging ghosts. Aggregate in linear light, then encode the expected
+display color/SH convention; verify the complete renderer roundtrip with color patches.
+
+Gate: an occluded red surface cannot inherit blue foreground pixels; all-rejected
+samples have no photographic splat; real-edge reprojection and visibility diagnostics
+pass. Report supported area, not just the percentage of remaining points colored.
+
+Stage 3 — Turn supported samples into bounded surface Gaussians.
+
+Keep means fixed on the measured surface for the first implementation. Start with
+supported vertices; if a measured triangle needs more samples, sample its surface
+at spacing determined by triangle extent and useful source pixel footprint, under
+an explicit budget. Subdivision improves texture sampling, not geometric accuracy.
+Do not invent geometry in LiDAR holes or stretch splats to conceal them.
+
+Use stable local tangent frames from valid mesh normals. Invalid/degenerate normals
+must be flagged/rejected, not silently presented as a measured +Z orientation.
+Define covariance as R diag(s_t1^2, s_t2^2, s_n^2) R^T. Derive tangent sizes from
+local spacing, bound tangent anisotropy, and bound normal thickness separately.
+Choose actual bounds with synthetic coverage/edge tests and measured sample scale;
+do not use universal 2 cm values as a claim about capture accuracy.
+
+Export normalized quaternions in the existing converter's order, log-scales,
+opacity logits, SH0 and metric Z-up positions. For the current SH convention,
+f_dc=(RGB-0.5)/0.28209479177387814. Test it through SPZ and Spark, not just the header.
+Calibrate a conservative density-aware opacity on a synthetic plane; evidence
+confidence is stored separately and must not be equated with alpha or metric error.
+Prune unsupported splats outright. Initial SH degree is zero.
+
+Gate: finite outputs, no off-surface displacement, correct tangent alignment,
+bounded scales, no holes/opacity saturation on a known sampled plane, correct color,
+axes and file roundtrip. This constrains failure modes; it does not certify realism.
+
+Stage 4 — Benchmark before any learned or iterative extension.
+
+On this machine (Apple M5 Pro, 48 GiB unified memory), run the pilot cold and warm,
+then repeat three times without competing GPU jobs. Use a declared point/image/
+resolution configuration, e.g. a 150k-point, 32-view pilot. Report decode, mask/cache,
+visibility, color, construction, compression and render-load times separately,
+as well as end-to-end wall time and peak memory. GPU timings require synchronization.
+Cached preprocessing is not free: report its cost and whether cache creation was
+included. Report energy only if measured; estimated FLOPs must be labeled estimates.
+
+Under 60 seconds is a stretch target for the specified pilot, not an acceptance
+promise for all 3,524 frames or the full floor. A first engineering speed gate is
+at least 5x lower end-to-end build time than a documented comparable Brush workload,
+while passing the quality gate. This is a proposed target, not a measured result.
+
+Quality gate: compare the same held-out RGB crops, static-region PSNR/SSIM and
+full-image outputs, surface support and 1.15 m seated trajectories. Require no
+new ghost surfaces or loss of critical outlets/edges in the reviewed patch. Do
+not choose a candidate solely because a masked average PSNR rises. If measurements
+and visual review disagree, investigate rather than publish. If it is cheaper but
+visibly worse, label it a fast draft option; do not replace the best preview.
+
+Gate: proceed to all four rooms only after an actual useful speed/quality tradeoff
+is demonstrated on both easy and difficult patches. If fixed-surface photo fusion
+still blurs, diagnose camera residuals, geometry, sampling and source sharpness;
+reformatting a colored mesh as Gaussians cannot recover missing evidence.
+
+Stage 5 — Optional extensions, only after measured failure analysis.
+
+A. Directional appearance: fit regularized SH1 coefficients from direction-tagged,
+exposure-consistent observations using small least-squares systems, with rank and
+angular-coverage checks and SH0 fallback. SH2 needs nine basis coefficients per
+color and adequate directional support, not just nine almost identical views.
+Evaluate held-out views; do not mistake moving people for reflectance.
+
+B. Short refinement: use an already working Metal-compatible differentiable
+rasterizer only after verifying forward/backward correctness and its exact ops on
+the target device. Spark's display renderer does not supply this automatically.
+Start with color/opacity and fixed geometry; add bounded surface residuals only
+when evidence justifies them. Apply a wall-clock budget and compare 0/100/500-step
+results. Neither 500–1,000 steps nor MPS tensor support guarantees a fast fit.
+Avoid building a new rasterizer as an incidental dependency of this plan.
+
+C. Learned feed-forward research: only consider a model trained for Gaussian view
+synthesis. MVSplat and pixelSplat are real examples [3,4], unlike the two detection
+papers. MVSplat reports 22 fps on its benchmark, but its official setup uses CUDA
+and its README reports A100 training [5]. That is not an Apple drop-in or proof of
+metric full-floor reconstruction. Audit weight/code licenses, checkpoint provenance,
+camera conventions, scale preservation, input limits, domain shift, memory and any
+custom GPU ops before a small test. Count pretraining/porting cost separately from
+inference. Do not choose a winner before a local benchmark.
+
+Stage 6 — Product integration only for a verified candidate.
+
+Reuse atomic compression and the existing authenticated, revision/hash-pinned
+manifest path. No automatic “immediate discoverability” for incomplete candidates.
+Write candidate artifacts and provenance separately; publish only after validation,
+without overwriting earlier assets or inventing a new revision identity. Include
+algorithm/version, every input hash, masks, camera selection, parameters, coordinate
+conventions, output hashes, runtime/memory and benchmark results. The renderer need
+not know whether an SPZ came from Brush or deterministic photo fusion.
+
+Verify all four accepted rigid transforms, alignment seams, phone layout, actual
+iPhone load/memory, keyboard/touch movement, collision invariants and architecture
+download authorization/revision identity. Measure rendered-frame timing, not browser
+animation callback frequency. Preserve the existing measured-model fallback and
+quality/coverage labels. Re-run relevant typecheck/tests for changed production
+layers; document physical-device verification separately from responsive layout.
+
+4. FIRST IMPLEMENTATION SLICE AND STOP CONDITIONS
+
+First slice: one CLI plus the smallest surface-building module in existing splats/;
+reuse camera/visibility/color/export helpers and add only missing shared behavior at
+its owner. Add focused projection/occlusion, color, covariance, invalid-input and
+SPZ roundtrip tests plus one patch benchmark report. No new API, service, CNN,
+training infrastructure or mobile architecture is required for this slice.
+
+Stop or change approach if calibrated edges do not align, source detail is absent,
+the selected geometry cannot represent it, or the quality advantage disappears on
+held-out sections. Record observed limits and uncertain causes separately. A failed
+algorithm is not proof that all existing captures are unusable. Never fabricate
+outlet placement, drawer mechanisms, hidden faces, legal rationale or precision.
+
+Acceptance for the first slice: deterministic, source-supported, bounded-memory
+candidate; validated rendering/export; measured speed/quality comparison; safe
+failure and original preservation. Photorealism is a separate visual acceptance
+decision and remains unachieved until demonstrated.
+
+PRIMARY SOURCES
+
+[1] FusionViT, arXiv:2311.03620, Sections 3–4 and Appendix B:
+    https://arxiv.org/html/2311.03620v1
+[2] DeepFusion, CVPR 2022, Sections 3.3/4.1 and Table 6:
+    https://openaccess.thecvf.com/content/CVPR2022/html/Li_DeepFusion_Lidar-Camera_Deep_Fusion_for_Multi-Modal_3D_Object_Detection_CVPR_2022_paper.html
+    https://openaccess.thecvf.com/content/CVPR2022/papers/Li_DeepFusion_Lidar-Camera_Deep_Fusion_for_Multi-Modal_3D_Object_Detection_CVPR_2022_paper.pdf
+[3] MVSplat, arXiv:2403.14627: https://arxiv.org/abs/2403.14627
+[4] pixelSplat, arXiv:2312.12337: https://arxiv.org/abs/2312.12337
+[5] MVSplat official implementation, installation and training requirements:
+    https://github.com/donydchen/mvsplat
+
+The proposed deterministic design and its targets are engineering recommendations,
+not claims made by these papers. This deliverable is an audit/build plan only;
+no reconstruction or production implementation was changed by the audit.
+
+TASK -> MODEL-TIER DELEGATION
+
+Owners work on separate files and preserve concurrent edits. Each future completed
+feature gets its own verified commit on a non-default branch; never push unasked.
+
+Task                                             | Model tier
+-------------------------------------------------|--------------------------------
+Architecture, evidence and promotion decisions    | Frontier (Fable/Sol tier)
+Visibility/color reuse and CLI integration        | Terra
+Gaussian geometry/export integration and tests   | Terra
+Small fixtures, benchmark/source/checkpoint audit | Luna/Sonnet
+UI/device checks                                 | Luna/Sonnet; primary quality review
+Sensitive/offline image batches, if needed        | Local processing; no cloud upload
