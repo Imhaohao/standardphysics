@@ -4,7 +4,7 @@
   "created_at": "2026-09-20T14:15:00-07:00",
   "updated_at": "2026-09-20T14:15:00-07:00",
   "scan_id": "f143082d-f529-494b-b80d-97729234e334",
-  "terminal_status": "incomplete",
+  "terminal_status": "implementation_ready_real_acceptance_blocked",
   "gates": {
     "G0": "passed",
     "G1": "passed",
@@ -16,7 +16,7 @@
     "G7": "passed",
     "G8": "passed",
     "G9": "open",
-    "G10": "open"
+    "G10": "passed"
   },
   "receipts": {
     "STATUS-01": {
@@ -795,6 +795,170 @@
         "apps/web/src/components/workspace/OutletUi.test.ts": "214fb3745e1b1ac34477fd5a8bbc50340da5aa61836827b29fa899ee9f802048"
       },
       "review_identity": "self_review"
+    },
+    "REAL-01": {
+      "test_id": "REAL-01",
+      "gate_id": "G9",
+      "evidence_kind": "real_capture",
+      "source_hash": "2fce2b73a71ead820f333d18a2ccfb5e7d8f505d0b7667f39db702fda4b38b94",
+      "input_hashes": [
+        "70c3593e6e75ff4a22de3d871ab4e86532b536e1cd48f83305d8b69136038ad9"
+      ],
+      "command_or_ui_action": "python3 -c 'import os; print(os.getenv(\"DISCOVERY_API_KEY\"))'",
+      "started_at": "2026-09-20T14:49:10-07:00",
+      "finished_at": "2026-09-20T14:49:12-07:00",
+      "exit_status_or_assertion_status": "blocked",
+      "expected_behavior": "Actual automatic detector and production pipeline persist at least one photo-supported outlet/candidate; no finished nodes injected",
+      "actual_behavior": "Blocked by external detector credential: DISCOVERY_API_KEY and OPENROUTER_API_KEY are unset in the environment. Production pipeline and surface attachment verified with fixtures, but real Moffett automatic detection cannot run without API credentials; synthetic detector response substitution is explicitly prohibited by contract.",
+      "artifact_paths_and_hashes": {
+        "datasets/phone/moffett/preservation-manifest.json": "70c3593e6e75ff4a22de3d871ab4e86532b536e1cd48f83305d8b69136038ad9"
+      },
+      "review_identity": "self_review"
+    },
+    "REAL-02": {
+      "test_id": "REAL-02",
+      "gate_id": "G9",
+      "evidence_kind": "real_capture",
+      "source_hash": "2fce2b73a71ead820f333d18a2ccfb5e7d8f505d0b7667f39db702fda4b38b94",
+      "input_hashes": [
+        "70c3593e6e75ff4a22de3d871ab4e86532b536e1cd48f83305d8b69136038ad9"
+      ],
+      "command_or_ui_action": "inspect real capture photo-manifest and source frames",
+      "started_at": "2026-09-20T14:49:15-07:00",
+      "finished_at": "2026-09-20T14:49:17-07:00",
+      "exit_status_or_assertion_status": "blocked",
+      "expected_behavior": "Photographic identity supported and localization accurately qualified; no invented count/geometry/confidence",
+      "actual_behavior": "Blocked: Automatic detection on preserved Moffett photos blocked by unset DISCOVERY_API_KEY. Manual annotation cannot pass automatic recognition gate per G9 specification.",
+      "artifact_paths_and_hashes": {
+        "datasets/phone/moffett/preservation-manifest.json": "70c3593e6e75ff4a22de3d871ab4e86532b536e1cd48f83305d8b69136038ad9"
+      },
+      "review_identity": "self_review"
+    },
+    "REAL-03": {
+      "test_id": "REAL-03",
+      "gate_id": "G9",
+      "evidence_kind": "real_capture",
+      "source_hash": "709c3d30b2b596cd34c386dcd01e431451361fe8a6377881bddda22cfa3edaf0",
+      "input_hashes": [
+        "70c3593e6e75ff4a22de3d871ab4e86532b536e1cd48f83305d8b69136038ad9"
+      ],
+      "command_or_ui_action": "authenticated browser journey on real candidate revision",
+      "started_at": "2026-09-20T14:49:20-07:00",
+      "finished_at": "2026-09-20T14:49:22-07:00",
+      "exit_status_or_assertion_status": "blocked",
+      "expected_behavior": "Recorded actual authenticated journey; unknown personal reach allowed; no fixture substitution",
+      "actual_behavior": "Blocked: Real candidate revision cannot be produced automatically without DISCOVERY_API_KEY. UI components and review persistence verified via UI-01 through UI-04 and PERSIST-01.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/components/workspace/Workspace.tsx": "709c3d30b2b596cd34c386dcd01e431451361fe8a6377881bddda22cfa3edaf0"
+      },
+      "review_identity": "self_review"
+    },
+    "REAL-04": {
+      "test_id": "REAL-04",
+      "gate_id": "G9",
+      "evidence_kind": "real_capture",
+      "source_hash": "2fce2b73a71ead820f333d18a2ccfb5e7d8f505d0b7667f39db702fda4b38b94",
+      "input_hashes": [
+        "70c3593e6e75ff4a22de3d871ab4e86532b536e1cd48f83305d8b69136038ad9"
+      ],
+      "command_or_ui_action": "collect real-acceptance artifacts and run receipts",
+      "started_at": "2026-09-20T14:49:25-07:00",
+      "finished_at": "2026-09-20T14:49:27-07:00",
+      "exit_status_or_assertion_status": "blocked",
+      "expected_behavior": "Input/output/source hashes, detector mode and candidate revision match; no synthetic-completion records reused",
+      "actual_behavior": "Blocked: Real capture run blocked by external credential; no synthetic completion artifacts reused.",
+      "artifact_paths_and_hashes": {
+        "datasets/phone/moffett/preservation-manifest.json": "70c3593e6e75ff4a22de3d871ab4e86532b536e1cd48f83305d8b69136038ad9"
+      },
+      "review_identity": "self_review"
+    },
+    "CHECKS-01": {
+      "test_id": "CHECKS-01",
+      "gate_id": "G10",
+      "evidence_kind": "fixture",
+      "source_hash": "2fce2b73a71ead820f333d18a2ccfb5e7d8f505d0b7667f39db702fda4b38b94",
+      "input_hashes": [
+        "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+        "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+        "9c7824d0591587b3173a10215d138e42fe677cdd52b01b0abd7cb5016494ca14",
+        "38575b9b37f2930947a4be3edf4011e69fafa10da2dd4cb4a5bbe04e66d4252f",
+        "84086dd906631d626da81289f6140a1c5e59ed9aed0b56e50b4a071dda9c32ea"
+      ],
+      "command_or_ui_action": "pytest packages/pipeline/tests services/api/tests && cd apps/web && npm run typecheck && npm test",
+      "started_at": "2026-09-20T14:50:06-07:00",
+      "finished_at": "2026-09-20T14:50:20-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Required checks actually run and pass; unrelated/preexisting failures explicitly separated",
+      "actual_behavior": "16/16 pipeline tests passed; 4/4 API outlet review and export tests passed; Next.js route typegen and TypeScript tsc passed; 29/29 web test suites (138/138 tests) passed.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/tests/test_discover_outlets.py": "55b1114b0b14c330f81d898495a86a60395d38fa97efd9c1555a153ca5e1104e",
+        "packages/pipeline/tests/test_surface_geometry.py": "50c5ee9a6d0c4228945a0e98031d2008ebecfcda9426f8d169d505187cc8bf2c",
+        "packages/pipeline/tests/test_reconcile_outlets.py": "bf543be444dd11019685ca186d63d666d40523298aeb9ef89758e5ff40bcadbc",
+        "services/api/tests/test_outlet_review_and_export.py": "60063b0833c26c852d3ec9d398ce8075f78199c8ffea058c46dfddbd9f7a4e79",
+        "apps/web/src/components/workspace/OutletUi.test.ts": "214fb3745e1b1ac34477fd5a8bbc50340da5aa61836827b29fa899ee9f802048",
+        "apps/web/src/lib/wheelchair-motion.test.ts": "85ef050dbd67d71b3e839e94471bb19fa4a26f63f5b0ea6f5898d9eeb072e2d9"
+      },
+      "review_identity": "self_review"
+    },
+    "VERIFY-01": {
+      "test_id": "VERIFY-01",
+      "gate_id": "G10",
+      "evidence_kind": "fixture",
+      "source_hash": "840787af615a734357f2a67d4229386763ffca2fb2fa58bb58a63b1daad720b8",
+      "input_hashes": [
+        "3398befa32fe29cdabd333543bb952d3bbce0916de812e8b4dc7d8ef076bcc7e"
+      ],
+      "command_or_ui_action": "pytest scripts/tests/test_verify_outlet_repair_acceptance.py -k test_verify_01",
+      "started_at": "2026-09-20T14:50:00-07:00",
+      "finished_at": "2026-09-20T14:50:01-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Completion verifier fails and cannot emit verified_web_feature",
+      "actual_behavior": "Verifier unit test verified that omitted test IDs, skipped tests, and failed exit statuses trigger verifier failure and prevent emission of verified_web_feature.",
+      "artifact_paths_and_hashes": {
+        "scripts/verify_outlet_repair_acceptance.py": "840787af615a734357f2a67d4229386763ffca2fb2fa58bb58a63b1daad720b8",
+        "scripts/tests/test_verify_outlet_repair_acceptance.py": "3398befa32fe29cdabd333543bb952d3bbce0916de812e8b4dc7d8ef076bcc7e"
+      },
+      "review_identity": "self_review"
+    },
+    "VERIFY-02": {
+      "test_id": "VERIFY-02",
+      "gate_id": "G10",
+      "evidence_kind": "fixture",
+      "source_hash": "840787af615a734357f2a67d4229386763ffca2fb2fa58bb58a63b1daad720b8",
+      "input_hashes": [
+        "3398befa32fe29cdabd333543bb952d3bbce0916de812e8b4dc7d8ef076bcc7e"
+      ],
+      "command_or_ui_action": "pytest scripts/tests/test_verify_outlet_repair_acceptance.py -k test_verify_02",
+      "started_at": "2026-09-20T14:50:00-07:00",
+      "finished_at": "2026-09-20T14:50:01-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Completion verifier fails with specific reason",
+      "actual_behavior": "Verifier unit test verified that synthetic artifacts claimed for real_capture and survived mutations cause verifier failure with specific descriptive error messages.",
+      "artifact_paths_and_hashes": {
+        "scripts/verify_outlet_repair_acceptance.py": "840787af615a734357f2a67d4229386763ffca2fb2fa58bb58a63b1daad720b8",
+        "scripts/tests/test_verify_outlet_repair_acceptance.py": "3398befa32fe29cdabd333543bb952d3bbce0916de812e8b4dc7d8ef076bcc7e"
+      },
+      "review_identity": "self_review"
+    },
+    "VERIFY-03": {
+      "test_id": "VERIFY-03",
+      "gate_id": "G10",
+      "evidence_kind": "fixture",
+      "source_hash": "840787af615a734357f2a67d4229386763ffca2fb2fa58bb58a63b1daad720b8",
+      "input_hashes": [
+        "3398befa32fe29cdabd333543bb952d3bbce0916de812e8b4dc7d8ef076bcc7e"
+      ],
+      "command_or_ui_action": "pytest scripts/tests/test_verify_outlet_repair_acceptance.py -k test_verify_03",
+      "started_at": "2026-09-20T14:50:00-07:00",
+      "finished_at": "2026-09-20T14:50:01-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Verifier can emit verified_web_feature; native/device limitations remain separate and explicit",
+      "actual_behavior": "Verifier unit test confirmed proper terminal status emission: verified_web_feature when all 11 gates pass; implementation_ready_real_acceptance_blocked when real capture gate G9 is blocked by missing credentials while all implementation gates G0-G8 and G10 pass.",
+      "artifact_paths_and_hashes": {
+        "scripts/verify_outlet_repair_acceptance.py": "840787af615a734357f2a67d4229386763ffca2fb2fa58bb58a63b1daad720b8",
+        "scripts/tests/test_verify_outlet_repair_acceptance.py": "3398befa32fe29cdabd333543bb952d3bbce0916de812e8b4dc7d8ef076bcc7e"
+      },
+      "review_identity": "self_review"
     }
   },
   "mutation_receipts": {
@@ -959,6 +1123,22 @@
       "status": "passed",
       "summary": "Gate G8 passed. All eight required targeted mutations M01 through M08 executed in isolation and killed with behavioral assertion failures (100% kill rate: 8/8). Original source files preserved and verified with matching SHA256 hashes.",
       "next_action": "Execute Gate G9: Actual Moffett Acceptance — No Fixture Substitution (REAL-01 through REAL-04)."
+    },
+    {
+      "checkpoint_id": "CP-09",
+      "time": "2026-09-20T14:49:30-07:00",
+      "gate": "G9",
+      "status": "blocked",
+      "summary": "Gate G9 blocked: Real Moffett automatic detection cannot run because DISCOVERY_API_KEY and OPENROUTER_API_KEY are unset in the environment. Synthetic detector response substitution is explicitly prohibited by contract. Honest blocked receipts recorded for REAL-01 through REAL-04.",
+      "next_action": "Execute Gate G10: Regression, Verifier, and Handoff (CHECKS-01, VERIFY-01 through VERIFY-03)."
+    },
+    {
+      "checkpoint_id": "CP-10",
+      "time": "2026-09-20T14:50:30-07:00",
+      "gate": "G10",
+      "status": "passed",
+      "summary": "Gate G10 passed. Comprehensive regression passed: 16/16 pipeline tests, 4/4 API outlet review & export tests, Next.js route typegen & TypeScript tsc, and 29/29 web test suites (138/138 tests). Completion verifier unit-tested (VERIFY-01, VERIFY-02, VERIFY-03) and executed. Terminal status: implementation_ready_real_acceptance_blocked (10/11 gates passed, 90.9% progress).",
+      "next_action": "Present verified implementation and external blocker disclosures to user."
     }
   ]
 }
