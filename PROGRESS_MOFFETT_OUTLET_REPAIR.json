@@ -11,8 +11,8 @@
     "G2": "passed",
     "G3": "passed",
     "G4": "passed",
-    "G5": "open",
-    "G6": "open",
+    "G5": "passed",
+    "G6": "passed",
     "G7": "open",
     "G8": "open",
     "G9": "open",
@@ -399,6 +399,222 @@
         "packages/pipeline/tests/test_reconcile_outlets.py": "9a62477bce0a2a3435217139ba871fb595f55890817d40798b8892851415c7b0"
       },
       "review_identity": "self_review"
+    },
+    "REACH-01": {
+      "test_id": "REACH-01",
+      "gate_id": "G5",
+      "evidence_kind": "fixture",
+      "source_hash": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+      "input_hashes": ["16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"],
+      "command_or_ui_action": "npm test -- src/lib/wheelchair-motion.test.ts -t REACH-01",
+      "started_at": "2026-09-20T14:30:00-07:00",
+      "finished_at": "2026-09-20T14:30:01-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Needs verification; no implicit ADA/personal dimensions",
+      "actual_behavior": "Missing reach profile or omitted vertical limits yields needs_verification with explicit unresolved reason; no default ADA dimensions assumed.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/lib/wheelchair-motion.ts": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+        "apps/web/src/lib/wheelchair-motion.test.ts": "16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"
+      },
+      "review_identity": "self_review"
+    },
+    "REACH-02": {
+      "test_id": "REACH-02",
+      "gate_id": "G5",
+      "evidence_kind": "fixture",
+      "source_hash": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+      "input_hashes": ["16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"],
+      "command_or_ui_action": "npm test -- src/lib/wheelchair-motion.test.ts -t REACH-02",
+      "started_at": "2026-09-20T14:30:00-07:00",
+      "finished_at": "2026-09-20T14:30:01-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Validation rejection and no within-reach result",
+      "actual_behavior": "NaN, Infinity, negative reach distance, and inverted vertical limits are rejected and produce needs_verification without within_reach result.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/lib/wheelchair-motion.ts": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+        "apps/web/src/lib/wheelchair-motion.test.ts": "16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"
+      },
+      "review_identity": "self_review"
+    },
+    "REACH-03": {
+      "test_id": "REACH-03",
+      "gate_id": "G5",
+      "evidence_kind": "fixture",
+      "source_hash": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+      "input_hashes": ["16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"],
+      "command_or_ui_action": "npm test -- src/lib/wheelchair-motion.test.ts -t REACH-03",
+      "started_at": "2026-09-20T14:30:00-07:00",
+      "finished_at": "2026-09-20T14:30:01-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Unknown required quantities; no world-zero/first-floor/faceplate-center substitution producing positive reach",
+      "actual_behavior": "Missing local floor under target results in null targetHeightAboveFloor and needs_verification; missing support normal and unresolved socket prevent positive reach.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/lib/wheelchair-motion.ts": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+        "apps/web/src/lib/wheelchair-motion.test.ts": "16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"
+      },
+      "review_identity": "self_review"
+    },
+    "REACH-04": {
+      "test_id": "REACH-04",
+      "gate_id": "G5",
+      "evidence_kind": "fixture",
+      "source_hash": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+      "input_hashes": ["16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"],
+      "command_or_ui_action": "npm test -- src/lib/wheelchair-motion.test.ts -t REACH-04",
+      "started_at": "2026-09-20T14:30:00-07:00",
+      "finished_at": "2026-09-20T14:30:01-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Different modeled reach outcomes with identical geometry, not changed fixture assessments",
+      "actual_behavior": "Identical geometry with horizontal distance 0.60m yields within_reach for 0.80m limit and outside_reach for 0.40m limit.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/lib/wheelchair-motion.ts": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+        "apps/web/src/lib/wheelchair-motion.test.ts": "16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"
+      },
+      "review_identity": "self_review"
+    },
+    "REACH-05": {
+      "test_id": "REACH-05",
+      "gate_id": "G5",
+      "evidence_kind": "fixture",
+      "source_hash": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+      "input_hashes": ["16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"],
+      "command_or_ui_action": "npm test -- src/lib/wheelchair-motion.test.ts -t REACH-05",
+      "started_at": "2026-09-20T14:30:00-07:00",
+      "finished_at": "2026-09-20T14:30:01-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Needs verification; no arbitrary 90-percent confidence rule",
+      "actual_behavior": "Distance interval [0.55, 0.65]m with limit 0.60m and height interval crossing threshold both yield needs_verification; exact bounds within limit yield within_reach without arbitrary 90% heuristic.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/lib/wheelchair-motion.ts": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+        "apps/web/src/lib/wheelchair-motion.test.ts": "16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"
+      },
+      "review_identity": "self_review"
+    },
+    "REACH-06": {
+      "test_id": "REACH-06",
+      "gate_id": "G5",
+      "evidence_kind": "fixture",
+      "source_hash": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+      "input_hashes": ["16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"],
+      "command_or_ui_action": "npm test -- src/lib/wheelchair-motion.test.ts -t REACH-06",
+      "started_at": "2026-09-20T14:30:00-07:00",
+      "finished_at": "2026-09-20T14:30:01-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Height above floor 0.5m consistently in calculation, panel and export",
+      "actual_behavior": "Floor elevation 1.0m and socket world elevation 1.5m evaluates consistently to 0.5m target height above floor.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/lib/wheelchair-motion.ts": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+        "apps/web/src/lib/wheelchair-motion.test.ts": "16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"
+      },
+      "review_identity": "self_review"
+    },
+    "ROUTE-01": {
+      "test_id": "ROUTE-01",
+      "gate_id": "G6",
+      "evidence_kind": "fixture",
+      "source_hash": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+      "input_hashes": ["16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"],
+      "command_or_ui_action": "npm test -- src/lib/wheelchair-motion.test.ts -t ROUTE-01",
+      "started_at": "2026-09-20T14:30:00-07:00",
+      "finished_at": "2026-09-20T14:30:01-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Find tested detour or explicit bounded-search unknown; no false straight-line route/physical impossibility claim",
+      "actual_behavior": "A* search on measured floor finds valid detour around intervening wall; approach status is clear with distance reflecting detour.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/lib/wheelchair-motion.ts": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+        "apps/web/src/lib/wheelchair-motion.test.ts": "16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"
+      },
+      "review_identity": "self_review"
+    },
+    "ROUTE-02": {
+      "test_id": "ROUTE-02",
+      "gate_id": "G6",
+      "evidence_kind": "fixture",
+      "source_hash": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+      "input_hashes": ["16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"],
+      "command_or_ui_action": "npm test -- src/lib/wheelchair-motion.test.ts -t ROUTE-02",
+      "started_at": "2026-09-20T14:30:00-07:00",
+      "finished_at": "2026-09-20T14:30:01-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "No clear route through unsupported/blocked region; causes distinguished",
+      "actual_behavior": "Floor gap across unsupported void and narrow passage below chair footprint both yield blocked approach with distinguished causes.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/lib/wheelchair-motion.ts": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+        "apps/web/src/lib/wheelchair-motion.test.ts": "16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"
+      },
+      "review_identity": "self_review"
+    },
+    "ROUTE-03": {
+      "test_id": "ROUTE-03",
+      "gate_id": "G6",
+      "evidence_kind": "fixture",
+      "source_hash": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+      "input_hashes": ["16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"],
+      "command_or_ui_action": "npm test -- src/lib/wheelchair-motion.test.ts -t ROUTE-03",
+      "started_at": "2026-09-20T14:30:00-07:00",
+      "finished_at": "2026-09-20T14:30:01-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Swept collision/coverage test prevents tunneling",
+      "actual_behavior": "Bounded step swept collision test detects 0.05m thin wall between coarse sampling points and prevents tunneling.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/lib/wheelchair-motion.ts": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+        "apps/web/src/lib/wheelchair-motion.test.ts": "16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"
+      },
+      "review_identity": "self_review"
+    },
+    "ROUTE-04": {
+      "test_id": "ROUTE-04",
+      "gate_id": "G6",
+      "evidence_kind": "fixture",
+      "source_hash": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+      "input_hashes": ["16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"],
+      "command_or_ui_action": "npm test -- src/lib/wheelchair-motion.test.ts -t ROUTE-04",
+      "started_at": "2026-09-20T14:30:00-07:00",
+      "finished_at": "2026-09-20T14:30:01-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Reach obstruction detected even though neither endpoint touches the barrier; not unconditional within_reach",
+      "actual_behavior": "Intervening barrier at z=[0.13, 0.17] between chair (z=0.65) and target (z=0) is detected via 2D segment intersection; reachStatus is outside_reach.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/lib/wheelchair-motion.ts": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+        "apps/web/src/lib/wheelchair-motion.test.ts": "16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"
+      },
+      "review_identity": "self_review"
+    },
+    "ROUTE-05": {
+      "test_id": "ROUTE-05",
+      "gate_id": "G6",
+      "evidence_kind": "fixture",
+      "source_hash": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+      "input_hashes": ["16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"],
+      "command_or_ui_action": "npm test -- src/lib/wheelchair-motion.test.ts -t ROUTE-05",
+      "started_at": "2026-09-20T14:30:00-07:00",
+      "finished_at": "2026-09-20T14:30:01-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "No approach through wall or reach through parent furniture",
+      "actual_behavior": "Approach through solid dividing wall is blocked, and reach through parent furniture body is detected as obstructed.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/lib/wheelchair-motion.ts": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+        "apps/web/src/lib/wheelchair-motion.test.ts": "16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"
+      },
+      "review_identity": "self_review"
+    },
+    "ROUTE-06": {
+      "test_id": "ROUTE-06",
+      "gate_id": "G6",
+      "evidence_kind": "fixture",
+      "source_hash": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+      "input_hashes": ["16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"],
+      "command_or_ui_action": "npm test -- src/lib/wheelchair-motion.test.ts -t ROUTE-06",
+      "started_at": "2026-09-20T14:30:00-07:00",
+      "finished_at": "2026-09-20T14:30:01-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Explicit inconclusive/unknown, no invented origin or route distance",
+      "actual_behavior": "Unknown chair position (null) produces needs_verification with null approach distance and null reach distance; does not invent (0,0) origin.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/lib/wheelchair-motion.ts": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+        "apps/web/src/lib/wheelchair-motion.test.ts": "16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"
+      },
+      "review_identity": "self_review"
     }
   },
   "mutation_receipts": {},
@@ -442,6 +658,22 @@
       "status": "passed",
       "summary": "Gate G4 passed. Verified multi-view reconciliation: two consistent views merge with combined observations and independent viewpoint check (MERGE-01); nearby plates, opposite walls, and ambiguous chains do not collapse (MERGE-02); reprojection check ensures sensor box bounds center before merging (MERGE-03); owner rejection and uncertainty reasons strictly survive merge (MERGE-04); permutation-invariant deterministic ID and clustering (MERGE-05).",
       "next_action": "Execute Gate G5: Personal Reach & Local Elevation (REACH-01 through REACH-06)."
+    },
+    {
+      "checkpoint_id": "CP-05",
+      "time": "2026-09-20T14:30:00-07:00",
+      "gate": "G5",
+      "status": "passed",
+      "summary": "Gate G5 passed. Implemented conservative personal reach: missing profile or vertical limits yields needs_verification without implicit ADA defaults (REACH-01); NaN, Inf, negative reach, and inverted bounds rejected (REACH-02); missing local floor, support normal, or unresolved socket yields needs_verification without world-zero fallback (REACH-03); identical geometry produces within_reach for 0.80m and outside_reach for 0.40m (REACH-04); distance/height intervals crossing thresholds yield needs_verification without arbitrary 90% heuristic (REACH-05); floor elevation 1.0m and socket elevation 1.5m evaluates consistently to 0.5m height above local floor (REACH-06).",
+      "next_action": "Execute Gate G6: Route and Reach Obstruction Are Distinct (ROUTE-01 through ROUTE-06)."
+    },
+    {
+      "checkpoint_id": "CP-06",
+      "time": "2026-09-20T14:30:30-07:00",
+      "gate": "G6",
+      "status": "passed",
+      "summary": "Gate G6 passed. Distinct route and reach obstruction: A* pathfinder discovers valid detours around intervening walls on measured floors (ROUTE-01); floor gaps and narrow passages below chair footprint prevent clear routes (ROUTE-02); swept collision prevents tunneling through thin obstacles (ROUTE-03); reach obstruction detected between endpoints without touching either endpoint (ROUTE-04); reach through parent furniture and approach through far-side dividing walls blocked (ROUTE-05); unknown chair position yields needs_verification without invented origin (ROUTE-06).",
+      "next_action": "Execute Gate G7: Real UI, Persistence, and Consistent Export (UI-01 through UI-04, PERSIST-01, REV-01, EXPORT-01, AUTH-02)."
     }
   ]
 }

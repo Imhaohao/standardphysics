@@ -42,6 +42,10 @@ describe("OutletPanel semantic filtering", () => {
         sockets: [],
         observations: [],
         localization_quality: "verified_support",
+        identity_confidence: 0.9,
+        local_anchor: null,
+        normal: { x: 0, y: -1, z: 0 },
+        observed_region: [],
       },
     });
 
@@ -58,6 +62,10 @@ describe("OutletPanel semantic filtering", () => {
         sockets: [],
         observations: [],
         localization_quality: "verified_support",
+        identity_confidence: 0.9,
+        local_anchor: null,
+        normal: { x: 0, y: -1, z: 0 },
+        observed_region: [],
       },
     });
 
@@ -67,12 +75,17 @@ describe("OutletPanel semantic filtering", () => {
       label: "Candidate Outlet",
       raw_category: "outlet",
       attachment: {
+        support_node_id: "wall-1",
         support_type: "unanchored",
         review_status: "candidate",
         uncertainty_reasons: ["unanchored"],
         sockets: [],
         observations: [],
         localization_quality: "unanchored",
+        identity_confidence: 0.5,
+        local_anchor: null,
+        normal: { x: 0, y: -1, z: 0 },
+        observed_region: [],
       },
     });
 

@@ -6,6 +6,9 @@ export type ReachProfile = {
   maxReachDistance?: number;
   minReachHeight?: number;
   maxReachHeight?: number;
+  handReference?: string | null;
+  distanceInterval?: [number, number];
+  heightInterval?: [number, number];
 };
 
 /** Adjustable navigation estimates, not a model-specific wheelchair measurement. */
@@ -209,8 +212,8 @@ export function wheelchairMotionGeometry(nodes: SceneNode[]): WheelchairMotionGe
   });
   const portals = rects.filter((rect) => rect.node.kind === "door" || rect.node.kind === "opening");
   const walls = rects.filter((rect) => rect.node.kind === "wall").flatMap((wall) => splitWall(wall, portals));
-  const targets = rects.filter((rect) => rect.node.kind === "object");
-  const objects = targets.filter((rect) => rect.node.dimensions.z > EPSILON);
+  const targets = rects.filter((rect) => rect.node.kind === "object" || rect.node.kind === "outlet" || rect.node.kind === "candidate_outlet");
+  const objects = targets.filter((rect) => rect.node.dimensions.z > EPSILON && rect.node.kind === "object");
 
   return {
     floors: rects.filter((rect) => rect.node.kind === "floor"),
@@ -232,6 +235,49 @@ export function distanceToRect(point: MotionPoint, rect: CollisionRect): number 
 
 export function collidesAt(point: MotionPoint, obstacles: CollisionRect[], radius: number): boolean {
   return obstacles.some((obstacle) => distanceToRect(point, obstacle) < radius - EPSILON);
+}
+
+/** Tests if a 2D line segment between a and b penetrates a collision rectangle. */
+export function segmentIntersectsRect(a: MotionPoint, b: MotionPoint, rect: CollisionRect): boolean {
+  const da = subtract(a, rect.center);
+  const db = subtract(b, rect.center);
+  const p1x = dot(da, rect.axisX);
+  const p1y = dot(da, rect.axisY);
+  const p2x = dot(db, rect.axisX);
+  const p2y = dot(db, rect.axisY);
+
+  const dx = p2x - p1x;
+  const dy = p2y - p1y;
+
+  let t0 = 0.0;
+  let t1 = 1.0;
+
+  const clip = (p: number, q: number) => {
+    if (Math.abs(p) < EPSILON) {
+      if (q < 0) return false;
+      return true;
+    }
+    const r = q / p;
+    if (p < 0) {
+      if (r > t1) return false;
+      if (r > t0) t0 = r;
+    } else {
+      if (r < t0) return false;
+      if (r < t1) t1 = r;
+    }
+    return true;
+  };
+
+  // Shrink slightly so a point terminating on the boundary face of a supporting wall does not penetrate
+  const shrinkX = Math.max(0, rect.halfX - 0.005);
+  const shrinkY = Math.max(0, rect.halfY - 0.005);
+
+  if (!clip(-dx, p1x - (-shrinkX))) return false;
+  if (!clip(dx, shrinkX - p1x)) return false;
+  if (!clip(-dy, p1y - (-shrinkY))) return false;
+  if (!clip(dy, shrinkY - p1y)) return false;
+
+  return t0 <= t1 && t1 - t0 > 0.001;
 }
 
 function sweep(start: MotionPoint, delta: MotionPoint, radius: number, canOccupy: (point: MotionPoint) => boolean, maxStep: number): SweptMove {
@@ -269,6 +315,123 @@ export function canOccupyWheelchair(point: MotionPoint, geometry: WheelchairMoti
 /** Uses the same bounded sweep for manual drive and docking, including floor coverage. */
 export function sweepWheelchairInGeometry(start: MotionPoint, delta: MotionPoint, geometry: WheelchairMotionGeometry, radius: number, maxStep = 0.08): SweptMove {
   return sweep(start, delta, radius, (point) => canOccupyWheelchair(point, geometry, radius), maxStep);
+}
+
+/** Finds a collision-free path for the wheelchair using direct sweep or A* search on measured floors. */
+export function findWheelchairPath(
+  start: MotionPoint,
+  goal: MotionPoint,
+  geometry: WheelchairMotionGeometry,
+  radius: number,
+  maxExpansions = 50000,
+): { path: MotionPoint[]; reached: boolean; distance: number | null } {
+  // 1. Direct line test (fast path)
+  const direct = sweepWheelchairInGeometry(start, subtract(goal, start), geometry, radius);
+  if (direct.reached) {
+    return {
+      path: [start, goal],
+      reached: true,
+      distance: length(subtract(goal, start)),
+    };
+  }
+
+  // 2. A* grid search on measured floor
+  const step = 0.10;
+  const toKey = (p: MotionPoint) => `${Math.round(p.x / step)},${Math.round(p.z / step)}`;
+  const startKey = toKey(start);
+
+  type PathNode = {
+    point: MotionPoint;
+    g: number;
+    f: number;
+    parent: PathNode | null;
+  };
+
+  const openList: PathNode[] = [];
+  const gScores = new Map<string, number>();
+  const closedSet = new Set<string>();
+
+  openList.push({
+    point: start,
+    g: 0,
+    f: length(subtract(goal, start)),
+    parent: null,
+  });
+  gScores.set(startKey, 0);
+
+  let expansions = 0;
+  const dirs = [
+    { x: step, z: 0, cost: step },
+    { x: -step, z: 0, cost: step },
+    { x: 0, z: step, cost: step },
+    { x: 0, z: -step, cost: step },
+    { x: step, z: step, cost: step * Math.SQRT2 },
+    { x: step, z: -step, cost: step * Math.SQRT2 },
+    { x: -step, z: step, cost: step * Math.SQRT2 },
+    { x: -step, z: -step, cost: step * Math.SQRT2 },
+  ];
+
+  while (openList.length > 0 && expansions < maxExpansions) {
+    let bestIdx = 0;
+    for (let i = 1; i < openList.length; i++) {
+      if (openList[i].f < openList[bestIdx].f) {
+        bestIdx = i;
+      }
+    }
+    const current = openList.splice(bestIdx, 1)[0];
+    const currKey = toKey(current.point);
+
+    if (closedSet.has(currKey)) continue;
+    closedSet.add(currKey);
+    expansions++;
+
+    // Check if within reach of goal
+    const distToGoal = length(subtract(goal, current.point));
+    if (distToGoal <= step * 2.0) {
+      const finishSweep = sweepWheelchairInGeometry(current.point, subtract(goal, current.point), geometry, radius);
+      if (finishSweep.reached) {
+        const path: MotionPoint[] = [goal];
+        let curr: PathNode | null = current;
+        while (curr) {
+          path.unshift(curr.point);
+          curr = curr.parent;
+        }
+        let totalDist = 0;
+        for (let i = 0; i < path.length - 1; i++) {
+          totalDist += length(subtract(path[i + 1], path[i]));
+        }
+        return { path, reached: true, distance: totalDist };
+      }
+    }
+
+    for (const dir of dirs) {
+      const neighborPt: MotionPoint = {
+        x: current.point.x + dir.x,
+        z: current.point.z + dir.z,
+      };
+      const neighborKey = toKey(neighborPt);
+      if (closedSet.has(neighborKey)) continue;
+
+      if (!canOccupyWheelchair(neighborPt, geometry, radius)) continue;
+      const stepSweep = sweepWheelchairInGeometry(current.point, subtract(neighborPt, current.point), geometry, radius);
+      if (!stepSweep.reached) continue;
+
+      const tentativeG = current.g + dir.cost;
+      const existingG = gScores.get(neighborKey);
+      if (existingG !== undefined && tentativeG >= existingG) continue;
+
+      gScores.set(neighborKey, tentativeG);
+      const h = length(subtract(goal, neighborPt));
+      openList.push({
+        point: neighborPt,
+        g: tentativeG,
+        f: tentativeG + h,
+        parent: current,
+      });
+    }
+  }
+
+  return { path: [], reached: false, distance: null };
 }
 
 function floorCandidates(floor: CollisionRect, radius: number): MotionPoint[] {
@@ -342,14 +505,14 @@ export type OutletAccessibilityAssessment = {
   approachDistance: number | null;
   approachHeadingDeg: number | null;
   reachStatus: ReachStatus;
-  targetHeightAboveFloor: number;
+  targetHeightAboveFloor: number | null;
   reachDistance: number | null;
   unresolvedReasons: string[];
   disclaimers: string[];
 };
 
 export function assessOutletAccessibility(
-  currentPos: MotionPoint,
+  currentPos: MotionPoint | null | undefined,
   outletNode: SceneNode,
   geometry: WheelchairMotionGeometry,
   profile: WheelchairProfile,
@@ -359,24 +522,37 @@ export function assessOutletAccessibility(
     "Electrical power, circuit live status, voltage, and socket condition are not established.",
     "Plug insertion force, dexterity, and grip requirements are not established.",
     "ADA compliance is not established.",
+    "Passing modeled reach is not proof of grasp, plug insertion, arm motion, strength or safe independent use.",
   ];
+
+  if (!currentPos) {
+    unresolvedReasons.push("Current wheelchair position is unknown; route cannot be evaluated.");
+  }
 
   const targetPos: MotionPoint = { x: outletNode.transform.m[3], z: -outletNode.transform.m[7] };
   const targetHeight = outletNode.transform.m[11];
 
   // Find local floor directly under or closest to the target
-  let floorTop = 0;
-  if (geometry.floors.length > 0) {
-    const matchingFloor = geometry.floors.find((f) => containsPoint(f, targetPos, 0)) ?? geometry.floors[0];
-    floorTop = matchingFloor.node.transform.m[11];
+  let targetHeightAboveFloor: number | null = null;
+  const matchingFloor = geometry.floors.find((f) => containsPoint(f, targetPos, 0.05));
+  if (matchingFloor) {
+    const floorTop = matchingFloor.node.transform.m[11];
+    targetHeightAboveFloor = Math.max(0, targetHeight - floorTop);
   } else {
-    unresolvedReasons.push("No modeled floor under target; assuming finished floor at world 0.");
+    unresolvedReasons.push("No modeled floor under target; local floor elevation unknown.");
   }
-  const targetHeightAboveFloor = Math.max(0, targetHeight - floorTop);
 
   // Normal in motion plane (+X right, +Z in Three.js)
-  const rawNormal = outletNode.attachment?.normal ?? { x: 0, y: -1, z: 0 };
-  const motionNormal = normalize({ x: rawNormal.x, z: -rawNormal.y }, { x: 0, z: 1 });
+  const rawNormal = outletNode.attachment?.normal;
+  if (!rawNormal) {
+    unresolvedReasons.push("Outlet support normal is missing; orientation unknown.");
+  }
+  const motionNormal = rawNormal ? normalize({ x: rawNormal.x, z: -rawNormal.y }, { x: 0, z: 1 }) : { x: 0, z: 1 };
+
+  // Socket target verification
+  if (outletNode.attachment?.uncertainty_reasons?.some((r) => r.toLowerCase().includes("unresolved socket"))) {
+    unresolvedReasons.push("Socket target is unresolved; cannot confirm operable reach.");
+  }
 
   // Discretized candidate stopping positions in front of the outlet
   const candidates: { point: MotionPoint; distance: number; heading: number }[] = [];
@@ -389,67 +565,121 @@ export function assessOutletAccessibility(
       if (canOccupyWheelchair(pt, geometry, radius)) {
         const toOutlet = subtract(targetPos, pt);
         const headingDeg = (Math.atan2(toOutlet.x, toOutlet.z) * 180) / Math.PI;
-        candidates.push({ point: pt, distance: length(subtract(currentPos, pt)), heading: headingDeg });
+        const initialDist = currentPos ? length(subtract(currentPos, pt)) : 0;
+        candidates.push({ point: pt, distance: initialDist, heading: headingDeg });
       }
     }
   }
 
   candidates.sort((a, b) => a.distance - b.distance);
 
-  let approachStatus: ApproachStatus = "blocked";
+  let approachStatus: ApproachStatus = currentPos ? "blocked" : "needs_verification";
   let bestCandidate: MotionPoint | null = null;
   let bestDistance: number | null = null;
   let bestHeading: number | null = null;
 
-  for (const cand of candidates) {
-    const swept = sweepWheelchairInGeometry(currentPos, subtract(cand.point, currentPos), geometry, radius);
-    if (swept.reached) {
-      // Check reach obstruction between stopping point and outlet
-      const obstructed = geometry.obstacles.some((obs) => {
-        if (obs.node.id === outletNode.id || obs.node.id === outletNode.parent_id) return false;
-        return distanceToRect(cand.point, obs) < 0.05 && distanceToRect(targetPos, obs) < 0.05;
-      });
-      if (!obstructed) {
-        approachStatus = "clear";
-        bestCandidate = cand.point;
-        bestDistance = cand.distance;
-        bestHeading = cand.heading;
-        break;
+  if (currentPos) {
+    for (const cand of candidates) {
+      const pathRes = findWheelchairPath(currentPos, cand.point, geometry, radius);
+      if (pathRes.reached) {
+        // Check reach obstruction between stopping point and outlet
+        const obstructed = geometry.obstacles.some((obs) => {
+          if (obs.node.id === outletNode.id) return false;
+          return segmentIntersectsRect(cand.point, targetPos, obs);
+        });
+        if (!obstructed) {
+          approachStatus = "clear";
+          bestCandidate = cand.point;
+          bestDistance = pathRes.distance;
+          bestHeading = cand.heading;
+          break;
+        }
       }
     }
-  }
 
-  if (approachStatus !== "clear" && candidates.length > 0) {
-    approachStatus = "blocked";
-    bestCandidate = candidates[0].point;
-    bestDistance = candidates[0].distance;
-    bestHeading = candidates[0].heading;
-    unresolvedReasons.push("Candidate stopping position exists on floor, but route from current position is obstructed.");
-  } else if (candidates.length === 0) {
-    approachStatus = "blocked";
-    unresolvedReasons.push("No valid modeled floor position found within approach range.");
+    if (approachStatus !== "clear" && candidates.length > 0) {
+      approachStatus = "blocked";
+      bestCandidate = candidates[0].point;
+      bestDistance = candidates[0].distance;
+      bestHeading = candidates[0].heading;
+      unresolvedReasons.push("Candidate stopping position exists on floor, but route from current position is obstructed.");
+    } else if (candidates.length === 0) {
+      approachStatus = "blocked";
+      unresolvedReasons.push("No valid modeled floor position found within approach range.");
+    }
   }
 
   // Reach assessment
   let reachStatus: ReachStatus = "needs_verification";
-  const reachDistance = bestCandidate ? length(subtract(bestCandidate, targetPos)) : length(subtract(currentPos, targetPos));
+  const reachFromPoint = approachStatus === "clear" && bestCandidate ? bestCandidate : currentPos;
+  const reachDistance = reachFromPoint ? length(subtract(reachFromPoint, targetPos)) : null;
 
-  if (!profile.reach || profile.reach.maxReachDistance === undefined) {
+  if (!profile.reach) {
     reachStatus = "needs_verification";
     unresolvedReasons.push("Personalized reach profile not supplied; reach cannot be established.");
+  } else if (profile.reach.maxReachDistance === undefined) {
+    reachStatus = "needs_verification";
+    unresolvedReasons.push("Maximum reach distance not supplied; reach cannot be established.");
+  } else if (profile.reach.minReachHeight === undefined || profile.reach.maxReachHeight === undefined) {
+    reachStatus = "needs_verification";
+    unresolvedReasons.push("Vertical reach limits (minReachHeight, maxReachHeight) not supplied; implicit ADA dimensions not assumed.");
+  } else if (!Number.isFinite(profile.reach.maxReachDistance) || profile.reach.maxReachDistance <= 0) {
+    reachStatus = "needs_verification";
+    unresolvedReasons.push("Invalid reach profile: maxReachDistance must be a finite positive number.");
+  } else if (
+    !Number.isFinite(profile.reach.minReachHeight) ||
+    !Number.isFinite(profile.reach.maxReachHeight) ||
+    profile.reach.minReachHeight < 0 ||
+    profile.reach.minReachHeight >= profile.reach.maxReachHeight
+  ) {
+    reachStatus = "needs_verification";
+    unresolvedReasons.push("Invalid reach profile: vertical limits must be finite numbers with minReachHeight < maxReachHeight.");
+  } else if (targetHeightAboveFloor === null) {
+    reachStatus = "needs_verification";
+    unresolvedReasons.push("Target height above floor is unknown; reach cannot be established.");
+  } else if (!rawNormal) {
+    reachStatus = "needs_verification";
+  } else if (outletNode.attachment?.uncertainty_reasons?.some((r) => r.toLowerCase().includes("unresolved socket"))) {
+    reachStatus = "needs_verification";
+  } else if (reachDistance === null) {
+    reachStatus = "needs_verification";
   } else {
-    const { maxReachDistance, minReachHeight = 0.38, maxReachHeight = 1.22 } = profile.reach;
-    if (reachDistance > maxReachDistance) {
+    // Check if reach line intersects any obstacle
+    const reachFromPoint = bestCandidate ?? currentPos;
+    const reachObstructed = reachFromPoint
+      ? geometry.obstacles.some((obs) => {
+          if (obs.node.id === outletNode.id) return false;
+          return segmentIntersectsRect(reachFromPoint, targetPos, obs);
+        })
+      : false;
+
+    if (reachObstructed) {
       reachStatus = "outside_reach";
-      unresolvedReasons.push(`Estimated reach distance (${reachDistance.toFixed(2)}m) exceeds maximum modeled reach (${maxReachDistance.toFixed(2)}m).`);
-    } else if (targetHeightAboveFloor < minReachHeight || targetHeightAboveFloor > maxReachHeight) {
-      reachStatus = "outside_reach";
-      unresolvedReasons.push(`Target height (${targetHeightAboveFloor.toFixed(2)}m) is outside vertical reach envelope (${minReachHeight.toFixed(2)}m - ${maxReachHeight.toFixed(2)}m).`);
-    } else if (reachDistance > maxReachDistance * 0.90) {
-      reachStatus = "needs_verification";
-      unresolvedReasons.push("Reach distance is close to threshold; needs in-person verification.");
+      unresolvedReasons.push("Reach path from stopping position to outlet is obstructed by an intervening obstacle.");
     } else {
-      reachStatus = "within_reach";
+      const { maxReachDistance, minReachHeight, maxReachHeight, distanceInterval, heightInterval } = profile.reach;
+
+      const dInterval = distanceInterval ?? [reachDistance, reachDistance];
+      const hInterval = heightInterval ?? [targetHeightAboveFloor, targetHeightAboveFloor];
+
+      if (dInterval[0] <= maxReachDistance && dInterval[1] > maxReachDistance) {
+        reachStatus = "needs_verification";
+        unresolvedReasons.push("Reach distance interval crosses maximum reach threshold; needs in-person verification.");
+      } else if (dInterval[0] > maxReachDistance) {
+        reachStatus = "outside_reach";
+        unresolvedReasons.push(`Estimated reach distance (${reachDistance.toFixed(2)}m) exceeds maximum modeled reach (${maxReachDistance.toFixed(2)}m).`);
+      } else if (
+        (hInterval[0] < minReachHeight && hInterval[1] >= minReachHeight) ||
+        (hInterval[0] <= maxReachHeight && hInterval[1] > maxReachHeight)
+      ) {
+        reachStatus = "needs_verification";
+        unresolvedReasons.push("Target height interval crosses vertical reach threshold; needs in-person verification.");
+      } else if (targetHeightAboveFloor < minReachHeight || targetHeightAboveFloor > maxReachHeight) {
+        reachStatus = "outside_reach";
+        unresolvedReasons.push(`Target height (${targetHeightAboveFloor.toFixed(2)}m) is outside vertical reach envelope (${minReachHeight.toFixed(2)}m - ${maxReachHeight.toFixed(2)}m).`);
+      } else {
+        reachStatus = "within_reach";
+      }
     }
   }
 

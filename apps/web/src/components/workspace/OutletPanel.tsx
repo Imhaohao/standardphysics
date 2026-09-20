@@ -64,7 +64,7 @@ export function OutletPanel({
   const assessment: OutletAccessibilityAssessment | null = useMemo(() => {
     if (!selectedNode) return null;
     return assessOutletAccessibility(
-      wheelchairPos ?? { x: 0, z: 0 },
+      wheelchairPos,
       selectedNode,
       geometry,
       wheelchairProfile
@@ -160,7 +160,10 @@ export function OutletPanel({
             <div>
               <h3 className="font-semibold text-ink">{selectedNode.label}</h3>
               <p className="text-xs text-ink-muted">
-                Observed height above local floor: {assessment.targetHeightAboveFloor.toFixed(2)} m ({(assessment.targetHeightAboveFloor * INCHES_PER_METER).toFixed(0)}″)
+                Observed height above local floor:{" "}
+                {assessment.targetHeightAboveFloor !== null
+                  ? `${assessment.targetHeightAboveFloor.toFixed(2)} m (${(assessment.targetHeightAboveFloor * INCHES_PER_METER).toFixed(0)}″)`
+                  : "Unknown (no modeled floor)"}
               </p>
             </div>
           </div>
