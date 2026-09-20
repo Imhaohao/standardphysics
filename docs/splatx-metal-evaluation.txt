@@ -1,0 +1,167 @@
+SplatX Metal: measured local evaluation, 2026-09-20
+
+VERDICT
+Native Metal training works and is fast on this Mac. The tested Moffett pilot
+is NOT suitable for release: recognizable training views do not generalize to
+the eight withheld validation views. Keep SplatX as an experimental training
+backend, not a demonstrated replacement for Brush. No production scene changed.
+This is a 32-view center-room pilot, not a full-floor or phone benchmark.
+
+SOURCE AND PLATFORM
+https://github.com/PoSTMEDIA-AI/splatx-metal
+Pinned commit: 9ae5f66040bc9f255549cdf1ee95c8d2987bfc05
+Local source: runs/moffett/splatx-evaluation/upstream
+Apple M5 Pro, 48 GiB RAM, Swift 6.3.3, Xcode 26.6.
+Release CLI build: 20.44 s wall; offline metallib build successful.
+Upstream C++/Metal core suite: 161 tests passed using the offline metallib.
+Probe: float atomics supported, SIMD width 32, threadgroup memory 32 KB;
+10-second sustained-load ratio 1.01. This is not a long thermal endurance test.
+No CUDA, RTX, paid GPU service or Python training runtime used by SplatX.
+Python was used for dataset conversion and evaluation only.
+
+MEASURED PILOT
+Inputs: existing frozen v2 pilot, 32 training RGBs, eight validation RGBs;
+1280x960 per image. The final-test RGBs were not read.
+303,342 neutral-gray LiDAR seed points, all supplied to initialization.
+OpenGL camera-to-world poses converted to COLMAP PINHOLE world-to-camera.
+One camera record per image preserves individual intrinsics. World coordinates
+and units retained. Maximum SVD rotation correction: 1.2262e-7 per element;
+maximum checked projection difference: 0.001351 pixels. Image copies hash-match.
+Nonzero distortion is rejected; current inputs supply no distortion coefficients.
+This conversion check does not establish physical calibration accuracy.
+
+Training: 3,000 iterations; MCMC; one-million-splat cap; SH degree 2;
+SSIM weight 0.2; resident Metal path; classic rasterization; built-in MCMC seed 42.
+Person masks were NOT applied to training: upstream does not support them.
+Fixed seeds do not make atomic GPU accumulation bitwise deterministic.
+
+Measured training loop                   63.9 seconds, about 21 ms/iteration
+End-to-end CLI process                  65.50 seconds, including export/checkpoint
+Maximum resident set size               1,994,113,024 bytes
+Peak process memory footprint           2,780,825,856 bytes
+Exported Gaussian count                 990,424
+Mean training-view PSNR                 23.763 dB (upstream, 32 views)
+Mean withheld static-region PSNR        10.6651 dB (eight validation views)
+Mean withheld static-region SSIM        0.26896
+Worst withheld static-region PSNR       8.2662 dB
+
+Memory values are macOS process measurements, not an independently measured
+complete GPU-memory budget. A training step is not an interactive viewer frame;
+these timings do not establish web or iPhone FPS. This is one pilot run, not a
+repeat-run performance distribution or equal-budget backend benchmark.
+
+An earlier 300-step smoke run at 320x240 and 30k initial splats took 0.84 s
+end-to-end, but was extremely blurred. Do not advertise that as reconstruction
+time for a usable room.
+
+VISUAL RESULT AND METRICS
+Inspected the training preview and validation views 144, 149 and 177. The training
+preview reproduces furniture/colors but blurs distant detail and contains people.
+Withheld views show severe holes, stretched splats and disconnected surfaces.
+This fails the requested navigable, detailed room quality. A better schedule or
+more training coverage might help; this trial does not isolate the cause or
+establish the backend's quality ceiling.
+
+Metrics reuse packages/pipeline/standardphysics_pipeline/render_efficiency/metrics.py:
+decoded sRGB float64 [0,1], static mask L>250, mean of per-view PSNR, SSIM with
+11x11 Gaussian window sigma 1.5 and windows wholly inside the static mask.
+Validation cameras were rendered with SplatX's own native renderer at 1280x960.
+An exported-Ply round-trip of training camera 0 agrees with the in-memory preview:
+maximum channel difference 1/255; mean absolute difference 0.000002713/255.
+Thus the obvious validation failure is not explained by a gross export-render
+coordinate flip. SH2 PLY is padded with zero SH3 coefficients for compatibility.
+
+BRUSH COMPARISON: IMPORTANT SPLIT ERROR
+Both PLYs can be rendered in the same native renderer. But the existing Brush
+b0-v2-r1 used --eval-split-every 5, which does not honor the named manifest split.
+Its actual saved evaluation views at step 5000 are:
+038,083,088,186,210,226,241,296.
+The intended validation views are:
+144,149,166,177,182,186,190,195.
+Only 186 overlaps. Seven intended validation views are outside Brush's actual
+evaluation set, so this is not a common-heldout comparison. Its diagnostic
+21.9253 dB / 0.69126 SSIM on these images must NOT be used to rank backend quality.
+Iterations, splat counts, SH degrees, training masks and RNG seeds also differ.
+The existing Brush process took 261.74 s, but calling SplatX "4x faster" from
+these unequal workloads would be misleading. The split issue was sent to the
+existing render-score reviewer; no other agent's data or code was changed.
+
+WHAT IT PROVIDES / WHAT IT DOES NOT
+- Native C++/Swift/Metal differentiable Gaussian training, MCMC, SH0-3,
+  checkpoint/resume, PLY/SPZ export and native rendering: implemented.
+- Per-image calibrated cameras and LiDAR point initialization: supported through
+  COLMAP. We successfully tested the adapter and training with existing poses.
+- Person-exclusion loss masks: absent. Image alpha is composited onto black;
+  blacking out people is not equivalent to excluding their loss.
+- LiDAR depth or normal loss, geometry anchoring: absent from trainer input/loss.
+  Depth-gradient buffers are zero. RGB optimization can move the seed geometry.
+- Lens distortion in CLI: only PINHOLE/SIMPLE_PINHOLE. The GUI has a separate
+  rectification importer; CLI callers must supply appropriately calibrated inputs.
+- Rendered coverage alpha: not exposed correctly for coverage scoring through
+  current RGB PNG/opaque-RGBA exports. PLY Gaussian opacity does exist.
+- Semantic recognition, outlet identification, reachability, collision surfaces,
+  floor alignment, measured geometry and ADA reasoning: separate application work.
+- iPhone training, mobile memory/thermals and our actual web viewer integration:
+  not tested here. Native Metal performance does not establish browser performance.
+- Code licenses inspected: Apache-2.0 project/metal-cpp/swift-argument-parser;
+  MIT SPZ and MetalSplatter. No noncommercial clause found in those dependencies;
+  preserve licenses/notices. This is a source inspection, not a legal opinion.
+
+SOURCE ANCHORS AT THE PINNED COMMIT
+Sources/SplatXCore/TrainingInput.cpp:16,40 — per-image K and seed copy.
+Sources/SplatXCore/TrainingInput.h is under include/splatx/ — RGB/seed input only.
+Sources/SplatXCore/ColmapLoader.cpp:83 — CLI pinhole-only restriction.
+Sources/SplatXCore/Trainer.cpp:271,470,971,1040 — initialization, scene-scale LR,
+  RGB loss, zero depth gradients.
+Sources/SplatXCore/MetalBackend.cpp:1677,2388 — resident training gradients.
+Sources/SplatXCore/ImageIO.cpp:30 — alpha composite, not loss exclusion.
+Sources/SplatXCore/PlyIO.cpp:19,43 — SH padding and zero normal properties.
+Sources/SplatXTrainC/TrainC.cpp:1570 — opaque render-session alpha.
+Sources/SplatXKernelSrc/Rasterize3DGSBwd.metal:37 — atomic nondeterminism.
+
+NEXT DECISION
+Use the existing native trainer rather than writing new Metal rasterization or
+backpropagation kernels. Before considering production promotion:
+1. Fix the benchmark adapters so each trainer receives identical explicit
+   training IDs; evaluate the same withheld IDs. Never infer parity from counts.
+2. Use matched budgets/resolution/SH/seeds where supported, record actual splats,
+   repeat measurements, and inspect views beyond captured training viewpoints.
+3. Add and test person-mask loss support before using dynamic Moffett images.
+4. Evaluate visibility-filtered LiDAR seeds and robust depth/surface constraints;
+   keep the measured collision/accessibility model independent of splat positions.
+5. Test the exported assets in the actual web viewer and on a physical iPhone.
+Do not promise an overnight production conversion from this experiment alone.
+
+Task -> model tier
+Benchmark split adapter and mask tests -> Terra / settled integration
+Native depth-gradient wiring and loss design -> Sol / correctness-critical
+Repeat-run execution and artifact checks -> Luna / bounded verification
+Device walkthrough acceptance and release decision -> primary / judgment
+
+ARTIFACTS AND REPRODUCTION
+All paths below are relative to /Users/yanzihao/Documents/standardphysics.
+State, measurements: runs/moffett/splatx-evaluation/status.json
+Input adapter: runs/moffett/splatx-evaluation/prepare_pilot.py
+Input provenance/hashes: runs/moffett/splatx-evaluation/pilot-colmap/provenance.json
+Training log/PLY/checkpoint: runs/moffett/splatx-evaluation/pilot-3000.*
+Common renderer driver: runs/moffett/splatx-evaluation/render_validation.py
+Validation metrics/renders/split audit: runs/moffett/splatx-evaluation/validation/
+Training export check: runs/moffett/splatx-evaluation/train-export-roundtrip.json
+
+Training command, from runs/moffett/splatx-evaluation:
+/usr/bin/time -l upstream/.build/release/splatx train --data pilot-colmap/train \
+  --factor 1 --iters 3000 --max-points 303342 --sh-degree 2 --mcmc \
+  --cap-max 1000000 --out pilot-3000.ply --save-preview pilot-3000.png \
+  --log-every 250 --save-checkpoint pilot-3000.sxck \
+  --metallib upstream/build/splatx.metallib
+Use new output paths for reruns; preserve this experiment.
+
+Metric command, from project root:
+.venv/bin/python scripts/evaluate_pilot.py \
+  runs/moffett/splatx-evaluation/validation/splatx \
+  runs/moffett/render-efficiency/r001/pilot-dataset-v2 \
+  runs/moffett/splatx-evaluation/validation/splatx-metrics.json
+
+Reviewer: audit_outlet_pipeline, read-only native capability/license audit;
+subagent cost telemetry unavailable. Primary owned build, adapter, pilot,
+render checks and synthesis. No production edits or additional queued GPU jobs.
