@@ -1,0 +1,545 @@
+OVERNIGHT IMPLEMENTATION PROMPT: EFFICIENT, PHOTO-SUPPORTED LIDAR RENDERING ON MAC
+Prepared 2026-09-20. Paste this entire file into the DeepSeek coding agent with
+access to /Users/yanzihao/Documents/standardphysics and a terminal.
+Companion configuration: docs/deepseek-lidar-experiment-policy.json.
+These are proposed engineering acceptance thresholds, not measured performance.
+
+MISSION AND SCOPE
+
+Implement and evaluate the smallest defensible improvement to the Moffett Library
+reconstruction. Build on our calibrated photos, LiDAR geometry, alignment and
+existing Gaussian viewer. Improve photographic detail and/or reduce construction
+cost while preserving visible information and the measured navigation model.
+Deliver working code, replayable experiments, evidence and an honest conclusion.
+Do not finish with another speculative research essay or an untested scaffold.
+
+Target: Apple Silicon Mac, no NVIDIA GPU, CUDA, paid GPU service or new provider.
+Web/iPhone exploration uses exported appearance assets. On-phone reconstruction
+is not a prerequisite. Do not implement outlet semantics or a new app here: retain
+outlets/edges as visual evaluation targets and preserve their separate geometry.
+
+No prompt or self-score can guarantee truthful execution. Enforce evidence through
+frozen inputs/evaluator versions, process logs, artifact hashes, recomputation and
+independent review where available. Do not claim these checks are tamper-proof when
+the same agent can edit them. Never substitute a persuasive narrative for a result.
+
+READ FIRST AND PROTECT THE WORKSPACE
+
+1. Read applicable AGENTS.md files and repository setup instructions. Inspect git
+   branch/status and current processes. Preserve all concurrent/uncommitted work.
+   Branch first if on the default branch. Do not reset, clean, stash others' work,
+   change global model/provider settings, or push remotely.
+2. Read PROGRESS_MOFFETT.json and the latest relevant experiment/final-review and
+   queue-status files. Old process IDs are historical, not proof a job is running.
+   The finish-moffett-reconstruction automation was paused after evaluated trials;
+   do not resume it or repeat failed native runs automatically.
+3. Read these local research records, following referenced evidence as needed:
+   docs/moffett-efficient-splats-build-plan.txt
+   docs/moffett-mac-research-report-audit.txt
+   docs/moffett-splat-audit-evidence.json
+   runs/moffett/algorithm-audit/assessment.json
+   runs/moffett/splat-training/center-original-masked-hq/final-review.json
+   runs/moffett/splat-training/center-original-masked-hq/experiment.json
+4. Originals live in datasets/phone/moffett. Prepared JPEGs may be hardlinked:
+   never modify originals/prepared files in place. Hash and derive new outputs.
+   Preserve all previous scene revisions and reconstruction assets.
+5. Query actual current scene/manifest state. A-102 scan ID is
+   f143082d-f529-494b-b80d-97729234e334. Revision 4 has been observed; do not assume
+   revision 3 is latest. Appearance must pin the correct graph and rigid transforms.
+6. Verify hardware/software rather than copying a research table. Prior audit:
+   M5 Pro, 48 GiB unified RAM, macOS 26.5.1. Record current values, toolchain,
+   backend commit, dependencies and license. Keep secrets out of logs.
+
+RESEARCH CONCLUSIONS YOU MUST NOT REVERSE WITHOUT NEW EVIDENCE
+
+- Genuine Gaussian splatting already runs here: Brush v0.3.0 on Metal/WebGPU,
+  compressed SPZ, rendered by Spark. Existing Brush initialization already uses
+  calibrated ARKit cameras and LiDAR seed points. "Add LiDAR seeds" alone is not
+  a new method and does not explain prior failures.
+- Four scans were aligned. Photographic overlap residuals around 4–5 cm are not
+  independent absolute measurement accuracy. The bottom shared patch was small;
+  whole-room drift remains possible. Do not casually redo transforms or overwrite
+  them to conceal rendering seams.
+- We preserved about 3,524 photos plus videos, poses, RoomPlan and aggregate LiDAR
+  meshes. No separate raw IMU or per-frame depth/confidence was found previously.
+  Mesh-rendered depth is derived supervision. Do not invent raw sensor inputs.
+- Existing HQ center trial: 1920px, up to 3M Gaussians, SH2, 30k steps, roughly an
+  hour. 34-view background PSNR was ~18.68 at 15k/20k and ~18.58 at 30k. It retained
+  blur/ghost people and was rejected as a replacement. These are historical,
+  confounded comparisons, not the matched baseline for your new experiment.
+- The 34 evaluation images are captured views. Separate 1.15 m seated renders
+  have no established matching ground-truth photographs. Never compute seated
+  PSNR/SSIM against another renderer and call it real-world ground truth.
+- Full-room RealityKit jobs failed imageAlignment; a partial center mesh had
+  sharper detail and large holes. Failure does not prove all photos unusable.
+- DeepFusion and FusionViT are object detectors, not pretrained Gaussian builders.
+  Fresh random neural heads are not a trained reconstruction. Inspect current
+  experimental splats/ code before trusting names like train or deepfusion.
+- Structured-Li-GS supplies useful surface anchors, normals, bounded count and
+  depth/normal/flattening ideas. Its RTX A5000 experiments do not establish Mac
+  support, whole-room runtime or a universal quality win. Fewer Gaussians do not
+  automatically mean less end-to-end compute.
+- LVI-GS uses CUDA on RTX4070Ti; its ~3s result is for a keyframe, not a whole floor.
+  LiGSM uses isotropic Gaussians/view-independent RGB and RTX4090 experiments.
+  Li-GS is a distinct paper whose full methodology was not verified. SplatAD uses
+  custom CUDA and a learned appearance decoder, not a drop-in SPZ pipeline.
+- msplat (https://github.com/rayanht/msplat) is a real Apache-2.0 native Metal
+  trainer. Upstream ~70s refers to 7k iterations; a 30k garden run reports 700s,
+  3.51M Gaussians on M4 Max. No verified 2–4 GiB training footprint here. Compile
+  and benchmark before making local performance claims. Its iOS fork is not proof
+  of fast full-floor phone training.
+- OpenSplat supports Metal but AGPL integration requires deployment-specific
+  license review. SuGaR is not simply MIT licensed. Do not import restricted code
+  into the product without checking its exact license and dependencies.
+- MVSplat/pixelSplat are view-synthesis models, but CUDA operators, trained weights,
+  licensing, scene scale and domain shift require verification. Porting them is
+  outside this night's critical path.
+
+ARCHITECTURE: REUSE OWNERSHIP
+
+Immutable photos + calibrated cameras + measured mesh + reviewed person masks
+    -> fixed experiment manifest and camera/visibility checks
+    -> Brush reference / deterministic surface candidate / optional msplat
+    -> standard PLY and SPZ with provenance
+    -> identical evaluation rendering + captured-image metrics + seated inspection
+    -> separate reviewable candidate only if gates pass
+
+Measured scene graph -> existing collision, wheelchair movement and architecture
+export. Photographic splats never become proof of measurement accuracy or ADA.
+
+Reuse existing PhotoCamera/load_cameras and geometry transforms in textures/camera.py;
+scan_geometry/vertex_normals in textures/scan_colour.py; depth/projection/color helpers
+in textures/project.py and textures/surface_photos.py; the exporter in
+scripts/export_moffett_splat_dataset.py; atomic compression/provenance in
+scripts/compress_moffett_splat.py; authenticated manifests in
+services/api/standardphysics_api/splats.py; GaussianSplatScan/Spark and existing
+viewer source selection. Verify current definitions before editing.
+
+Do not create another camera convention, asset API, background service or renderer.
+If current helpers are wrong, repair the owner with fixtures. Keep one canonical
+coordinate conversion. Coordinate with owners of untracked experimental modules;
+do not rewrite their work just to obtain a cleaner diff.
+
+RUNTIME, CHECKPOINTS AND BOUNDED LOOPS
+
+Maximum active overnight budget: 480 minutes. Reserve the final 60 minutes for
+verification/reporting. Stop earlier when done or no useful authorized work remains.
+A prompt cannot schedule itself or continue after session termination. Do not claim
+future execution. No sleeping to fill time; no auto-created recurring task.
+
+Suggested allocation: setup/evaluator 60m; baseline/compatibility 60m; deterministic
+implementation 120m; bounded experiments 120m; final comparisons 60m; handoff 60m.
+If a gate takes longer, reduce optional scope rather than omit evidence.
+
+One heavy GPU job at a time. Do not kill other users' jobs. If GPU contention cannot
+be avoided, mark timings incomparable and perform independent CPU work. Default
+process-footprint stop limit is min(24 GiB, 50% physical RAM); record the measurement
+scope and relevant child processes. Do not double-count unified GPU/CPU memory.
+Stop on sustained critical memory pressure or accelerating swap, preserving logs.
+Poll jobs at reasonable 15–30s intervals; checkpoint at stage boundaries and at
+least every 10 minutes during long work. A live job is not a completed artifact.
+
+At most 8 distinct candidate configurations, including ablations, plus the fixed
+baseline. Repeated timing trials are not new configurations. At most 3 code repair
+attempts for a failed gate, then diagnose/change hypothesis. At most 2 hypotheses
+for the same blocker. Stop a training pilot at 20 minutes wall time or 7000 steps,
+whichever comes first; record actual steps, splat count and completed exports.
+No 30k-step full-room rerun unless an earlier controlled result justifies it and
+the time reserve remains intact. A backend installation gets 45 minutes maximum.
+
+Create a run directory runs/moffett/render-efficiency/<run-id> and checkpoint
+PROGRESS_MOFFETT_RENDER_EFFICIENCY.json. Plan/checkpoints use .txt/.json, never new
+.md. Do not rewrite PROGRESS_MOFFETT.json with an invented overall success.
+
+Checkpoint fields: phase/status, input/code/evaluator hashes, exact commands and
+exit codes, config ID, changed files, process identity, wall time, resource traces,
+artifacts, failed gates, next action, actual agent/API costs or unavailable.
+Statuses: planned, implemented, tested, rendered, eligible, rejected, blocked.
+
+Outer loop:
+1. Read checkpoint; select earliest incomplete gate.
+2. State one hypothesis and its falsification criterion before running it.
+3. Change one factor; preserve parent configuration and assign a new ID.
+4. Execute with timeout/resource monitoring and real logs.
+5. Validate artifacts; run the independent metric code, not model-written scores.
+6. Inspect paired images and failure cases; update checkpoint/ledger.
+7. Continue only with an evidenced next hypothesis or the next gate.
+
+Plateau rule: after 3 eligible trials without a validation-score gain of at least
+2 points, stop parameter search. If all 3 are ineligible, diagnose the recurring
+hard-gate failure instead. Do not lower gates or change the test set to get a win.
+Unsupported captures/poses require a specific limitation report, not more steps.
+
+PHASE 0: IMPLEMENT THE EVALUATOR BEFORE OPTIMIZING
+
+Inspect existing evaluation utilities first. Extend them or add one small owner
+for manifest validation, paired image metrics and scoring. The language model
+must never type metric values into the final result JSON. The evaluator reads
+actual artifacts and writes the result; stdout is not a substitute for artifacts.
+
+Freeze experiment-policy JSON, input manifest, data split, ROI/mask definitions,
+camera poses, image preprocessing and evaluator commit/hash before candidate runs.
+Put their hashes in every run. A legitimate bug fix creates a new benchmark version
+and invalidates/recomputes every affected score including baseline. Never silently
+edit the baseline denominator or scoring thresholds after seeing results.
+
+Evaluator fixtures must cover identical images; known added error; NaNs/Inf;
+wrong resolution; missing image; modified mask; altered input hash; shortened view
+list; duplicate view; inconsistent background; missing timing/memory; and a faster
+candidate that destroys critical detail. Bad evidence must fail, not receive zero
+loss or disappear from averages. Test baseline-against-itself scores exactly 50.
+
+Use content hashes and existing atomic writes. Logs plus hashes prove internal
+consistency, not independence from the agent; disclose that limit. If a read-only
+reviewer is available, have it rerun metrics from images without trusting summaries.
+
+Gate 0: evaluator fixtures pass, benchmark protocol is frozen, and the baseline
+can be replayed. If not, no experiment receives an eligible score.
+
+PHASE 1: FREEZE REAL DATA AND FAIR BASELINES
+
+Choose a representative area from actual photos: at least one textured region and
+one difficult edge/fixture (outlet, cable or board border only if truly visible).
+Use a second difficult area as a transfer check before room-wide adoption. Do not
+invent a patch containing all desired objects. Save source crops/contact sheets.
+
+Initial pilot: 32 training images, 8 validation images, 8 final-test images at
+1280px maximum edge, aspect preserved. These are targets: if genuinely separated
+coverage is insufficient, report fewer and limited generalization rather than
+manufacturing independence. Select by coverage/viewpoint/sharpness, not time stride
+alone. Group near-duplicate video frames; split by separated trajectory segments.
+Per-frame intrinsics must scale consistently with decoded/resized sensor images.
+
+Do not use validation/test RGB for color baking, exposure fitting, SH fitting,
+learned optimization or pose refinement. Existing aggregate LiDAR/ARKit poses may
+include the entire capture: disclose this as held-out appearance with shared
+measured geometry, not completely unseen sensor acquisition. Do not claim the old
+34-view set is clean if those images participated in old optimization/preprocessing.
+
+Use training views to define geometry support and sampling; evaluation masks/ROIs
+come from reference photographs and fixed visibility review, never candidate alpha.
+Keep final test images out of the tuning loop; use validation for selection. One
+locked finalist reaches final testing. Failure ends promotion for that benchmark;
+do not tune repeatedly against the same final set.
+
+Baselines:
+B0: matched Brush run on this exact pilot, with existing LiDAR seeds, same input
+images, calibration, reviewed masks, resolution and specified resource caps.
+B1: existing colored/textured measured surface as cheap context where available.
+B2: prior published/full-room splat assets as historical visual context only.
+Do not compute a speedup by dividing a 32-view patch runtime into an unrelated
+400-view full-room run. Compare equal input workload separately from best product
+quality. Backend differences in training schedules must be disclosed.
+
+Use a common evaluator renderer/output convention for B0 and candidate exports.
+Specify color space, tone mapping, antialiasing, camera calibration, resolution,
+background and exposure. Never rescale/crop/align each result to maximize its score.
+Render both appearance-only and intended combined-product views; measured fallback
+must not silently hide unsupported appearance pixels during scored comparison.
+
+Create fixed static evaluation masks independent of candidate outputs. Review
+person masks: stronger masks previously missed legs and excluded furniture. Keep
+training masks separate from evaluation masks and show full frames alongside
+masked metrics. Model alpha cannot exclude errors from PSNR/SSIM denominators.
+
+Gate 1: fixed manifests, reviewed real detail, documented split independence and
+reproducible B0/B1 artifacts. If B0 cannot be built/imported correctly, keep candidates
+exploratory; do not claim a matched speed win.
+
+PHASE 2: PROVE CALIBRATION AND VISIBILITY
+
+Before constructing splats, verify projection at independently inspected real
+corners/edges distributed across the selected area. Record image residuals, support
+geometry source and uncertainty; no universal subpixel promise. Check transpose,
+handedness, ARKit -Z forward, image orientation, pixel-center convention, units and
+capture-to-room-to-floor transform order. Apply accepted rigid transforms once.
+
+Synthetic tests: known plane, checkerboard, oblique plane, occluding foreground,
+thin edge, no depth, reversed/degenerate normals, +Z and -Z normals, shifted principal
+point and varying per-frame intrinsics. A red rear surface cannot inherit a blue
+occluder's color. Unknown mesh support must not be treated as visible background.
+
+Audit current projection/depth resolution and erosion: coarse gates previously
+discarded good coverage. Use triangle support and visibility, not frustum membership
+alone or nearest point without occlusion. Derive depth tolerance from documented
+geometry/calibration uncertainty; if not calibrated, label it a heuristic and run
+a bounded sensitivity check. Do not choose tolerance using final-test scores.
+
+If real edges disagree materially, inspect pose/mesh/orientation before rendering.
+Do not fix disagreement with giant splats. Original/refined pose comparisons are
+separate ablations with the same masks, never mixed into a backend comparison.
+
+Gate 2: fixtures pass and real alignment limitations are recorded. An unresolved
+systematic coordinate error blocks all quality claims.
+
+PHASE 3: BUILD DETERMINISTIC SURFACE GAUSSIANS
+
+Implement a small build_surface_splats entry point and the missing owned functions
+inside the existing pipeline. Use current types/helpers; no neural network is
+required. Fail clearly on invalid cameras, empty support, nonfinite data or required
+compression failure. Geometry-only output must be explicitly named geometry-only.
+
+Initial settings: seed 1729, up to 150,000 surface samples, top-K=4 retained photo
+observations, point blocks of 8192, SH degree 0. A second sample cap of 300,000 and
+K=8 are optional one-factor ablations, not mandatory expansion. Never allocate a
+P x M x D feature tensor; stream images/point blocks and spatially filter candidates.
+
+Sampling:
+- Use measured mesh vertices/triangles, sample by useful projected pixel footprint
+  and local spacing under the cap. Subdivision adds appearance samples, not newly
+  measured geometry. Do not Poisson-fill holes and call them observed surfaces.
+- Reject degenerate triangles/normals. Do not invent a +Z normal for invalid data.
+- Track area with photographic support using fixed area-weighted mesh probes.
+  Report support relative to all target measured area and known photo-visible area,
+  not just the subset surviving pruning. Keep unsupported areas visible as unknown.
+
+Color:
+- Select best valid view by projected resolution, angle, sharpness and occlusion;
+  retain chosen source/crop IDs. Reject masked people and inconsistent observations.
+- Start with best-view color. Robust multi-view fusion is a separate trial and
+  must preserve edges. Aggregate in linear light, then encode the required output.
+- Fit exposure only from training images with bounded corrections and save them.
+  No histogram matching to evaluation photographs.
+- Unobserved samples produce no photographic Gaussian. Do not merely lower opacity
+  by a fixed logit and describe unsupported geometry as removed.
+
+Covariance:
+- Keep centers fixed on the measured support initially.
+- Build stable tangent/normal frames, including parallel and antiparallel cases.
+- Covariance = R diag(s_t1^2,s_t2^2,s_n^2) R^T.
+- Use local sample spacing h: test tangent sigma = c*h, c in {0.5,0.75,1.0} on a
+  synthetic textured plane before freezing one. Do not spend real-data trials
+  trying every combination. Initial normal ratio s_n/min(s_t1,s_t2)=0.10; allow
+  one later ablation at 0.05 or 0.20 if a specific failure justifies it.
+- Bound tangent anisotropy s_t_max/s_t_min <= 3 separately. No all-axis <=3 rule,
+  because that would prohibit flattened Gaussians. These are rendering parameters,
+  not centimetre accuracy guarantees. Disallow zero/nonfinite scales.
+- Calibrate density-aware opacity on synthetic planes using candidates 0.3,0.5,0.7;
+  freeze a setting that avoids holes and oversaturation. Evidence confidence is
+  stored separately from compositing opacity. Never set opacity=confidence blindly.
+
+Export:
+- Correct quaternion order/normalization; log-scales; opacity logits; scene metric
+  coordinates; SH0 convention f_dc=(RGB-0.5)/0.28209479177387814 after verifying
+  expected RGB encoding. Check known color patches through PLY -> SPZ -> Spark.
+- Validate coordinate roundtrip, finite values, bounds and splat count.
+- Write atomic outputs and provenance via existing tools. Preserve failures and
+  do not create a success manifest until every required artifact validates.
+
+Gate 3: deterministic source-supported output, bounded memory, geometry/color/
+occlusion/export fixtures, no hidden random-weight inference or automatic publication.
+
+PHASE 4: OPTIONAL MSPLAT COMPATIBILITY AND COMPARISON
+
+Clone/pin official code in an isolated dependency/work directory, not over the app.
+Inspect license, current build commands and actual kernels. Respect the 45-minute
+installation cap. No imaginary CLI flags. Record exact commit and command help.
+
+Before training real data, prove support or a correct adapter for per-frame
+intrinsics, distortion conventions, world axes, LiDAR initialization, masks,
+evaluation split, SH export and SPZ conversion. If mask semantics differ, stop the
+matched comparison; do not silently use unmasked images. Capability failure is a
+useful finding, not a reason to redefine the experiment.
+
+First run the unmodified backend with the same pilot inputs and wall-clock cap.
+Save 0/1000/3000/7000-step exports where supported. Iteration count is not equivalent
+compute across backends; primary comparison is measured end-to-end time vs quality.
+Use SH0 for the initial matched experiment; label any backend-enforced differences.
+
+Only after this works, consider short refinement of deterministic splats using a
+verified compatible renderer. Start with fixed centers/covariance and color/opacity
+optimization, compare 0/100/500 steps within 5 minutes. If loading/fixing these
+parameters is unsupported, document it; do not claim constraints merely from seeding.
+
+Surface anchors/thickness bounds must be enforced after optimizer updates and
+during any densification, or implemented as a parameterization. Start with no
+densification for fixed-surface refinement. Record active constraints, not just losses.
+
+Depth/normal-loss porting is optional research, not a night's prerequisite. It
+requires correct forward depth and gradients through compositing, not a scalar
+loss glued onto Brush. Define accumulated depth vs opacity-normalized expected
+depth, background/empty-ray handling, coordinate units and valid support masks.
+Reject low-opacity/invalid depth. Verify derivatives by finite differences before
+real training. No arbitrary depth weight=0.5 without gradient/units inspection.
+Do not write a new rasterizer or promise this port overnight.
+
+SH1 fitting is another optional trial only with sufficient angular support/rank,
+regularization and SH0 fallback. SH2 is not justified by nine nearly identical
+views. Moving people/exposure changes are not view-dependent material appearance.
+
+Gate 4: compatible reproducible backend trial or a precise capability blocker.
+Unmodified msplat speed claims remain author results until locally reproduced.
+
+NUMERICAL EVALUATION POLICY: HARD GATES FIRST, SCORE SECOND
+
+The companion JSON is authoritative for initial numeric values. All thresholds
+below are provisional product experiment rules, not perceptual laws or accuracy
+certificates. Freeze them before tuning. Never relax them after seeing failure.
+
+Required metrics from paired actual captured views:
+- P: mean per-view static-region PSNR in dB, with full-frame PSNR also reported.
+- Fix metric RGB to decoded sRGB float64 in [0,1], channel-averaged masked MSE;
+  PSNR=10*log10(1/max(MSE,1e-10)). Record perfect matches separately; the 100 dB
+  cap makes identical-image fixtures finite and applies equally to all runs.
+- U: mean static-region SSIM, fixed implementation/kernel/data range. Compute SSIM
+  on full images and average only windows entirely within the fixed valid mask;
+  do not zero masked pixels and introduce artificial agreement at mask borders.
+  Use Gaussian weights, 11x11 window, sigma=1.5, data_range=1, population covariance,
+  channel-averaged RGB; pin library/version and identical settings for all renders.
+- R: minimum across preregistered critical ROIs of candidate-minus-baseline PSNR.
+  Each ROI needs valid source pixels. No silent deletion of difficult ROIs.
+- H: fraction of fixed known-photo-supported evaluation pixels not covered by
+  appearance, from a common alpha-capable renderer; coverage threshold alpha>=0.5.
+  Freeze backgrounds/threshold and inspect false filled surfaces visually. If a
+  comparable coverage pass cannot be produced, this gate is unknown, not passed.
+- T: median cold end-to-end wall time, including necessary preprocessing, decode,
+  masks, pose adaptation, build/train, export/compression. Report stage times.
+- M: peak process-tree footprint with documented GPU/shared-memory scope.
+- Z: actual SPZ bytes. F: p95 rendered frame time under the common viewer protocol.
+
+Use cold-cache-equivalent runs (new derived run caches, not deleting user/global
+caches) and separate warm runs. OS disk cache is not under complete control; label
+that limitation. Three runs for baseline and every candidate receiving an eligible
+score, alternating execution order. Smoke trials may collect one run and raw
+validation quality to reject weak ideas cheaply, but their aggregate score stays
+null/provisional until repeat and review requirements pass. Reduce the number of
+scored candidates to stay within the night budget; do not omit repetitions.
+Report each value, median, range and training randomness. No cherry-picked fastest
+run. For M use the maximum observed comparable peak; Z use the maximum across
+repeated outputs; F use the worst of per-session p95s. Record GPU synchronization.
+Do not label vm_stat system counters as application peak memory.
+
+Viewer protocol: same viewport/device/browser/renderer revision, all assets loaded,
+10-second warmup then 60-second fixed path, 3 sessions, no competing GPU jobs.
+Use actual rendered-frame/GPU timing where available; requestAnimationFrame rate
+alone is not rendered FPS. If proper frame timing unavailable, record missing F
+and make score ineligible rather than inventing it. Record browser footprint too.
+Phone timings require the physical device; desktop viewport emulation is separate.
+
+LPIPS is diagnostic only unless its implementation/weights are already available
+and fixed for both sides. No invented LPIPS, no automatic reweighting when absent.
+Report per-view results, worst views and a paired bootstrap uncertainty diagnostic
+by independent trajectory group (1000 resamples, seed 1729); do not claim statistical
+significance with too few groups or highly correlated frames.
+
+Hard gates (all must pass for an eligible candidate):
+G1 input/split/code/evaluator hashes consistent; artifacts valid; no source changes.
+G2 correct calibration/axes/color/export and required meaningful tests pass.
+G3 every expected view/ROI rendered at the fixed resolution; no missing/invalid metrics.
+G4 mean PSNR drop <=0.20 dB, mean SSIM drop <=0.005, every critical-ROI PSNR drop
+   <=0.30 dB, and worst per-view PSNR drop <=1.0 dB relative to matched baseline.
+G5 uncovered supported pixels increase by <=1.0 percentage point; no disappeared
+   critical feature, new misleading filled surface, or new/worse person ghost in
+   mandatory paired visual inspection. Unknown visual review means unknown gate.
+G6 footprint below resource cap; valid end-to-end timings and same-device render
+   measurements; p95 frame time no more than 10% slower than baseline.
+G7 display change preserves measured collision/export/revision/auth boundaries;
+   no unsupported claim of unseen detail, physical accuracy or ADA compliance.
+
+No aggregate score can compensate for a failed/unknown gate. A missing value is
+null with an error, never zero, perfect, or omitted from the denominator.
+
+Score eligible validation candidates only (baseline = 50):
+clip(x)=min(1,max(0,x)). B denotes matched baseline; C denotes candidate.
+qP = clip(0.5 + (P_C-P_B)/2.0)
+qU = clip(0.5 + (U_C-U_B)/0.04)
+qR = clip(0.5 + R/2.0)
+Q = 100*(0.40*qP + 0.30*qU + 0.30*qR)
+gain(b,c)=100*clip(0.5 + log2(b/c)/2.0), for positive finite values only.
+S = 0.60*Q + 0.20*gain(T_B,T_C) + 0.08*gain(M_B,M_C)
+    + 0.07*gain(Z_B,Z_C) + 0.05*gain(F_B,F_C)
+
+Example: identical outputs/resources score 50. A twofold speedup alone adds 10
+points, giving 60 if all other components are unchanged. It still cannot pass if
+an outlet disappears, coverage fails, or memory/timing evidence is missing.
+
+Eligibility is not selection. A validation finalist additionally needs S>=55 and
+one explicit tradeoff lane:
+QUALITY: PSNR improves >=0.50 dB AND SSIM improves >=0.010; T_C<=1.25*T_B;
+         M_C<=1.10*M_B; Z_C<=1.25*Z_B; all hard gates pass.
+EFFICIENCY: T_B/T_C>=1.5; M_C<=M_B; Z_C<=Z_B; all hard gates pass.
+Confirm timing improvement exceeds observed run-to-run noise; if ranges overlap
+substantially, label the claim inconclusive even if the median ratio passes.
+Keep a Pareto table for useful candidates not satisfying these provisional lanes;
+do not call them production replacements. A fast visibly inferior result is at
+most a labeled draft candidate, not photorealistic completion.
+
+For masked averages improving while full-frame quality worsens, inspect why and
+retain both. Freeze manual review labels before revealing method names if feasible.
+Visual review includes actual exported SPZ in the product viewer, not only trainer
+screenshots. Review statuses must identify human, independent agent, or self-review.
+No “human approved” status without a human. Unknown review cannot be self-filled.
+
+FINAL TEST AND DELIVERY LOOP
+
+Choose one finalist using validation; lock artifact/config before revealing final
+test scores. Render baseline/finalist using the same frozen final-test protocol,
+recompute gates and score. Failure rejects promotion for this benchmark. Do not
+retrain from final test images, alter ROIs or relabel failure as another metric win.
+
+Inspect fixed seated paths (1.15 m eye height as preview default), doorway/overlap
+seams and close detail. Report qualitative limitations because these are novel
+views, not matched photographic ground truth. Existing wheelchair radius/height
+defaults remain adjustable approximations, not measured personal dimensions.
+
+Only if the pilot passes, apply the locked method to the second independent area.
+Only if transfer also passes and time reserve permits, build four-room candidates
+using the preserved rigid transforms. Do not extrapolate a patch time to full-floor
+completion or its quality score to unseen rooms. Avoid double transforms and check
+overlap seams at actual seated viewpoints.
+
+Reuse existing authenticated manifests, atomic compression and revision pinning.
+Deliver through an explicit local comparison selection or candidate manifest;
+never overwrite historical assets or silently replace production defaults. Preserve
+measured fallback and label photographic support/unknown regions honestly.
+
+Run affected Python/API tests, export/roundtrip checks, web typecheck/tests and
+build as appropriate. Respect apps/web/AGENTS.md and installed Next.js docs before
+framework edits. Do not claim preexisting test failures are introduced or passed.
+Use required UI automation tools for actual viewer inspection. Verify keyboard/
+touch controls, picking, floor-gap/collision behavior, mobile layout and architecture
+download identity/auth. Actual iPhone acceptance stays pending if unavailable.
+
+Persist one configuration ledger row per attempted trial, including rejected,
+timed-out and crashed runs. Required files per completed run:
+manifest.json; config.json; command/log references; resource trace;
+input/output/evaluator hashes; per-view metrics; validation/gate results;
+paired render/contact-sheet paths; provenance; conclusion and failure reasons.
+Exact names may follow existing conventions; every item must be traceable.
+
+Final report (docs/moffett-render-efficiency-results.txt):
+1. What was implemented and where to view it; actual local launch command/URL.
+2. Baseline/candidate table with exact workload, quality, time, memory, bytes,
+   rendered-frame measurement, hard-gate statuses and score; nulls stay explicit.
+3. Side-by-side real evidence for easy region, difficult region and seated view.
+4. Which hypotheses failed and what is still unknown. No causal claim from a
+   confounded trial; no claim that source coverage is absent without inspection.
+5. Selected candidate or “no verified improvement”; current preview preserved.
+6. Tests, commits, remaining native-phone/realism limitations, input needs.
+7. Actual model/provider cost or unavailable; each agent's role/cost.
+
+Commit only coherent verified owned changes with default git author; never push.
+Document an implemented benchmark even if no candidate improves rendering. Do not
+hide the failure, fabricate results, or spend the final hour seeking a cosmetic win.
+An honest no-improvement finding with working evidence is a valid research outcome;
+it is not completion of the user's overall photorealistic-floor objective.
+
+TASK -> MODEL-TIER DELEGATION
+
+Use the configured DeepSeek agent as coordinator. Do not invent a “DeepSeek 4.1”
+API identifier, silently change model routing, install paid services, or claim
+delegation occurred when unavailable. Independent workers get bounded tasks and
+exclusive file ownership; all are told they share the workspace and preserve edits.
+
+If only one model is available, execute these responsibilities sequentially and
+label review as self-review. Do not block on obtaining another model.
+
+START NOW: read current state, write the checkpoint, implement/reuse the evaluator,
+freeze the pilot, and work through the gates. Do not stop at acknowledging the plan.
+
+Task                                             | Model tier
+-------------------------------------------------|--------------------------------
+Architecture, metric invariants, evidence review   | Strongest available tier
+Settled surface builder/backend adapters          | Strong implementation (Terra-like)
+Fixtures, logs, source audit, replay checks        | Inexpensive (Flash/Luna-like)
+Sensitive or bulk image processing                | Local code / local model if needed
