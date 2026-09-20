@@ -1,0 +1,126 @@
+Public repository search — 2026-09-20
+
+Scope: Mac/iPhone LiDAR-seeded photographic reconstruction shown in the user's
+DeepSeek screenshot. GitHub repository search, official READMEs, licenses and
+selected implementation files inspected. No repositories installed, training run,
+benchmark reproduced, current job interrupted, or implementation changed.
+This is a reuse shortlist, not an endorsement of measured quality or compatibility.
+
+1. PoSTMEDIA-AI/splatx-metal — native Mac training application and engine
+https://github.com/PoSTMEDIA-AI/splatx-metal
+Inspected revision: 9ae5f66040bc9f255549cdf1ee95c8d2987bfc05
+License inspected: Apache-2.0; separately inspect dependency/branding notices.
+Swift/C++/Metal 3DGS training, native Mac Align/Train/View/Export app, COLMAP loader,
+PLY/SPZ export, iOS C/XCFramework integration. Existing training kernels and CLI
+could avoid writing a trainer, renderer or training-progress UI from scratch.
+TrainingInput.cpp actually converts per-image COLMAP camera references/intrinsics
+and seed points; our calibrated poses/seeds would need a validated adapter.
+README: CLI macOS15+/Swift6.2; app/offline Metal compilation macOS26/Xcode26.
+Author benchmark docs report M4 Air24GB, 7k garden: 14.9min/5.16GB RSS at2M cap,
+8.5min/3.86GB at1M cap. These are different quality/cap configurations, not our
+Mac/Moffett results. No person-mask or sensor-depth-gradient equivalence verified
+in this search. Those capabilities are mandatory preflight checks before a swap.
+Sources: Sources/SplatXCore/TrainingInput.cpp, Sources/SplatXCore/include/splatx/Trainer.h,
+docs/BENCHMARKS.md, LICENSE and README.md.
+
+2. sandeep-devarapalli/capture-splat — closest capture-to-reconstruction workflow
+https://github.com/sandeep-devarapalli/capture-splat
+Inspected revision: efe9e8e87c5af45a83d644903922b47f4013d175
+License inspected: Apache-2.0; backend dependencies retain separate licenses.
+Swift iPhone capture plus Python validation/import/COLMAP export and a VkSplat
+training wrapper. README describes importing existing Nerfstudio transforms,
+ARKit calibration, optional confidence/depth or validated mesh seeds, mask checks,
+training ladders, provenance and render/source QA. Very relevant as adapter/QA
+reference instead of recreating each boundary.
+Actual training_supervision.py validates sidecars, derives normal proposals, and
+raises when required sensor supervision is unsupported or unavailable. It does
+not pretend a saved normal/depth file proves the backend optimizes against it.
+Mac Vulkan/VkSplat compatibility/performance not run here. README states VkSplat
+normalizes internally; do not assume meter-native output. Current Moffett originals
+lack separate per-frame depth/confidence, so those features cannot be assumed usable.
+Sources: README.md, python/capture_splat/training_supervision.py,
+scripts/train_vksplat.py, LICENSE.
+
+3. rayanht/msplat — compact native Metal trainer already on our shortlist
+https://github.com/rayanht/msplat
+Inspected tree revision: 6b819711fa7c90f054567cb4fb4937743367afdd
+Apache-2.0. Native training/optimizer/densification, Python/Swift/C++ interfaces,
+checkpoints, exported PLY and arbitrary-pose rendering. Earlier audit verified
+~70sec is 7k iterations on M4 Max, while 30k garden is700sec. Do not recycle the
+incorrect 30k-in70sec claim. Mask/camera/seed parity with our pipeline still needs
+validation before replacing Brush.
+iOS fork: https://github.com/frs0n/msplat-ios (Apache-2.0), previously audited; its
+README does not establish the claimed700k/3min/2GB phone training guarantee.
+
+4. nandometzger/metal-gauss — trainable MPS/Metal research backend
+https://github.com/nandometzger/metal-gauss
+Inspected revision: f05d96a120dbf51e83289d1cbdba1582dc5642d0
+MIT. Actual PyTorch/MPS training and custom Metal forward/backward kernels,
+COLMAP/Blender loaders and MCMC. No CUDA requirement in inspected build/train path.
+Public render returns RGB/alpha/metadata, not turnkey sensor depth/normal losses.
+Explicit-color pathway may support a custom differentiable depth experiment, but
+that requires implementation and gradient tests. No direct ARKit bundle loader
+verified. Benchmark claims not reproduced; README acknowledges contention/variance.
+Source: metal_gauss/train.py, metal_gauss/metal_backend.py, LICENSE.
+
+5. tchauffi/metalsplat — another actual Metal trainer, with a depth caveat
+https://github.com/tchauffi/metalsplat
+Inspected revision: b9179e91fc0102bb7b2efead9d00a58374a59156
+MIT. Actual MPS/Metal training. Requires relatively recent Torch/Python packages;
+inspect exact pyproject constraints before choosing it. Pinhole cameras only in
+inspected loader; SH degree<=2. Weighted depth output is forward-only: rasterize.py
+backward explicitly ignores depth/transmittance gradients. A depth preview does
+not establish LiDAR-supervised training. Unsupported-region seeding borrows depths;
+such appearance proposals must never become measured collision geometry.
+Source: src/metalsplat/ops/rasterize.py:108, src/metalsplat/rendering.py,
+examples/train_garden.py, src/metalsplat/seed.py, LICENSE.
+
+6. scier/MetalSplatter — native iPhone/Mac viewer, not reconstruction
+https://github.com/scier/MetalSplatter
+Inspected revision: 464eb37c55d90d7362a79120fdf8b50d4ae03296
+MIT per GitHub metadata. Swift/Metal PLY/SPZ/.splat rendering and sample app for
+iOS/macOS/visionOS. Reuse for a native viewing path rather than building a splat
+renderer. It cannot improve training quality. Keep existing Spark web rendering.
+
+7. Voxelio-app/ios-gaussian-splatting-demo — closest integrated iPhone example
+https://github.com/Voxelio-app/ios-gaussian-splatting-demo
+Inspected revision: 124c95e565940eb8e016c156a1895779d6f90f2e
+README describes ARKit images/intrinsics/poses, optional LiDAR depth seeds,
+Nerfstudio dataset, local msplat1k–5k training, checkpoints, PLY->SPZ and MetalSplatter.
+Useful architectural reference, but original code is PolyForm Noncommercial1.0.0;
+commercial use requires separate written license. Publicly readable is not the
+same as permissively reusable. README explicitly says capture quality, memory and
+training time still need broader physical-device validation. Not a proven floor app.
+Sources: README.md and LICENSE (license text inspected).
+
+8. amirhossein-razlighi/mlx3D — broader experimental Apple geometry framework
+https://github.com/amirhossein-razlighi/mlx3D
+Inspected revision: c330b9233ef11638f234b5b333efc2fc29603299
+MIT claimed in README/GitHub metadata. MLX mesh/camera/3DGS tools and capture CLI.
+trainer.py actually contains optional 2dgs-style depth-variance and normal-consistency
+terms using feature rasterization; these are not captured LiDAR depth supervision.
+Potential research reference, not the first integration choice. Derivative-kernel
+license provenance and numerical correctness were not audited in this search.
+
+RECOMMENDATION
+
+Preserve the ongoing run and its outputs. First evaluate SplatX Metal as a complete
+Mac backend and Capture Splat as an input/validation reference. Keep msplat as the
+compact alternative. Use MetalSplatter only if a native iOS viewer is needed.
+Use metal-gauss or mlx3D for a later geometry-loss experiment after baseline parity,
+not as another unbounded rasterizer-port project. Do not copy noncommercial Voxelio
+code into a commercial product without appropriate rights.
+
+Reuse should reduce custom trainer/rendering/import work. It does not eliminate
+our camera/coordinate adapter, masks, preservation/revision boundaries, measured
+collision, outlet semantics or Moffett quality evaluation. No turnkey verified
+public clone of the complete accessibility product was established by this search.
+
+Screenshot context: it reports six ledger runs completed and paired rendering
+starting; repeated waits may be actual benchmark time, not purely coding delay.
+The shown standardphysics_contracts import failure is an environment/package-path
+issue, not evidence of a Gaussian algorithm failure. This search did not inspect
+the current live DeepSeek job or change its instructions.
+
+Review agent: audit_outlet_pipeline independently inspected metal-gauss/metalsplat
+build/training/depth APIs and licenses. Cost unavailable. No builds or benchmarks.
