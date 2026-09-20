@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SceneNode } from "@/types/contracts";
-import { DEFAULT_WHEELCHAIR_PROFILE, collidesAt, dockPoint, sweepWheelchair, sweepWheelchairInGeometry, wheelchairMotionGeometry, wheelchairProfile, wheelchairSpawn } from "./wheelchair-motion";
+import { DEFAULT_WHEELCHAIR_PROFILE, assessOutletAccessibility, collidesAt, dockPoint, sweepWheelchair, sweepWheelchairInGeometry, wheelchairMotionGeometry, wheelchairProfile, wheelchairSpawn } from "./wheelchair-motion";
 
 function node({
   id,
@@ -221,5 +221,85 @@ describe("wheelchair motion geometry", () => {
     if (!spawn) throw new Error("expected a clear point for the selected radius");
     expect(collidesAt(spawn, geometry.obstacles, radius)).toBe(false);
     expect(sweepWheelchair(spawn, { x: -4, z: 0 }, geometry.obstacles, radius).point).toBeDefined();
+  });
+
+  describe("assessOutletAccessibility", () => {
+    const floor = node({ id: "floor", kind: "floor", dimensions: { x: 10, y: 10, z: 0.05 }, y: 0 });
+    const wall = node({ id: "wall", kind: "wall", dimensions: { x: 6, y: 0.2, z: 3 }, y: 2 });
+    const outlet: SceneNode = {
+      id: "outlet-1",
+      kind: "outlet",
+      label: "Outlet 1",
+      raw_category: "outlet",
+      dimensions: { x: 0.12, y: 0.03, z: 0.12 },
+      transform: { m: [1, 0, 0, 0, 0, 1, 0, 1.9, 0, 0, 1, 0.45, 0, 0, 0, 1] },
+      quality: "measured",
+      movable: false,
+      labeled_by: "discovery",
+      parent_id: "wall",
+      relation: "mounted_on",
+      attachment: {
+        support_node_id: "wall",
+        support_type: "lidar_surface",
+        normal: { x: 0, y: -1, z: 0 },
+        local_anchor: null,
+        observed_region: [],
+        localization_quality: "verified_support",
+        identity_confidence: 0.95,
+        review_status: "detected",
+        uncertainty_reasons: [],
+        sockets: [],
+        observations: [],
+      },
+    };
+
+    it("returns clear approach and within_reach when path is free and reach profile matches", () => {
+      const geometry = wheelchairMotionGeometry([floor, wall, outlet]);
+      const profile = wheelchairProfile({
+        collisionRadius: 0.35,
+        reach: { maxReachDistance: 0.75, minReachHeight: 0.38, maxReachHeight: 1.22 },
+      });
+      const currentPos = { x: 0, z: 0 };
+      const res = assessOutletAccessibility(currentPos, outlet, geometry, profile);
+      expect(res.approachStatus).toBe("clear");
+      expect(res.reachStatus).toBe("within_reach");
+      expect(res.targetHeightAboveFloor).toBeCloseTo(0.45, 1);
+      expect(res.disclaimers.length).toBeGreaterThan(0);
+    });
+
+    it("returns blocked when an obstacle blocks route to the outlet", () => {
+      // Barrier between user and outlet
+      const barrier = node({ id: "barrier", kind: "object", dimensions: { x: 8, y: 0.5, z: 2 }, y: 1 });
+      const geometry = wheelchairMotionGeometry([floor, wall, barrier, outlet]);
+      const profile = wheelchairProfile({ collisionRadius: 0.35 });
+      const res = assessOutletAccessibility({ x: 0, z: 0 }, outlet, geometry, profile);
+      expect(res.approachStatus).toBe("blocked");
+      expect(res.unresolvedReasons.some((r) => r.includes("obstructed") || r.includes("No valid"))).toBe(true);
+    });
+
+    it("returns needs_verification when personalized reach profile is missing", () => {
+      const geometry = wheelchairMotionGeometry([floor, wall, outlet]);
+      const profile = wheelchairProfile({ reach: null });
+      const res = assessOutletAccessibility({ x: 0, z: 0 }, outlet, geometry, profile);
+      expect(res.reachStatus).toBe("needs_verification");
+      expect(res.unresolvedReasons.some((r) => r.includes("reach profile"))).toBe(true);
+    });
+
+    it("differentiates two reach profiles with different reach limits", () => {
+      const geometry = wheelchairMotionGeometry([floor, wall, outlet]);
+      const shortReach = wheelchairProfile({
+        collisionRadius: 0.35,
+        reach: { maxReachDistance: 0.40, minReachHeight: 0.38, maxReachHeight: 1.22 },
+      });
+      const longReach = wheelchairProfile({
+        collisionRadius: 0.35,
+        reach: { maxReachDistance: 0.85, minReachHeight: 0.38, maxReachHeight: 1.22 },
+      });
+
+      const resShort = assessOutletAccessibility({ x: 0, z: 0 }, outlet, geometry, shortReach);
+      const resLong = assessOutletAccessibility({ x: 0, z: 0 }, outlet, geometry, longReach);
+      expect(resShort.reachStatus).toBe("outside_reach");
+      expect(resLong.reachStatus).toBe("within_reach");
+    });
   });
 });

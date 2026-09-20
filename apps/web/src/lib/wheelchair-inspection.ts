@@ -28,11 +28,18 @@ export type InspectionCategory =
   | "service_or_sales_counter"
   | "unclassified_counter"
   | "seat"
+  | "outlet"
+  | "candidate_outlet"
   | "object";
 
 export function inspectionCategory(node: SceneNode): InspectionCategory {
+  if (node.kind === "outlet") return "outlet";
+  if (node.kind === "candidate_outlet") return "candidate_outlet";
   const category = `${node.raw_category} ${node.label}`.toLowerCase();
 
+  if (category.includes("outlet") || category.includes("receptacle") || category.includes("power strip")) {
+    return node.kind === "candidate_outlet" ? "candidate_outlet" : "outlet";
+  }
   if (category.includes("counter")) {
     if (/(service|sales|checkout|cashier|ordering)/.test(category)) {
       return "service_or_sales_counter";
@@ -46,6 +53,10 @@ export function inspectionCategory(node: SceneNode): InspectionCategory {
 
 export function inspectionCategoryLabel(category: InspectionCategory) {
   switch (category) {
+    case "outlet":
+      return "Photographed electrical outlet";
+    case "candidate_outlet":
+      return "Candidate electrical outlet (needs verification)";
     case "dining_or_work_candidate":
       return "Dining/work-surface candidate";
     case "service_or_sales_counter":
@@ -68,6 +79,15 @@ export function boundsEstimate(node: SceneNode) {
 }
 
 export function inspectionLimitations(category: InspectionCategory) {
+  if (category === "outlet" || category === "candidate_outlet") {
+    return [
+      "Electrical power, circuit live status, and socket condition are not established.",
+      "Plug insertion ability, grip strength, and dexterity are not established.",
+      "ADA compliance is not established.",
+      "Requires verified route approach and reach envelope.",
+    ];
+  }
+
   const common = [
     "No measured operable part or reach path.",
     "No measured knee or toe clearance.",
@@ -84,5 +104,9 @@ export function inspectionLimitations(category: InspectionCategory) {
 }
 
 export function isDockableInspectionTarget(category: InspectionCategory) {
-  return category === "dining_or_work_candidate" || category === "service_or_sales_counter" || category === "unclassified_counter";
+  return category === "dining_or_work_candidate"
+    || category === "service_or_sales_counter"
+    || category === "unclassified_counter"
+    || category === "outlet"
+    || category === "candidate_outlet";
 }

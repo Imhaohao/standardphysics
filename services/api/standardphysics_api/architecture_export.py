@@ -237,6 +237,22 @@ def evidence_ledger(
         reconstruction = _display_reconstruction(node)
         if reconstruction is not None:
             entry["display_reconstruction"] = reconstruction
+        if node.attachment is not None:
+            entry["attachment"] = node.attachment.model_dump(mode="json")
+        if node.kind in ("outlet", "candidate_outlet") or node.attachment is not None:
+            entry["uncertainty"] = {
+                "power_state": "unknown",
+                "socket_condition": "unknown",
+                "plug_compatibility": "unknown",
+                "voltage": "unknown",
+                "ada_compliance": "unknown",
+                "reach": "unknown_without_profile_or_geometry",
+            }
+            entry["disclaimers"] = [
+                "Scan does not establish electrical service, live power, or circuit capacity.",
+                "Physical plug fit and internal socket condition cannot be verified from photography.",
+                "Compliance with building codes or ADA standards is not certified by this scan.",
+            ]
         nodes.append(entry)
     findings = []
     if assessment is not None and assessment.graph_hash == current_hash:
@@ -354,9 +370,16 @@ def architecture_svg(graph: SceneGraph, ledger: dict[str, Any]) -> str:
                 f'<path class="opening" data-node-id={quoteattr(str(node.id))} '
                 f'd={quoteattr(paths[node.id])}/>'
             )
+        elif node.kind in ("outlet", "candidate_outlet"):
+            center = node.transform.position
+            x, y = project((center.x, center.y))
+            other_paths.append(
+                f'<circle class={quoteattr(node.kind)} data-node-id={quoteattr(str(node.id))} '
+                f'cx={quoteattr(_svg_number(x))} cy={quoteattr(_svg_number(y))} r="3.5"/>'
+            )
         else:
             other_paths.append(element)
-        if node.kind == "object":
+        if node.kind in ("object", "outlet", "candidate_outlet"):
             center = node.transform.position
             x, y = project((center.x, center.y))
             labels.append(
@@ -379,6 +402,7 @@ def architecture_svg(graph: SceneGraph, ledger: dict[str, Any]) -> str:
         f'fill="none" stroke="#dbe4eb" stroke-width="1"/></pattern>{"".join(masks)}</defs>'
         f'<style>.wall{{fill:#263238;stroke:#102027;stroke-width:1}}.floor{{fill:none;stroke:#607d8b;stroke-width:1.5}}'
         f'.object{{fill:#d8c3a5;stroke:#5d4037;stroke-width:1.2}}.opening{{fill:none;stroke:#ef6c00;stroke-width:2}}'
+        f'.outlet{{fill:#e69f00;stroke:#b87a00;stroke-width:1.5}}.candidate_outlet{{fill:#d55e00;stroke:#9e3d00;stroke-width:1.5}}'
         f'.label{{font:12px sans-serif;text-anchor:middle;dominant-baseline:middle;fill:#263238;'
         'pointer-events:none}}</style>'
         f'<rect width="100%" height="100%" fill="#fff"/><rect width="100%" height="100%" fill="url(#meter-grid)"/>'
@@ -414,6 +438,45 @@ def build_architecture_zip(
             json.dumps(ledger, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
         ).encode("utf-8"),
     }
+    outlets = [
+        node for node in sorted(graph.nodes, key=lambda n: str(n.id))
+        if node.kind in ("outlet", "candidate_outlet") or node.attachment is not None
+    ]
+    if outlets:
+        current_hash = graph_hash(graph)
+        outlets_data = {
+            "format": "standardphysics.outlets-evidence.v1",
+            "scan_id": str(scan_id),
+            "scan_name": scan_name,
+            "revision": graph.revision,
+            "graph_hash": current_hash,
+            "outlets": [
+                {
+                    "id": str(node.id),
+                    "label": node.label,
+                    "kind": node.kind,
+                    "local_height_m": node.transform.m[11],
+                    "attachment": node.attachment.model_dump(mode="json") if node.attachment else None,
+                    "uncertainty": {
+                        "power_state": "unknown",
+                        "socket_condition": "unknown",
+                        "plug_compatibility": "unknown",
+                        "voltage": "unknown",
+                        "ada_compliance": "unknown",
+                        "reach": "unknown_without_profile_or_geometry",
+                    },
+                    "disclaimers": [
+                        "Scan does not establish electrical service, live power, or circuit capacity.",
+                        "Physical plug fit and internal socket condition cannot be verified from photography.",
+                        "Compliance with building codes or ADA standards is not certified by this scan.",
+                    ],
+                }
+                for node in outlets
+            ],
+        }
+        files["outlets.json"] = (
+            json.dumps(outlets_data, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
+        ).encode("utf-8")
     output = io.BytesIO()
     with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
         for name in sorted(files):

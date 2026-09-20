@@ -103,6 +103,49 @@ class DisplayReconstruction(BaseModel):
     parts: list[DisplayPart] = Field(min_length=1, max_length=32)
 
 
+class SocketTarget(BaseModel):
+    """An individual operable socket opening on an outlet faceplate or power strip."""
+
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+    id: str = Field(min_length=1, max_length=64)
+    center: Vec3
+    """Coordinates in the support surface's local anchor frame or room frame."""
+    status: Literal["observed", "inferred", "unknown"] = "observed"
+    confidence: float = Field(default=1.0, ge=0, le=1)
+
+
+class ObservationCrop(BaseModel):
+    """A photographed crop evidencing the object."""
+
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+    frame_id: str = Field(min_length=1, max_length=64)
+    sensor_box: list[float] = Field(min_length=4, max_length=4)
+    """[left, top, right, bottom] in stored sensor pixels."""
+    confidence: float = Field(default=1.0, ge=0, le=1)
+    image_url: str | None = None
+
+
+class SurfaceAttachment(BaseModel):
+    """Explicit surface-attached mounting metadata for thin/wall-mounted objects."""
+
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+    support_node_id: UUID | None = None
+    """The wall or furniture node this object is attached to."""
+    support_type: Literal["lidar_surface", "roomplan_plane", "unanchored"] = "lidar_surface"
+    local_anchor: Vec3 | None = None
+    """Anchor coordinate in support node local frame."""
+    normal: Vec3 | None = None
+    """Outward surface normal in room frame."""
+    observed_region: list[Vec3] = Field(default_factory=list)
+    """Polygon or corner points of the observed operable region."""
+    sockets: list[SocketTarget] = Field(default_factory=list)
+    observations: list[ObservationCrop] = Field(default_factory=list)
+    identity_confidence: float = Field(default=1.0, ge=0, le=1)
+    localization_quality: Literal["verified_support", "inferred_plane", "unanchored", "needs_verification"] = "verified_support"
+    review_status: Literal["detected", "candidate", "confirmed_by_user", "rejected_by_user"] = "detected"
+    uncertainty_reasons: list[str] = Field(default_factory=list)
+
+
 class SceneNode(BaseModel):
     id: UUID
     kind: NodeKind
@@ -118,6 +161,7 @@ class SceneNode(BaseModel):
     texts: list[SurfaceText] = Field(default_factory=list, exclude_if=lambda value: not value)
     appearance: DisplayAppearance | None = Field(default=None, exclude_if=lambda value: value is None)
     reconstruction: DisplayReconstruction | None = Field(default=None, exclude_if=lambda value: value is None)
+    attachment: SurfaceAttachment | None = Field(default=None, exclude_if=lambda value: value is None)
 
     @model_validator(mode="before")
     @classmethod
@@ -309,10 +353,12 @@ class SceneGraph(BaseModel):
         Only what stands on the floor blocks a route. A cup on a desk sits
         inside the desk's own footprint and stops nobody, so counting it would
         narrow every aisle beside that desk by the width of a cup.
+        Surface-attached annotations (outlets, wall signs) do not block routes.
         """
         return [
             n for n in self.nodes
-            if stands_upright(n) or (n.touches_floor and self.stands_on_floor(n))
+            if (stands_upright(n) or (n.touches_floor and self.stands_on_floor(n)))
+            and n.attachment is None
         ]
 
     def stands_on_floor(self, node: SceneNode) -> bool:

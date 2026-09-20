@@ -9,7 +9,10 @@ import xml.etree.ElementTree as ET
 import zipfile
 
 import pytest
-from standardphysics_contracts import DisplayPart, DisplayReconstruction, Mat4, SceneGraph, SceneNode, Vec3
+from standardphysics_contracts import (
+    DisplayPart, DisplayReconstruction, Mat4, ObservationCrop, SceneGraph, SceneNode,
+    SocketTarget, SurfaceAttachment, Vec3,
+)
 
 from conftest import drain
 from standardphysics_api.architecture_export import build_architecture_zip
@@ -150,3 +153,63 @@ def test_architecture_endpoint_is_guarded_and_only_exports_the_owner_scan(make_c
 def test_architecture_endpoint_requires_a_session(make_client):
     with make_client(sign_in_as_owner=False) as client:
         assert client.get(f"/api/scans/{uuid.uuid4()}/architecture.zip").status_code == 401
+
+
+def test_architecture_export_includes_outlets_json_when_outlets_present():
+    graph = _rotated_plan()
+    wall = graph.nodes[0]
+    outlet_id = uuid.UUID("00000000-0000-0000-0000-000000000010")
+    outlet_node = SceneNode(
+        id=outlet_id,
+        kind="outlet",
+        label="Wall outlet",
+        raw_category="outlet",
+        dimensions=Vec3(x=0.07, y=0.02, z=0.115),
+        transform=Mat4(m=[1, 0, 0, 0, 0, 1, 0, -1.99, 0, 0, 1, 0.40, 0, 0, 0, 1]),
+        parent_id=wall.id,
+        relation="attached_to",
+        attachment=SurfaceAttachment(
+            support_type="lidar_surface",
+            support_node_id=wall.id,
+            normal=Vec3(x=0.0, y=1.0, z=0.0),
+            review_status="detected",
+            observations=[
+                ObservationCrop(
+                    frame_id="frame-01",
+                    sensor_box=[100.0, 100.0, 200.0, 200.0],
+                    confidence=0.92,
+                    image_url="crops/crop-01.jpg",
+                )
+            ],
+            sockets=[
+                SocketTarget(id="socket-0", center=Vec3(x=0.0, y=-1.99, z=0.43)),
+                SocketTarget(id="socket-1", center=Vec3(x=0.0, y=-1.99, z=0.37)),
+            ],
+        ),
+    )
+    graph_with_outlet = graph.model_copy(update={"nodes": [*graph.nodes, outlet_node]})
+    zip_bytes = build_architecture_zip(graph_with_outlet.scan_id, "Shop with outlet", graph_with_outlet)
+    with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zipped:
+        names = zipped.namelist()
+        assert "architecture-plan.svg" in names
+        assert "evidence-ledger.json" in names
+        assert "outlets.json" in names
+
+        svg = zipped.read("architecture-plan.svg").decode()
+        assert '<circle class="outlet"' in svg
+        assert '.outlet{fill:#e69f00' in svg
+
+        ledger = json.loads(zipped.read("evidence-ledger.json"))
+        node_entry = next(n for n in ledger["nodes"] if n["id"] == str(outlet_id))
+        assert node_entry["attachment"]["support_type"] == "lidar_surface"
+        assert node_entry["uncertainty"]["power_state"] == "unknown"
+        assert len(node_entry["disclaimers"]) > 0
+
+        outlets_data = json.loads(zipped.read("outlets.json"))
+        assert outlets_data["format"] == "standardphysics.outlets-evidence.v1"
+        assert len(outlets_data["outlets"]) == 1
+        outlet_export = outlets_data["outlets"][0]
+        assert outlet_export["id"] == str(outlet_id)
+        assert outlet_export["uncertainty"]["power_state"] == "unknown"
+        assert outlet_export["local_height_m"] == pytest.approx(0.40)
+        assert len(outlet_export["attachment"]["sockets"]) == 2
