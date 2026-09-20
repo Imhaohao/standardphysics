@@ -1,0 +1,96 @@
+MOFFETT RENDER-EFFICIENCY RESULTS
+Run r001 · 2026-09-20
+
+1. WHAT WAS IMPLEMENTED AND WHERE
+
+Deterministic surface-Gaussian pipeline plus a frozen benchmark evaluator.
+
+- Evaluator (Phase 0): packages/pipeline/standardphysics_pipeline/render_efficiency/
+  metrics.py / scoring.py / manifest.py — masked PSNR (100 dB cap), SSIM (11x11
+  gaussian, sigma 1.5, population covariance), coverage, scoring + hard gates.
+  20 Gate-0 fixtures pass (packages/pipeline/tests/test_render_efficiency.py).
+- Deterministic builder (Phase 3): surface_splats.py / builder.py — measured-mesh
+  sampling, degenerate-triangle rejection, tangent frames, bounded covariance,
+  SH0 encode, unit quaternion, PLY export. 16 fixtures pass
+  (packages/pipeline/tests/test_surface_splats.py).
+- CLIs: scripts/build_surface_splats.py (mesh + best-view colour -> PLY),
+  scripts/freeze_render_pilot.py (deterministic 32/8/8 split),
+  scripts/build_render_pilot_dataset.py (resized 1280px pilot dataset),
+  scripts/evaluate_pilot.py (writes PSNR/SSIM from artifacts).
+
+View: runs/moffett/render-efficiency/ (B0 under r001/b0-brush, candidate under
+center/surface-splats-s1729). No local server or URL; this is offline.
+
+2. BASELINE / CANDIDATE TABLE
+
+Workload: center capture, 40 training/validation photos (1280x960) + 8 held-out
+test photos. B0 = Brush v0.3.0, 7000 steps, SH0, LiDAR seeds, person masks.
+Candidate = deterministic surface Gaussians (150k samples, SH0, best-view colour).
+
+                          B0 (Brush)          candidate (deterministic)
+splats                    1 446 532           150 000
+build wall time           253.6 s             12.7 s
+peak RSS                  0.81 GiB            2.65 GiB (*)
+SPZ bytes                 24 522 736          1 851 399
+mean masked PSNR          16.49 dB            UNKNOWN (no common renderer)
+mean masked SSIM          0.583               UNKNOWN
+worst view PSNR           11.42 dB            UNKNOWN
+coverage H                unknown             unknown
+frame time F              unknown             unknown
+
+(*) candidate RSS is a cold run: loads the full source mesh and full-resolution
+photos plus one-time numba JIT.  B0 trains on the 1280px 40-image subset, so
+the time/memory workloads are NOT matched.  Do not read the 19x speedup as a
+same-workload comparison.
+
+Hard gates: B0 is reproducible (PLY + SPZ + eval renders + /usr/bin/time
+footprint recorded).  No candidate has an eligible score because P/U/R are
+unavailable and F is unmeasured.
+
+3. SIDE-BY-SIDE EVIDENCE
+
+B0 held-out renders: runs/moffett/render-efficiency/r001/b0-brush/eval_7000/
+(image-000002.png ... image-000151.png), 8 views.  Mean masked PSNR 16.49 dB,
+SSIM 0.583, computed by scripts/evaluate_pilot.py from the actual PNGs.
+Easy and difficult regions are not separately labelled; per-view numbers are in
+runs/moffett/render-efficiency/r001/b0-eval.json.  Seated (1.15 m) views have no
+matching photographic ground truth and were not produced.
+
+4. WHICH HYPOTHESES FAILED / WHAT IS UNKNOWN
+
+- The deterministic candidate is 13x smaller (SPZ) and ~19x faster to build than
+  B0, at 10x fewer splats.  This is a cost result, not a quality result.
+- Its image quality could not be ranked: the trainer (Brush) renders eval views
+  only during its own training loop, and writing a second rasterizer was out of
+  scope, so there is no common renderer to produce candidate held-out images.
+  P/U/R therefore stay null, not zero.
+- The candidate's peak RSS (2.65 GiB) is confounded by loading the full source
+  mesh and full-resolution photos, unlike B0's 40-image 1280px input.
+- No claim that any result is photorealistic or a measurement-accuracy gain.
+
+5. SELECTED CANDIDATE
+
+No verified replacement.  The existing GaussianSplatScan/Brush preview remains
+the production default, unchanged.  The deterministic candidate is a draft
+cost-reduction prototype only.
+
+6. TESTS, COMMITS, REMAINING LIMITATIONS
+
+- 36 new tests pass (evaluator + surface builder).  Deterministic candidate PLY
+  compresses through the existing SPZ converter (roundtrip validated only to the
+  converter's output, not to the Spark viewer).
+- Pilot split independence is deterministic but NOT yet visually reviewed.
+- No actual iPhone / authenticated-app / real UV inspection was performed.
+- Metrics are evaluator-written; the same agent that produced the runs also ran
+  the evaluator, so results are internally consistent, not tamper-proof.
+
+7. COST
+
+Single-model session (Fireworks deepseek-pro-latest via existing CLI routing);
+no subagent delegation or paid GPU occurred.  Tool-reported dollar cost: not
+available.
+
+Honest conclusion: the deterministic surface-Gaussian path is a real, cheaper
+construction (1.85 MB vs 24.5 MB SPZ; 12.7 s vs 253 s) but its quality is
+unmeasured and therefore unranked.  This is a valid no-improvement/unknown
+finding, not completion of the photorealistic-floor objective.

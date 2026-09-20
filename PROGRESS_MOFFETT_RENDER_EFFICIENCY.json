@@ -3,7 +3,7 @@
   "objective": "Implement the evaluator first, freeze a fair pilot, and build a deterministic surface-Gaussian candidate. Evaluate against matched baselines under the frozen experiment policy; deliver evidence and an honest conclusion.",
   "plan": "docs/deepseek-overnight-lidar-render-plan.txt",
   "policy": "docs/deepseek-lidar-experiment-policy.json",
-  "status": "evaluator_and_surface_splats_implemented",
+  "status": "b0_and_candidate_run_no_eligible_score",
   "updated_at": "2026-09-20",
   "environment": {
     "hardware": "Apple M5 Pro",
@@ -42,22 +42,43 @@
       "next_action": "implement pilot freezer and deterministic build_surface_splats entry point"
     },
     "phase1_freeze_pilot": {
-      "status": "tested",
+      "status": "rendered",
       "gate": "Gate 1: fixed manifests, reviewed real detail, reproducible B0 baseline",
       "artifacts": [
         "scripts/freeze_render_pilot.py",
-        "runs/moffett/render-efficiency/r001/pilot-manifest.json"
+        "scripts/build_render_pilot_dataset.py",
+        "runs/moffett/render-efficiency/r001/pilot-manifest.json",
+        "runs/moffett/render-efficiency/r001/pilot-dataset/",
+        "runs/moffett/render-efficiency/r001/b0-brush/"
       ],
       "achieved": { "train": 32, "validation": 8, "test": 8, "disjoint": true },
       "split_independence_reviewed": false,
-      "note": "deterministic trajectory-stride split produced and disjointness verified; near-duplicate grouping and a real visual review of separation remain before Gate 1 closes. B0 baseline not yet run."
+      "b0_baseline": {
+        "engine": "Brush v0.3.0",
+        "steps": 7000,
+        "sh_degree": 0,
+        "seed": 1729,
+        "splats": 1446532,
+        "wall_seconds": 253.59,
+        "peak_rss_bytes": 850198528,
+        "spz_bytes": 24522736,
+        "mean_masked_psnr_db": 16.494627303004183,
+        "mean_full_psnr_db": 16.461940421621243,
+        "mean_masked_ssim": 0.5831103484508323,
+        "worst_masked_psnr_db": 11.421320017175532,
+        "eval_views": 8,
+        "eval_metric_source": "scripts/evaluate_pilot.py from r001/b0-brush/eval_7000 PNGs",
+        "note": "7000-step SH0 matched pilot baseline; prior 400-image/30k/SH2 runs were ~18.6 dB and are not comparable"
+      },
+      "note": "deterministic trajectory-stride split produced and disjointness verified; near-duplicate grouping and a real visual review of separation remain, so Gate 1 independence is not closed."
     },
     "phase2_calibration": {
       "status": "planned",
-      "gate": "Gate 2: projection/visibility fixtures + real alignment limitations"
+      "gate": "Gate 2: projection/visibility fixtures + real alignment limitations",
+      "note": "synthetic tangent/covariance/degenerate-normal fixtures covered by test_surface_splats.py; real photo-edge reprojection review not performed"
     },
     "phase3_surface_splats": {
-      "status": "tested",
+      "status": "rendered",
       "gate": "Gate 3: deterministic source-supported surface splat export",
       "artifacts": [
         "packages/pipeline/standardphysics_pipeline/render_efficiency/surface_splats.py",
@@ -66,15 +87,47 @@
         "scripts/build_surface_splats.py"
       ],
       "tests": "16 passed in test_surface_splats.py (tangent frames, covariance, quaternion, SH0 roundtrip, degenerate rejection, sample cap, colour interpolation, PLY export, nonfinite rejection)",
-      "smoke_run": "scripts/build_surface_splats.py center --cameras 8 --max-samples 20000 --spacing 0.05 produced 20000 splats in 4.4s wall",
-      "note": "geometry/covariance/export core built and verified; best-view colour wired via colour_the_scan; SPZ compression and Spark roundtrip remain for Gate 3."
+      "candidate": {
+        "splats": 150000,
+        "wall_seconds": 12.702,
+        "peak_rss_bytes": 2840788992,
+        "spz_bytes": 1851399,
+        "spz_roundtrip": "PLY -> SPZ via existing converter validated",
+        "note": "candidate quality P/U/R null: no common renderer; candidate builds from full source mesh + full-res photos, so T/M are not a same-workload match with B0"
+      }
     },
     "phase4_msplat": {
-      "status": "planned",
-      "gate": "Gate 4: optional compatible backend trial or precise capability blocker"
+      "status": "deferred",
+      "gate": "Gate 4: optional compatible backend trial or precise capability blocker",
+      "note": "optional external backend not attempted this run; would require clone + 45-min install cap + license review"
     }
   },
   "trials": [],
-  "ledger": [],
-  "status_note": "Phase 0 (evaluator) and the Phase 3 deterministic surface-Gaussian core are implemented and tested; a deterministic pilot split is produced but its independence is not yet visually reviewed. B0 baseline, calibration fixtures, and SPZ->Spark roundtrip remain. No candidate has an eligible score yet."
+  "ledger": [
+    {
+      "config_id": "b0",
+      "kind": "baseline",
+      "status": "eligible_for_self_eval_only",
+      "splats": 1446532,
+      "wall_seconds": 253.59,
+      "peak_rss_bytes": 850198528,
+      "spz_bytes": 24522736,
+      "mean_masked_psnr_db": 16.494627303004183,
+      "mean_masked_ssim": 0.5831103484508323,
+      "quality_p_u_r_null_for_cross_comparison": true
+    },
+    {
+      "config_id": "candidate-surface-s1729",
+      "kind": "candidate",
+      "status": "rejected_no_eligible_score",
+      "splats": 150000,
+      "wall_seconds": 12.702,
+      "peak_rss_bytes": 2840788992,
+      "spz_bytes": 1851399,
+      "mean_masked_psnr_db": null,
+      "mean_masked_ssim": null,
+      "rejection_reason": "P/U/R unavailable (no common renderer) and F unmeasured; cannot satisfy hard gates or a selection lane"
+    }
+  ],
+  "status_note": "B0 (Brush 7000-step SH0 pilot) and the deterministic candidate both ran and were compressed to SPZ. B0 self-evaluates at 16.49 dB / 0.583 SSIM. The candidate is 13x smaller and ~19x faster to build but its quality is unmeasured (no common renderer), so no eligible score or selection. Full honest writeup in docs/moffett-render-efficiency-results.txt."
 }
