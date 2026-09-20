@@ -13,7 +13,7 @@
     "G4": "passed",
     "G5": "passed",
     "G6": "passed",
-    "G7": "open",
+    "G7": "passed",
     "G8": "open",
     "G9": "open",
     "G10": "open"
@@ -615,6 +615,156 @@
         "apps/web/src/lib/wheelchair-motion.test.ts": "16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"
       },
       "review_identity": "self_review"
+    },
+    "PERSIST-01": {
+      "test_id": "PERSIST-01",
+      "gate_id": "G7",
+      "evidence_kind": "fixture",
+      "source_hash": "38575b9b37f2930947a4be3edf4011e69fafa10da2dd4cb4a5bbe04e66d4252f",
+      "input_hashes": ["60063b0833c26c852d3ec9d398ce8075f78199c8ffea058c46dfddbd9f7a4e79"],
+      "command_or_ui_action": "pytest services/api/tests/test_outlet_review_and_export.py -k test_persist_01",
+      "started_at": "2026-09-20T14:40:48-07:00",
+      "finished_at": "2026-09-20T14:40:49-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Owner outlet review produces new layout revision with incremented sequence and updated node status",
+      "actual_behavior": "PUT /api/scans/{scan_id}/revisions/{base_rev}/outlets/{node_id}/review increments revision sequence, updates review_status and labeled_by to owner, and saves revision to SQLite.",
+      "artifact_paths_and_hashes": {
+        "services/api/standardphysics_api/labels.py": "38575b9b37f2930947a4be3edf4011e69fafa10da2dd4cb4a5bbe04e66d4252f",
+        "services/api/standardphysics_api/app.py": "29436f782d3ad4a9ffbbceb4523a6718174223cb1b3f510b66b6556116bf8c18",
+        "services/api/tests/test_outlet_review_and_export.py": "60063b0833c26c852d3ec9d398ce8075f78199c8ffea058c46dfddbd9f7a4e79"
+      },
+      "review_identity": "self_review"
+    },
+    "REV-01": {
+      "test_id": "REV-01",
+      "gate_id": "G7",
+      "evidence_kind": "fixture",
+      "source_hash": "38575b9b37f2930947a4be3edf4011e69fafa10da2dd4cb4a5bbe04e66d4252f",
+      "input_hashes": ["60063b0833c26c852d3ec9d398ce8075f78199c8ffea058c46dfddbd9f7a4e79"],
+      "command_or_ui_action": "pytest services/api/tests/test_outlet_review_and_export.py -k test_rev_01",
+      "started_at": "2026-09-20T14:40:48-07:00",
+      "finished_at": "2026-09-20T14:40:49-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Conflicting base revision returns 409 conflict and prevents silent overwrite",
+      "actual_behavior": "Submitting a review against a stale base revision returns 409 Conflict with STALE_LAYOUT message; prevents concurrent overwrites.",
+      "artifact_paths_and_hashes": {
+        "services/api/standardphysics_api/labels.py": "38575b9b37f2930947a4be3edf4011e69fafa10da2dd4cb4a5bbe04e66d4252f",
+        "services/api/standardphysics_api/app.py": "29436f782d3ad4a9ffbbceb4523a6718174223cb1b3f510b66b6556116bf8c18",
+        "services/api/tests/test_outlet_review_and_export.py": "60063b0833c26c852d3ec9d398ce8075f78199c8ffea058c46dfddbd9f7a4e79"
+      },
+      "review_identity": "self_review"
+    },
+    "EXPORT-01": {
+      "test_id": "EXPORT-01",
+      "gate_id": "G7",
+      "evidence_kind": "fixture",
+      "source_hash": "94447a087209572afb61feaf46ffd16315426700e035cb338d6f8e72af271b81",
+      "input_hashes": ["60063b0833c26c852d3ec9d398ce8075f78199c8ffea058c46dfddbd9f7a4e79"],
+      "command_or_ui_action": "pytest services/api/tests/test_outlet_review_and_export.py -k test_export_01",
+      "started_at": "2026-09-20T14:40:48-07:00",
+      "finished_at": "2026-09-20T14:40:49-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Architecture export includes outlets with correct local floor height, review status, and crop reference",
+      "actual_behavior": "build_architecture_zip derives local_height_m (0.45m) relative to finished floor elevation (0.10m), including review_status and crop_reference in outlets.json.",
+      "artifact_paths_and_hashes": {
+        "services/api/standardphysics_api/architecture_export.py": "94447a087209572afb61feaf46ffd16315426700e035cb338d6f8e72af271b81",
+        "services/api/tests/test_outlet_review_and_export.py": "60063b0833c26c852d3ec9d398ce8075f78199c8ffea058c46dfddbd9f7a4e79"
+      },
+      "review_identity": "self_review"
+    },
+    "AUTH-02": {
+      "test_id": "AUTH-02",
+      "gate_id": "G7",
+      "evidence_kind": "fixture",
+      "source_hash": "29436f782d3ad4a9ffbbceb4523a6718174223cb1b3f510b66b6556116bf8c18",
+      "input_hashes": ["60063b0833c26c852d3ec9d398ce8075f78199c8ffea058c46dfddbd9f7a4e79"],
+      "command_or_ui_action": "pytest services/api/tests/test_outlet_review_and_export.py -k test_auth_02",
+      "started_at": "2026-09-20T14:40:48-07:00",
+      "finished_at": "2026-09-20T14:40:49-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Architecture zip requires scan ownership; non-owner gets 404 or 403",
+      "actual_behavior": "Owner download succeeds (200); non-owner stranger gets 404; anonymous gets 401.",
+      "artifact_paths_and_hashes": {
+        "services/api/standardphysics_api/app.py": "29436f782d3ad4a9ffbbceb4523a6718174223cb1b3f510b66b6556116bf8c18",
+        "services/api/tests/test_outlet_review_and_export.py": "60063b0833c26c852d3ec9d398ce8075f78199c8ffea058c46dfddbd9f7a4e79"
+      },
+      "review_identity": "self_review"
+    },
+    "UI-01": {
+      "test_id": "UI-01",
+      "gate_id": "G7",
+      "evidence_kind": "fixture",
+      "source_hash": "84086dd906631d626da81289f6140a1c5e59ed9aed0b56e50b4a071dda9c32ea",
+      "input_hashes": ["6ecc16d5ffab63d5cd79879fd4c227ca32e0d9a44016702a9ff8b0e02dab37a5"],
+      "command_or_ui_action": "npm test -- src/components/workspace/OutletUi.test.ts -t UI-01",
+      "started_at": "2026-09-20T14:41:03-07:00",
+      "finished_at": "2026-09-20T14:41:04-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Outlet list clearly shows reach assessment, distance, height, and review status",
+      "actual_behavior": "Outlet list rows display local height above floor (18″), approach distance (1.2m), reach determination status (Within reach), and review badge (Observed/Confirmed).",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/components/workspace/OutletPanel.tsx": "84086dd906631d626da81289f6140a1c5e59ed9aed0b56e50b4a071dda9c32ea",
+        "apps/web/src/components/workspace/OutletUi.test.ts": "214fb3745e1b1ac34477fd5a8bbc50340da5aa61836827b29fa899ee9f802048"
+      },
+      "review_identity": "self_review"
+    },
+    "UI-02": {
+      "test_id": "UI-02",
+      "gate_id": "G7",
+      "evidence_kind": "fixture",
+      "source_hash": "87ac7760f4ddaebd4cc46ce379156850b00f0f0b94c14e42eae21efe9004e8e1",
+      "input_hashes": ["6ecc16d5ffab63d5cd79879fd4c227ca32e0d9a44016702a9ff8b0e02dab37a5"],
+      "command_or_ui_action": "npm test -- src/components/workspace/OutletUi.test.ts -t UI-02",
+      "started_at": "2026-09-20T14:41:03-07:00",
+      "finished_at": "2026-09-20T14:41:04-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Clicking 'Drive Here' / approach preview on an assessed outlet positions the wheelchair at the evaluated approach point, not an arbitrary offset",
+      "actual_behavior": "WheelchairController receives dockDestination from candidate approach point and positions wheelchair at candidate position; ignoring dockDestination docks to target bounding box.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/components/workspace/WheelchairController.tsx": "87ac7760f4ddaebd4cc46ce379156850b00f0f0b94c14e42eae21efe9004e8e1",
+        "apps/web/src/components/workspace/Viewer.tsx": "eded3196b2427df7fbdcf1b3da1930f31bf6d4949c1f03d7d31a5635cc6f1f02",
+        "apps/web/src/components/workspace/Workspace.tsx": "709c3d30b2b596cd34c386dcd01e431451361fe8a6377881bddda22cfa3edaf0",
+        "apps/web/src/components/workspace/OutletUi.test.ts": "214fb3745e1b1ac34477fd5a8bbc50340da5aa61836827b29fa899ee9f802048"
+      },
+      "review_identity": "self_review"
+    },
+    "UI-03": {
+      "test_id": "UI-03",
+      "gate_id": "G7",
+      "evidence_kind": "fixture",
+      "source_hash": "bf6b653cbd76823693b2d1aef58f8d3dfd78bcfeb8a7c56d93c0d4c5fd325cf5",
+      "input_hashes": ["6ecc16d5ffab63d5cd79879fd4c227ca32e0d9a44016702a9ff8b0e02dab37a5"],
+      "command_or_ui_action": "npm test -- src/components/workspace/OutletUi.test.ts -t UI-03",
+      "started_at": "2026-09-20T14:41:03-07:00",
+      "finished_at": "2026-09-20T14:41:04-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Reach profile bounds can be adjusted in UI and immediately update reach determinations",
+      "actual_behavior": "Adjusting maxReachDistance from 0.30m to 0.80m immediately converts outside_reach to within_reach; adjusting minReachHeight from 0.70m to 0.38m immediately converts outside_reach to within_reach.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/components/workspace/WheelchairHud.tsx": "bf6b653cbd76823693b2d1aef58f8d3dfd78bcfeb8a7c56d93c0d4c5fd325cf5",
+        "apps/web/src/components/workspace/OutletPanel.tsx": "84086dd906631d626da81289f6140a1c5e59ed9aed0b56e50b4a071dda9c32ea",
+        "apps/web/src/components/workspace/OutletUi.test.ts": "214fb3745e1b1ac34477fd5a8bbc50340da5aa61836827b29fa899ee9f802048"
+      },
+      "review_identity": "self_review"
+    },
+    "UI-04": {
+      "test_id": "UI-04",
+      "gate_id": "G7",
+      "evidence_kind": "fixture",
+      "source_hash": "6b995b9480d1ada3e12a7bbd8e8b18b0aa30031ba578a5149b68300441c915d4",
+      "input_hashes": ["6ecc16d5ffab63d5cd79879fd4c227ca32e0d9a44016702a9ff8b0e02dab37a5"],
+      "command_or_ui_action": "npm test -- src/components/workspace/OutletUi.test.ts -t UI-04",
+      "started_at": "2026-09-20T14:41:03-07:00",
+      "finished_at": "2026-09-20T14:41:04-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Review status changes persist through API call and update the scene",
+      "actual_behavior": "reviewOutlet client makes PUT request to server; returned scene revision is incremented and node attachment review_status is updated.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/lib/layout-client.ts": "6b995b9480d1ada3e12a7bbd8e8b18b0aa30031ba578a5149b68300441c915d4",
+        "apps/web/src/components/workspace/Workspace.tsx": "709c3d30b2b596cd34c386dcd01e431451361fe8a6377881bddda22cfa3edaf0",
+        "apps/web/src/components/workspace/OutletUi.test.ts": "214fb3745e1b1ac34477fd5a8bbc50340da5aa61836827b29fa899ee9f802048"
+      },
+      "review_identity": "self_review"
     }
   },
   "mutation_receipts": {},
@@ -674,6 +824,15 @@
       "status": "passed",
       "summary": "Gate G6 passed. Distinct route and reach obstruction: A* pathfinder discovers valid detours around intervening walls on measured floors (ROUTE-01); floor gaps and narrow passages below chair footprint prevent clear routes (ROUTE-02); swept collision prevents tunneling through thin obstacles (ROUTE-03); reach obstruction detected between endpoints without touching either endpoint (ROUTE-04); reach through parent furniture and approach through far-side dividing walls blocked (ROUTE-05); unknown chair position yields needs_verification without invented origin (ROUTE-06).",
       "next_action": "Execute Gate G7: Real UI, Persistence, and Consistent Export (UI-01 through UI-04, PERSIST-01, REV-01, EXPORT-01, AUTH-02)."
+    },
+    {
+      "checkpoint_id": "CP-07",
+      "time": "2026-09-20T14:42:00-07:00",
+      "gate": "G7",
+      "status": "passed",
+      "summary": "Gate G7 passed. UI and persistence: Owner review persists to SQLite creating new sequential revision with review_status (PERSIST-01); stale base revision returns 409 Conflict (REV-01); architecture export includes local floor height, review status, and crop reference (EXPORT-01); architecture zip requires owner auth (AUTH-02); outlet list shows reach assessment, distance, height, and review status (UI-01); Drive Here / approach preview uses evaluated candidate approach point (UI-02); personal reach profile bounds adjustable in UI with immediate reach updates (UI-03); review status changes persist through API call and update scene (UI-04).",
+      "next_action": "Execute Gate G8: Mutations M01 through M08."
     }
   ]
 }
+

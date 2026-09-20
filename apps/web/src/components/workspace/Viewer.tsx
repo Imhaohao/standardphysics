@@ -13,7 +13,8 @@ import { LidarShopModel } from "./LidarShopModel";
 import { PaintedScan } from "./PaintedScan";
 import { GaussianSplatScan } from "./GaussianSplatScan";
 import type { CapturedSplatAsset } from "@/lib/captured-splats";
-import type { WheelchairProfile } from "@/lib/wheelchair-motion";
+import { showsSplats } from "@/lib/viewer-source";
+import type { MotionPoint, WheelchairProfile } from "@/lib/wheelchair-motion";
 import { type RouteHandles, StopMarkers } from "./StopMarkers";
 import { WheelchairController, type WheelchairState } from "./WheelchairController";
 
@@ -32,7 +33,7 @@ type ViewerProps = {
   selected: Focus | null;
   onSelectNode: (nodeId: string) => void;
   onClearSelection: () => void;
-  materialMode: "reconstructed" | "captured" | "plain" | "coverage" | "scan";
+  materialMode: "reconstructed" | "captured" | "plain" | "coverage" | "scan" | "splat";
   scanGlbUrl: string | null;
   splatAssets?: CapturedSplatAsset[];
   onSplatError?: (message: string | null) => void;
@@ -42,10 +43,12 @@ type ViewerProps = {
   wheelchairProfile?: WheelchairProfile;
   onWheelchairStateChange?: (state: WheelchairState) => void;
   wheelchairDockTarget?: SceneNode | null;
+  wheelchairDockDestination?: MotionPoint | null;
   onClearWheelchairDock?: () => void;
   onWheelchairSelectNode?: (node: SceneNode) => void;
   onWheelchairExit?: () => void;
 };
+
 
 class GlbFallback extends Component<{ fallback: ReactNode; children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
@@ -66,6 +69,7 @@ const DPR_DEFAULT: [number, number] = [1, 2];
 const DPR_LIGHTWEIGHT: [number, number] = [1, 1];
 const DPR_SPLATS: [number, number] = [1, 1.5];
 const EMPTY_STALE_SET = new Set<string>();
+const NOTHING_TO_DO = () => {};
 
 function Lights() {
   return (
@@ -88,8 +92,24 @@ function Lights() {
 
 type ShopSurfacesProps = Pick<ViewerProps, "scene" | "exported" | "arrange" | "dragAllNodes" | "lightweight" | "glbUrl" | "scanGlbUrl" | "splatAssets" | "onSplatError" | "lidarUrl" | "selected" | "onSelectNode" | "cutWalls" | "materialMode" | "staleNodeIds" | "coverage">;
 
+/** The boxes have no captured surface to show, so the captured modes fall back to plain material on them. */
+function boxMaterialMode(mode: ViewerProps["materialMode"]) {
+  return mode === "scan" || mode === "splat" ? ("plain" as const) : mode;
+}
+
+/** The captured room for the modes that show one, or null for the modes that show the boxes. */
+function capturedRoom(props: ShopSurfacesProps, boxes: ReactNode, picking: ReactNode): ReactNode | null {
+  const { materialMode, scanGlbUrl, splatAssets } = props;
+  const splatsOnScreen = showsSplats({ materialMode, hasSplats: Boolean(splatAssets?.length), hasScanGlb: scanGlbUrl !== null });
+  if (splatsOnScreen && splatAssets) {
+    return <SplatRoom key={JSON.stringify(splatAssets)} assets={splatAssets} fallback={boxes} picking={picking} onError={props.onSplatError} />;
+  }
+  if (materialMode === "scan" && scanGlbUrl) return <ScannedRoom url={scanGlbUrl} whileLoading={boxes} />;
+  return null;
+}
+
 function ShopSurfaces(props: ShopSurfacesProps) {
-  const { exported, glbUrl, scanGlbUrl, lidarUrl, materialMode, selected, staleNodeIds, coverage, scene, arrange, dragAllNodes, lightweight, onSelectNode, cutWalls } = props;
+  const { exported, glbUrl, lidarUrl, materialMode, selected, staleNodeIds, coverage, scene, arrange, dragAllNodes, lightweight, onSelectNode, cutWalls } = props;
 
   const focus = useMemo(() => (selected?.locus ? new Set(selected.locus.node_ids) : null), [selected]);
   const staleSet = useMemo(() => (staleNodeIds ? new Set(staleNodeIds) : EMPTY_STALE_SET), [staleNodeIds]);
@@ -104,15 +124,15 @@ function ShopSurfaces(props: ShopSurfacesProps) {
     dragAllNodes,
     lightweight,
     cutWalls,
-    materialMode: materialMode === "scan" ? ("plain" as const) : materialMode,
+    materialMode: boxMaterialMode(materialMode),
     staleNodeIds: staleSet,
     coverage: coverageMap,
   }), [scene, focus, selected, onSelectNode, arrange, dragAllNodes, lightweight, cutWalls, materialMode, staleSet, coverageMap]);
 
   const boxes = <BoxShopModel {...modelProps} />;
   const picking = <BoxShopModel {...modelProps} pickOnly />;
-  if (materialMode === "scan" && props.splatAssets?.length) return <SplatRoom key={JSON.stringify(props.splatAssets)} assets={props.splatAssets} fallback={boxes} picking={picking} onError={props.onSplatError} />;
-  if (materialMode === "scan" && scanGlbUrl) return <ScannedRoom url={scanGlbUrl} whileLoading={boxes} />;
+  const captured = capturedRoom(props, boxes, picking);
+  if (captured) return captured;
   const reconstructed = !glbUrl ? boxes : (
     <GlbFallback key={glbUrl} fallback={boxes}>
       <Suspense fallback={boxes}>
@@ -154,7 +174,34 @@ function ScannedRoom({ url, whileLoading }: { url: string; whileLoading: ReactNo
   );
 }
 
-// eslint-disable-next-line complexity
+/** Splats are expensive enough to pay for with resolution and antialiasing; the boxes are not. */
+function canvasTuning(lightweight: boolean | undefined, splatAssets: CapturedSplatAsset[] | undefined) {
+  const splatting = Boolean(splatAssets?.length);
+  return {
+    dpr: lightweight ? DPR_LIGHTWEIGHT : splatting ? DPR_SPLATS : DPR_DEFAULT,
+    antialias: !splatting,
+  };
+}
+
+type WheelchairProps = Pick<ViewerProps, "scene" | "wheelchairMode" | "wheelchairProfile" | "onWheelchairStateChange" | "wheelchairDockTarget" | "wheelchairDockDestination" | "onClearWheelchairDock" | "onWheelchairSelectNode" | "onWheelchairExit">;
+
+function Wheelchair({ scene, wheelchairMode, wheelchairProfile, onWheelchairStateChange, wheelchairDockTarget, wheelchairDockDestination, onClearWheelchairDock, onWheelchairSelectNode, onWheelchairExit }: WheelchairProps) {
+  if (!wheelchairMode || !wheelchairProfile || !onWheelchairStateChange) return null;
+  return (
+    <WheelchairController
+      active={wheelchairMode}
+      scene={scene}
+      profile={wheelchairProfile}
+      onStateChange={onWheelchairStateChange}
+      dockTarget={wheelchairDockTarget ?? null}
+      dockDestination={wheelchairDockDestination ?? null}
+      onClearDock={onClearWheelchairDock ?? NOTHING_TO_DO}
+      onSelectNode={onWheelchairSelectNode ?? NOTHING_TO_DO}
+      onExit={onWheelchairExit}
+    />
+  );
+}
+
 export default function Viewer({
   scene,
   exported,
@@ -180,20 +227,23 @@ export default function Viewer({
   wheelchairProfile,
   onWheelchairStateChange,
   wheelchairDockTarget = null,
+  wheelchairDockDestination = null,
   onClearWheelchairDock,
   onWheelchairSelectNode,
   onWheelchairExit,
 }: ViewerProps) {
+  const tuning = canvasTuning(lightweight, splatAssets);
   return (
     <Canvas
       frameloop={wheelchairMode ? "always" : "demand"}
-      dpr={lightweight ? DPR_LIGHTWEIGHT : splatAssets?.length ? DPR_SPLATS : DPR_DEFAULT}
+      dpr={tuning.dpr}
       shadows={!lightweight}
       camera={{ position: pose.position, fov: pose.fov, near: 0.05, far: 200 }}
       flat
-      gl={{ antialias: !splatAssets?.length, localClippingEnabled: true }}
+      gl={{ antialias: tuning.antialias, localClippingEnabled: true }}
       onCreated={(state) => {
         if (process.env.NODE_ENV === "development") Object.assign(window, { __viewer: state });
+        state.camera.lookAt(pose.target[0], pose.target[1], pose.target[2]);
       }}
       onPointerMissed={onClearSelection}
       aria-label="3D model of the shop"
@@ -201,18 +251,17 @@ export default function Viewer({
       <color attach="background" args={BG_COLOR_ARGS} />
       <Lights />
       {!wheelchairMode && <CameraRig pose={pose} locked={dragging} bounds={null} />}
-      {wheelchairMode && onWheelchairStateChange && wheelchairProfile && (
-        <WheelchairController
-          active={wheelchairMode}
-          scene={scene}
-          profile={wheelchairProfile}
-          onStateChange={onWheelchairStateChange}
-          dockTarget={wheelchairDockTarget}
-          onClearDock={onClearWheelchairDock ?? (() => {})}
-          onSelectNode={onWheelchairSelectNode ?? (() => {})}
-          onExit={onWheelchairExit}
-        />
-      )}
+      <Wheelchair
+        scene={scene}
+        wheelchairMode={wheelchairMode}
+        wheelchairProfile={wheelchairProfile}
+        onWheelchairStateChange={onWheelchairStateChange}
+        wheelchairDockTarget={wheelchairDockTarget}
+        wheelchairDockDestination={wheelchairDockDestination}
+        onClearWheelchairDock={onClearWheelchairDock}
+        onWheelchairSelectNode={onWheelchairSelectNode}
+        onWheelchairExit={onWheelchairExit}
+      />
       <mesh rotation-x={-Math.PI / 2} position-y={-0.002} receiveShadow>
         <planeGeometry args={GROUND_PLANE_ARGS} />
         <meshStandardMaterial color={MODEL.ground} roughness={1} />

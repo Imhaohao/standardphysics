@@ -34,10 +34,16 @@ import { SimulationPanel } from "./SimulationPanel";
 import { type MaterialMode, type ViewMode, ViewerDock } from "./ViewerDock";
 import { isTextureRefreshing, textureStatusMatches } from "@/lib/texture-status";
 import { showsSplats, viewerSourcePlan } from "@/lib/viewer-source";
+
 import type { TextureStatus } from "@/types/contracts";
+
 import type { CapturedSplats } from "@/lib/captured-splats";
-import { DEFAULT_WHEELCHAIR_PROFILE, wheelchairProfile, type WheelchairProfile } from "@/lib/wheelchair-motion";
+import { reviewOutlet } from "@/lib/layout-client";
+import { DEFAULT_WHEELCHAIR_PROFILE, wheelchairProfile, type MotionPoint, type WheelchairProfile } from "@/lib/wheelchair-motion";
 import { OutletPanel } from "./OutletPanel";
+
+
+
 
 const Viewer = dynamic(() => import("./Viewer"), {
   ssr: false,
@@ -248,6 +254,7 @@ type SidePanelProps = {
   onSelectNode?: (nodeId: string | null) => void;
   wheelchairPos?: { x: number; z: number } | null;
   wheelchairProfile?: WheelchairProfile;
+  onProfileChange?: (profile: WheelchairProfile) => void;
   onPreviewApproach?: (point: { x: number; z: number }) => void;
   onUpdateReviewStatus?: (nodeId: string, status: "confirmed_by_user" | "rejected_by_user") => void;
 };
@@ -274,6 +281,7 @@ function SidePanel({
   onSelectNode,
   wheelchairPos,
   wheelchairProfile,
+  onProfileChange,
   onPreviewApproach,
   onUpdateReviewStatus,
 }: SidePanelProps) {
@@ -286,11 +294,13 @@ function SidePanel({
         onSelectNode={onSelectNode ?? (() => {})}
         wheelchairPos={wheelchairPos ?? null}
         wheelchairProfile={wheelchairProfile ?? DEFAULT_WHEELCHAIR_PROFILE}
+        onProfileChange={onProfileChange}
         onPreviewApproach={onPreviewApproach}
         onUpdateReviewStatus={onUpdateReviewStatus}
       />
     );
   }
+
   if (task === "compare" && comparison) return <ComparePanel comparison={comparison} amount={amount} onAmount={onAmount} scope={scope} />;
   if (task === "arrange") return <ArrangePanel arrangement={arrangement} fallbackFindings={findings} scope={scope} />;
   if (task === "combine") return <CombinePanel combine={combine} />;
@@ -487,6 +497,7 @@ function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, te
   const [wheelchairState, setWheelchairState] = useState<WheelchairState | null>(null);
   const [profile, setProfile] = useState<WheelchairProfile>(DEFAULT_WHEELCHAIR_PROFILE);
   const [dockTarget, setDockTarget] = useState<SceneNode | null>(null);
+  const [dockDestination, setDockDestination] = useState<MotionPoint | null>(null);
   const [splatError, setSplatError] = useState<string | null>(null);
   useKeyboard(task, visuals.arrangement, visuals.combine, actions.clear, wheelchairMode);
 
@@ -497,14 +508,17 @@ function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, te
   const exitWheelchairMode = useCallback(() => {
     setWheelchairMode(false);
     setDockTarget(null);
+    setDockDestination(null);
   }, []);
 
   const handleDockWheelchair = useCallback((node: SceneNode) => {
     setDockTarget(node);
+    setDockDestination(null);
   }, []);
 
   const handleClearWheelchairDock = useCallback(() => {
     setDockTarget(null);
+    setDockDestination(null);
   }, []);
 
   const handleWheelchairSelectNode = useCallback((node: SceneNode) => {
@@ -540,15 +554,25 @@ function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, te
   const sourceGraph = sourcePlan.usePhotoBuild ? photoBuild?.bake_graph ?? exported : exported;
 
   const [reviews, setReviews] = useState<Record<string, "confirmed_by_user" | "rejected_by_user">>({});
-  const handleUpdateReviewStatus = useCallback((nodeId: string, status: "confirmed_by_user" | "rejected_by_user") => {
+  const [persistedScene, setPersistedScene] = useState<SceneGraph | null>(null);
+
+  const handleUpdateReviewStatus = useCallback(async (nodeId: string, status: "confirmed_by_user" | "rejected_by_user") => {
     setReviews((prev) => ({ ...prev, [nodeId]: status }));
-  }, []);
+    try {
+      const currentRev = (persistedScene ?? scene).revision;
+      const updated = await reviewOutlet(scan.id, currentRev, nodeId, status);
+      setPersistedScene(updated);
+    } catch (err) {
+      console.error("Failed to persist outlet review", err);
+    }
+  }, [scan.id, scene, persistedScene]);
 
   const activeScene = useMemo(() => {
-    if (Object.keys(reviews).length === 0) return scene;
+    const base = persistedScene ?? scene;
+    if (Object.keys(reviews).length === 0) return base;
     return {
-      ...scene,
-      nodes: scene.nodes.map((node) => {
+      ...base,
+      nodes: base.nodes.map((node) => {
         const review = reviews[node.id];
         if (!review || !node.attachment) return node;
         return {
@@ -560,11 +584,12 @@ function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, te
         };
       }),
     };
-  }, [scene, reviews]);
+  }, [scene, persistedScene, reviews]);
 
-  const handlePreviewOutletApproach = useCallback((_point: { x: number; z: number }) => {
+  const handlePreviewOutletApproach = useCallback((point: MotionPoint) => {
     if (picked.node) {
       setDockTarget(picked.node);
+      setDockDestination(point);
       setWheelchairMode(true);
     }
   }, [picked.node]);
@@ -599,10 +624,12 @@ function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, te
           wheelchairProfile={profile}
           onWheelchairStateChange={setWheelchairState}
           wheelchairDockTarget={dockTarget}
+          wheelchairDockDestination={dockDestination}
           onClearWheelchairDock={handleClearWheelchairDock}
           onWheelchairSelectNode={handleWheelchairSelectNode}
           onWheelchairExit={exitWheelchairMode}
         />
+
         {splatError && splatsOnScreen && <p role="status" className="absolute left-4 top-4 max-w-sm rounded-lg bg-sheet/95 p-3 text-sm text-ink-muted">{splatError} Showing the measured model.</p>}
         {splatsOnScreen && !splatError && !wheelchairMode && (
           <p role="status" className="pointer-events-none absolute left-4 top-4 max-w-sm rounded-lg bg-sheet/90 px-3 py-2 text-xs text-ink-muted shadow-sm">
@@ -661,9 +688,11 @@ function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, te
           }}
           wheelchairPos={wheelchairState ? { x: wheelchairState.x, z: wheelchairState.z } : null}
           wheelchairProfile={profile}
+          onProfileChange={handleWheelchairProfile}
           onPreviewApproach={handlePreviewOutletApproach}
           onUpdateReviewStatus={handleUpdateReviewStatus}
         />
+
       </aside>
     </div>
   </>;

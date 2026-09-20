@@ -23,6 +23,9 @@ export const WHEELCHAIR_PROFILE_LIMITS = {
   eyeHeight: { min: 0.75, max: 1.45 },
   speed: { min: 0.6, max: 4 },
   collisionRadius: { min: 0.3, max: 0.7 },
+  minReachHeight: { min: 0.1, max: 0.8 },
+  maxReachHeight: { min: 0.8, max: 1.8 },
+  maxReachDistance: { min: 0.2, max: 1.2 },
 } as const;
 
 export const DEFAULT_WHEELCHAIR_PROFILE: WheelchairProfile = {
@@ -46,6 +49,8 @@ export function wheelchairProfile(profile: Partial<WheelchairProfile> | null | u
     ...(profile?.reach !== undefined ? { reach: profile.reach ? { ...profile.reach } : null } : {}),
   };
 }
+
+
 
 export type CollisionRect = {
   node: SceneNode;

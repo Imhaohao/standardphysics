@@ -420,6 +420,23 @@ def architecture_svg(graph: SceneGraph, ledger: dict[str, Any]) -> str:
     )
 
 
+def _local_floor_height(node: SceneNode, floors: list[SceneNode]) -> float:
+    if not floors:
+        return round(node.transform.m[11], 4)
+    ox, oy, oz = node.transform.m[3], node.transform.m[7], node.transform.m[11]
+    best_floor = None
+    min_dist_sq = float("inf")
+    for floor in floors:
+        fx, fy = floor.transform.m[3], floor.transform.m[7]
+        dist_sq = (ox - fx) ** 2 + (oy - fy) ** 2
+        if dist_sq < min_dist_sq:
+            min_dist_sq = dist_sq
+            best_floor = floor
+    if best_floor is not None:
+        return round(max(0.0, oz - best_floor.transform.m[11]), 4)
+    return round(oz, 4)
+
+
 def build_architecture_zip(
     scan_id: uuid.UUID,
     scan_name: str,
@@ -438,6 +455,7 @@ def build_architecture_zip(
             json.dumps(ledger, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
         ).encode("utf-8"),
     }
+    floors = [n for n in graph.nodes if n.kind == "floor"]
     outlets = [
         node for node in sorted(graph.nodes, key=lambda n: str(n.id))
         if node.kind in ("outlet", "candidate_outlet") or node.attachment is not None
@@ -455,7 +473,13 @@ def build_architecture_zip(
                     "id": str(node.id),
                     "label": node.label,
                     "kind": node.kind,
-                    "local_height_m": node.transform.m[11],
+                    "local_height_m": _local_floor_height(node, floors),
+                    "review_status": node.attachment.review_status if node.attachment else "detected",
+                    "crop_reference": (
+                        node.attachment.observations[0].image_url
+                        if node.attachment and node.attachment.observations
+                        else None
+                    ),
                     "attachment": node.attachment.model_dump(mode="json") if node.attachment else None,
                     "uncertainty": {
                         "power_state": "unknown",
@@ -477,6 +501,7 @@ def build_architecture_zip(
         files["outlets.json"] = (
             json.dumps(outlets_data, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
         ).encode("utf-8")
+
     output = io.BytesIO()
     with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
         for name in sorted(files):

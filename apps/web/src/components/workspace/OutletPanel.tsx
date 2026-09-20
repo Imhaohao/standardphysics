@@ -29,6 +29,7 @@ type OutletPanelProps = {
   onSelectNode: (nodeId: string | null) => void;
   wheelchairPos: MotionPoint | null;
   wheelchairProfile: WheelchairProfile;
+  onProfileChange?: (profile: WheelchairProfile) => void;
   onPreviewApproach?: (point: MotionPoint) => void;
   onUpdateReviewStatus?: (nodeId: string, status: "confirmed_by_user" | "rejected_by_user") => void;
 };
@@ -48,6 +49,7 @@ export function OutletPanel({
   onSelectNode,
   wheelchairPos,
   wheelchairProfile,
+  onProfileChange,
   onPreviewApproach,
   onUpdateReviewStatus,
 }: OutletPanelProps) {
@@ -61,15 +63,19 @@ export function OutletPanel({
     return outletNodes.find((n) => n.id === selectedId) ?? null;
   }, [outletNodes, selectedId]);
 
+  const assessments = useMemo(() => {
+    const map = new Map<string, OutletAccessibilityAssessment>();
+    for (const node of outletNodes) {
+      map.set(node.id, assessOutletAccessibility(wheelchairPos, node, geometry, wheelchairProfile));
+    }
+    return map;
+  }, [outletNodes, wheelchairPos, geometry, wheelchairProfile]);
+
   const assessment: OutletAccessibilityAssessment | null = useMemo(() => {
     if (!selectedNode) return null;
-    return assessOutletAccessibility(
-      wheelchairPos,
-      selectedNode,
-      geometry,
-      wheelchairProfile
-    );
-  }, [selectedNode, wheelchairPos, geometry, wheelchairProfile]);
+    return assessments.get(selectedNode.id) ?? null;
+  }, [selectedNode, assessments]);
+
 
   return (
     <div className="flex flex-col gap-4 p-4 text-sm">
@@ -106,6 +112,18 @@ export function OutletPanel({
               const isCandidate = node.kind === "candidate_outlet" || node.attachment?.review_status === "candidate";
               const isConfirmed = node.attachment?.review_status === "confirmed_by_user";
               const isRejected = node.attachment?.review_status === "rejected_by_user";
+              const itemAssessment = assessments.get(node.id);
+              const heightStr = itemAssessment?.targetHeightAboveFloor !== null && itemAssessment?.targetHeightAboveFloor !== undefined
+                ? `${(itemAssessment.targetHeightAboveFloor * INCHES_PER_METER).toFixed(0)}″`
+                : "unknown";
+              const distStr = itemAssessment?.approachDistance !== null && itemAssessment?.approachDistance !== undefined
+                ? `${itemAssessment.approachDistance.toFixed(1)} m`
+                : "no route";
+              const reachStatusStr = itemAssessment?.reachStatus === "within_reach"
+                ? "Within reach"
+                : itemAssessment?.reachStatus === "outside_reach"
+                ? "Outside reach"
+                : "Needs check";
 
               return (
                 <button
@@ -123,8 +141,10 @@ export function OutletPanel({
                     <div>
                       <p className="font-medium text-ink">{node.label}</p>
                       <p className="text-[11px] text-ink-muted">
-                        Height: {(node.transform.m[11] * INCHES_PER_METER).toFixed(0)}″ •{" "}
-                        {node.attachment?.support_type === "lidar_surface" ? "LiDAR support" : "Inferred plane"}
+                        Height: {heightStr} • Dist: {distStr} •{" "}
+                        <span className={itemAssessment?.reachStatus === "within_reach" ? "font-semibold text-emerald-700" : itemAssessment?.reachStatus === "outside_reach" ? "font-semibold text-rose-700" : "text-amber-700"}>
+                          {reachStatusStr}
+                        </span>
                       </p>
                     </div>
                   </div>
@@ -153,6 +173,84 @@ export function OutletPanel({
           </div>
         </div>
       )}
+
+      {onProfileChange && (
+        <details className="rounded-lg border border-rule/60 bg-sheet/95 px-2.5 py-2 text-xs text-ink-muted shadow-sm">
+          <summary className="cursor-pointer font-semibold text-ink">Personal reach settings</summary>
+          <div className="mt-2 grid gap-2">
+            <label className="grid grid-cols-[1fr_auto] items-center gap-x-2 gap-y-1 text-[11px]">
+              <span>Min reach height</span>
+              <span className="font-mono text-ink">{(wheelchairProfile.reach?.minReachHeight ?? 0.38).toFixed(2)} m</span>
+              <input
+                className="col-span-2 w-full accent-sky-600"
+                type="range"
+                min={0.1}
+                max={0.8}
+                step={0.01}
+                value={wheelchairProfile.reach?.minReachHeight ?? 0.38}
+                onChange={(e) =>
+                  onProfileChange({
+                    ...wheelchairProfile,
+                    reach: {
+                      maxReachHeight: wheelchairProfile.reach?.maxReachHeight ?? 1.22,
+                      maxReachDistance: wheelchairProfile.reach?.maxReachDistance ?? 0.60,
+                      ...wheelchairProfile.reach,
+                      minReachHeight: Number(e.target.value),
+                    },
+                  })
+                }
+              />
+            </label>
+            <label className="grid grid-cols-[1fr_auto] items-center gap-x-2 gap-y-1 text-[11px]">
+              <span>Max reach height</span>
+              <span className="font-mono text-ink">{(wheelchairProfile.reach?.maxReachHeight ?? 1.22).toFixed(2)} m</span>
+              <input
+                className="col-span-2 w-full accent-sky-600"
+                type="range"
+                min={0.8}
+                max={1.8}
+                step={0.01}
+                value={wheelchairProfile.reach?.maxReachHeight ?? 1.22}
+                onChange={(e) =>
+                  onProfileChange({
+                    ...wheelchairProfile,
+                    reach: {
+                      minReachHeight: wheelchairProfile.reach?.minReachHeight ?? 0.38,
+                      maxReachDistance: wheelchairProfile.reach?.maxReachDistance ?? 0.60,
+                      ...wheelchairProfile.reach,
+                      maxReachHeight: Number(e.target.value),
+                    },
+                  })
+                }
+              />
+            </label>
+            <label className="grid grid-cols-[1fr_auto] items-center gap-x-2 gap-y-1 text-[11px]">
+              <span>Max reach distance</span>
+              <span className="font-mono text-ink">{(wheelchairProfile.reach?.maxReachDistance ?? 0.60).toFixed(2)} m</span>
+              <input
+                className="col-span-2 w-full accent-sky-600"
+                type="range"
+                min={0.2}
+                max={1.2}
+                step={0.01}
+                value={wheelchairProfile.reach?.maxReachDistance ?? 0.60}
+                onChange={(e) =>
+                  onProfileChange({
+                    ...wheelchairProfile,
+                    reach: {
+                      minReachHeight: wheelchairProfile.reach?.minReachHeight ?? 0.38,
+                      maxReachHeight: wheelchairProfile.reach?.maxReachHeight ?? 1.22,
+                      ...wheelchairProfile.reach,
+                      maxReachDistance: Number(e.target.value),
+                    },
+                  })
+                }
+              />
+            </label>
+          </div>
+        </details>
+      )}
+
 
       {selectedNode && assessment && (
         <div className="mt-2 flex flex-col gap-3 rounded-xl border border-rule bg-sheet p-3.5 shadow-sm">

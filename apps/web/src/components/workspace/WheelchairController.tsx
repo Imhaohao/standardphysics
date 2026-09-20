@@ -32,6 +32,7 @@ type WheelchairControllerProps = {
   scene: SceneGraph;
   onStateChange: (state: WheelchairState) => void;
   dockTarget: SceneNode | null;
+  dockDestination?: MotionPoint | null;
   onClearDock: () => void;
   onSelectNode: (node: SceneNode) => void;
   profile: WheelchairProfile;
@@ -60,12 +61,14 @@ export function WheelchairController({
   scene,
   onStateChange,
   dockTarget,
+  dockDestination,
   onClearDock,
   onSelectNode,
   profile,
   onExit,
   initialPosition = [-3.0, 0, -3.0],
 }: WheelchairControllerProps) {
+
   const { camera, invalidate } = useThree();
   const pos = useRef(new Vector3(initialPosition[0], profile.eyeHeight, initialPosition[2]));
   const yaw = useRef(0);
@@ -154,7 +157,7 @@ export function WheelchairController({
     const target = geometry.targets.find((rect) => rect.node.id === dockTarget.id);
     if (target) {
       const from: MotionPoint = { x: pos.current.x, z: pos.current.z };
-      const destination = dockPoint(from, target, profile.collisionRadius);
+      const destination = dockDestination ?? dockPoint(from, target, profile.collisionRadius);
       const movement = sweepWheelchairInGeometry(from, { x: destination.x - from.x, z: destination.z - from.z }, geometry, profile.collisionRadius);
       pos.current.x = movement.point.x;
       pos.current.z = movement.point.z;
@@ -164,7 +167,8 @@ export function WheelchairController({
       }
     }
     onClearDock();
-  }, [active, dockTarget, geometry, onClearDock, onSelectNode, profile.collisionRadius]);
+  }, [active, dockTarget, dockDestination, geometry, onClearDock, onSelectNode, profile.collisionRadius]);
+
 
   // eslint-disable-next-line complexity
   useFrame((state, delta) => {
