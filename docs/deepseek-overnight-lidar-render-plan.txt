@@ -243,7 +243,8 @@ training masks separate from evaluation masks and show full frames alongside
 masked metrics. Model alpha cannot exclude errors from PSNR/SSIM denominators.
 
 Gate 1: fixed manifests, reviewed real detail, documented split independence and
-reproducible B0/B1 artifacts. If B0 cannot be built/imported correctly, keep candidates
+reproducible B0 artifacts. B1 is optional; record unavailable if absent. If B0
+cannot be built/imported correctly, keep candidates
 exploratory; do not claim a matched speed win.
 
 PHASE 2: PROVE CALIBRATION AND VISIBILITY
@@ -423,11 +424,16 @@ by independent trajectory group (1000 resamples, seed 1729); do not claim statis
 significance with too few groups or highly correlated frames.
 
 Hard gates (all must pass for an eligible candidate):
-G1 input/split/code/evaluator hashes consistent; artifacts valid; no source changes.
+G1 input/split/code/evaluator hashes consistent; artifacts valid; original captures
+   unchanged. Implementation code may change between explicitly versioned trials;
+   no unrecorded code/evaluator changes after a trial configuration is locked.
 G2 correct calibration/axes/color/export and required meaningful tests pass.
 G3 every expected view/ROI rendered at the fixed resolution; no missing/invalid metrics.
 G4 mean PSNR drop <=0.20 dB, mean SSIM drop <=0.005, every critical-ROI PSNR drop
    <=0.30 dB, and worst per-view PSNR drop <=1.0 dB relative to matched baseline.
+   Mean full-frame PSNR drop must also be <=0.50 dB. This conservative gate can
+   reject useful person removal when test photos contain people; report that
+   tradeoff as exploratory instead of changing masks/thresholds after the fact.
 G5 uncovered supported pixels increase by <=1.0 percentage point; no disappeared
    critical feature, new misleading filled surface, or new/worse person ghost in
    mandatory paired visual inspection. Unknown visual review means unknown gate.
@@ -435,6 +441,10 @@ G6 footprint below resource cap; valid end-to-end timings and same-device render
    measurements; p95 frame time no more than 10% slower than baseline.
 G7 display change preserves measured collision/export/revision/auth boundaries;
    no unsupported claim of unseen detail, physical accuracy or ADA compliance.
+   Preserve the authoritative measured mesh/graph and fallback surface inventory,
+   verified by hashes and invariance tests. H is appearance coverage, not independent
+   geometry validation. Pruning unsupported appearance is allowed only with the
+   loss/support change disclosed; it does not establish retained physical accuracy.
 
 No aggregate score can compensate for a failed/unknown gate. A missing value is
 null with an error, never zero, perfect, or omitted from the denominator.
@@ -460,6 +470,8 @@ QUALITY: PSNR improves >=0.50 dB AND SSIM improves >=0.010; T_C<=1.25*T_B;
 EFFICIENCY: T_B/T_C>=1.5; M_C<=M_B; Z_C<=Z_B; all hard gates pass.
 Confirm timing improvement exceeds observed run-to-run noise; if ranges overlap
 substantially, label the claim inconclusive even if the median ratio passes.
+The lane and score are separate requirements deliberately: meeting the quality
+lane at its maximum cost limits can still score below 55 and remain unselected.
 Keep a Pareto table for useful candidates not satisfying these provisional lanes;
 do not call them production replacements. A fast visibly inferior result is at
 most a labeled draft candidate, not photorealistic completion.
@@ -469,6 +481,9 @@ retain both. Freeze manual review labels before revealing method names if feasib
 Visual review includes actual exported SPZ in the product viewer, not only trainer
 screenshots. Review statuses must identify human, independent agent, or self-review.
 No “human approved” status without a human. Unknown review cannot be self-filled.
+Labeled agent self-review is allowed; a human is not required for experimental
+eligibility. Missing usable frame timing intentionally prevents an eligible score,
+but does not block implementation, exploratory renders or the final honest report.
 
 FINAL TEST AND DELIVERY LOOP
 

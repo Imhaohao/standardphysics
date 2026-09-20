@@ -106,6 +106,7 @@
   },
   "hard_numeric_gates": {
     "max_mean_psnr_drop_db": 0.2,
+    "max_mean_full_frame_psnr_drop_db": 0.5,
     "max_mean_ssim_drop": 0.005,
     "max_each_critical_roi_psnr_drop_db": 0.3,
     "max_each_view_psnr_drop_db": 1.0,
@@ -115,6 +116,7 @@
   "hard_non_numeric_gates": [
     "frozen_input_split_evaluator_and_artifact_hashes_validate",
     "originals_and_previous_revisions_preserved",
+    "authoritative_measured_mesh_graph_and_fallback_inventory_preserved",
     "calibration_axes_color_export_and_required_tests_pass",
     "all_expected_views_and_rois_present_no_nonfinite_metrics",
     "no_disappeared_critical_feature_or_new_misleading_surface",
@@ -164,6 +166,8 @@
   "evidence": {
     "metric_values_written_by": "evaluator_from_actual_artifacts_not_language_model",
     "visual_review_identity_required": true,
+    "labeled_agent_self_review_allowed_for_experiments": true,
+    "appearance_coverage_is_independent_geometry_validation": false,
     "required_run_records": [
       "input_manifest_and_hashes",
       "config_and_hash",
