@@ -60,48 +60,64 @@ def are_compatible_observations(
         return False
 
     # Reprojection check if cameras available
-    if camera_a is not None and len(att_b.observations) > 0:
+    if camera_a is not None and len(att_a.observations) > 0:
         col, row, depth = camera_a.project(pos_b.reshape(1, 3))
         if depth[0] <= 0:
             return False
+        obs_box = att_a.observations[0].sensor_box
+        pad_x = (obs_box[2] - obs_box[0]) * 0.20
+        pad_y = (obs_box[3] - obs_box[1]) * 0.20
+        if not (obs_box[0] - pad_x <= col[0] <= obs_box[2] + pad_x and obs_box[1] - pad_y <= row[0] <= obs_box[3] + pad_y):
+            return False
 
-    if camera_b is not None and len(att_a.observations) > 0:
+    if camera_b is not None and len(att_b.observations) > 0:
         col, row, depth = camera_b.project(pos_a.reshape(1, 3))
         if depth[0] <= 0:
+            return False
+        obs_box = att_b.observations[0].sensor_box
+        pad_x = (obs_box[2] - obs_box[0]) * 0.20
+        pad_y = (obs_box[3] - obs_box[1]) * 0.20
+        if not (obs_box[0] - pad_x <= col[0] <= obs_box[2] + pad_x and obs_box[1] - pad_y <= row[0] <= obs_box[3] + pad_y):
             return False
 
     return True
 
 
-def merge_two_nodes(node_a: SceneNode, node_b: SceneNode, cameras: dict[str, PhotoCamera] | None = None) -> SceneNode:
-    """Merges two compatible outlet nodes, consolidating evidence and updating uncertainty."""
-    att_a = node_a.attachment
-    att_b = node_b.attachment
-    assert att_a is not None and att_b is not None
+def merge_cluster(cluster: Sequence[SceneNode], cameras: dict[str, PhotoCamera] | None = None) -> SceneNode:
+    """Merges a cluster of compatible outlet nodes, consolidating evidence and updating uncertainty."""
+    import uuid
+
+    first_att = cluster[0].attachment
+    assert first_att is not None
 
     # Merge observations without duplicating frames
-    seen_frames = {obs.frame_id for obs in att_a.observations}
-    merged_obs = list(att_a.observations)
-    for obs in att_b.observations:
-        if obs.frame_id not in seen_frames:
-            merged_obs.append(obs)
-            seen_frames.add(obs.frame_id)
+    seen_frames: set[str] = set()
+    merged_obs = []
+    for node in cluster:
+        if node.attachment:
+            for obs in node.attachment.observations:
+                if obs.frame_id not in seen_frames:
+                    merged_obs.append(obs)
+                    seen_frames.add(obs.frame_id)
 
-    # Average 3D position
-    pos_a = np.array([node_a.transform.m[3], node_a.transform.m[7], node_a.transform.m[11]], dtype=np.float64)
-    pos_b = np.array([node_b.transform.m[3], node_b.transform.m[7], node_b.transform.m[11]], dtype=np.float64)
-    merged_pos = (pos_a + pos_b) / 2.0
+    # Average 3D position over all nodes in the cluster
+    all_pos = [
+        np.array([n.transform.m[3], n.transform.m[7], n.transform.m[11]], dtype=np.float64)
+        for n in cluster
+    ]
+    merged_pos = np.mean(all_pos, axis=0)
 
     # Combine sockets
-    merged_sockets = list(att_a.sockets)
-    for s_b in att_b.sockets:
-        # Avoid duplicate sockets if close (< 3cm)
-        s_b_pt = np.array([s_b.center.x, s_b.center.y, s_b.center.z], dtype=np.float64)
-        if not any(
-            np.linalg.norm(s_b_pt - np.array([s_a.center.x, s_a.center.y, s_a.center.z])) < 0.03
-            for s_a in att_a.sockets
-        ):
-            merged_sockets.append(s_b)
+    merged_sockets = []
+    for node in cluster:
+        if node.attachment:
+            for s in node.attachment.sockets:
+                s_pt = np.array([s.center.x, s.center.y, s.center.z], dtype=np.float64)
+                if not any(
+                    np.linalg.norm(s_pt - np.array([ms.center.x, ms.center.y, ms.center.z])) < 0.03
+                    for ms in merged_sockets
+                ):
+                    merged_sockets.append(s)
 
     # Determine viewpoint independence
     independent_views = False
@@ -114,40 +130,75 @@ def merge_two_nodes(node_a: SceneNode, node_b: SceneNode, cameras: dict[str, Pho
                     if cam_dist >= MIN_INDEPENDENT_VIEW_DISTANCE_M:
                         independent_views = True
                         break
+                if independent_views:
+                    break
 
-    uncertainty_reasons = [
-        r for r in att_a.uncertainty_reasons
-        if "single viewpoint" not in r
-    ]
+    # Preserve owner review decisions: rejection overrides detection
+    if any(n.attachment and n.attachment.review_status == "rejected_by_user" for n in cluster):
+        merged_review_status = "rejected_by_user"
+    elif any(n.attachment and n.attachment.review_status == "confirmed_by_user" for n in cluster):
+        merged_review_status = "confirmed_by_user"
+    else:
+        merged_review_status = first_att.review_status
+
+    # Union uncertainty reasons from all observations
+    uncertainty_reasons: list[str] = []
+    for node in cluster:
+        if node.attachment:
+            for r in node.attachment.uncertainty_reasons:
+                if "single viewpoint" not in r and r not in uncertainty_reasons:
+                    uncertainty_reasons.append(r)
+
     if not independent_views:
         if not any("single viewpoint" in r for r in uncertainty_reasons):
             uncertainty_reasons.append("single viewpoint observation; not independently verified from separate angle")
 
-    localization_quality = "verified_support" if independent_views and att_a.support_type == "lidar_surface" else att_a.localization_quality
+    needs_verification = any(
+        n.attachment and n.attachment.localization_quality == "needs_verification"
+        for n in cluster
+    )
+    if not independent_views or needs_verification or first_att.support_type != "lidar_surface":
+        localization_quality = "needs_verification"
+    else:
+        localization_quality = "verified_support"
+
+    max_confidence = max(
+        (n.attachment.identity_confidence for n in cluster if n.attachment),
+        default=first_att.identity_confidence,
+    )
 
     merged_att = SurfaceAttachment(
-        support_node_id=att_a.support_node_id,
-        support_type=att_a.support_type,
-        local_anchor=att_a.local_anchor,
-        normal=att_a.normal,
-        observed_region=att_a.observed_region,
+        support_node_id=first_att.support_node_id,
+        support_type=first_att.support_type,
+        local_anchor=first_att.local_anchor,
+        normal=first_att.normal,
+        observed_region=first_att.observed_region,
         sockets=merged_sockets,
         observations=merged_obs,
-        identity_confidence=max(att_a.identity_confidence, att_b.identity_confidence),
+        identity_confidence=max_confidence,
         localization_quality=localization_quality,
-        review_status=att_a.review_status,
+        review_status=merged_review_status,
         uncertainty_reasons=uncertainty_reasons,
     )
 
-    new_m = list(node_a.transform.m)
+    new_m = list(cluster[0].transform.m)
     new_m[3] = float(merged_pos[0])
     new_m[7] = float(merged_pos[1])
     new_m[11] = float(merged_pos[2])
 
-    return node_a.model_copy(update={
-        "transform": node_a.transform.model_copy(update={"m": new_m}),
+    stable_seed = f"{merged_att.support_node_id}_{round(float(merged_pos[0]), 2)}_{round(float(merged_pos[1]), 2)}_{round(float(merged_pos[2]), 2)}"
+    merged_id = uuid.uuid5(uuid.NAMESPACE_OID, stable_seed)
+
+    return cluster[0].model_copy(update={
+        "id": merged_id,
+        "transform": cluster[0].transform.model_copy(update={"m": new_m}),
         "attachment": merged_att,
     })
+
+
+def merge_two_nodes(node_a: SceneNode, node_b: SceneNode, cameras: dict[str, PhotoCamera] | None = None) -> SceneNode:
+    """Merges two compatible outlet nodes, consolidating evidence and updating uncertainty."""
+    return merge_cluster([node_a, node_b], cameras)
 
 
 def reconcile_outlets(
@@ -161,8 +212,11 @@ def reconcile_outlets(
     if not outlets:
         return list(nodes)
 
+    # Sort outlets deterministically by ID string to ensure reproducible clustering
+    sorted_outlets = sorted(outlets, key=lambda n: str(n.id))
+
     clusters: list[list[SceneNode]] = []
-    for node in outlets:
+    for node in sorted_outlets:
         matched_cluster = None
         for cluster in clusters:
             # Check compatibility against all nodes in the cluster to prevent transitive chain merging
@@ -183,11 +237,6 @@ def reconcile_outlets(
         else:
             clusters.append([node])
 
-    reconciled_outlets: list[SceneNode] = []
-    for cluster in clusters:
-        current = cluster[0]
-        for other in cluster[1:]:
-            current = merge_two_nodes(current, other, cameras)
-        reconciled_outlets.append(current)
-
+    reconciled_outlets = [merge_cluster(cluster, cameras) for cluster in clusters]
     return non_outlets + reconciled_outlets
+

@@ -148,7 +148,8 @@ def cast_and_intersect(
                 c_idx = int(np.clip(round(col * w_buf / camera.width), 0, w_buf - 1))
                 r_idx = int(np.clip(round(row * h_buf / camera.height), 0, h_buf - 1))
                 buf_depth = float(depth_buffer[r_idx, c_idx])
-                if math.isfinite(buf_depth) and buf_depth < t - 0.08:
+                hit_cam_z = float(camera.to_camera(hit_pt.reshape(1, 3))[0, 2])
+                if math.isfinite(buf_depth) and buf_depth < hit_cam_z - 0.08:
                     is_occluded = True
             hits.append(RayHit(col, row, t, hit_pt, normal, node, is_grazing, is_occluded))
     return hits
@@ -206,7 +207,21 @@ def attach_detection_to_surface(
         if any(h.is_grazing for h in dominant_hits):
             uncertainty_reasons.append("camera ray grazing angle exceeds 75 degrees from surface normal")
 
-        support_type = "lidar_surface" if support_node.quality == "measured" else "roomplan_plane"
+        has_lidar_verification = False
+        if depth_buffer is not None:
+            h_buf, w_buf = depth_buffer.shape
+            matching_hits = 0
+            for h in dominant_hits:
+                c_idx = int(np.clip(round(h.col * w_buf / camera.width), 0, w_buf - 1))
+                r_idx = int(np.clip(round(h.row * h_buf / camera.height), 0, h_buf - 1))
+                buf_d = float(depth_buffer[r_idx, c_idx])
+                hit_z = float(camera.to_camera(h.point.reshape(1, 3))[0, 2])
+                if math.isfinite(buf_d) and abs(buf_d - hit_z) <= 0.08:
+                    matching_hits += 1
+            if matching_hits >= MIN_SUPPORT_RAYS:
+                has_lidar_verification = True
+
+        support_type = "lidar_surface" if has_lidar_verification else "roomplan_plane"
         if support_type == "roomplan_plane":
             uncertainty_reasons.append("attached to inferred RoomPlan plane; not independently verified by LiDAR")
 
@@ -267,8 +282,11 @@ def attach_detection_to_surface(
         bitangent = np.cross(normal_vec, tangent)
         rot_matrix = np.column_stack([tangent, normal_vec, bitangent])
 
+        stable_seed = f"{support_node.id}_{round(float(center_pt[0]), 2)}_{round(float(center_pt[1]), 2)}_{round(float(center_pt[2]), 2)}"
+        node_id = uuid.uuid5(uuid.NAMESPACE_OID, stable_seed)
+
         node = SceneNode(
-            id=uuid.uuid4(),
+            id=node_id,
             kind="outlet" if detection.is_outlet else ("confuser" if detection.is_confuser else "object"),
             label=f"Outlet ({detection.name})" if detection.is_outlet else detection.name,
             raw_category=detection.name,
@@ -303,8 +321,10 @@ def attach_detection_to_surface(
     cam_pos = camera.position
     fwd = camera.forward
     est_pt = cam_pos + fwd * 1.5
+    stable_seed = f"unanchored_{detection.frame_id}_{round(float(detection.box[0]), 1)}_{round(float(detection.box[1]), 1)}"
+    node_id = uuid.uuid5(uuid.NAMESPACE_OID, stable_seed)
     node = SceneNode(
-        id=uuid.uuid4(),
+        id=node_id,
         kind="candidate_outlet",
         label=f"Candidate outlet ({detection.name})",
         raw_category=detection.name,

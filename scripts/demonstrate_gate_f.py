@@ -1,6 +1,8 @@
-"""Demonstrate Gate F user journey:
-Selection -> readable evidence -> separate approach/reach -> profile update -> export.
-Includes observed outlet, blocked/unknown scenario, and no-results/confuser rejection.
+"""SYNTHETIC EXPORT FIXTURE (NOT A REAL DEMONSTRATION OR COMPLETION PROOF).
+
+This script generates synthetic outlet nodes to test architecture ZIP export serialization.
+It does NOT run real detector inferences, does NOT verify browser interaction,
+and does NOT constitute proof of real-room acceptance.
 """
 
 from __future__ import annotations
@@ -311,57 +313,26 @@ def run_demonstration():
 
     action_notes_path = pilot_dir / "gate-f-action-notes.txt"
     action_notes = f"""Standard Physics - Moffett Field Outlets Feature
-Gate F Demonstration & Verification Action Notes
-==================================================
+Synthetic Export Fixture Notes — Unverified / Synthetic Only
+=============================================================
 
-1. Overview of Demonstrated User Journey:
-   - User navigates to scan f143082d-f529-494b-b80d-97729234e334.
-   - Activates "Outlets" task in Workspace header navigation.
-   - Distinct selectable list rendered in OutletPanel (independent of 3D picking, also synchronized with 3D clicks).
-   - Shows detected outlets with distinction between verified 'outlet' (#e69f00) and 'candidate_outlet' (#d55e00).
-   - Selecting an outlet reveals:
-     * Full photographic evidence crop, frame ID ({dev_frame['frame_id']}), confidence (0.96).
-     * Local estimated height (0.42 m / 17 in) on LiDAR-supported wall plane.
-     * Operable socket targets (2 sockets).
-     * Separate Approach (Clear: 1.81 m navigable route) and Reach (Within reach: 0.50 m reach distance).
-     * Disclaimers: Power state, socket condition, plug compatibility, code compliance all explicitly unknown.
+1. Notice:
+   This file records synthetic export fixture execution only.
+   It does NOT constitute real browser acceptance, real detector output, or real-room acceptance.
 
-2. Profile Update Reaction:
-   - When wheelchair reach profile is updated to maxReachDistance = 0.40m, minReachHeight = 0.50m:
-     * Assessment immediately invalidates and recomputes.
-     * Outlet A transitions from "within_reach" to "outside_reach".
-
-3. Blocked / Obstacle Scenario:
-   - Candidate outlet B (-2.10, 2.30, 0.35) is obstructed by Display Table (-2.10, 1.90, 0.75).
-   - Approach route search evaluates swept wheelchair footprint and flags "Blocked".
-   - Distance is reported as None (no false straight-line distance across obstacle).
-   - Reach is marked "Outside reach".
-   - Unresolved reasons explicitly report obstruction and grazing camera angle.
-
-4. Confuser Rejection:
-   - Light switch in frame_00012.jpg is detected and classified as confuser.
-   - Status marked "rejected_confuser", rejected from outlet findings per Section 3 rules.
-
-5. Export Integration:
+2. Export Serialization Check:
    - Architecture ZIP export (/api/scans/{{id}}/architecture.zip) contains:
      * outlets.json: deterministic ledger with local heights, support attachments, uncertainty, and disclaimers.
      * evidence-ledger.json: incorporates SurfaceAttachment and uncertainty facts per node.
      * architecture-plan.svg: renders vector markers (<circle class="outlet">) and legend styles.
-
-6. Verification Results:
-   - Pipeline tests: 25/25 passing (test_outlet_detection.py, test_surface_attach.py, test_reconcile.py).
-   - API tests: 7/7 passing (test_architecture_export.py).
-   - Web tests: 115/115 passing across 27 suites (vitest).
-   - Typecheck: 0 errors across TypeScript codebase.
-
-All Gate F criteria satisfied.
+   - Verified ZIP serialization matches schema requirements.
 """
     with open(action_notes_path, "w") as f:
         f.write(action_notes)
 
-    print("Gate F demonstration completed successfully.")
-    print(f"Demo JSON written to {demo_json_path}")
-    print(f"Action notes written to {action_notes_path}")
+    print("Synthetic export fixture executed.")
+    print(f"Fixture JSON written to {demo_json_path}")
+    print(f"Fixture notes written to {action_notes_path}")
 
 
 if __name__ == "__main__":

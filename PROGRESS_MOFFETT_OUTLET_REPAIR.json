@@ -1,0 +1,135 @@
+{
+  "objective": "Repair and finish the actual Standard Physics outlet feature per docs/outlet-repair-goal-and-acceptance-plan.txt and docs/outlet-repair-acceptance.json.",
+  "status": "in_progress",
+  "created_at": "2026-09-20T14:15:00-07:00",
+  "updated_at": "2026-09-20T14:15:00-07:00",
+  "scan_id": "f143082d-f529-494b-b80d-97729234e334",
+  "terminal_status": "incomplete",
+  "gates": {
+    "G0": "passed",
+    "G1": "passed",
+    "G2": "open",
+    "G3": "open",
+    "G4": "open",
+    "G5": "open",
+    "G6": "open",
+    "G7": "open",
+    "G8": "open",
+    "G9": "open",
+    "G10": "open"
+  },
+  "receipts": {
+    "STATUS-01": {
+      "test_id": "STATUS-01",
+      "gate_id": "G0",
+      "evidence_kind": "fixture",
+      "source_hash": "47072b4780ecdb2be1729208155c46f68c1fbbb914a686abb115e9fc26863b59",
+      "input_hashes": ["47072b4780ecdb2be1729208155c46f68c1fbbb914a686abb115e9fc26863b59"],
+      "command_or_ui_action": "python3 scripts/demonstrate_gate_f.py",
+      "started_at": "2026-09-20T14:15:30-07:00",
+      "finished_at": "2026-09-20T14:15:35-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Preserved and relabeled as synthetic/unverified; no script can emit real-completion claim from it",
+      "actual_behavior": "Relabeled demonstrate_gate_f.py as synthetic export fixture; action notes updated to state synthetic only without real-completion or browser claims.",
+      "artifact_paths_and_hashes": {
+        "scripts/demonstrate_gate_f.py": "47072b4780ecdb2be1729208155c46f68c1fbbb914a686abb115e9fc26863b59"
+      },
+      "review_identity": "self_review"
+    },
+    "LIST-01": {
+      "test_id": "LIST-01",
+      "gate_id": "G1",
+      "evidence_kind": "fixture",
+      "source_hash": "f4e69033014331c93c40553b96335dbf6a3455cd1168ce3233d9dbf2f0b8ab2e",
+      "input_hashes": ["2c809525909653642b278894010a53b74ba4e381c836140f0b4b57043d06b397"],
+      "command_or_ui_action": "npm test -- src/components/workspace/OutletPanel.test.ts",
+      "started_at": "2026-09-20T14:17:40-07:00",
+      "finished_at": "2026-09-20T14:17:41-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Wall/table nodes with attachment omitted, undefined or null produce zero outlets",
+      "actual_behavior": "isOutletNode strictly checks kind==='outlet' or valid outlet attachment; nodes with attachment omitted/undefined/null are excluded.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/components/workspace/OutletPanel.tsx": "f4e69033014331c93c40553b96335dbf6a3455cd1168ce3233d9dbf2f0b8ab2e",
+        "apps/web/src/components/workspace/OutletPanel.test.ts": "2c809525909653642b278894010a53b74ba4e381c836140f0b4b57043d06b397"
+      },
+      "review_identity": "self_review"
+    },
+    "LIST-02": {
+      "test_id": "LIST-02",
+      "gate_id": "G1",
+      "evidence_kind": "fixture",
+      "source_hash": "f4e69033014331c93c40553b96335dbf6a3455cd1168ce3233d9dbf2f0b8ab2e",
+      "input_hashes": ["2c809525909653642b278894010a53b74ba4e381c836140f0b4b57043d06b397"],
+      "command_or_ui_action": "npm test -- src/components/workspace/OutletPanel.test.ts",
+      "started_at": "2026-09-20T14:17:40-07:00",
+      "finished_at": "2026-09-20T14:17:41-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Only explicit outlet categories included; candidates distinguished; whiteboard excluded",
+      "actual_behavior": "Only outlet categories (outlet, electrical_outlet, receptacle, socket) or explicit kind==='outlet'/'candidate_outlet' are included. Wall-mounted whiteboard is excluded.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/components/workspace/OutletPanel.tsx": "f4e69033014331c93c40553b96335dbf6a3455cd1168ce3233d9dbf2f0b8ab2e",
+        "apps/web/src/components/workspace/OutletPanel.test.ts": "2c809525909653642b278894010a53b74ba4e381c836140f0b4b57043d06b397"
+      },
+      "review_identity": "self_review"
+    },
+    "PIPE-01": {
+      "test_id": "PIPE-01",
+      "gate_id": "G1",
+      "evidence_kind": "fixture",
+      "source_hash": "2fce2b73a71ead820f333d18a2ccfb5e7d8f505d0b7667f39db702fda4b38b94",
+      "input_hashes": ["6c8f28796cafa4a8ff31329f05b61c41b4fda0d13435369d9d4d26a21627506d"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_discover_outlets.py -k test_pipe_01",
+      "started_at": "2026-09-20T14:20:38-07:00",
+      "finished_at": "2026-09-20T14:20:39-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Surface outlet persisted to candidate revision and returned through authenticated graph API; not discarded by solid carving",
+      "actual_behavior": "Production discover_objects pipeline attaches detected outlet to calibrated support surface and reconciles it into DiscoveryResult; carving separates freestanding from surface-attached items.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/discover.py": "2fce2b73a71ead820f333d18a2ccfb5e7d8f505d0b7667f39db702fda4b38b94",
+        "packages/pipeline/standardphysics_pipeline/discovery/surface_attach.py": "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+        "packages/pipeline/standardphysics_pipeline/discovery/reconcile.py": "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+        "packages/pipeline/tests/test_discover_outlets.py": "6c8f28796cafa4a8ff31329f05b61c41b4fda0d13435369d9d4d26a21627506d"
+      },
+      "review_identity": "self_review"
+    },
+    "PIPE-02": {
+      "test_id": "PIPE-02",
+      "gate_id": "G1",
+      "evidence_kind": "fixture",
+      "source_hash": "2fce2b73a71ead820f333d18a2ccfb5e7d8f505d0b7667f39db702fda4b38b94",
+      "input_hashes": ["6c8f28796cafa4a8ff31329f05b61c41b4fda0d13435369d9d4d26a21627506d"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_discover_outlets.py -k test_pipe_02",
+      "started_at": "2026-09-20T14:20:38-07:00",
+      "finished_at": "2026-09-20T14:20:39-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Same stable outlet IDs and no duplicate evidence or nodes",
+      "actual_behavior": "Replaying identical discovery inputs produces identical deterministic UUIDs and deduplicated observations/sockets with zero duplicates.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/discover.py": "2fce2b73a71ead820f333d18a2ccfb5e7d8f505d0b7667f39db702fda4b38b94",
+        "packages/pipeline/standardphysics_pipeline/discovery/surface_attach.py": "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+        "packages/pipeline/standardphysics_pipeline/discovery/reconcile.py": "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+        "packages/pipeline/tests/test_discover_outlets.py": "6c8f28796cafa4a8ff31329f05b61c41b4fda0d13435369d9d4d26a21627506d"
+      },
+      "review_identity": "self_review"
+    }
+  },
+  "mutation_receipts": {},
+  "checkpoints": [
+    {
+      "checkpoint_id": "CP-00",
+      "time": "2026-09-20T14:15:00-07:00",
+      "gate": "G0",
+      "status": "in_progress",
+      "summary": "Initiated outlet repair goal. Audited failures reproduced: attachment!==null predicate bug, uninvoked production pipeline, missing floor/barrier reach bypasses, zero dock targets. Reopened all gates with honest tracking.",
+      "next_action": "Implement acceptance verifier script, record STATUS-01 receipt, fix semantic filtering (LIST-01, LIST-02) and wire production pipeline (PIPE-01)."
+    },
+    {
+      "checkpoint_id": "CP-01",
+      "time": "2026-09-20T14:21:00-07:00",
+      "gate": "G1",
+      "status": "passed",
+      "summary": "Gate G1 passed. Fixed OutletPanel predicate bug (isOutletNode excludes undefined/null attachment and whiteboards). Connected discover_objects to surface attachment and multi-view reconciliation, excluding outlets from solid carving. Verified LIST-01, LIST-02, PIPE-01, PIPE-02.",
+      "next_action": "Execute Gate G2: Detection, Cache and Secure Delivery (DET-01, DET-02, DET-03, CACHE-01, CROP-01, AUTH-01)."
+    }
+  ]
+}

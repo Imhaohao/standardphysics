@@ -33,6 +33,15 @@ type OutletPanelProps = {
   onUpdateReviewStatus?: (nodeId: string, status: "confirmed_by_user" | "rejected_by_user") => void;
 };
 
+export function isOutletNode(node: SceneNode): boolean {
+  if (node.kind === "whiteboard" || node.raw_category === "whiteboard") return false;
+  if (node.kind === "outlet" || node.kind === "candidate_outlet") return true;
+  if (node.attachment && (node.raw_category === "outlet" || node.attachment.review_status !== undefined)) {
+    return node.kind !== "wall" && node.kind !== "floor" && node.kind !== "opening" && node.kind !== "door" && node.kind !== "window" && node.kind !== "object";
+  }
+  return false;
+}
+
 export function OutletPanel({
   scene,
   selectedId,
@@ -45,9 +54,7 @@ export function OutletPanel({
   const geometry = useMemo(() => wheelchairMotionGeometry(scene.nodes), [scene.nodes]);
 
   const outletNodes = useMemo(() => {
-    return scene.nodes.filter(
-      (n) => n.kind === "outlet" || n.kind === "candidate_outlet" || n.attachment !== null
-    );
+    return scene.nodes.filter(isOutletNode);
   }, [scene.nodes]);
 
   const selectedNode = useMemo(() => {
