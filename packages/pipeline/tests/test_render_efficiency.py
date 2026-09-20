@@ -163,6 +163,29 @@ def test_missing_timing_marks_gate_unknown():
     assert verdicts.any_unknown()
 
 
+def test_excluded_region_does_not_affect_masked_metric():
+    reference = np.full((32, 32, 3), 0.5)
+    mask = np.zeros((32, 32), dtype=bool)
+    mask[4:28, 4:28] = True
+    changed = reference.copy()
+    changed[~mask] = [0.0, 1.0, 0.0]
+    assert masked_mse(reference, reference, mask) == pytest.approx(
+        masked_mse(reference, changed, mask), abs=1e-12
+    )
+    assert psnr(reference, reference, mask) == pytest.approx(psnr(reference, changed, mask))
+    assert ssim(reference, reference, mask) == pytest.approx(ssim(reference, changed, mask))
+
+
+def test_black_painting_is_not_exclusion():
+    reference = np.full((32, 32, 3), 0.5)
+    mask = np.zeros((32, 32), dtype=bool)
+    mask[4:28, 4:28] = True
+    painted_black = reference.copy()
+    painted_black[~mask] = 0.0
+    assert psnr(reference, reference) == pytest.approx(100.0)
+    assert psnr(reference, painted_black) < psnr(reference, reference)
+
+
 def test_faster_candidate_destroying_detail_fails_gate():
     image = _image()
     mask = _mask()
