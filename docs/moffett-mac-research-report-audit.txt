@@ -1,0 +1,138 @@
+Mac reconstruction research report audit — 2026-09-20
+
+Verdict: useful research directions, but not reliable as a measured comparison or
+an implementation specification. Do not launch a Metal port on its speed claims.
+Scope: audit only; no captures, production assets, training, or automation changed.
+Input: attachment d237aaf7-3413-4381-9ea3-c001ed25e845/Pasted text.txt.
+
+Verified corrections
+
+1. The existing Brush baseline already uses metric LiDAR seed positions.
+   scripts/export_moffett_splat_dataset.py:45–60 writes lidar-seeds.ply and records
+   its path in transforms.json. The original baseline is not random/SfM-only.
+   Surface-aligned covariance and maintained geometric constraints would be new;
+   merely proposing LiDAR initialization is not a new treatment.
+
+2. Deterministic surface splats are a proposed baseline, not a measured <60-second
+   result. docs/moffett-efficient-splats-build-plan.txt:223–236 explicitly calls
+   this a stretch target. The reported 4–6 GiB memory is not established there.
+   Existing experimental neural scaffold is not a trained surface builder.
+
+3. The 34 held-out images are capture-view evaluations. The 1.15 m seated view is
+   a separate rendered inspection. final-review.json records these separately.
+   Do not compute seated PSNR/SSIM/LPIPS without real matching seated RGB images.
+   No verified evidence here establishes a single patch containing the claimed
+   outlet, whiteboard, green sofa and moving person. Select the patch from images.
+
+4. PROGRESS_MOFFETT.json records incomplete stronger masks: 109 detection frames,
+   missed legs/people, and coarse furniture exclusions. "Confirmed detections"
+   does not mean complete person removal. The stronger-mask variant is untrained.
+   Pose refinement improved fitted reprojection error; the existing comparison
+   does not establish an isolated gain in novel-view quality.
+
+5. Current machine: sysctl confirms M5 Pro and 48 GiB. sw_vers reports macOS
+   26.5.1, not the report's macOS 15.x. The report's additional local peak-memory,
+   preprocessing-time and 60 FPS figures need actual logs before being measured.
+
+6. SuGaR's official main/LICENSE.md is the Gaussian-Splatting research/evaluation
+   license with commercial restrictions, not MIT as claimed in the table.
+   OpenSplat's AGPL obligations require deployment/integration-specific review;
+   calling it automatic contamination of every commercial codebase is incorrect.
+   Source: https://github.com/Anttwo/SuGaR/blob/main/LICENSE.md
+   Source: https://github.com/pierotofy/OpenSplat#license
+
+7. A previous LVI-GS project-page link points to arclab-hku/LVI-3DGS, but its public
+   GitHub API endpoint returned 404 in this audit. Public code is not verified;
+   that does not prove all named authors never released any implementation.
+   Structured-Li-GS training time and memory were not established in our paper
+   audit. Remove numerical estimates from author-reported/measured categories.
+   That paper reports NVIDIA hardware but our prior reading did not establish
+   its exact CUDA dependencies. Do not present inferred kernels as inspected code.
+
+8. The report's fixed iPhone jetsam limit, thermal percentages, full-floor
+   impossibility and sub-30-second surface build are not demonstrated here.
+   Device, OS, entitlements, streaming and workload matter. Whole-floor training
+   is unverified; Mac construction plus phone viewing remains our practical path.
+
+New backend finding: msplat
+
+The delegated source audit verifies https://github.com/rayanht/msplat is a real
+Apache-2.0 Apple GPU trainer: C++/ObjC++ core, Metal forward/backward rasterization,
+SSIM, Adam and densification, plus CLI/Python/Swift interfaces. This is a credible
+candidate for a baseline benchmark; it was not compiled or run in this audit.
+
+The report misquotes its speed by mixing iteration counts. Upstream README
+reports 59–80 seconds for 7,000 iterations on M4 Max. Its 30,000-iteration garden
+run reports 700 seconds and 3.51 million Gaussians, not 70 seconds. These are author
+benchmarks, not our Moffett timings or an equivalent-quality comparison to Brush.
+The README's approximately 2 GB reference concerns PyTorch framework overhead,
+not a measured 2–4 GB msplat training footprint.
+Source: https://github.com/rayanht/msplat/blob/main/README.md#L162-L190
+Source: https://github.com/rayanht/msplat/blob/main/core/metal/msplat_metal.mm
+Source: https://github.com/rayanht/msplat/blob/main/core/metal/msplat_metal.metal
+
+Upstream Swift/build configuration targets macOS. A real iOS fork exists at
+https://github.com/frs0n/msplat-ios, with iOS 18 build support. Its README explicitly
+says upstream benchmarks have not been rerun. The example memory log reports
+phys=2908.4MB at 232,313 splats with a 2048 MB image budget. This does not verify
+the report's 700k splats / under-three-minutes / 2 GB total claim.
+Source: https://github.com/frs0n/msplat-ios/blob/main/README.md#L98-L111
+
+Recommendation update: benchmark unmodified msplat on the controlled patch before
+choosing a backend for new geometry losses. Verify per-frame camera calibration,
+coordinate conventions and mask behavior first. Do not substitute unmasked inputs
+and then attribute any difference solely to the backend. No speed promise follows
+from the published M4 Max results for this M5 Pro capture workload.
+
+Implementation corrections
+
+- A flattened initialization does not constrain later optimization. Bounds must
+  be enforced in the optimizer/parameterization and preserved across refinement.
+- Rotation from +Z via normalized cross product is undefined for normals +Z/-Z.
+  Handle parallel/antiparallel and invalid normals explicitly; test export axes.
+- Scale along a fixed axis is normal thickness only while that axis stays aligned
+  to the surface. Handle anchor-frame rotation and displacement consistently.
+- The proposed sum(T*alpha*z) is accumulated depth, not conditional expected
+  surface depth unless opacity is accounted for. Define depth convention and
+  background, coverage thresholds, mesh validity, and uncertainty before loss.
+- Depth supervision needs forward output, derivatives through compositing,
+  backward integration and gradient checks. It is not just adding a scalar loss
+  kernel. Start with parameter constraints before undertaking a rasterizer port.
+- Do not fix depth weight to 0.5 without checking units and gradient magnitudes.
+- LiDAR holes/noisy normals require exclusions. Constraints cannot reconstruct
+  unseen photographic detail or establish centimetre accuracy/ADA compliance.
+- vm_stat reports system memory; it is not a process peak-memory measurement.
+  Record process footprint and GPU allocations with documented measurement scope.
+
+Corrected experiment sequence (proposed, not executed)
+
+Captured photos + poses + mesh + reviewed masks
+    -> fixed reproducible patch and genuine held-out capture images
+    -> existing Brush baseline / deterministic surface candidate
+    -> same image tests + separately reviewed seated views
+    -> accept only a verified useful quality/cost improvement
+
+1. Verify any new Mac backend's exact source revision, build, license and complete
+   benchmark settings. Run it unmodified on the same patch before modifying it.
+2. Reuse the audited surface-builder plan: visibility-tested photographic color,
+   normal-aligned bounded covariance, fixed mesh anchors, unchanged originals.
+3. Separate interventions. Hold poses/masks fixed when testing surface constraints;
+   evaluate pose or mask changes in independent comparisons. Include preprocessing
+   and compression in cost; show full images as well as static-region metrics.
+4. Compare real captured-image metrics and qualitative seated views. Record wall
+   time, peak footprint, Gaussian count, file size, and actual phone frame time.
+5. Only if the baseline demonstrates a useful gap, prototype enforced thickness/
+   anchor bounds. Add differentiable depth only after gradient and occlusion tests.
+6. Expand to four rooms only after the patch improves. No automatic production
+   replacement, fabricated performance target, or unmeasured safety conclusion.
+
+Task -> model-tier delegation
+Source/backend/benchmark verification -> Luna/Sonnet
+Geometry implementation with settled design -> Terra
+Dataset and evaluation scripts -> Luna/Sonnet
+Loss semantics, evidence gates and architecture -> frontier primary
+
+Audit checkpoint: complete. Local claims and selected upstream license/source
+claims checked; msplat backend/benchmark audited by audit_msplat_claims (Luna).
+Agent cost: unavailable. No training or build benchmark executed in this audit.
+Code typecheck/tests not run: this change is documentation only.
