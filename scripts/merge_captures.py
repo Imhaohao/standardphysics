@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import pathlib
 import sys
 import uuid
@@ -87,15 +88,31 @@ def _slid(graph: SceneGraph, dx: float, dy: float, scan_id: uuid.UUID) -> list:
 
 
 def merge(directories: list[pathlib.Path], scan_id: uuid.UUID) -> tuple[SceneGraph, dict]:
-    """One graph holding every walk, spread out, and the manifest naming each."""
-    nodes, rooms, cursor = [], [], 0.0
-    for directory in directories:
-        graph = _graph_of(directory)
-        left, right, bottom, _top = _footprint(graph)
-        placed = _slid(graph, cursor - left, -bottom, scan_id)
+    """One graph holding every walk, spread out, and the manifest naming each.
+
+    Laid out in a square rather than a line. Four walks of thirty metres set end
+    to end are a hundred and twenty metres of floor to look at, which no camera
+    frames without putting every room too far away to recognise; the same four
+    in a square are sixty by sixty and all legible at once.
+    """
+    graphs = [_graph_of(directory) for directory in directories]
+    footprints = [_footprint(graph) for graph in graphs]
+    widest = max(right - left for left, right, _b, _t in footprints)
+    deepest = max(top - bottom for _l, _r, bottom, top in footprints)
+    across = math.ceil(math.sqrt(len(graphs)))
+
+    nodes, rooms = [], []
+    for index, (directory, graph, box) in enumerate(zip(directories, graphs, footprints)):
+        left, _right, bottom, _top = box
+        column, row = index % across, index // across
+        placed = _slid(
+            graph,
+            column * (widest + GAP_METRES) - left,
+            -row * (deepest + GAP_METRES) - bottom,
+            scan_id,
+        )
         nodes.extend(placed)
         rooms.append({"name": _capture_name(directory), "node_ids": [str(n.id) for n in placed]})
-        cursor += (right - left) + GAP_METRES
     return SceneGraph(scan_id=scan_id, revision=0, nodes=nodes), {"rooms": rooms}
 
 

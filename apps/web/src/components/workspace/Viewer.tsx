@@ -2,7 +2,7 @@
 
 import { Canvas } from "@react-three/fiber";
 import { Component, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
-import type { ViewerPose } from "@/lib/camera";
+import { clipPlanes, zoomRange, type ViewerPose } from "@/lib/camera";
 import type { Focus } from "@/lib/findings";
 import type { NodeTextureCoverage, SceneGraph, SceneNode } from "@/types/contracts";
 import { FindingAnnotation } from "./Annotation";
@@ -20,6 +20,7 @@ import { WheelchairController, type WheelchairState } from "./WheelchairControll
 
 type ViewerProps = {
   scene: SceneGraph;
+  highlightNodeIds?: string[] | null;
   exported: SceneGraph;
   arrange: ArrangeHandlers | null;
   dragAllNodes?: boolean;
@@ -90,7 +91,7 @@ function Lights() {
   );
 }
 
-type ShopSurfacesProps = Pick<ViewerProps, "scene" | "exported" | "arrange" | "dragAllNodes" | "lightweight" | "glbUrl" | "scanGlbUrl" | "splatAssets" | "onSplatError" | "lidarUrl" | "selected" | "onSelectNode" | "cutWalls" | "materialMode" | "staleNodeIds" | "coverage">;
+type ShopSurfacesProps = Pick<ViewerProps, "scene" | "exported" | "arrange" | "dragAllNodes" | "lightweight" | "glbUrl" | "scanGlbUrl" | "splatAssets" | "onSplatError" | "lidarUrl" | "selected" | "onSelectNode" | "cutWalls" | "materialMode" | "staleNodeIds" | "coverage" | "highlightNodeIds">;
 
 /** The boxes have no captured surface to show, so the captured modes fall back to plain material on them. */
 function boxMaterialMode(mode: ViewerProps["materialMode"]) {
@@ -109,16 +110,23 @@ function capturedRoom(props: ShopSurfacesProps, boxes: ReactNode, picking: React
 }
 
 function ShopSurfaces(props: ShopSurfacesProps) {
-  const { exported, glbUrl, lidarUrl, materialMode, selected, staleNodeIds, coverage, scene, arrange, dragAllNodes, lightweight, onSelectNode, cutWalls } = props;
+  const { exported, glbUrl, lidarUrl, materialMode, selected, staleNodeIds, coverage, scene, arrange, dragAllNodes, lightweight, onSelectNode, cutWalls, highlightNodeIds } = props;
 
-  const focus = useMemo(() => (selected?.locus ? new Set(selected.locus.node_ids) : null), [selected]);
+  /* Picking a walk in the Combine panel has to show which one it is, or four
+     grey floor plans look alike and the one being dragged is anybody's guess.
+     The highlight outranks a selected finding because while rooms are being
+     placed, that is what the owner is working on. */
+  const focus = useMemo(() => {
+    if (highlightNodeIds) return new Set<string>(highlightNodeIds);
+    return selected?.locus ? new Set<string>(selected.locus.node_ids) : null;
+  }, [highlightNodeIds, selected]);
   const staleSet = useMemo(() => (staleNodeIds ? new Set(staleNodeIds) : EMPTY_STALE_SET), [staleNodeIds]);
   const coverageMap = useMemo(() => new Map(coverage.map((entry) => [entry.node_id, entry.textured_fraction])), [coverage]);
 
   const modelProps = useMemo(() => ({
     shown: scene,
     focus,
-    focusColor: selected ? outcomeColor(selected.outcome) : MODEL.accent,
+    focusColor: highlightNodeIds || !selected ? MODEL.accent : outcomeColor(selected.outcome),
     onSelectNode,
     arrange,
     dragAllNodes,
@@ -127,7 +135,7 @@ function ShopSurfaces(props: ShopSurfacesProps) {
     materialMode: boxMaterialMode(materialMode),
     staleNodeIds: staleSet,
     coverage: coverageMap,
-  }), [scene, focus, selected, onSelectNode, arrange, dragAllNodes, lightweight, cutWalls, materialMode, staleSet, coverageMap]);
+  }), [scene, focus, selected, highlightNodeIds, onSelectNode, arrange, dragAllNodes, lightweight, cutWalls, materialMode, staleSet, coverageMap]);
 
   const boxes = <BoxShopModel {...modelProps} />;
   const picking = <BoxShopModel {...modelProps} pickOnly />;
@@ -238,7 +246,7 @@ export default function Viewer({
       frameloop={wheelchairMode ? "always" : "demand"}
       dpr={tuning.dpr}
       shadows={!lightweight}
-      camera={{ position: pose.position, fov: pose.fov, near: 0.05, far: 200 }}
+      camera={{ position: pose.position, fov: pose.fov, ...clipPlanes(scene) }}
       flat
       gl={{ antialias: tuning.antialias, localClippingEnabled: true }}
       onCreated={(state) => {
@@ -250,7 +258,7 @@ export default function Viewer({
     >
       <color attach="background" args={BG_COLOR_ARGS} />
       <Lights />
-      {!wheelchairMode && <CameraRig pose={pose} locked={dragging} bounds={null} />}
+      {!wheelchairMode && <CameraRig pose={pose} locked={dragging} bounds={null} zoom={zoomRange(scene)} />}
       <Wheelchair
         scene={scene}
         wheelchairMode={wheelchairMode}

@@ -80,11 +80,17 @@ export function renderInkFrame(brush: SchematicBrush, paint: HTMLCanvasElement, 
   }
 }
 
-export function startInkLoop(brush: SchematicBrush, paint: HTMLCanvasElement, live: HTMLCanvasElement, palette: InkPalette) {
+export function startInkLoop(
+  brush: SchematicBrush,
+  paint: HTMLCanvasElement,
+  live: HTMLCanvasElement,
+  palette: InkPalette,
+  instant?: { current: boolean },
+) {
   const reducedMotion = prefersReducedMotion();
   const hadActiveLive = { current: true };
   let frame = requestAnimationFrame(function loop() {
-    renderInkFrame(brush, paint, live, palette, reducedMotion, hadActiveLive);
+    renderInkFrame(brush, paint, live, palette, reducedMotion || Boolean(instant?.current), hadActiveLive);
     frame = requestAnimationFrame(loop);
   });
   return () => cancelAnimationFrame(frame);

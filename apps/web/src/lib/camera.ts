@@ -39,6 +39,26 @@ export function poseFromLocus(camera: CameraPose): ViewerPose {
   return { position: toViewer(camera.position), target: toViewer(camera.target), fov: camera.fov_degrees };
 }
 
+/**
+ * How far the camera may sit from the floor, and what it can still see there.
+ *
+ * These were fixed at five centimetres and two hundred metres, which suits one
+ * room and nothing larger. Four walks of a library floor laid side by side are
+ * a hundred and twenty metres across, so the far plane cut the far half of the
+ * floor away and pulling back to see all of it made everything vanish at once.
+ * Both ends follow the size of what is being looked at instead.
+ */
+export function clipPlanes(scene: SceneGraph) {
+  const { span } = footprintBounds(scene);
+  return { near: Math.max(0.05, span / 2000), far: Math.max(200, span * 8) };
+}
+
+/** Close enough to read a chair, far enough back to hold the whole floor. */
+export function zoomRange(scene: SceneGraph) {
+  const { span } = footprintBounds(scene);
+  return { min: 0.5, max: span * 3 };
+}
+
 function footprintBounds(scene: SceneGraph) {
   const xs = scene.nodes.map((node) => node.transform.m[3]);
   const ys = scene.nodes.map((node) => node.transform.m[7]);

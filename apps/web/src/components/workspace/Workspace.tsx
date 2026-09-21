@@ -73,6 +73,12 @@ function isWorking(scan: Scan): boolean {
 }
 type Task = "findings" | "arrange" | "combine" | "compare" | "route" | "outlets";
 
+/** The nodes of the walk being placed, so the viewer can pick it out of the four. */
+function activeRoomNodeIds(combine: Combine): string[] | null {
+  if (!combine.activeRoom) return null;
+  return combine.rooms.find((room) => room.name === combine.activeRoom)?.node_ids ?? null;
+}
+
 function poseFor(scene: SceneGraph, selected: Focus | null, mode: ViewMode): ViewerPose {
   if (selected?.locus) return poseFromLocus(selected.locus.camera);
   return mode === "top" ? topDownPose(scene) : overviewPose(scene);
@@ -653,6 +659,7 @@ function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, te
       <section className="relative min-h-0 touch-none overflow-hidden lg:rounded-tr-2xl" aria-label="Shop model">
         <Viewer
           scene={visuals.shown}
+          highlightNodeIds={task === "combine" ? activeRoomNodeIds(visuals.combine) : null}
           exported={sourceGraph}
           arrange={wheelchairMode ? null : visuals.handlers}
           dragAllNodes={visuals.dragAllNodes}

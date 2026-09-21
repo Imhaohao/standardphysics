@@ -68,7 +68,11 @@ export function InkedFloorPlan({ scene, className = "" }: { scene: SceneGraph; c
     if (!frame || !paint || !live || !svg || !annotations) return;
     const palette = readPalette(frame, "--color-paper");
     const brush = new SchematicBrush({ unit: DRAFTING_UNIT_PX, measureText: createTextMeasurer(palette.fontFamily), now: () => performance.now(), speed: PEN_SPEED_MULTIPLIER });
-    const stopLoop = startInkLoop(brush, paint, live, palette);
+    /* The pen draws itself in once. Every later redraw lays the same plan down
+       at full speed, because a plan that animates again every time the layout
+       settles reads as a loop rather than as a drawing being made. */
+    const alreadyDrawn = { current: false };
+    const stopLoop = startInkLoop(brush, paint, live, palette, alreadyDrawn);
     let redrawTimer: number | undefined;
     let disposed = false;
 
@@ -77,6 +81,7 @@ export function InkedFloorPlan({ scene, className = "" }: { scene: SceneGraph; c
     const redraw = () => {
       const toFrame = planToFrame(svg, frame);
       if (disposed || !toFrame) return;
+      alreadyDrawn.current = drawnAt !== "";
       drawnAt = `${frame.clientWidth}x${frame.clientHeight}`;
       brush.clear();
       clearCanvas(paint);
