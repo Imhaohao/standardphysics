@@ -99,6 +99,7 @@ if ! command -v blender >/dev/null && [ -z "${BLENDER:-}" ] && [ ! -d /Applicati
 fi
 [ -f .env ] || echo "No .env yet. Scans are checked without one; copy .env.example to .env for model calls."
 
+export SP_API_PORT=8787
 .venv/bin/python -m standardphysics_api &
 API_PID=$!
 trap 'kill "$API_PID" 2>/dev/null || true' EXIT INT TERM
