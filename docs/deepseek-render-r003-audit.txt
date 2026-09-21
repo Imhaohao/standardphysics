@@ -1,0 +1,92 @@
+DeepSeek r003 audit — not a completed full-floor render
+Audited commits c6772a4 and a4fad21; HEAD a4fad21524229668faa78bc1c606e149acd1f294.
+
+Verdict: real source/test improvements, but the reconstruction candidate fails.
+Do not promote it or present it in the web app as the fully rendered library.
+The user's condition for opening a working completed scene has not been met.
+No production changes or app promotion were performed during this audit.
+
+Confirmed improvements
+- RGB interpolation now reads vertex colors, not world coordinates.
+- The benchmark builder now uses the training allowlist and checks hashes.
+- Unseen mesh samples are pruned rather than exported as supported gray surfaces.
+- Calibration now uses transmittance composition rather than additive alpha.
+- Expected image-set validation and a policy entry point exist.
+- DeepSeek explicitly records completed_rejected, null selection score and
+  unfinished photorealism/phone/native-mask work. That rejection is appropriate.
+
+Independent proof
+94 focused rendering/allowlist/policy/calibration tests passed in21.57s.
+8 shared scan-color tests passed in0.18s: total102 relevant tests.
+Recomputed all eight candidate validation images using the expected-set check:
+masked PSNR5.417820692 dB, masked SSIM0.0249694803,
+full-frame PSNR5.466710528 dB, worst masked PSNR4.344107862 dB.
+These reproduce the recorded poor results.
+Inspected image-000149.png (entirely black) and image-000177.png (sparse fragments,
+large holes). Neither is usable as a detailed navigable reconstruction.
+13,332 of150,000 sampled points are exported after support pruning.
+This is a center-room pilot, not a demonstrated full-floor result.
+
+Remaining findings
+
+[P1] Selection still trusts declared evidence instead of deriving it.
+packages/pipeline/standardphysics_pipeline/render_efficiency/policy.py:211-239
+accepts empty input/output hash maps and accepts nonnumeric gates from caller
+passed=true plus existence of any file. Resource checks at188 accept three
+placeholder repeat objects and summary numbers; viewer checks accept reported
+counts/identity/p95 rather than session traces. Metrics are read from supplied
+summaries rather than bound/recomputed from actual rendered-image records.
+
+Reproduction against the UNMODIFIED full v2 policy through evaluate_candidate.py:
+provide eight invented metric records, three placeholder repeat objects, an
+invented viewer summary, no rendered images or input/output hashes, and one
+text file saying the evidence is invalid. Mark all declared gates passed.
+The CLI exits0 and outputs selected_for_review, score60.0, efficiency lane.
+This is a deliberately fabricated negative test, not a real candidate result.
+It proves Stage B is incomplete even though its tests pass. Require actual
+artifact inventories, typed review records, trace-derived aggregates, and
+policy-defined mandatory hash categories. The negative fixture must be refused.
+
+[P1] Final-test eligibility is not enforced before selected_for_review.
+policy.py:493 returns selection after numeric/declared gates and the lane; it
+has no check for sealed final-test history or final-test result. The negative
+fixture above has no test evidence at all. If this status means validation-only
+shortlisting, name it accordingly and keep the policy's final acceptance state
+separate; otherwise enforce the current policy before returning it.
+
+[P2] Sparse-pilot support is overstated as a capture limitation.
+checkpoint.json says the32-photo set covers ~10.7% of mesh surface and describes
+a capture gap. Provenance's painted_fraction is a vertex statistic, not verified
+surface-area coverage. It does not measure the whole original capture set.
+This experiment establishes poor support from this chosen pilot and algorithm.
+It does not prove that existing originals lack adequate coverage or that the
+user must rescan. Inspect additional preserved photos and camera coverage before
+making that conclusion; expand training under a new frozen benchmark if useful,
+keeping genuine validation/test images separate.
+
+[P2] The comparison baseline remains historical and mask-unmatched.
+r003/stage_e_record.py explicitly labels the old Brush control that way, which
+is honest. Differences cannot be treated as an eligible matched efficiency
+comparison. The candidate's independently bad images already justify rejection;
+no comparative claim is needed to establish that this output is unusable.
+
+Scope limits
+No real browser/physical-phone acceptance or full-floor source promotion was
+performed. No web UI was opened as a completed reconstruction because the
+candidate demonstrably failed. The existing published preview remains separate
+from this rejected experiment. Native mask gradients and all-room quality remain
+unverified. This audit did not fix production code or implement a new pipeline.
+
+Reproducible evidence (relative to project root)
+runs/moffett/post-deepseek-audit/candidate-recomputed.json
+runs/moffett/post-deepseek-audit/evaluator_probe.py
+runs/moffett/post-deepseek-audit/negative-probe-command.json
+runs/moffett/post-deepseek-audit/negative-probe-verdict.json
+runs/moffett/render-efficiency/r003/candidate/validation/image-000149.png
+runs/moffett/render-efficiency/r003/candidate/validation/image-000177.png
+
+Next work ownership -> model tier
+Enforce artifact/trace/final-test evidence at the evaluator -> Terra
+Map photographic coverage using preserved captures -> Luna/local scripts
+Choose corrected reconstruction experiment from that evidence -> primary/Sol
+No subagents used for this audit; no subagent cost incurred.
