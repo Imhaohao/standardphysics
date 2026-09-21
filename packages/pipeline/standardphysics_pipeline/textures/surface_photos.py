@@ -54,6 +54,61 @@ def visible_points(camera: PhotoCamera, points: np.ndarray, buffer: np.ndarray, 
     return inside & np.isfinite(nearest) & (np.abs(depth-nearest) <= tolerance), u, v
 
 
+def choose_views_partial(vertices, triangles, cameras, depth_vertices=None, depth_triangles=None, on_progress=None, min_facing=0.2, centre_required=True):
+    """Partial-support photograph selection.
+
+    Unlike ``choose_views`` this does not demand every corner of a face be
+    visible. A face is eligible when its centre is visible AND at least
+    ``MIN_SAMPLES`` of a fixed 7-point pattern (3 corners, 3 edge midpoints,
+    centre) passes the depth check, so partially occluded surfaces keep their
+    photograph instead of dropping to neutral. Unknown depth is never treated
+    as visible. Faces no photograph reaches remain unassigned.
+    """
+    corners = vertices[triangles]
+    centres = corners.mean(axis=1)
+    mids = (corners + np.roll(corners, 2, axis=1)) / 2
+    samples = np.concatenate([corners, mids, centres[:, None, :]], axis=1)
+    cross = np.cross(corners[:, 1] - corners[:, 0], corners[:, 2] - corners[:, 0])
+    areas = np.linalg.norm(cross, axis=1) / 2
+    normals = cross / np.maximum(2 * areas[:, None], 1e-12)
+    best = np.zeros(len(triangles), dtype=np.float32)
+    assignment = np.full(len(triangles), -1, dtype=np.int32)
+    depth_vertices = vertices if depth_vertices is None else depth_vertices
+    depth_triangles = triangles if depth_triangles is None else depth_triangles
+    for index, camera in enumerate(cameras):
+        buffer = surface_depth(camera, depth_vertices, depth_triangles)
+        visible, _, _ = visible_points(camera, samples.reshape(-1, 3), buffer)
+        face_support = visible.reshape(len(triangles), SAMPLES).sum(axis=1)
+        centre_visible, _, _ = visible_points(camera, centres, buffer)
+        corner_u, corner_v, _ = camera.project(corners.reshape(-1, 3))
+        corner_u = corner_u.reshape(len(triangles), 3)
+        corner_v = corner_v.reshape(len(triangles), 3)
+        border_raw = np.minimum.reduce([corner_u, corner_v,
+                                        camera.width - 1 - corner_u, camera.height - 1 - corner_v])
+        border = np.clip(border_raw.min(axis=1) / 16, 0, 1)
+        toward = camera.position - centres
+        distance = np.linalg.norm(toward, axis=1)
+        facing = (normals * toward).sum(axis=1) / np.maximum(distance, 1e-9)
+        corner_visible = visible.reshape(len(triangles), SAMPLES)[:, :3].sum(axis=1) >= 2
+        mid_visible = visible.reshape(len(triangles), SAMPLES)[:, 3:6].sum(axis=1) >= 2
+        spread = corner_visible & mid_visible
+        if centre_required:
+            accepted = (face_support >= MIN_SAMPLES) & centre_visible & spread & (facing > min_facing) & (border > 0.02)
+        else:
+            accepted = (face_support >= MIN_SAMPLES) & spread & (facing > min_facing) & (border > 0.02)
+        score = np.where(accepted, facing ** 2 / np.maximum(distance, 0.5) * border * face_support / SAMPLES, 0)
+        better = score > best
+        assignment[better] = index
+        best[better] = score[better]
+        if on_progress:
+            on_progress(index + 1, len(cameras), float(areas[assignment >= 0].sum() / max(areas.sum(), 1e-9)))
+    return assignment, areas
+
+
+SAMPLES = 7
+MIN_SAMPLES = 5
+
+
 def choose_views(vertices, triangles, cameras, depth_vertices=None, depth_triangles=None, on_progress=None):
     """One photograph per face; all three corners and centre must be visible."""
     corners = vertices[triangles]

@@ -17,7 +17,7 @@ from PIL import Image
 from standardphysics_pipeline.ingest import capture_to_room_from_payload
 from standardphysics_pipeline.textures.camera import load_cameras
 from standardphysics_pipeline.textures.scan_colour import scan_geometry
-from standardphysics_pipeline.textures.surface_photos import choose_views
+from standardphysics_pipeline.textures.surface_photos import choose_views, choose_views_partial
 
 
 def main():
@@ -28,6 +28,14 @@ def main():
     parser.add_argument("--faces", type=int, default=250000)
     parser.add_argument("--cameras", type=int, default=160)
     parser.add_argument("--visibility-width", type=int, default=1280)
+    parser.add_argument("--partial", action="store_true",
+                        help="allow partial face support (>=5 of 7 samples visible) instead of all corners")
+    parser.add_argument("--min-facing", type=float, default=0.2,
+                        help="facing threshold for partial selection (default 0.2)")
+    parser.add_argument("--display-depth", action="store_true",
+                        help="run occlusion checks on the display mesh instead of the full geometry")
+    parser.add_argument("--no-centre", action="store_true",
+                        help="partial rule without the centre-sample requirement (spread condition still applies)")
     args = parser.parse_args()
     directory = args.captures/CAPTURES[args.room]
     output = args.output/args.room
@@ -54,7 +62,15 @@ def main():
         if current % 10 == 0 or current == count:
             print(f"{args.room}: {current}/{count} views, photographed surface {fraction:.1%}", flush=True)
 
-    assignment, areas = choose_views(display_vertices, display_triangles, small, vertices, triangles, progress)
+    depth_vertices = None if args.display_depth else vertices
+    depth_triangles = None if args.display_depth else triangles
+    if args.partial:
+        assignment, areas = choose_views_partial(
+            display_vertices, display_triangles, small, depth_vertices, depth_triangles, progress,
+            min_facing=args.min_facing, centre_required=not args.no_centre)
+    else:
+        assignment, areas = choose_views(
+            display_vertices, display_triangles, small, depth_vertices, depth_triangles, progress)
     np.savez_compressed(output/"view-assignment.npz", camera_index=assignment, face_area_m2=areas)
     scene = trimesh.Scene()
     used = []
@@ -97,6 +113,11 @@ def main():
     glb.write_bytes(trimesh.exchange.gltf.export_glb(scene, tree_postprocessor=photographed_light))
     manifest = {"room": args.room, "capture_id": CAPTURES[args.room], "capture_to_room": c2r.m,
                 "coordinate_system": "GLTF Y up: (scene X, scene Z, -scene Y)",
+                "selection": (f"choose_views_partial (>=5/7 samples + spread, min_facing={args.min_facing}, "
+                               f"centre={'required' if not args.no_centre else 'not required'}, "
+                               f"depth_reference={'display' if args.display_depth else 'full geometry'})")
+                if args.partial else "choose_views (all corners and centre, full geometry depth)",
+                "camera_count": int(args.cameras),
                 "source_mesh_sha256": hashlib.sha256((directory/"lidar-mesh.json").read_bytes()).hexdigest(),
                 "source_poses_sha256": hashlib.sha256((directory/"poses.json").read_bytes()).hexdigest(),
                 "display_triangle_count": len(display_triangles), "display_only_decimation": True,
