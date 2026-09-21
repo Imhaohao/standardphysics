@@ -1,0 +1,390 @@
+MOFFETT COVERAGE RECOVERY — RUNNABLE DEEPSEEK HANDOFF
+Benchmark4. Implement this plan; do not merely summarize it or write another plan.
+
+Goal
+Use the preserved photographs and LiDAR to produce materially better coverage
+and appearance, beginning with the center room and extending to the four-scan
+floor if the evidence supports it. Deliver an isolated, verified local web preview
+when usable. Coverage success, appearance success and full-floor completion are
+separate outcomes. A passing test count is not a reconstructed room.
+
+Read first, in this order
+- docs/deepseek-coverage-recovery-policy.json (parameters and acceptance contract)
+- docs/deepseek-render-r003-audit.txt (latest concrete failures)
+- runs/moffett/render-efficiency/r003/checkpoint.json (completed work to reuse)
+- docs/splatx-metal-evaluation.txt (native capability limits; do not repeat audit)
+Also obey applicable AGENTS.md. Work in /Users/yanzihao/Documents/standardphysics.
+The new coverage policy supersedes the prior32-photo experiment for this run.
+It is a requirements document, not an implemented evaluator or measured result.
+Keep every original policy and prior result unchanged.
+
+Known facts, to verify rather than assume
+Four captures have3,524 available photo/pose pairs: center942, left901, top1267,
+bottom-left414. The center export has400 prepared frames, but r003 used only32.
+The black validation view149 has a nearest training-camera distance of3.88m;
+an unused source-photo pose is0.18m away. That proves neither matching content
+nor independent evaluation, but warrants inspection of the existing images.
+The32-photo candidate exported13,332 supported samples after proposing150,000;
+its reported10.7% painted fraction is a VERTEX statistic, not floor-area coverage.
+Its actual validation quality is5.42dB /0.025 SSIM. It was correctly rejected.
+Do not ask for a new scan until useful existing photos and projection filters
+have been assessed. Do not secretly add old validation neighbors and reuse old
+scores as if the benchmark had not changed.
+
+Simple data flow
+Preserved photos + poses + LiDAR -> fixed surface coverage map -> diverse
+training photo selection -> supported-region sampling / existing trainer ->
+actual held-out and seated renders -> verified local preview.
+Measured geometry remains authoritative for collision, dimensions and reach.
+
+Execution boundaries and bookkeeping
+- Create runs/moffett/render-efficiency/r004. If it exists, inspect its checkpoint
+  to resume a compatible run; otherwise choose a new suffix without overwriting.
+- Save checkpoint.json before edits: git state, this policy/plan hashes, host,
+  start time, budgets, owners and exact intended artifacts. Checkpoint after
+  every stage and at least every10minutes. Record command exit codes as integers.
+- Preserve concurrent changes and uncommitted files. Use an isolated worktree
+  only if needed; it will not automatically contain captures or ignored assets.
+- Original photos may be hardlinked. Never rewrite them in place. Derived images,
+  masks, transformations and exports go to new paths with provenance.
+- Eight hours total, with the final60minutes reserved for handoff. One heavy GPU
+  job at a time. Effective memory cap=min(24GiB,50% of physical RAM). Stop any
+  training at the first of7,000steps/20minutes. These are limits, not obligations.
+- No CUDA, paid compute, new backend shopping, automatic old automation restart,
+  push or replacement of the stable published scene. Use existing local tools.
+- Scope stage timing with the policy:45/120/75/90/90/60minutes. Record overruns
+  against the same total; do not restart the clock for a new agent or config.
+- Audit and implement the evidence guard early, but do not spend the night on a
+  general evaluation framework. Extend the responsible existing functions.
+
+STAGE0 — establish trustworthy evidence, then stop duplicating completed work
+Reuse the existing color/allowlist/transmittance fixes and their102 passing tests.
+Read the changed functions before editing; preserve their invariants.
+
+The remaining evaluator bypass is reproducible:
+  .venv/bin/python runs/moffett/post-deepseek-audit/evaluator_probe.py
+It currently accepts invented summaries,3 placeholder repeat objects, no actual
+images and an arbitrary text evidence file as selected_for_review with score60.
+First make a regression fixture showing this failure, then fix the real CLI:
+- Required input/output/code/binary/camera/mask inventories cannot be empty.
+- Bind metrics to actual expected renders, reference images and masks; recompute
+  them or verify a reproducible evaluator output plus all its immutable inputs.
+- Require real per-run/session traces before deriving medians, peaks and p95.
+- Validate typed visual-review records with image/view hashes. Existence of any
+  file and passed=true must not turn an unknown gate into a pass.
+- Separate validation_shortlisted from final_test_passed. No sealed test evidence
+  means no final-test success. Do not pretend hashes make self-review tamper-proof.
+- Load relevant thresholds from the new policy. Existing load_policy hardcodes
+  benchmark3/kind, so deliberately extend its supported schema or add the narrow
+  coverage entry point in the responsible module. Unknown schemas must fail.
+- A diagnostic render can exist without a score. Do not require all product
+  acceptance gates just to measure source coverage or inspect a useful draft.
+Output: reproducible refused negative fixture, focused tests, evidence schema,
+checkpoint. A missing optional phone test must not prevent inventory work.
+
+STAGE1 — inventory every preserved capture without losing calibration
+Capture IDs are in policy.inventory.captures. Use capture-local room.json,
+poses.json, frames/ and lidar-mesh.json. Reconcile duplicates and missing files.
+
+Write inventory.jsonl (one row per image): capture/frame ID, original path/hash,
+pose/timestamp validity, dimensions, intrinsics, coordinate convention, prepared
+path/hash if any, mask path/hash/status, sharpness/exposure measurements and
+rejection reason. Names alone are not identity; captures may repeat frame IDs.
+Use the original942 center images if suitable, not an arbitrary cap of400.
+
+Derive low-resolution quality/duplicate summaries once. Review representative
+accepted/rejected TRAINING examples and freeze quality thresholds. Never apply
+an unexplained universal blur cutoff. Missing person masks are unknown, not
+all-static white masks. Reuse working mask preparation if available.
+
+Prepare selected derived RGBs at max-edge1280, preserving aspect ratio and the
+existing tested intrinsics-resize convention; keep original detail available
+for evidence crops/outlets. Keep image orientation and camera axes consistent.
+Do not extract video unless the original photo inventory misses needed content
+and exact timestamp-to-camera calibration can be recovered. No guessed poses.
+Output: inventory, preparation provenance, counts/reasons by room, source hashes.
+
+STAGE2 — freeze evaluation groups and the geometry target
+This is a NEW benchmark. Keep r001/r003 views as exposed diagnostic examples.
+Reserve12 validation and12 final-test views with at least4 independent groups
+in each, where capture data permits. Counts are targets, not independence proof.
+
+Group near-duplicate/adjacent views before splitting. Initial checks: reliable
+capture-time separation within1s, or nearby positions0.15m / view directions10deg
+with visual similarity. Inspect the grouping. Do not chain every consecutive
+frame into one huge group. Reserve whole duplicate groups from all training use.
+
+The main task is novel-view interpolation over photographed surfaces. Preserve
+training views of those surfaces from other directions while withholding the
+specific validation/test observations. Holdout of an entire unique room segment
+is an EXTRAPOLATION challenge and must be reported separately. Do not hide it.
+Choose splits before candidate outputs; do not move hard cases after failures.
+
+For the final test, verify access history. Previously exposed or unknown-history
+images cannot be called sealed. If no credible unexposed test remains, record
+that limitation and continue diagnostic improvements without a release claim.
+Preregister validation critical-feature ROIs independently of test ROIs. Use
+actual visible details; label missing outlet evidence instead of fabricating it.
+
+Freeze the geometry-only target and zone IDs: library-facing measured surfaces
+relevant to seated traversal and inspection. Include ceilings/undersides in the
+separate all-mesh report rather than quietly altering a denominator. Freeze8
+novel seated poses per room at an adjustable default eye height1.15m, including
+passages, furniture and scan joins. These poses have no photographic ground truth.
+Output: split manifests/group review/access history, target mesh/zone IDs,
+validation ROIs and sealed test metadata. All hashes recorded before selection.
+
+STAGE3 — measure why surfaces are missing; do not train yet
+Use100,000 reproducible area-weighted surface probes per room, seed1729, saved
+triangle IDs and barycentric coordinates. Evaluate in blocks of4,096; keep the
+probe positions and area denominator fixed for every selected-photo count.
+Report surface-area coverage, not vertex count or screen blackness.
+
+For each candidate training photo/probe pair, distinguish:
+  outside_frustum, behind_camera, occluded, unknown_depth, wrong_or_uncertain_side,
+  person_or_dynamic_mask, insufficient_detail, invalid_pose, supported.
+Retain rejection bits and a documented first-failure summary. Do not count the
+same area several times because it has more vertices or overlapping scan meshes.
+
+A valid observation needs calibrated projection, acceptable detail and static
+pixels, plus measured surface visibility. Reuse a reliable triangle-depth/ray
+path. The current _weights_from considers absent depth unhidden; test and correct
+that before counting such pixels as visible. A sparse vertex depth buffer can
+miss occluders. Do not remove occlusion/facing checks just to raise coverage.
+
+Check normals: a wrong winding can reject an entire wall. Diagnose with actual
+mesh/image overlays and known sidedness, not blanket abs(dot(normal,ray)).
+Check arbitrary-size mask resizing, principal point and image rotation. Freeze
+occlusion tolerance from fixtures/calibration residuals, not a desired pass rate.
+Use320px coarse visibility to choose candidates, then validate finer visibility
+for selected/exported samples. Label coarse uncertainty; do not export it as fact.
+
+Record independent support counts. A second observation requires distinct
+accepted duplicate groups plus a camera baseline>=0.15m OR ray angle>=10deg.
+Audit24 pairs:8 supported,8 rejected,8 unknown distributed across zones/causes.
+Save source-image overlays, camera IDs, geometry depths and reviewer findings.
+Any known wall-crossing false visibility blocks coverage acceptance.
+
+Output coverage-before/coverage-all-available maps (GLB or existing viewer overlay),
+area statistics per zone, rejection histograms and inspectable evidence. Estimate
+achievable coverage from the approved training pool. Do not decode test RGBs to
+make the training visibility map.
+
+STAGE4 — select complementary photographs with a bounded greedy loop
+Start with the approved training pool. Each added frame should reveal new area
+or a genuinely different view of already covered area. Use quality/detail as a
+weight, not permission to repeatedly choose the same attractive corner.
+
+Greedy utility = weighted newly-supported area +0.35*new independently-second-
+observed area. Weight per-zone deficits before redundant close-ups. Use stable
+capture/frame identity tie-breaks and seed1729. Reserve up to15% of the view/detail
+budget for evidenced outlets, boards or tabletop details once broad coverage works.
+
+Record nested selections at32,64,128,200,250 frames, or the actual available sizes.
+Target150-250 useful center-room photos; this is not a requirement to include blur.
+After250, allow up to400 only if target coverage still fails and approved photos
+add measurable support. Stop if coverage passes and gain per20 extra frames is
+<0.5 percentage points. If coverage fails and gain stalls, diagnose filters/poses
+before concluding capture-limited. No blind retry of the same sampler.
+
+Engineering source-coverage gate on the fixed task target:
+- >=70% area with one usable observation;
+- >=50% with two independent usable observations;
+- every preregistered zone >=50% single-view coverage;
+- if the same-probe32-frame reference was below70%, gain >=20 percentage points.
+These are frozen provisional acceptance thresholds, not survey accuracy claims.
+Show all-mesh/unknown coverage too. Missing regions cannot be cropped out to pass.
+The32-frame reference is the first32 of the NEW approved selection, not the old
+training set if it now overlaps a withheld group. Output selected IDs, marginal
+gains/rejection reasons, coverage curves and exact new allowlist. No old32-photo benchmark speedup or quality claims are transferable.
+
+STAGE5 — allocate the splat budget to supported surfaces FIRST
+Extend builder.py where sampling ownership already lives. The current order
+samples the whole mesh then drops unseen samples, wasting most of the budget.
+
+Use supported triangle regions or sample-level visibility before allocating the
+export budget. A partly seen face need not be discarded solely because one
+corner is unseen: bounded subdivision or point-level support can recover it.
+Conversely, seeing the corners does not prove an occluded interior is visible.
+Keep that distinction explicit and test it.
+
+Start with150,000 supported samples and allow300,000 as a declared one-factor
+trial. Require>=95% supported retention from the supported proposal domain.
+Never meet that by counting fallback grey or unknown-depth points as support.
+Bound intermediate allocation before any np.repeat; stream images with cache<=8.
+
+Use actual post-cap surface density/neighbor spacing to choose covariance sizes.
+Nominal0.02m spacing is not the achieved spacing after a global150k cap. Keep
+splats attached to their supporting surface, and do not stretch them across gaps,
+walls, doorway openings or outlet details. Revalidate alpha composition and
+constant-color fixtures on this actual sampling pattern before freezing scales.
+
+Save each sample's source capture/frame IDs, supporting surface/probe and support
+reason. Where blending is used, reject occluded views and record contributors;
+averaging photographs is not a substitute for alignment or visibility.
+Output a new candidate PLY/SPZ, hashes, support retention and full preparation/
+compression time. Preserve all prior outputs. No large training run yet.
+
+STAGE6 — turn source coverage into a usable image
+Render the corrected candidate using the existing SplatX native renderer at all
+frozen validation and seated views. Reuse verified camera/PLY-roundtrip checks.
+Native RGB PNG has no genuine coverage alpha; never infer it from dark pixels.
+
+If source coverage is good but the splats are sparse, try the existing measured
+mesh with photo-supported texture/color as the stable appearance base. Keep
+unknown regions explicitly neutral/untextured and excluded from photo coverage.
+Prefer this existing path if it gives a coherent room; no new engine necessary.
+
+If coverage is good but appearance remains insufficient, run ONE bounded
+existing-trainer refinement. Brush already supports masks; SplatX training does
+not. Use Brush for masked dynamic imagery unless verified native SplatX loss-mask
+support has actually been implemented. An unmasked SplatX trial is diagnostic
+and must not silently inherit “masked” status from evaluation masks.
+
+Both a same-data reference and candidate must use the new selected RGBs, actual
+mask behavior, calibration and validation IDs. Record actual loaded settings.
+Use the old Brush render only as historical context. Do not train6 variants at
+once or spend time compiling a new backend. Max6 candidate configs this run.
+
+Acceptance before opening a room preview:
+- No blank known-photo-supported validation or seated view; inspect all expected
+  images, not just the nicest training camera.
+- No new/worse ghost people, floating furniture, misplaced walls/doors, or erased
+  critical details on paired review. Document every residual problem by view ID.
+- Apply unchanged relative image/ROI thresholds from the policy against a valid
+  same-data reference. Also require visual usability: relative non-regression to
+  a bad baseline does not make a room realistic.
+- Maintain independent measured collision/reach geometry; splat positions are
+  appearance parameters, not centimetre-accurate accessibility measurements.
+
+Single-run times are diagnostic. Only claim efficiency after the existing repeat,
+full preprocessing-through-compression and comparable footprint/device tests.
+Do not let optional performance benchmarking consume time before the image works.
+Output actual RGBs/metrics, paired review, coverage vs appearance distinction,
+training logs or clear no-training choice, and a candidate verdict with reasons.
+
+STAGE7 — transfer and assemble the floor only when justified
+Apply the method to a second area before claiming generalization. If successful
+and time allows, process all four scans as bounded chunks with overlap.
+
+Reuse runs/moffett/verified-four-room-transforms.json, after validating its
+stored convention against known overlap. The current builder hardcodes the
+center capture: generalize the responsible CLI to a validated capture ID and
+its own metadata. Do not pass left-room photos through center-room geometry.
+Namespace frame IDs across captures.
+
+For T mapping local-room points to global:
+  world_to_camera_global = world_to_camera_local @ inverse(T)
+  camera_to_world_global = T @ camera_to_world_local
+Apply T exactly once to the relevant geometry/camera representation. Validate
+projection of the same global control points; do not assume matrix conventions.
+
+Use neighboring photographs where they actually observe the same measured
+surface. Check overlap geometry/reprojection before blending. Misalignment
+creates doubled furniture and ghost walls; keep inconsistent patches separate
+and flagged rather than averaging them away. Registration RMS is not absolute
+measurement accuracy. Do not re-align all rooms without evidence of an error.
+
+Room-level coverage reports stay separate; overlapping scan triangles must not
+artificially improve full-floor area counts. Verify all four rooms and their
+joins from seated paths before the phrase “full Moffett floor” is allowed.
+If only center succeeds, deliver “center-room preview” and say what remains.
+
+STAGE8 — verify and open the actual web app, conditionally
+Reuse the existing rendering/source-selection and asset-serving paths. Make a
+new isolated LOCAL preview revision/source; leave the stable default intact.
+Do not substitute a PNG, generic demo or old asset and call it the new 3D scene.
+
+Run affected Python checks, web typecheck and component tests. Relevant baseline:
+  .venv/bin/python -m pytest packages/pipeline/tests/test_render_efficiency.py \
+    packages/pipeline/tests/test_surface_splats.py \
+    packages/pipeline/tests/test_surface_calibration.py \
+    packages/pipeline/tests/test_allowlist.py \
+    packages/pipeline/tests/test_policy_evaluator.py \
+    packages/pipeline/tests/test_render_correctness.py \
+    packages/pipeline/tests/test_scan_colour.py -q
+  npm --prefix apps/web run typecheck
+  npm --prefix apps/web test
+Run other affected tests if you change their owning modules; do not mask known
+failures or equate a linter with typechecking. Follow local Next.js instructions.
+
+In the browser, verify requested asset hashes, actual scan/revision/source,
+loading errors, desktop and mobile layout, seated controls, collision, exports
+and room joins. Measure hardware frame delivery separately from CLI load time.
+No physical-phone pass without a real device. No ADA compliance or outlet-working
+claim from appearance. Require real alpha for rendered coverage measurements.
+
+If the candidate is usable, open the app to the correct newly rendered scene and
+save the URL, screenshot, source/asset hashes and revision in the handoff. Label
+its scope/limitations. If rejected, preserve the existing scene and attach failed
+views; do not open the rejected candidate as a finished floor. Production promotion
+beyond the isolated local preview is not authorized by this handoff.
+
+REPAIR LOOP — use evidence, not declarations
+For each failed stage, write one hypothesis, a minimal reproducer, the proposed
+fix and the expected observable change. Run a targeted test; save command/exit,
+artifacts and the result. Advance only after the required evidence exists.
+Max3 repairs per hypothesis and2 hypotheses per blocker. Stop costly work at the
+first budget limit. Missing data is not resolved by increasing confidence fields.
+
+Good branches:
+- Low support + many wrong-facing rejections -> verify normals and sidedness.
+- Low support + unknown depth -> validate occlusion data; keep unknown as unknown.
+- Good support + tiny exported count -> repair support-first allocation.
+- Good support/count + image holes -> inspect actual density, scale and camera.
+- Good images + duplicated joins -> inspect global transforms/registration.
+- Little gain from all useful approved photos -> produce targeted gap inventory.
+Do not repeat backend research, loosen the target or create optimistic scores.
+
+REQUIRED REGRESSION/ACCEPTANCE CASES
+1. Previous fabricated-evidence fixture is refused at the real CLI with null
+   selection and nonzero invalid-evidence exit; real evidence still works.
+2. Empty/missing hashes, changed bytes, invented summaries, absent repeats/traces,
+   arbitrary review files and absent final-test history cannot produce final pass.
+3. Same frame name in two captures remains distinct; duplicate aliases of the
+   same source cannot leak across splits. Unexpected train RGB rejected before decode.
+4. Fixed-probe coverage is invariant to mesh tessellation density within sampling
+   tolerance; adding a valid photo cannot reduce support with identical rules.
+5. Synthetic wall blocks an object behind it; missing depth stays unknown; reversed
+   normals are diagnosed without granting through-wall visibility.
+6. Two identical/adjacent frames do not count as independent two-view support.
+7. Non-divisible mask dimensions and image orientation preserve projection/static
+   validity. No person pixels paint static surfaces through coarse-mask aliasing.
+8. Photographic colors survive translations/rotations unchanged; uniform red/green
+   and known barycentric fixtures remain correct within1e-6.
+9. All unsupported surfaces fail honestly; partial-face support exports only
+   verified samples;<=5% supported-domain proposal waste and no huge allocation.
+10. Correct effective density/scale after cap; two half-opacity layers yield0.75;
+    constant-color plane stays that color under proper background compositing.
+11. Empty/extra/missing view or ROI, NaN/Inf and bool-as-number metrics fail.
+12. Cross-room transform applied once reproduces camera projection within0.25px
+    on synthetic controls; deliberate double transform/axis mirror is detected.
+13. Opaque PNG alpha, software GL or rAF-only traces cannot satisfy coverage/F.
+14. Browser loads the new asset rather than fallback; source revision/units and
+    measured collision/export data persist; failures never overwrite originals.
+Persist each result and any not-run reason. Counted tests alone do not close gates.
+
+FINAL DELIVERABLES AND STOP RULE
+Save: inventory; frozen new split/target/ROIs; before/after per-zone coverage maps;
+selected-frame gain ledger; visibility audit overlays; support-first export;
+actual validation/seated renders; evidence-derived results; tested local preview
+URL/revision if usable; commands/logs/hashes; commits; remaining limitations.
+Keep implementation_complete, coverage, appearance, sealed_test, web and phone
+states separate. A coverage improvement can be valuable while appearance fails.
+
+Only request more capture after checking all useful approved existing images
+and plausible projection/visibility faults. List exact unseen surfaces, missing
+view directions and necessary close-ups. Prefer “photograph the wall behind this
+sofa from these two positions” to “scan the library again.” Do not invent detail.
+
+Commit each verified owned feature with the configured author; never push. Leave
+an honest final report with active jobs stopped/checkpointed and next action.
+
+Task -> model tier / owner
+Inventory, duplicate bookkeeping, overlays, bounded test fixtures -> Luna/local scripts
+Coverage/selection/sampling integration and web preview wiring -> Terra
+Occlusion/calibration/evidence-boundary or native-gradient design -> Sol
+Independent visual/device review and final interpretation -> primary
+Delegate only concrete independent tasks; workers own named files, preserve
+other edits, and report actual cost when available. Do not substitute delegation
+messages for integration or evidence. Include every subagent in the final handoff.
