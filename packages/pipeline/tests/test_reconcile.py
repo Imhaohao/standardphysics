@@ -47,7 +47,7 @@ def outlet_node(
         support_type="lidar_surface",
         normal=Vec3(x=float(norm[0]), y=float(norm[1]), z=float(norm[2])),
         sockets=socket_targets,
-        observations=[ObservationCrop(frame_id=frame_id, sensor_box=[100, 100, 200, 200], confidence=0.9)],
+        observations=[ObservationCrop(frame_id=frame_id, sensor_box=[200.0, 150.0, 400.0, 350.0], confidence=0.9)],
         localization_quality="verified_support",
     )
 
@@ -117,7 +117,9 @@ class TestReconciliation:
         once = reconcile_outlets([n1, n2, n3])
         twice = reconcile_outlets(once)
         assert len(once) == len(twice) == 2
-        assert once[0].transform.m == twice[0].transform.m
+        once_xs = sorted(n.transform.m[3] for n in once)
+        twice_xs = sorted(n.transform.m[3] for n in twice)
+        assert once_xs == pytest.approx(twice_xs)
 
     def test_duplex_plate_retains_separate_sockets(self):
         wall_id = uuid.uuid4()

@@ -92,7 +92,8 @@ class TestSurfaceAttachmentProjection:
             category="outlet",
             sockets=((320.0, 230.0), (320.0, 250.0)),
         )
-        attachment, outlet_node = attach_detection_to_surface(detection, cam, graph)
+        depth_buffer = np.full((480, 640), 1.95)
+        attachment, outlet_node = attach_detection_to_surface(detection, cam, graph, depth_buffer=depth_buffer)
         assert attachment.support_node_id == wall.id
         assert attachment.support_type == "lidar_surface"
         assert attachment.localization_quality == "verified_support"
@@ -199,7 +200,8 @@ class TestSurfaceAttachmentProjection:
         cam = camera_at((0.0, 0.0, 1.0), (0.0, 2.0, 1.0))
         detection = Detection("f1", "outlet", (300.0, 220.0, 340.0, 260.0), False, 0.95, category="outlet")
 
-        attachment, outlet_node = attach_detection_to_surface(detection, cam, graph)
+        depth_buffer = np.full((480, 640), 1.95)
+        attachment, outlet_node = attach_detection_to_surface(detection, cam, graph, depth_buffer=depth_buffer)
         # Outlet thickness is 0.03m (3 cm), which is thinner than SLIVER_EXTENT (0.035m / 3.5cm)
         assert outlet_node.dimensions.y == 0.03
         assert outlet_node.dimensions.y < SLIVER_EXTENT
