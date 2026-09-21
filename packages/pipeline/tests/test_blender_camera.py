@@ -71,6 +71,85 @@ def test_reflected_camera_is_rejected():
         blender_view(camera, (0, 0, 640, 480), (500, 500))
 
 
+def test_coverage_must_use_material_support_masks_never_rgb_appearance(tmp_path):
+    """Lock in the lesson of the invalid 98% coverage claim.
+
+    The photograph that covers a surface can itself be neutral grey, and an
+    uncovered surface with the same grey looks identical in the beauty render.
+    Coverage measured by colour thresholds on that render cannot separate the
+    two, so a pass number computed that way is bogus in both directions. The
+    dedicated material-support pass is unambiguous: textured faces are white,
+    faces without a source photo are black.
+    """
+    blender = Path(os.environ.get("BLENDER_BINARY", "/Applications/Blender.app/Contents/MacOS/Blender"))
+    if not blender.is_file():
+        pytest.skip("actual raster verification requires local Blender")
+    trimesh = pytest.importorskip("trimesh")
+    camera = example_camera()
+    view = blender_view(camera, (80, 0, 560, 480), (500, 500))
+    transform = camera.room_to_camera
+    position = -transform[:3, :3].T @ transform[:3, 3]
+    authored_grey = (158, 153, 148)
+    texture_grey = (207, 204, 201)  # what the unlit neutral factor actually renders as post-conversion
+
+    def quad_at(u, v, depth, size=6):
+        corners = []
+        for dx, dy in ((-size, -size), (size, -size), (size, size), (-size, size)):
+            pu = (u + dx + .5) * 480 / 500 - .5 + 80
+            pv = (v + dy + .5) * 480 / 500 - .5
+            ray = np.array([(pu - camera.cx) / camera.fx, (pv - camera.cy) / camera.fy, 1])
+            corners.append(position + transform[:3, :3].T @ (depth * ray))
+        return np.array(corners)
+
+    scene = trimesh.Scene()
+    photographed_vertices = quad_at(160, 110, .7)[:, [0, 2, 1]] * [1, 1, -1]
+    scene.add_geometry(trimesh.Trimesh(
+        photographed_vertices, [[0, 1, 2], [0, 2, 3]], process=False,
+        visual=trimesh.visual.TextureVisuals(
+            uv=[[0, 0], [1, 0], [1, 1], [0, 1]],
+            material=trimesh.visual.material.PBRMaterial(
+                baseColorTexture=Image.new("RGB", (2, 2), texture_grey),
+                metallicFactor=0, roughnessFactor=1, doubleSided=True))))
+    unphotographed_vertices = quad_at(340, 110, .7)[:, [0, 2, 1]] * [1, 1, -1]
+    scene.add_geometry(trimesh.Trimesh(
+        unphotographed_vertices, [[0, 1, 2], [0, 2, 3]], process=False,
+        visual=trimesh.visual.TextureVisuals(
+            uv=[[0, 0], [1, 0], [1, 1], [0, 1]],
+            material=trimesh.visual.material.PBRMaterial(
+                baseColorFactor=[*[c / 255 for c in authored_grey], 1.0], baseColorTexture=None,
+                metallicFactor=0, roughnessFactor=1, doubleSided=True))))
+
+    def unlit(tree):
+        tree.setdefault("extensionsUsed", []).append("KHR_materials_unlit")
+        for material in tree["materials"]:
+            material.setdefault("extensions", {})["KHR_materials_unlit"] = {}
+
+    glb = tmp_path / "coverage-fixture.glb"
+    glb.write_bytes(trimesh.exchange.gltf.export_glb(scene, tree_postprocessor=unlit))
+    plan = tmp_path / "plan.json"
+    plan.write_text(json.dumps({"glb": str(glb), "views": [view]}))
+    script = Path(standardphysics_pipeline.__file__).parent / "blender_scripts/render_calibrated_mesh.py"
+    result = subprocess.run([str(blender), "-b", "--factory-startup", "--python-exit-code", "1",
+                             "-P", str(script), "--", str(plan)], capture_output=True, text=True, timeout=120)
+    assert result.returncode == 0, result.stdout[-2500:] + result.stderr[-2500:]
+
+    beauty = np.asarray(Image.open(tmp_path / "oblique_candidate.png").convert("RGB"))
+    support = np.asarray(Image.open(tmp_path / "oblique_photo_support.png").convert("L")) > 128
+    # The photographed face (texture) and the uncovered face (authored grey factor)
+    # both end up at the same rendered grey, so colour thresholds give the same
+    # verdict to faces that need opposite verdicts.
+    photographed_colour = beauty[110, 160].astype(int)
+    unphotographed_colour = beauty[110, 340].astype(int)
+    np.testing.assert_allclose(photographed_colour, unphotographed_colour, atol=6)
+    # The authored baseColorFactor does not survive colour conversion: measuring
+    # coverage by chasing the authored constant in the rendered image is wrong.
+    assert not np.all(np.abs(unphotographed_colour - authored_grey) < 12), \
+        "the authored grey mistakenly appears verbatim in the rendered output; thresholds measured pre-conversion are invalid"
+    # The material-support pass separates them exactly.
+    assert support[110, 160], "photographed face must be marked supported even when it renders grey"
+    assert not support[110, 340], "a same-coloured face without a source photo must not count"
+
+
 def test_real_blender_import_and_render_place_markers_at_known_pixels(tmp_path):
     blender = Path(os.environ.get("BLENDER_BINARY", "/Applications/Blender.app/Contents/MacOS/Blender"))
     if not blender.is_file():

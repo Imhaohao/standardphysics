@@ -11,8 +11,8 @@ import json
 from pathlib import Path
 
 import numpy as np
-import trimesh
 import photo_mesh_glb
+import trimesh
 from moffett_image_registration import CAPTURES
 from PIL import Image
 from standardphysics_pipeline.ingest import capture_to_room_from_payload

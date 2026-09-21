@@ -11,7 +11,6 @@ legacy exports in the raster loader.
 """
 from __future__ import annotations
 
-import base64
 import json
 import struct
 from io import BytesIO
