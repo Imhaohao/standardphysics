@@ -48,3 +48,31 @@ def validate_view_list(views: Iterable[Mapping], identifier_key: str = "file_pat
         identifiers.append(entry[identifier_key])
     if len(set(identifiers)) != len(identifiers):
         raise MetricError("view list contains duplicate entries")
+
+
+def validate_view_list_against_expected(
+    views: Iterable[Mapping], expected_ids: set[Mapping[str, str] | str] | set[str],
+    identifier_key: str = "file_path",
+) -> None:
+    """A view list must match an expected set exactly, by canonical ID only.
+
+    Missing, extra or duplicated images fail the comparison altogether; a list
+    must be checked against a declared expected set, not "whatever exists".
+    """
+    validate_view_list(views)
+    identifiers = list(entry[identifier_key] for entry in views)
+    expected_normalized: set[str] = set()
+    for item in expected_ids:
+        if isinstance(item, str):
+            expected_normalized.add(item)
+        else:
+            expected_normalized.add(item["file_path"])
+    if not expected_normalized:
+        raise MetricError("expected view set is empty")
+    actual = set(identifiers)
+    if actual != expected_normalized:
+        missing = sorted(expected_normalized - actual)
+        extra = sorted(actual - expected_normalized)
+        raise MetricError(
+            f"view set does not match expected set exactly: missing={missing}, extra={extra}"
+        )

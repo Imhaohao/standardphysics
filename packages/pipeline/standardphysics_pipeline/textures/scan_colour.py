@@ -51,6 +51,8 @@ class ColouredScan:
     """One sRGB colour per vertex, 0-1."""
     seen: np.ndarray
     """Whether any photo reached each vertex."""
+    sources: np.ndarray | None = None
+    """Per-vertex source frame ID of the best view (object dtype), None when unseen."""
 
     @property
     def painted_fraction(self) -> float:
@@ -69,9 +71,17 @@ def vertex_normals(vertices: np.ndarray, triangles: np.ndarray) -> np.ndarray:
 
 
 def _weights_from(
-    camera: PhotoCamera, vertices: np.ndarray, normals: np.ndarray, buffer: np.ndarray
+    camera: PhotoCamera,
+    vertices: np.ndarray,
+    normals: np.ndarray,
+    buffer: np.ndarray,
+    mask: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """How good this camera's view of each vertex is, and where to sample it."""
+    """How good this camera's view of each vertex is, and where to sample it.
+
+    ``mask`` (same HxW as the photo, static region = 1) zeroes the weight of
+    samples outside the static region, so moving-object pixels never paint.
+    """
     columns, rows, depth = camera.project(vertices)
     toward = camera.position[None, :] - vertices
     distance = np.linalg.norm(toward, axis=1)
@@ -92,6 +102,13 @@ def _weights_from(
         / BORDER_FALLOFF_PIXELS, 0.0, 1.0,
     )
     weight = np.where(inside & unhidden, facing ** 2 / np.maximum(distance, 0.5) * border, 0.0)
+    if mask is not None:
+        mask = np.asarray(mask, dtype=np.float64)
+        if mask.shape != buffer.shape:
+            raise ValueError(f"mask shape {mask.shape} must match photo {buffer.shape}")
+        support = bilinear(mask, columns, rows)
+        static = support >= 0.5
+        weight = np.where(static, weight, 0.0)
     return weight, columns, rows
 
 
@@ -100,21 +117,40 @@ def colour_the_scan(
     triangles: np.ndarray,
     cameras: list[PhotoCamera],
     images: list[np.ndarray],
+    masks: list[np.ndarray] | None = None,
 ) -> ColouredScan:
-    """Every vertex given the colour of the photo that saw it best."""
+    """Every vertex given the colour of the photo that saw it best.
+
+    ``masks``, when provided, are static-region masks (one per photo); samples
+    outside the static region are never painted.  The resulting scan records
+    the best source frame ID per vertex so downstream sampling can prove
+    photo support rather than assert it.
+    """
+    if masks is not None and len(masks) != len(images):
+        raise ValueError("masks must have one entry per image")
     normals = vertex_normals(vertices, triangles)
     best = np.zeros(len(vertices), dtype=np.float32)
     colours = np.tile(UNSEEN, (len(vertices), 1))
-    for camera, photo in zip(cameras, images):
+    source_ids = [None] * len(vertices)
+    for index, (camera, photo) in enumerate(zip(cameras, images)):
         buffer = depth_buffer(camera, vertices)
-        weight, columns, rows = _weights_from(camera, vertices, normals, buffer)
+        image_mask = masks[index] if masks is not None else None
+        weight, columns, rows = _weights_from(camera, vertices, normals, buffer, image_mask)
         better = np.flatnonzero(weight > best)
         if not len(better):
             continue
         sampled = bilinear(photo, columns[better], rows[better])
         colours[better] = to_srgb(to_linear(sampled.astype(np.float32)))
         best[better] = weight[better]
-    return ColouredScan(vertices, triangles, np.clip(colours, 0.0, 1.0), best > 0)
+        for index in better:
+            source_ids[index] = camera.frame_id
+    return ColouredScan(
+        vertices,
+        triangles,
+        np.clip(colours, 0.0, 1.0),
+        best > 0,
+        sources=np.asarray(source_ids, dtype=object),
+    )
 
 
 def scan_geometry(mesh_path: pathlib.Path, capture_to_room) -> tuple[np.ndarray, np.ndarray]:
@@ -144,6 +180,7 @@ def unused_vertices_removed(scan: ColouredScan) -> ColouredScan:
         triangles=remap[scan.triangles],
         colours=scan.colours[used],
         seen=scan.seen[used],
+        sources=scan.sources[used] if scan.sources is not None else None,
     )
 
 

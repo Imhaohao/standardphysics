@@ -135,6 +135,16 @@ def test_view_list_accepts_unique():
     validate_view_list([{"file_path": "a.jpg"}, {"file_path": "b.jpg"}])
 
 
+def test_validate_view_list_rejects_nonempty_one_view_subset():
+    """An expected eight-view set missing seven views cannot pass validation (E02)."""
+    from standardphysics_pipeline.render_efficiency.manifest import validate_view_list_against_expected
+    with pytest.raises(MetricError):
+        validate_view_list_against_expected([{"file_path": "a.jpg"}], {"a.jpg", "b.jpg", "c.jpg", "d.jpg", "e.jpg", "f.jpg", "g.jpg", "h.jpg"})
+    with pytest.raises(MetricError):
+        validate_view_list_against_expected([{"file_path": "a.jpg"}, {"file_path": "z.jpg"}], {"a.jpg", "b.jpg"})
+    validate_view_list_against_expected([{"file_path": "b.jpg"}, {"file_path": "a.jpg"}], {"a.jpg", "b.jpg"})
+
+
 def test_coverage_threshold():
     alpha = np.array([[0.9, 0.4], [0.8, 0.1]])
     supported = np.array([[True, True], [True, True]])

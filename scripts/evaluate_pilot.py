@@ -15,6 +15,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 from standardphysics_pipeline.render_efficiency import psnr, ssim
+from standardphysics_pipeline.render_efficiency.manifest import validate_view_list_against_expected
 
 
 def _load_rgb(path: Path) -> np.ndarray:
@@ -33,11 +34,19 @@ def main():
     parser.add_argument("renders", type=Path, help="directory of rendered PNGs named image-*.png")
     parser.add_argument("dataset", type=Path, help="pilot dataset with images/ and masks/")
     parser.add_argument("output", type=Path)
+    parser.add_argument("--expected", type=Path, default=None,
+                        help="JSON list of expected frame basenames; the found set must match exactly")
     args = parser.parse_args()
 
     renders = sorted(args.renders.glob("image-*.png"))
     if not renders:
         raise SystemExit(f"no image-*.png in {args.renders}")
+
+    if args.expected is not None:
+        expected_ids = set(json.loads(args.expected.read_text()))
+        validate_view_list_against_expected(
+            [{"file_path": render.stem} for render in renders], expected_ids
+        )
 
     views = []
     for render in renders:

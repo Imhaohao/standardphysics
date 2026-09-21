@@ -165,6 +165,8 @@ class SurfaceGaussians:
         count = len(self)
         if count == 0:
             raise MetricError("refusing to export an empty Gaussian set")
+        if pathlib.Path(path).exists():
+            raise MetricError(f"refusing to overwrite existing export: {path}")
         positions = np.asarray(self.positions, dtype=np.float32)
         scales = np.asarray(self.scales, dtype=np.float32)
         opacities = np.asarray(self.opacities, dtype=np.float32)
