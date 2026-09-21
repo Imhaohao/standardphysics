@@ -35,10 +35,6 @@ MAX_FRAME_CANDIDATES = 96
 ATLAS_SIZE = 2048
 MAX_ATLASES = 4
 CHUNK_SIZE = 100_000
-# Dropping thin foreground faces is precisely how a chair silhouette leaks
-# onto the floor. Fail clearly rather than silently making a partial scan look
-# like an occlusion authority.
-MAX_LIDAR_TRIANGLES = 2_000_000
 MAX_SOURCE_BYTES = 32 * 1024 * 1024
 MAX_SOURCE_PIXELS = 24_000_000
 MAX_IMAGE_EDGE = 2048
@@ -346,10 +342,6 @@ def _lidar_triangles(path: pathlib.Path | None, capture_to_room: list[float], wo
         return triangles
     matrix = np.asarray(capture_to_room, dtype=np.float32).reshape(4, 4)
     triangles = triangles @ matrix[:3, :3].T + matrix[:3, 3]
-    if len(triangles) > MAX_LIDAR_TRIANGLES:
-        raise TextureBakeError(
-            f"LiDAR mesh has {len(triangles)} faces; maximum supported for exact occlusion is {MAX_LIDAR_TRIANGLES}"
-        )
     return triangles
 
 

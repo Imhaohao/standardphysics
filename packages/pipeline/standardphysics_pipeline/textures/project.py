@@ -169,6 +169,18 @@ def depth_buffer(camera: PhotoCamera, points: np.ndarray) -> np.ndarray:
     return _erode(buffer.reshape(small.height, small.width))
 
 
+DEPTH_TRIANGLE_CHUNK = 250_000
+"""How many faces are transformed into a camera's frame at once.
+
+The whole mesh at once is what set a ceiling on how long a walk could be: a
+four million face capture needs about half a gigabyte of temporaries per
+camera, and the bake refused rather than allocate it. The buffer keeps the
+nearest of whatever it is shown, and taking a minimum does not care what order
+it sees things in, so a chunked pass writes the same buffer the whole mesh
+would have, face for face, while holding memory flat.
+"""
+
+
 def triangle_depth_buffer(camera: PhotoCamera, triangles: np.ndarray) -> np.ndarray:
     """Conservative, perspective-correct nearest-face depth at bounded resolution.
 
@@ -180,14 +192,21 @@ def triangle_depth_buffer(camera: PhotoCamera, triangles: np.ndarray) -> np.ndar
     scale = min(1.0 / DEPTH_BUFFER_DIVISOR, MAX_DEPTH_BUFFER_SIDE / max(camera.width, camera.height))
     small = camera.resized(max(1, round(camera.width * scale)), max(1, round(camera.height * scale)))
     buffer = np.full((small.height, small.width), np.inf, dtype=np.float32)
+    for start in range(0, len(triangles), DEPTH_TRIANGLE_CHUNK):
+        _draw_depth(buffer, small, triangles[start:start + DEPTH_TRIANGLE_CHUNK])
+    return _erode(buffer)
+
+
+def _draw_depth(buffer: np.ndarray, small: PhotoCamera, triangles: np.ndarray) -> None:
+    """Rasterize these faces into the buffer, keeping whichever is nearest."""
     if not len(triangles):
-        return buffer
+        return
     local = triangles @ small.room_to_camera[:3, :3].T + small.room_to_camera[:3, 3]
     depth = local[..., 2]
-    valid = np.all(depth > NEAR_LIMIT, axis=1)
-    local, depth = local[valid], depth[valid]
+    in_front = np.all(depth > NEAR_LIMIT, axis=1)
+    local, depth = local[in_front], depth[in_front]
     if not len(local):
-        return buffer
+        return
     u = small.fx * local[..., 0] / depth + small.cx
     v = small.fy * local[..., 1] / depth + small.cy
     visible = (
@@ -196,7 +215,6 @@ def triangle_depth_buffer(camera: PhotoCamera, triangles: np.ndarray) -> np.ndar
     )
     for corners_u, corners_v, corners_depth in zip(u[visible], v[visible], depth[visible]):
         _rasterize_depth_triangle(buffer, corners_u, corners_v, corners_depth)
-    return _erode(buffer)
 
 
 def _rasterize_depth_triangle(buffer: np.ndarray, u: np.ndarray, v: np.ndarray, depth: np.ndarray) -> None:
