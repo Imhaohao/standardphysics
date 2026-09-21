@@ -1,0 +1,219 @@
+{
+  "schema_version": 1,
+  "policy_id": "standardphysics-shop-pilot-v1",
+  "kind": "requirements_not_executed_results",
+  "created_date": "2026-09-21",
+  "deadline": "2026-09-22T00:00:00-07:00",
+  "timezone": "America/Los_Angeles",
+  "deadline_meaning": "physical-phone assisted pilot handoff; actual shop field visit occurs later",
+  "authoritative_documents": [
+    "docs/deepseek-shop-pilot/01-coordinator.txt",
+    "docs/deepseek-shop-pilot/02-contracts-and-ownership.txt",
+    "docs/deepseek-shop-pilot/03-agent-prompts.txt",
+    "docs/deepseek-shop-pilot/05-adversarial-tests.txt",
+    "docs/deepseek-shop-pilot/06-phone-and-field-handoff.txt",
+    "docs/product-vision-audit-2026-09-21.txt"
+  ],
+  "prohibited": [
+    "gaussian_splatting_work_or_fallback_in_mesh_mode",
+    "fabricated_hidden_geometry_or_photo_detail",
+    "unknown_or_missing_result_promoted_to_pass",
+    "unsupported_not_applicable_to_reduce_denominator",
+    "self_asserted_receipt_as_proof",
+    "model_impersonation_of_human_reviewer",
+    "fixture_graph_injected_into_real_acceptance",
+    "manual_annotation_counted_as_automatic_detection",
+    "overall_ADA_compliance_from_software_gates",
+    "destructive_capture_reset_or_unrequested_public_deploy_push",
+    "unreviewed_policy_relaxation_by_implementation_owner"
+  ],
+  "resources": {
+    "initial_max_active_agent_sessions_including_coordinator": 4,
+    "explicit_slot_roster_and_replacement_conditions_required": true,
+    "max_heavy_jobs": 1,
+    "memory_limit_gib": "min(24, 0.5 * physical_RAM_GiB)",
+    "minimum_free_disk_before_heavy_job_gib": "max(20, 2 * estimated_additional_output_GiB)",
+    "pause_new_heavy_allocations_below_free_disk_gib": 10,
+    "worker_processes_per_database": 1,
+    "model_token_budget": "user has not imposed a token cap",
+    "paid_provider_budget": "use configured authorized services within known quota; token permission is not a purchase authorization"
+  },
+  "loop": {
+    "checkpoint_minutes_max": 10,
+    "max_repairs_per_hypothesis_before_escalation": 3,
+    "max_nonprogress_hypotheses_before_reassignment": 2,
+    "transient_request_attempts_max": 3,
+    "transient_backoff_seconds_approx": [2, 5, 15],
+    "auth_schema_permission_blind_retries": 0,
+    "unchanged_failed_job_reruns_without_new_evidence": 0,
+    "independent_evaluation_required_after_fix": true,
+    "failed_gate_may_be_hidden_by_average": false,
+    "external_blocker_stops_unrelated_work": false,
+    "deadline_requires_truthful_handoff_not_false_completion": true,
+    "continue_actionable_authorized_work_after_handoff": true,
+    "background_execution_claim_requires_actual_runner": true
+  },
+  "evidence_contract": {
+    "receipt_required_fields": [
+      "receipt_id", "gate_id", "run_id", "lane_id", "evidence_kind",
+      "source_commit", "dirty_source_digest", "contract_hash", "policy_hash",
+      "input_artifacts", "output_artifacts", "scan_id", "revision_id",
+      "scenario_hash", "scope_manifest_hash", "evidence_manifest_hash", "command_or_recorded_ui_steps",
+      "working_directory", "environment_versions", "started_at", "finished_at",
+      "exit_code", "assertions", "raw_log_path", "evaluator_identity"
+    ],
+    "artifact_fields": ["path", "sha256", "size_bytes", "content_type"],
+    "assertion_fields": ["id", "expected", "observed", "measurement_method", "evidence_paths"],
+    "evidence_kinds": [
+      "synthetic_component", "synthetic_production_path", "saved_real_capture",
+      "fresh_physical_phone", "new_shop_field", "human_control_measurement",
+      "human_rule_review", "actual_render", "actual_device_runtime"
+    ],
+    "nonapplicable_receipt_field": "explicit null with reason; never invented identifiers",
+    "verification": [
+      "hash and size actual bytes; parse expected format and verify semantics",
+      "rerun behavioral assertions or recompute metrics from actual artifacts",
+      "check dependency closure including dirty files and frozen evaluation manifest",
+      "validate scan/revision/owner identity against runtime/API, not receipt prose",
+      "check original-capture hashes unchanged",
+      "preserve failures, exclusions, abstentions and all denominator items",
+      "secret-free logs; provider credentials never included",
+      "no pass from process exit zero without required behavioral assertions"
+    ],
+    "missing_nan_infinite_stale_or_wrong_revision": "fail_or_pending_never_pass",
+    "unknown_reviewer_or_missing_physical_device": "externally_blocked",
+    "implementation_status_boolean_is_proof": false,
+    "sha256_string_without_opening_artifact_is_proof": false,
+    "existing_G9_rebuilt_graph_100_receipts": "invalid_evidence"
+  },
+  "gates": [
+    {
+      "id": "G00", "name": "Evidence integrity and ownership", "owner": "K", "evaluator": "Q", "depends_on": [],
+      "requires": ["frozen policy/contracts", "exact file leases", "source/capture snapshots", "receipt validator rejects false evidence", "all required adversarial mutations killed behaviorally"],
+      "limits": {"missing_required_receipts": 0, "accepted_fabricated_receipts": 0, "mutations_required": 18, "behavioral_mutations_killed": 18}
+    },
+    {
+      "id": "G01", "name": "Correct baseline and integrated code", "owner": "K", "evaluator": "Q", "depends_on": ["G00"],
+      "requires": ["combine-floor regression repaired without mutating originals", "protruding-shelf regression repaired", "relevant API/pipeline/contracts/agents suites pass", "web typecheck tests and production build pass", "no required test replaced by skip/xfail", "generated schema parity"],
+      "limits": {"known_required_regressions_remaining": 0, "new_relevant_failures": 0}
+    },
+    {
+      "id": "G02", "name": "Complete capture receipt and reliable jobs", "owner": "B", "evaluator": "Q", "depends_on": ["G00"],
+      "requires": ["server validates bytes and frame/pose/intrinsics/mesh associations", "semantic job waits for complete required bundle", "late evidence queues exactly one derived job", "identical replay no duplicate nodes or revisions", "crash/restart recovery and visible errors", "legacy geometry-only state explicitly incomplete for semantics"],
+      "limits": {"identical_replay_trials": 3, "unexpected_duplicate_nodes_or_jobs": 0, "silently_lost_manual_reviews": 0, "incomplete_bundles_marked_semantic_complete": 0}
+    },
+    {
+      "id": "G03", "name": "Semantic integration and trustworthy evidence", "owner": "S", "evaluator": "Q", "depends_on": ["G02"],
+      "requires": ["production calls discovery and secondary semantic correction", "all four target classes plus sofa/table/whiteboard regressions", "source crops decode and map to original sensor pixels", "measured/inferred/unlocalized support separated", "occlusion and neighboring outlets preserved", "manual and automatic provenance distinct"],
+      "limits": {"deterministic_orientation_cases_degrees": [0, 90, 180, 270], "affirmative_objects_without_required_evidence": 0, "forced_positive_results": 0, "confusion_fixture_cases_min": 12},
+      "note": "Component/provenance gate, not measured real-world detector accuracy. Image-only unknown candidates are allowed and visibly unlocalized."
+    },
+    {
+      "id": "G04", "name": "Persistent human review and revision safety", "owner": "B", "evaluator": "Q", "depends_on": ["G03"],
+      "requires": ["confirm reject correct and manual mark save via authenticated API", "reload and rediscovery preserve owner decisions", "late stale job cannot overwrite review", "concurrent conflicting revision edit is explicit", "changed role/evidence/transform/scenario invalidates affected derived results"],
+      "limits": {"review_loss_cases": 0, "stale_results_displayed_as_current": 0}
+    },
+    {
+      "id": "G05", "name": "Numerical geometry and uncertainty semantics", "owner": "G", "evaluator": "Q", "depends_on": ["G00"],
+      "requires": ["nonidentity frame transforms roundtrip consistently", "camera corner verification including principal point and image orientation", "measurement provenance and unknown uncertainty preserved", "no double transform across scene collision and exports", "threshold-straddling values cannot pass"],
+      "limits": {"synthetic_world_roundtrip_max_error_m": 0.000001, "synthetic_projection_roundtrip_max_error_px": 0.001, "actual_blender_marker_max_error_px": 0.5, "unknown_uncertainty_treated_as_zero_cases": 0},
+      "note": "Numerical tolerances validate implementation only; they are not sensor accuracy bounds. Actual metric accuracy requires G17."
+    },
+    {
+      "id": "G06", "name": "Complete visible scoped assessment", "owner": "A", "evaluator": "Q", "depends_on": ["G04", "G05"],
+      "requires": ["immutable hashed scope manifest frozen before assessment with surveyed/unobserved areas routes classes known item IDs requested rules applicability questions and denominator rows", "scope changes version and invalidate dependent certificates; unresolved class/area obligations retained", "all manifest item/rule combinations have explicit outcome", "Unevaluated visible as needs_verification", "unsupported/restroom/operational conditions remain visible", "legal applicability/source/review separated from numerical calculation", "preview/unreviewed ledger cannot become verified legal conclusion"],
+      "limits": {"outcome_coverage_fraction": 1.0, "hidden_unknowns": 0, "unsupported_not_applicable": 0, "unknown_promoted_to_satisfied": 0},
+      "allowed_outcomes": ["satisfied", "violation", "needs_verification", "not_applicable", "unobserved"]
+    },
+    {
+      "id": "G07", "name": "Approach and redesign invariants", "owner": "R", "evaluator": "Q", "depends_on": ["G05", "G06"],
+      "requires": ["connected approach and swept wheelchair occupancy", "uncertain reach stays uncertain", "fixed fixtures excluded from furniture moves", "proposal has immutable parent and new candidate revision", "same scope remeasured/rechecked before promotion", "improvement exceeds relevant uncertainty", "no proposal claimed when no supported solution exists"],
+      "limits": {"new_violations": 0, "lost_satisfied_or_evaluable_checks": 0, "unsupported_unknown_to_satisfied": 0, "collisions_or_blocked_required_routes": 0, "fixed_objects_moved_by_furniture_solver": 0, "minimum_distinct_adversarial_layouts": 6},
+      "note": "Transparent synthetic solution cases prove mechanics; actual-scene recommendation needs actual-scene evidence."
+    },
+    {
+      "id": "G08", "name": "Coherent review UI and exports", "owner": "U", "evaluator": "Q", "depends_on": ["G04", "G06", "G07"],
+      "requires": ["object->crop->map navigation for target classes", "manual fallback and clear missing-object states", "all outcomes and unknowns visible", "before/after report and ZIP agree with pinned API state", "keyboard/focus/touch/mobile layout checks", "map/photos usable when mesh unavailable"],
+      "limits": {"tested_mobile_viewports": [[390,844],[360,800]], "unexplained_UI_API_export_mismatches": 0, "critical_clipped_controls": 0, "fabricated_placement_reasons": 0, "unhandled_console_errors": 0}
+    },
+    {
+      "id": "G09", "name": "Authorization and usable runtime", "owner": "E", "evaluator": "Q", "depends_on": ["G01", "G02", "G08"],
+      "requires": ["owning user completes actual HTTP journey", "anonymous/other-user crop graph review and export access denied", "path traversal and malicious artifact rejected", "restart preserves coherent state", "single worker per DB", "actual declared runtime dependencies verified", "documented local/portable network and unavailable feature behavior"],
+      "limits": {"cross_owner_data_leaks": 0, "secrets_in_new_logs_exports": 0, "unsupported_deployment_claims": 0}
+    },
+    {
+      "id": "G10", "name": "Real Moffett production replay", "owner": "B", "evaluator": "Q", "depends_on": ["G09"],
+      "requires": ["real stored capture bytes through production processing", "successful actual detector invocation with provider/runtime metadata and actual output, which may legitimately be empty", "candidate graph and evidence rows read from authenticated API", "actual crops inspected", "real review and scoped report saved under new revision", "original hashes unchanged"],
+      "limits": {"finished_fixture_nodes_injected": 0, "manual_nodes_counted_as_detected": 0},
+      "pass_condition": "Successful real processing and truthful outputs, including a legitimate empty detector result; detector failure blocks this gate. Automatic accuracy and presence claims require separate G12."
+    },
+    {
+      "id": "G11", "name": "Tonight physical-phone pilot", "owner": "C", "evaluator": "Q", "depends_on": ["G09"],
+      "requires": ["actual installed iPhone build identity", "fresh small-room capture not a replay", "complete upload and derived evidence graph", "review available target objects with actual crops and manual fallback", "confirm role/route and inspect selected check/report", "interrupt/resume exercise without data loss", "phone reachable runtime and field startup instructions"],
+      "limits": {"fresh_capture_journeys_min": 1, "physical_device_required": true, "capture_loss": 0, "simulator_substitution_allowed": false},
+      "note": "Undetected target classes default to unobserved. Absence may only be recorded with an independent human inventory covering the declared area; it cannot silently remove scope questions. Their controls are tested on separate fixtures. Never plant fabricated detections. This is not the actual boba-shop visit."
+    },
+    {
+      "id": "G12", "name": "Automatic semantics evaluated against predeclared benchmark targets", "owner": "S", "evaluator": "Q", "depends_on": ["G03", "G10"],
+      "requires": ["independent human-reviewed held-out object inventory", "at least three distinct sites not used for tuning", "unique physical object denominators and explicit negative regions", "no manual corrections counted as automatic", "all false positives misses and abstentions reported", "binomial uncertainty reported per class", "unknown/unobserved areas reported separately"],
+      "limits": {"heldout_sites_min": 3, "positive_outlets_min": 30, "positive_televisions_min": 10, "positive_service_counters_min": 10, "positive_restroom_entrances_min": 10, "negative_regions_per_class_min": 30, "outlet_precision_min": 0.95, "outlet_recall_min": 0.9, "other_class_precision_min_each": 0.9, "other_class_recall_min_each": 0.9, "default_2d_match_iou_min": 0.5, "one_to_one_matching_required": true, "manually_corrected_predictions_in_automatic_numerator": 0},
+      "note": "Engineering entry targets, not proof of universal accuracy or statistically guaranteed 95% performance. Insufficient samples stay pending. Assisted pilot can pass without G12; automated-accuracy claims cannot."
+    },
+    {
+      "id": "G13", "name": "Moffett scoped evidence dossier", "owner": "A", "evaluator": "Q", "depends_on": ["G06", "G08", "G10"],
+      "requires": ["actual latest candidate revision pinned", "scope/applicability matrix covers requested accessibility questions", "all outcome records have source/provenance or exact missing-input reason", "rule source/version and legal-review status exposed", "Moffett control-measurement gaps explicit", "recapture and human verification list", "before/after recommendations only where justified"],
+      "limits": {"requested_requirements_with_explicit_outcome_fraction": 1.0, "unsupported_whole_site_compliance_claims": 0},
+      "note": "A complete evidence dossier can truthfully contain violations and unknowns. This gate never means the requirements are all satisfied."
+    },
+    {
+      "id": "G14", "name": "Evidence supports particular scoped requirements", "owner": "A", "evaluator": "Q", "depends_on": ["G13", "G17"],
+      "requires": ["named requirements and item identities fixed in hashed scope manifest before conclusion", "applicable legal source/edition/context confirmed", "qualified independent human review of every claimed requirement's applicability jurisdiction edition exceptions and evidence sufficiency", "sufficient measured and operational evidence for every condition", "no missing exceptions or unresolved threshold uncertainty", "qualified reviewer attribution authentic"],
+      "limits": {"unknowns_in_claimed_satisfied_scope": 0, "violations_in_claimed_satisfied_scope": 0, "unreviewed_rules_in_claimed_verified_scope": 0},
+      "note": "Requirement-level result, not a whole-site certificate. A true violation means this satisfaction gate remains failed for that requirement while the assessment itself succeeds. Do not optimize reality to pass."
+    },
+    {
+      "id": "G15", "name": "Photo mesh 500px quality", "owner": "V", "evaluator": "Q", "depends_on": ["G05", "G09"],
+      "requires": ["all applicable gates in referenced visual policy recomputed", "frozen source-independent test views and exposure disclosure", "actual mesh in product viewer", "all four Moffett rooms and full-floor seated route", "physical-phone runtime for phone claim", "independent visual review; user acceptance separate"],
+      "policy_reference": "docs/deepseek-moffett-photo-mesh-500-policy.json",
+      "limits": {"minimum_framebuffer_px": [500,500], "coverage_min_each_view": 0.95, "critical_ROI_coverage_min_each": 0.98, "largest_hole_fraction_max": 0.01, "median_alignment_error_px_max": 1.5, "p95_alignment_error_px_max": 3.0, "critical_feature_error_px_max": 2.0, "effective_resolution_passing_fraction_min": 0.95, "median_added_edge_width_px_max": 1.0, "p95_added_edge_width_px_max": 2.0, "weighted_pass_score": null},
+      "note": "Reference policy remains authoritative for further details; mismatch between policies fails preflight. Any authorized change requires versioning. A library runtime candidate cannot inherit a single-room proof."
+    },
+    {
+      "id": "G16", "name": "Actual new-shop field journey", "owner": "C", "evaluator": "Q", "depends_on": ["G11", "G06", "G07", "G08"],
+      "requires": ["new boba-shop capture with permission and real network/offline conditions recorded", "owner/user reviews actual target inventory and public route/counter/restroom context", "every selected item located or explicitly unobserved", "specific evidence-backed screening output and remaining questions", "actual user phone walkthrough and export", "supported redesign if opportunity exists, otherwise honest no-supported-proposal"],
+      "limits": {"actual_new_sites_min": 1, "actual_user_workflow_required": true, "synthetic_site_substitution_allowed": false},
+      "note": "Cannot be completed before visiting. Does not prove all shop requirements satisfied or automatic detector accuracy. Physical-control conclusions require G17."
+    },
+    {
+      "id": "G17", "name": "Independent metric accuracy for declared measurements", "owner": "G", "evaluator": "Q", "depends_on": ["G05"],
+      "requires": ["independent field controls with instrument/method/actor/time", "calibration controls separate from withheld check controls", "measurement-type-specific withheld controls for each claim", "raw discrepancies and conservative individual measurement bounds", "each threshold conclusion has adequate individual evidence with margin beyond its bound; aggregate metrics cannot override it", "all poor/near-threshold observations retained", "no general sensor or scene accuracy claim from this small empirical sample"],
+      "limits": {"control_dimensions_per_site_target_min": 10, "withheld_check_dimensions_min": 5, "absolute_error_m_p95_target_max": 0.02, "p95_navigation_anchor_error_m_target_max": 0.1},
+      "note": "Engineering screening targets, not ADA tolerances or certified confidence intervals. At least 10 controls with 5 held out, and adequate controls for each claimed method; insufficient category coverage stays pending for that category. Every actual legal dimension still needs a defensible bound and all relevant evidence; passing aggregate error cannot override a bad critical measurement."
+    }
+  ],
+  "certificates": {
+    "software_verified": {"all_of": ["G00","G01","G02","G03","G04","G05","G06","G07","G08","G09"]},
+    "saved_capture_verified": {"all_of": ["G00","G01","G02","G03","G04","G05","G06","G07","G08","G09","G10"]},
+    "phone_pilot_ready": {"all_of": ["G00","G01","G02","G03","G04","G05","G06","G07","G08","G09","G11"]},
+    "shop_field_validated": {"all_of": ["G00","G01","G02","G03","G04","G05","G06","G07","G08","G09","G11","G16"]},
+    "automatic_semantics_benchmark_passed": {"all_of": ["G00","G02","G03","G10","G12"], "scope": "only the frozen benchmark and its declared sample counts, not universal product accuracy"},
+    "scoped_assessment_evidence_ready": {"all_of": ["G00","G06","G08","G10","G13"]},
+    "scoped_requirements_satisfied": {"all_of": ["G00","G05","G06","G13","G14","G17"], "scope": "only individually named requirements with complete evidence; never whole site"},
+    "photo_mesh_500_verified": {"all_of": ["G00","G05","G09","G15"], "user_acceptance": "separate real user review required"},
+    "whole_site_ADA_compliance": {"automated_certificate_allowed": false, "note": "May store an authentic site-specific professional assessment with its scope and limitations; software cannot issue this blanket conclusion."}
+  },
+  "scoring": {
+    "aggregation": "logical conjunction of required gates and their transitive dependencies",
+    "weighted_average": null,
+    "progress_display": "counts of independently evidenced gates and named blockers, never percent ADA compliant",
+    "qualitative_review": "explicit reviewer identity and per-view/per-item notes; not a made-up numeric score",
+    "policy_thresholds": "proposed engineering acceptance targets, not observed results or legal tolerances"
+  },
+  "delegation": [
+    {"tasks": ["K","G","A legal logic"], "model_tier": "Sol-equivalent strongest available reasoning"},
+    {"tasks": ["B","C","S","R","U","V","Q integration"], "model_tier": "Terra-equivalent capable coding"},
+    {"tasks": ["E inventory/export", "Q scoped checks"], "model_tier": "Luna-equivalent scoped worker"},
+    {"tasks": ["bulk metrics", "hashes", "test runs"], "model_tier": "local deterministic scripts"},
+    {"tasks": ["physical phone", "site controls", "legal review"], "model_tier": "real user or qualified reviewer"}
+  ]
+}

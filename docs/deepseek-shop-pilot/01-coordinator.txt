@@ -1,0 +1,231 @@
+STANDARD PHYSICS PARALLEL BUILD CONTRACT — version 1, 2026-09-21
+
+OUTCOME AND SCOPE
+Build one connected journey first, with an assisted mode usable in a new shop:
+capture, upload complete evidence, find/review objects, select customer route and
+counter, screen selected requirements, propose safe furniture changes, recheck,
+export. Automatic detections and manually marked items must remain distinguishable.
+Implement all four target object workflows: outlet, television, service counter,
+restroom entrance. A missing class in Moffett must stay missing/unknown; use a
+clearly separate fixture to test its UI, not a fabricated Moffett object.
+
+The longer product includes restroom fixtures, broader reach/door/counter rules,
+general multi-room registration, trustworthy photo meshes and multi-shop accuracy.
+They remain assigned in the same lanes' Phase B work, not abandoned after the pilot.
+The midnight gate is an installable and honestly limited assisted pilot, not a
+promise that every long-term gate or legal requirement can be met overnight.
+
+SEPARATE DELIVERABLES, NOT ONE COMPLETION PERCENTAGE
+Use the certificate definitions in 04-hard-gates.json:
+- software_verified: code/integration/evidence consistency works.
+- saved_capture_verified: real Moffett evidence traverses the production flow.
+- phone_pilot_ready: installed physical-phone capture-to-review works tonight.
+- shop_field_validated: the actual new boba-shop journey works on site later.
+- automatic_semantics_benchmark_passed: independently labeled held-out targets meet
+  metrics on that benchmark; this does not establish general product accuracy.
+- scoped_assessment_evidence_ready: all requested checks have traceable outcomes;
+  unknowns and violations may exist and remain visible.
+- scoped_requirements_satisfied: a separate per-requirement conclusion, only where
+  applicability, reviewed logic, sufficient measurement and all conditions support it.
+- photo_mesh_500_verified: independent rendering acceptance, not a pilot substitute.
+No automated "whole shop ADA compliant" certificate is provided. Store a real
+qualified review as an attributed external document only if one is actually given.
+Neither a reviewer title nor a software gate is a government/legal certification.
+
+PREFLIGHT: FIRST 20 MINUTES (CHECKPOINT, NOT A TIMEOUT TO GIVE UP)
+1. Read the audit and current progress/run JSON files; record branch, HEAD,
+   working-tree patch/untracked inventory, current processes and timestamps.
+   Do not print .env, bearer tokens or image payloads. Load normal app settings
+   before testing credential presence; older claims of absent keys are stale.
+2. The baseline at writing is feat/moffett-outlets, HEAD 8f2962f. That commit
+   changes only the old outlet progress JSON. Its G9 is still open; REAL-01..04
+   contain rebuilt_graph='100' and narrative assertions instead of real output
+   hashes/paths. REAL-01's logged command prints an API key, not a detection run.
+   Treat these as INVALID RECEIPTS, not evidence a model actually ran. Preserve
+   the history; create new truthful receipts. Never repeat the secret-print command.
+3. Known baseline failures to reproduce before repair:
+   services/api/tests/test_combine_scans.py::test_overlay_aligns_capture_floors_without_mutating_payloads
+   packages/agents/tests/test_tiers.py::TestProtrudingObjects::test_a_deep_shelf_at_head_height_is_a_problem
+   Neither may be xfailed, skipped or edited to match broken behavior.
+   If concurrent work has already repaired one, verify and reuse that fix; don't
+   reimplement working behavior to satisfy this historical checklist.
+4. Check latest A-102 by its stored identity, not a guessed revision. Audit
+   snapshot scan f143082d-f529-494b-b80d-97729234e334 revision 4 had 284 nodes,
+   zero outlet/candidate/attached-photo nodes and an owner-labeled counter. There
+   are 3,524 original photo/pose pairs across four Moffett captures. Rediscover
+   current facts with read-only queries; don't assume an old snapshot is current.
+5. Read existing upload/worker, discovery, evidence, measurement, rule, proposal,
+   viewer and export paths. Each lane maps actual functions and existing tests
+   before proposing changes. Verify reuse first; no parallel replacement systems.
+6. Establish safe workspaces. Existing dirty graphics/auth/API edits are active
+   work, not trash. Record their paths and hashes; do not stash/reset/clean them.
+   Prefer separate worktrees at a named, known base commit for independent lanes.
+   Uncommitted source isn't included automatically: coordinate a reviewed patch
+   snapshot or leave the file under its current owner's exclusive lease. Never
+   silently run final tests in a worktree missing dependencies present in main.
+7. Freeze THREE critical executable producer/consumer examples in Wave 0:
+   (a) current /complete followed by late photo evidence: legacy geometry response,
+   new versioned evidence closure, exactly one reprocessing job; legacy clients
+   remain supported. Current repeat /complete no-op cannot satisfy this behavior.
+   (b) assessment response with legacy findings AND a complete scoped outcome
+   matrix. Existing findings only use passes/problem/question. K owns compatible
+   API/contract evolution and generated types, A produces, U/E consume.
+   (c) authenticated manual photo marking for TV/counter/restroom/outlet including
+   unlocalized evidence: B persistence/revision/tests -> K route/schema -> U UI.
+   Existing counter-label and outlet-review endpoints alone don't cover this.
+
+LAUNCH SCHEDULE / CRITICAL PATH
+Wave 0: coordinator contracts + Q independent baseline/receipt verifier + C capture
+inspection/build preparation + S source inventory/detection baseline. Only the
+coordinator writes shared schemas. Other lanes can prepare tests against existing
+types while contracts are frozen; do not invent incompatible placeholder payloads.
+Four-slot example: slot 1 K, slot 2 Q, slot 3 C, slot 4 S. Once Q checkpoints the
+baseline and initial evaluator, replace slot 2 with B. Once C checkpoints a tested
+build or is waiting on the phone, replace slot 3 with G. Once S hands production
+integration to B, replace slot 4 with U. Later replace completed lanes with A/R/E/V
+according to dependencies; reactivate Q at every integrated milestone. Waiting
+sessions remain checkpointed, not falsely counted as actively accomplishing tasks.
+K records session IDs and replacement conditions; never launch all named cards
+at once and hope the machine or agent service schedules them correctly.
+Wave 1: B backend lifecycle + C iOS + S semantics + G geometry, as slots permit.
+Q reclaims a slot for early contract and adversarial reviews. Feed U UI immediately
+after the minimal contract is frozen; swap completed workers rather than idle them.
+Wave 2: A assessment + U UI + R redesign + E export/deployment; B integrates actual
+discovery outputs as soon as S hands them off. G reviews measurement boundaries.
+Wave 3: Q runs full-path/physical-device acceptance while owners repair failures.
+V photo mesh runs independently whenever one heavy-job slot is available. Its
+failure never blocks evidence/map development; its success never satisfies that.
+Phase B: after the pilot handoff keep A/R/S/G/V working on their remaining gates
+and broader requirements. Reuse sessions and existing contracts; don't restart.
+
+Dependencies describe HANDOFFS, not a ban on preparing independent tests early.
+G00's full adversarial certification happens after relevant components exist;
+freeze its policy early, but don't wait for all mutation tests to pass before coding.
+Do not delay all integration until every lane is finished. Thin vertical slices:
+I0 contract roundtrip; I1 upload->evidence closure->worker->graph; I2 graph->crop
+review->saved correction; I3 role/route->assessment->proposal->recheck->export;
+I4 fresh phone scan through I1-I3. Q exercises each on the integration branch.
+
+SIMPLE SYSTEM GRAPH
+```mermaid
+flowchart LR
+  C[Phone photos and measured room] --> B[Verified upload and processing]
+  B --> S[Objects with evidence photos]
+  S --> U[User confirms objects and route]
+  U --> A[Checks with measurements and unknowns]
+  A --> R[Proposed furniture changes]
+  R --> A
+  A --> E[Map and downloadable evidence report]
+  B --> V[Photo mesh for viewing]
+  V --> U
+```
+
+PHONE REQUEST AND MIDNIGHT
+Use America/Los_Angeles, deadline 2026-09-22T00:00:00-07:00. At the first runnable
+device build (target deadline minus 120 minutes), ask: "Please plug your iPhone
+into this Mac, unlock it, and approve Trust if prompted. The Standard Physics
+build is ready for installation and a short test scan; I will preserve your
+existing scans." Do this earlier if a real build/signing task requires the phone.
+If signing/account access is missing, report the exact action now; don't wait.
+Do not repeatedly ask while the same request is pending. Never uninstall the app
+or clear its container to solve a build problem without preserving original data.
+At deadline minus 90 minutes prioritize integration, test repair and field handoff.
+At deadline minus 30 minutes freeze the candidate; only critical fixes enter with
+affected proofs rerun. Produce a handoff by midnight even if a gate is blocked.
+If started after these times, enter the corresponding stage immediately and record
+the missed window. Never backdate receipts to appear to meet the deadline.
+
+OWNERSHIP AND MERGES
+02-contracts-and-ownership.txt is authoritative for file leases. Agents don't
+touch another owner's source/tests, schemas, policy or checkpoint. Request an
+interface change with a concrete example and failing consumer test. Coordinator
+applies shared changes, regenerates contracts and announces the version. One
+integrator serializes merges/cherry-picks; no agent pushes or rewrites history.
+Do not copy an entire stale file over another agent's changes. Resolve conflicts
+by reading both semantics and rerunning both owners' affected proofs.
+Every lane produces a small handoff: exact commit/diff; files; contract version;
+tests/commands; real versus synthetic evidence; outstanding issues; next consumer.
+
+REPAIR LOOP — REQUIRED AT EVERY LEVEL
+For each failing gate:
+  1. Save actual failure, frozen input/revision, expected invariant, owner and metric.
+  2. Write one falsifiable hypothesis BEFORE editing or running an expensive job.
+  3. Make the smallest responsible-layer change; preserve required behavior.
+  4. Run targeted regression proof, then changed contract consumers/integration.
+  5. Q recomputes the gate from raw artifacts. A source change invalidates dependent
+     results, not unrelated evidence. Bind dirty-source hashes as well as commits.
+  6. Atomically checkpoint status, artifact hashes, elapsed time and next action.
+Repeat while actionable. Three failed repairs for one hypothesis trigger a
+different hypothesis/reviewer, not a fourth cosmetic edit. Two hypotheses without
+measurable progress trigger coordinator architecture review/reassignment. This is
+NOT permission to declare done: pursue other actionable lanes and collect missing
+evidence. Stop that experiment as no_progress if its input is inadequate; name
+the exact recapture/control measurement needed. Resume when new evidence arrives.
+Transient network errors: at most three tries with jittered backoff (about 2/5/15s);
+authentication/schema/permission errors: no blind retry, surface the exact error.
+No automatic relaxed threshold, test deletion, benchmark shrinking or favorable
+midpoint substitution. Any justified policy correction needs independent review,
+new version and BOTH old/new results; cannot retrospectively pass an old claim.
+
+WHAT COUNTS AS PROGRESS
+An integrated invariant now passes with reproducible evidence; a previously
+unknown cause is localized; a necessary physical input is collected; a measured
+failing metric improves on the fixed evaluation set. More code, more tests,
+longer reports and edited status flags alone are not progress. Whole assessment
+outcomes are NOT optimized toward fewer reported violations or fewer unknowns.
+
+CHECKPOINTS AND RESUME
+Create runs/shop-pilot/<actual-run-id>/ (never overwrite past runs). Coordinator
+alone writes progress.json every completed subtask and at least every 10 minutes.
+Each lane writes its own lane-<id>.json and immutable receipt files. Suggested
+fields: schema_version, run_id, deadline, head, dirty_source_digest,
+contract_hash, policy_hash, lanes[{owner,session,worktree,files,state,next_action}],
+gates[{id,status,receipt_paths,blocker,next_action}], certificates, asked_inputs,
+artifact_index, latest_checkpoint_time. States: pending/running/passed/failed/
+externally_blocked/no_progress; no_progress is never passed. Completion requires
+the certificate conjunction, not a worker's assertion. Atomic temporary-write
+and rename; coordinator reads lane records, never multiple writers to one JSON.
+Save exact resume instructions at every suspension. Do not invent a daemon.
+
+RESOURCES AND DATA
+Heavy job concurrency 1. Preserve originals, candidate revisions and failed-run
+evidence. Avoid production DB mutation for testing: backup with SQLite backup API
+or documented consistent method, test on an isolated copy with dedicated accounts.
+Never run multiple queue workers on the same DB under the current single-worker
+assumption. Log provider/model/request ID and usage/cost when available, no tokens
+or secrets. Start paid detection with a tiny diagnostic using already configured
+authorized services; unknown quota/billing stops bulk requests, not other work.
+Cache successful outputs by content/config/version; never cache failures as empty.
+Snapshot source file size/hash; use masks in derived artifacts, preserve originals.
+
+CURRENT TEST ENTRY POINTS (VERIFY INSTALLED ENVIRONMENT, DO NOT GUESS SUCCESS)
+Use the project's Python environment/import setup from CI. Commands include:
+  .venv/bin/python -m pytest services/api/tests
+  .venv/bin/python -m pytest packages/agents/tests
+  .venv/bin/python -m pytest packages/pipeline/tests packages/contracts/tests
+  npm --prefix apps/web run typecheck
+  npm --prefix apps/web test
+  npm --prefix apps/web run build
+Inspect native schemes/destinations before xcodebuild; run appropriate unit tests,
+then install the actual build on the phone. Simulator is not LiDAR acceptance.
+Report command exit codes and logs. If env/import setup differs, fix the command
+using the repository configuration; don't skip suites as "environment issue."
+Run targeted tests first, full affected suites before merging, final integrated
+typecheck/tests/build before readiness. No repeated full suites without new cause.
+
+FINAL HANDOFF
+Give exact local URL reachable on the PHONE (localhost on phone is not the Mac),
+startup command, credentials setup without secret disclosure, build identity,
+scan/revision/evidence IDs and a 5-minute user script. Include gate table, concrete
+blockers, recapture/measurement shopping list, preview screenshots, report ZIP,
+and a rollback to the last good candidate. Distinguish actual phone, mobile browser
+and desktop proof. Explain supported/non-supported checks in user language.
+No feature commit with failed relevant tests. Commit verified features separately,
+default git author, never push. Unfinished work remains named and checkpointed.
+
+TASK -> MODEL-TIER DELEGATION
+Contract, orchestration, geometry ambiguity, legal evidence semantics -> strongest reasoning coordinator (Sol responsibility)
+Settled multi-file capture/API/UI/assessment/redesign implementation -> capable coding workers (Terra responsibility)
+Scoped inventories, exports, fixtures and deterministic verification -> scoped workers (Luna responsibility)
+Image metrics, hashes, test execution -> local scripts
+Physical actions, field facts and professional judgments -> user/qualified reviewer

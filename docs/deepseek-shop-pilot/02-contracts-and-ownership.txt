@@ -1,0 +1,225 @@
+SHARED CONTRACTS AND FILE OWNERSHIP
+This specifies invariants, not a requirement to introduce every named field as a
+new table or public API. Map existing types and extend the responsible owner.
+Contract freeze means executable producer/consumer examples and tests, not an
+architecture document. Coordinator records exact schema/version/path mappings.
+
+EXCLUSIVE OWNERS
+K coordinator/integrator:
+  packages/contracts/standardphysics_contracts/* and contracts tests;
+  services/api/standardphysics_api/app.py and services/api/openapi.json;
+  generated apps/web/src/types/contracts.ts (regenerate, never hand-edit);
+  shared dependency manifests/lockfiles, policy, integration branch, global progress.
+  API route code delegated as a patch/proposal to K, never concurrently edited.
+C phone/capture:
+  apps/ios/StandardPhysics/**, StandardPhysicsTests/**, iOS project/build files.
+B backend lifecycle/evidence:
+  services/api/standardphysics_api/{repository,db,store,worker,stages,labels}.py;
+  upload/readiness/job/review API tests; owned new evidence helpers in same package.
+  Routes/signatures and schema changes go through K. Discovery owns algorithm;
+  B owns when it runs, persistence, authorization and invalidation.
+S semantics:
+  packages/pipeline/standardphysics_pipeline/discovery/** and its focused tests;
+  detection, cache, surface attachment, reconciliation, semantic corrections.
+  G reviews coordinates but requests S edits to surface_attach/reconcile.
+G geometry/measurement:
+  services/api/standardphysics_api/combine.py and test_combine*.py;
+  packages/pipeline/standardphysics_pipeline/{measure.py,primitives/measurements.py};
+  camera/coordinate helper changes only via an explicit lease agreed with V;
+  measurement/registration/uncertainty helpers and focused tests.
+A assessment/rules:
+  packages/agents/standardphysics_agents/{checks,rules}/**, assess.py;
+  rule tests including test_tiers.py and source/applicability evidence.
+  A owns test_tiers.py even when R needs an additional case: request it.
+R redesign/reach:
+  packages/agents/standardphysics_agents/fix/**, evaluation/gate.py,
+  loop.py if present, redesign.py, adaptive_redesign.py, mesh_collision.py;
+  services/api/standardphysics_api/{proposals,scenario,route,layout}.py;
+  corresponding fix/proposal/reach/collision tests not owned by A or G.
+U web/assisted review:
+  apps/web/src/** except generated types; web component/runtime tests;
+  apps/web/AGENTS.md requires reading installed Next.js docs before changes.
+  Don't overwrite current dirty viewer/auth work: negotiate lease with K first.
+E export/runtime packaging:
+  services/api/standardphysics_api/{report,architecture_export}.py;
+  report/export tests, Dockerfile/local startup packaging with K's lease.
+V graphics:
+  packages/pipeline/standardphysics_pipeline/textures/**, blender_scripts/**,
+  calibrated mesh/bake/evaluation scripts and graphics tests; API textures.py only
+  after K reconciles current dirty ownership. All web patches go through U.
+Q independent QA:
+  new scripts/tests for shop-pilot gate evaluation, new acceptance assets/results;
+  G12 semantic benchmark evaluator lives in this new acceptance area, NOT in
+  packages/agents/standardphysics_agents/evaluation/gate.py (R's redesign gate).
+  no product-source edits during evaluation, no unreviewed policy changes.
+  Use existing verifier infrastructure where sound; don't build a second app.
+
+Overlapping broad directories above are explicitly narrowed by exclusions. K
+creates a concrete lease map of exact touched paths BEFORE editing. New tests
+belong to their component owner, independent acceptance tests to Q. Any file not
+listed is initially unowned and requires K assignment, not a race to edit it.
+Worktrees do not remove API conflicts; they only isolate filesystem changes.
+
+CONTRACT 1 — IDENTITY AND UNITS
+Every derived record binds owner, scan_id, source capture IDs, immutable revision,
+evidence_manifest_hash, calibration/transform version and derivation version.
+Assessments additionally bind scenario, measurement set, rulepack/applicability,
+review state. Exports use the same closure. IDs persist under identical replays.
+Meters internally for world lengths, radians/degrees explicitly tagged for angles,
+sensor pixels versus displayed image pixels explicitly distinguished. Define one
+scene frame and document axis/up, matrix storage, handedness and transform direction
+from ACTUAL existing code. Never relabel a frame without transforming its data.
+Coordinate adapters have roundtrip fixtures, nonidentity rotation/translation,
+off-center intrinsics, orientation/crop cases, and actual Blender corner proof.
+No extra A_yup in the already-correct Blender import path. See camera-unblock docs.
+Changing transforms invalidates location, measurements, collision and baked views;
+photo class evidence may be reused only if its independent image inputs unchanged.
+
+CONTRACT 2 — CAPTURE RECEIPT / LIFECYCLE
+Separate geometry readiness, evidence completeness, semantic processing and visual
+asset state. Implement with existing job/state patterns, not four microservices.
+Manifest identifies files/content hashes, frames/poses/intrinsics pairing, format,
+orientation, metric units, capture quality, missing/unavailable artifacts and why.
+Client announcement alone is not receipt. Server validates bytes, sizes/hashes,
+parseability, compatible schemas and consistent associations before evidence-ready.
+Store source capture identity and timestamps; scope manifests to authenticated owner.
+Completion seals a versioned evidence bundle. Identical completion is idempotent.
+Late/changed evidence creates a new bundle and schedules dependent work once.
+Migration boundary: current /complete only checks current REQUIRED_ARTIFACT_KINDS,
+marks measuring, queues PROCESS, and later completion is a no-op. K must freeze a
+compatible endpoint/request evolution for evidence closure; B owns its atomic
+persisted state and job transition. C implements that exact producer contract.
+Prove old-client geometry upload, new-client complete evidence and late-evidence
+upgrade on both fresh DB and a migrated copy of existing DB. Additive migration
+or reuse of existing storage is preferred; no destructive schema reset.
+Legacy geometry-only capture may be browsable but discovery is blocked with a
+specific evidence reason. Video is useful where recorded; do not require video
+when adequate calibrated stills exist. Missing a declared required item never
+becomes success through a null/empty list or optional-file shortcut.
+Allow resuming geometry and evidence upload across app/server restart. Distinguish
+queued/running/complete/failed/incomplete; expose retryability and needed action.
+Use existing single worker per DB; job idempotency keys include inputs and method.
+Crash recovery cannot publish a partial graph as semantic-complete. Token expiry
+doesn't discard captured data. Untrusted ZIP paths/sizes and malformed data fail
+safely; use existing limits, don't remove checks to ingest the demo.
+
+CONTRACT 3 — OBJECTS AND OBSERVATIONS
+Extend existing SceneNode.attachment and ObservationCrop instead of parallel graph.
+An observation binds source frame/hash, original pixel box/crop transform, actual
+authenticated crop reference, detector/model/prompt version, raw confidence (not
+probability unless calibrated), review state and uncertainty reasons. Actual crops
+must decode and match source pixels; file paths and secret signed URLs don't leak.
+Represent observed category, original RoomPlan category and current confirmed role
+separately. Don't turn a sofa into a table just because it is long. Photo correction
+preserves measured geometry, original label and rationale/evidence of the correction.
+Outlet: surface-attached region; socket positions/count unknown unless supported;
+outlet presence, electrical function, availability, route and reach separate.
+TV: explicit television candidate/confirmation distinct from monitor or whiteboard.
+Counter: service role plus customer side, accessible section/extent, height,
+parallel/forward approach context and confirmation provenance. POS terminal isn't
+automatically the service-counter surface; location of register doesn't set rule.
+Restroom: entrance/room identity, public/customer availability and relation to route.
+Fixtures are separate observations; a sign or door label proves no fixture checks.
+Manual photo marking is a first-class fallback with actor/time; never reported as
+automatic detection. An image-only item with no reliable surface remains unlocalized.
+Implementation handoff: B specifies/persists review and manual-mark behavior and
+API behavior tests, K extends the appropriate route/schema in app.py and generated
+contracts, U consumes it. Existing counter relabel and outlet review alone cannot
+save all target classes. Generalize at the existing owner layer, not a UI-only list.
+Adjacent outlets remain distinct. Review rejection survives rediscovery; evidence
+changes can trigger a review-needed state without silently overriding the person.
+Thin wall objects never become full-sized solid collision obstacles.
+
+CONTRACT 4 — MEASUREMENT AND REACH
+Each used dimension needs value/unit, measurement method, source revision/points,
+support evidence and uncertainty status. Unknown uncertainty is null/unknown, not
+zero. A numeric epsilon or depth-buffer tolerance is not measured sensor accuracy.
+Store field/control measurement separately with instrument/method/operator/time;
+never silently replace scan geometry with a favorable tape value. Assessment can
+explicitly prefer a better measurement with provenance. Display sensible precision.
+Conservative uncertainty includes calibration, registration, geometry, image anchor
+and field measurement effects as applicable; no unjustified Gaussian independence.
+Intervals crossing the selected limit yield needs_verification. For a minimum,
+only an adequately supported lower bound above the requirement supports satisfied;
+an upper bound below supports violation. Reverse for maxima. Equality follows
+the actual inclusive/exclusive rule, with numerical epsilon separately documented.
+Unknown bounds cannot produce compliance pass, even far from the threshold.
+Wheelchair footprint/eye height/reach preferences are adjustable and distinguish
+personal mobility assessment from code requirements. Personal settings never change
+the legal threshold. Approach tests need connected path, stopping footprint,
+obstacles, support visibility and a defensible reach model; missing space is unknown.
+UI words initially: approach appears clear / blocked / needs verification. No claim
+that an outlet works or is free based on a photo.
+
+CONTRACT 5 — RULE SCOPE / EVERY ITEM HAS AN OUTCOME
+K freezes an immutable scope-manifest artifact, with hash, before assessment:
+surveyed areas, unobserved areas, route endpoints, requested object classes,
+known item IDs, requested rules, applicability questions and denominator rows.
+An early capture scope can contain area/class placeholders. When discovery or
+review identifies items, expand it into a new scope version; retain unresolved
+class/area questions. Don't delete requested obligations because detection failed.
+Any scope change invalidates dependent assessments/certificates. Record old/new
+rows and reason; removing a row requires supported applicability/scope evidence,
+not implementation-owner discretion. QA compares manifest rows to UI/API/report.
+Maintain the finite requested scope, including unresolved applicability; unsupported
+checks aren't omitted. Site context includes jurisdiction, code edition, existing
+versus altered/new context where relevant, public/customer functions and exceptions.
+Missing context stays unknown. Source URLs/sections and reviewed conditions are
+versioned; federal ADA does not automatically exhaust local accessibility law.
+One outcome for each in-scope item x applicable/requested requirement:
+  satisfied | violation | needs_verification | not_applicable | unobserved.
+Current Assessment findings use passes/problem/question. K freezes a compatible
+response containing the complete matrix (or an equally explicit existing-type
+extension), while preserving necessary legacy findings; A computes its rows and
+U/E consume generated types. Do not silently change enums and break existing
+consumers, or put the only unknown-state data in an untyped UI side channel.
+not_applicable requires supported applicability facts and attribution, not an LLM's
+guess. Unobserved is a coverage state with next capture action. Unsupported or
+Unevaluated maps to a visible needs_verification, not a disappeared row.
+Separate calculation result from legal-review status. Automated preview ledger
+may demonstrate a calculation with a banner but cannot become verified legal evidence.
+Real reviewer attribution, source edition, conditions/exceptions and measurement
+adequacy are required for a verified scoped conclusion. Never forge a second check.
+"Assessment completed" describes processing; it does not mean all requirements pass.
+
+CONTRACT 6 — REDESIGN
+Measured original is immutable. Candidate revisions identify parent, changed nodes,
+move/rotation, before/after measurement set and proposal validity. Fixed fixtures
+cannot enter the movable-furniture solver. Electrical/plumbing/structural changes
+are labeled work recommendations requiring feasibility/professional review, never
+automatically approved construction instructions or a fabricated modified scan.
+Proposal gate fixes the evaluated rule/item/scope set before optimization. No new
+violations, lost satisfied checks, lost coverage or unknown-to-satisfied conversion
+without new evidence. Improvement must exceed uncertainty/numerical noise. Reject
+collisions, blocked doors/routes/egress, movement of fixed nodes and cyclic solutions.
+An existing unknown may remain unknown if no new risk is concealed, clearly shown
+as an unverified remainder; don't describe the whole candidate as compliant.
+
+CONTRACT 7 — UI, EXPORT AND STALENESS
+Web/phone and report display the same pinned graph/scenario/assessment/evidence
+versions, object counts, review states, measurements and unknowns. A stale report
+cannot appear current after a role/route/geometry/source change. Don't mutate old
+exports; generate a new version. Navigation markers link to the photo and return
+to the selected object. No empty-state text meaning "none exist" from no detections.
+Architecture export has scale/units, measured versus inferred/generated appearance,
+object/measurement/evidence IDs, rule scope, before/after and remaining questions.
+Explain why a recommendation is made; don't invent why an existing object was placed.
+Missing permission/crop/source must yield actionable error and partial-report label.
+Exports never include secret keys, another owner's evidence or raw filesystem paths.
+
+INTEGRATION DAG
+K contract freeze -> C capture, B lifecycle, S semantics, G measurement, U UI.
+C evidence producer + S result producer -> B production integration.
+G measurements + B confirmed roles -> A assessment.
+A outcomes + G geometry -> R redesign/reach.
+B/A/R -> U full journey and E export.
+V display asset -> U optional verified visual mode.
+C/B/S/G/A/R/U/E -> Q integrated device acceptance.
+Q tests can be written/run on partial milestones throughout; Q is never the sole
+party authoring both an implementation and its acceptance expectations.
+
+TASK -> MODEL-TIER DELEGATION
+Schema evolution, ownership resolution and critical coordinate contracts -> Sol-level coordinator
+Backend/capture/semantic/UI producers and consumers -> Terra-level workers
+Contract roundtrip fixtures, export parity and artifact verification -> Luna-level workers
+Field/legal facts and evidence review -> human owner/qualified reviewer

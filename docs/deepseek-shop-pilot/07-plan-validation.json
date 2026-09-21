@@ -1,0 +1,50 @@
+{
+  "kind": "plan_document_validation_only",
+  "date": "2026-09-21",
+  "product_implementation_or_acceptance_executed": false,
+  "checks": {
+    "policy_json_valid": true,
+    "gate_count": 18,
+    "gate_dependencies_acyclic": true,
+    "certificate_gate_references_valid": true,
+    "documented_mutation_count": 18,
+    "referenced_files_exist": true,
+    "duplicated_visual_thresholds_match": 9,
+    "worker_cards": [
+      "C",
+      "B",
+      "S",
+      "G",
+      "A",
+      "R",
+      "U",
+      "E",
+      "V",
+      "Q"
+    ],
+    "gate_owners_assigned": true,
+    "text_gate_references_valid": true,
+    "deadline_matches_user_midnight": true,
+    "delegation_tables_present": true
+  },
+  "independent_review": {
+    "plan_gate_review": "reviewed consistency/anti-gaming; five material findings incorporated",
+    "plan_parallel_contracts": "reviewed integration/ownership; five material findings incorporated",
+    "model_tier": "Terra",
+    "cost": "unavailable"
+  },
+  "document_sha256": {
+    "00-PASTE-INTO-DEEPSEEK.txt": "4532a2ed664771977444dafdf7984c301012a166cd1999507c3eb380a2651cdc",
+    "01-coordinator.txt": "4ddcacd6b07db3e099d3560f747ffc6df6d834677f15a38657d2a1589cdf4ba4",
+    "02-contracts-and-ownership.txt": "978f84e6df5b33e9e1aa2fa9b6b756f8d37c6ea02e341c15e4e6a7dd0d732d71",
+    "03-agent-prompts.txt": "64fddd5721a4033b2ba83903ca9514cde4e059668cec51b8aaadeb6ce056b631",
+    "04-hard-gates.json": "8db915a80d13c75600e47f47b2f77c8210c44d34793d5d4c8fb613f755129b81",
+    "05-adversarial-tests.txt": "e6c9296dd360f8a3081f036771f874bc2e802ba24010e9c3ba1cb15a57f69f37",
+    "06-phone-and-field-handoff.txt": "4b1d163b737d1fdffe6430c9a4fb5baa8b759fc00cf98c599ad8fb37a1360c73"
+  },
+  "limitations": [
+    "This checks the prompt pack, not product behavior.",
+    "The 18 acceptance gates and 18 adversarial tests remain to be implemented/executed.",
+    "Physical phone, new-shop field facts, control measurements and professional review cannot be synthesized."
+  ]
+}

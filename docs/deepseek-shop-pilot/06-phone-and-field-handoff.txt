@@ -1,0 +1,128 @@
+MIDNIGHT PHONE HANDOFF AND TOMORROW'S BOBA-SHOP TEST
+Deadline: September 22, 2026 at 12:00 a.m. Pacific. This is midnight tonight,
+not noon. Phone available on request: tell the user when to connect/unlock it.
+Do not infer it is already attached or erase its existing Standard Physics data.
+
+TONIGHT: DEVICE AND NETWORK CHECK
+1. Before requesting device action, finish what can run on Mac: compile, tests,
+   backend startup, evidence contract, reachable service configuration. Check
+   signing prerequisites early. If signing requires a user account action, ask
+   concretely and continue independent work. Do not collect passwords in logs.
+2. Say: "Please plug your iPhone into this Mac, unlock it and approve Trust if
+   prompted. I am ready to install Standard Physics and test a short scan while
+   preserving your existing captures." User manually performs phone-only actions.
+3. Install the actual app build; record identity/OS/build hash. Confirm old captures
+   remain. Open the real app, sign in using normal UI and use the Mac's reachable
+   address. Don't type localhost on phone expecting the Mac server.
+4. Capture a small real area with visible ordinary objects. No need to manufacture
+   a restroom/cashier in the test room. Record tracking/coverage. Stop and verify
+   saved RoomPlan, LiDAR, frames, poses and manifest, then upload all required bytes.
+5. Demonstrate upload pause/resume or one safe network interruption, then complete
+   processing. Phone review must show actual photo evidence and unknowns. Mark or
+   confirm a real target if present; manual labeling must be clearly manual.
+6. Inspect selected measured route/role and assessment, run separate known fixture
+   for supported redesign if no actual opportunity exists. Download real report.
+   Evidence-backed claims use the real scan only. Fixture screenshot labeled fixture.
+7. Confirm operation on the network intended for the shop (for example user's
+   portable Mac and phone hotspot) if available. Record conditions and any mobile
+   local-network permission/firewall issues. No public port exposure as a shortcut.
+   If unavailable, state "capture works offline; processing/review requires the
+   tested server connection" and verify local capture/export/recovery. This can
+   support a capture pilot, but not a live on-site analysis readiness claim.
+8. Give one-page operational handoff: open app -> capture -> check evidence ->
+   upload -> review objects -> choose route/counter -> view findings -> export.
+   Include startup/restart command and last-good rollback, not only a dev server log.
+
+WHAT TO TAKE TOMORROW
+Charged LiDAR-capable phone with tested build; charging cable/battery as available;
+tested backend/network plan or explicit offline capture plan; tape/laser measure
+if obtaining metric-accuracy evidence; permission to capture the customer space.
+Do not require the wheelchair user to crouch, reach behind fixtures or plug into
+unverified electrical equipment. An assistant can capture difficult views safely.
+No powered-outlet test is necessary for photographing/location; function stays
+unknown unless a separate appropriate real observation is recorded.
+
+FIRST FIVE MINUTES IN SHOP
+1. Record location/jurisdiction and public-customer scope, actual date/device and
+   whether existing/new/altered context is known. Unknown building facts stay
+   unknown; the agent should not guess from the shop's appearance.
+2. Confirm customer entrance, route to ordering/pickup/seating and any public
+   restroom entrance with the owner/user. Mark staff-only/unentered areas and
+   why; don't delete them from broader compliance questions without applicability.
+3. Scan a coherent continuous route slowly enough for tracking. Get walls/floor
+   connections, corners, obstacles, door openings/swings and counter approach.
+4. Photograph outlets close enough to see the plate/ports, then a wider contextual
+   frame and a second angle where possible. Include floor and supporting surface
+   for height/location. Capture TV, counter accessible section/customer side and
+   restroom entrance/sign plus context. Record uncertainty when only a sign is seen.
+5. Capture restroom interior/fixtures only with permission and privacy respected.
+   If not captured, mark unobserved and list the checks that remain unavailable.
+   A restroom door photograph cannot support toilet/grab-bar/lavatory assessment.
+
+CONTROL MEASUREMENTS — OPTIONAL FOR CAPTURE, REQUIRED FOR STRONG DIMENSION CLAIMS
+Moffett currently has no independent control measurements supplied by the user.
+LiDAR-derived measures are useful estimates; do not invent tape comparisons.
+Ask for controls only when needed and explain exactly which conclusion they unlock.
+For each measurement record endpoints in photo, value/units, instrument/method,
+instrument resolution/known limits, actor/time and relationship to scanned surface.
+Target at least 10 distinct controls per site: multiple clear door/route widths,
+counter section heights/extents and outlet heights as available. Reserve at least
+five not used in calibration. Include every claimed measurement type and near-limit
+cases. If site lacks a category, mark that claim unsupported or not applicable
+with evidence; don't substitute ten readings of one easy wall as full validation.
+Field-measure the actual scenario: clear opening, usable counter section, real
+obstacle clearance. A box's overall dimensions may not be the legal measurement.
+Repeat critical measurements to expose endpoint/instrument error. Do not round
+away a near-threshold discrepancy. Need more precision? ask for targeted evidence.
+Door force, hardware operation, floor properties, electrical function, signage
+and other non-geometric conditions require their own suitable observations/tests
+and source-defined procedures; they do not appear magically from a LiDAR mesh.
+
+ASSISTED REVIEW ON PHONE
+User reviews each displayed target and its crop: correct category? correct marker?
+counter/customer side? public restroom role? Any visible missed object? Add manual
+photo mark if needed. Preserve automatic/manual distinction and unlocalized state.
+Pick a real customer route. Show measured estimates, uncertainty, applicability,
+selected source/rule and explicit satisfied/violation/needs-verification/unobserved
+outcomes. Make all missing evidence actionable rather than an unexplained warning.
+If a supported furniture move is proposed, show before/after distance/rotation,
+measurements and unchanged checks. Do not physically rearrange shop furniture
+without owner agreement. Fixed electrical/plumbing/structural work remains a
+review recommendation, not a verified change or an instruction to perform work.
+
+MOFFETT DELIVERABLE REQUIRED IN PARALLEL
+For latest candidate of A-102, produce a revision-pinned architecture/evidence ZIP
+and readable assessment with:
+- Original four-capture identities, transforms and validation limitations.
+- Actual detected/reviewed/manual inventory by class; crops and localization support.
+- Confirmed customer route/counter assumptions or explicit owner questions.
+- Every requested accessibility requirement, legal/source/review status and outcome.
+- Exact dimension provenance, uncertainty, missing controls/operation/fixture facts.
+- Any justified redesign and recheck; no invented reason for existing placement.
+- Recapture/control list organized by physical place/object, not generic "scan more."
+Do not replace uncertainty with a blanket compliant/noncompliant badge. Findings
+can establish a particular problem without proving whole-site status. Explain
+what evidence would permit each currently unknown requirement to be resolved.
+
+MIDNIGHT STATUS FORMAT (K MUST FILL WITH ACTUAL EVIDENCE)
+Ready candidate: <URL / build / scan / revision / evidence hash>.
+Software: <passed/failed/pending + gate IDs>.
+Physical iPhone: <device tested or exact blocker>.
+Moffett production replay: <actual output and automatic vs manual counts>.
+Moffett assessment: <explicit outcomes and missing control/reviewer facts>.
+Live shop network: <tested condition or capture-only limitation>.
+Actual new-shop field journey: pending until the visit, unless already performed.
+Automatic multi-shop accuracy: <G12 status and counts>.
+500px photo-mesh quality: <G15 status/worst failures; separate from map usability>.
+Download: <actual report path/link>; logs/checkpoint: <actual paths>.
+Next user action: <one concrete request if required>.
+Next agent action: <owner, failing proof, repair or evidence needed>.
+Don't leave placeholders in the delivered report. Never mark all gates green for
+a convenient demo. If phone_pilot_ready fails, state exactly what is still usable.
+
+TASK -> MODEL-TIER DELEGATION
+Install/network/capture-to-review integration -> C/B/U/E capable coding workers
+Field checklist and evidence packaging -> E scoped worker
+Independent device/run verification -> Q integration reviewer
+Capture actions, owner facts and control dimensions -> user/on-site helper
+Legal applicability/conclusions beyond supported screening -> qualified reviewer
