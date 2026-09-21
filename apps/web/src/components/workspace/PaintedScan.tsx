@@ -2,7 +2,10 @@
 
 import { useGLTF } from "@react-three/drei";
 import { useEffect, useMemo } from "react";
-import { Mesh, MeshBasicMaterial, type Color, type Material, type Texture } from "three";
+import { BackSide, Mesh, MeshBasicMaterial, type Color, type Material, type Texture } from "three";
+
+/** The colour of a surface seen from the side the phone never stood on. */
+const UNMEASURED = "#8d8880";
 
 type PhotographSourceMaterial = Material & {
   alphaMap?: Texture | null;
@@ -45,6 +48,41 @@ function disposePaintedMaterials(material: Material | Material[]) {
 }
 
 /**
+ * A second pass that closes the scan from behind.
+ *
+ * A phone walked past a desk measures its top and never the underside, so the
+ * scan holds a real surface with nothing below it. Drawn from the front only,
+ * that surface vanishes when the camera drops beneath it, and a room read as
+ * scattered fragments hanging in the air: a table appeared to float because
+ * its legs were not there to hold it up, and the top itself disappeared the
+ * moment you looked up at it.
+ *
+ * Backfaces are drawn in one flat unlit colour instead. The scan then reads as
+ * a shell with holes in it, and every hole is the shape of somewhere the phone
+ * was never pointed. Nothing is filled in and no surface is moved; the blank
+ * grey is the absence of a measurement, which is what it looks like.
+ */
+function unmeasuredSide(source: Material): MeshBasicMaterial {
+  return new MeshBasicMaterial({
+    color: UNMEASURED,
+    depthTest: source.depthTest,
+    depthWrite: true,
+    side: BackSide,
+  });
+}
+
+function backfaceShell(mesh: Mesh): Mesh {
+  const shell = new Mesh(mesh.geometry, unmeasuredSide(asOne(mesh.material)));
+  shell.raycast = () => null;
+  shell.renderOrder = -1;
+  return shell;
+}
+
+function asOne(material: Material | Material[]): Material {
+  return Array.isArray(material) ? material[0] : material;
+}
+
+/**
  * The captured surface with the colour the photos gave it.
  *
  * Colour rides on the vertices, already the brightness the room was, so the
@@ -56,11 +94,14 @@ export function PaintedScan({ url }: { url: string }) {
   const { scene } = useGLTF(url);
   const painted = useMemo(() => {
     const copy = scene.clone(true);
+    const shells: { parent: Mesh; shell: Mesh }[] = [];
     copy.traverse((object) => {
       if (!(object instanceof Mesh)) return;
       object.material = paintedMaterials(object.material, hasVertexColors(object));
       object.raycast = () => null;
+      shells.push({ parent: object, shell: backfaceShell(object) });
     });
+    for (const { parent, shell } of shells) parent.add(shell);
     return copy;
   }, [scene]);
   useEffect(() => () => {

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import pathlib
 import tempfile
 import time
@@ -30,8 +31,31 @@ from .project import (
     view_samples,
 )
 
-MAX_FRAMES = 48
-MAX_FRAME_CANDIDATES = 96
+
+def _budget(name: str, fallback: int) -> int:
+    """A frame budget, overridable for a long walk that deserves more of its own photos."""
+    try:
+        return max(1, int(os.environ[name]))
+    except (KeyError, ValueError):
+        return fallback
+
+
+MAX_FRAMES = _budget("SP_TEXTURE_FRAMES", 192)
+"""How many photos are projected onto the room.
+
+A walk down one library floor stores over nine hundred photos, each with its
+own measured pose, and forty-eight of them left three quarters of the surfaces
+with no colour at all. The cost is one depth buffer per photo, so this trades
+bake time for how much of the room comes back painted rather than blank.
+"""
+
+MAX_FRAME_CANDIDATES = _budget("SP_TEXTURE_FRAME_CANDIDATES", 4 * MAX_FRAMES)
+"""How many photos are scored before the best are kept.
+
+Thinning nine hundred photos to ninety-six before ranking them threw away the
+views that would have reached the surfaces the chosen ones missed, because a
+choice spread evenly through time is not spread evenly through the room.
+"""
 ATLAS_SIZE = 2048
 MAX_ATLASES = 4
 CHUNK_SIZE = 100_000
