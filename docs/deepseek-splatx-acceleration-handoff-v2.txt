@@ -1,0 +1,149 @@
+Moffett repair handoff v2: correct the pipeline, then demonstrate one improvement
+
+The current candidate encodes world coordinates as colors. Fix that and input
+parity before any further training, backend research or parameter sweep.
+
+Work in /Users/yanzihao/Documents/standardphysics. Read:
+1. docs/deepseek-splatx-policy-audit-v2.txt
+2. docs/deepseek-lidar-experiment-policy-v2.json
+3. runs/moffett/acceleration-audit-v2/counterexamples.json
+Do not claim completion from existing passing tests or the prior “all phases”
+checkpoint. Reuse verified assets and explain exactly what each proves.
+
+Output contract
+Create a new run directory under runs/moffett/render-efficiency/r003, refusing
+existing output paths. Write checkpoint.json with per-stage status, evidence,
+policy/code/binary hashes, commands, exit codes and remaining budget. Preserve
+r001, both original documents, current scans and unrelated edits. Commit only
+owned verified changes; never push or promote a production scene automatically.
+Your final result must distinguish implementation completion, experiment rejection,
+selection for review and remaining product goals. “Retained,” “conditional,”
+“deferred,” test-count totals and filesystem existence are not passing evidence.
+
+Stage A: repair source correctness; no GPU experiments until these pass
+Ownership: existing render_efficiency/builder.py, build_surface_splats.py and
+focused tests. Avoid a new framework or parallel duplicate implementation.
+- Fix barycentric RGB interpolation to read vertex_colours, not vertices.
+- First add C01-C03 from the new policy and show they fail on the current code.
+  Uniform-red triangle must be red within1e-6. Changing all colors to green must
+  change output; translating/rotating XYZ must preserve its colors. Check known
+  unequal barycentric weights independently of the implementation.
+- Make photographic input IDs an explicit mandatory manifest allowlist for
+  benchmark builds. Reject extra/validation/test images before decoding them.
+  Preserve the full immutable source identities and hashes in provenance.
+- Apply the same1280px prepared RGBs, calibrated intrinsics and intended32 train
+  IDs as the baseline. Do not call _evenly_spread over the full capture.
+- Preserve source visibility and static mask support. Prune unseen samples; no
+  neutral fallback RGB may count as photographic evidence. Record source IDs,
+  rejection reasons and counts. Add all-unseen and partial-support tests.
+- Enforce allocation bounds before expanding sample owners; test tiny spacing
+  and huge triangles with a small sample cap. Refuse to overwrite prior exports.
+
+Stage B: enforce the policy through the real evaluator
+Ownership: extend existing metrics/scoring/manifest modules and evaluate_pilot
+entry point (or one clearly owned orchestrator using them). No duplicated math.
+- Read the supplied policy JSON. Do not just copy its thresholds into Python.
+- Validate exact expected image/ROI sets and real hashes, matching repeated-run
+  scopes, runtime backend settings and all required gates before selection score.
+- Run E01-E06: NaN/Inf, missing one view, extra/duplicate, missing ROI, false or
+  unknown gate, changed input bytes, stale metrics, missing repeat and invalid
+  resource units must fail or remain explicitly ineligible. Test real CLI exit
+  and JSON status, not only helper functions or manually assembled gate booleans.
+- Changing one policy threshold in a test fixture must alter a boundary verdict
+  without editing code. Baseline against itself must still score50.
+- Native RGB diagnostics can be generated with incomplete device evidence, but
+  must have score=null and unavailable coverage/F reasons. Do not reweight them.
+- Define validation critical-feature ROIs independently before the new candidate.
+  Test-only ROIs cannot select a configuration. If suitable validation detail
+  is absent, report the precise capture gap rather than fabricating an ROI.
+
+Stage C: repair backend input/mask parity
+Ownership: repair_split_parity.py, run_controlled_pilot.py and their tests.
+- Reuse the working COLMAP adapter and separate32-train/8-validation design.
+  Preserve exact matrices/units; verify RGB/mask hashes and actual loaded IDs,
+  not static MATCHED constants, only counts or one every-other-frame probe.
+- For an explicitly unmasked diagnostic, create a fresh RGB-only training input
+  with no discoverable masks or alpha. The existing Brush folder has32 masks;
+  omission of an option does not prove they are unused. Record actual behavior.
+- Do not claim the old11.898dB/0.329 result is fully matched until mask behavior
+  is established. Do not erase it; label it historical diagnostic evidence.
+- Keep the known differences (densification, LR, regularizers, output count).
+  A common-view comparison is not proof of equal compute or convergence.
+- If masked Moffett reconstruction is the chosen route, extend the EXISTING
+  SplatX native loss inputs and resident Metal step. Test excluded-GT invariance
+  of loss and gradients, included-GT sensitivity, empty masks and SSIM support
+  boundaries using M01-M03. Python evaluation-mask tests cannot substitute.
+  Do not build a new trainer. Preserve pinned upstream and record your patch
+  revision. If this stage is deferred, masked reconstruction remains incomplete.
+
+Stage D: validate calibration and render paths
+- Replace summed alpha as the calibration criterion with actual transmittance
+  composition. Two coincident half-opacity layers yield0.75. High coverage is
+  not brightness saturation. Validate constant-color behavior on real renders.
+- Calibrate the capped mesh sampler actually used, including random density,
+  surface orientation and distance. Do not reuse the old square-lattice freeze
+  as a passed coverage test. Save a new synthetic artifact and chosen parameters.
+- Reuse the installed native SplatX renderer for RGB checks. It already renders
+  Brush/candidate PLYs; no backend installation or replacement rasterizer needed.
+- Validate asymmetric known geometry, off-center intrinsics and native PLY
+  round-trip first. Meet R01-R03 before diagnosing private WASM internals.
+- Keep Spark for browser acceptance/alpha/F; its software-rendered failed harness
+  is not a GPU timing result. Record actual GPU vendor/backend, completed frame
+  samples, warmup and the same camera path in three sessions.
+- Native PNG exports are opaque. Never derive coverage from their alpha or RGB
+  brightness. Missing real alpha stays null and prevents selection.
+
+Stage E: run ONE corrected candidate before spending on a sweep
+- Recompute the corrected deterministic candidate under the same input budget.
+  Render all eight validation views, inspect them and compute expected metrics.
+  Use the fresh control from the repaired split/mask configuration.
+- If visual defects or hard gates fail, record a specific hypothesis and use the
+  repair loop below. Do not run three expensive repeats of a known broken build.
+- If the candidate is promising, run the required three alternating repeats,
+  timing preprocessing through compressed export and measuring comparable peak
+  footprint. Record OS-cache/child-process scope. Keep RSS separate from footprint.
+- A native depth/surface constraint is a valid extension if geometry drift is the
+  remaining demonstrated failure. It is not forbidden by “reuse SplatX.” But do
+  not start that larger task while simple color/data/calibration defects remain.
+- Only a candidate passing ALL gates and one unchanged selection lane may use
+  the sealed final test. Audit prior test exposure; reserve new unexposed groups
+  or report insufficient untouched data if required. Never tune on test failures.
+- Test a second area before full-room claims. Keep outlet reach/collision on the
+  measured mesh/scene graph, independent of optimized splat geometry. Actual
+  physical-phone acceptance is required for phone claims.
+
+Bounded repair loop (enforce policy budgets; do not use self-awarded scores)
+For each failed gate:
+  1. Save the reproducible failure, expected behavior, hypothesis and test ID.
+  2. Make one responsible-layer fix; preserve old artifacts.
+  3. Run targeted positive/negative tests and applicable type/lint checks.
+  4. If fixed, checkpoint evidence and advance. Otherwise record the failed
+     hypothesis and remaining time; at most3 repairs per hypothesis,2 hypotheses.
+  5. At the first limit or true missing-data blocker, stop that dependent work,
+     record exactly what is missing and finish the handoff. Never turn unknown
+     into pass or mark unfinished implementation complete.
+Max one GPU job. Reuse installed binaries. Preserve the original8-hour total,
+60-minute handoff reserve,8 candidate cap and20-minute/7000-step pilot limits;
+these are maxima, not reasons to run unnecessary jobs. Record time locally.
+A measured rejection can close an experiment, not the photorealistic-floor goal.
+
+Existing evidence/tools to reuse
+runs/moffett/splatx-evaluation/upstream/.build/release/splatx
+runs/moffett/splatx-evaluation/upstream/build/splatx.metallib
+runs/moffett/splatx-evaluation/pilot-colmap/{train,validation}
+runs/moffett/splatx-evaluation/pilot-colmap/provenance.json
+runs/moffett/splatx-evaluation/prepare_pilot.py (fixed paths; do not rerun in place)
+scripts/evaluate_pilot.py (extend expected-set validation rather than duplicating)
+runs/moffett/splatx-evaluation/validation/ (previous diagnostic renders)
+
+Final handoff: exact changed files/commits, executed tests including failures,
+artifact paths/hashes, gate states with reasons, computed metrics, resource
+scope, selected output or rejection, and specific unfinished product work.
+No “all phases complete” if a required check is merely written down or deferred.
+
+Task -> model tier
+Color/support fixes and bounded test fixtures -> Luna
+Input adapters, policy evaluator, integration tests -> Terra
+Native masked/depth loss and renderer correctness review -> Sol
+Repeat-run execution and artifact checks -> Luna or local scripts
+Product/device assessment and final acceptance interpretation -> primary
