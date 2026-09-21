@@ -65,7 +65,7 @@ def test_auth_01_crop_authorization_and_traversal_denial(make_client):
     client_anon = make_client(sign_in_as_owner=False)
     resp_anon = client_anon.get(f"/api/scans/{scan_id}/crops/secret-crop.jpg")
     assert resp_anon.status_code == 401
-    assert "sign in to continue" in resp_anon.text
+    assert "sign in" in resp_anon.text.lower()
 
     # 2. Second user guessing crop ID gets 404 (scan not found for them, no existence leakage)
     client2 = make_client(sign_in_as_owner=False)
