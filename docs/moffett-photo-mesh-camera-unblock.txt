@@ -1,0 +1,116 @@
+MOFFETT CAMERA BLOCKER: CORRECTED RENDERER AND RESUME HANDOFF
+2026-09-21. Calibration unblocked; overall visual quality remains rejected.
+
+Use scripts/render_calibrated_photo_mesh.py for calibrated Blender comparisons.
+It consumes the existing bake manifest and PhotoCamera, preserves fx/fy/cx/cy,
+handles centre-crop/resize with pixel centres, validates actual Blender projection
+at 15 corner/centre points over three depths, and writes separate material masks.
+No mesh rebake, pose refinement, Gaussian training or publication was necessary.
+
+The previous diagnosis was partly wrong
+Let F=diag(1,-1,-1,1), C=capture_to_room and T=ARKit camera-to-world.
+camera.py produces W=F @ inv(T) @ inv(C), therefore inv(W) @ F = C @ T.
+Across the saved 12 cameras the two expressions agree within 4.44e-16.
+The alleged 165-177-degree mismatch compares unlike coordinate conventions.
+The extra A_yup belongs to a camera expressed in GLTF coordinates. Blender's
+default GLTF importer already restores our exported (x,z,-y) geometry to the
+original room frame. Applying A_yup again to this Blender camera is incorrect.
+
+The demonstrated error was omitted principal-point calibration. The old Stage B
+renderer sets focal length and pose but leaves camera shifts at zero. For
+frame-0088 its centring predicts (-1.226,-1.860)px candidate-minus-source at 500px,
+close to the reported (-1.29,-1.84)px shift. Unequal fx/fy is also now supported.
+For horizontal sensor fit, using the cropped/resized PhotoCamera parameters:
+  matrix_world = inv(room_to_camera) @ F
+  lens_mm = fx * 36 / width
+  aspect_y / aspect_x = fx / fy
+  shift_x = (width/2 - (cx + 0.5)) / width
+  shift_y = ((cy + 0.5) - height/2) * (fx/fy) / width
+Blender view-layer updates precede projection checks. These equations are for
+Blender's default imported world, not arbitrary unconverted Y-up scene geometry.
+
+The old synthetic fixture was itself invalid: it inserted rotation rows into
+camera-to-world and flipped only Z, producing det=-1. That test did not establish
+a Blender rendering fault. The new fixture uses oblique/translated cameras,
+unequal focal lengths, an off-centre principal point, actual GLTF import and
+five colored markers at independently derived pixel locations plus an untextured
+marker. It checks rendered centroids, positive rotation determinant and masks.
+
+Delivered evidence (originals and r001 preserved)
+  runs/moffett/photo-mesh-500/camera-unblock-r002/
+    render-plan.json + code/ : exact inputs, crop, parameters and code snapshots
+    camera-verification.json : all 12 views, 180 probes; max error 0.000394px
+    *_source.png, *_candidate.png : native 500x500 source/candidate comparisons
+    *_geometry.png, *_photo_support.png : dedicated unlit material passes
+    support-diagnostic.json : visible candidate-mesh material support only
+    feature-diagnostic.json : raw matches, selected cluster, unwarped deltas
+    compare_camera_fix.py : reproducible diagnostic calculation
+    comparison.html : source / old renderer / calibrated renderer at native size
+    completed.json, blender.log : output hashes and successful process evidence
+
+frame-0088's diagnostic RANSAC cluster median decreased from 2.336px to 0.179px;
+cluster membership differs (24 old / 15 corrected), so this is a diagnostic,
+not a controlled landmark acceptance score. Raw median decreased 2.366 to 1.275px.
+Other views retain substantial mismatches. Original output rendered at 1024x768
+then cropped/downsampled; corrected output renders directly at 500 square, so
+filtering differs. The separate analytic/raster tests establish calibration.
+No warp, per-view pose fitting or fitted displacement was subtracted from scores.
+
+Actual visual inspection still shows large neutral patches and broken-looking
+surfaces. Do not call the scene photorealistic or alignment/detail fully passed.
+
+Other blockers revealed by the audit
+1. Old coverage estimates identify background/neutral surfaces using RGB colors
+   before Blender color conversion. Those thresholds do not match the resulting
+   images. The apparent 98% coverage PASS is invalid. New material-mask diagnostic
+   fractions range 0.7519-0.9830; frame-0088 is 0.7866. These are visible DISPLAY
+   mesh fractions, not the policy's frozen full measured geometry denominator,
+   source-visibility certification, full-floor coverage or area coverage.
+2. The baseline bake includes frame-0047, frame-0053 and frame-0088, all listed
+   among evaluation frames. The bake script has no enforced split allowlist.
+   Those views are self-view diagnostics, not held-out evaluation.
+3. Raw SIFT descriptor matches include large outliers. The saved p95 of ~366px
+   is not a verified landmark error. The new robust cluster also cannot replace
+   independently checked landmarks; retain rejected match evidence and review.
+4. Detail and effective-resolution gates remain incomplete. Another rasterizer
+   in scripts/render_photo_mesh_raster.py is not equivalent to the product viewer
+   merely because it outputs an image; audit its scene transforms, face offsets
+   and UV convention before using its metrics. The actual Blender path avoids it.
+
+Resume here; do not rotate the scene or rebake at 3M faces to fix this offset
+1. Reuse the calibrated renderer and its tests. Keep old outputs as diagnostics.
+   Do not modify bake camera.py pose conventions to compensate for renderer bugs.
+2. Enforce bake-frame allowlists and cache identities in the existing bake path.
+   Exclude entire reviewed duplicate groups before a fresh bake. Preserve exposed
+   test labels honestly; freeze any replacement benchmark before selecting results.
+3. Implement the policy's fixed geometry denominator and explicit photo-support
+   masks. Reuse the new mask technique, but do not confuse material presence with
+   correct observed support. Freeze the measured region and critical-feature ROIs.
+4. Diagnose gaps using raw vs display mesh, masks and per-face source assignment.
+   Preserve occlusion protection; do not color-fill unknown surfaces to pass.
+   Repair the evidenced fault, then measure independent landmarks, true 10-90%
+   edge profiles and effective texel/source resolution. Keep all remaining gates
+   pending until measured. Return to the original 500px plan for transfer/device
+   checks only when the local area passes. No Gaussian splatting is needed.
+
+Example: rerender two already-exposed diagnostic frames to a NEW output directory
+  .venv/bin/python scripts/render_calibrated_photo_mesh.py \
+    --glb runs/moffett/photo-mesh-500/r001/baselines/center/photo-mesh.glb \
+    --capture datasets/phone/moffett/454B3661-D3F8-46E8-ADAA-3123E759AA64 \
+    --frames frame-0047 frame-0088 \
+    --out runs/moffett/photo-mesh-500/camera-check-next
+The output directory must not exist. Do not rerun unchanged solely to use time.
+
+Validation commands
+  .venv/bin/python -m pytest tests/test_texture_projection.py packages/pipeline/tests/test_blender_camera.py -q
+  cd apps/web && npm run typecheck
+Focused checks passed (18 tests including actual Blender raster/mask fixture),
+web typecheck passed. Ruff checks on owned files passed. No production assets
+or original captures were modified. Full 500px quality and phone acceptance did
+not pass as a consequence of this calibration repair.
+
+Task -> model-tier delegation
+Split manifests, match inspection pages and scoped regression fixtures -> Luna
+Allowlist/cache enforcement, mask metrics and established texture fixes -> Terra
+Remaining ambiguous geometry/coordinate failures -> Sol/frontier
+Final normal-size visual acceptance -> user (agent review is provisional)
