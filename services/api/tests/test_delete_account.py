@@ -2,7 +2,6 @@
 import pathlib
 
 from conftest import OWNER_EMAIL, OWNER_PASSWORD, create_scan, put_artifact, sign_up
-
 from standardphysics_api import repository as repo
 
 

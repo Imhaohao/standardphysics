@@ -1,7 +1,7 @@
 """Render a high-resolution preview image of the unified Moffett Library 3D model."""
 
 import sys
-from pathlib import Path
+
 import bpy
 import mathutils
 

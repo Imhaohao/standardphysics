@@ -31,7 +31,6 @@ from typing import Any, Mapping, Sequence
 
 from standardphysics_contracts import Mat4, SceneGraph, graph_hash
 
-
 SCAN_ID = "f143082d-f529-494b-b80d-97729234e334"  # A-102 Moffett floor.
 DB_PATH = pathlib.Path("services/api/var/standardphysics.sqlite3")
 SCAN_DIR = pathlib.Path("services/api/var/scans") / SCAN_ID
@@ -462,6 +461,25 @@ def _verify_proposal_inputs(manifest: Mapping[str, Any], graph: SceneGraph) -> N
         raise ProposalError("room membership input changed since dry run")
 
 
+def _refuse_if_the_database_moved(snapshot, manifest: dict, graph: SceneGraph, expected_head: dict) -> None:
+    """Every way the database can have changed since the dry run read it.
+
+    A publication is only safe if what it was planned against is still there, so
+    these are checked under the write lock and together, which is also why they
+    belong in one place rather than strung through the publishing itself.
+    """
+    if snapshot.head_revision != expected_head["revision"] or snapshot.head_hash != expected_head["graph_hash"]:
+        raise ProposalError("database head changed since dry run; refusing publication")
+    if snapshot.raw_hash != manifest["source_revision_hash"]:
+        raise ProposalError("revision 0 changed since dry run; refusing publication")
+    if snapshot.raw_json_sha256 != manifest["source_revision_json_sha256"]:
+        raise ProposalError("revision 0 JSON changed since dry run; refusing publication")
+    if snapshot.head_json_sha256 != manifest["database_head_json_sha256"]:
+        raise ProposalError("database head graph changed since dry run; refusing publication")
+    if graph.revision != snapshot.head_revision + 1 or graph.base_hash != snapshot.head_hash:
+        raise ProposalError("proposal is not the next revision of the current database head")
+
+
 def publish_proposal(db_path: pathlib.Path, output_dir: pathlib.Path) -> pathlib.Path:
     """Publish a reviewed dry-run proposal as one new revision.
 
@@ -494,16 +512,7 @@ def publish_proposal(db_path: pathlib.Path, output_dir: pathlib.Path) -> pathlib
     try:
         connection.execute("BEGIN IMMEDIATE")
         snapshot = read_database_snapshot(connection, scan_id)
-        if snapshot.head_revision != expected_head["revision"] or snapshot.head_hash != expected_head["graph_hash"]:
-            raise ProposalError("database head changed since dry run; refusing publication")
-        if snapshot.raw_hash != manifest["source_revision_hash"]:
-            raise ProposalError("revision 0 changed since dry run; refusing publication")
-        if snapshot.raw_json_sha256 != manifest["source_revision_json_sha256"]:
-            raise ProposalError("revision 0 JSON changed since dry run; refusing publication")
-        if snapshot.head_json_sha256 != manifest["database_head_json_sha256"]:
-            raise ProposalError("database head graph changed since dry run; refusing publication")
-        if graph.revision != snapshot.head_revision + 1 or graph.base_hash != snapshot.head_hash:
-            raise ProposalError("proposal is not the next revision of the current database head")
+        _refuse_if_the_database_moved(snapshot, manifest, graph, expected_head)
         target_row = connection.execute(
             "SELECT 1 FROM revisions WHERE scan_id = ? AND revision = ?",
             (scan_id, graph.revision),

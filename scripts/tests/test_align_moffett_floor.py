@@ -6,10 +6,18 @@ import uuid
 from pathlib import Path
 
 import pytest
-from standardphysics_contracts import DisplayAppearance, DisplayPart, DisplayReconstruction, Mat4, SceneGraph, SceneNode, Vec3, graph_hash
+from standardphysics_contracts import (
+    DisplayAppearance,
+    DisplayPart,
+    DisplayReconstruction,
+    Mat4,
+    SceneGraph,
+    SceneNode,
+    Vec3,
+    graph_hash,
+)
 
 from scripts import align_moffett_floor as align
-
 
 SCAN_ID = uuid.UUID("00000000-0000-0000-0000-000000000102")
 IDENTITY = Mat4.identity().m

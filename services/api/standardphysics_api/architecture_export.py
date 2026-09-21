@@ -18,7 +18,7 @@ from typing import Any
 from xml.sax.saxutils import quoteattr
 
 from fastapi import FastAPI, Response
-from standardphysics_contracts import Assessment, SceneGraph, SceneNode, graph_hash
+from standardphysics_contracts import Assessment, SceneGraph, SceneNode, bounds_the_room, graph_hash, stands_upright
 
 from . import repository as repo
 from .db import Database
@@ -27,6 +27,15 @@ from .errors import ApiProblem
 _PORTALS = frozenset({"door", "window", "opening"})
 _DRAWING_SCALE_PX_PER_METER = 100.0
 _DRAWING_MARGIN_METERS = 1.0
+
+
+def _a_standing_surface(node: SceneNode) -> bool:
+    """A sheet standing up that is a surface rather than a hole cut in one.
+
+    A door and a window are also upright sheets, and they are drawn as the gaps
+    they are rather than as more wall.
+    """
+    return stands_upright(node) and node.kind not in _PORTALS
 
 
 def _number(value: float) -> float:
@@ -142,7 +151,7 @@ def _display_geometry(graph: SceneGraph) -> dict[uuid.UUID, dict[str, Any]]:
             "generated_from": "current_scene_revision.transform_and_dimensions",
             "display_only": True,
         }
-        if node.kind in _PORTALS and node.parent_id in by_id and by_id[node.parent_id].kind == "wall":
+        if node.kind in _PORTALS and node.parent_id in by_id and stands_upright(by_id[node.parent_id]):
             geometry["wall_opening_cut"] = [
                 [_number(x), _number(y)] for x, y in _portal_cut_xy_m(node, by_id[node.parent_id])
             ]
@@ -320,7 +329,7 @@ def architecture_svg(graph: SceneGraph, ledger: dict[str, Any]) -> str:
         for node in nodes if "wall_opening_cut" in display[node.id]
     }
     masks = []
-    for wall in (node for node in nodes if node.kind == "wall"):
+    for wall in (node for node in nodes if _a_standing_surface(node)):
         cuts = [opening_cuts[node.id] for node in nodes if node.parent_id == wall.id and node.id in opening_cuts]
         if not cuts:
             continue
@@ -340,14 +349,14 @@ def architecture_svg(graph: SceneGraph, ledger: dict[str, Any]) -> str:
     for node in nodes:
         if not paths[node.id]:
             continue
-        extra = f' mask={quoteattr("url(#cut-" + str(node.id) + ")")}' if node.kind == "wall" and any(
+        extra = f' mask={quoteattr("url(#cut-" + str(node.id) + ")")}' if _a_standing_surface(node) and any(
             portal.parent_id == node.id and portal.id in opening_cuts for portal in nodes
         ) else ""
         element = (
             f'<path class={quoteattr(node.kind)} data-node-id={quoteattr(str(node.id))} '
             f'd={quoteattr(paths[node.id])}{extra}/>'
         )
-        if node.kind == "wall":
+        if _a_standing_surface(node):
             wall_paths.append(element)
         elif node.kind in _PORTALS:
             other_paths.append(
@@ -356,7 +365,7 @@ def architecture_svg(graph: SceneGraph, ledger: dict[str, Any]) -> str:
             )
         else:
             other_paths.append(element)
-        if node.kind == "object":
+        if not bounds_the_room(node):
             center = node.transform.position
             x, y = project((center.x, center.y))
             labels.append(
