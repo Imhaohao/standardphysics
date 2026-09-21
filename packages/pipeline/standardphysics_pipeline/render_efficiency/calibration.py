@@ -1,17 +1,17 @@
-"""Synthetic-plane calibration for deterministic surface-Gaussian rendering.
+"""Synthetic calibration for deterministic surface-Gaussian rendering.
 
-Phase 3 of the render-efficiency plan freezes the tangent-sigma spacing factor
-and the per-splat opacity on a synthetic plane, before any real-data trial.
-The model is an infinite plane sampled on a square lattice at spacing ``h``
-with one surface Gaussian per sample: isotropic tangent sigma ``s_t = c*h``,
-normal sigma ``0.1*s_t``, and opacity ``o``.  Pointwise summed alpha is
+Two calibrated quantities matter, and they are different physical things:
 
-    A(x) = o * sum_i exp(-|x - p_i|^2 / (2 * s_t^2)).
-
-A point with ``A < 0.5`` is a hole; a point with ``A > 0.95`` reads as an
-over-bright wall, and more than 5% of a fundamental cell there is oversaturated.
-Everything is deterministic numpy plane math using the closed-form projection;
-no renderer is involved.
+- **Transmittance composition** (the criterion): front-to-back accumulated
+  alpha `1 - prod(1 - alpha_i)` over the samples in ray order.  Two coincident
+  alpha-0.5 layers yield 0.75, a wall that fully occludes yields 1.0, and
+  brightness never exceeds the surface colour.  The sum of individual alphas is
+  kept only as a point-density diagnostic, never as opacity or coverage.
+- **The production sampler**: the capped, area-weighted random mesh sampler
+  builder.sample_mesh actually exports.  An infinite square lattice does not
+  validate it, so the synthetic model below generates randomly oriented,
+  nonuniformly dense surfaces at varying distances and evaluates them with
+  that sampler.
 """
 
 from __future__ import annotations
@@ -20,10 +20,11 @@ import math
 
 import numpy as np
 
+from .builder import sample_mesh
 from .metrics import MetricError
 
 TANGENT_FACTORS: tuple[float, ...] = (0.5, 0.75, 1.0)
-"""Policy options for tangent sigma = factor * spacing (docs/deepseek-lidar-experiment-policy.json)."""
+"""Policy options for tangent sigma = factor * spacing (docs/deepseek-lidar-experiment-policy-v2.json)."""
 
 OPACITY_OPTIONS: tuple[float, ...] = (0.3, 0.5, 0.7)
 """Policy options for per-splat opacity."""
@@ -35,13 +36,10 @@ NORMAL_TO_TANGENT_RATIO = 0.1
 """Initial normal sigma as a fraction of the tangent sigma (policy value)."""
 
 HOLE_ALPHA_THRESHOLD = 0.5
-"""Summed alpha below this reads as a visible hole."""
+"""Composited alpha below this reads as a visible hole."""
 
-SATURATION_ALPHA_THRESHOLD = 0.95
-"""Summed alpha above this reads as an over-bright wall."""
-
-SATURATION_FRACTION_LIMIT = 0.05
-"""More than this fraction of the cell above the saturation threshold is oversaturated."""
+COVERAGE_FRACTION_LIMIT = 0.05
+"""More than this fraction of surface probes below the hole threshold is undersampled."""
 
 TRUNCATION_TOLERANCE = 1e-4
 """Maximum allowed summed-alpha error from ignoring far lattice rings."""
@@ -67,11 +65,29 @@ def _validate_sigma_and_opacity(sigma_t: float, opacity: float) -> None:
     _validated_opacity(opacity)
 
 
+def transmittance_alpha(alphas: np.ndarray) -> np.ndarray:
+    """Front-to-back accumulated alpha along the last axis.
+
+    ``1 - prod(1 - alpha_i)``; two 0.5 layers -> 0.75, any input in [0,1]
+    stays in [0,1].  Rows must already be sorted along the ray, nearest first
+    (the caller documents the ray projection and ordering).
+    """
+    alphas = np.asarray(alphas, dtype=np.float64)
+    if alphas.size == 0:
+        raise MetricError("transmittance_alpha needs at least one sample")
+    if not np.isfinite(alphas).all() or (alphas < 0.0).any() or (alphas > 1.0).any():
+        raise MetricError("alphas must be finite and lie in [0,1]")
+    survival = np.cumprod(1.0 - alphas, axis=-1)
+    return 1.0 - survival
+
+
 def plane_alpha_sum(distances_sq: np.ndarray, sigma_t: float, opacity: float) -> np.ndarray:
-    """Summed alpha over samples for query points.
+    """Summed alpha over samples for query points — a density diagnostic only.
 
     ``distances_sq`` is (Nq, Ns): squared in-plane distance from each of Nq
-    query points to each of Ns samples.  Returns shape (Nq,).
+    query points to each of Ns samples.  Returns shape (Nq,).  This sum is
+    NOT opacity, brightness or coverage; use transmittance composition for
+    those.
     """
     _validate_sigma_and_opacity(sigma_t, opacity)
     distances = np.asarray(distances_sq, dtype=np.float64)
@@ -83,6 +99,28 @@ def plane_alpha_sum(distances_sq: np.ndarray, sigma_t: float, opacity: float) ->
         raise MetricError("distances_sq must be non-negative")
     per_sample = opacity * np.exp(-distances / (2.0 * sigma_t * sigma_t))
     return per_sample.sum(axis=1)
+
+
+def plane_alpha_composited(distances_sq: np.ndarray, sigma_t: float, opacity: float) -> np.ndarray:
+    """Accumulated front-to-back transmittance alpha per query point, shape (Nq,).
+
+    Samples are ordered front-to-back by query distance before composition;
+    the ordering is documented here rather than left to array order.  Returns
+    the final accumulated alpha so two 0.5 layers read 0.75, and summed alpha
+    remains available via :func:`plane_alpha_sum` as a density diagnostic.
+    """
+    _validate_sigma_and_opacity(sigma_t, opacity)
+    distances = np.asarray(distances_sq, dtype=np.float64)
+    if distances.ndim != 2:
+        raise MetricError(f"distances_sq must be 2D (Nq, Ns), got shape {distances.shape}")
+    if not np.isfinite(distances).all():
+        raise MetricError("distances_sq must be finite")
+    if distances.size and (distances < 0.0).any():
+        raise MetricError("distances_sq must be non-negative")
+    rows = np.arange(distances.shape[0])[:, None]
+    order = np.argsort(distances, axis=1)
+    ordered = opacity * np.exp(-distances[rows, order] / (2.0 * sigma_t * sigma_t))
+    return transmittance_alpha(ordered)[:, -1]
 
 
 def lattice_offsets(spacing_h: float, rings: int) -> np.ndarray:
@@ -108,14 +146,14 @@ def fundamental_cell_grid(spacing_h: float, grid_side: int) -> np.ndarray:
     return np.stack([xs.ravel(), ys.ravel()], axis=1)
 
 
-def _summed_alpha(queries: np.ndarray, offsets: np.ndarray, sigma_t: float, opacity: float) -> np.ndarray:
-    """Summed alpha per query point, processed in row blocks to bound memory."""
+def _composited_alpha(queries: np.ndarray, offsets: np.ndarray, sigma_t: float, opacity: float) -> np.ndarray:
+    """Composited transmittance alpha per query point, processed in row blocks."""
     block_rows = 256
     parts = []
     for start in range(0, len(queries), block_rows):
         block = queries[start : start + block_rows]
         delta = block[:, None, :] - offsets[None, :, :]
-        parts.append(plane_alpha_sum((delta * delta).sum(axis=2), sigma_t, opacity))
+        parts.append(plane_alpha_composited((delta * delta).sum(axis=2), sigma_t, opacity))
     return np.concatenate(parts)
 
 
@@ -126,13 +164,13 @@ def plane_alpha_field(
     rings: int = DEFAULT_RINGS,
     grid_side: int = DEFAULT_GRID_SIDE,
 ) -> np.ndarray:
-    """Summed-alpha field over one fundamental cell, shape (grid_side, grid_side)."""
+    """Transmittance-composited alpha field over one fundamental cell."""
     sigma_t = tangent_factor * spacing_h
     _validate_sigma_and_opacity(sigma_t, opacity)
     offsets = lattice_offsets(spacing_h, rings)
     queries = fundamental_cell_grid(spacing_h, grid_side)
-    summed = _summed_alpha(queries, offsets, sigma_t, opacity)
-    return summed.reshape(grid_side, grid_side)
+    composited = _composited_alpha(queries, offsets, sigma_t, opacity)
+    return composited.reshape(grid_side, grid_side)
 
 
 def truncation_error_bound(tangent_factor: float, opacity: float, rings: int = DEFAULT_RINGS) -> float:
@@ -159,16 +197,17 @@ def truncation_error_bound(tangent_factor: float, opacity: float, rings: int = D
     return o * (s_infinite * s_infinite - s_box * s_box)
 
 
-def fill_status(min_sum_alpha: float, oversaturation_fraction: float) -> str:
-    """Classify one numeric result; holes take precedence over saturation.
+def fill_status(min_composited_alpha: float, hole_fraction: float) -> str:
+    """Classify one numeric result on composited transmittance.
 
-    Returns ``"no_holes_no_saturation"``, ``"holes"``, or ``"saturated"``.
+    Brightness saturation is not a thing here: an occluded wall legitimately
+    composited to alpha 1.0, and brightness is bounded by the surface colour
+    (verified on real renders, see the calibration artifact).  Only holes
+    classify a configuration.
     """
-    if min_sum_alpha < HOLE_ALPHA_THRESHOLD:
+    if min_composited_alpha < HOLE_ALPHA_THRESHOLD or hole_fraction > COVERAGE_FRACTION_LIMIT:
         return "holes"
-    if oversaturation_fraction > SATURATION_FRACTION_LIMIT:
-        return "saturated"
-    return "no_holes_no_saturation"
+    return "no_holes"
 
 
 def evaluate_pair(
@@ -180,12 +219,13 @@ def evaluate_pair(
 ) -> dict:
     """Per-spacing synthetic metrics for one (tangent_factor, opacity) pair."""
     field = plane_alpha_field(spacing_h, tangent_factor, opacity, rings=rings, grid_side=grid_side)
+    hole_fraction = float((field < HOLE_ALPHA_THRESHOLD).mean())
     return {
         "spacing_h": float(spacing_h),
         "tangent_factor": float(tangent_factor),
         "opacity": float(opacity),
-        "min_sum_alpha": float(field.min()),
-        "oversaturation_fraction": float((field > SATURATION_ALPHA_THRESHOLD).mean()),
+        "min_composited_alpha": float(field.min()),
+        "hole_fraction": hole_fraction,
         "truncation_bound": truncation_error_bound(tangent_factor, opacity, rings=rings),
         "rings": int(rings),
         "grid_side": int(grid_side),
@@ -211,20 +251,12 @@ def evaluate_all(
 
 def _pair_status(entries: list[dict]) -> str:
     """Worst status of one pair across all evaluated spacings."""
-    per_spacing = [fill_status(e["min_sum_alpha"], e["oversaturation_fraction"]) for e in entries]
-    if "holes" in per_spacing:
-        return "holes"
-    if "saturated" in per_spacing:
-        return "saturated"
-    return "no_holes_no_saturation"
-
-
-def _worst_oversaturation(entries: list[dict]) -> float:
-    return max(float(e["oversaturation_fraction"]) for e in entries)
+    per_spacing = [fill_status(e["min_composited_alpha"], e["hole_fraction"]) for e in entries]
+    return "holes" if "holes" in per_spacing else "no_holes"
 
 
 def _primary_choice(sweep: dict) -> tuple[float, float]:
-    """Smallest factor with no holes at both spacings, prefer smallest opacity."""
+    """Smallest factor per opacity with no holes at both spacings."""
     for opacity in OPACITY_OPTIONS:
         for factor in TANGENT_FACTORS:
             if _pair_status(sweep[(factor, opacity)]) != "holes":
@@ -232,86 +264,163 @@ def _primary_choice(sweep: dict) -> tuple[float, float]:
     raise MetricError("no policy option leaves the synthetic plane hole-free at both spacings")
 
 
-def _override_choice(sweep: dict) -> tuple[float, float]:
-    """Smallest factor, then opacity, with neither holes nor oversaturation."""
-    for factor in TANGENT_FACTORS:
-        for opacity in OPACITY_OPTIONS:
-            if _pair_status(sweep[(factor, opacity)]) == "no_holes_no_saturation":
-                return factor, opacity
-    hole_free = [pair for pair in sweep if _pair_status(sweep[pair]) != "holes"]
-    if not hole_free:
-        raise MetricError("no policy option leaves the synthetic plane hole-free at both spacings")
-    return min(hole_free, key=lambda pair: _worst_oversaturation(sweep[pair]))
-
-
-def _spacing_entry(sweep: dict, factor: float, opacity: float, spacing_h: float) -> dict:
-    for entry in sweep[(factor, opacity)]:
-        if entry["spacing_h"] == spacing_h:
-            return entry
-    raise MetricError(f"no sweep entry for spacing {spacing_h}")
-
-
-def _rationale(sweep: dict, primary: tuple[float, float], chosen: tuple[float, float], notes: dict) -> str:
-    p_factor, p_opacity = primary
-    c_factor, c_opacity = chosen
-    p_min = min(float(e["min_sum_alpha"]) for e in sweep[primary])
-    p_frac = _worst_oversaturation(sweep[primary])
-    c_mins = " / ".join(f"{e['min_sum_alpha']:.4f}" for e in sweep[chosen])
-    c_frac = _worst_oversaturation(sweep[chosen])
+def _rationale(sweep: dict, chosen: tuple[float, float]) -> str:
+    factor, opacity = chosen
+    entries = sweep[chosen]
+    mins = " / ".join(f"{e['min_composited_alpha']:.4f}" for e in entries)
     statuses = "; ".join(
         f"c={f},o={o}:{_pair_status(sweep[(f, o)])}" for f in TANGENT_FACTORS for o in OPACITY_OPTIONS
     )
-    parts = [
-        "Synthetic square-lattice plane at h in {0.02, 0.05} m, tangent sigma c*h, "
-        "normal sigma 0.1*s_t, summed alpha on a 101x101 grid over one fundamental "
-        "cell with ring truncation bound < 1e-4; results are spacing-invariant as "
-        "the self-similar model predicts.",
-        f"Pair statuses: {statuses}.",
-    ]
-    if notes.get("overridden"):
-        parts.append(
-            f"Primary rule choice (c={p_factor}, o={p_opacity}) is hole-free "
-            f"(min {p_min:.4f}) but oversaturated ({p_frac*100:.1f}% of the cell "
-            "above 0.95), so it is overridden."
-        )
-    parts.append(
-        f"Frozen pair (c={c_factor}, o={c_opacity}): min summed alpha {c_mins} at "
-        f"h=0.02/0.05 (threshold 0.5), oversaturation {c_frac*100:.1f}% (limit 5%)."
+    return (
+        "Square-lattice plane at h in {0.02, 0.05} m with front-to-back "
+        "transmittance compositing (1 - prod(1-alpha_i)); a lattice is a "
+        "diagnostic only, the production capped sampler is calibrated "
+        "separately in the calibration artifact. "
+        f"Pair statuses: {statuses}. Frozen pair (c={factor}, o={opacity}): "
+        f"min composited alpha {mins}; brightness is bounded by surface "
+        "colour and never read as alpha."
     )
-    if notes.get("fallback"):
-        parts.append("No policy pair is free of oversaturation; the least oversaturated hole-free pair is kept.")
-    return " ".join(parts)
 
 
 def pick_parameters() -> dict:
-    """Freeze (tangent_factor, opacity) from the synthetic-plane sweep.
+    """Freeze (tangent_factor, opacity) from the composited synthetic-plane sweep.
 
-    Decision rule: per opacity, take the smallest tangent factor in {0.5, 0.75,
-    1.0} with no holes at both spacings; pick opacity 0.3 if hole-free at that
-    factor, else 0.5, else 0.7.  If the chosen pair oversaturates (>5% of the
-    cell above 0.95 summed alpha), override to the smallest factor/opacity pair
-    with no holes and no oversaturation, and document the override.
+    The chosen pair must be hole-free at both spacings; brightness saturation
+    is no longer a criterion (constant-colour behaviour is renderer-verified).
+    The returned pair is the policy-option table decision, superseding the
+    obsolete tangenta=0.5/opacity=0.5 freeze under the new calibration
+    artifact ID.
     """
     sweep = evaluate_all()
-    primary = _primary_choice(sweep)
-    notes = {"overridden": False, "fallback": False}
-    if _pair_status(sweep[primary]) == "saturated":
-        chosen = _override_choice(sweep)
-        notes["overridden"] = True
-        notes["fallback"] = _pair_status(sweep[chosen]) == "saturated"
-    else:
-        chosen = primary
+    chosen = _primary_choice(sweep)
     factor, opacity = chosen
     entries = sweep[chosen]
-    min_h002 = _spacing_entry(sweep, factor, opacity, 0.02)["min_sum_alpha"]
-    min_h005 = _spacing_entry(sweep, factor, opacity, 0.05)["min_sum_alpha"]
-    if min_h002 < HOLE_ALPHA_THRESHOLD or min_h005 < HOLE_ALPHA_THRESHOLD:
-        raise MetricError("chosen pair reintroduced holes; decision logic is inconsistent")
     return {
         "tangent_factor": factor,
         "opacity": opacity,
-        "rationale": _rationale(sweep, primary, chosen, notes),
-        "min_sum_alpha_h002": float(min_h002),
-        "min_sum_alpha_h005": float(min_h005),
-        "oversaturation_fraction": _worst_oversaturation(entries),
+        "rationale": _rationale(sweep, chosen),
+        "min_composited_alpha_h002": entries[0]["min_composited_alpha"],
+        "min_composited_alpha_h005": entries[1]["min_composited_alpha"],
+        "hole_fraction": max(e["hole_fraction"] for e in entries),
+        "note": "supersedes the unsupported 0.5/0.5 freeze; compositing corrected",
     }
+
+
+def synthetic_calibration_mesh(seed: int = 11) -> tuple[np.ndarray, np.ndarray]:
+    """Randomly oriented, nonuniformly dense triangle surfaces at varied distances.
+
+    Returns a mesh whose triangles point in many directions (walls, tilted
+    planes), whose areas span orders of magnitude, and whose parts sit at
+    different distances from one another — the properties the square lattice
+    lacks.
+    """
+    generator = np.random.default_rng(seed)
+    vertices, triangles = [], []
+    offset = 0
+    for plane_idx in range(6):
+        axis = generator.standard_normal(3)
+        axis /= np.linalg.norm(axis)
+        u = np.cross(axis, np.array([1.0, 0.0, 0.0]) + 1e-3)
+        u /= np.maximum(np.linalg.norm(u), 1e-12)
+        v = np.cross(axis, u)
+        centre = generator.uniform(-2.0, 2.0, 3) * (1.0 + plane_idx / 3.0)
+        half = generator.uniform(0.4, 1.2)
+        base = np.array([[-1.0, -1.0], [1.0, -1.0], [1.0, 1.0], [-1.0, 1.0]]) * half
+        corners = centre + base @ np.stack([u, v])
+        start = offset
+        vertices.extend(corners.tolist())
+        triangles.extend([[start, start + 1, start + 2], [start, start + 2, start + 3]])
+        offset += 4
+        # one dense neighbour plane + one sparse distant plane per group
+        for burst in (0.5, 2.5):
+            small = base * 0.18 * burst
+            corners_small = centre + small @ np.stack([u, v])
+            start = offset
+            vertices.extend(corners_small.tolist())
+            triangles.extend([[start, start + 1, start + 2], [start, start + 2, start + 3]])
+            offset += 4
+    return np.asarray(vertices), np.asarray(triangles, dtype=np.int64)
+
+
+def calibrate_capped_sampler(
+    spacing: float = 0.02,
+    probe_count: int = 600,
+    seed: int = 1729,
+    max_samples: int = 150000,
+) -> dict:
+    """Evaluate tangent/opacity policy options with the production sampler.
+
+    Samples the synthetic mesh exactly like the builder does (random
+    barycentric placement, bounded allocation), probes the surface with
+    independent area-weighted barycentric points, and measures
+    transmittance-composited coverage for each policy option (chunked over
+    samples so memory stays bounded).  The chosen pair is the option with the
+    smallest hole fraction, tie-broken to the smaller tangent factor, and the
+    result is an honest diagnostic, never a pass claim on its own.
+    """
+    vertices, triangles = synthetic_calibration_mesh()
+    _positive_finite(spacing, "spacing")
+    report = {"model": "capped random mesh sampler", "spacing_m": spacing, "options": []}
+    samples = sample_mesh(vertices, triangles, spacing=spacing, seed=seed, max_samples=max_samples)
+    points, _, owners, _, _ = samples
+    report["sample_count"] = int(len(points))
+    report["cap"] = max_samples
+    report["density_area_agreement"] = _density_agreement(vertices, triangles, owners)
+
+    corners_all = vertices[triangles]
+    areas = np.linalg.norm(
+        np.cross(corners_all[:, 1] - corners_all[:, 0], corners_all[:, 2] - corners_all[:, 0]),
+        axis=1,
+    ) / 2.0
+    weights = areas / areas.sum()
+    probe_rng = np.random.default_rng(seed + 1)
+    probe_triangles = probe_rng.choice(len(triangles), size=probe_count, p=weights)
+    probe_corners = vertices[triangles[probe_triangles]]
+    alpha_rng = probe_rng.random((probe_count, 2))
+    bary = np.stack(
+        [1 - np.sqrt(alpha_rng[:, 0]), np.sqrt(alpha_rng[:, 0]) * (1 - alpha_rng[:, 1])],
+        axis=1,
+    )
+    bary_c = 1 - bary.sum(axis=1)
+    probes = (
+        bary[:, 0][:, None] * probe_corners[:, 0]
+        + bary[:, 1][:, None] * probe_corners[:, 1]
+        + bary_c[:, None] * probe_corners[:, 2]
+    )
+
+    for factor in TANGENT_FACTORS:
+        for opacity in OPACITY_OPTIONS:
+            sigma_t = factor * spacing
+            survival = np.ones(probe_count)
+            for block in np.array_split(points, 20):
+                delta_sq = ((probes[:, None, :] - block[None, :, :]) ** 2).sum(axis=2)
+                per_block = opacity * np.exp(-delta_sq / (2.0 * sigma_t * sigma_t))
+                survival *= (1.0 - per_block).prod(axis=1)
+            composited = 1.0 - survival
+            report["options"].append({
+                "tangent_factor": factor,
+                "opacity": opacity,
+                "hole_fraction": float((composited < HOLE_ALPHA_THRESHOLD).mean()),
+                "min_composited_alpha": float(composited.min()),
+            })
+
+    chosen = min(report["options"], key=lambda o: (o["hole_fraction"], o["tangent_factor"]))
+    report["chosen"] = chosen
+    report["order_note"] = (
+        "transmittance composited over samples chunked by memory bound; "
+        "per-probe product of survivals is order-independent"
+    )
+    report["renderer_check"] = (
+        "constant-colour fidelity is verified on the installed SplatX renderer in the calibration artifact"
+    )
+    return report
+
+
+def _density_agreement(vertices: np.ndarray, triangles: np.ndarray, owners: np.ndarray) -> float:
+    """1 - max |triangle emitted fraction - area fraction|, over triangles."""
+    corners = vertices[triangles]
+    areas = np.linalg.norm(np.cross(corners[:, 1] - corners[:, 0], corners[:, 2] - corners[:, 0]), axis=1) / 2.0
+    expected = areas / areas.sum()
+    observed = np.bincount(owners, minlength=len(triangles)).astype(np.float64)
+    observed /= observed.sum()
+    return float(1.0 - np.abs(expected - observed).max())

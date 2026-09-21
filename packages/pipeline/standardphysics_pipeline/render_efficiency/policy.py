@@ -247,8 +247,9 @@ def _collect_pellets(
     baseline: dict,
     candidate: dict,
     expected: set[str],
-) -> tuple[dict[str, tuple[bool, str]], list[str]]:
-    """Numeric gate verdicts plus the missing-evidence list (E01-E06 rules)."""
+) -> tuple[dict[str, tuple[bool, str]], list[str], bool]:
+    """Numeric gate verdicts, missing-evidence list, and whether uncovered
+    coverage was actually measured (E01-E06 rules)."""
     gates = policy["hard_numeric_gates"]
     psnr_delta = cand_agg["psnr_db"] - base_agg["psnr_db"]
     full_delta = cand_agg["full_psnr_db"] - base_agg["full_psnr_db"]
@@ -308,7 +309,8 @@ def _collect_pellets(
         missing_bits.append("viewer frame timing")
     if resource_base is not None or resource_cand is not None:
         missing_bits.append("resource eligibility")
-    return pellets, missing_bits
+    uncovered_measured = coverage_block is None
+    return pellets, missing_bits, uncovered_measured
 
 
 def _frozen_policy_problem(policy: dict, candidate: dict) -> str | None:
@@ -398,7 +400,9 @@ def evaluate(
     except PolicyError as error:
         return _refused(f"per-view evidence incomplete: {error}")
 
-    pellets, missing_bits = _collect_pellets(policy, cand_agg, base_agg, baseline, candidate, expected)
+    pellets, missing_bits, uncovered_measured = _collect_pellets(
+        policy, cand_agg, base_agg, baseline, candidate, expected
+    )
     non_numeric = _non_numeric_verdicts(policy, candidate)
     frozen_problem = _frozen_policy_problem(policy, candidate)
 
@@ -408,6 +412,16 @@ def evaluate(
     gate_results["frozen_policy_hash"] = {"passed": frozen_problem is None, "detail": frozen_problem or "verified"}
     all_ok = all(ok for ok, _ in pellets.values()) and all(non_numeric.values()) and frozen_problem is None
     if not all_ok:
+        measured_failures = any(
+            not pellets[name][0] for name in ("psnr_mean", "full_psnr_mean", "ssim_mean", "worst_view")
+        ) or (uncovered_measured and not pellets["uncovered"][0])
+        if measured_failures:
+            return {
+                "status": "completed_rejected",
+                "selection_score": None,
+                "score_reason": "a measured hard-quality gate failed under complete image evidence; see gate_results",
+                "gate_results": gate_results,
+            }
         if missing_bits:
             return {
                 "status": "blocked_missing_evidence",
@@ -429,8 +443,29 @@ def evaluate(
     min_roi_delta = min(roi_deltas) if roi_deltas else 0.0
     frame_base, _ = _frame_eligibility(baseline)
     frame_cand, _ = _frame_eligibility(candidate)
+    return _adjudicate(
+        policy, baseline, candidate, cand_agg, base_agg,
+        min_roi_delta, frame_base, frame_cand, gate_results,
+    )
+
+
+def _adjudicate(
+    policy: dict,
+    baseline: dict,
+    candidate: dict,
+    cand_agg: dict,
+    base_agg: dict,
+    min_roi_delta: float,
+    frame_base: float,
+    frame_cand: float,
+    gate_results: dict,
+) -> dict:
+    """Score, selection lane and terminal state once gates passed."""
     try:
-        score, lane = _score_and_lane(policy, baseline, candidate, cand_agg, base_agg, min_roi_delta, frame_base, frame_cand)
+        score, lane = _score_and_lane(
+            policy, baseline, candidate, cand_agg, base_agg,
+            min_roi_delta, frame_base, frame_cand,
+        )
     except PolicyError as error:
         return {
             "status": "blocked_missing_evidence",

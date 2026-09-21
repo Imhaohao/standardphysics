@@ -30,8 +30,26 @@ OUT = EVAL / "brush-control"
 MATCHED = {
     "total_steps": 3000, "seed": 42, "sh_degree": 2, "ssim_weight": 0.2,
     "max_splats": 1_000_000, "resolution": "1280x960", "train_ids": 32,
-    "init_points": 303342, "masks": "none (neither backend applied person masks)",
+    "init_points": 303342,
+    "masks": "NOT mask-matched: Brush decodes mask files at load "
+             "(r003/stageC-mask-discrimination.json: 32 corrupt masks crash the "
+             "loader); SplatX has no mask input path and ignores a corrupt "
+             "sibling masks/ dir (r003/stageC-mask-behavior.json probe M01c)",
+    "loaded_id_ledger": "r003/brush-loaded-id-ledger/loaded-id-ledger.json: two "
+                        "half-probes over frozen+reversed order union to exactly "
+                        "the 32 train IDs, no validation IDs",
     "eval_split": "none (validation excluded from transforms.json)",
+}
+MASK_PARITY = {
+    "status": "unproven_mismatched",
+    "evidence": [
+        "runs/moffett/render-efficiency/r003/stageC-mask-behavior.json",
+        "runs/moffett/render-efficiency/r003/stageC-mask-discrimination.json",
+        "runs/moffett/render-efficiency/r003/brush-loaded-id-ledger/loaded-id-ledger.json",
+    ],
+    "consequence": "the 11.898 dB / 0.329 SSIM comparison is historical "
+                   "diagnostic evidence, not a proved mask-matched common-"
+                   "heldout result",
 }
 DIFFERS = {
     "densification": "SplatX MCMC (cap 1M) vs Brush refine/growth (refine-every 200, growth-grad-threshold 4e-5, growth-stop-iter 15000)",
@@ -127,7 +145,9 @@ def evaluate() -> None:
     splatx = json.loads((EVAL / "validation/splatx-metrics.json").read_text())
     summary = {
         "purpose": "controlled common-heldout comparison after split repair; matched budget/resolution/SH/seed/init",
+        "label": "historical diagnostic evidence; not an eligible baseline/candidate pair",
         "not_equivalent": "settings listed under differs prevent an equal-budget equivalence claim",
+        "mask_parity": MASK_PARITY,
         "matched": MATCHED, "differs": DIFFERS,
         "brush_export_splats": ply_vertex_count(OUT / "train/export_3000.ply"),
         "splatx_export_splats": json.loads(

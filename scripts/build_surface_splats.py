@@ -83,7 +83,6 @@ def main():
     reject_heldout_entries(entries, args.manifest)
 
     transforms = json.loads((args.dataset / "transforms.json").read_text())
-    image_dir = args.dataset / "images"
     mask_dir = args.dataset / "masks"
 
     capture_dir = args.captures / CAPTURE_CENTRE
@@ -94,7 +93,7 @@ def main():
     # Allowlist validation happens before any file is opened; a mismatching
     # digest aborts the build (policy D02).
     for entry in entries:
-        frame_path = image_dir / entry["file_path"]
+        frame_path = args.dataset / entry["file_path"]
         if not frame_path.is_file():
             raise AllowlistError(f"missing allowed input: {frame_path}")
         digest = _sha256(frame_path)
@@ -104,7 +103,7 @@ def main():
                 f"{digest[:16]} != {entry['rgb_sha256'][:16]}"
             )
     for entry in entries:
-        frame_path = image_dir / entry["file_path"]
+        frame_path = args.dataset / entry["file_path"]
         frames = [f for f in transforms["frames"] if f["file_path"] == entry["file_path"]]
         if len(frames) != 1:
             raise AllowlistError(f"expected one prepared transform for {entry['frame_id']}, got {len(frames)}")

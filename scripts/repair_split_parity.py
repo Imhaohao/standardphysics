@@ -126,6 +126,15 @@ def verify() -> None:
 
     brush_train = _frame_ids(json.loads((OUT_TRAIN / "transforms.json").read_text())["frames"])
 
+    # Byte-level parity: each loaded RGB and mask must hash to its source.
+    source_transforms = json.loads((BRUSH_SOURCE / "transforms.json").read_text())
+    source_by_name = {Path(f["file_path"]).name: f for f in source_transforms["frames"]}
+    rgb_ok, mask_ok = True, True
+    for name in manifest_train:
+        rgb_ok &= digest(OUT_TRAIN / "images" / name) == digest(BRUSH_SOURCE / "images" / name)
+        mask_name = Path(source_by_name[name]["mask_path"]).name
+        mask_ok &= digest(OUT_TRAIN / "masks" / mask_name) == digest(BRUSH_SOURCE / "masks" / mask_name)
+
     log = (SPLATX_EVAL / "pilot-3000.log").read_text()
     first = next(line for line in log.splitlines() if "splatx train:" in line)
     n_cameras = int(first.split("cameras")[0].strip().split()[-1])
@@ -140,6 +149,8 @@ def verify() -> None:
         "splatx_log_loaded_32_cameras": n_cameras == 32,
         "validation_in_sidecar": sorted(_frame_ids(
             json.loads((OUT_TRAIN / "validation-frames.json").read_text())["frames"])) == sorted(manifest_val),
+        "brush_rgb_hashes_match_source": rgb_ok,
+        "brush_mask_hashes_match_source": mask_ok,
     }
     report = {
         "checks": checks,

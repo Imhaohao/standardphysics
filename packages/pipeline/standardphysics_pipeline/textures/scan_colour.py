@@ -79,8 +79,8 @@ def _weights_from(
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """How good this camera's view of each vertex is, and where to sample it.
 
-    ``mask`` (same HxW as the photo, static region = 1) zeroes the weight of
-    samples outside the static region, so moving-object pixels never paint.
+    ``mask`` must already be resampled to the depth-buffer grid (static
+    region = 1); samples outside the static region never paint.
     """
     columns, rows, depth = camera.project(vertices)
     toward = camera.position[None, :] - vertices
@@ -103,13 +103,22 @@ def _weights_from(
     )
     weight = np.where(inside & unhidden, facing ** 2 / np.maximum(distance, 0.5) * border, 0.0)
     if mask is not None:
-        mask = np.asarray(mask, dtype=np.float64)
-        if mask.shape != buffer.shape:
-            raise ValueError(f"mask shape {mask.shape} must match photo {buffer.shape}")
-        support = bilinear(mask, columns, rows)
-        static = support >= 0.5
-        weight = np.where(static, weight, 0.0)
+        support = mask[
+            np.clip(np.rint(rows * height / camera.height).astype(np.int64), 0, height - 1),
+            np.clip(np.rint(columns * width / camera.width).astype(np.int64), 0, width - 1),
+        ]
+        weight = np.where(support >= 0.5, weight, 0.0)
     return weight, columns, rows
+
+
+def _small_static_mask(mask: np.ndarray, height: int, width: int) -> np.ndarray:
+    """Block-mean the full-res static mask down to the depth-buffer grid."""
+    rows, cols = mask.shape
+    row_block = max(1, rows // height)
+    col_block = max(1, cols // width)
+    trimmed = mask[: row_block * height, : col_block * width]
+    blocks = trimmed.reshape(height, row_block, width, col_block)
+    return blocks.mean(axis=(1, 3)) >= 0.5
 
 
 def colour_the_scan(
@@ -121,7 +130,8 @@ def colour_the_scan(
 ) -> ColouredScan:
     """Every vertex given the colour of the photo that saw it best.
 
-    ``masks``, when provided, are static-region masks (one per photo); samples
+    ``masks``, when provided, are static-region masks (one per photo,
+    full resolution); they are resampled to the depth-buffer grid and samples
     outside the static region are never painted.  The resulting scan records
     the best source frame ID per vertex so downstream sampling can prove
     photo support rather than assert it.
@@ -134,7 +144,9 @@ def colour_the_scan(
     source_ids = [None] * len(vertices)
     for index, (camera, photo) in enumerate(zip(cameras, images)):
         buffer = depth_buffer(camera, vertices)
-        image_mask = masks[index] if masks is not None else None
+        image_mask = None
+        if masks is not None:
+            image_mask = _small_static_mask(masks[index], *buffer.shape)
         weight, columns, rows = _weights_from(camera, vertices, normals, buffer, image_mask)
         better = np.flatnonzero(weight > best)
         if not len(better):
@@ -142,8 +154,8 @@ def colour_the_scan(
         sampled = bilinear(photo, columns[better], rows[better])
         colours[better] = to_srgb(to_linear(sampled.astype(np.float32)))
         best[better] = weight[better]
-        for index in better:
-            source_ids[index] = camera.frame_id
+        for vertex in better:
+            source_ids[vertex] = camera.frame_id
     return ColouredScan(
         vertices,
         triangles,
