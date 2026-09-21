@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowLeft, ArrowsLeftRight, FileText, HandGrabbing, ListChecks, MapPin } from "@phosphor-icons/react";
+import { DeleteScanButton } from "@/components/workspace/DeleteScanButton";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -191,6 +192,7 @@ function WorkspaceHeader({ scan, revision, task, canCompare, canCombine, onTask 
         <FileText size={16} weight="bold" aria-hidden />
         Report
       </Link>
+      <DeleteScanButton scanId={scan.id} name={scan.name} />
       <div className="flex max-w-full gap-1 overflow-x-auto rounded-xl bg-rule/50 p-1" role="group" aria-label="What to do">
         <Button variant="chip" aria-pressed={task === "findings"} onClick={() => onTask("findings")}>
           <ListChecks size={16} weight="bold" className="hidden sm:block" aria-hidden />
