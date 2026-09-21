@@ -46,6 +46,15 @@ def load_splits(run_dir: Path) -> dict:
     return json.loads((run_dir / "stageA" / "splits.json").read_text())
 
 
+def build_transfer_views(run_dir: Path, room: str) -> list[FrozenView]:
+    manifest = json.loads((run_dir / "stageA" / "transfer-novel-views.json").read_text())
+    views = []
+    for spec in manifest[room]["views"]:
+        camera = build_novel_view(spec)
+        views.append(FrozenView(spec["id"], camera, camera.width, camera.height, None))
+    return views
+
+
 def build_views(run_dir: Path) -> list[FrozenView]:
     splits = load_splits(run_dir)
     capture = CAPTURES[splits["capture"]]
@@ -152,6 +161,28 @@ def feature_matches(reference: np.ndarray, candidate: np.ndarray, max_features=5
             "machine_note": "SIFT descriptor matches, provisional alignment evidence"}
 
 
+def hole_metrics(rgb_path, geometry_path, coverage_path):
+    """Unphotographed connected components inside the measured surface.
+
+    Returns the largest single untextured hole as a fraction of total target
+    pixels, plus the photographed mask for baseline comparisons.
+    """
+    from scipy import ndimage
+
+    geometry = np.asarray(Image.open(geometry_path).convert("L"), dtype=np.float64) > 128
+    photographed = np.asarray(Image.open(coverage_path).convert("L"), dtype=np.float64) > 128
+    rgb = np.asarray(Image.open(rgb_path).convert("RGB"))
+    total = geometry & (rgb.sum(axis=-1) > 0)
+    untextured = total & ~photographed
+    if untextured.sum() == 0:
+        return {"largest_hole_fraction": 0.0, "hole_count": 0, "target_pixels": int(total.sum())}, untextured
+    labels, count = ndimage.label(untextured)
+    sizes = ndimage.sum(untextured, labels, range(1, count + 1))
+    return {"largest_hole_fraction": float(sizes.max() / max(total.sum(), 1)),
+            "hole_count": int(count), "target_pixels": int(total.sum()),
+            "hole_fraction_total": float(untextured.sum() / max(total.sum(), 1))}, untextured
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run", type=Path, required=True)
@@ -159,6 +190,10 @@ def main() -> None:
     parser.add_argument("--policy", type=Path, required=True)
     parser.add_argument("--label", required=True)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--baseline-eval", type=Path, default=None,
+                        help="baseline evaluation.json for new-hole comparisons")
+    parser.add_argument("--transfer-room", default=None,
+                        help="evaluate the given room's frozen transfer views instead of the pilot views")
     args = parser.parse_args()
     policy = json.loads(args.policy.read_text())
     args.out.mkdir(parents=True, exist_ok=True)
@@ -167,9 +202,12 @@ def main() -> None:
     if not args.glb.is_file():
         sys.exit(f"missing candidate GLB: {args.glb}")
 
-    views = build_views(args.run)
+    views = build_views(args.run) if args.transfer_room is None else build_transfer_views(args.run, args.transfer_room)
     if not views:
         sys.exit("no frozen views; refusing to evaluate empty evidence")
+    for view in views:
+        if view.reference is not None:
+            Image.fromarray(view.reference.astype(np.uint8)).save(args.out / f"{view.id}-reference-500.png")
     arrays = scene_arrays(args.glb)
     glb_hash = hashlib.sha256(args.glb.read_bytes()).hexdigest()
 
@@ -189,8 +227,10 @@ def main() -> None:
                      arrays[6], arrays[7], np.full(len(arrays[1]), -1, dtype=np.int32))
     records = render_all(arrays, arrays_region, views, args.out)
 
+    baseline_doc = json.loads(args.baseline_eval.read_text()) if args.baseline_eval is not None and args.baseline_eval.is_file() else None
     results = {"label": args.label, "glb": str(args.glb), "glb_sha256": glb_hash,
                "policy_sha256": hashlib.sha256(args.policy.read_bytes()).hexdigest(),
+               "baseline_eval": str(args.baseline_eval) if args.baseline_eval else None,
                "views": [], "gates": {}}
     coverage_gate = policy["visual_gates"]["coverage"]
     resolution_gate = policy["visual_gates"]["effective_resolution"]
@@ -204,6 +244,25 @@ def main() -> None:
         coverage = coverage_fractions(Path(record["passes"]["rgb"]), Path(record["passes"]["geometry"]),
                                       Path(record["passes"]["coverage"]), region_mask)
         entry["coverage"] = coverage
+        entry["holes"], untextured_mask = hole_metrics(Path(record["passes"]["rgb"]),
+                                                       Path(record["passes"]["geometry"]),
+                                                       Path(record["passes"]["coverage"]))
+        if args.baseline_eval is not None and args.baseline_eval.is_file():
+            baseline_record = next((v for v in baseline_doc["views"] if v["id"] == view.id), None)
+            if baseline_record is not None:
+                baseline_cov = Path(baseline_record["passes"]["coverage"])
+                baseline_geo = Path(baseline_record["passes"]["geometry"])
+                baseline_rgb = Path(baseline_record["passes"]["rgb"])
+                geometry = np.asarray(Image.open(Path(record["passes"]["geometry"])).convert("L")) > 128
+                rgb = np.asarray(Image.open(Path(record["passes"]["rgb"])).convert("RGB"))
+                total = geometry & (rgb.sum(axis=-1) > 0)
+                base_photo = np.asarray(Image.open(baseline_cov).convert("L")) > 128
+                base_geo = np.asarray(Image.open(baseline_geo).convert("L")) > 128
+                base_rgb = np.asarray(Image.open(baseline_rgb).convert("RGB"))
+                base_total = base_geo & (base_rgb.sum(axis=-1) > 0)
+                new_holes = total & base_total & ~untextured_mask & ~base_photo
+                entry["holes"]["new_hole_fraction_vs_baseline"] = float(
+                    new_holes.sum() / max(base_total.sum(), 1))
         entry["resolution"] = resolution_map(arrays, view, region_faces, args.out)
         if view.reference is not None:
             candidate = resize_500(Path(record["passes"]["rgb"]))

@@ -83,3 +83,16 @@ def test_partial_rule_without_centre_accepts_centre_hidden_but_spread_visible_an
     big = square(2.0, 1.4)
     assignment_big, _ = choose_views_partial(back, faces, [cam], np.vstack([back, big]), all_faces, centre_required=False)
     assert assignment_big.tolist() == [-1, -1]
+
+
+def test_snap_to_measured_moves_displaced_vertices_and_caps_far_ones():
+    from standardphysics_pipeline.textures.surface_photos import snap_to_measured
+    surface = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [1.0, 1.0, 0.0]], dtype=float)
+    displaced = surface.copy()
+    displaced[:, 2] += 0.06
+    displaced = np.vstack([displaced, [[5.0, 5.0, 5.0]]])
+    snapped, count, farthest = snap_to_measured(displaced, surface, max_distance=0.15)
+    np.testing.assert_allclose(snapped[:4], surface)
+    np.testing.assert_allclose(snapped[4], [5.0, 5.0, 5.0])
+    assert count == 4
+    assert farthest > 0.05

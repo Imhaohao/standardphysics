@@ -80,6 +80,8 @@ def parse_scene(glb_path: Path):
         elif kind == 0x004E4942:
             bin_blob = chunk
     document = json.loads(json_blob)
+    marker = (document.get("asset") or {}).get("extras") or {}
+    flip_images = marker.get("photoMeshVersion") != 1
     meshes = []
     materials = document.get("materials", [])
     textures = []
@@ -101,9 +103,9 @@ def parse_scene(glb_path: Path):
                 else:
                     raw = base64.b64decode(image_meta["uri"].split(",", 1)[1])
                 image = np.asarray(Image.open(BytesIO(raw)).convert("RGB"), dtype=np.uint8)
-                # the verified benchmark pipeline samples rows top-down from these
-                # GLBs' TEXCOORDs, so rows are stored bottom-up here
-                image = np.ascontiguousarray(image[::-1])
+                if flip_images:
+                    # legacy exports stored rows bottom-up relative to their TEXCOORDs
+                    image = np.ascontiguousarray(image[::-1])
         textures.append(image)
     for mesh in document.get("meshes", []):
         for primitive in mesh.get("primitives", []):

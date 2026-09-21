@@ -108,6 +108,25 @@ def choose_views_partial(vertices, triangles, cameras, depth_vertices=None, dept
 SAMPLES = 7
 MIN_SAMPLES = 5
 
+def snap_to_measured(display_vertices, full_vertices, max_distance=0.15):
+    """Pull simplified display vertices back onto the measured surface.
+
+    Quadric decimation leaves the display mesh centimetres off the measured
+    surface (and photos project through the display positions, doubling the
+    visual error). Each display vertex moves to its nearest measured-surface
+    vertex when that neighbour is within ``max_distance``; vertices beyond the
+    cap keep their decimated position, so missing geometry is never invented.
+    """
+    from scipy.spatial import cKDTree
+
+    tree = cKDTree(full_vertices)
+    distance, index = tree.query(display_vertices, distance_upper_bound=max_distance)
+    mask = np.isfinite(distance)
+    snapped = np.array(display_vertices)
+    snapped[mask] = full_vertices[index[mask]]
+    farthest = float(distance[mask].max()) if mask.any() else 0.0
+    return snapped, int(mask.sum()), farthest
+
 
 def choose_views(vertices, triangles, cameras, depth_vertices=None, depth_triangles=None, on_progress=None):
     """One photograph per face; all three corners and centre must be visible."""

@@ -198,6 +198,7 @@ def scene_arrays(glb_path: Path):
     vcolors = []
     names = []
     colour_cursor = 0
+    running_vertices = 0
     for mesh_index, (vertices_own, faces_own, uv_own, image) in enumerate(parsed):
         if image is not None:
             index = len(textures)
@@ -211,8 +212,9 @@ def scene_arrays(glb_path: Path):
                 colour_index_value = len(vcolors)
                 vcolors.append(np.ascontiguousarray(glb_colour_pages[colour_cursor][:len(vertices_own)] * 255.0, dtype=np.float32))
                 colour_cursor += 1
-        offset = len(vertex_parts[-1]) if vertex_parts else 0
+        offset = running_vertices
         vertex_parts.append(vertices_own.astype(np.float32))
+        running_vertices += len(vertices_own)
         face_parts.append(faces_own.astype(np.int32) + np.int32(offset))
         uv_parts.append(uv_own.astype(np.float32) if len(uv_own) == len(vertices_own) else np.zeros((len(vertices_own), 2), dtype=np.float32))
         tex_index.append(np.full(len(faces_own), index, dtype=np.int32))
