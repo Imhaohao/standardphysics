@@ -573,6 +573,22 @@ export interface NodeTextureCoverage {
   textured_fraction: number;
 }
 /**
+ * A photographed crop evidencing the object.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "ObservationCrop".
+ */
+export interface ObservationCrop {
+  confidence: number;
+  frame_id: string;
+  image_url: string | null;
+  /**
+   * @minItems 4
+   * @maxItems 4
+   */
+  sensor_box: [number, number, number, number, ...number[]];
+}
+/**
  * Written by the phone after its photos upload. A build waits until every listed frame is stored.
  *
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
@@ -831,6 +847,7 @@ export interface SceneGraph {
  */
 export interface SceneNode {
   appearance?: DisplayAppearance | null;
+  attachment?: SurfaceAttachment | null;
   dimensions: Vec3;
   id: string;
   kind: string;
@@ -844,6 +861,37 @@ export interface SceneNode {
   relation?: string | null;
   texts?: SurfaceText[];
   transform: Mat4;
+}
+/**
+ * Explicit surface-attached mounting metadata for thin/wall-mounted objects.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "SurfaceAttachment".
+ */
+export interface SurfaceAttachment {
+  identity_confidence: number;
+  local_anchor: Vec3 | null;
+  localization_quality: "verified_support" | "inferred_plane" | "unanchored" | "needs_verification";
+  normal: Vec3 | null;
+  observations: ObservationCrop[];
+  observed_region: Vec3[];
+  review_status: "detected" | "candidate" | "confirmed_by_user" | "rejected_by_user";
+  sockets: SocketTarget[];
+  support_node_id: string | null;
+  support_type: "lidar_surface" | "roomplan_plane" | "unanchored";
+  uncertainty_reasons: string[];
+}
+/**
+ * An individual operable socket opening on an outlet faceplate or power strip.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "SocketTarget".
+ */
+export interface SocketTarget {
+  center: Vec3;
+  confidence: number;
+  id: string;
+  status: "observed" | "inferred" | "unknown";
 }
 /**
  * Words read off a surface, and the frames they were read from.

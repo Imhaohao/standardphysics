@@ -10,8 +10,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${appFontVariables} h-full`}>
-      <body className="min-h-full">{children}</body>
+    <html lang="en" className={`${appFontVariables} h-full`} suppressHydrationWarning>
+      <body className="min-h-full" suppressHydrationWarning>{children}</body>
     </html>
   );
 }

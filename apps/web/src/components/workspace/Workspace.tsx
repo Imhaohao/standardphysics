@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowsLeftRight, FileText, HandGrabbing, ListChecks, MapPin } from "@phosphor-icons/react";
+import { ArrowLeft, ArrowsLeftRight, FileText, HandGrabbing, Lightning, ListChecks, MapPin } from "@phosphor-icons/react";
 import { DeleteScanButton } from "@/components/workspace/DeleteScanButton";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -34,10 +34,17 @@ import type { RoomGroup } from "@/lib/room-groups";
 import { SimulationPanel } from "./SimulationPanel";
 import { type MaterialMode, type ViewMode, ViewerDock } from "./ViewerDock";
 import { isTextureRefreshing, textureStatusMatches } from "@/lib/texture-status";
-import { viewerSourcePlan } from "@/lib/viewer-source";
+import { showsSplats, viewerSourcePlan } from "@/lib/viewer-source";
+
 import type { TextureStatus } from "@/types/contracts";
+
 import type { CapturedSplats } from "@/lib/captured-splats";
-import { DEFAULT_WHEELCHAIR_PROFILE, wheelchairProfile, type WheelchairProfile } from "@/lib/wheelchair-motion";
+import { reviewOutlet } from "@/lib/layout-client";
+import { DEFAULT_WHEELCHAIR_PROFILE, wheelchairProfile, type MotionPoint, type WheelchairProfile } from "@/lib/wheelchair-motion";
+import { OutletPanel } from "./OutletPanel";
+
+
+
 
 const Viewer = dynamic(() => import("./Viewer"), {
   ssr: false,
@@ -64,7 +71,7 @@ type WorkspaceProps = {
 function isWorking(scan: Scan): boolean {
   return scan.state === "uploading" || scan.state === "measuring" || scan.state === "checking";
 }
-type Task = "findings" | "arrange" | "combine" | "compare" | "route";
+type Task = "findings" | "arrange" | "combine" | "compare" | "route" | "outlets";
 
 function poseFor(scene: SceneGraph, selected: Focus | null, mode: ViewMode): ViewerPose {
   if (selected?.locus) return poseFromLocus(selected.locus.camera);
@@ -212,6 +219,10 @@ function WorkspaceHeader({ scan, revision, task, canCompare, canCombine, onTask 
           <MapPin size={16} weight="bold" className="hidden sm:block" aria-hidden />
           Customer route
         </Button>
+        <Button variant="chip" aria-pressed={task === "outlets"} onClick={() => onTask("outlets")}>
+          <Lightning size={16} weight="bold" className="hidden sm:block" aria-hidden />
+          Outlets
+        </Button>
         {canCompare && (
           <Button variant="chip" aria-pressed={task === "compare"} onClick={() => onTask("compare")}>
             <ArrowsLeftRight size={16} weight="bold" className="hidden sm:block" aria-hidden />
@@ -241,14 +252,111 @@ type SidePanelProps = {
   route: RouteState;
   onRoute: () => void;
   onLook: (locus: Locus | null) => void;
+  selectedNodeId?: string | null;
+  onSelectNode?: (nodeId: string | null) => void;
+  wheelchairPos?: { x: number; z: number } | null;
+  wheelchairProfile?: WheelchairProfile;
+  onProfileChange?: (profile: WheelchairProfile) => void;
+  onPreviewApproach?: (point: { x: number; z: number }) => void;
+  onUpdateReviewStatus?: (nodeId: string, status: "confirmed_by_user" | "rejected_by_user") => void;
 };
 
-function SidePanel({ task, scene, onTryLayout, onPreviewLayout, assessment, scan, findings, selected, arrangement, combine, comparison, amount, onAmount, onToggle, route, onRoute, onLook }: SidePanelProps) {
-  const scope: CheckScope = { rulesChecked: assessment?.rules_checked ?? null, routeConfirmed: route.confirmed };
-  if (task === "compare" && comparison) return <ComparePanel comparison={comparison} amount={amount} onAmount={onAmount} scope={scope} />;
+type OutletsTabProps = Pick<
+  SidePanelProps,
+  | "scene"
+  | "selectedNodeId"
+  | "onSelectNode"
+  | "wheelchairPos"
+  | "wheelchairProfile"
+  | "onProfileChange"
+  | "onPreviewApproach"
+  | "onUpdateReviewStatus"
+>;
+
+/** The outlets tab with its defaults filled in, so the panel chooser stays a plain list of tabs. */
+function OutletsTab(props: OutletsTabProps) {
+  return (
+    <OutletPanel
+      scene={props.scene}
+      selectedId={props.selectedNodeId ?? null}
+      onSelectNode={props.onSelectNode ?? (() => {})}
+      wheelchairPos={props.wheelchairPos ?? null}
+      wheelchairProfile={props.wheelchairProfile ?? DEFAULT_WHEELCHAIR_PROFILE}
+      onProfileChange={props.onProfileChange}
+      onPreviewApproach={props.onPreviewApproach}
+      onUpdateReviewStatus={props.onUpdateReviewStatus}
+    />
+  );
+}
+
+type SingleTabInput = {
+  task: SidePanelProps["task"];
+  comparison: SidePanelProps["comparison"];
+  amount: SidePanelProps["amount"];
+  onAmount: SidePanelProps["onAmount"];
+  scope: CheckScope;
+  arrangement: SidePanelProps["arrangement"];
+  findings: SidePanelProps["findings"];
+  combine: SidePanelProps["combine"];
+  route: SidePanelProps["route"];
+};
+
+/** The tabs that are one panel and nothing else, or null when the tab is the findings view. */
+function singleTabPanel(input: SingleTabInput) {
+  const { task, comparison, amount, onAmount, scope, arrangement, findings, combine, route } = input;
+  if (task === "compare" && comparison) {
+    return <ComparePanel comparison={comparison} amount={amount} onAmount={onAmount} scope={scope} />;
+  }
   if (task === "arrange") return <ArrangePanel arrangement={arrangement} fallbackFindings={findings} scope={scope} />;
   if (task === "combine") return <CombinePanel combine={combine} />;
   if (task === "route") return <RoutePanel route={route} />;
+  return null;
+}
+
+function SidePanel({
+  task,
+  scene,
+  onTryLayout,
+  onPreviewLayout,
+  assessment,
+  scan,
+  findings,
+  selected,
+  arrangement,
+  combine,
+  comparison,
+  amount,
+  onAmount,
+  onToggle,
+  route,
+  onRoute,
+  onLook,
+  selectedNodeId,
+  onSelectNode,
+  wheelchairPos,
+  wheelchairProfile,
+  onProfileChange,
+  onPreviewApproach,
+  onUpdateReviewStatus,
+}: SidePanelProps) {
+  const scope: CheckScope = { rulesChecked: assessment?.rules_checked ?? null, routeConfirmed: route.confirmed };
+  if (task === "outlets") {
+    return (
+      <OutletsTab
+        scene={scene}
+        selectedNodeId={selectedNodeId}
+        onSelectNode={onSelectNode}
+        wheelchairPos={wheelchairPos}
+        wheelchairProfile={wheelchairProfile}
+        onProfileChange={onProfileChange}
+        onPreviewApproach={onPreviewApproach}
+        onUpdateReviewStatus={onUpdateReviewStatus}
+      />
+    );
+  }
+
+  const single = singleTabPanel({ task, comparison, amount, onAmount, scope, arrangement, findings, combine, route });
+  if (single) return single;
   return (
     <>
       <AskBox scanId={scan.id} revision={scene.revision} onLook={onLook} onTry={onTryLayout} />
@@ -441,6 +549,7 @@ function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, te
   const [wheelchairState, setWheelchairState] = useState<WheelchairState | null>(null);
   const [profile, setProfile] = useState<WheelchairProfile>(DEFAULT_WHEELCHAIR_PROFILE);
   const [dockTarget, setDockTarget] = useState<SceneNode | null>(null);
+  const [dockDestination, setDockDestination] = useState<MotionPoint | null>(null);
   const [splatError, setSplatError] = useState<string | null>(null);
   useKeyboard(task, visuals.arrangement, visuals.combine, actions.clear, wheelchairMode);
 
@@ -451,14 +560,17 @@ function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, te
   const exitWheelchairMode = useCallback(() => {
     setWheelchairMode(false);
     setDockTarget(null);
+    setDockDestination(null);
   }, []);
 
   const handleDockWheelchair = useCallback((node: SceneNode) => {
     setDockTarget(node);
+    setDockDestination(null);
   }, []);
 
   const handleClearWheelchairDock = useCallback(() => {
     setDockTarget(null);
+    setDockDestination(null);
   }, []);
 
   const handleWheelchairSelectNode = useCallback((node: SceneNode) => {
@@ -475,12 +587,13 @@ function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, te
   const activeMode = selected ? null : mode;
   const photoBuild = textures.status?.build ?? null;
   const scanGlbUrl = photoBuild?.scan_glb_url ?? null;
-  const captureAllowed = task === "findings" || task === "route";
+  const captureAllowed = task === "findings" || task === "route" || task === "outlets";
   const splatAssets = captureAllowed && capturedSplats?.revision === scene.revision ? capturedSplats.assets : undefined;
   const hasSplats = Boolean(splatAssets?.length);
   const reconstructionCount = scene.nodes.filter((node) => node.reconstruction !== null && node.reconstruction !== undefined).length;
-  const preferredMode = chosenMaterialMode ?? (hasSplats ? "scan" : reconstructionCount > 0 ? "reconstructed" : (scanGlbUrl ? "scan" : "captured"));
-  const materialMode = !captureAllowed && preferredMode === "scan" ? "plain" : preferredMode;
+  const preferredMode = chosenMaterialMode ?? (scanGlbUrl ? "scan" : reconstructionCount > 0 ? "reconstructed" : (hasSplats ? "splat" : "captured"));
+  const materialMode = !captureAllowed && (preferredMode === "scan" || preferredMode === "splat") ? "plain" : preferredMode;
+  const splatsOnScreen = showsSplats({ materialMode, hasSplats, hasScanGlb: scanGlbUrl !== null });
   const reconstructionPending = reconstructionCount > 0 && exported.revision !== scene.revision;
   const cleanGlbUrl = reconstructionPending ? null : glbUrl;
   const sourcePlan = viewerSourcePlan({
@@ -491,6 +604,48 @@ function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, te
   });
   const sourceGlbUrl = sourcePlan.usePhotoBuild ? photoBuild?.glb_url ?? null : cleanGlbUrl;
   const sourceGraph = sourcePlan.usePhotoBuild ? photoBuild?.bake_graph ?? exported : exported;
+
+  const [reviews, setReviews] = useState<Record<string, "confirmed_by_user" | "rejected_by_user">>({});
+  const [persistedScene, setPersistedScene] = useState<SceneGraph | null>(null);
+
+  const handleUpdateReviewStatus = useCallback(async (nodeId: string, status: "confirmed_by_user" | "rejected_by_user") => {
+    setReviews((prev) => ({ ...prev, [nodeId]: status }));
+    try {
+      const currentRev = (persistedScene ?? scene).revision;
+      const updated = await reviewOutlet(scan.id, currentRev, nodeId, status);
+      setPersistedScene(updated);
+    } catch (err) {
+      console.error("Failed to persist outlet review", err);
+    }
+  }, [scan.id, scene, persistedScene]);
+
+  const activeScene = useMemo(() => {
+    const base = persistedScene ?? scene;
+    if (Object.keys(reviews).length === 0) return base;
+    return {
+      ...base,
+      nodes: base.nodes.map((node) => {
+        const review = reviews[node.id];
+        if (!review || !node.attachment) return node;
+        return {
+          ...node,
+          attachment: {
+            ...node.attachment,
+            review_status: review,
+          },
+        };
+      }),
+    };
+  }, [scene, persistedScene, reviews]);
+
+  const handlePreviewOutletApproach = useCallback((point: MotionPoint) => {
+    if (picked.node) {
+      setDockTarget(picked.node);
+      setDockDestination(point);
+      setWheelchairMode(true);
+    }
+  }, [picked.node]);
+
   return <>
     <RefreshWhile pending={assessment === null && isWorking(scan)} />
     <div className={`grid h-dvh grid-cols-[minmax(0,1fr)] ${wheelchairMode ? "grid-rows-[auto_minmax(0,1fr)]" : "grid-rows-[auto_minmax(16rem,45dvh)_1fr] lg:grid-cols-[minmax(0,1fr)_24rem] lg:grid-rows-[auto_1fr]"}`}>
@@ -521,14 +676,16 @@ function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, te
           wheelchairProfile={profile}
           onWheelchairStateChange={setWheelchairState}
           wheelchairDockTarget={dockTarget}
+          wheelchairDockDestination={dockDestination}
           onClearWheelchairDock={handleClearWheelchairDock}
           onWheelchairSelectNode={handleWheelchairSelectNode}
           onWheelchairExit={exitWheelchairMode}
         />
-        {splatError && materialMode === "scan" && <p role="status" className="absolute left-4 top-4 max-w-sm rounded-lg bg-sheet/95 p-3 text-sm text-ink-muted">{splatError} Showing the measured model.</p>}
-        {hasSplats && materialMode === "scan" && !splatError && !wheelchairMode && (
+
+        {splatError && splatsOnScreen && <p role="status" className="absolute left-4 top-4 max-w-sm rounded-lg bg-sheet/95 p-3 text-sm text-ink-muted">{splatError} Showing the measured model.</p>}
+        {splatsOnScreen && !splatError && !wheelchairMode && (
           <p role="status" className="pointer-events-none absolute left-4 top-4 max-w-sm rounded-lg bg-sheet/90 px-3 py-2 text-xs text-ink-muted shadow-sm">
-            Photographic preview · Gaps and blur remain. Measurements use scan geometry.
+            Gaps and blur remain in this view. Measurements use the scan geometry.
           </p>
         )}
         <PickedObject
@@ -558,7 +715,36 @@ function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, te
         />
       </section>
       <aside hidden={wheelchairMode} className="min-h-0 overflow-y-auto px-3 pb-10 pt-4 lg:pt-0">
-        <SidePanel task={task} scene={scene} onTryLayout={actions.tryLayout} onPreviewLayout={actions.previewLayout} assessment={assessment} scan={scan} findings={findings} selected={selected} arrangement={visuals.arrangement} combine={visuals.combine} comparison={visuals.comparison} amount={amount} onAmount={setAmount} onToggle={actions.toggle} route={visuals.route} onRoute={() => actions.switchTask("route")} onLook={actions.look} />
+        <SidePanel
+          task={task}
+          scene={activeScene}
+          onTryLayout={actions.tryLayout}
+          onPreviewLayout={actions.previewLayout}
+          assessment={assessment}
+          scan={scan}
+          findings={findings}
+          selected={selected}
+          arrangement={visuals.arrangement}
+          combine={visuals.combine}
+          comparison={visuals.comparison}
+          amount={amount}
+          onAmount={setAmount}
+          onToggle={actions.toggle}
+          route={visuals.route}
+          onRoute={() => actions.switchTask("route")}
+          onLook={actions.look}
+          selectedNodeId={picked.node?.id ?? null}
+          onSelectNode={(id) => {
+            if (id) actions.selectNode(id);
+            else actions.clear();
+          }}
+          wheelchairPos={wheelchairState ? { x: wheelchairState.x, z: wheelchairState.z } : null}
+          wheelchairProfile={profile}
+          onProfileChange={handleWheelchairProfile}
+          onPreviewApproach={handlePreviewOutletApproach}
+          onUpdateReviewStatus={handleUpdateReviewStatus}
+        />
+
       </aside>
     </div>
   </>;

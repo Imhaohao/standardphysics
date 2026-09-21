@@ -238,6 +238,7 @@ function ProfileSlider({
 }
 
 function ProfileControls({ profile, onChange }: { profile: WheelchairProfile; onChange: (profile: WheelchairProfile) => void }) {
+  const reach = profile.reach;
   return (
     <details className="pointer-events-auto rounded-lg border border-rule/60 bg-sheet/95 px-2.5 py-2 text-xs text-ink-muted shadow-sm">
       <summary className="cursor-pointer font-semibold text-ink">Adjust navigation estimates</summary>
@@ -245,11 +246,69 @@ function ProfileControls({ profile, onChange }: { profile: WheelchairProfile; on
         <ProfileSlider label="Seated eye height" value={profile.eyeHeight} unit="m" {...WHEELCHAIR_PROFILE_LIMITS.eyeHeight} step={0.01} onChange={(eyeHeight) => onChange({ ...profile, eyeHeight })} />
         <ProfileSlider label="Movement speed" value={profile.speed} unit="m/s" {...WHEELCHAIR_PROFILE_LIMITS.speed} step={0.1} onChange={(speed) => onChange({ ...profile, speed })} />
         <ProfileSlider label="Collision radius" value={profile.collisionRadius} unit="m" {...WHEELCHAIR_PROFILE_LIMITS.collisionRadius} step={0.01} onChange={(collisionRadius) => onChange({ ...profile, collisionRadius })} />
+        <div className="mt-1 border-t border-rule/40 pt-1.5">
+          <p className="mb-1.5 font-semibold text-ink">Personal Reach Bounds</p>
+          <ProfileSlider
+            label="Min reach height"
+            value={reach?.minReachHeight ?? 0.38}
+            unit="m"
+            {...WHEELCHAIR_PROFILE_LIMITS.minReachHeight}
+            step={0.01}
+            onChange={(minReachHeight) =>
+              onChange({
+                ...profile,
+                reach: {
+                  maxReachHeight: reach?.maxReachHeight ?? 1.22,
+                  maxReachDistance: reach?.maxReachDistance ?? 0.60,
+                  ...reach,
+                  minReachHeight,
+                },
+              })
+            }
+          />
+          <ProfileSlider
+            label="Max reach height"
+            value={reach?.maxReachHeight ?? 1.22}
+            unit="m"
+            {...WHEELCHAIR_PROFILE_LIMITS.maxReachHeight}
+            step={0.01}
+            onChange={(maxReachHeight) =>
+              onChange({
+                ...profile,
+                reach: {
+                  minReachHeight: reach?.minReachHeight ?? 0.38,
+                  maxReachDistance: reach?.maxReachDistance ?? 0.60,
+                  ...reach,
+                  maxReachHeight,
+                },
+              })
+            }
+          />
+          <ProfileSlider
+            label="Max reach distance"
+            value={reach?.maxReachDistance ?? 0.60}
+            unit="m"
+            {...WHEELCHAIR_PROFILE_LIMITS.maxReachDistance}
+            step={0.01}
+            onChange={(maxReachDistance) =>
+              onChange({
+                ...profile,
+                reach: {
+                  minReachHeight: reach?.minReachHeight ?? 0.38,
+                  maxReachHeight: reach?.maxReachHeight ?? 1.22,
+                  ...reach,
+                  maxReachDistance,
+                },
+              })
+            }
+          />
+        </div>
       </div>
       <p className="mt-2 text-[10px] leading-snug">Adjustable estimates. Movement uses a conservative circular footprint, not an exact wheelchair model or an ADA compliance check.</p>
     </details>
   );
 }
+
 
 // eslint-disable-next-line complexity
 export function WheelchairHud({

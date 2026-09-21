@@ -68,6 +68,19 @@ export function setCounter(scanId: string, baseRevision: number, nodeId: string,
   return sendJson<SceneGraph>(`/api/scans/${scanId}/revisions/${baseRevision}/counters/${nodeId}`, undefined, isCounter ? "PUT" : "DELETE");
 }
 
+export function reviewOutlet(
+  scanId: string,
+  baseRevision: number,
+  nodeId: string,
+  status: "confirmed_by_user" | "rejected_by_user"
+) {
+  return sendJson<SceneGraph>(
+    `/api/scans/${scanId}/revisions/${baseRevision}/outlets/${nodeId}/review`,
+    { status },
+    "PUT"
+  );
+}
+
 export function confirmRoute(scanId: string, scenario: Scenario) {
   return sendJson<Scenario>(`/api/scans/${scanId}/scenario`, scenario, "PUT");
 }
@@ -75,3 +88,4 @@ export function confirmRoute(scanId: string, scenario: Scenario) {
 export function askAboutShop(scanId: string, baseRevision: number, text: string) {
   return sendJson<AskAnswer>(`/api/scans/${scanId}/ask`, { base_revision: baseRevision, text });
 }
+

@@ -1,0 +1,1145 @@
+{
+  "objective": "Repair and finish the actual Standard Physics outlet feature per docs/outlet-repair-goal-and-acceptance-plan.txt and docs/outlet-repair-acceptance.json.",
+  "status": "in_progress",
+  "created_at": "2026-09-20T14:15:00-07:00",
+  "updated_at": "2026-09-20T14:15:00-07:00",
+  "scan_id": "f143082d-f529-494b-b80d-97729234e334",
+  "terminal_status": "implementation_ready_real_acceptance_blocked",
+  "gates": {
+    "G0": "passed",
+    "G1": "passed",
+    "G2": "passed",
+    "G3": "passed",
+    "G4": "passed",
+    "G5": "passed",
+    "G6": "passed",
+    "G7": "passed",
+    "G8": "passed",
+    "G9": "open",
+    "G10": "passed"
+  },
+  "receipts": {
+    "STATUS-01": {
+      "test_id": "STATUS-01",
+      "gate_id": "G0",
+      "evidence_kind": "fixture",
+      "source_hash": "47072b4780ecdb2be1729208155c46f68c1fbbb914a686abb115e9fc26863b59",
+      "input_hashes": ["47072b4780ecdb2be1729208155c46f68c1fbbb914a686abb115e9fc26863b59"],
+      "command_or_ui_action": "python3 scripts/demonstrate_gate_f.py",
+      "started_at": "2026-09-20T14:15:30-07:00",
+      "finished_at": "2026-09-20T14:15:35-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Preserved and relabeled as synthetic/unverified; no script can emit real-completion claim from it",
+      "actual_behavior": "Relabeled demonstrate_gate_f.py as synthetic export fixture; action notes updated to state synthetic only without real-completion or browser claims.",
+      "artifact_paths_and_hashes": {
+        "scripts/demonstrate_gate_f.py": "47072b4780ecdb2be1729208155c46f68c1fbbb914a686abb115e9fc26863b59"
+      },
+      "review_identity": "self_review"
+    },
+    "LIST-01": {
+      "test_id": "LIST-01",
+      "gate_id": "G1",
+      "evidence_kind": "fixture",
+      "source_hash": "f4e69033014331c93c40553b96335dbf6a3455cd1168ce3233d9dbf2f0b8ab2e",
+      "input_hashes": ["2c809525909653642b278894010a53b74ba4e381c836140f0b4b57043d06b397"],
+      "command_or_ui_action": "npm test -- src/components/workspace/OutletPanel.test.ts",
+      "started_at": "2026-09-20T14:17:40-07:00",
+      "finished_at": "2026-09-20T14:17:41-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Wall/table nodes with attachment omitted, undefined or null produce zero outlets",
+      "actual_behavior": "isOutletNode strictly checks kind==='outlet' or valid outlet attachment; nodes with attachment omitted/undefined/null are excluded.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/components/workspace/OutletPanel.tsx": "f4e69033014331c93c40553b96335dbf6a3455cd1168ce3233d9dbf2f0b8ab2e",
+        "apps/web/src/components/workspace/OutletPanel.test.ts": "2c809525909653642b278894010a53b74ba4e381c836140f0b4b57043d06b397"
+      },
+      "review_identity": "self_review"
+    },
+    "LIST-02": {
+      "test_id": "LIST-02",
+      "gate_id": "G1",
+      "evidence_kind": "fixture",
+      "source_hash": "f4e69033014331c93c40553b96335dbf6a3455cd1168ce3233d9dbf2f0b8ab2e",
+      "input_hashes": ["2c809525909653642b278894010a53b74ba4e381c836140f0b4b57043d06b397"],
+      "command_or_ui_action": "npm test -- src/components/workspace/OutletPanel.test.ts",
+      "started_at": "2026-09-20T14:17:40-07:00",
+      "finished_at": "2026-09-20T14:17:41-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Only explicit outlet categories included; candidates distinguished; whiteboard excluded",
+      "actual_behavior": "Only outlet categories (outlet, electrical_outlet, receptacle, socket) or explicit kind==='outlet'/'candidate_outlet' are included. Wall-mounted whiteboard is excluded.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/components/workspace/OutletPanel.tsx": "f4e69033014331c93c40553b96335dbf6a3455cd1168ce3233d9dbf2f0b8ab2e",
+        "apps/web/src/components/workspace/OutletPanel.test.ts": "2c809525909653642b278894010a53b74ba4e381c836140f0b4b57043d06b397"
+      },
+      "review_identity": "self_review"
+    },
+    "PIPE-01": {
+      "test_id": "PIPE-01",
+      "gate_id": "G1",
+      "evidence_kind": "fixture",
+      "source_hash": "2fce2b73a71ead820f333d18a2ccfb5e7d8f505d0b7667f39db702fda4b38b94",
+      "input_hashes": ["6c8f28796cafa4a8ff31329f05b61c41b4fda0d13435369d9d4d26a21627506d"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_discover_outlets.py -k test_pipe_01",
+      "started_at": "2026-09-20T14:20:38-07:00",
+      "finished_at": "2026-09-20T14:20:39-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Surface outlet persisted to candidate revision and returned through authenticated graph API; not discarded by solid carving",
+      "actual_behavior": "Production discover_objects pipeline attaches detected outlet to calibrated support surface and reconciles it into DiscoveryResult; carving separates freestanding from surface-attached items.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/discover.py": "2fce2b73a71ead820f333d18a2ccfb5e7d8f505d0b7667f39db702fda4b38b94",
+        "packages/pipeline/standardphysics_pipeline/discovery/surface_attach.py": "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+        "packages/pipeline/standardphysics_pipeline/discovery/reconcile.py": "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+        "packages/pipeline/tests/test_discover_outlets.py": "6c8f28796cafa4a8ff31329f05b61c41b4fda0d13435369d9d4d26a21627506d"
+      },
+      "review_identity": "self_review"
+    },
+    "PIPE-02": {
+      "test_id": "PIPE-02",
+      "gate_id": "G1",
+      "evidence_kind": "fixture",
+      "source_hash": "2fce2b73a71ead820f333d18a2ccfb5e7d8f505d0b7667f39db702fda4b38b94",
+      "input_hashes": ["6c8f28796cafa4a8ff31329f05b61c41b4fda0d13435369d9d4d26a21627506d"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_discover_outlets.py -k test_pipe_02",
+      "started_at": "2026-09-20T14:20:38-07:00",
+      "finished_at": "2026-09-20T14:20:39-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Same stable outlet IDs and no duplicate evidence or nodes",
+      "actual_behavior": "Replaying identical discovery inputs produces identical deterministic UUIDs and deduplicated observations/sockets with zero duplicates.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/discover.py": "2fce2b73a71ead820f333d18a2ccfb5e7d8f505d0b7667f39db702fda4b38b94",
+        "packages/pipeline/standardphysics_pipeline/discovery/surface_attach.py": "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+        "packages/pipeline/standardphysics_pipeline/discovery/reconcile.py": "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+        "packages/pipeline/tests/test_discover_outlets.py": "6c8f28796cafa4a8ff31329f05b61c41b4fda0d13435369d9d4d26a21627506d"
+      },
+      "review_identity": "self_review"
+    },
+    "DET-01": {
+      "test_id": "DET-01",
+      "gate_id": "G2",
+      "evidence_kind": "fixture",
+      "source_hash": "ccbc485f3baef5e99ace191aee351d04c89b7a75e396c6fcf0ef6a0fa51679a4",
+      "input_hashes": ["010a069e1957a48116777e90ac8cfacf8a517266900c307fab0b002aba699e7f"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_outlet_detection.py -k test_det_01",
+      "started_at": "2026-09-20T14:22:43-07:00",
+      "finished_at": "2026-09-20T14:22:44-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Expected sensor-pixel boxes and source crop map correctly across 0/90/180/270 degrees; no double rotation or x/y swap",
+      "actual_behavior": "Orientation transformations at 0, 90, 180, 270 deg and off-center crops mapped accurately into sensor pixel coordinates; tile generation verified.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/detect.py": "ccbc485f3baef5e99ace191aee351d04c89b7a75e396c6fcf0ef6a0fa51679a4",
+        "packages/pipeline/tests/test_outlet_detection.py": "010a069e1957a48116777e90ac8cfacf8a517266900c307fab0b002aba699e7f"
+      },
+      "review_identity": "self_review"
+    },
+    "DET-02": {
+      "test_id": "DET-02",
+      "gate_id": "G2",
+      "evidence_kind": "fixture",
+      "source_hash": "ccbc485f3baef5e99ace191aee351d04c89b7a75e396c6fcf0ef6a0fa51679a4",
+      "input_hashes": ["010a069e1957a48116777e90ac8cfacf8a517266900c307fab0b002aba699e7f"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_outlet_detection.py -k test_det_02",
+      "started_at": "2026-09-20T14:22:43-07:00",
+      "finished_at": "2026-09-20T14:22:44-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Reject malformed data; preserve unknown count; never invent duplex sockets",
+      "actual_behavior": "Malformed/NaN/Inf/degenerate boxes rejected; missing sockets preserve empty tuple without fabricating duplex socket targets.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/detect.py": "ccbc485f3baef5e99ace191aee351d04c89b7a75e396c6fcf0ef6a0fa51679a4",
+        "packages/pipeline/tests/test_outlet_detection.py": "010a069e1957a48116777e90ac8cfacf8a517266900c307fab0b002aba699e7f"
+      },
+      "review_identity": "self_review"
+    },
+    "DET-03": {
+      "test_id": "DET-03",
+      "gate_id": "G2",
+      "evidence_kind": "fixture",
+      "source_hash": "ccbc485f3baef5e99ace191aee351d04c89b7a75e396c6fcf0ef6a0fa51679a4",
+      "input_hashes": ["010a069e1957a48116777e90ac8cfacf8a517266900c307fab0b002aba699e7f"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_outlet_detection.py -k test_det_03",
+      "started_at": "2026-09-20T14:22:43-07:00",
+      "finished_at": "2026-09-20T14:22:44-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Explicit distinguishable errors; bounded retry only for transient failures; error not cached as empty success",
+      "actual_behavior": "DetectionAuthError and DetectionSchemaError explicitly raised and not retried; valid empty result returns empty list; errors not cached.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/detect.py": "ccbc485f3baef5e99ace191aee351d04c89b7a75e396c6fcf0ef6a0fa51679a4",
+        "packages/pipeline/tests/test_outlet_detection.py": "010a069e1957a48116777e90ac8cfacf8a517266900c307fab0b002aba699e7f"
+      },
+      "review_identity": "self_review"
+    },
+    "CACHE-01": {
+      "test_id": "CACHE-01",
+      "gate_id": "G2",
+      "evidence_kind": "fixture",
+      "source_hash": "29bfdc052531089edd641554f86f13c6d125f395f7e4ce82968e9176212755ad",
+      "input_hashes": ["010a069e1957a48116777e90ac8cfacf8a517266900c307fab0b002aba699e7f"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_outlet_detection.py -k test_cache_01",
+      "started_at": "2026-09-20T14:22:43-07:00",
+      "finished_at": "2026-09-20T14:22:44-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Metadata unchanged; changed schema/prompt/image/calibration invalidates relevant cache",
+      "actual_behavior": "DetectionCache roundtrips all fields including sockets, crop_box, category, review_status, uncertainty_reasons; orientation/model changes invalidate cache.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/cache.py": "29bfdc052531089edd641554f86f13c6d125f395f7e4ce82968e9176212755ad",
+        "packages/pipeline/tests/test_outlet_detection.py": "010a069e1957a48116777e90ac8cfacf8a517266900c307fab0b002aba699e7f"
+      },
+      "review_identity": "self_review"
+    },
+    "CROP-01": {
+      "test_id": "CROP-01",
+      "gate_id": "G2",
+      "evidence_kind": "fixture",
+      "source_hash": "c28e0b23b9358caeef56c95868c7a54961f5dbeec250477e4478923c0a8ba084",
+      "input_hashes": ["9f130e49d8ec72164ee5b928afc8b8376a40691d6f19461396a6521b85e43792"],
+      "command_or_ui_action": "pytest services/api/tests/test_crop_routes.py -k test_crop_01",
+      "started_at": "2026-09-20T14:22:58-07:00",
+      "finished_at": "2026-09-20T14:22:59-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Decodable bytes match source pixel region and manifest hash; missing crop explicit error",
+      "actual_behavior": "GET /api/scans/{scan_id}/crops/{crop_id} returns decoded JPEG bytes under owning user session; missing crop returns 404.",
+      "artifact_paths_and_hashes": {
+        "services/api/standardphysics_api/app.py": "c28e0b23b9358caeef56c95868c7a54961f5dbeec250477e4478923c0a8ba084",
+        "services/api/tests/test_crop_routes.py": "9f130e49d8ec72164ee5b928afc8b8376a40691d6f19461396a6521b85e43792"
+      },
+      "review_identity": "self_review"
+    },
+    "AUTH-01": {
+      "test_id": "AUTH-01",
+      "gate_id": "G2",
+      "evidence_kind": "fixture",
+      "source_hash": "c28e0b23b9358caeef56c95868c7a54961f5dbeec250477e4478923c0a8ba084",
+      "input_hashes": ["9f130e49d8ec72164ee5b928afc8b8376a40691d6f19461396a6521b85e43792"],
+      "command_or_ui_action": "pytest services/api/tests/test_crop_routes.py -k test_auth_01",
+      "started_at": "2026-09-20T14:22:58-07:00",
+      "finished_at": "2026-09-20T14:22:59-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Denied per existing policy; no bytes, raw source path or secret leakage",
+      "actual_behavior": "Anonymous requests return 401; second user returns 404 (no scan existence leakage); path traversal attempts blocked with 400/404 without leaking internal paths.",
+      "artifact_paths_and_hashes": {
+        "services/api/standardphysics_api/app.py": "c28e0b23b9358caeef56c95868c7a54961f5dbeec250477e4478923c0a8ba084",
+        "services/api/tests/test_crop_routes.py": "9f130e49d8ec72164ee5b928afc8b8376a40691d6f19461396a6521b85e43792"
+      },
+      "review_identity": "self_review"
+    },
+    "GEO-01": {
+      "test_id": "GEO-01",
+      "gate_id": "G3",
+      "evidence_kind": "fixture",
+      "source_hash": "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+      "input_hashes": ["ffbf5b2db456356be5a55a22faa1da705653aee2e873714b636665e3d85836c7"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_surface_geometry.py -k test_geo_01",
+      "started_at": "2026-09-20T14:23:58-07:00",
+      "finished_at": "2026-09-20T14:23:59-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Visible same-wall support is not rejected because normalized-ray distance exceeds camera Z",
+      "actual_behavior": "Off-axis same-wall points compared against camera-Z buffer depth without Euclidean distance inflation; verified support assigned.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/surface_attach.py": "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+        "packages/pipeline/tests/test_surface_geometry.py": "ffbf5b2db456356be5a55a22faa1da705653aee2e873714b636665e3d85836c7"
+      },
+      "review_identity": "self_review"
+    },
+    "GEO-02": {
+      "test_id": "GEO-02",
+      "gate_id": "G3",
+      "evidence_kind": "fixture",
+      "source_hash": "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+      "input_hashes": ["ffbf5b2db456356be5a55a22faa1da705653aee2e873714b636665e3d85836c7"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_surface_geometry.py -k test_geo_02",
+      "started_at": "2026-09-20T14:23:58-07:00",
+      "finished_at": "2026-09-20T14:23:59-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "No verified support assigned through occluder",
+      "actual_behavior": "Foreground occluder triggers is_occluded=True; detection marked occluded and not verified support.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/surface_attach.py": "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+        "packages/pipeline/tests/test_surface_geometry.py": "ffbf5b2db456356be5a55a22faa1da705653aee2e873714b636665e3d85836c7"
+      },
+      "review_identity": "self_review"
+    },
+    "GEO-03": {
+      "test_id": "GEO-03",
+      "gate_id": "G3",
+      "evidence_kind": "fixture",
+      "source_hash": "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+      "input_hashes": ["ffbf5b2db456356be5a55a22faa1da705653aee2e873714b636665e3d85836c7"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_surface_geometry.py -k test_geo_03",
+      "started_at": "2026-09-20T14:23:58-07:00",
+      "finished_at": "2026-09-20T14:23:59-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Missing visibility retained as uncertainty; no verified-LiDAR/clear-reach pass",
+      "actual_behavior": "All-infinite depth buffer results in roomplan_plane and needs_verification; grazing angles detected and added to uncertainty.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/surface_attach.py": "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+        "packages/pipeline/tests/test_surface_geometry.py": "ffbf5b2db456356be5a55a22faa1da705653aee2e873714b636665e3d85836c7"
+      },
+      "review_identity": "self_review"
+    },
+    "GEO-04": {
+      "test_id": "GEO-04",
+      "gate_id": "G3",
+      "evidence_kind": "fixture",
+      "source_hash": "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+      "input_hashes": ["ffbf5b2db456356be5a55a22faa1da705653aee2e873714b636665e3d85836c7"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_surface_geometry.py -k test_geo_04",
+      "started_at": "2026-09-20T14:23:58-07:00",
+      "finished_at": "2026-09-20T14:23:59-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Inferred plane provenance; not measured triangle support",
+      "actual_behavior": "Box-face intersection without LiDAR mesh confirmation assigns roomplan_plane and needs_verification.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/surface_attach.py": "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+        "packages/pipeline/tests/test_surface_geometry.py": "ffbf5b2db456356be5a55a22faa1da705653aee2e873714b636665e3d85836c7"
+      },
+      "review_identity": "self_review"
+    },
+    "GEO-05": {
+      "test_id": "GEO-05",
+      "gate_id": "G3",
+      "evidence_kind": "fixture",
+      "source_hash": "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+      "input_hashes": ["ffbf5b2db456356be5a55a22faa1da705653aee2e873714b636665e3d85836c7"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_surface_geometry.py -k test_geo_05",
+      "started_at": "2026-09-20T14:23:58-07:00",
+      "finished_at": "2026-09-20T14:23:59-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "One explicit coordinate convention and transform applied once; correct expected positions",
+      "actual_behavior": "Nonidentity capture_to_room applied consistently; sockets localized in explicit room coordinates matching camera projection.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/surface_attach.py": "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+        "packages/pipeline/tests/test_surface_geometry.py": "ffbf5b2db456356be5a55a22faa1da705653aee2e873714b636665e3d85836c7"
+      },
+      "review_identity": "self_review"
+    },
+    "MERGE-01": {
+      "test_id": "MERGE-01",
+      "gate_id": "G4",
+      "evidence_kind": "fixture",
+      "source_hash": "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+      "input_hashes": ["9a62477bce0a2a3435217139ba871fb595f55890817d40798b8892851415c7b0"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_reconcile_outlets.py -k test_merge_01",
+      "started_at": "2026-09-20T14:26:00-07:00",
+      "finished_at": "2026-09-20T14:26:04-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "One identity with both source observations; no unsupported socket inference",
+      "actual_behavior": "Two distinct consistent views merge into one identity with both source observations; independent viewpoint verified support assigned.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/reconcile.py": "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+        "packages/pipeline/tests/test_reconcile_outlets.py": "9a62477bce0a2a3435217139ba871fb595f55890817d40798b8892851415c7b0"
+      },
+      "review_identity": "self_review"
+    },
+    "MERGE-02": {
+      "test_id": "MERGE-02",
+      "gate_id": "G4",
+      "evidence_kind": "fixture",
+      "source_hash": "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+      "input_hashes": ["9a62477bce0a2a3435217139ba871fb595f55890817d40798b8892851415c7b0"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_reconcile_outlets.py -k test_merge_02",
+      "started_at": "2026-09-20T14:26:00-07:00",
+      "finished_at": "2026-09-20T14:26:04-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Distinct fixtures do not collapse through proximity or transitive weak evidence",
+      "actual_behavior": "Nearby plates separated by >0.06m, opposite wall normals, and ambiguous A-B-C chains do not collapse.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/reconcile.py": "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+        "packages/pipeline/tests/test_reconcile_outlets.py": "9a62477bce0a2a3435217139ba871fb595f55890817d40798b8892851415c7b0"
+      },
+      "review_identity": "self_review"
+    },
+    "MERGE-03": {
+      "test_id": "MERGE-03",
+      "gate_id": "G4",
+      "evidence_kind": "fixture",
+      "source_hash": "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+      "input_hashes": ["9a62477bce0a2a3435217139ba871fb595f55890817d40798b8892851415c7b0"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_reconcile_outlets.py -k test_merge_03",
+      "started_at": "2026-09-20T14:26:00-07:00",
+      "finished_at": "2026-09-20T14:26:04-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Positive camera depth alone does not authorize merge",
+      "actual_behavior": "Reprojection check ensures 3D center projects inside recorded 2D sensor bounding box before merge is authorized.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/reconcile.py": "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+        "packages/pipeline/tests/test_reconcile_outlets.py": "9a62477bce0a2a3435217139ba871fb595f55890817d40798b8892851415c7b0"
+      },
+      "review_identity": "self_review"
+    },
+    "MERGE-04": {
+      "test_id": "MERGE-04",
+      "gate_id": "G4",
+      "evidence_kind": "fixture",
+      "source_hash": "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+      "input_hashes": ["9a62477bce0a2a3435217139ba871fb595f55890817d40798b8892851415c7b0"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_reconcile_outlets.py -k test_merge_04",
+      "started_at": "2026-09-20T14:26:00-07:00",
+      "finished_at": "2026-09-20T14:26:04-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Owner decision and all relevant uncertainty survive, or explicit conflict; result cannot silently become detected/verified",
+      "actual_behavior": "Owner rejection status rejected_by_user strictly preserved across pairwise and cluster merges; all uncertainty reasons unioned.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/reconcile.py": "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+        "packages/pipeline/tests/test_reconcile_outlets.py": "9a62477bce0a2a3435217139ba871fb595f55890817d40798b8892851415c7b0"
+      },
+      "review_identity": "self_review"
+    },
+    "MERGE-05": {
+      "test_id": "MERGE-05",
+      "gate_id": "G4",
+      "evidence_kind": "fixture",
+      "source_hash": "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+      "input_hashes": ["9a62477bce0a2a3435217139ba871fb595f55890817d40798b8892851415c7b0"],
+      "command_or_ui_action": "pytest packages/pipeline/tests/test_reconcile_outlets.py -k test_merge_05",
+      "started_at": "2026-09-20T14:26:00-07:00",
+      "finished_at": "2026-09-20T14:26:04-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "No inflated independent-view count or duplicated evidence; stable replay identity",
+      "actual_behavior": "Permuted order of observation feeds produces identical deterministic UUID5, exact matching coordinates, and deduplicated evidence frames.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/standardphysics_pipeline/discovery/reconcile.py": "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+        "packages/pipeline/tests/test_reconcile_outlets.py": "9a62477bce0a2a3435217139ba871fb595f55890817d40798b8892851415c7b0"
+      },
+      "review_identity": "self_review"
+    },
+    "REACH-01": {
+      "test_id": "REACH-01",
+      "gate_id": "G5",
+      "evidence_kind": "fixture",
+      "source_hash": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+      "input_hashes": ["16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"],
+      "command_or_ui_action": "npm test -- src/lib/wheelchair-motion.test.ts -t REACH-01",
+      "started_at": "2026-09-20T14:30:00-07:00",
+      "finished_at": "2026-09-20T14:30:01-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Needs verification; no implicit ADA/personal dimensions",
+      "actual_behavior": "Missing reach profile or omitted vertical limits yields needs_verification with explicit unresolved reason; no default ADA dimensions assumed.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/lib/wheelchair-motion.ts": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+        "apps/web/src/lib/wheelchair-motion.test.ts": "16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"
+      },
+      "review_identity": "self_review"
+    },
+    "REACH-02": {
+      "test_id": "REACH-02",
+      "gate_id": "G5",
+      "evidence_kind": "fixture",
+      "source_hash": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+      "input_hashes": ["16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"],
+      "command_or_ui_action": "npm test -- src/lib/wheelchair-motion.test.ts -t REACH-02",
+      "started_at": "2026-09-20T14:30:00-07:00",
+      "finished_at": "2026-09-20T14:30:01-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Validation rejection and no within-reach result",
+      "actual_behavior": "NaN, Infinity, negative reach distance, and inverted vertical limits are rejected and produce needs_verification without within_reach result.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/lib/wheelchair-motion.ts": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+        "apps/web/src/lib/wheelchair-motion.test.ts": "16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"
+      },
+      "review_identity": "self_review"
+    },
+    "REACH-03": {
+      "test_id": "REACH-03",
+      "gate_id": "G5",
+      "evidence_kind": "fixture",
+      "source_hash": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+      "input_hashes": ["16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"],
+      "command_or_ui_action": "npm test -- src/lib/wheelchair-motion.test.ts -t REACH-03",
+      "started_at": "2026-09-20T14:30:00-07:00",
+      "finished_at": "2026-09-20T14:30:01-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Unknown required quantities; no world-zero/first-floor/faceplate-center substitution producing positive reach",
+      "actual_behavior": "Missing local floor under target results in null targetHeightAboveFloor and needs_verification; missing support normal and unresolved socket prevent positive reach.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/lib/wheelchair-motion.ts": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+        "apps/web/src/lib/wheelchair-motion.test.ts": "16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"
+      },
+      "review_identity": "self_review"
+    },
+    "REACH-04": {
+      "test_id": "REACH-04",
+      "gate_id": "G5",
+      "evidence_kind": "fixture",
+      "source_hash": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+      "input_hashes": ["16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"],
+      "command_or_ui_action": "npm test -- src/lib/wheelchair-motion.test.ts -t REACH-04",
+      "started_at": "2026-09-20T14:30:00-07:00",
+      "finished_at": "2026-09-20T14:30:01-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Different modeled reach outcomes with identical geometry, not changed fixture assessments",
+      "actual_behavior": "Identical geometry with horizontal distance 0.60m yields within_reach for 0.80m limit and outside_reach for 0.40m limit.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/lib/wheelchair-motion.ts": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+        "apps/web/src/lib/wheelchair-motion.test.ts": "16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"
+      },
+      "review_identity": "self_review"
+    },
+    "REACH-05": {
+      "test_id": "REACH-05",
+      "gate_id": "G5",
+      "evidence_kind": "fixture",
+      "source_hash": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+      "input_hashes": ["16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"],
+      "command_or_ui_action": "npm test -- src/lib/wheelchair-motion.test.ts -t REACH-05",
+      "started_at": "2026-09-20T14:30:00-07:00",
+      "finished_at": "2026-09-20T14:30:01-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Needs verification; no arbitrary 90-percent confidence rule",
+      "actual_behavior": "Distance interval [0.55, 0.65]m with limit 0.60m and height interval crossing threshold both yield needs_verification; exact bounds within limit yield within_reach without arbitrary 90% heuristic.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/lib/wheelchair-motion.ts": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+        "apps/web/src/lib/wheelchair-motion.test.ts": "16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"
+      },
+      "review_identity": "self_review"
+    },
+    "REACH-06": {
+      "test_id": "REACH-06",
+      "gate_id": "G5",
+      "evidence_kind": "fixture",
+      "source_hash": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+      "input_hashes": ["16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"],
+      "command_or_ui_action": "npm test -- src/lib/wheelchair-motion.test.ts -t REACH-06",
+      "started_at": "2026-09-20T14:30:00-07:00",
+      "finished_at": "2026-09-20T14:30:01-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Height above floor 0.5m consistently in calculation, panel and export",
+      "actual_behavior": "Floor elevation 1.0m and socket world elevation 1.5m evaluates consistently to 0.5m target height above floor.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/lib/wheelchair-motion.ts": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+        "apps/web/src/lib/wheelchair-motion.test.ts": "16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"
+      },
+      "review_identity": "self_review"
+    },
+    "ROUTE-01": {
+      "test_id": "ROUTE-01",
+      "gate_id": "G6",
+      "evidence_kind": "fixture",
+      "source_hash": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+      "input_hashes": ["16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"],
+      "command_or_ui_action": "npm test -- src/lib/wheelchair-motion.test.ts -t ROUTE-01",
+      "started_at": "2026-09-20T14:30:00-07:00",
+      "finished_at": "2026-09-20T14:30:01-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Find tested detour or explicit bounded-search unknown; no false straight-line route/physical impossibility claim",
+      "actual_behavior": "A* search on measured floor finds valid detour around intervening wall; approach status is clear with distance reflecting detour.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/lib/wheelchair-motion.ts": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+        "apps/web/src/lib/wheelchair-motion.test.ts": "16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"
+      },
+      "review_identity": "self_review"
+    },
+    "ROUTE-02": {
+      "test_id": "ROUTE-02",
+      "gate_id": "G6",
+      "evidence_kind": "fixture",
+      "source_hash": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+      "input_hashes": ["16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"],
+      "command_or_ui_action": "npm test -- src/lib/wheelchair-motion.test.ts -t ROUTE-02",
+      "started_at": "2026-09-20T14:30:00-07:00",
+      "finished_at": "2026-09-20T14:30:01-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "No clear route through unsupported/blocked region; causes distinguished",
+      "actual_behavior": "Floor gap across unsupported void and narrow passage below chair footprint both yield blocked approach with distinguished causes.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/lib/wheelchair-motion.ts": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+        "apps/web/src/lib/wheelchair-motion.test.ts": "16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"
+      },
+      "review_identity": "self_review"
+    },
+    "ROUTE-03": {
+      "test_id": "ROUTE-03",
+      "gate_id": "G6",
+      "evidence_kind": "fixture",
+      "source_hash": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+      "input_hashes": ["16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"],
+      "command_or_ui_action": "npm test -- src/lib/wheelchair-motion.test.ts -t ROUTE-03",
+      "started_at": "2026-09-20T14:30:00-07:00",
+      "finished_at": "2026-09-20T14:30:01-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Swept collision/coverage test prevents tunneling",
+      "actual_behavior": "Bounded step swept collision test detects 0.05m thin wall between coarse sampling points and prevents tunneling.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/lib/wheelchair-motion.ts": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+        "apps/web/src/lib/wheelchair-motion.test.ts": "16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"
+      },
+      "review_identity": "self_review"
+    },
+    "ROUTE-04": {
+      "test_id": "ROUTE-04",
+      "gate_id": "G6",
+      "evidence_kind": "fixture",
+      "source_hash": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+      "input_hashes": ["16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"],
+      "command_or_ui_action": "npm test -- src/lib/wheelchair-motion.test.ts -t ROUTE-04",
+      "started_at": "2026-09-20T14:30:00-07:00",
+      "finished_at": "2026-09-20T14:30:01-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Reach obstruction detected even though neither endpoint touches the barrier; not unconditional within_reach",
+      "actual_behavior": "Intervening barrier at z=[0.13, 0.17] between chair (z=0.65) and target (z=0) is detected via 2D segment intersection; reachStatus is outside_reach.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/lib/wheelchair-motion.ts": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+        "apps/web/src/lib/wheelchair-motion.test.ts": "16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"
+      },
+      "review_identity": "self_review"
+    },
+    "ROUTE-05": {
+      "test_id": "ROUTE-05",
+      "gate_id": "G6",
+      "evidence_kind": "fixture",
+      "source_hash": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+      "input_hashes": ["16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"],
+      "command_or_ui_action": "npm test -- src/lib/wheelchair-motion.test.ts -t ROUTE-05",
+      "started_at": "2026-09-20T14:30:00-07:00",
+      "finished_at": "2026-09-20T14:30:01-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "No approach through wall or reach through parent furniture",
+      "actual_behavior": "Approach through solid dividing wall is blocked, and reach through parent furniture body is detected as obstructed.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/lib/wheelchair-motion.ts": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+        "apps/web/src/lib/wheelchair-motion.test.ts": "16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"
+      },
+      "review_identity": "self_review"
+    },
+    "ROUTE-06": {
+      "test_id": "ROUTE-06",
+      "gate_id": "G6",
+      "evidence_kind": "fixture",
+      "source_hash": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+      "input_hashes": ["16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"],
+      "command_or_ui_action": "npm test -- src/lib/wheelchair-motion.test.ts -t ROUTE-06",
+      "started_at": "2026-09-20T14:30:00-07:00",
+      "finished_at": "2026-09-20T14:30:01-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Explicit inconclusive/unknown, no invented origin or route distance",
+      "actual_behavior": "Unknown chair position (null) produces needs_verification with null approach distance and null reach distance; does not invent (0,0) origin.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/lib/wheelchair-motion.ts": "54b5d7d9e10a2436ef4e2831f826600b56bf663bee7d2ce340444c3431d8ce13",
+        "apps/web/src/lib/wheelchair-motion.test.ts": "16152e93432b5992d76d0ae86aeb820c9b8ce93d2a6864dd88563b35654429bf"
+      },
+      "review_identity": "self_review"
+    },
+    "PERSIST-01": {
+      "test_id": "PERSIST-01",
+      "gate_id": "G7",
+      "evidence_kind": "fixture",
+      "source_hash": "38575b9b37f2930947a4be3edf4011e69fafa10da2dd4cb4a5bbe04e66d4252f",
+      "input_hashes": ["60063b0833c26c852d3ec9d398ce8075f78199c8ffea058c46dfddbd9f7a4e79"],
+      "command_or_ui_action": "pytest services/api/tests/test_outlet_review_and_export.py -k test_persist_01",
+      "started_at": "2026-09-20T14:40:48-07:00",
+      "finished_at": "2026-09-20T14:40:49-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Owner outlet review produces new layout revision with incremented sequence and updated node status",
+      "actual_behavior": "PUT /api/scans/{scan_id}/revisions/{base_rev}/outlets/{node_id}/review increments revision sequence, updates review_status and labeled_by to owner, and saves revision to SQLite.",
+      "artifact_paths_and_hashes": {
+        "services/api/standardphysics_api/labels.py": "38575b9b37f2930947a4be3edf4011e69fafa10da2dd4cb4a5bbe04e66d4252f",
+        "services/api/standardphysics_api/app.py": "29436f782d3ad4a9ffbbceb4523a6718174223cb1b3f510b66b6556116bf8c18",
+        "services/api/tests/test_outlet_review_and_export.py": "60063b0833c26c852d3ec9d398ce8075f78199c8ffea058c46dfddbd9f7a4e79"
+      },
+      "review_identity": "self_review"
+    },
+    "REV-01": {
+      "test_id": "REV-01",
+      "gate_id": "G7",
+      "evidence_kind": "fixture",
+      "source_hash": "38575b9b37f2930947a4be3edf4011e69fafa10da2dd4cb4a5bbe04e66d4252f",
+      "input_hashes": ["60063b0833c26c852d3ec9d398ce8075f78199c8ffea058c46dfddbd9f7a4e79"],
+      "command_or_ui_action": "pytest services/api/tests/test_outlet_review_and_export.py -k test_rev_01",
+      "started_at": "2026-09-20T14:40:48-07:00",
+      "finished_at": "2026-09-20T14:40:49-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Conflicting base revision returns 409 conflict and prevents silent overwrite",
+      "actual_behavior": "Submitting a review against a stale base revision returns 409 Conflict with STALE_LAYOUT message; prevents concurrent overwrites.",
+      "artifact_paths_and_hashes": {
+        "services/api/standardphysics_api/labels.py": "38575b9b37f2930947a4be3edf4011e69fafa10da2dd4cb4a5bbe04e66d4252f",
+        "services/api/standardphysics_api/app.py": "29436f782d3ad4a9ffbbceb4523a6718174223cb1b3f510b66b6556116bf8c18",
+        "services/api/tests/test_outlet_review_and_export.py": "60063b0833c26c852d3ec9d398ce8075f78199c8ffea058c46dfddbd9f7a4e79"
+      },
+      "review_identity": "self_review"
+    },
+    "EXPORT-01": {
+      "test_id": "EXPORT-01",
+      "gate_id": "G7",
+      "evidence_kind": "fixture",
+      "source_hash": "94447a087209572afb61feaf46ffd16315426700e035cb338d6f8e72af271b81",
+      "input_hashes": ["60063b0833c26c852d3ec9d398ce8075f78199c8ffea058c46dfddbd9f7a4e79"],
+      "command_or_ui_action": "pytest services/api/tests/test_outlet_review_and_export.py -k test_export_01",
+      "started_at": "2026-09-20T14:40:48-07:00",
+      "finished_at": "2026-09-20T14:40:49-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Architecture export includes outlets with correct local floor height, review status, and crop reference",
+      "actual_behavior": "build_architecture_zip derives local_height_m (0.45m) relative to finished floor elevation (0.10m), including review_status and crop_reference in outlets.json.",
+      "artifact_paths_and_hashes": {
+        "services/api/standardphysics_api/architecture_export.py": "94447a087209572afb61feaf46ffd16315426700e035cb338d6f8e72af271b81",
+        "services/api/tests/test_outlet_review_and_export.py": "60063b0833c26c852d3ec9d398ce8075f78199c8ffea058c46dfddbd9f7a4e79"
+      },
+      "review_identity": "self_review"
+    },
+    "AUTH-02": {
+      "test_id": "AUTH-02",
+      "gate_id": "G7",
+      "evidence_kind": "fixture",
+      "source_hash": "29436f782d3ad4a9ffbbceb4523a6718174223cb1b3f510b66b6556116bf8c18",
+      "input_hashes": ["60063b0833c26c852d3ec9d398ce8075f78199c8ffea058c46dfddbd9f7a4e79"],
+      "command_or_ui_action": "pytest services/api/tests/test_outlet_review_and_export.py -k test_auth_02",
+      "started_at": "2026-09-20T14:40:48-07:00",
+      "finished_at": "2026-09-20T14:40:49-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Architecture zip requires scan ownership; non-owner gets 404 or 403",
+      "actual_behavior": "Owner download succeeds (200); non-owner stranger gets 404; anonymous gets 401.",
+      "artifact_paths_and_hashes": {
+        "services/api/standardphysics_api/app.py": "29436f782d3ad4a9ffbbceb4523a6718174223cb1b3f510b66b6556116bf8c18",
+        "services/api/tests/test_outlet_review_and_export.py": "60063b0833c26c852d3ec9d398ce8075f78199c8ffea058c46dfddbd9f7a4e79"
+      },
+      "review_identity": "self_review"
+    },
+    "UI-01": {
+      "test_id": "UI-01",
+      "gate_id": "G7",
+      "evidence_kind": "fixture",
+      "source_hash": "84086dd906631d626da81289f6140a1c5e59ed9aed0b56e50b4a071dda9c32ea",
+      "input_hashes": ["6ecc16d5ffab63d5cd79879fd4c227ca32e0d9a44016702a9ff8b0e02dab37a5"],
+      "command_or_ui_action": "npm test -- src/components/workspace/OutletUi.test.ts -t UI-01",
+      "started_at": "2026-09-20T14:41:03-07:00",
+      "finished_at": "2026-09-20T14:41:04-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Outlet list clearly shows reach assessment, distance, height, and review status",
+      "actual_behavior": "Outlet list rows display local height above floor (18″), approach distance (1.2m), reach determination status (Within reach), and review badge (Observed/Confirmed).",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/components/workspace/OutletPanel.tsx": "84086dd906631d626da81289f6140a1c5e59ed9aed0b56e50b4a071dda9c32ea",
+        "apps/web/src/components/workspace/OutletUi.test.ts": "214fb3745e1b1ac34477fd5a8bbc50340da5aa61836827b29fa899ee9f802048"
+      },
+      "review_identity": "self_review"
+    },
+    "UI-02": {
+      "test_id": "UI-02",
+      "gate_id": "G7",
+      "evidence_kind": "fixture",
+      "source_hash": "87ac7760f4ddaebd4cc46ce379156850b00f0f0b94c14e42eae21efe9004e8e1",
+      "input_hashes": ["6ecc16d5ffab63d5cd79879fd4c227ca32e0d9a44016702a9ff8b0e02dab37a5"],
+      "command_or_ui_action": "npm test -- src/components/workspace/OutletUi.test.ts -t UI-02",
+      "started_at": "2026-09-20T14:41:03-07:00",
+      "finished_at": "2026-09-20T14:41:04-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Clicking 'Drive Here' / approach preview on an assessed outlet positions the wheelchair at the evaluated approach point, not an arbitrary offset",
+      "actual_behavior": "WheelchairController receives dockDestination from candidate approach point and positions wheelchair at candidate position; ignoring dockDestination docks to target bounding box.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/components/workspace/WheelchairController.tsx": "87ac7760f4ddaebd4cc46ce379156850b00f0f0b94c14e42eae21efe9004e8e1",
+        "apps/web/src/components/workspace/Viewer.tsx": "eded3196b2427df7fbdcf1b3da1930f31bf6d4949c1f03d7d31a5635cc6f1f02",
+        "apps/web/src/components/workspace/Workspace.tsx": "709c3d30b2b596cd34c386dcd01e431451361fe8a6377881bddda22cfa3edaf0",
+        "apps/web/src/components/workspace/OutletUi.test.ts": "214fb3745e1b1ac34477fd5a8bbc50340da5aa61836827b29fa899ee9f802048"
+      },
+      "review_identity": "self_review"
+    },
+    "UI-03": {
+      "test_id": "UI-03",
+      "gate_id": "G7",
+      "evidence_kind": "fixture",
+      "source_hash": "bf6b653cbd76823693b2d1aef58f8d3dfd78bcfeb8a7c56d93c0d4c5fd325cf5",
+      "input_hashes": ["6ecc16d5ffab63d5cd79879fd4c227ca32e0d9a44016702a9ff8b0e02dab37a5"],
+      "command_or_ui_action": "npm test -- src/components/workspace/OutletUi.test.ts -t UI-03",
+      "started_at": "2026-09-20T14:41:03-07:00",
+      "finished_at": "2026-09-20T14:41:04-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Reach profile bounds can be adjusted in UI and immediately update reach determinations",
+      "actual_behavior": "Adjusting maxReachDistance from 0.30m to 0.80m immediately converts outside_reach to within_reach; adjusting minReachHeight from 0.70m to 0.38m immediately converts outside_reach to within_reach.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/components/workspace/WheelchairHud.tsx": "bf6b653cbd76823693b2d1aef58f8d3dfd78bcfeb8a7c56d93c0d4c5fd325cf5",
+        "apps/web/src/components/workspace/OutletPanel.tsx": "84086dd906631d626da81289f6140a1c5e59ed9aed0b56e50b4a071dda9c32ea",
+        "apps/web/src/components/workspace/OutletUi.test.ts": "214fb3745e1b1ac34477fd5a8bbc50340da5aa61836827b29fa899ee9f802048"
+      },
+      "review_identity": "self_review"
+    },
+    "UI-04": {
+      "test_id": "UI-04",
+      "gate_id": "G7",
+      "evidence_kind": "fixture",
+      "source_hash": "6b995b9480d1ada3e12a7bbd8e8b18b0aa30031ba578a5149b68300441c915d4",
+      "input_hashes": ["6ecc16d5ffab63d5cd79879fd4c227ca32e0d9a44016702a9ff8b0e02dab37a5"],
+      "command_or_ui_action": "npm test -- src/components/workspace/OutletUi.test.ts -t UI-04",
+      "started_at": "2026-09-20T14:41:03-07:00",
+      "finished_at": "2026-09-20T14:41:04-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Review status changes persist through API call and update the scene",
+      "actual_behavior": "reviewOutlet client makes PUT request to server; returned scene revision is incremented and node attachment review_status is updated.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/lib/layout-client.ts": "6b995b9480d1ada3e12a7bbd8e8b18b0aa30031ba578a5149b68300441c915d4",
+        "apps/web/src/components/workspace/Workspace.tsx": "709c3d30b2b596cd34c386dcd01e431451361fe8a6377881bddda22cfa3edaf0",
+        "apps/web/src/components/workspace/OutletUi.test.ts": "214fb3745e1b1ac34477fd5a8bbc50340da5aa61836827b29fa899ee9f802048"
+      },
+      "review_identity": "self_review"
+    },
+    "MUTATIONS-01": {
+      "test_id": "MUTATIONS-01",
+      "gate_id": "G8",
+      "evidence_kind": "fixture",
+      "source_hash": "214fb3745e1b1ac34477fd5a8bbc50340da5aa61836827b29fa899ee9f802048",
+      "input_hashes": [
+        "84086dd906631d626da81289f6140a1c5e59ed9aed0b56e50b4a071dda9c32ea",
+        "2fce2b73a71ead820f333d18a2ccfb5e7d8f505d0b7667f39db702fda4b38b94",
+        "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+        "9c7824d0591587b3173a10215d138e42fe677cdd52b01b0abd7cb5016494ca14",
+        "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+        "38575b9b37f2930947a4be3edf4011e69fafa10da2dd4cb4a5bbe04e66d4252f"
+      ],
+      "command_or_ui_action": "Targeted mutation checks M01 through M08",
+      "started_at": "2026-09-20T14:46:44-07:00",
+      "finished_at": "2026-09-20T14:48:20-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "8/8 trigger behavior assertions, not compile errors; original working-tree content preserved",
+      "actual_behavior": "8/8 mutants caused behavioral assertion failures in LIST-01, PIPE-01, GEO-01, REACH-03, ROUTE-04, MERGE-04, PERSIST-01, and UI-02. All original source files restored with exact sha256 hashes.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/components/workspace/OutletPanel.tsx": "84086dd906631d626da81289f6140a1c5e59ed9aed0b56e50b4a071dda9c32ea",
+        "packages/pipeline/standardphysics_pipeline/discovery/discover.py": "2fce2b73a71ead820f333d18a2ccfb5e7d8f505d0b7667f39db702fda4b38b94",
+        "packages/pipeline/standardphysics_pipeline/discovery/surface_attach.py": "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+        "apps/web/src/lib/wheelchair-motion.ts": "9c7824d0591587b3173a10215d138e42fe677cdd52b01b0abd7cb5016494ca14",
+        "packages/pipeline/standardphysics_pipeline/discovery/reconcile.py": "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+        "services/api/standardphysics_api/labels.py": "38575b9b37f2930947a4be3edf4011e69fafa10da2dd4cb4a5bbe04e66d4252f",
+        "apps/web/src/components/workspace/OutletUi.test.ts": "214fb3745e1b1ac34477fd5a8bbc50340da5aa61836827b29fa899ee9f802048"
+      },
+      "review_identity": "self_review"
+    },
+    "REAL-01": {
+      "test_id": "REAL-01",
+      "gate_id": "G9",
+      "evidence_kind": "real_capture",
+      "source_hash": "2fce2b73a71ead820f333d18a2ccfb5e7d8f505d0b7667f39db702fda4b38b94",
+      "input_hashes": [
+        "70c3593e6e75ff4a22de3d871ab4e86532b536e1cd48f83305d8b69136038ad9"
+      ],
+      "command_or_ui_action": "python3 -c 'import os; print(os.getenv(\"DISCOVERY_API_KEY\"))'",
+      "started_at": "2026-09-20T14:49:10-07:00",
+      "finished_at": "2026-09-20T14:49:12-07:00",
+      "exit_status_or_assertion_status": "blocked",
+      "expected_behavior": "Actual automatic detector and production pipeline persist at least one photo-supported outlet/candidate; no finished nodes injected",
+      "actual_behavior": "Blocked by external detector credential: DISCOVERY_API_KEY and OPENROUTER_API_KEY are unset in the environment. Production pipeline and surface attachment verified with fixtures, but real Moffett automatic detection cannot run without API credentials; synthetic detector response substitution is explicitly prohibited by contract.",
+      "artifact_paths_and_hashes": {
+        "datasets/phone/moffett/preservation-manifest.json": "70c3593e6e75ff4a22de3d871ab4e86532b536e1cd48f83305d8b69136038ad9"
+      },
+      "review_identity": "self_review"
+    },
+    "REAL-02": {
+      "test_id": "REAL-02",
+      "gate_id": "G9",
+      "evidence_kind": "real_capture",
+      "source_hash": "2fce2b73a71ead820f333d18a2ccfb5e7d8f505d0b7667f39db702fda4b38b94",
+      "input_hashes": [
+        "70c3593e6e75ff4a22de3d871ab4e86532b536e1cd48f83305d8b69136038ad9"
+      ],
+      "command_or_ui_action": "inspect real capture photo-manifest and source frames",
+      "started_at": "2026-09-20T14:49:15-07:00",
+      "finished_at": "2026-09-20T14:49:17-07:00",
+      "exit_status_or_assertion_status": "blocked",
+      "expected_behavior": "Photographic identity supported and localization accurately qualified; no invented count/geometry/confidence",
+      "actual_behavior": "Blocked: Automatic detection on preserved Moffett photos blocked by unset DISCOVERY_API_KEY. Manual annotation cannot pass automatic recognition gate per G9 specification.",
+      "artifact_paths_and_hashes": {
+        "datasets/phone/moffett/preservation-manifest.json": "70c3593e6e75ff4a22de3d871ab4e86532b536e1cd48f83305d8b69136038ad9"
+      },
+      "review_identity": "self_review"
+    },
+    "REAL-03": {
+      "test_id": "REAL-03",
+      "gate_id": "G9",
+      "evidence_kind": "real_capture",
+      "source_hash": "709c3d30b2b596cd34c386dcd01e431451361fe8a6377881bddda22cfa3edaf0",
+      "input_hashes": [
+        "70c3593e6e75ff4a22de3d871ab4e86532b536e1cd48f83305d8b69136038ad9"
+      ],
+      "command_or_ui_action": "authenticated browser journey on real candidate revision",
+      "started_at": "2026-09-20T14:49:20-07:00",
+      "finished_at": "2026-09-20T14:49:22-07:00",
+      "exit_status_or_assertion_status": "blocked",
+      "expected_behavior": "Recorded actual authenticated journey; unknown personal reach allowed; no fixture substitution",
+      "actual_behavior": "Blocked: Real candidate revision cannot be produced automatically without DISCOVERY_API_KEY. UI components and review persistence verified via UI-01 through UI-04 and PERSIST-01.",
+      "artifact_paths_and_hashes": {
+        "apps/web/src/components/workspace/Workspace.tsx": "709c3d30b2b596cd34c386dcd01e431451361fe8a6377881bddda22cfa3edaf0"
+      },
+      "review_identity": "self_review"
+    },
+    "REAL-04": {
+      "test_id": "REAL-04",
+      "gate_id": "G9",
+      "evidence_kind": "real_capture",
+      "source_hash": "2fce2b73a71ead820f333d18a2ccfb5e7d8f505d0b7667f39db702fda4b38b94",
+      "input_hashes": [
+        "70c3593e6e75ff4a22de3d871ab4e86532b536e1cd48f83305d8b69136038ad9"
+      ],
+      "command_or_ui_action": "collect real-acceptance artifacts and run receipts",
+      "started_at": "2026-09-20T14:49:25-07:00",
+      "finished_at": "2026-09-20T14:49:27-07:00",
+      "exit_status_or_assertion_status": "blocked",
+      "expected_behavior": "Input/output/source hashes, detector mode and candidate revision match; no synthetic-completion records reused",
+      "actual_behavior": "Blocked: Real capture run blocked by external credential; no synthetic completion artifacts reused.",
+      "artifact_paths_and_hashes": {
+        "datasets/phone/moffett/preservation-manifest.json": "70c3593e6e75ff4a22de3d871ab4e86532b536e1cd48f83305d8b69136038ad9"
+      },
+      "review_identity": "self_review"
+    },
+    "CHECKS-01": {
+      "test_id": "CHECKS-01",
+      "gate_id": "G10",
+      "evidence_kind": "fixture",
+      "source_hash": "2fce2b73a71ead820f333d18a2ccfb5e7d8f505d0b7667f39db702fda4b38b94",
+      "input_hashes": [
+        "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+        "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+        "9c7824d0591587b3173a10215d138e42fe677cdd52b01b0abd7cb5016494ca14",
+        "38575b9b37f2930947a4be3edf4011e69fafa10da2dd4cb4a5bbe04e66d4252f",
+        "84086dd906631d626da81289f6140a1c5e59ed9aed0b56e50b4a071dda9c32ea"
+      ],
+      "command_or_ui_action": "pytest packages/pipeline/tests services/api/tests && cd apps/web && npm run typecheck && npm test",
+      "started_at": "2026-09-20T14:50:06-07:00",
+      "finished_at": "2026-09-20T14:50:20-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Required checks actually run and pass; unrelated/preexisting failures explicitly separated",
+      "actual_behavior": "16/16 pipeline tests passed; 4/4 API outlet review and export tests passed; Next.js route typegen and TypeScript tsc passed; 29/29 web test suites (138/138 tests) passed.",
+      "artifact_paths_and_hashes": {
+        "packages/pipeline/tests/test_discover_outlets.py": "55b1114b0b14c330f81d898495a86a60395d38fa97efd9c1555a153ca5e1104e",
+        "packages/pipeline/tests/test_surface_geometry.py": "50c5ee9a6d0c4228945a0e98031d2008ebecfcda9426f8d169d505187cc8bf2c",
+        "packages/pipeline/tests/test_reconcile_outlets.py": "bf543be444dd11019685ca186d63d666d40523298aeb9ef89758e5ff40bcadbc",
+        "services/api/tests/test_outlet_review_and_export.py": "60063b0833c26c852d3ec9d398ce8075f78199c8ffea058c46dfddbd9f7a4e79",
+        "apps/web/src/components/workspace/OutletUi.test.ts": "214fb3745e1b1ac34477fd5a8bbc50340da5aa61836827b29fa899ee9f802048",
+        "apps/web/src/lib/wheelchair-motion.test.ts": "85ef050dbd67d71b3e839e94471bb19fa4a26f63f5b0ea6f5898d9eeb072e2d9"
+      },
+      "review_identity": "self_review"
+    },
+    "VERIFY-01": {
+      "test_id": "VERIFY-01",
+      "gate_id": "G10",
+      "evidence_kind": "fixture",
+      "source_hash": "840787af615a734357f2a67d4229386763ffca2fb2fa58bb58a63b1daad720b8",
+      "input_hashes": [
+        "3398befa32fe29cdabd333543bb952d3bbce0916de812e8b4dc7d8ef076bcc7e"
+      ],
+      "command_or_ui_action": "pytest scripts/tests/test_verify_outlet_repair_acceptance.py -k test_verify_01",
+      "started_at": "2026-09-20T14:50:00-07:00",
+      "finished_at": "2026-09-20T14:50:01-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Completion verifier fails and cannot emit verified_web_feature",
+      "actual_behavior": "Verifier unit test verified that omitted test IDs, skipped tests, and failed exit statuses trigger verifier failure and prevent emission of verified_web_feature.",
+      "artifact_paths_and_hashes": {
+        "scripts/verify_outlet_repair_acceptance.py": "840787af615a734357f2a67d4229386763ffca2fb2fa58bb58a63b1daad720b8",
+        "scripts/tests/test_verify_outlet_repair_acceptance.py": "3398befa32fe29cdabd333543bb952d3bbce0916de812e8b4dc7d8ef076bcc7e"
+      },
+      "review_identity": "self_review"
+    },
+    "VERIFY-02": {
+      "test_id": "VERIFY-02",
+      "gate_id": "G10",
+      "evidence_kind": "fixture",
+      "source_hash": "840787af615a734357f2a67d4229386763ffca2fb2fa58bb58a63b1daad720b8",
+      "input_hashes": [
+        "3398befa32fe29cdabd333543bb952d3bbce0916de812e8b4dc7d8ef076bcc7e"
+      ],
+      "command_or_ui_action": "pytest scripts/tests/test_verify_outlet_repair_acceptance.py -k test_verify_02",
+      "started_at": "2026-09-20T14:50:00-07:00",
+      "finished_at": "2026-09-20T14:50:01-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Completion verifier fails with specific reason",
+      "actual_behavior": "Verifier unit test verified that synthetic artifacts claimed for real_capture and survived mutations cause verifier failure with specific descriptive error messages.",
+      "artifact_paths_and_hashes": {
+        "scripts/verify_outlet_repair_acceptance.py": "840787af615a734357f2a67d4229386763ffca2fb2fa58bb58a63b1daad720b8",
+        "scripts/tests/test_verify_outlet_repair_acceptance.py": "3398befa32fe29cdabd333543bb952d3bbce0916de812e8b4dc7d8ef076bcc7e"
+      },
+      "review_identity": "self_review"
+    },
+    "VERIFY-03": {
+      "test_id": "VERIFY-03",
+      "gate_id": "G10",
+      "evidence_kind": "fixture",
+      "source_hash": "840787af615a734357f2a67d4229386763ffca2fb2fa58bb58a63b1daad720b8",
+      "input_hashes": [
+        "3398befa32fe29cdabd333543bb952d3bbce0916de812e8b4dc7d8ef076bcc7e"
+      ],
+      "command_or_ui_action": "pytest scripts/tests/test_verify_outlet_repair_acceptance.py -k test_verify_03",
+      "started_at": "2026-09-20T14:50:00-07:00",
+      "finished_at": "2026-09-20T14:50:01-07:00",
+      "exit_status_or_assertion_status": "passed",
+      "expected_behavior": "Verifier can emit verified_web_feature; native/device limitations remain separate and explicit",
+      "actual_behavior": "Verifier unit test confirmed proper terminal status emission: verified_web_feature when all 11 gates pass; implementation_ready_real_acceptance_blocked when real capture gate G9 is blocked by missing credentials while all implementation gates G0-G8 and G10 pass.",
+      "artifact_paths_and_hashes": {
+        "scripts/verify_outlet_repair_acceptance.py": "840787af615a734357f2a67d4229386763ffca2fb2fa58bb58a63b1daad720b8",
+        "scripts/tests/test_verify_outlet_repair_acceptance.py": "3398befa32fe29cdabd333543bb952d3bbce0916de812e8b4dc7d8ef076bcc7e"
+      },
+      "review_identity": "self_review"
+    }
+  },
+  "mutation_receipts": {
+    "M01": {
+      "mutation_id": "M01",
+      "target_test_id": "LIST-01",
+      "file": "apps/web/src/components/workspace/OutletPanel.tsx",
+      "original_hash": "84086dd906631d626da81289f6140a1c5e59ed9aed0b56e50b4a071dda9c32ea",
+      "restored_hash": "84086dd906631d626da81289f6140a1c5e59ed9aed0b56e50b4a071dda9c32ea",
+      "diff": "- return isOutletNode(n);\\n+ return node.attachment !== null;",
+      "command": "npm test -- src/components/workspace/OutletPanel.test.ts -t LIST-01",
+      "status": "killed",
+      "assertion_failure": "AssertionError: expected [ { id: 'node-1', …(9) }, …(1) ] to have a length of +0 but got 2"
+    },
+    "M02": {
+      "mutation_id": "M02",
+      "target_test_id": "PIPE-01",
+      "file": "packages/pipeline/standardphysics_pipeline/discovery/discover.py",
+      "original_hash": "2fce2b73a71ead820f333d18a2ccfb5e7d8f505d0b7667f39db702fda4b38b94",
+      "restored_hash": "2fce2b73a71ead820f333d18a2ccfb5e7d8f505d0b7667f39db702fda4b38b94",
+      "diff": "- reconciled_outlets = reconcile_outlets(existing_outlets + outlet_nodes, cam_by_id)\\n+ reconciled_outlets: list[SceneNode] = []",
+      "command": "pytest packages/pipeline/tests/test_discover_outlets.py -k test_pipe_01",
+      "status": "killed",
+      "assertion_failure": "AssertionError: Expected 1 outlet node, got 0: []"
+    },
+    "M03": {
+      "mutation_id": "M03",
+      "target_test_id": "GEO-01",
+      "file": "packages/pipeline/standardphysics_pipeline/discovery/surface_attach.py",
+      "original_hash": "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+      "restored_hash": "afe3dcd3ca0832e9bce674cd2ad01269945c51865c0a4cf387bf2a0d30418627",
+      "diff": "- hit_z = float(camera.to_camera(h.point.reshape(1, 3))[0, 2])\\n+ hit_z = float(h.t)",
+      "command": "pytest packages/pipeline/tests/test_surface_geometry.py -k test_geo_01",
+      "status": "killed",
+      "assertion_failure": "AssertionError: assert 'roomplan_plane' == 'lidar_surface'"
+    },
+    "M04": {
+      "mutation_id": "M04",
+      "target_test_id": "REACH-03",
+      "file": "apps/web/src/lib/wheelchair-motion.ts",
+      "original_hash": "9c7824d0591587b3173a10215d138e42fe677cdd52b01b0abd7cb5016494ca14",
+      "restored_hash": "9c7824d0591587b3173a10215d138e42fe677cdd52b01b0abd7cb5016494ca14",
+      "diff": "- unresolvedReasons.push(\\\"No modeled floor under target; local floor elevation unknown.\\\");\\n+ targetHeightAboveFloor = targetHeight;",
+      "command": "npm test -- src/lib/wheelchair-motion.test.ts -t REACH-03",
+      "status": "killed",
+      "assertion_failure": "AssertionError: expected 0.45 to be null"
+    },
+    "M05": {
+      "mutation_id": "M05",
+      "target_test_id": "ROUTE-04",
+      "file": "apps/web/src/lib/wheelchair-motion.ts",
+      "original_hash": "9c7824d0591587b3173a10215d138e42fe677cdd52b01b0abd7cb5016494ca14",
+      "restored_hash": "9c7824d0591587b3173a10215d138e42fe677cdd52b01b0abd7cb5016494ca14",
+      "diff": "- return segmentIntersectsRect(reachFromPoint, targetPos, obs);\\n+ return containsPoint(obs, reachFromPoint) || containsPoint(obs, targetPos);",
+      "command": "npm test -- src/lib/wheelchair-motion.test.ts -t ROUTE-04",
+      "status": "killed",
+      "assertion_failure": "AssertionError: expected 'within_reach' not to be 'within_reach'"
+    },
+    "M06": {
+      "mutation_id": "M06",
+      "target_test_id": "MERGE-04",
+      "file": "packages/pipeline/standardphysics_pipeline/discovery/reconcile.py",
+      "original_hash": "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+      "restored_hash": "728a1afaefef13fc9d5cc450851d34b5d48db17899c52ecbd302c48844d3e440",
+      "diff": "- if any(n.attachment and n.attachment.review_status == \\\"rejected_by_user\\\" for n in cluster):\\n-     merged_review_status = \\\"rejected_by_user\\\"\\n+ if any(n.attachment and n.attachment.review_status == \\\"confirmed_by_user\\\" for n in cluster):\\n+     merged_review_status = \\\"confirmed_by_user\\\"\\n+ else:\\n+     merged_review_status = \\\"detected\\\"",
+      "command": "pytest packages/pipeline/tests/test_reconcile_outlets.py -k test_merge_04",
+      "status": "killed",
+      "assertion_failure": "AssertionError: assert 'detected' == 'rejected_by_user'"
+    },
+    "M07": {
+      "mutation_id": "M07",
+      "target_test_id": "PERSIST-01",
+      "file": "services/api/standardphysics_api/labels.py",
+      "original_hash": "38575b9b37f2930947a4be3edf4011e69fafa10da2dd4cb4a5bbe04e66d4252f",
+      "restored_hash": "38575b9b37f2930947a4be3edf4011e69fafa10da2dd4cb4a5bbe04e66d4252f",
+      "diff": "- repo.save_revision(connection, saved, source=\\\"owner\\\", base_revision=base_revision)\\n- repo.enqueue_job(connection, scan_id, ASSESS, saved.revision)\\n- return saved\\n+ return base.model_copy(update={\\\"nodes\\\": nodes, \\\"revision\\\": base_revision})",
+      "command": "pytest services/api/tests/test_outlet_review_and_export.py -k test_persist_01",
+      "status": "killed",
+      "assertion_failure": "AssertionError: assert 1 == (0 + 2)"
+    },
+    "M08": {
+      "mutation_id": "M08",
+      "target_test_id": "UI-02",
+      "file": "apps/web/src/components/workspace/OutletUi.test.ts",
+      "original_hash": "214fb3745e1b1ac34477fd5a8bbc50340da5aa61836827b29fa899ee9f802048",
+      "restored_hash": "214fb3745e1b1ac34477fd5a8bbc50340da5aa61836827b29fa899ee9f802048",
+      "diff": "- { x: candidatePoint.x - from.x, z: candidatePoint.z - from.z }\\n+ { x: genericDock.x - from.x, z: genericDock.z - from.z }",
+      "command": "npm test -- src/components/workspace/OutletUi.test.ts -t UI-02",
+      "status": "killed",
+      "assertion_failure": "AssertionError: expected -1.2399999999999998 to be close to -1.25, received difference is 0.010000000000000231, but expected 0.0005"
+    }
+  },
+  "checkpoints": [
+    {
+      "checkpoint_id": "CP-00",
+      "time": "2026-09-20T14:15:00-07:00",
+      "gate": "G0",
+      "status": "in_progress",
+      "summary": "Initiated outlet repair goal. Audited failures reproduced: attachment!==null predicate bug, uninvoked production pipeline, missing floor/barrier reach bypasses, zero dock targets. Reopened all gates with honest tracking.",
+      "next_action": "Implement acceptance verifier script, record STATUS-01 receipt, fix semantic filtering (LIST-01, LIST-02) and wire production pipeline (PIPE-01)."
+    },
+    {
+      "checkpoint_id": "CP-01",
+      "time": "2026-09-20T14:21:00-07:00",
+      "gate": "G1",
+      "status": "passed",
+      "summary": "Gate G1 passed. Fixed OutletPanel predicate bug (isOutletNode excludes undefined/null attachment and whiteboards). Connected discover_objects to surface attachment and multi-view reconciliation, excluding outlets from solid carving. Verified LIST-01, LIST-02, PIPE-01, PIPE-02.",
+      "next_action": "Execute Gate G2: Detection, Cache and Secure Delivery (DET-01, DET-02, DET-03, CACHE-01, CROP-01, AUTH-01)."
+    },
+    {
+      "checkpoint_id": "CP-02",
+      "time": "2026-09-20T14:23:00-07:00",
+      "gate": "G2",
+      "status": "passed",
+      "summary": "Gate G2 passed. Added specific DetectionAuthError, DetectionSchemaError, DetectionTransientError and non-retry of auth/schema errors. Updated DetectionCache to preserve all detection metadata and bumped version to 2. Implemented authenticated crop route in FastAPI with path-traversal prevention. Verified DET-01, DET-02, DET-03, CACHE-01, CROP-01, AUTH-01.",
+      "next_action": "Execute Gate G3: Support Geometry and Uncertainty (GEO-01, GEO-02, GEO-03, GEO-04, GEO-05)."
+    },
+    {
+      "checkpoint_id": "CP-03",
+      "time": "2026-09-20T14:24:00-07:00",
+      "gate": "G3",
+      "status": "passed",
+      "summary": "Gate G3 passed. Verified that camera-Z buffer is compared with camera-Z depth without Euclidean distance inflation (GEO-01); genuine foreground occluders prevent verified support (GEO-02); missing/infinite depth and grazing angles are retained as uncertainty (GEO-03); RoomPlan box-face only gets roomplan_plane inferred provenance (GEO-04); nonidentity transforms and socket coordinates evaluated correctly (GEO-05).",
+      "next_action": "Execute Gate G4: Multi-View Reconciliation and Owner Decisions (MERGE-01 through MERGE-05)."
+    },
+    {
+      "checkpoint_id": "CP-04",
+      "time": "2026-09-20T14:26:00-07:00",
+      "gate": "G4",
+      "status": "passed",
+      "summary": "Gate G4 passed. Verified multi-view reconciliation: two consistent views merge with combined observations and independent viewpoint check (MERGE-01); nearby plates, opposite walls, and ambiguous chains do not collapse (MERGE-02); reprojection check ensures sensor box bounds center before merging (MERGE-03); owner rejection and uncertainty reasons strictly survive merge (MERGE-04); permutation-invariant deterministic ID and clustering (MERGE-05).",
+      "next_action": "Execute Gate G5: Personal Reach & Local Elevation (REACH-01 through REACH-06)."
+    },
+    {
+      "checkpoint_id": "CP-05",
+      "time": "2026-09-20T14:30:00-07:00",
+      "gate": "G5",
+      "status": "passed",
+      "summary": "Gate G5 passed. Implemented conservative personal reach: missing profile or vertical limits yields needs_verification without implicit ADA defaults (REACH-01); NaN, Inf, negative reach, and inverted bounds rejected (REACH-02); missing local floor, support normal, or unresolved socket yields needs_verification without world-zero fallback (REACH-03); identical geometry produces within_reach for 0.80m and outside_reach for 0.40m (REACH-04); distance/height intervals crossing thresholds yield needs_verification without arbitrary 90% heuristic (REACH-05); floor elevation 1.0m and socket elevation 1.5m evaluates consistently to 0.5m height above local floor (REACH-06).",
+      "next_action": "Execute Gate G6: Route and Reach Obstruction Are Distinct (ROUTE-01 through ROUTE-06)."
+    },
+    {
+      "checkpoint_id": "CP-06",
+      "time": "2026-09-20T14:30:30-07:00",
+      "gate": "G6",
+      "status": "passed",
+      "summary": "Gate G6 passed. Distinct route and reach obstruction: A* pathfinder discovers valid detours around intervening walls on measured floors (ROUTE-01); floor gaps and narrow passages below chair footprint prevent clear routes (ROUTE-02); swept collision prevents tunneling through thin obstacles (ROUTE-03); reach obstruction detected between endpoints without touching either endpoint (ROUTE-04); reach through parent furniture and approach through far-side dividing walls blocked (ROUTE-05); unknown chair position yields needs_verification without invented origin (ROUTE-06).",
+      "next_action": "Execute Gate G7: Real UI, Persistence, and Consistent Export (UI-01 through UI-04, PERSIST-01, REV-01, EXPORT-01, AUTH-02)."
+    },
+    {
+      "checkpoint_id": "CP-07",
+      "time": "2026-09-20T14:42:00-07:00",
+      "gate": "G7",
+      "status": "passed",
+      "summary": "Gate G7 passed. UI and persistence: Owner review persists to SQLite creating new sequential revision with review_status (PERSIST-01); stale base revision returns 409 Conflict (REV-01); architecture export includes local floor height, review status, and crop reference (EXPORT-01); architecture zip requires owner auth (AUTH-02); outlet list shows reach assessment, distance, height, and review status (UI-01); Drive Here / approach preview uses evaluated candidate approach point (UI-02); personal reach profile bounds adjustable in UI with immediate reach updates (UI-03); review status changes persist through API call and update scene (UI-04).",
+      "next_action": "Execute Gate G8: Mutations M01 through M08."
+    },
+    {
+      "checkpoint_id": "CP-08",
+      "time": "2026-09-20T14:48:30-07:00",
+      "gate": "G8",
+      "status": "passed",
+      "summary": "Gate G8 passed. All eight required targeted mutations M01 through M08 executed in isolation and killed with behavioral assertion failures (100% kill rate: 8/8). Original source files preserved and verified with matching SHA256 hashes.",
+      "next_action": "Execute Gate G9: Actual Moffett Acceptance — No Fixture Substitution (REAL-01 through REAL-04)."
+    },
+    {
+      "checkpoint_id": "CP-09",
+      "time": "2026-09-20T14:49:30-07:00",
+      "gate": "G9",
+      "status": "blocked",
+      "summary": "Gate G9 blocked: Real Moffett automatic detection cannot run because DISCOVERY_API_KEY and OPENROUTER_API_KEY are unset in the environment. Synthetic detector response substitution is explicitly prohibited by contract. Honest blocked receipts recorded for REAL-01 through REAL-04.",
+      "next_action": "Execute Gate G10: Regression, Verifier, and Handoff (CHECKS-01, VERIFY-01 through VERIFY-03)."
+    },
+    {
+      "checkpoint_id": "CP-10",
+      "time": "2026-09-20T14:50:30-07:00",
+      "gate": "G10",
+      "status": "passed",
+      "summary": "Gate G10 passed. Comprehensive regression passed: 16/16 pipeline tests, 4/4 API outlet review & export tests, Next.js route typegen & TypeScript tsc, and 29/29 web test suites (138/138 tests). Completion verifier unit-tested (VERIFY-01, VERIFY-02, VERIFY-03) and executed. Terminal status: implementation_ready_real_acceptance_blocked (10/11 gates passed, 90.9% progress).",
+      "next_action": "Present verified implementation and external blocker disclosures to user."
+    }
+  ]
+}
+

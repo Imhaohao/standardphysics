@@ -11,14 +11,23 @@ export const MODEL = {
   problem: "#c8372d",
   pass: "#2e7d4f",
   accent: "#2f5e9e",
+  outlet: "#e69f00",
+  candidate_outlet: "#d55e00",
 } as const;
 
 export const WALL_CUT_HEIGHT = 1.2;
 
+const KIND_COLORS: Record<string, string> = {
+  outlet: MODEL.outlet,
+  candidate_outlet: MODEL.candidate_outlet,
+  wall: MODEL.wall,
+  floor: MODEL.floor,
+};
+
 export function nodeColor(node: SceneNode): string {
   if (node.appearance?.base_color) return node.appearance.base_color;
-  if (node.kind === "wall") return MODEL.wall;
-  if (node.kind === "floor") return MODEL.floor;
+  const byKind = KIND_COLORS[node.kind];
+  if (byKind) return byKind;
   if (node.kind !== "object") return MODEL.opening;
   return node.movable ? MODEL.movable : MODEL.fixture;
 }

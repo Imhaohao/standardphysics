@@ -1,0 +1,26 @@
+SplatX Metal local evaluation — 2026-09-20
+
+Objective: establish actual Mac build/runtime capability, fit with calibrated
+Moffett/LiDAR inputs and masking, and bounded quality/performance evidence.
+No production replacement, original edits, or unmeasured comparison claims.
+
+1. Pin upstream source; audit licenses, camera/seed import, masks, coordinate
+   normalization, training, outputs, and depth/normal gradients.
+2. Build release CLI on local M5 Pro/48GiB, run existing targeted upstream tests.
+3. Reuse an immutable pilot if compatible; otherwise create an isolated derived
+   adapter with explicit transforms. Do not alter other agents' datasets/code.
+4. Run a bounded smoke training/render test (300 steps, then at most 3000 or ten
+   minutes if warranted), one GPU job at a time; record command, seed, actual
+   image/splat counts, wall time, resource scope and outputs.
+5. Inspect real output and assess common held-out render comparison feasibility.
+   Missing masks/input parity means diagnostic only, never a matched winner.
+6. Save a source-backed report with measured results, limitations and next decision.
+
+Task -> model tier
+Capabilities/license/source audit -> inexpensive read-only reviewer
+Build, input adapter and evaluation ownership -> primary/strong implementation
+Visual and evidence interpretation -> primary
+
+Completed: native release build, 161 core tests, 300-step smoke, 3000-step pilot,
+eight validation renders per model, export round-trip and source audit.
+Result: evaluated, not promoted. See docs/splatx-metal-evaluation.txt.

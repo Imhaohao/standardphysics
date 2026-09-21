@@ -1,0 +1,433 @@
+Implement the first complete outlet-finding feature in Standard Physics
+
+You are working in /Users/yanzihao/Documents/standardphysics on my Mac. Implement,
+test, and demonstrate this user story using the preserved Moffett Library data:
+
+“From my current wheelchair position, show me photographed electrical outlets,
+let me inspect the evidence, and help me assess an approach and reach using my
+wheelchair profile. Clearly identify what the scan cannot establish.”
+
+This is an implementation task, not a request for another research essay. Work
+autonomously through the bounded loops below. Finish the smallest complete usable
+feature before extending its coverage. A transparent partial result is better
+than fabricated detections, invented measurements, or an unsupported success claim.
+
+1. Operating rules and runtime settings
+
+Read all applicable AGENTS.md instructions and existing project conventions first.
+Read PROGRESS_MOFFETT.json and relevant latest run-status files. Inspect git status,
+current branch, existing contracts, detector, API and viewer before editing.
+The workspace has concurrent changes: preserve them and do not reset, overwrite,
+stash, or commit other people's work. Branch first if on the default branch.
+Never modify original captures in place: some prepared JPEGs are hardlinks.
+Do not restart Gaussian training, RealityKit jobs, or the paused reconstruction
+automation. Rendering research is outside this task.
+
+Operate for up to eight hours of useful work, ending earlier when acceptance is
+satisfied or concrete dependencies block all remaining useful work. This prompt
+does not give you a scheduler: do not claim to work after your session ends.
+Do not sleep merely to fill time. Use an actual monotonic clock if available.
+
+Use these experiment limits unless existing authorized project limits are lower:
+- Start with one room and at most 24 selected source frames.
+- Process at most 96 distinct frames and 64 additional crops in the pilot.
+- At most 160 logical vision requests and 320 total network attempts, including
+  retries; stop earlier at any configured monetary or provider quota limit.
+- Vision concurrency: 2; at most 4 attempts per request, including the first.
+- Respect Retry-After; otherwise bounded jittered backoff for transient failures.
+  Reuse the existing retry helper where appropriate. Do not retry invalid auth,
+  permanent invalid requests, or unsupported schemas as transient failures.
+- Maximum 3 implementation attempts for the same failing gate before writing a
+  root-cause diagnosis and changing the hypothesis. After two such unsuccessful
+  hypotheses, record a blocker and move to independent work.
+- Use only already configured and authorized providers/models. Do not purchase
+  credits, silently upgrade models, create accounts, or transmit bulk captures to
+  new services. Keep provider privacy settings and authentication safeguards.
+- If runtime configuration exposes generation controls, use its documented
+  deterministic/low-variance structured-output mode. Do not invent temperature,
+  thinking-budget, or model flags. Do not change the production model globally
+  to configure this experiment. Record actual supported parameters and model ID.
+
+These caps prevent runaway work; they are not scientific thresholds. Reaching a
+cap is not success. Cache validated results by image/crop hash, detector version,
+prompt/schema version, and model configuration. Count retries and cache hits
+separately. Never cache a provider error as an empty detection result.
+
+Do not ask routine implementation questions while I sleep. Preserve conservative,
+adjustable defaults where available. Mark personalized reach unknown if required
+body/profile information is missing. If credentials are unavailable, record the
+exact missing configuration name without exposing secrets and continue fixtures,
+schema, geometry, UI and tests. Never present fixtures as real-room detections.
+
+2. Ground truth, product boundaries, and known context
+
+The three questions are separate:
+A. Identity: does photographic evidence show an electrical outlet?
+B. Location: where is its observed operable region relative to measured surfaces?
+C. Use: can a modeled wheelchair approach, and is a modeled reach supported?
+
+An outlet detection proves neither live power, availability, socket condition,
+compatibility, permission to use, nor human ability to insert a plug. Show those
+as unknown unless separately evidenced. Do not infer ADA compliance or explain
+why an object was placed there from its geometry. A reach range is not proof of
+plug insertion ability, grip strength, dexterity, or safe independent use.
+
+Captures are preserved under datasets/phone/moffett. We have calibrated photos,
+ARKit poses, RoomPlan geometry and aggregate LiDAR meshes. Separate raw IMU and
+per-frame depth/confidence were not found in the earlier inventory. Do not invent
+these inputs. Mesh-rendered depth is derived geometry, not independent depth.
+No tape-measure ground truth was supplied. Registration residuals do not establish
+absolute measurement accuracy. Do not show centimetre precision as verified.
+
+A-102 scan ID: f143082d-f529-494b-b80d-97729234e334. Query the current graph/revision
+instead of assuming revision 3 is latest; revision 4 has previously been seen.
+Preserve all revisions and original capture hashes. Pin outputs to their actual
+input capture/geometry/calibration versions. Reject stale mismatches at delivery.
+
+Relevant starting points; verify current files before relying on them:
+- packages/pipeline/standardphysics_pipeline/discovery/detect.py
+- packages/pipeline/standardphysics_pipeline/discovery/discover.py
+- packages/pipeline/standardphysics_pipeline/discovery/carve.py
+- packages/pipeline/standardphysics_pipeline/discovery/boxes.py
+- packages/pipeline/standardphysics_pipeline/textures/camera.py
+- packages/pipeline/standardphysics_pipeline/textures/project.py
+- packages/pipeline/standardphysics_pipeline/textures/surface_photos.py
+- packages/pipeline/standardphysics_pipeline/astra.py
+- packages/contracts/standardphysics_contracts/
+- services/api/standardphysics_api/
+- apps/web/src/lib/wheelchair-motion.ts
+- apps/web/src/lib/wheelchair-inspection.ts
+- apps/web/src/components/workspace/
+
+Known issues to verify in current source:
+- The detector's whole-image maximum edge was 1024 pixels; tiny outlets may vanish.
+- Detection uses upright presentation, normalized [ymin,xmin,ymax,xmax] boxes,
+  then maps results back to original sensor pixels. Preserve that invariant.
+- Discovery may remove wall-owned points and reject objects thinner than 3.5 cm.
+  A photographed board or outlet should not need a thick LiDAR bounding box.
+- Discovery previously added new nodes without correcting existing furniture.
+- RoomPlan labels and owner corrections need provenance and protection.
+- Existing wheelchair motion uses a circular footprint approximation. Do not
+  describe that approximation as the user's measured chair or exact turning shape.
+
+3. Persistent plan, checkpoints, and the outer work loop
+
+Create docs/moffett-outlet-build-plan.txt and PROGRESS_MOFFETT_OUTLETS.json, unless
+equivalent current files exist; in that case extend them rather than duplicating.
+Do not create new .md files. Store experimental artifacts under a new directory
+such as runs/moffett/outlets/<run-id>; preserve earlier runs.
+
+Checkpoint after every phase, failed gate, and meaningful correction. Include:
+phase; status; input hashes/revision; owned files; commands and exit statuses;
+request/attempt/cache counters; actual spend if available; artifacts; failures;
+unresolved questions; next specific action; last successful checkpoint; time.
+Distinguish planned, implemented, tested, visually inspected, and blocked.
+
+Execute this outer loop:
+1. Read the checkpoint and identify the earliest incomplete acceptance gate.
+2. State one falsifiable hypothesis or concrete missing behavior.
+3. Inspect the responsible code and evidence; choose the smallest coherent change.
+4. Implement it in the layer that owns the invariant.
+5. Run the smallest meaningful proof, then integration checks when appropriate.
+6. Inspect the output: tool success alone is not product success.
+7. Save evidence and update the checkpoint. Proceed or invoke the repair loop.
+
+Repair loop:
+- Capture exact expected/actual behavior and a minimal reproducer.
+- Classify: image evidence, detector, coordinates, geometry, merge, schema,
+  authorization, route/reach, UI, or environment.
+- Change one relevant factor, rerun the failed proof, and record the difference.
+- Do not rerun unchanged commands indefinitely, weaken tests to pass, turn off
+  validation, or convert errors into empty successful responses.
+- Stop a line of work when its bounded retries establish an external blocker.
+
+Do not declare completion with TODO/stub implementations on the user journey.
+Do not spend the night polishing a plan while failing to implement the first path.
+
+4. Phase A: trace the existing behavior and lock the pilot
+
+Draw a simple graph of current data flow from image to graph object to API to
+viewer selection to wheelchair navigation. Identify the authoritative types,
+coordinate conventions, revision boundaries, and authorization checks.
+Reuse existing loaders, schemas, mesh projection, navigation, evidence export,
+contract generation, and error conventions wherever they fit.
+
+Choose one room from actual source imagery. Prefer a region with visible outlet
+evidence, photographed approach space, and some negatives such as switches,
+data ports or blank faceplates. Do not assume a named wall contains a whiteboard,
+sofa and outlet. Inspect it. Create a contact sheet and evidence index.
+
+Separate development examples from genuinely held-out source views. Nearby video
+frames can be nearly duplicates: group observations by time/viewpoint to prevent
+leakage. Keep source IDs and the split fixed. A reviewer-created reference label
+must identify its author and ambiguity; model self-agreement is not ground truth.
+
+Gate A: documented existing flow, a reproducible pilot manifest, reviewed source
+examples, and a testable minimal user journey. If no outlet is visually supported,
+record that and test the honest no-results journey; never synthesize an outlet.
+
+5. Phase B: photographic detection and crop-refinement loop
+
+Extend the existing detector, rather than adding a parallel provider service.
+Detect electrical receptacles, power strips, switches/data ports as confusers,
+and optionally whiteboards/sofas/tables for follow-on work. Prioritize outlets.
+
+For each selected frame:
+1. Use an overview pass to identify plausible regions.
+2. Inspect candidate regions at sufficient source resolution with context padding.
+3. Where coverage is weak, inspect overlapping high-resolution tiles; do not rely
+   solely on a whole-room resize. Start with 20% tile overlap and roughly 20% crop
+   padding, clipped to image bounds. These are tunable sampling defaults, not proof.
+4. Map every crop/tile detection back to original sensor pixels exactly once.
+5. Validate schema, finite bounds, category and evidence linkage.
+6. Reject clear switches, ports and blank plates; retain ambiguous cases as
+   candidates. A model confidence value is not a calibrated probability.
+
+Preserve source frame ID/hash, capture ID, timestamp, crop rectangle, orientation
+transform, source dimensions, detector/model version and configuration, confidence,
+and review status. Store crops as derived artifacts; never overwrite JPEGs.
+Detection IDs must remain traceable and reruns idempotent.
+
+Use a physical faceplate/power-strip identity and separate visible socket targets
+where evidence resolves them. Adjacent faceplates must not become one outlet.
+Do not invent socket count or subtype from a blurred crop. A visible faceplate
+center is not automatically the location of the usable socket opening.
+
+Required tests: all captured image rotations, off-center crops, resized crops,
+overlapping tiles, border clipping, malformed/nonfinite/out-of-range boxes,
+duplicate views, provider failure versus valid empty response, cache invalidation.
+Use an asymmetric synthetic image so x/y swaps and double rotations cannot pass.
+
+Gate B: detections link to readable source crops; every pixel transform is tested;
+missed visible outlets trigger a crop/view review, not invented detections or
+arbitrary confidence reductions.
+
+6. Phase C: attach photo-supported objects to measured surfaces
+
+Add the minimum explicit surface-attached representation in the authoritative
+contract layer. It must coexist with solid furniture and survive serialization,
+API delivery, contract generation, export and viewer picking.
+
+Represent, using existing types where possible:
+- Stable object identity and semantic category/status.
+- Capture/scene revision and coordinate frame.
+- Supporting measured surface reference/version and local anchor coordinates.
+- Observed region or bounded location estimate and normal, where supported.
+- Observed socket/operable target separately from whole faceplate, when resolved.
+- Evidence observation IDs and source crops.
+- Separate identity confidence, localization quality, and review/uncertainty state.
+- Unknown thickness/dimensions explicitly; never use fake zero-precision boxes.
+
+Projection loop for each detection:
+1. Recover original calibrated rays using verified image transforms/intrinsics.
+2. Intersect plausible measured support surfaces and check occlusion.
+3. Use multiple rays over the observed region; do not trust one center-ray hit.
+4. Check grazing angles, edges, mixed foreground/background, mesh gaps and normals.
+5. Apply capture-to-floor transforms in the documented order exactly once.
+6. If support is ambiguous or missing, keep an unlocalized evidence candidate.
+   Do not snap it to the nearest convenient wall or close a mesh hole silently.
+
+Prefer actual LiDAR-supported surfaces. If falling back to a RoomPlan inferred
+plane, identify that source and increase uncertainty; do not call it a measured
+socket surface. Account for support moving with furniture or scene revisions.
+Do not imply that a surface attachment reveals true faceplate depth or thickness.
+
+Surface-attached outlets/boards are selectable visual annotations, not inflated
+collision solids. Real modeled cabinets/furniture remain obstacles. A power strip
+on furniture is not assumed permanently attached to a wall.
+
+Required tests: a known synthetic plane, an occluder in front, grazing rays, no
+intersection, missing geometry, near-edge mixed supports, floor/world transforms,
+axis/unit conventions, scene reload and stale-revision rejection. Verify that
+claimed wall points and thinness rules no longer discard valid mounted objects,
+without weakening generic solid-object discovery.
+
+Gate C: each localized object has reproducible support/evidence and conservative
+uncertainty. API errors cannot masquerade as missing outlets. Images/crops retain
+the same authorization boundary as the parent capture; no public filesystem URLs.
+
+7. Phase D: reconcile views without merging distinct outlets
+
+Gather additional observations from genuinely different views when available.
+Near-identical consecutive frames are not independent verification. Reproject
+candidate anchors into other views and examine agreement and visibility.
+
+Merge only when support identity, spatial uncertainty, reprojection and appearance
+are compatible. No universal “within 20 cm means same outlet” rule. Avoid transitive
+single-link chains that merge several adjacent fixtures through an ambiguous view.
+Derive numerical tolerances from pixel resolution, surface distance and observed
+errors; record the calibration method. If no calibration exists, keep conservative
+heuristics explicit and report sensitivity, not a fabricated confidence interval.
+
+Keep ambiguous merge/split decisions reviewable. Preserve per-view evidence after
+merging and prevent double counting. Absence in a view is not negative evidence
+unless the support region is visible and resolved well enough to inspect.
+Two well-separated consistent views can support identity/localization but do not
+prove exact dimensions or accessibility. A clear single view remains labeled as
+single-view evidence unless independent verification is available.
+
+Required tests: two nearby outlets, a duplex plate, a power strip, opposite sides
+of a wall, repeating wall texture, duplicate video frames, inconsistent cameras,
+occlusion, and repeat execution without duplicate objects.
+
+Gate D: small reviewed pilot set with false positives, misses, merged/split cases
+and unresolved cases enumerated. No accuracy percentage without the denominator,
+reference labeling method and ambiguity. Model consensus alone is insufficient.
+
+8. Phase E: wheelchair approach and reach, with separate answers
+
+Reuse the existing navigation/collision implementation and consistent floor
+coordinates. Keep three distinct outputs:
+- Route/approach: appears clear in modeled space / blocked in modeled space /
+  needs verification.
+- Personalized reach: within supplied modeled reach / outside supplied modeled
+  reach / needs verification.
+- Power, availability, plug usability, and ADA compliance: not established unless
+  separately supported. Do not combine these into an “accessible” badge.
+
+Use the supplied chair footprint, clearance preference and reach profile when
+available. Existing default circular footprint may be used for a labeled preview;
+do not treat it as actual chair measurements. Eye height does not specify shoulder
+height, hand position or reach envelope. If reach parameters are missing, show
+estimated target height/distance and “reach needs verification.”
+
+Generate candidate stopping positions on valid modeled floor near the target.
+For a first bounded search, a 0.10 m grid and 15-degree heading increments are
+acceptable computational defaults. They do not imply 10 cm accuracy. Refine promising
+positions locally; if the discretized search fails, say no candidate found under
+these settings rather than asserting physical impossibility.
+
+Check the route from the current chair position, not only a clear endpoint:
+- Floor connectivity and floor gaps.
+- Collision along path segments/swept footprint, not sparse endpoints alone.
+- Final position and, where represented, turning/orientation clearance.
+- Real target height above local finished floor, not world-origin height.
+- Correct side of wall/support and accessible approach direction.
+- Furniture between chair and socket; straight-line distance alone is insufficient.
+- Reach obstruction by counters, shelving or other modeled geometry.
+- Missing geometry, under-table clearance, ambiguous socket target, and stale data.
+
+Do not infer knee/toe clearance from an enclosing table box. A straight ray can
+prove a modeled obstruction but cannot prove an entire arm/hand can pass. Only
+claim the reach model actually implemented. Keep potential door states, cables,
+unobserved objects and dynamic obstacles as explicit unresolved scene conditions.
+
+Uncertain bounds that cross a decision threshold must produce needs verification.
+Missing geometry must never silently become known-clear space. Distinguish no
+path in modeled space from a failed request or invalid geometry.
+
+Recompute or invalidate assessments when chair profile, start position, graph,
+surface attachment, target, obstacles or evidence changes. Cache by these inputs.
+
+Required tests: clear endpoint but blocked route; narrow passage; floor gap;
+obstacle between user and outlet; outlet on far side of wall; elevated/local floor;
+outlet behind furniture; missing reach profile; uncertainty across a reach limit;
+orientation-sensitive footprint if supported; stale assessment after moving an
+object; two supplied reach profiles producing different reach outcomes for the
+same outlet. Include explicit blocked and unknown outcomes, not just happy paths.
+
+Gate E: plausible approach positions are backed by route checks and evidence;
+reach remains unknown whenever the required profile or geometry is missing.
+
+9. Phase F: complete the actual user journey
+
+Implement in the existing web viewer and responsive phone layout:
+1. User activates “Find outlets.”
+2. Show identified and candidate outlets with distinguishable status and useful
+   ordering. A nearby straight-line distance is not a navigable route distance.
+3. Selecting one shows its scene marker, evidence crops, estimated local height,
+   separate approach and reach results, and concrete reasons for uncertainty.
+4. Offer a route/approach preview only when supported. Do not silently teleport
+   the chair across a wall/gap or label an untested endpoint a safe route.
+5. Profile edits immediately invalidate/recompute affected assessments.
+6. User can flag a wrong identity/location or confirm evidence using the existing
+   correction flow; protect owner edits against later automated overwrites.
+7. Evidence and assessment can be downloaded through the existing export system,
+   including input revision, provenance, uncertainty and unresolved fields.
+
+Use keyboard-accessible controls, visible focus, readable contrast, usable touch
+targets, text alternatives to color, and a selectable list independent of 3D
+picking. Preserve the existing camera/wheelchair controls. Handle loading, empty,
+candidate-only, error, stale-data and offline/unavailable states explicitly.
+
+Test the integrated authenticated app where available, not only a detached demo.
+Use the required UI automation tool from repository instructions. A 390x844
+viewport check is mobile-layout testing, not physical iPhone acceptance. Inspect
+the native iOS integration: if it has a separate renderer/API contract, verify
+compatibility and either implement the scoped path or document the precise gap.
+Never call an untested native app feature complete because a mobile browser works.
+
+Gate F: demonstrate selection -> readable evidence -> separate approach/reach ->
+profile update -> export. Include one valid observed outlet if the captures support
+one, one blocked/unknown scenario, and the no-results/error states. Save screenshots
+and action notes; never claim screenshots alone prove collision or reach logic.
+
+10. Phase G: secondary semantic corrections, only after the outlet path works
+
+Reuse the evidence/attachment pattern for whiteboards and photo-supported sofa/table
+label corrections. Preserve raw_category, measured geometry, provenance and owner
+corrections. Do not infer sofa identity just from length or fabricate a missing
+whiteboard. An identity correction must not silently change dimensions or collision.
+If the outlet path is unfinished, defer this phase with an explicit checkpoint.
+
+11. Review loop and completion proof
+
+Run an adversarial review after each major gate and one final integrated review.
+If independent subagents are available, delegate narrow review/testing tasks with
+clear file ownership; tell them they share the workspace. Do not let two agents
+edit the same contract without coordination. If unavailable, perform a distinct
+review pass and label it self-review. Never claim an independent review occurred.
+
+Review questions:
+- Can a switch or data port be called an outlet without an evidence warning?
+- Can a crop rotation error put an outlet on the wrong wall?
+- Can a missing triangle falsely establish a clear route/reach?
+- Can nearby sockets merge, or repeated execution duplicate them?
+- Can stale revision data yield a current-looking reach result?
+- Can another user's capture/crop be read through a guessed identifier/path?
+- Can a default chair or absent reach profile produce an affirmative reach badge?
+- Can an export omit the uncertainty shown in the UI?
+- Can owner corrections be overwritten by another scan/model pass?
+
+Fix demonstrated failures and rerun their regression tests. Do not broaden tests
+endlessly once relevant gates pass. Run required focused Python/API tests,
+contract generation checks, web typecheck/tests, and affected lint/build checks
+using the repository's environment and documented commands. Inspect apps/web's
+AGENTS.md and installed Next.js documentation before framework edits.
+Record preexisting failures separately; do not claim all tests pass if they do not.
+
+Commit each coherent verified feature with default git author, only its owned
+files, and no push. Do not publish production graph mutations from an experimental
+run: prepare a separate reviewable candidate/revision using existing mechanisms.
+
+Completion means:
+- Real photographed evidence flows through localization, reconciliation, API,
+  selection, conservative approach/reach and export without placeholders.
+- Unknown/blocked states, authorization, revisions and owner corrections work.
+- Required tests and actual available UI checks have passed with saved evidence.
+- Physical device and personalized reach limitations are stated truthfully.
+
+If source evidence cannot support the real-outlet demonstration, finish the
+testable infrastructure and report “feature implemented; real-data acceptance
+blocked by [specific evidence/input],” not “complete.” If code is also unfinished,
+list the exact remaining gate. Do not request an impossible zero-outlet success.
+
+Final handoff must be concise but include:
+- What I can do now and exact local URL/launch command.
+- Real detections/candidates/rejections and what remains unknown.
+- Before/after evidence and important screenshots/artifact paths.
+- Tests/commands/results and actual app/device checks.
+- Commits, checkpoint path, and unresolved risks or next capture needs.
+- Actual provider calls/retries and cost, or cost unavailable.
+- Each subagent's name, responsibility and cost, or no subagents available.
+- A simple graph explaining the shipped feature in plain language.
+
+Every multistep plan ends with this task-to-model-tier routing table, adjusted to
+the models actually available. Do not claim unavailable models were invoked:
+Architecture, contract/trust boundaries, uncertainty semantics -> frontier tier
+Settled geometry/API/viewer implementation -> Terra or equivalent strong tier
+Fixtures, detector examples, benchmark scripts, scoped review -> Flash/Luna/Sonnet
+Sensitive offline processing and suitable bulk operations -> available local model
+
+Start now by inspecting the current workspace and creating the checkpoint. Then
+implement Gate A and proceed. Do not stop after describing how you would do it.

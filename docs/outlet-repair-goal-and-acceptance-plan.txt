@@ -1,0 +1,392 @@
+OUTLET FEATURE REPAIR GOAL — EXECUTION PROMPT
+Prepared 2026-09-20. Repository: /Users/yanzihao/Documents/standardphysics
+Companion acceptance contract: docs/outlet-repair-acceptance.json
+
+GOAL TO GIVE THE CODING AGENT
+
+Repair and finish the actual Standard Physics outlet feature. Starting with a
+preserved Moffett photograph and calibrated measured scene, the production pipeline
+must create a traceable outlet candidate, persist it, serve its evidence securely,
+show it in the real web viewer, assess modeled wheelchair approach and personal
+reach conservatively, preserve owner corrections, and export the same evidence
+and assessment the user sees. Demonstrate one genuinely photographed outlet through
+that entire path. No synthetic scene, hand-written assessment or helper-only test
+may satisfy real-data acceptance. Missing geometry/profile/evidence must never
+produce an affirmative clear/within-reach result.
+
+Implement this goal; do not stop after another plan. Follow the test IDs and gate
+requirements in the companion JSON. Gates are conjunctive: all required gates must
+pass. A nearly complete score is not completion. Work through bounded repair loops,
+record real evidence, and leave an honest blocker if an external dependency prevents
+real acceptance. This prompt cannot keep a terminated session running.
+
+PRIORITY AND SCOPE
+
+Read applicable AGENTS.md files, current git status/log, original prompt
+docs/gemini-overnight-outlet-feature-prompt.txt, audit
+docs/moffett-outlet-implementation-audit.txt, and PROGRESS_MOFFETT_OUTLETS.json.
+Read current source before assuming the audit's line numbers still apply. Other
+agents are changing rendering code; preserve their edits and shared architecture.
+This goal repairs outlets, not splat quality, furniture redesign or a new service.
+Defer secondary sofa/whiteboard recognition until the outlet path passes.
+
+The earlier implementation claimed completion while:
+- Detection/attachment/reconciliation were not wired into production.
+- The outlet filter accepted all nodes with an omitted attachment property.
+- The demo invented outlet positions/confidence/socket count and reach results.
+- Missing floor, intervening barriers and NaN reach could produce within_reach.
+- Evidence images, personal reach controls, destination preview and persistent
+  owner review were absent or disconnected.
+- Off-axis depth, support provenance, merge decisions and cache roundtrips were wrong.
+
+Treat prior completion notes as claims to verify, not established acceptance.
+Reopen failed gates in progress tracking with an audit reference. Preserve the old
+history. Relabel/move the synthetic demo as an explicitly synthetic export fixture
+and remove its ability to manufacture real-completion or browser-verification notes.
+Do not delete the fixture merely to hide the problem.
+
+Protect originals: prepared JPEGs may be hardlinks. Never edit them in place.
+Preserve all existing revisions and captures. Work on isolated candidate artifacts/
+revision using existing APIs. Query latest A-102 revision for scan
+f143082d-f529-494b-b80d-97729234e334; do not hard-code revision 0, 3 or 4.
+Branch first on the default branch, commit only verified owned changes, never push.
+Do not reset/clean/stash others' work or disable failing checks.
+
+WHAT SUCCESS MEANS
+
+The first delivery scope is the real authenticated web application plus responsive
+phone layout. Check native iOS contract compatibility separately. Physical iPhone
+verification is a separate recorded status, not something a resized browser proves.
+If native support is incomplete, explicitly report that gap; never claim the
+entire cross-platform objective is complete. No ADA certification, live-power,
+availability, plug-operability or exact-centimetre claims follow from this work.
+
+System flow to implement and prove:
+
+Preserved photo + camera + support geometry
+   -> production detection and surface localization
+   -> versioned outlet/evidence records
+   -> authenticated API -> selectable outlet + readable photo
+   -> current chair/profile + route/reach checks
+   -> persisted owner review + consistent downloadable assessment
+
+Collision geometry remains authoritative. Surface-attached outlet annotations
+must not become inflated solid furniture obstacles.
+
+RUNTIME AND CHANGE CONTROL
+
+Maximum active work budget: 480 minutes; reserve final 60 for regression, real UI
+acceptance, independent review and handoff. Do not sleep to consume the budget.
+Start with one room, up to 24 source frames. Maximum pilot: 96 distinct source
+frames, 64 extra crops, 160 logical vision requests, 320 total network attempts.
+Concurrency 2; at most 4 attempts per logical request including the first.
+Respect Retry-After; use existing bounded jitter/backoff for transient failures.
+Do not retry authentication/schema errors as network transients. Reuse valid caches.
+Respect any stricter existing monetary/provider limit. No new paid service/account,
+silent model upgrade or bulk upload to a new provider. Do not print secrets.
+
+Check credentials using the application's actual supported configuration loading,
+not merely the current shell environment. Report only key names/presence and errors.
+If unavailable, finish independent code/tests/UI, but real-provider acceptance stays
+blocked. Do not simulate a response and label it a successful model call. Existing
+reviewed real-photo annotations may serve as an explicitly attributed manual
+evidence mode if the product actually supports it; they do not verify automatic
+recognition. An automatic-detection claim requires actual configured detector output.
+
+Checkpoint after each gate, failed repair, and at least every 10 minutes of work.
+Use PROGRESS_MOFFETT_OUTLET_REPAIR.json and a new runs/moffett/outlets/repair-<id>.
+No new .md files. Record source/evaluator/config/input hashes, stage, commands,
+exit codes, artifact paths, failures, call counters, actual costs or unavailable,
+remaining dependencies and next action. Do not erase prior attempts.
+
+Own small coherent changes. Reuse the existing discovery entry point, calibrated
+camera helpers, contract generation, scene/revision APIs, collision/navigation,
+owner-edit mechanism, image authorization and architecture export. Inspect installed
+Next.js docs and apps/web/AGENTS.md before framework edits.
+
+REPAIR LOOP — REPEAT FOR EACH GATE
+
+1. Reproduce the audited failure through the responsible production interface.
+2. Add the smallest behavioral regression that fails because of the wrong result,
+   not because of an import/build error. If another agent already fixed it, verify
+   the fix and preserve it; do not manufacture a red state in the shared checkout.
+3. State the invariant, cause, owner and intended change in the checkpoint.
+4. Implement the fix at its owner; keep test expected results independent of the
+   implementation formula. Do not mock the very behavior being asserted.
+5. Rerun the failing test and directly affected integration checks.
+6. Run the required targeted mutation check in an isolated temporary copy/worktree.
+7. Save command receipts/evidence, update the gate, and proceed.
+
+At most 3 repair attempts per hypothesis, 2 hypotheses per repeated blocker.
+At the limit, write a concrete root-cause/blocker report and continue independent
+work. Do not bypass the invariant, reduce assertions, change fixtures to easy data,
+or repeatedly run an unchanged failing command. Leave blocked work explicitly open.
+After two attempts without a new diagnostic fact, inspect the call path before
+another edit. A completion-status edit is not progress on implementation.
+
+G0: HONEST STATUS AND EXECUTABLE ACCEPTANCE HARNESS
+
+Create/reuse one verifier that reads real test-run outputs and integration receipts.
+It must validate required test IDs, source revision, input/artifact hashes, run times,
+process exit statuses and acceptance kind. Track fixture, real_capture, browser,
+responsive_layout, and physical_device separately. Screenshots/JSON filenames alone
+are not proof that a test or interaction ran.
+
+Do not mark a gate passed by writing a prose checkpoint. It needs current evidence.
+An old passing test against different source hashes is stale. A skipped/not-run
+required test is unknown and blocks that gate. Preserve failing logs.
+
+Fixtures may provide deterministic detector responses at the external provider
+transport boundary. They may not inject finished outlet nodes into the DB, mock
+surface/reach functions, or replace production response bodies for integration
+acceptance. Fake assessments can be unit-test inputs only, explicitly labeled.
+
+No independent reviewer? Label final review self-review. Do not invent an audit.
+No prompt is tamper-proof if the same agent can edit its verifier; a separate
+read-only reviewer should rerun critical proofs rather than trust checkpoint values.
+
+G1: FIX SEMANTIC FILTERING AND CONNECT THE PRODUCTION PATH
+
+First fix omitted/null attachment handling and explicitly restrict the outlet list
+to supported outlet categories. Wall-mounted whiteboards must not count as outlets.
+Candidates and owner-rejected items need distinguishable treatment; rejected items
+must not retain affirmative operational recommendations.
+
+Connect overview/crop detection, surface localization and reconciliation to the real
+discovery/rebuild entry point, before solid-object wall-ownership/thickness filters
+can discard mounted items. Persist output through the normal revision mechanism.
+Use a calibrated synthetic wall/mesh and fixture detector transport to test the
+actual entry point -> stored candidate revision -> authenticated graph endpoint.
+Injecting two manually constructed SceneNodes at the final stage does not test it.
+Disconnecting the surface call must cause that integration test to fail.
+
+G2: EVIDENCE DETECTION, CACHE AND SECURE DELIVERY
+
+Perform high-resolution crop/tile refinement where whole-frame reduction loses
+detail. Start with 20% tile overlap and 20% clipped context padding; record these
+as sampling settings, not detector accuracy. Cover all image rotations, crop offsets,
+resize factors and [ymin,xmin,ymax,xmax] conversion back to sensor coordinates.
+Undo orientation exactly once. Test asymmetric corners and off-center crops.
+
+Extend structured output and cache schemas together. Validate finite, ordered,
+bounded boxes; nullable unresolved socket count; confidence provenance; observation
+identity and unknown/ambiguous cases. Cache keys include input/crop, prompt/schema,
+model/config and calibration versions. A cached response must preserve all metadata.
+Never cache provider failure as zero detections. Bump cache versions appropriately.
+
+Generate actual image crops derived from source pixels, with source/crop hashes,
+capture/frame IDs, pixel box, orientation and detector metadata. Use existing
+authenticated storage/routing and ownership checks. Do not expose raw filesystem
+paths or arbitrary user-supplied URLs. Crop access checks ownership of its capture,
+not merely knowledge of a crop ID. Handle unavailable/stale evidence explicitly.
+Verify returned bytes decode and correspond to the recorded pixel region.
+
+G3: CORRECT SUPPORT GEOMETRY AND UNCERTAINTY
+
+Use canonical camera intrinsics/poses and world transforms. Compare camera-Z depth
+with camera-Z depth, or ray distance with ray distance, never the two mixed.
+Verify off-axis same-wall observations stay visible and foreground occluders do not.
+Intersect measured mesh triangles for LiDAR-supported claims. A RoomPlan box plane
+can support an explicitly inferred-plane estimate, not verified LiDAR support.
+Absent/all-infinite depth, holes and grazing rays are uncertainty, not clear sight.
+
+Use multiple rays over the photographed region. Preserve support surface identity,
+input geometry/calibration revision, coordinate frame, observed region and evidence.
+Define socket coordinates in one explicit frame. A faceplate center is not a
+resolved socket target. Do not fabricate thickness or the standard duplex layout.
+Allow a candidate with an uncertain location; do not force it onto the first wall.
+
+G4: RECONCILIATION, IDENTITY AND OWNER DECISIONS
+
+Merge only when support, bounded localization and actual reprojection into the
+observed regions agree. Positive depth alone is insufficient. No universal merge
+distance such as 20 cm. Numerical tolerances must come from documented image/pose/
+support resolution and a reviewed validation set, not final acceptance outcomes.
+
+Keep neighboring plates distinct; combine views of one plate without inventing
+socket count; prevent transitive chains through ambiguous observations. A model
+confidence score is not a calibrated probability. Consecutive duplicate frames do
+not supply independent multiview confirmation.
+
+Replay identical source data twice and reorder observations: IDs, evidence sets
+and owner decisions must remain stable. Preserve all relevant caveats. Conflicting
+owner edits need a conflict state, not silent last-write-wins. Persist correction
+author/time and version using the existing authenticated revision/edit flow.
+
+G5: CONSERVATIVE PERSONAL REACH CONTRACT
+
+Do not reuse navigation eye height as shoulder/hand position. Define the actual
+simple reach model and label it accurately. Require finite supplied bounds and an
+explicit hand/shoulder reference when the model uses one. No implicit ADA defaults
+of 0.38–1.22 m, no NaN/Infinity, negative distance, reversed bounds or unknown units.
+Invalid input gets validation feedback and no affirmative reach result.
+
+Keep separate outputs: identity/localization; route/approach; personalized geometric
+reach; unknown power/availability/plug operation/ADA. Uncertainty must change the
+result status, not merely append a warning beside a green pass.
+
+Evaluate the observed socket region in the declared frame above verified local
+finished floor. Missing floor means unknown height, not world zero or first floor.
+Missing support/normal/operable target/profile prevents positive reach. A known
+obstruction may still justify blocked while other attributes remain uncertain;
+unknown is not an excuse to erase a real observed obstacle.
+
+If supplied measurement uncertainty yields intervals, affirmative reach requires
+the entire conservative distance/height interval inside the personal bounds and
+the implemented reach corridor unobstructed. A threshold-crossing interval is
+needs_verification. Do not invent zero uncertainty or substitute a 90% heuristic.
+If numeric uncertainty cannot be justified, record unknown rather than fabricate
+a confidence interval. Synthetic exact fixtures may declare zero uncertainty.
+
+Passing a coarse geometric model is labeled within supplied modeled reach; it is
+not proof of grasp, plug insertion, arm motion, strength or safe independent use.
+
+G6: ROUTE AND REACH OBSTRUCTION ARE DISTINCT
+
+Reuse/extend the appropriate navigation owner. Check a path from the actual chair
+position, swept footprint, floor coverage and final stopping position. A clear
+endpoint is insufficient. The approach preview must consume that evaluated path/
+destination, not call unrelated object-center docking.
+
+Suggested initial search settings: 0.10 m grid; 15 degree heading increments only
+if orientation matters to the implemented footprint; 0.05 m refinement near narrow
+passages/promising endpoints; bounded 50,000 search expansions. These are numerical
+search limits, not physical accuracy claims. Exhaustion means search_inconclusive/
+no_route_found_under_settings, not proof the real room is inaccessible.
+Use continuous segment/capsule checks or sufficiently conservative geometric
+intersections for collisions; coarse stepping must not jump a thin obstacle/gap.
+
+Test a detour where a direct ray is blocked but a path exists. Unsupported floor
+regions cannot be traversed as known-clear. Never substitute chair position (0,0)
+when actual position is unknown. Maintain that unknown state in UI and exports.
+
+Reach obstruction tests must consider obstacles between endpoints and relevant
+heights. Do not require both endpoints to touch the same obstacle. Do not omit a
+supporting cabinet merely because it is the outlet parent. A ray can establish an
+obstruction but cannot alone establish full arm/hand passage; report model limits.
+
+G7: REAL UI, PERSISTENCE AND CONSISTENT EXPORT
+
+Provide working controls for the chosen personal reach model, alongside existing
+chair dimensions. Profile changes invalidate stale results. Show the actual crop,
+source/view IDs, estimated location and separate statuses with reasons. Allow
+inspection during wheelchair operation and on 390x844 layout. No overlapping or
+unreachable controls; retain keyboard/list access independent of 3D picking.
+
+Persist owner confirm/reject/correct-location through existing APIs. Reload the
+page and repeat discovery: the correction must survive and remain attributable.
+Do not confuse confirming identity with confirming measured location or reach.
+
+Invalidate old assessments on start position, profile, target/support, geometry,
+calibration or revision changes. Bind cached/persisted assessment to these inputs.
+Exercise optimistic-concurrency handling; stale edits must not overwrite a newer
+owner decision. Inference reruns must not restore a rejected outlet as verified.
+
+Export the actual displayed assessment with scene/input revision, profile or
+explicit absent-profile status, route/target, evidence identifiers, uncertainty,
+owner status and unestablished attributes. Do not recompute unrelated values in
+an export-only demo. Keep corrected local-floor heights consistent across list,
+detail panel and ZIP. Record privacy scope for any exported personal profile.
+Unauthorized users must not fetch crops, edit reviews or export another scan.
+
+G8: REQUIRED TARGETED MUTATION CHECKS
+
+These are temporary changes in an isolated test copy, never the shared checkout.
+Each listed mutant must produce a behavioral assertion failure. Compilation failure
+does not count as catching the bug. Restore/throw away the isolated copy afterward.
+
+M01 Restore attachment !== null filtering -> ordinary-node outlet test fails.
+M02 Disconnect surface pipeline call -> production entry-to-API integration fails.
+M03 Compare Euclidean ray t with camera-Z -> off-axis same-wall test fails.
+M04 Treat missing geometry as clear -> missing-floor/support test fails.
+M05 Restore endpoint-only obstacle predicate -> between-endpoints barrier test fails.
+M06 Drop rejected owner's decision on merge -> merge/replay review test fails.
+M07 Replace durable correction with component state -> reload/export test fails.
+M08 Ignore supplied approach destination -> actual controller destination test fails.
+
+Required mutation kill rate: 8/8. Report mutation ID, original and changed diff,
+test command, failure assertion and restored source hash. A survivor means improve
+the test and investigate the implementation; do not delete the mutant requirement.
+Do not run a generic whole-repository mutation campaign overnight.
+
+G9: ACTUAL MOFFETT ACCEPTANCE — NO FIXTURE SUBSTITUTION
+
+Lock a reviewed pilot manifest from actual preserved photos. Verify at least one
+visible outlet through its source image/crop; do not assume evidence-index entries
+are correct merely because they contain confident descriptions. Use separated
+viewpoints when available. Retain ambiguous single-view candidates honestly.
+
+Execute production detection/localization/reconciliation and persistence for this
+manifest with the configured provider. No detector response stubs in this run.
+Record detector mode/version, request receipts without secrets, input hashes, real
+crop bytes and candidate graph revision. If using separately supported manual
+annotation mode, label automatic recognition unverified and do not pass its gate.
+
+In the real authenticated app, using the mandated UI automation tool:
+1. Load the candidate revision and select the real outlet from the list.
+2. Open/read its generated source crop and match it to the manifest.
+3. Show approach/reach with real knowns and unknowns. An affirmative reach result
+   is NOT required when my personal measurements are absent; truthful unknown is.
+4. Show an evaluated approach preview when the measured scene supports it; otherwise
+   show the exact blocked/unknown reason, not a fabricated route.
+5. Change explicit test-profile inputs and verify recomputation, labeling them as
+   test profiles rather than my personal measurements.
+6. Submit an owner correction in the candidate revision, reload and verify it.
+7. Download ZIP; compare its revision/evidence/statuses with what the UI displays.
+8. Exercise empty, candidate-only, evidence-error, stale and unauthorized states
+   using designated fixtures separately, not by altering the real capture.
+
+Save browser screenshots, action/console/network evidence and verifier assertions.
+DOM text alone is insufficient for decoded crop visibility; an image file alone
+is insufficient proof the authenticated app displayed it. Do not claim a physical
+iPhone run without that device. Record native compatibility and device availability.
+
+If no visible real outlet is supported, deliver the functional tested pipeline and
+an evidence-limited result with specific capture needs. Do not satisfy the positive
+real-outlet gate with generated objects. Missing credential, missing photographs,
+missing geometry, missing personal profile and code defects are different blockers.
+
+G10: REGRESSION, COMPLETION VERIFIER AND HANDOFF
+
+Run the companion contract's entire required matrix; then affected pipeline/API/
+contract suites, web typecheck and tests, lint/build where applicable. Run generated
+contract checks. Report preexisting failures separately. Tests that merely assert
+your own hard-coded result dictionary are not acceptance tests.
+
+The completion verifier must fail for each of: omitted required test ID, skipped
+test, failed exit status, synthetic artifact used for real gate, stale source hash,
+missing crop, absent current revision, missing browser receipt, and contradictory
+UI/export status. Unit-test this verifier with deliberately incomplete records.
+
+Progress percentage = 100 * passed_required_gates / total_required_gates. This is
+progress only, never a quality score or tradeoff. Unknown/blocked/skipped = not
+passed. Completion requires all 11 gates G0–G10, all required test cases, all eight
+targeted mutation kills, and the declared web-scope real acceptance. No rounding
+99% up, averaging away failures, or treating pass counts as proof of wiring.
+
+Final status must be one of:
+- verified_web_feature: all gates pass; separately report native/device limitations.
+- implementation_ready_real_acceptance_blocked: code/tests pass, real gate blocked.
+- incomplete: implementation or tests still fail/missing.
+Do not use unqualified complete for the broader cross-platform/ADA objective.
+
+Final report: what works and local URL/command; real outlet/candidate counts and
+evidence; all gate/test/mutation results; blockers; commits; screenshots; export
+path; native/physical-device status; actual provider/agent costs or unavailable.
+Preserve an executable reproduction of the formerly false clear/within_reach cases.
+Commit coherent verified owned changes; never push.
+
+START: reopen the unsupported completion, reproduce the null-filter and missing-
+floor reach failures, then wire the production path and proceed through the gates.
+
+Use available models; do not silently purchase or upgrade. If only one agent is
+available, work sequentially and label review self-review. Delegated workers own
+separate files and are told to preserve concurrent changes in the shared workspace.
+
+Task                                             | Model tier
+-------------------------------------------------|--------------------------------
+Contracts, trust boundaries, unknown-state design  | Strongest available coordinator
+Settled pipeline/API/viewer implementation         | Strong implementation tier
+Regression fixtures, caches, mutation receipts    | Inexpensive Flash/Luna-like tier
+Independent replay and acceptance audit           | Separate read-only reviewer
+Sensitive image transformations and bulk work     | Local deterministic code

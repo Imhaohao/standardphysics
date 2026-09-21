@@ -12,6 +12,7 @@ from typing import Annotated
 from fastapi import FastAPI, Header, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from pydantic import BaseModel
 from standardphysics_agents import init_tracing, project_url, shutdown_tracing
 from standardphysics_contracts import (
     Artifact,
@@ -47,7 +48,7 @@ from .combine import SaveCombineRequest, save_combine
 from .coverage import parse_coverage
 from .db import Database
 from .errors import ApiProblem
-from .labels import mark_counter, unmark_counter
+from .labels import mark_counter, review_outlet, unmark_counter
 from .layout import check_layout, save_layout
 from .lidar_mesh import InvalidLidarMesh, validate_lidar_mesh
 from .loop_run import run as run_loop_on
@@ -387,6 +388,10 @@ def _install_layout_routes(app: FastAPI, database: Database, stages: Stages, wor
         return save_layout(database, worker, scan_id, body)
 
 
+class ReviewOutletRequest(BaseModel):
+    status: str
+
+
 def _install_label_routes(app: FastAPI, database: Database, worker: Worker) -> None:
     counter_path = "/api/scans/{scan_id}/revisions/{base_revision}/counters/{node_id}"
 
@@ -397,6 +402,17 @@ def _install_label_routes(app: FastAPI, database: Database, worker: Worker) -> N
     @app.delete(counter_path, response_model=SceneGraph, status_code=201)
     def unmark_as_counter(scan_id: uuid.UUID, base_revision: int, node_id: uuid.UUID) -> SceneGraph:
         return unmark_counter(database, worker, scan_id, base_revision, node_id)
+
+    outlet_review_path = "/api/scans/{scan_id}/revisions/{base_revision}/outlets/{node_id}/review"
+
+    @app.put(outlet_review_path, response_model=SceneGraph, status_code=201)
+    def update_outlet_review(
+        scan_id: uuid.UUID,
+        base_revision: int,
+        node_id: uuid.UUID,
+        body: ReviewOutletRequest,
+    ) -> SceneGraph:
+        return review_outlet(database, worker, scan_id, base_revision, node_id, body.status)
 
 
 def _install_route_routes(app: FastAPI, database: Database, worker: Worker) -> None:
@@ -440,6 +456,22 @@ def _install_file_routes(app: FastAPI, database: Database, store: ArtifactStore)
         directory = store.scan_dir(scan_id) / "revisions"
         matches = sorted(directory.glob(f"*/renders/{finding_id}.png"), key=lambda path: int(path.parent.parent.name))
         return _file_or_404(matches[-1] if matches else None, "image/png")
+
+    @app.get("/api/scans/{scan_id}/crops/{crop_id}")
+    def get_crop(scan_id: uuid.UUID, crop_id: str) -> FileResponse:
+        with database.connect() as connection:
+            _scan_or_404(connection, scan_id)
+        if "/" in crop_id or "\\" in crop_id or ".." in crop_id:
+            raise ApiProblem(400, "invalid crop id")
+        filename = crop_id if (crop_id.endswith(".jpg") or crop_id.endswith(".png")) else f"{crop_id}.jpg"
+        crops_dir = (store.scan_dir(scan_id) / "crops").resolve()
+        crop_path = (crops_dir / filename).resolve()
+        if not str(crop_path).startswith(str(crops_dir)):
+            raise ApiProblem(400, "invalid crop path")
+        if not crop_path.is_file():
+            raise ApiProblem(404, "crop not found")
+        media_type = "image/png" if filename.endswith(".png") else "image/jpeg"
+        return FileResponse(crop_path, media_type=media_type)
 
 
 def _install_simulation_routes(app: FastAPI, database: Database, stages: Stages, worker: Worker) -> None:

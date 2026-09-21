@@ -1,0 +1,402 @@
+{
+  "schema_version": 2,
+  "kind": "revised_experiment_policy_not_measured_results",
+  "created_date": "2026-09-20",
+  "freeze_before_candidates": true,
+  "threshold_note": "Engineering acceptance defaults, not empirical guarantees or measurement accuracy. Any evaluator/policy correction creates a new benchmark version and requires affected results to be recomputed.",
+  "scope": {
+    "hardware": "verify local Apple Silicon",
+    "cuda_allowed": false,
+    "paid_compute_allowed": false,
+    "automatic_production_replacement": false,
+    "modify_originals": false,
+    "resume_old_automation": false,
+    "push_commits": false,
+    "production_promotion_requires_separate_explicit_request": true
+  },
+  "budgets": {
+    "total_minutes": 480,
+    "reserved_handoff_minutes": 60,
+    "max_heavy_gpu_jobs": 1,
+    "max_candidate_configurations": 8,
+    "baseline_excluded_from_configuration_cap": true,
+    "repeat_trials_excluded_from_configuration_cap": true,
+    "max_repairs_per_gate_hypothesis": 3,
+    "max_hypotheses_per_blocker": 2,
+    "backend_setup_minutes": 45,
+    "pilot_training_minutes": 20,
+    "pilot_training_steps": 7000,
+    "training_ends_at_first_limit": true,
+    "refinement_minutes": 5,
+    "process_footprint_cap_gib": 24,
+    "physical_memory_fraction_cap": 0.5,
+    "effective_memory_cap_rule": "min(process_footprint_cap_gib, physical_memory_gib * physical_memory_fraction_cap)",
+    "job_poll_seconds": [
+      15,
+      30
+    ],
+    "checkpoint_max_interval_minutes": 10,
+    "plateau_trial_count": 3,
+    "plateau_min_validation_score_gain": 2.0,
+    "final_test_finalists": 1
+  },
+  "pilot": {
+    "training_view_target": 32,
+    "validation_view_target": 8,
+    "final_test_view_target": 8,
+    "view_counts_are_targets_not_independence_proof": true,
+    "split_unit": "reviewed separated trajectory/viewpoint groups",
+    "max_image_edge_px": 1280,
+    "preserve_aspect_ratio": true,
+    "seed": 1729,
+    "shared_aggregate_lidar_must_be_disclosed": true,
+    "evaluation_rgb_may_train_or_bake": false,
+    "evaluation_masks_may_derive_from_candidate": false,
+    "measured_baseline": "new matched Brush pilot",
+    "historical_baseline_use": "visual context only unless equivalence and leakage checks pass",
+    "explicit_allowlist_required": true,
+    "image_identity": "capture ID + source frame ID + source RGB SHA256, not basename or count alone",
+    "actual_backend_inputs_required": [
+      "training frame IDs",
+      "RGB hashes",
+      "mask IDs/hashes/mode",
+      "camera matrices and per-frame intrinsics",
+      "seed hash and actual initial point count"
+    ],
+    "candidate_input_rule": "Photo sampling/baking/recognition used to color candidates may open only allowed training RGB and train masks; validate before loading files. Camera metadata and declared shared aggregate LiDAR may be shared.",
+    "no_extra_training_images": true,
+    "initial_seed_equivalence": "same metric seed positions and color initialization when claiming a controlled backend comparison; record actual loaded counts, caps and defaults",
+    "final_test_history": "Previously rendered/viewed/used final-test images are exposed, not automatically sealed. Audit access history; if used for decisions or history is unknown, reserve fresh unexposed trajectory groups before further tuning or mark final-test evidence unavailable.",
+    "validation_critical_rois": "Preregister validation ROIs separately before new candidates. Test-only ROIs cannot supply validation selection scores. If validation has no visible critical feature, collect/reserve suitable validation data or remain ineligible; do not drop the feature weight."
+  },
+  "surface_builder": {
+    "initial_sample_cap": 150000,
+    "optional_sample_cap": 300000,
+    "initial_top_k": 4,
+    "optional_top_k": 8,
+    "point_block_size": 8192,
+    "initial_sh_degree": 0,
+    "initial_centers_fixed": true,
+    "initial_color": "best_valid_source_view",
+    "synthetic_tangent_sigma_spacing_factors": [
+      0.5,
+      0.75,
+      1.0
+    ],
+    "initial_normal_to_min_tangent_ratio": 0.1,
+    "optional_normal_ratio_one_factor_trials": [
+      0.05,
+      0.2
+    ],
+    "max_tangent_anisotropy": 3.0,
+    "synthetic_opacity_options": [
+      0.3,
+      0.5,
+      0.7
+    ],
+    "tangent_scale_and_opacity_freeze_after_synthetic_tests": true,
+    "optional_refinement_steps": [
+      0,
+      100,
+      500
+    ],
+    "unknown_visibility": "reject_or_mark_unknown_not_visible",
+    "unobserved_photographic_samples": "prune",
+    "surface_parameters_are_accuracy_claims": false,
+    "color_rule": "Interpolate vertex_colours[triangles[owner]] with the sampled barycentric weights. World positions must not be used as RGB.",
+    "photo_support_required": "Carry source frame ID, supporting triangle/sample, visibility decision and static-mask validity to exported samples. Unseen fallback grey must not count as photo support.",
+    "unsupported_samples": "Reject/prune before export; all-unsupported input yields explicit no-supported-output failure.",
+    "bounds": "Enforce positive finite spacing, bounded allocation before np.repeat, max_samples cap, in-range triangle indices, finite colors in [0,1] and safe immutable output destinations.",
+    "alpha_calibration": "Use real front-to-back transmittance: accumulated alpha = 1 - product(1-alpha_i), with renderer projection/clamping/ordering documented. Sum(alpha_i) is only a density diagnostic, not opacity or brightness.",
+    "calibration_renderer_required": true,
+    "calibration_model": "Representative capped random mesh sampling, orientations, nonuniform density and distances; an infinite square lattice alone does not validate the production sampler.",
+    "obsolete_freeze": "The prior tangent=0.5, opacity=0.5 freeze is unsupported; recalibrate under a new artifact ID after the compositing/sampling correction."
+  },
+  "measurement": {
+    "baseline_and_each_scored_candidate_repeats": 3,
+    "single_run_smoke_trial_can_have_eligible_score": false,
+    "run_order": "alternate baseline and candidate",
+    "cold_scope": "Fresh derived caches plus required preprocessing, build/train AND compressed export; time the whole command tree. Report reused immutable source preparation and OS cache limitations separately.",
+    "timing_aggregate": "median",
+    "footprint_aggregate": "maximum comparable measured peak across repeats",
+    "compressed_size_aggregate": "maximum SPZ bytes across repeats",
+    "viewer_sessions": 3,
+    "viewer_warmup_seconds": 10,
+    "viewer_path_seconds": 60,
+    "viewer_metric": "worst session p95 actual rendered-frame time",
+    "coverage_alpha_threshold": 0.5,
+    "coverage_denominator": "frozen known-photo-supported evaluation pixels",
+    "metric_rgb": "decoded sRGB float64 [0,1]",
+    "psnr_mse_floor": 1e-10,
+    "ssim": {
+      "gaussian_weights": true,
+      "window_size": 11,
+      "sigma": 1.5,
+      "data_range": 1.0,
+      "sample_covariance": false,
+      "channel_reduction": "mean RGB"
+    },
+    "ssim_mask_rule": "full-image SSIM map; include only windows wholly inside fixed valid mask",
+    "lpips_role": "optional fixed diagnostic; not weighted score",
+    "bootstrap_group": "independent trajectory group",
+    "bootstrap_resamples": 1000,
+    "bootstrap_seed": 1729,
+    "novel_seated_eye_height_m": 1.15,
+    "seated_views_have_rgb_ground_truth": false,
+    "missing_metric": "null_with_reason_and_ineligible",
+    "resource_scope_requires_same_input_workload": true,
+    "peak_metric": "Peak process footprint in bytes across all active child processes, sampled and/or OS peak with method recorded; RSS and footprint are different metrics and must not be silently compared.",
+    "renderer": "Use already-built SplatX for common calibrated RGB diagnostics. Validate native preview/export parity and camera conventions; Spark remains required for browser delivery and valid alpha coverage.",
+    "gpu_identity": "Record actual renderer/vendor/backend. SwiftShader/software GL, CLI startup latency and rAF callbacks without completed renders cannot provide eligible GPU viewer F.",
+    "viewer_frame_samples": "At least 300 completed presented frames in each required 60-second measured session after warmup; preserve timestamps, scene hash, device, resolution and path. If fewer, F is unavailable for selection.",
+    "coverage_alpha": "Require genuine accumulated alpha; reject opaque PNG-derived alpha and occupancy inferred from RGB brightness.",
+    "bootstrap_requires": "Preserve group IDs and uncertainty intervals; do not treat adjacent individual frames as independent groups."
+  },
+  "hard_numeric_gates": {
+    "max_mean_psnr_drop_db": 0.2,
+    "max_mean_full_frame_psnr_drop_db": 0.5,
+    "max_mean_ssim_drop": 0.005,
+    "max_each_critical_roi_psnr_drop_db": 0.3,
+    "max_each_view_psnr_drop_db": 1.0,
+    "max_supported_uncovered_fraction_increase": 0.01,
+    "max_frame_p95_ratio_candidate_to_baseline": 1.1
+  },
+  "hard_non_numeric_gates": [
+    "frozen_input_split_evaluator_and_artifact_hashes_validate",
+    "originals_and_previous_revisions_preserved",
+    "authoritative_measured_mesh_graph_and_fallback_inventory_preserved",
+    "calibration_axes_color_export_and_required_tests_pass",
+    "all_expected_views_and_rois_present_no_nonfinite_metrics",
+    "no_disappeared_critical_feature_or_new_misleading_surface",
+    "no_new_or_worse_person_ghost_on_paired_visual_review",
+    "footprint_cap_and_comparable_cost_measurement_pass",
+    "measured_collision_export_auth_and_revision_boundaries_preserved"
+  ],
+  "score": {
+    "compute_only_if_all_gates_pass": true,
+    "unknown_gate_is_pass": false,
+    "baseline_score": 50.0,
+    "minimum_selection_score": 55.0,
+    "clip_definition": "min(1,max(0,x))",
+    "q_psnr": "clip(0.5 + (candidate_mean_psnr_db - baseline_mean_psnr_db) / 2.0)",
+    "q_ssim": "clip(0.5 + (candidate_mean_ssim - baseline_mean_ssim) / 0.04)",
+    "q_critical": "clip(0.5 + minimum_preregistered_roi_psnr_delta_db / 2.0)",
+    "quality": "100 * (0.40*q_psnr + 0.30*q_ssim + 0.30*q_critical)",
+    "resource_gain": "100*clip(0.5 + log2(baseline/candidate)/2.0); positive finite inputs required",
+    "weights": {
+      "quality": 0.6,
+      "cold_end_to_end_seconds": 0.2,
+      "peak_footprint_bytes": 0.08,
+      "compressed_spz_bytes": 0.07,
+      "rendered_frame_p95_ms": 0.05
+    },
+    "do_not_reweight_missing_components": true,
+    "score_does_not_imply_photorealism": true
+  },
+  "selection_lanes": {
+    "quality": {
+      "min_mean_psnr_improvement_db": 0.5,
+      "min_mean_ssim_improvement": 0.01,
+      "max_time_ratio_candidate_to_baseline": 1.25,
+      "max_footprint_ratio_candidate_to_baseline": 1.1,
+      "max_spz_size_ratio_candidate_to_baseline": 1.25
+    },
+    "efficiency": {
+      "min_time_ratio_baseline_to_candidate": 1.5,
+      "max_footprint_ratio_candidate_to_baseline": 1.0,
+      "max_spz_size_ratio_candidate_to_baseline": 1.0
+    },
+    "require_all_hard_gates_and_minimum_score_and_one_lane": true,
+    "timing_claim_must_exceed_observed_noise": true,
+    "final_test_cannot_be_used_for_tuning": true,
+    "second_area_transfer_required_before_full_room_claim": true
+  },
+  "evidence": {
+    "metric_values_written_by": "evaluator_from_actual_artifacts_not_language_model",
+    "visual_review_identity_required": true,
+    "labeled_agent_self_review_allowed_for_experiments": true,
+    "appearance_coverage_is_independent_geometry_validation": false,
+    "required_run_records": [
+      "input_manifest_and_hashes",
+      "config_and_hash",
+      "code_and_evaluator_version_hashes",
+      "exact_command_exit_status_and_logs",
+      "resource_trace_and_measurement_scope",
+      "output_artifacts_and_hashes",
+      "per_view_metrics_and_expected_view_list",
+      "hard_gate_results_with_evidence_paths",
+      "paired_renders_and_review_identity",
+      "conclusion_and_failure_reasons"
+    ],
+    "same_agent_hashes_are_tamper_proof": false,
+    "physical_phone_test_can_be_replaced_by_viewport_emulation": false,
+    "incomplete_overall_goal_must_remain_explicit": true
+  },
+  "benchmark_version": 3,
+  "supersedes": {
+    "path": "docs/deepseek-lidar-experiment-policy.json",
+    "sha256": "2c663fad382486699907d5f48d393617c276476559f0d4ea763814f2ca601b38"
+  },
+  "revision_reason": "Audit found geometry encoded as RGB, nonmatching photographic inputs, unsupported mask parity, additive alpha calibration, and incomplete policy enforcement.",
+  "execution_contract": {
+    "policy_is_executable_requirement": true,
+    "entrypoint": "One evaluator reads this JSON, validates the evidence, derives gates and writes the result. Arithmetic helpers alone do not implement the policy.",
+    "allowed_states": [
+      "in_progress",
+      "blocked_missing_evidence",
+      "completed_rejected",
+      "selected_for_review"
+    ],
+    "completed_rejected_requires": "Completed relevant preflight and honest diagnostic evidence showing rejection, or documented exhausted repair budget with exact blockers; never label all implementation phases complete.",
+    "selected_for_review_requires": "All numeric and nonnumeric gates, required repeats, minimum score, selection lane and sealed final test pass.",
+    "skip_is_pass": false,
+    "unchecked_or_conditional_is_done": false,
+    "unknown_metrics": "JSON null plus a structured reason; reject NaN/Infinity and bool-as-number.",
+    "score_output": "null unless every required gate is measured and true; no quality or performance ranking from diagnostic-only runs.",
+    "frozen_policy_hash_mismatch": "fail; change requires a new benchmark version and affected recomputation",
+    "failure_exit_code": "nonzero for invalid evidence, schema, unexpected files, missing views or violated prerequisites; a measured quality rejection may return success with completed_rejected and null selection score."
+  },
+  "mask_contract": {
+    "unmasked_diagnostic": "Use RGB-only train directories without discoverable mask files or alpha, not only omitted JSON fields. Verify the backend behavior.",
+    "masked_comparison": "Same person masks, exclusion semantics and normalization on both backends. SplatX needs native training integration first.",
+    "evaluator_masks_are_training_support": false,
+    "native_loss_acceptance": {
+      "excluded_rgb_mutation": "With all else fixed, changing only excluded GT RGB leaves the intended masked loss and all parameter gradients invariant within atol=1e-6, rtol=1e-5 on deterministic tiny fixtures.",
+      "included_rgb_control": "Changing included RGB must affect loss and at least one nonzero gradient.",
+      "all_zero_mask": "explicit skip with no optimizer/regularizer update or clear error; never NaN or implicit success",
+      "ssim": "Mask full window support or document/test an equivalent exclusion formulation; masked GT must not leak through SSIM neighborhoods.",
+      "execution_paths": "Test each enabled path including resident Metal; testing Python metrics is insufficient."
+    }
+  },
+  "gate_evidence": {
+    "gate_inputs": "Gates are derived by the evaluator from artifacts, not caller-provided pass booleans.",
+    "expected_sets": "Require exact equality to expected view and ROI ID sets, including no missing, extra or duplicate images.",
+    "hashes": "Verify actual bytes of policy, code, binary, kernel, config, inputs, masks, outputs and evaluator against frozen records before scoring.",
+    "boundary_values": "Tests cover exact thresholds and values immediately on both sides; values come from this policy, not duplicated constants.",
+    "numeric_domain": "Metrics/resources reject nonfinite and invalid ranges; positive finite cost; alpha in [0,1]; SSIM in [-1,1]; RGB in [0,1]; no NaN coercion through min/max.",
+    "review_evidence": "Visual gate requires actual paired images, view IDs, reviewer identity, per-view findings and overall verdict. Do not invent an automated realism score.",
+    "product_scope": "Auth, revision, collision, exports and measured geometry must be preserved. Research rejection can finish an experiment, not the photorealistic or accessibility product goal."
+  },
+  "repair_loop": {
+    "priority": [
+      "source color and photographic input correctness",
+      "split/mask and backend input parity",
+      "policy evaluator and negative tests",
+      "renderer/compositing/camera proof",
+      "one corrected candidate diagnostic",
+      "eligible repeat trials and device acceptance only if earlier evidence warrants"
+    ],
+    "before_each_attempt": [
+      "write defect/hypothesis and failing test ID",
+      "record artifact/code/policy hashes and budget",
+      "state one change and expected observable result"
+    ],
+    "after_each_attempt": [
+      "run targeted positive and negative tests",
+      "record exact command, exit code, evidence paths and remaining budget",
+      "on success checkpoint and advance; on failure update hypothesis without marking gate complete"
+    ],
+    "repair_attempt_limits": "Use budgets.max_repairs_per_gate_hypothesis and budgets.max_hypotheses_per_blocker; failed reproduction itself does not license an invented pass.",
+    "one_gpu_job": true,
+    "no_repeated_research": "Reuse pinned installed SplatX. Native loss extensions are allowed and do not mean rebuilding a new trainer. No msplat setup or backend shopping for the same blocker.",
+    "stopping": "Stop expensive experiments on invalid inputs or a reproducible hard-quality failure. Stop at first time/step/memory limit, preserve partial artifacts, and provide the bounded next action."
+  },
+  "required_negative_tests": [
+    {
+      "id": "C01",
+      "test": "Uniform red/green triangle reproduces its supplied color within 1e-6; identical XYZ with different RGB changes output."
+    },
+    {
+      "id": "C02",
+      "test": "Translation and rigid rotation of XYZ leave decoded colors unchanged for fixed barycentric sampling within 1e-6."
+    },
+    {
+      "id": "C03",
+      "test": "Known barycentric weights on three distinct corner colors produce the independently calculated RGB."
+    },
+    {
+      "id": "C04",
+      "test": "All unseen samples fail; mixed support exports only observed, unoccluded static samples with source IDs."
+    },
+    {
+      "id": "D01",
+      "test": "Adding an otherwise valid held-out or extra RGB path to the candidate input allowlist fails before file decoding."
+    },
+    {
+      "id": "D02",
+      "test": "Same filename with changed bytes, duplicated alias or modified camera fails provenance validation."
+    },
+    {
+      "id": "D03",
+      "test": "Training and validation/test sets are exactly disjoint by canonical source identity; permitted aggregate LiDAR explicitly disclosed."
+    },
+    {
+      "id": "M01",
+      "test": "Unmasked mode rejects/disables discoverable masks and alpha; record actual backend mask behavior, not MATCHED constants."
+    },
+    {
+      "id": "M02",
+      "test": "Resident/native masked loss and all relevant gradients pass excluded-region invariance plus included-region sensitivity."
+    },
+    {
+      "id": "M03",
+      "test": "Empty mask and SSIM-boundary cases cannot produce updates from excluded RGB."
+    },
+    {
+      "id": "E01",
+      "test": "NaN and both infinities in every metric path fail; an Inf improvement never clips to a valid high score."
+    },
+    {
+      "id": "E02",
+      "test": "An expected eight-view set with one deleted view, an extra view or a duplicate fails; do not glob whatever exists."
+    },
+    {
+      "id": "E03",
+      "test": "Each missing ROI, missing gate, false gate, tampered hash, missing resource trace or stale cached metric prevents numeric selection score."
+    },
+    {
+      "id": "E04",
+      "test": "Baseline self-score=50; faster blurred candidate fails; invalid values fail rather than producing partial/reweighted scores."
+    },
+    {
+      "id": "E05",
+      "test": "All configured hard numeric thresholds tested exactly and just outside; changing a policy threshold changes the evaluator decision without source edits."
+    },
+    {
+      "id": "E06",
+      "test": "One repeat instead of three, mixed RSS/footprint or missing compression time cannot pass resource eligibility."
+    },
+    {
+      "id": "A01",
+      "test": "Two alpha=0.5 layers composite to 0.75; zero opacity=0; output never exceeds 1; brightness is not alpha sum."
+    },
+    {
+      "id": "A02",
+      "test": "Capped/nonuniform sampler produces independently checked density/coverage; no unsafe pre-cap expansion."
+    },
+    {
+      "id": "R01",
+      "test": "Asymmetric scene and off-center intrinsics detect axis flip, transpose and mirror; projected control points agree within 0.25 px."
+    },
+    {
+      "id": "R02",
+      "test": "Native in-memory versus exported/reloaded PLY preview agrees within 1/255 mean absolute RGB error; constant-color synthetic interior agrees within 2/255; document boundary raster differences."
+    },
+    {
+      "id": "R03",
+      "test": "Opaque RGB export cannot satisfy coverage; repeated stale frames/rAF-only samples and software GL cannot satisfy eligible F."
+    },
+    {
+      "id": "P01",
+      "test": "No automatic scene promotion; original hashes and prior revisions survive failures and reruns; refuse existing output destinations."
+    },
+    {
+      "id": "P02",
+      "test": "Test-only ROIs cannot be used for validation selection; exposed/unknown-history test views cannot be labeled sealed."
+    }
+  ],
+  "acceptance_references": {
+    "handoff": "docs/deepseek-splatx-acceleration-handoff-v2.txt",
+    "audit": "docs/deepseek-splatx-policy-audit-v2.txt"
+  }
+}

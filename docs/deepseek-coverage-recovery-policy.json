@@ -1,0 +1,296 @@
+{
+  "schema_version": 1,
+  "benchmark_version": 4,
+  "kind": "coverage_recovery_requirements_not_measured_results",
+  "supersedes_for_this_run": {
+    "path": "docs/deepseek-lidar-experiment-policy-v2.json",
+    "sha256": "43ec7e3d69ca30f1bcc2011e78d85ca7329ef35a1a1ec0f88f0e089baf32d61b"
+  },
+  "priority": "Recover supported room coverage from preserved photos, then demonstrate appearance and local web usability. Do not optimize a weighted efficiency score before coverage works.",
+  "threshold_note": "Proposed engineering acceptance defaults; freeze before results. Not measured accuracy or a promise of realism. Do not silently relax thresholds; mark failures and use a new protocol version if a correction is necessary.",
+  "scope": {
+    "originals_read_only": true,
+    "preserve_existing_revisions": true,
+    "cuda": false,
+    "paid_compute": false,
+    "push": false,
+    "resume_old_automation": false,
+    "automatic_production_replacement": false,
+    "allowed_delivery": "New isolated local preview revision/source, using existing app workflow. Open only after the displayed asset is verified. Never mislabel a single-room preview as full-floor."
+  },
+  "budgets": {
+    "total_minutes": 480,
+    "reserve_handoff_minutes": 60,
+    "max_concurrent_heavy_gpu_jobs": 1,
+    "max_memory_gib": 24,
+    "max_physical_memory_fraction": 0.5,
+    "effective_memory_cap": "min(24 GiB, 0.5 * actual physical memory)",
+    "checkpoint_interval_minutes": 10,
+    "max_candidate_configs": 6,
+    "max_repairs_per_hypothesis": 3,
+    "max_hypotheses_per_blocker": 2,
+    "training_run_max_steps": 7000,
+    "training_run_max_minutes": 20,
+    "stop_training_at_first_limit": true,
+    "stage_minutes": {
+      "preflight_and_evidence_guard": 45,
+      "inventory_and_coverage": 120,
+      "selection_and_sampling": 75,
+      "appearance_trials": 90,
+      "transfer_and_web_preview": 90,
+      "handoff": 60
+    },
+    "no_spend_to_fill_budget": true
+  },
+  "inventory": {
+    "captures": {
+      "center": "454B3661-D3F8-46E8-ADAA-3123E759AA64",
+      "left": "A92A8ED6-87A5-474D-8514-D2D0E6A1F00D",
+      "top": "BBB88E0A-A2C3-4611-AFE1-71C43454E8C6",
+      "bottom_left": "D9946491-26FD-4864-9673-C88180328109"
+    },
+    "last_observed_available_photos": {
+      "center": 942,
+      "left": 901,
+      "top": 1267,
+      "bottom_left": 414
+    },
+    "verify_counts_at_runtime": true,
+    "identity": [
+      "capture_id",
+      "frame_id",
+      "source_rgb_sha256"
+    ],
+    "derived_identity": [
+      "source_rgb_sha256",
+      "resize_transform",
+      "derived_rgb_sha256",
+      "camera_sha256",
+      "mask_sha256",
+      "preparation_code_sha256"
+    ],
+    "frame_priority": "All valid original photo/pose pairs, not only the existing 400-frame prepared center export. Video extraction only if originals demonstrably omit needed frames with recoverable timing/poses."
+  },
+  "split": {
+    "benchmark_role": "Supported-surface novel-view interpolation; separately label extrapolation into never-photographed regions. Do not solve extrapolation by hiding it from reports.",
+    "validation_target": 12,
+    "final_test_target": 12,
+    "minimum_independent_groups_per_eval_split": 4,
+    "counts_are_not_independence_proof": true,
+    "freeze_order": [
+      "inventory metadata/hash and deterministic quality/duplicate summaries",
+      "reserve grouped validation and fresh final-test identities",
+      "define fixed geometry target and validation ROIs",
+      "select training pool subset by training-only coverage",
+      "freeze manifests/config/evaluator before appearance trials"
+    ],
+    "near_duplicate_guard_initial": {
+      "time_seconds_if_reliable": 1.0,
+      "camera_position_m": 0.15,
+      "view_direction_degrees": 10.0,
+      "rule": "Group temporally adjacent views within 1 s when reliable timestamps exist, or visually near-identical views with nearby poses; confirm grouping with image similarity. These are initial duplicate checks, not proof of independence. Do not use a transitive temporal chain that absorbs the entire walk."
+    },
+    "training_can_show_same_surface_from_other_views": true,
+    "evaluation_rgb_in_training_or_baking": false,
+    "test_rgb_for_selection": false,
+    "legacy_r001_r003_views": "Exposed diagnostic set, not pristine final-test evidence. Retain their failures for comparison but do not tune to them and call the result independent.",
+    "sealed_test_history_required": true,
+    "unknown_test_history": "May deliver a clearly labeled diagnostic preview, but no final-test or release pass.",
+    "same_workload_comparison": "Old32-photo results are historical context only. Same-split baseline and candidate must share explicit training identities, prepared resolution, mask behavior, target, renderer and evaluation IDs; document algorithmic differences.",
+    "critical_rois": "Freeze separate validation and test critical-feature ROIs from actual evidence. Missing outlet detail is a feature limitation, not permission to invent it or omit the limitation."
+  },
+  "coverage": {
+    "seed": 1729,
+    "fixed_surface_probe_count_per_room": 100000,
+    "probe_block_size": 4096,
+    "probe_method": "Area-weighted sampling of nondegenerate measured mesh triangles, reproducible barycentric coordinates and triangle IDs. Keep probe set and denominator fixed across frame counts/configs.",
+    "reports": [
+      "all_measured_mesh_area_m2",
+      "fixed_task_target_area_m2",
+      "area_fraction_seen_once",
+      "area_fraction_seen_twice_independently",
+      "unknown_area_fraction",
+      "per-zone_worst_coverage",
+      "source_counts_and_rejection_reasons",
+      "vertex_painted_fraction_separate_diagnostic"
+    ],
+    "target_definition": "Freeze geometry-only task surfaces and zone IDs before selecting photos: library-facing surfaces visible from the proposed traversal/inspection poses. Report all-mesh coverage alongside target coverage. Never redefine the target to omit holes after seeing photos.",
+    "appearance_coverage_distinct_from_source_coverage": true,
+    "known_source_geometry_visibility_distinct_from_rgb_observation": true,
+    "visibility": "Positive camera depth; calibrated in-frame projection; triangle/ray-based occlusion; verified surface side/orientation; static mask; usable photo detail. Missing depth is unknown, never automatically visible.",
+    "existing_visibility_warning": "scan_colour._weights_from currently treats nonfinite nearest depth as unhidden; validate/fix that path before trusting coverage. Vertex-splat depth is not automatically a reliable triangle occlusion test.",
+    "independent_second_view": {
+      "min_camera_baseline_m": 0.15,
+      "min_ray_angle_deg": 10.0,
+      "rule": "Distinct accepted duplicate groups, plus baseline OR ray-angle criterion. Record actual geometry and group IDs. Two adjacent frames do not establish independent support."
+    },
+    "acceptance": {
+      "min_task_target_seen_once": 0.7,
+      "min_task_target_seen_twice": 0.5,
+      "min_per_zone_seen_once": 0.5,
+      "if_reference_seen_once_below_0_70_min_gain_pp": 20.0,
+      "if_reference_already_above_target": "Do not regress; require the other coverage/detail checks. References are recomputed on the same fixed probes.",
+      "all_percentages_area_weighted": true
+    },
+    "audit_pairs": {
+      "count": 24,
+      "distribution": "8 supported,8 rejected,8 unknown, stratified over zones and rejection causes. Inspect image overlays plus mesh depth. Zero known false-visible wall-crossing samples allowed; any such failure blocks coverage acceptance."
+    },
+    "occlusion_tolerance": "Freeze from synthetic fixtures and measured calibration residuals before photo selection; record numerical value. Never increase it merely to obtain more painted pixels.",
+    "counts_not_physical_accuracy": true,
+    "reference_32_rule": "Use the first32 of the new nested selection from the NEW approved training pool, not legacy32 images that might overlap the new holdouts."
+  },
+  "photo_selection": {
+    "preferred_max_frames": 250,
+    "coverage_checkpoints": [
+      32,
+      64,
+      128,
+      200,
+      250
+    ],
+    "conditional_max_frames": 400,
+    "conditional_extension": "Only if 250 misses coverage goals and remaining approved frames add measured supported area; log the marginal benefit. If original pool has fewer valid frames, report that limit.",
+    "selection_objective": "Greedy area-weighted new support plus independent second-view support, weighted by training-image sharpness/static validity/projected detail. Promote per-zone coverage before redundant close-ups. Stable identity tie-breaks; seed1729.",
+    "weights": {
+      "new_area": 1.0,
+      "independent_second_view": 0.35
+    },
+    "stop_marginal_area_gain_pp_per_20_frames": 0.5,
+    "stop_requires": "If targets are met, stop on low marginal gain. If targets are unmet, low gain triggers a visibility/pose/quality diagnosis before declaring capture-limited.",
+    "detail_budget_fraction_cap": 0.15,
+    "detail_rule": "Reserve up to15% of selected views/samples for photo-supported outlets/boards/tabletops; do not claim small-feature recognition from RGB coverage alone.",
+    "working_image_edge_px": 1280,
+    "coarse_visibility_edge_px": 320,
+    "quality_checks": "Reject undecodable/wrong-pose frames; record blur/exposure/motion/person rejection per image. Freeze quality thresholds on training inventory diagnostics; no universal arbitrary blur number.",
+    "initial_target_frames": 200,
+    "preferred_frame_count_range": [
+      150,
+      250
+    ],
+    "frame_count_is_quality_guarantee": false
+  },
+  "sampling": {
+    "support_first": true,
+    "initial_export_sample_cap": 150000,
+    "optional_export_sample_cap": 300000,
+    "minimum_supported_retention_fraction": 0.95,
+    "retention_definition": "Accepted exported samples / proposed samples from the frozen supported domain, before final numerical cleanup. Pruning most of a whole-room proposal is not support-first sampling.",
+    "partial_triangles": "A supported interior may exist even if a triangle corner is unseen. Use bounded subdivision or sample-level visibility; do not label all corners/entire face supported from one observation.",
+    "unsupported_fallback_counts_as_coverage": false,
+    "bounds_before_allocation": true,
+    "streaming_image_cache_max_frames": 8,
+    "mask_resize": "Conservative validity with tested arbitrary source/target dimensions; no unsupported fractional block reshape assumptions.",
+    "density_and_scale": "Compute effective density/neighbor spacing on the actual supported surface after the cap; do not use a nominal spacing that the capped sampler cannot achieve. Calibrate projected splat sizes per surface without spreading across walls/openings/occlusions.",
+    "opacity": "front-to-back transmittance,1-product(1-alpha); no additive-alpha saturation claim",
+    "critical_features": "Never enlarge splats merely to conceal holes or blur outlets into a wall."
+  },
+  "appearance": {
+    "reuse_native_splatx_renderer": true,
+    "preferred_masked_training_backend": "Existing Brush mask-capable path with binary behavior proven; SplatX training only on an explicitly unmasked diagnostic or after native loss-mask support is verified.",
+    "routes_in_order": [
+      "corrected support-first surface candidate",
+      "existing LiDAR mesh with real photographic texture/vertex-color base if fitting current pipeline",
+      "bounded existing-trainer refinement if coverage is good but appearance is poor"
+    ],
+    "maximum_routes_before_evidence_review": 2,
+    "cross_backend_performance_claim_requires_matched_inputs_and_repeats": true,
+    "fixed_novel_seated_views_per_room": 8,
+    "seated_eye_height_m": 1.15,
+    "eye_height_is_adjustable_default": true,
+    "no_rgb_ground_truth_for_novel_views": true,
+    "relative_quality_gates_from_prior_policy": {
+      "max_mean_psnr_drop_db": 0.2,
+      "max_mean_full_frame_psnr_drop_db": 0.5,
+      "max_mean_ssim_drop": 0.005,
+      "max_each_critical_roi_psnr_drop_db": 0.3,
+      "max_each_view_psnr_drop_db": 1.0,
+      "max_supported_uncovered_fraction_increase": 0.01,
+      "max_frame_p95_ratio_candidate_to_baseline": 1.1
+    },
+    "additional_acceptance": [
+      "No blank evaluated or traversal view with known photographed static geometry in front of the camera.",
+      "No new/worse ghost people, floating duplicate furniture, blocked visual doorway or erased critical feature on paired review.",
+      "All expected view images and preregistered ROIs exist with correct camera identity.",
+      "PSNR/SSIM come from actual RGBs and frozen masks, never supplied summary values alone."
+    ],
+    "previews_vs_claims": "A larger-data coverage improvement is not an equal-data speedup. A local diagnostic preview is not a completed photorealistic floor.",
+    "pixel_blackness_not_coverage": true
+  },
+  "evidence_guard": {
+    "must_reject_fixture": "runs/moffett/post-deepseek-audit/evaluator_probe.py",
+    "mandatory_hash_categories": [
+      "policy",
+      "code",
+      "binaries_and_kernels",
+      "config",
+      "source_and_derived_inputs",
+      "cameras",
+      "masks",
+      "mesh_and_transforms",
+      "outputs",
+      "metrics_evaluator"
+    ],
+    "empty_hash_maps_pass": false,
+    "arbitrary_existing_file_proves_gate": false,
+    "caller_pass_booleans_authoritative": false,
+    "derive_from_artifacts": [
+      "view/ROI metrics",
+      "coverage support records",
+      "resource medians/peaks",
+      "completed-frame timing",
+      "split identity equality"
+    ],
+    "review_record": "Typed schema with reviewer identity, scene/view hashes, observations and explicit verdict. Machine validation establishes record completeness, not independent truth of subjective review.",
+    "final_test": "Separate validation_shortlisted from final_test_passed. No selected-for-review final status without sealed test evidence.",
+    "requires_exact_expected_sets": true,
+    "reject_nonfinite_or_bool_metrics": true,
+    "missing_is_null_with_reason": true,
+    "performance_measurement": "Only claim efficiency after three alternating runs including preprocessing and compression, comparable process-footprint method and genuine hardware-rendered viewer traces. Single-run times may be labeled diagnostics.",
+    "no_global_weighted_score_for_coverage_stage": true,
+    "metric_thresholds_read_from_policy": true
+  },
+  "multi_scan": {
+    "start_center_then_second_area": true,
+    "alignment_file": "runs/moffett/verified-four-room-transforms.json",
+    "apply_room_to_global_once": true,
+    "camera_relation": "If T maps local room points to global, global world-to-camera = local world-to-camera @ inverse(T); global c2w = T @ local c2w. Validate actual stored conventions first.",
+    "namespace_ids_by_capture": true,
+    "alignment_is_absolute_accuracy": false,
+    "disagreement": "Record overlap reprojection/geometry residuals. Refuse color fusion across inconsistent surfaces; separate patches with flagged seams until corrected.",
+    "no_average_to_hide_misalignment": true,
+    "full_floor_claim": "Requires all four captures in a common verified frame, actual browser source/asset checks, traversable joins, coverage/quality per room and disclosure of remaining unknowns."
+  },
+  "web_delivery": {
+    "isolation": "New local preview source/revision through existing app machinery; preserve current default and originals.",
+    "verify": [
+      "Actual asset request hashes match new manifest; no silent old-asset fallback.",
+      "Selected room/floor, scan ID/revision and render source are visible and accurate.",
+      "Desktop path, seated traversal, collision and room transitions remain usable.",
+      "Desktop and narrow/mobile layouts; no claim of physical-phone testing without a device.",
+      "Exports preserve units, measured geometry vs appearance distinction, revision and evidence.",
+      "Console/network failures and actual hardware renderer identity recorded."
+    ],
+    "open_on_success": true,
+    "when_not_successful": "Leave stable scene unchanged; provide failed view evidence and precise next action. Do not open an incomplete room as the fully rendered floor."
+  },
+  "terminal_states": [
+    "in_progress",
+    "blocked_on_specific_evidence",
+    "coverage_improved_appearance_pending",
+    "diagnostic_preview_ready",
+    "validation_shortlisted",
+    "final_test_passed_preview_ready",
+    "completed_rejected"
+  ],
+  "completion_fields": [
+    "implementation_complete",
+    "coverage_gate_state",
+    "appearance_gate_state",
+    "sealed_test_state",
+    "web_preview_state",
+    "physical_phone_state",
+    "remaining_product_work"
+  ],
+  "capture_request_rule": "Only after testing all useful approved existing photos and plausible visibility/pose hypotheses. List exact surfaces, missing viewing directions and desired close-up detail; no generic request to rescan everything."
+}

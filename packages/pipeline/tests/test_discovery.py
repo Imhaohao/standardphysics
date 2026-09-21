@@ -379,5 +379,5 @@ class TestWhatAPieceOfFurnitureAccountsFor:
         assert not claimed_by(on_top, self._desk()).any()
 
     def test_a_wall_still_accounts_for_all_of_itself(self):
-        wall = node("Wall", (0.0, 2.0, 1.2), (4.0, 0.1, 2.4), kind="wall")
+        wall = node("Wall", (0.0, 2.0, 1.2), (4.0, 0.05, 2.4), kind="wall")
         assert claimed_by(slab((0.0, 2.0, 2.3), (0.3, 0.05, 0.1)), wall).all()

@@ -1,0 +1,147 @@
+Audit: SplatX acceleration and LiDAR experiment policy execution
+2026-09-20 | audited HEAD 681bdb77f497186a1a55872eb259dbf26a82f37f
+
+VERDICT: PARTIAL IMPLEMENTATION; NO VERIFIED IMPROVEMENT TO PROMOTE.
+The report correctly admits no eligible candidate. However, its claims that
+the surface-color pipeline, calibration and all phases are completed are not
+supported. Revisions below address implementation defects before further runs.
+This audit changes documentation only; fixes are assigned to the next agent.
+
+Verified progress
+- scripts/repair_split_parity.py verify succeeds: the current Brush input lists
+  the same 32 training IDs as SplatX, excluding the eight validation IDs.
+- Controlled Brush export and all eight validation images exist. Independent
+  recomputation reproduces 11.8980214 dB masked PSNR / 0.3293488 SSIM exactly.
+  This supports the stored metric values, not all claimed matching conditions.
+- The installed SplatX/native renderer remains usable. The controlled pilot
+  successfully renders Brush PLY through it. No new renderer is needed for RGB.
+- All 46 existing evaluator/surface/calibration tests pass in 3.73 seconds.
+  Stronger counterexamples below show why that does not establish correctness.
+
+Findings, ordered by what must be fixed first
+
+1. HIGH: geometry is incorrectly exported as color.
+packages/pipeline/standardphysics_pipeline/render_efficiency/builder.py,
+build_surface_gaussians: `corners = vertices[triangles[owners]]` feeds the RGB
+interpolation. `vertex_colours` is shape-checked but its values are never used.
+A uniform-red triangle produces RGB [0.1457977, 0.0295363, ~0], and replacing
+red with green changes nothing. Translating the same triangle by +10 changes
+its color to white. This directly explains the incorrect candidate colors.
+test_builder_interpolates_vertex_colours only bounds output channels and passes
+this defect. Add independent expected-color and rigid-transform invariance tests.
+All existing deterministic candidate appearance results need rebuilding after
+this fix. Provenance currently says photo-supported RGB, which is false here.
+
+2. HIGH: the candidate does not use the common training photo set.
+scripts/build_surface_splats.py loads the original capture and spreads 40 cameras
+across it, bypassing the frozen manifest; max photo edge is 1600 rather than1280.
+Replaying camera selection from poses/metadata selects 40 IDs with only ONE of
+the intended 32 train IDs (frame-0676). There is no exact overlap with the eight
+validation or eight test frame IDs in this replay; do not claim observed direct
+held-out RGB leakage. But the photographic inputs are unequal and 39 IDs lie
+outside the approved train allowlist. Their nearby views also change coverage.
+The script has no input RGB hashes or chosen-frame ledger. Its provenance omits
+this essential evidence. Fix source allowlists before comparing costs or quality.
+
+3. HIGH: photographic support is not enforced.
+colour_the_scan returns a `seen` array. unused_vertices_removed removes unused
+mesh vertices, not unseen ones; build_surface_splats never passes `seen` to the
+builder. Any finite mesh sample is called supported, including unseen fallback
+colors. Policy requires pruning unsupported photographic samples. Preserve
+visibility/static-mask/source-frame support through sampling and export; test
+all-unseen and partially supported scenes.
+
+4. HIGH: alpha calibration uses the wrong physical quantity.
+calibration.py labels sum(alpha_i) as coverage and treats sums above0.95 as
+brightness saturation. For two coincident alpha0.5 splats this function returns
+1.0; actual transmittance composition gives 1-(1-0.5)^2 =0.75. Increasing opacity
+does not itself brighten a constant-color wall beyond that color. The frozen
+0.5/0.5 choice is not justified by this calibration. Further, its infinite
+square lattice differs from the randomly sampled, capped mesh actually exported.
+Use composited alpha and renderer-backed checks on the production sampler.
+
+5. HIGH: “no masks on either backend” is unproved and conflicts with inputs.
+repair_split_parity.py links masks and retains mask_path for all32 Brush train
+images; 12 masks contain nonwhite pixels. run_controlled_pilot.py then writes a
+literal MATCHED entry saying neither trainer applied masks, without disabling
+mask discovery or recording loaded mask behavior.
+The archived Brush source revision3edecbb2 has a loader that automatically finds
+same-stem files in sibling masks/ (nerfstudio.rs:133, formats/mod.rs:91). The
+exact binary was not instrumented in this audit, so actual mask use remains
+unverified rather than asserted from source alone. Remove discoverable masks for
+an unmasked control or implement/prove identical native exclusion on both paths.
+The new tests cover Python EVALUATION metrics, not SplatX TRAINING gradients.
+The comparison is now common-heldout by IDs but not proven mask-matched.
+
+6. HIGH: the JSON policy has no complete enforcing evaluator.
+scoring.py supplies arithmetic and a subset of gate booleans with hardcoded
+thresholds; aggregate_score is callable without gates. No end-to-end policy
+loader binds source evidence, hashes, expected views/ROIs, repeats, nonnumeric
+gates and selection lanes before a score is emitted.
+Counterexample: quality_score(NaN,20,0.5,0.5,0) returns30; positive infinity returns70.
+validate_view_list accepts a nonempty one-view subset because it has no expected
+set. evaluate_pilot.py scores whatever PNGs exist. Missing seven of eight views
+therefore need not fail. The existing “shortened list” test checks only an empty
+list. Add exact-set and all-input-domain tests at the real entry point.
+The original policy's score arithmetic is usable, but writing requirements into
+JSON is not equivalent to implementing or testing them.
+
+7. MEDIUM: validation selection cannot use the current critical ROI record.
+preregistered-rois.json contains only final-test views011,012,015, while the score
+requires a critical-feature term during validation. No validation ROI definition
+exists. Do not peek at test ROIs to choose configurations or remove their weight.
+Define separate supported validation ROIs before a new candidate, or report a
+specific missing-data blocker. The invalidated browser pipeline already rendered
+final-test views; audit that exposure before claiming a pristine final holdout.
+
+8. MEDIUM: comparison cost claims are not policy-eligible.
+The deterministic run uses extra/full-source images; timings exclude subsequent
+SPZ compression in serial-runs-v2.sh, while the policy requires preprocessing
+through compressed export. RSS is reported as M although policy requires
+comparable process footprint. The controlled SplatX comparison is one run, not
+three alternating repeats, and has no equivalent total-cost trace. The reported
+~20x time/~16x size ratios are properties of unequal prototype runs, not a
+selected efficiency improvement. Candidate memory already exceeds its baseline.
+
+9. MEDIUM: the claimed renderer-only blocker is incomplete/outdated.
+The surface-color, support, input and evaluator defects above are independent
+blockers. A working native RGB renderer already exists, including a known-good
+camera186 through the current validation COLMAP bundle. Spark remains needed
+for browser behavior and genuine alpha/frame timing. A Pearson correlation0.6
+threshold is too weak to prove camera/color correctness. Failure of one headless
+harness is not proof that valid local rendering is impossible, or that the fault
+lies inside closed WASM. Inspectable evidence here does not locate that root cause.
+
+10. MEDIUM: the handoff's scope was interpreted as permission to stop too early.
+The original wording made native masks conditional on adoption, so skipping them
+was permitted for a diagnostic trial. That is not completion of a useful masked
+reconstruction. Likewise adding a native depth loss extends the existing trainer;
+it does not violate “do not rebuild a new trainer.” The revised handoff makes
+these states explicit and prioritizes simple correctness fixes before native work.
+The verify-brush diagnostic samples only every other input in a changed one-step
+run and deletes its evidence; it is not full proof of the production loaded IDs.
+Its exclusion check also compares stems against names with .jpg, so that one
+intersection check cannot detect overlap. Preserve a real loaded-input ledger.
+
+Audit proof and limits
+Read-only script: runs/moffett/acceleration-audit-v2/reproduce.py
+Counterexamples: runs/moffett/acceleration-audit-v2/counterexamples.json
+Fresh Brush metrics: runs/moffett/acceleration-audit-v2/brush-metrics-recomputed.json
+Split verification: runs/moffett/acceleration-audit-v2/split-verify.log
+Source excerpts: same directory, nerfstudio.rs, formats.rs, scene_loader.rs.
+No new training, source edits, original modifications or scene promotions.
+Runtime mask usage, full GPU footprint, browser correctness and physical phone
+acceptance remain unproved. Intent cannot be inferred from erroneous claims.
+
+Feed the next agent
+- docs/deepseek-splatx-acceleration-handoff-v2.txt
+- docs/deepseek-lidar-experiment-policy-v2.json
+Original policy and handoff remain unchanged. New policy schema2 describes a
+new benchmark version3, because version2 inputs and calibration are invalid for
+the proposed claims. Numeric quality gates and score weights are unchanged.
+
+Task -> model tier
+Correctness audit and revised acceptance design -> primary / frontier judgment
+Counterexample and metric reproduction -> local Python/pytest
+Next implementation owners -> routing table in revised handoff
+No subagents used in this audit; no subagent cost incurred.

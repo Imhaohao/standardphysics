@@ -51,6 +51,8 @@ class ColouredScan:
     """One sRGB colour per vertex, 0-1."""
     seen: np.ndarray
     """Whether any photo reached each vertex."""
+    sources: np.ndarray | None = None
+    """Per-vertex source frame ID of the best view (object dtype), None when unseen."""
 
     @property
     def painted_fraction(self) -> float:
@@ -69,9 +71,17 @@ def vertex_normals(vertices: np.ndarray, triangles: np.ndarray) -> np.ndarray:
 
 
 def _weights_from(
-    camera: PhotoCamera, vertices: np.ndarray, normals: np.ndarray, buffer: np.ndarray
+    camera: PhotoCamera,
+    vertices: np.ndarray,
+    normals: np.ndarray,
+    buffer: np.ndarray,
+    mask: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """How good this camera's view of each vertex is, and where to sample it."""
+    """How good this camera's view of each vertex is, and where to sample it.
+
+    ``mask`` must already be resampled to the depth-buffer grid (static
+    region = 1); samples outside the static region never paint.
+    """
     columns, rows, depth = camera.project(vertices)
     toward = camera.position[None, :] - vertices
     distance = np.linalg.norm(toward, axis=1)
@@ -92,7 +102,23 @@ def _weights_from(
         / BORDER_FALLOFF_PIXELS, 0.0, 1.0,
     )
     weight = np.where(inside & unhidden, facing ** 2 / np.maximum(distance, 0.5) * border, 0.0)
+    if mask is not None:
+        support = mask[
+            np.clip(np.rint(rows * height / camera.height).astype(np.int64), 0, height - 1),
+            np.clip(np.rint(columns * width / camera.width).astype(np.int64), 0, width - 1),
+        ]
+        weight = np.where(support >= 0.5, weight, 0.0)
     return weight, columns, rows
+
+
+def _small_static_mask(mask: np.ndarray, height: int, width: int) -> np.ndarray:
+    """Block-mean the full-res static mask down to the depth-buffer grid."""
+    rows, cols = mask.shape
+    row_block = max(1, rows // height)
+    col_block = max(1, cols // width)
+    trimmed = mask[: row_block * height, : col_block * width]
+    blocks = trimmed.reshape(height, row_block, width, col_block)
+    return blocks.mean(axis=(1, 3)) >= 0.5
 
 
 def colour_the_scan(
@@ -100,21 +126,43 @@ def colour_the_scan(
     triangles: np.ndarray,
     cameras: list[PhotoCamera],
     images: list[np.ndarray],
+    masks: list[np.ndarray] | None = None,
 ) -> ColouredScan:
-    """Every vertex given the colour of the photo that saw it best."""
+    """Every vertex given the colour of the photo that saw it best.
+
+    ``masks``, when provided, are static-region masks (one per photo,
+    full resolution); they are resampled to the depth-buffer grid and samples
+    outside the static region are never painted.  The resulting scan records
+    the best source frame ID per vertex so downstream sampling can prove
+    photo support rather than assert it.
+    """
+    if masks is not None and len(masks) != len(images):
+        raise ValueError("masks must have one entry per image")
     normals = vertex_normals(vertices, triangles)
     best = np.zeros(len(vertices), dtype=np.float32)
     colours = np.tile(UNSEEN, (len(vertices), 1))
-    for camera, photo in zip(cameras, images):
+    source_ids = [None] * len(vertices)
+    for index, (camera, photo) in enumerate(zip(cameras, images)):
         buffer = depth_buffer(camera, vertices)
-        weight, columns, rows = _weights_from(camera, vertices, normals, buffer)
+        image_mask = None
+        if masks is not None:
+            image_mask = _small_static_mask(masks[index], *buffer.shape)
+        weight, columns, rows = _weights_from(camera, vertices, normals, buffer, image_mask)
         better = np.flatnonzero(weight > best)
         if not len(better):
             continue
         sampled = bilinear(photo, columns[better], rows[better])
         colours[better] = to_srgb(to_linear(sampled.astype(np.float32)))
         best[better] = weight[better]
-    return ColouredScan(vertices, triangles, np.clip(colours, 0.0, 1.0), best > 0)
+        for vertex in better:
+            source_ids[vertex] = camera.frame_id
+    return ColouredScan(
+        vertices,
+        triangles,
+        np.clip(colours, 0.0, 1.0),
+        best > 0,
+        sources=np.asarray(source_ids, dtype=object),
+    )
 
 
 def scan_geometry(mesh_path: pathlib.Path, capture_to_room) -> tuple[np.ndarray, np.ndarray]:
@@ -144,6 +192,7 @@ def unused_vertices_removed(scan: ColouredScan) -> ColouredScan:
         triangles=remap[scan.triangles],
         colours=scan.colours[used],
         seen=scan.seen[used],
+        sources=scan.sources[used] if scan.sources is not None else None,
     )
 
 

@@ -1,0 +1,109 @@
+MOFFETT RENDER-EFFICIENCY RESULTS
+Run r001 (final) · 2026-09-20 · benchmark version 2
+
+1. WHAT WAS IMPLEMENTED AND WHERE
+
+Deterministic surface-Gaussian pipeline plus a frozen benchmark, executed
+through all four phases of docs/deepseek-overnight-lidar-render-plan.txt.
+
+- Evaluator (Phase 0): packages/pipeline/standardphysics_pipeline/render_efficiency/
+  (metrics, scoring, manifest, surface_splats, builder, calibration). 46 fixtures
+  pass: identical-vs-itself scores exactly 50, bad evidence fails, tangent/covariance/
+  quaternion/SH0/SH roundtrip, synthetic plane calibration.
+- Pilot (Phase 1): scripts/freeze_render_pilot.py v2 — sharpness-greedy selection
+  inside separated trajectory windows (min pose gap 24 between any two groups,
+  verified 30/24/271); 32 train / 8 validation / 8 test at 1280x960; the three
+  preregistered outlet frames sit in final test so the critical ROIs stay evaluable
+  (runs/moffett/render-efficiency/r001/preregistered-rois.json, frozen before any
+  candidate score). Split independence re-reviewed by a sub-agent:
+  "separated_enough_to_proceed" (split-review-v2.json).
+- Calibration/audit (Phase 2): synthetic plane calibration frozen tangent_factor=0.5,
+  opacity=0.5 (calibration-synthetic.json; the policy's smallest-first pick
+  (0.75, 0.3) oversaturated and was overridden with the trail recorded). Real
+  photo-edge reprojection audit: verdict "needs_inspection" — the blind
+  geometric-edge metric carried no signal above a translated-map control, so
+  calibration beyond the reused conventions is neither confirmed nor excluded
+  (edge-audit.json).
+- Surface splats (Phase 3): scripts/build_surface_splats.py (--tag, frozen config:
+  150k samples, spacing 0.02 m, tangent 0.5, opacity 0.5, seed 1729, 40 cameras);
+  PLY->SPZ roundtrip validated through the existing converter.
+- msplat (Phase 4): cloned at commit 6b81971, Apache-2.0 (one MIT file),
+  built successfully via cmake + Xcode Metal Toolchain; per-frame intrinsics
+  supported (input_data.hpp per-frame camera). No training run yet — dataset
+  adaptation is the recorded next step.
+
+2. BASELINE / CANDIDATE TABLE  (benchmark v2; medians of 3 alternating runs)
+
+                              B0 (Brush 7k-step SH0)  candidate (deterministic)
+splats                        ~1.73-1.77 M            150 000
+build time T median            253.6 s                12.5 s
+peak RSS M (max over runs)     0.83 GiB               2.95 GiB  (3 runs: 2.77-3.17)
+SPZ bytes Z (max over runs)    29 933 961              1 851 400
+held-out quality (B0 native)   11.42 dB / 0.316 SSIM  NULL
+  (8 Brush-held-out views, unseen views only; v1-split baseline scored 16.49 dB,
+   so baseline quality is split-dependent by ~5 dB)
+candidate P/U/R                 -                      NULL (capability blocker)
+coverage H                      unknown                NULL (valid alpha render unavailable)
+frame time F                    NULL (headless SwiftShader could not yield honest
+                                     per-frame timings; context ~1 s/frame candidate,
+                                     ~3 s/frame B0 is not eligible evidence)
+hard gates                      n/a (baseline)         G1/G2/G7 relevant parts pass;
+                                                       G4/G5 unknown; G6 partial (F null)
+score S                         -                      NOT COMPUTABLE -> ineligible
+
+Resource facts are real: the candidate is ~20x faster and ~16x smaller.  The
+candidate peak RSS (2.95 GiB, cold, includes full source mesh + full-res photos
++ numba JIT) also EXCEEDS B0's 0.83 GiB, so the efficiency lane's M_C<=M_B
+requirement fails even before quality; workloads are not identical inputs.
+
+3. SIDE-BY-SIDE EVIDENCE
+
+All aspirational.  A headless Spark 2.2.0 harness (Chrome + SwiftShader) was
+built by a sub-agent to render both SPZ files at the 16 held-out views.  The
+harness could never reproduce Brush's authoritative eval render at the one
+overlapping view (best correlation +0.28 vs the required gate; the mismatch
+lives inside Spark's closed wasm internals), so those 32 renders were declared
+invalid and archived; the coordinator re-verified the dataset matrices are
+row-major with the correct camera translation (e.g. [-0.95, 5.03, 1.43] m) and
+byte-identical to the source.  No paired PSNR/SSIM pair is produced.
+
+4. WHICH HYPOTHESES FAILED / WHAT IS UNKNOWN
+
+- A common renderer could not be validated locally; without it, image-space
+  quality is honestly NULL, not zero.  Capability blocker recorded.
+- Headless software-GL cannot produce honest per-frame F under automation.
+- The deterministic candidate at the frozen config would still need coverage
+  (alpha) evidence it cannot currently get; the only alpha data came from the
+  invalidated render path and was discarded.
+- The edge-audit metric is not informative on this noisy 3.2M-triangle mesh.
+- Baseline quality swings ~5 dB with the train/val image mix (16.49 -> 11.42),
+  so "matched pilot" comparisons are fragile; no causal claim is made.
+
+5. SELECTED CANDIDATE
+
+None.  The existing Brush preview remains the production default, unchanged.
+The deterministic candidate is a real cost prototype (20x faster, 16x smaller)
+whose visual quality remains unranked.
+
+6. TESTS, COMMITS, REMAINING LIMITATIONS
+
+- 46 new/extended tests pass; ruff clean on the new modules/scripts.
+- Split independence: agent-reviewed as separated (self-review label, not human).
+- No real-GPU rendered-frame timing; no actual iPhone; renderer mismatch is the
+  single blocking unknown for a scored comparison.
+- Originals and published revisions untouched (display-only additions).
+
+7. COST AND ROLES
+
+Coordinator plus five sub-agents (split review, synthetic calibration, edge
+audit, renderer probe, msplat audit) — all on this session's single provider
+routing; no paid GPU or external services.  Tool-reported dollar cost: not
+available.  Audit is coordinator self-review; hashes are internally consistent,
+not tamper-proof.
+
+Honest conclusion: the benchmark is built, frozen, and replays; B0 v2 is
+reproducible and self-evaluated; the deterministic candidate demonstrates real
+build-time and size wins but has NO eligible score because a validated common
+renderer and frame timing do not exist locally.  This is an honest
+no-eligible-improvement finding, not completion of the photorealistic-floor
+objective.

@@ -1,0 +1,81 @@
+Use the existing SplatX Metal engine to shorten Moffett development
+
+Goal: reuse working native training/rendering instead of implementing another
+rasterizer, optimizer, camera loader or checkpoint system. Keep the existing
+measured scene, outlet work and production viewer. SplatX is experimental until
+held-out quality passes; its first pilot is not production-ready.
+
+Start in /Users/yanzihao/Documents/standardphysics.
+Read docs/splatx-metal-evaluation.txt and
+runs/moffett/splatx-evaluation/status.json. These contain the completed audit,
+161 passing core tests, exact source revision and actual M5 Pro measurements.
+Do not repeat the repository search, build or capability audit unless a file is
+missing or the pinned revision changes. No CUDA setup or new trainer is needed.
+
+Available now:
+- CLI: runs/moffett/splatx-evaluation/upstream/.build/release/splatx
+- Kernels: runs/moffett/splatx-evaluation/upstream/build/splatx.metallib
+- Separate calibrated training/validation COLMAP inputs:
+  runs/moffett/splatx-evaluation/pilot-colmap/{train,validation}
+- Input-camera mapping/hashes: pilot-colmap/provenance.json in the same directory.
+- One-off verified adapter: runs/moffett/splatx-evaluation/prepare_pilot.py
+  It has fixed input/output paths and refuses an existing output. Reuse its
+  conversion logic if generalizing; do not rerun it over the existing snapshot.
+- Existing render driver: runs/moffett/splatx-evaluation/render_validation.py
+  It has fixed models/output paths and refuses an existing output. It already
+  rendered eight views of SplatX and Brush. Reuse CLI commands for fresh outputs.
+- Existing metric driver: scripts/evaluate_pilot.py, run with .venv/bin/python.
+
+Immediate shortcut: native RGB validation rendering
+Use the CLI for calibrated RGB diagnostic images. Keep Spark/browser tests for
+actual delivery, rendering compatibility, FPS, picking, collision and exports.
+Native PNGs cannot satisfy the alpha-coverage gate: the native export is opaque.
+Validate one common view against Spark before asserting renderer equivalence.
+SplatX cannot make the DeepSeek language model generate code faster; it removes
+work the model would otherwise have to implement and debug.
+
+Already executed successfully, 2026-09-20, in 0.35 seconds end-to-end:
+runs/moffett/splatx-evaluation/upstream/.build/release/splatx render \
+  --ply runs/moffett/render-efficiency/center/surface-splats-s1729-c5/surface-splats.ply \
+  --data runs/moffett/splatx-evaluation/pilot-colmap/validation \
+  --factor 1 --cam 0 \
+  --out runs/moffett/splatx-evaluation/candidate-c5-validation-0.png \
+  --metallib runs/moffett/splatx-evaluation/upstream/build/splatx.metallib
+
+This loaded all 150,000 candidate splats and produced a 1280x960 PNG. It is a
+single process latency measurement, not steady-state FPS or a quality pass.
+The visible result is sparse and incorrectly colored relative to the room;
+loading successfully is not proof of appearance or cross-renderer parity.
+Use NEW output paths for subsequent runs; preserve the existing artifacts.
+Use camera indices 0..7 with the matching names in provenance.json for the
+validation set. Do not tune on final-test photos.
+
+Focused next work, in order:
+1. Repair split parity. Brush's --eval-split-every 5 held out different frames:
+   seven of eight intended validation frames were outside its evaluation set.
+   Both trainers must optimize the identical explicit train IDs, and validation
+   must remain excluded. Assert IDs, not just 32/8 counts. Verify the actual
+   trainer-loaded IDs. Existing B0 scores cannot rank this new backend fairly.
+2. Run one controlled SplatX-vs-Brush pilot using the existing native commands.
+   Record differing settings explicitly; do not label unmatched runs equivalent.
+   Reuse the existing 3,000-step SplatX result unless testing a declared change.
+   No parameter sweep before split, camera and renderer checks pass.
+3. Add person-exclusion loss masks only if adopting SplatX for masked Moffett
+   training. Test that changing RGB inside an excluded region does not affect
+   the intended loss/gradient. Black/transparent pixels are not exclusion masks.
+4. Test LiDAR geometry constraints as the next quality experiment if necessary.
+   Avoid writing a new renderer or neural network. LiDAR seeds alone are not a
+   depth loss and do not preserve physical dimensions during optimization.
+5. Retain browser/physical-phone acceptance. RGB rendering on native Metal does
+   not replace web FPS, actual phone performance or accessibility verification.
+
+Stop a trial on failure, missing evidence or a reached declared time budget;
+record the blocker. Do not loosen gates or repeatedly rewrite plans to claim
+completion. Preserve unrelated active work. Do not change the frozen policy in
+place; any changed comparison protocol needs a new version and provenance.
+
+Task -> model tier
+Split adapter and mask integration -> Terra / settled cross-file work
+Native loss-gradient design -> Sol / correctness-critical work
+Command runs and evidence bookkeeping -> Luna / bounded tasks
+Product/device acceptance -> primary / judgment

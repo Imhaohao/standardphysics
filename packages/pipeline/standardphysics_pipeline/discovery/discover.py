@@ -42,6 +42,8 @@ from .carve import FrameView, carve
 from .detect import DEFAULT_MODEL, MODEL_ENV, Detection, DetectionError, Transport, detect_objects
 from .merge import Candidate, DiscoveredObject, merge_candidates
 from .people import without_people
+from .reconcile import reconcile_outlets
+from .surface_attach import attach_detection_to_surface
 
 log = logging.getLogger(__name__)
 
@@ -137,14 +139,32 @@ def discover_objects(inputs: DiscoveryInputs, *, transport: Transport | None = N
     ]
     kept = [pair for pair in found if _worth_keeping(pair[0], graph, pair[1])]
     objects = [object_ for object_, _ in kept]
+    carved_nodes = [_node_for(object_, graph, viewpoints) for object_, viewpoints in kept]
+
+    # Surface-attached objects (outlets)
+    outlet_nodes: list[SceneNode] = []
+    cam_by_id = {camera.frame_id: camera for camera in cameras}
+    for camera in cameras:
+        for det in detections.get(camera.frame_id, []):
+            if det.is_outlet:
+                buf = buffers.get(camera.frame_id)
+                _, node = attach_detection_to_surface(
+                    det, camera, graph, depth_buffer=buf
+                )
+                outlet_nodes.append(node)
+
+    existing_outlets = [n for n in graph.nodes if n.attachment is not None]
+    reconciled_outlets = reconcile_outlets(existing_outlets + outlet_nodes, cam_by_id)
+
     return DiscoveryResult(
-        nodes=[_node_for(object_, graph, viewpoints) for object_, viewpoints in kept],
+        nodes=carved_nodes + reconciled_outlets,
         objects=objects,
         frames_read=len(cameras) - len(failures),
         people_points_removed=removal.removed,
         frames_with_people=removal.frames_with_people,
         failures=failures,
     )
+
 
 
 def _mesh_points(inputs: DiscoveryInputs) -> np.ndarray:
@@ -253,7 +273,7 @@ def _carve_all(
 ) -> list[Candidate]:
     candidates = []
     for camera in cameras:
-        wanted = [one for one in detections.get(camera.frame_id, []) if not one.is_person]
+        wanted = [one for one in detections.get(camera.frame_id, []) if not one.is_person and not one.is_outlet]
         if not wanted:
             continue
         view = FrameView.of(points, camera, buffers[camera.frame_id])

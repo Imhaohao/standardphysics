@@ -8,7 +8,7 @@ import { textureStatusView } from "@/lib/texture-status";
 import type { TextureStatus } from "@/types/contracts";
 
 export type ViewMode = "overview" | "top";
-export type MaterialMode = "reconstructed" | "captured" | "plain" | "coverage" | "scan";
+export type MaterialMode = "reconstructed" | "captured" | "plain" | "coverage" | "scan" | "splat";
 
 const ICON_SIZE = 18;
 

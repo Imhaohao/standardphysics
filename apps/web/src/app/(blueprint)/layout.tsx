@@ -10,8 +10,8 @@ export const metadata: Metadata = {
 
 export default function BlueprintLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={appFontVariables}>
-      <body className="min-h-dvh">{children}</body>
+    <html lang="en" className={appFontVariables} suppressHydrationWarning>
+      <body className="min-h-dvh" suppressHydrationWarning>{children}</body>
     </html>
   );
 }

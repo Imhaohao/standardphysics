@@ -18,7 +18,16 @@ from typing import Any
 from xml.sax.saxutils import quoteattr
 
 from fastapi import FastAPI, Response
-from standardphysics_contracts import Assessment, SceneGraph, SceneNode, bounds_the_room, graph_hash, stands_upright
+from standardphysics_contracts import (
+    Assessment,
+    SceneGraph,
+    SceneNode,
+    bounds_the_room,
+    graph_hash,
+    is_fixed_to_a_surface,
+    lies_flat,
+    stands_upright,
+)
 
 from . import repository as repo
 from .db import Database
@@ -246,6 +255,22 @@ def evidence_ledger(
         reconstruction = _display_reconstruction(node)
         if reconstruction is not None:
             entry["display_reconstruction"] = reconstruction
+        if node.attachment is not None:
+            entry["attachment"] = node.attachment.model_dump(mode="json")
+        if is_fixed_to_a_surface(node):
+            entry["uncertainty"] = {
+                "power_state": "unknown",
+                "socket_condition": "unknown",
+                "plug_compatibility": "unknown",
+                "voltage": "unknown",
+                "ada_compliance": "unknown",
+                "reach": "unknown_without_profile_or_geometry",
+            }
+            entry["disclaimers"] = [
+                "Scan does not establish electrical service, live power, or circuit capacity.",
+                "Physical plug fit and internal socket condition cannot be verified from photography.",
+                "Compliance with building codes or ADA standards is not certified by this scan.",
+            ]
         nodes.append(entry)
     findings = []
     if assessment is not None and assessment.graph_hash == current_hash:
@@ -306,6 +331,28 @@ def _path(points: list[tuple[float, float]], project) -> str:
     return " ".join(commands) + " Z"
 
 
+def _opening_masks(nodes, opening_cuts: dict, width: float, height: float) -> list[str]:
+    """One mask per standing surface a portal is cut into.
+
+    The four-pixel stroke is display-only: it makes a zero-thickness measured
+    wall and portal read as an opening without touching ledger geometry.
+    """
+    masks = []
+    for wall in (node for node in nodes if _a_standing_surface(node)):
+        cuts = [opening_cuts[node.id] for node in nodes if node.parent_id == wall.id and node.id in opening_cuts]
+        if not cuts:
+            continue
+        cut_paths = "".join(
+            f'<path d={quoteattr(path)} fill="#000" stroke="#000" stroke-width="4"/>' for path in cuts
+        )
+        masks.append(
+            f'<mask id={quoteattr("cut-" + str(wall.id))} maskUnits="userSpaceOnUse" x="0" y="0" '
+            f'width={quoteattr(_svg_number(width))} height={quoteattr(_svg_number(height))}>'
+            f'<rect width="100%" height="100%" fill="#fff"/>{cut_paths}</mask>'
+        )
+    return masks
+
+
 def architecture_svg(graph: SceneGraph, ledger: dict[str, Any]) -> str:
     """Make a scalable plan whose one SVG unit remains tied to measured metres."""
     display = _display_geometry(graph)
@@ -328,21 +375,7 @@ def architecture_svg(graph: SceneGraph, ledger: dict[str, Any]) -> str:
         node.id: _path([tuple(point) for point in display[node.id].get("wall_opening_cut", [])], project)
         for node in nodes if "wall_opening_cut" in display[node.id]
     }
-    masks = []
-    for wall in (node for node in nodes if _a_standing_surface(node)):
-        cuts = [opening_cuts[node.id] for node in nodes if node.parent_id == wall.id and node.id in opening_cuts]
-        if not cuts:
-            continue
-        # The four-pixel mask stroke is display-only. It makes a zero-thickness
-        # measured wall and portal read as an opening without changing ledger geometry.
-        cut_paths = "".join(
-            f'<path d={quoteattr(path)} fill="#000" stroke="#000" stroke-width="4"/>' for path in cuts
-        )
-        masks.append(
-            f'<mask id={quoteattr("cut-" + str(wall.id))} maskUnits="userSpaceOnUse" x="0" y="0" '
-            f'width={quoteattr(_svg_number(width))} height={quoteattr(_svg_number(height))}>'
-            f'<rect width="100%" height="100%" fill="#fff"/>{cut_paths}</mask>'
-        )
+    masks = _opening_masks(nodes, opening_cuts, width, height)
     wall_paths = []
     other_paths = []
     labels = []
@@ -362,6 +395,13 @@ def architecture_svg(graph: SceneGraph, ledger: dict[str, Any]) -> str:
             other_paths.append(
                 f'<path class="opening" data-node-id={quoteattr(str(node.id))} '
                 f'd={quoteattr(paths[node.id])}/>'
+            )
+        elif is_fixed_to_a_surface(node):
+            center = node.transform.position
+            x, y = project((center.x, center.y))
+            other_paths.append(
+                f'<circle class={quoteattr(node.kind)} data-node-id={quoteattr(str(node.id))} '
+                f'cx={quoteattr(_svg_number(x))} cy={quoteattr(_svg_number(y))} r="3.5"/>'
             )
         else:
             other_paths.append(element)
@@ -388,6 +428,7 @@ def architecture_svg(graph: SceneGraph, ledger: dict[str, Any]) -> str:
         f'fill="none" stroke="#dbe4eb" stroke-width="1"/></pattern>{"".join(masks)}</defs>'
         f'<style>.wall{{fill:#263238;stroke:#102027;stroke-width:1}}.floor{{fill:none;stroke:#607d8b;stroke-width:1.5}}'
         f'.object{{fill:#d8c3a5;stroke:#5d4037;stroke-width:1.2}}.opening{{fill:none;stroke:#ef6c00;stroke-width:2}}'
+        f'.outlet{{fill:#e69f00;stroke:#b87a00;stroke-width:1.5}}.candidate_outlet{{fill:#d55e00;stroke:#9e3d00;stroke-width:1.5}}'
         f'.label{{font:12px sans-serif;text-anchor:middle;dominant-baseline:middle;fill:#263238;'
         'pointer-events:none}}</style>'
         f'<rect width="100%" height="100%" fill="#fff"/><rect width="100%" height="100%" fill="url(#meter-grid)"/>'
@@ -403,6 +444,26 @@ def architecture_svg(graph: SceneGraph, ledger: dict[str, Any]) -> str:
         f'<text x="{_svg_number(30 + scale_length / 2)}" y="{_svg_number(scale_y - 8)}" class="label">1 m</text></g>'
         '</svg>'
     )
+
+
+def _local_floor_height(node: SceneNode, flat_sheets: list[SceneNode]) -> float:
+    """How far a fitting sits above the floor under it.
+
+    A floor is a flat sheet below the thing being measured. Asking that rather
+    than asking for the region named "floor" keeps a ceiling from being chosen
+    as the reference and reporting a wall outlet as sitting two metres down.
+    """
+    height = node.transform.m[11]
+    below = [sheet for sheet in flat_sheets if sheet.transform.m[11] <= height]
+    if not below:
+        return round(height, 4)
+    def across(sheet: SceneNode) -> float:
+        return (node.transform.m[3] - sheet.transform.m[3]) ** 2 + (
+            node.transform.m[7] - sheet.transform.m[7]
+        ) ** 2
+
+    underfoot = min(below, key=across)
+    return round(max(0.0, height - underfoot.transform.m[11]), 4)
 
 
 def build_architecture_zip(
@@ -423,6 +484,53 @@ def build_architecture_zip(
             json.dumps(ledger, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
         ).encode("utf-8"),
     }
+    flat_sheets = [node for node in graph.nodes if lies_flat(node)]
+    outlets = [
+        node for node in sorted(graph.nodes, key=lambda n: str(n.id))
+        if is_fixed_to_a_surface(node)
+    ]
+    if outlets:
+        current_hash = graph_hash(graph)
+        outlets_data = {
+            "format": "standardphysics.outlets-evidence.v1",
+            "scan_id": str(scan_id),
+            "scan_name": scan_name,
+            "revision": graph.revision,
+            "graph_hash": current_hash,
+            "outlets": [
+                {
+                    "id": str(node.id),
+                    "label": node.label,
+                    "kind": node.kind,
+                    "local_height_m": _local_floor_height(node, flat_sheets),
+                    "review_status": node.attachment.review_status if node.attachment else "detected",
+                    "crop_reference": (
+                        node.attachment.observations[0].image_url
+                        if node.attachment and node.attachment.observations
+                        else None
+                    ),
+                    "attachment": node.attachment.model_dump(mode="json") if node.attachment else None,
+                    "uncertainty": {
+                        "power_state": "unknown",
+                        "socket_condition": "unknown",
+                        "plug_compatibility": "unknown",
+                        "voltage": "unknown",
+                        "ada_compliance": "unknown",
+                        "reach": "unknown_without_profile_or_geometry",
+                    },
+                    "disclaimers": [
+                        "Scan does not establish electrical service, live power, or circuit capacity.",
+                        "Physical plug fit and internal socket condition cannot be verified from photography.",
+                        "Compliance with building codes or ADA standards is not certified by this scan.",
+                    ],
+                }
+                for node in outlets
+            ],
+        }
+        files["outlets.json"] = (
+            json.dumps(outlets_data, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
+        ).encode("utf-8")
+
     output = io.BytesIO()
     with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
         for name in sorted(files):

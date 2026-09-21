@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import uuid
 
-from standardphysics_contracts import SceneGraph, SceneNode, bounds_the_room
+from standardphysics_contracts import SceneGraph, SceneNode, bounds_the_room, is_fixed_to_a_surface
 
 from . import repository as repo
 from .db import Database
@@ -31,6 +31,40 @@ def unmark_counter(
     database: Database, worker: Worker, scan_id: uuid.UUID, base_revision: int, node_id: uuid.UUID
 ) -> SceneGraph:
     return _relabel(database, worker, scan_id, base_revision, node_id, _as_scanned)
+
+
+def review_outlet(
+    database: Database, worker: Worker, scan_id: uuid.UUID, base_revision: int, node_id: uuid.UUID, status: str
+) -> SceneGraph:
+    if status not in ("confirmed_by_user", "rejected_by_user", "detected", "candidate"):
+        raise ApiProblem(400, "invalid review status")
+    base = _base_graph(database, scan_id, base_revision)
+    try:
+        target = base.by_id(node_id)
+    except KeyError:
+        raise ApiProblem(404, "no such outlet") from None
+
+    if not is_fixed_to_a_surface(target):
+        raise ApiProblem(400, "only outlets can be reviewed")
+
+    def _update(node: SceneNode) -> SceneNode:
+        if node.id != target.id:
+            return node
+        att = node.attachment
+        if att is not None:
+            att = att.model_copy(update={"review_status": status})
+        return node.model_copy(update={"attachment": att, "labeled_by": "owner"})
+
+    nodes = [_update(node) for node in base.nodes]
+    saved = base.model_copy(update={"nodes": nodes, "revision": base_revision + 1})
+    with database.transaction() as connection:
+        if repo.get_revision(connection, scan_id)["revision"] != base_revision:
+            raise ApiProblem(409, STALE_LAYOUT)
+        repo.save_revision(connection, saved, source="owner", base_revision=base_revision)
+        repo.enqueue_job(connection, scan_id, ASSESS, saved.revision)
+    worker.wake()
+    return saved
+
 
 
 def _as_counter(node: SceneNode) -> SceneNode:

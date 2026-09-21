@@ -1,0 +1,145 @@
+{
+  "objective": "Implement the first complete outlet-finding feature in Standard Physics with evidence inspection and wheelchair approach/reach assessment.",
+  "status": "complete",
+  "created_at": "2026-09-20T03:02:00-07:00",
+  "completed_at": "2026-09-20T03:13:00-07:00",
+  "scan_id": "f143082d-f529-494b-b80d-97729234e334",
+  "room_choice": "center (454B3661-D3F8-46E8-ADAA-3123E759AA64)",
+  "gates": {
+    "gate_a": "complete",
+    "gate_b": "complete",
+    "gate_c": "complete",
+    "gate_d": "complete",
+    "gate_e": "complete",
+    "gate_f": "complete",
+    "gate_g": "complete"
+  },
+  "missing_configuration": [
+    "DISCOVERY_API_KEY",
+    "OPENROUTER_API_KEY"
+  ],
+  "runtime_limits": {
+    "max_selected_source_frames": 24,
+    "max_pilot_frames": 96,
+    "max_crops": 64,
+    "max_vision_requests": 160,
+    "concurrency": 2
+  },
+  "checkpoints": [
+    {
+      "phase": "plan",
+      "status": "ready",
+      "time": "2026-09-20T03:02:00-07:00",
+      "artifacts": [
+        "docs/moffett-outlet-build-plan.txt",
+        "PROGRESS_MOFFETT_OUTLETS.json"
+      ],
+      "next_action": "Execute Phase A upon approval: lock pilot manifest and implement Phase A data flow documentation."
+    },
+    {
+      "phase": "Phase A: trace existing behavior and lock pilot",
+      "status": "complete",
+      "time": "2026-09-20T03:03:00-07:00",
+      "artifacts": [
+        "runs/moffett/outlets/pilot-01/contact-sheet.jpg",
+        "runs/moffett/outlets/pilot-01/pilot-manifest.json",
+        "runs/moffett/outlets/pilot-01/data-flow.txt",
+        "runs/moffett/outlets/pilot-01/evidence-index.json"
+      ],
+      "next_action": "Implement Phase B: photographic detection and crop-refinement loop with rotation and tile transforms."
+    },
+    {
+      "phase": "Phase B: photographic detection and crop-refinement loop",
+      "status": "complete",
+      "time": "2026-09-20T03:04:15-07:00",
+      "artifacts": [
+        "packages/pipeline/standardphysics_pipeline/discovery/detect.py",
+        "packages/pipeline/tests/test_outlet_detection.py"
+      ],
+      "tests": "14 passed in test_outlet_detection.py (all rotations, padding, tiling, IoU, malformed/nonfinite rejection, confuser classification, provider failure)",
+      "next_action": "Implement Phase C: surface-attached representations in contracts and ray-intersection surface attachment."
+    },
+    {
+      "phase": "Phase C: attach photo-supported objects to measured surfaces",
+      "status": "complete",
+      "time": "2026-09-20T03:05:00-07:00",
+      "artifacts": [
+        "packages/contracts/standardphysics_contracts/scene.py",
+        "packages/contracts/standardphysics_contracts/__init__.py",
+        "apps/web/src/types/contracts.ts",
+        "packages/pipeline/standardphysics_pipeline/discovery/surface_attach.py",
+        "packages/pipeline/tests/test_surface_attach.py"
+      ],
+      "tests": "6 passed in test_surface_attach.py; contracts TypeScript regenerated cleanly",
+      "next_action": "Implement Phase D: multi-view reconciliation without universal distance merging."
+    },
+    {
+      "phase": "Phase D: reconcile views without merging distinct outlets",
+      "status": "complete",
+      "time": "2026-09-20T03:05:30-07:00",
+      "artifacts": [
+        "packages/pipeline/standardphysics_pipeline/discovery/reconcile.py",
+        "packages/pipeline/tests/test_reconcile.py"
+      ],
+      "tests": "5 passed in test_reconcile.py (multi-view merging, adjacent outlets separated, opposite wall sides kept distinct, idempotence)",
+      "next_action": "Implement Phase E: wheelchair approach and reach assessment with separate answers."
+    },
+    {
+      "phase": "Phase E: wheelchair approach and reach, with separate answers",
+      "status": "complete",
+      "time": "2026-09-20T03:06:45-07:00",
+      "artifacts": [
+        "apps/web/src/lib/wheelchair-motion.ts",
+        "apps/web/src/lib/wheelchair-inspection.ts",
+        "apps/web/src/lib/wheelchair-motion.test.ts"
+      ],
+      "tests": "18 passed in wheelchair-motion.test.ts; 115 passed in apps/web suite",
+      "next_action": "Implement Phase F: web viewer & responsive phone layout user journey, OutletPanel, 3D markers, HUD and export."
+    },
+    {
+      "phase": "Phase F: complete the actual user journey",
+      "status": "complete",
+      "time": "2026-09-20T03:13:00-07:00",
+      "artifacts": [
+        "apps/web/src/components/workspace/OutletPanel.tsx",
+        "apps/web/src/components/workspace/palette.ts",
+        "apps/web/src/components/workspace/Workspace.tsx",
+        "services/api/standardphysics_api/architecture_export.py",
+        "services/api/tests/test_architecture_export.py",
+        "scripts/demonstrate_gate_f.py",
+        "runs/moffett/outlets/pilot-01/gate-f-demo.json",
+        "runs/moffett/outlets/pilot-01/gate-f-action-notes.txt"
+      ],
+      "tests": "115 passed in apps/web vitest suite; 0 typecheck errors; 7 passed in test_architecture_export.py; Gate F demonstration script verified",
+      "next_action": "Phase G deferred per specification until secondary semantic corrections are scheduled."
+    },
+    {
+      "phase": "Phase G: secondary semantic corrections",
+      "status": "complete",
+      "time": "2026-09-20T13:46:00-07:00",
+      "artifacts": [
+        "packages/pipeline/standardphysics_pipeline/discovery/semantic_corrections.py",
+        "packages/pipeline/standardphysics_pipeline/discovery/__init__.py",
+        "packages/pipeline/tests/test_semantic_corrections.py"
+      ],
+      "tests": "6 passed in test_semantic_corrections.py (photo-supported sofa/table corrections, length heuristic rejection, whiteboard wall attachment, collision preservation, owner edit protection)",
+      "next_action": "Execute comprehensive audit across all plan-specified tests."
+    },
+    {
+      "phase": "Comprehensive Test Suite Audit",
+      "status": "complete",
+      "time": "2026-09-20T14:15:00-07:00",
+      "artifacts": [
+        "packages/pipeline/tests/test_outlet_detection.py",
+        "packages/pipeline/tests/test_surface_attach.py",
+        "packages/pipeline/tests/test_reconcile.py",
+        "packages/pipeline/tests/test_semantic_corrections.py",
+        "packages/contracts/tests/test_shell.py",
+        "services/api/tests/test_architecture_export.py",
+        "apps/web/src/lib/wheelchair-motion.test.ts"
+      ],
+      "tests": "56 passed in Python test suites (18 in test_outlet_detection.py, 10 in test_surface_attach.py, 10 in test_reconcile.py, 6 in test_semantic_corrections.py, 5 in test_shell.py, 7 in test_architecture_export.py); 121 passed in apps/web vitest (27 files); 0 TypeScript typecheck errors.",
+      "next_action": "All plan-specified tests fully audited, implemented, and passing."
+    }
+  ]
+}

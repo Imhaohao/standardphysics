@@ -1,0 +1,40 @@
+Moffett Library Electrical Outlet Finding and Accessibility Assessment Build Plan
+================================================================================
+
+Objective:
+Implement the first complete, evidence-based outlet-finding and wheelchair reach
+assessment feature in Standard Physics using preserved Moffett Library data.
+
+User Story:
+“From my current wheelchair position, show me photographed electrical outlets,
+let me inspect the evidence, and help me assess an approach and reach using my
+wheelchair profile. Clearly identify what the scan cannot establish.”
+
+Product Boundaries & Principles:
+- A. Identity: Photographic evidence of an electrical outlet vs confusers (switches, data ports, blank plates).
+- B. Location: Operable region relative to measured surfaces with explicit uncertainty.
+- C. Use: Modeled approach and personalized reach.
+- Power, live availability, socket condition, plug compatibility, and ADA compliance are NOT established unless separately evidenced.
+- No centimetre precision claims without tape-measure ground truth.
+- Surface-attached outlets are selectable visual annotations, not collision solids.
+
+Phases & Gates:
+- Phase A: Trace existing flow, lock pilot manifest, and set up checkpointing.
+  Gate A: Documented flow, reproducible pilot manifest, reviewed source examples, testable minimal user journey.
+- Phase B: Photographic detection and crop-refinement loop.
+  Gate B: Detections link to readable source crops; pixel transforms tested; no invented detections.
+- Phase C: Attach photo-supported objects to measured surfaces in contracts & pipeline.
+  Gate C: Localized objects have reproducible support/evidence & conservative uncertainty.
+- Phase D: Multi-view reconciliation without universal distance merging.
+  Gate D: Reviewed pilot set with false positives, misses, merged/split cases enumerated.
+- Phase E: Wheelchair approach and reach assessment.
+  Gate E: Plausible approach positions backed by route checks; reach unknown when profile/geometry is missing.
+- Phase F: Complete web viewer & responsive phone user journey.
+  Gate F: Selection -> readable evidence -> separate approach/reach -> profile update -> export.
+- Phase G: Secondary semantic corrections (deferred until outlet path is complete).
+
+Model Routing Table:
+- Architecture, contract/trust boundaries, uncertainty semantics -> Frontier tier
+- Settled geometry/API/viewer implementation -> Terra or equivalent strong tier
+- Fixtures, detector examples, benchmark scripts, scoped review -> Flash/Luna/Sonnet
+- Sensitive offline processing and suitable bulk operations -> Available local model

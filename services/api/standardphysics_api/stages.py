@@ -150,7 +150,9 @@ class Stages:
             "discovered %d objects for %s, and took %d mesh points of people out",
             len(result.nodes), graph.scan_id, result.people_points_removed,
         )
-        return graph.model_copy(update={"nodes": [*graph.nodes, *result.nodes]})
+        existing_ids = {n.id for n in result.nodes}
+        preserved = [n for n in graph.nodes if n.id not in existing_ids]
+        return graph.model_copy(update={"nodes": [*preserved, *result.nodes]})
 
     def label_scan(
         self,
