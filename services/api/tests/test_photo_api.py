@@ -11,7 +11,7 @@ import json
 
 from PIL import Image
 
-from conftest import create_scan, drain, put_artifact
+from conftest import create_scan, drain, put_artifact, usdz_fixture
 from test_manual_marks import _mesh_bytes, _ready_scan, _stages, _room_payload
 
 
@@ -20,7 +20,7 @@ def _ready_without_frames(make_client):
     client = make_client(stages=stages)
     scan_id = create_scan(client)
     put_artifact(client, scan_id, "room-json", _room_payload(), "room_json")
-    put_artifact(client, scan_id, "room-usdz", b"usdz", "room_usdz")
+    put_artifact(client, scan_id, "room-usdz", usdz_fixture(), "room_usdz")
     put_artifact(client, scan_id, "poses", b"{}", "poses")
     put_artifact(client, scan_id, "lidar-mesh", _mesh_bytes(), "lidar_mesh")
     client.post(f"/api/scans/{scan_id}/complete")

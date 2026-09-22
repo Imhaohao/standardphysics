@@ -10,7 +10,7 @@ import json
 import threading
 import time
 
-from conftest import create_scan, drain, put_artifact
+from conftest import create_scan, drain, put_artifact, usdz_fixture
 from fastapi.testclient import TestClient
 from standardphysics_pipeline.discovery import DiscoveryResult
 
@@ -102,7 +102,7 @@ def _job_states(client, scan_id) -> list[tuple[str, int]]:
 
 def _complete_geometry(client, scan_id) -> None:
     put_artifact(client, scan_id, "room-json", _room_payload(), "room_json")
-    put_artifact(client, scan_id, "room-usdz", b"usdz", "room_usdz")
+    put_artifact(client, scan_id, "room-usdz", usdz_fixture(), "room_usdz")
 
 
 def _complete_semantics(client, scan_id, frame_id="frames", frame=b"frame-bytes") -> None:

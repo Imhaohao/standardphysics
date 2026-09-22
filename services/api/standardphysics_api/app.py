@@ -75,6 +75,7 @@ from .splats import install_splat_routes
 from .stages import Stages, preview_ledger
 from .store import ArtifactStore, ArtifactTooLarge, InvalidArtifactId
 from .textures import install_texture_routes, maybe_queue_texture, validate_manifest
+from .usdz_validation import InvalidUsdz, validate_room_usdz
 from .worker import ASSESS, PROCESS, Worker
 
 log = logging.getLogger(__name__)
@@ -266,6 +267,7 @@ def _finalize(database: Database, store: ArtifactStore, scan_id: uuid.UUID) -> t
 STAGED_VALIDATORS = {
     "lidar_mesh": (validate_lidar_mesh, InvalidLidarMesh, "invalid lidar mesh"),
     "photo_manifest": (validate_manifest, ValueError, "invalid photo manifest"),
+    "room_usdz": (validate_room_usdz, InvalidUsdz, "invalid usdz archive"),
 }
 """Artifact kinds whose bytes are checked before they are stored: the check, what it raises, and the 400 to send."""
 

@@ -9,7 +9,7 @@ Every call here is an authenticated HTTP request against the real queue.
 import json
 import uuid
 
-from conftest import create_scan, drain, put_artifact
+from conftest import create_scan, drain, put_artifact, usdz_fixture
 from standardphysics_contracts import Mat4, SceneNode, SurfaceAttachment, Vec3
 from standardphysics_pipeline.discovery import DiscoveryResult
 
@@ -114,7 +114,7 @@ def _ready_scan(make_client, discover):
     client = make_client(stages=_stages(discover), evidence_settle_seconds=0.0)
     scan_id = create_scan(client)
     put_artifact(client, scan_id, "room-json", _room_payload(), "room_json")
-    put_artifact(client, scan_id, "room-usdz", b"usdz", "room_usdz")
+    put_artifact(client, scan_id, "room-usdz", usdz_fixture(), "room_usdz")
     put_artifact(client, scan_id, "frames", b"frame-bytes", "frames")
     put_artifact(client, scan_id, "poses", b"{}", "poses")
     put_artifact(client, scan_id, "lidar-mesh", _mesh_bytes(), "lidar_mesh")

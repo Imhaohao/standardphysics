@@ -10,7 +10,7 @@ import json
 import pathlib
 import sqlite3
 
-from conftest import create_scan, drain, put_artifact
+from conftest import create_scan, drain, put_artifact, usdz_fixture
 
 
 def _legacy_database(path: pathlib.Path) -> None:
@@ -140,7 +140,7 @@ def test_legacy_database_opens_additively_and_keeps_old_rows(make_client, tmp_pa
             }
         ).encode()
         put_artifact(client, scan_id, "room-json", room, "room_json")
-        put_artifact(client, scan_id, "room-usdz", b"usdz", "room_usdz")
+        put_artifact(client, scan_id, "room-usdz", usdz_fixture(), "room_usdz")
         put_artifact(client, scan_id, "frames", b"frame-bytes", "frames")
         put_artifact(client, scan_id, "poses", b"{}", "poses")
         put_artifact(

@@ -8,7 +8,7 @@ hardening; U consumes these exact shapes.
 
 import json
 
-from conftest import create_scan, drain, put_artifact
+from conftest import create_scan, drain, put_artifact, usdz_fixture, usdz_fixture
 
 
 def _stages():
@@ -62,7 +62,7 @@ def _ready_scan(make_client):
     client = make_client(stages=stages)
     scan_id = create_scan(client)
     put_artifact(client, scan_id, "room-json", _room_payload(), "room_json")
-    put_artifact(client, scan_id, "room-usdz", b"usdz", "room_usdz")
+    put_artifact(client, scan_id, "room-usdz", usdz_fixture(), "room_usdz")
     put_artifact(client, scan_id, "poses", b"{}", "poses")
     put_artifact(client, scan_id, "lidar-mesh", _mesh_bytes(), "lidar_mesh")
     put_artifact(client, scan_id, "frame-0000", _jpeg(), "frames")
