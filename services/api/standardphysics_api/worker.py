@@ -8,12 +8,13 @@ first process's jobs.
 
 from __future__ import annotations
 
+import json
 import logging
 import pathlib
 import threading
 import traceback
 import uuid
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 from standardphysics_contracts import SimulationRequest
 
@@ -236,6 +237,18 @@ class Worker:
             if run_discovery:
                 self._mark_consumed_if_due(connection, scan_id, consumed)
             repo.set_job_binding(connection, job["id"], consumed[1] if consumed else None, outcome.note())
+            if outcome.model_requests:
+                repo.set_job_requests(
+                    connection,
+                    job["id"],
+                    json.dumps(
+                        [
+                            request.model_dump(mode="json") if hasattr(request, "model_dump") else asdict(request)
+                            for request in outcome.model_requests
+                        ],
+                        default=str,
+                    ),
+                )
         self._assess(scan_id=scan_id, revision=graph.revision)
         return self._newer_bundle_is_due(scan_id, consumed)
 

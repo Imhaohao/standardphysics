@@ -591,6 +591,53 @@ def test_sweep_never_retries_a_failed_input_until_new_evidence(tmp_path):
         assert [row[:2] for row in _job_states(client, scan_id)] == [("done", 2)]
 
 
+def test_provider_request_metadata_persists_on_the_job(make_client):
+    from standardphysics_pipeline.discovery import ModelRequestInfo
+
+    def discover(inputs):
+        return DiscoveryResult(
+            frames_read=2,
+            model_requests=[
+                ModelRequestInfo(
+                    frame_id="frame-a",
+                    provider="api.example.test",
+                    model="test-model",
+                    orientation="landscape_right",
+                    request_id="req-1",
+                    usage={"total_tokens": 100},
+                ),
+                ModelRequestInfo(
+                    frame_id="frame-b",
+                    provider="api.example.test",
+                    model="test-model",
+                    orientation="portrait",
+                    request_id="req-2",
+                    usage={"total_tokens": 80},
+                ),
+            ],
+        )
+
+    with make_client(stages=_stages(discover), evidence_settle_seconds=0.0) as client:
+        scan_id = create_scan(client)
+        _complete_geometry(client, scan_id)
+        _complete_semantics(client, scan_id)
+        client.post(f"/api/scans/{scan_id}/complete")
+        drain(client)
+
+        with client.app.state.database.connect() as connection:
+            payload = connection.execute(
+                "SELECT model_requests_json FROM jobs WHERE scan_id = ? AND kind = 'process'",
+                (scan_id,),
+            ).fetchone()["model_requests_json"]
+        requests = json.loads(payload)
+        assert [request["frame_id"] for request in requests] == ["frame-a", "frame-b"]
+        assert requests[0]["provider"] == "api.example.test"
+        assert requests[0]["request_id"] == "req-1"
+        assert requests[0]["usage"]["total_tokens"] == 100
+        logged = json.dumps(requests)
+        assert "token" not in logged.replace("total_tokens", "").lower()
+
+
 def test_discovery_inputs_point_crops_at_the_scan_crop_dir(tmp_path):
     import uuid as uuid_module
 

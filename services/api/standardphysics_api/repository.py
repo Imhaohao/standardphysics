@@ -288,6 +288,15 @@ def set_job_binding(
     )
 
 
+def set_job_requests(connection: sqlite3.Connection, job_id: int, requests_json: str | None) -> None:
+    """Persist what every real detector request was: provider, model, provider
+    request id and usage. Categories and counts only; never a secret or a pixel."""
+    connection.execute(
+        "UPDATE jobs SET model_requests_json = ? WHERE id = ?",
+        (requests_json, job_id),
+    )
+
+
 def process_job_states(connection: sqlite3.Connection, scan_id: uuid.UUID) -> tuple[str, ...]:
     """Every state a process job has been in for this scan, newest first."""
     rows = connection.execute(
