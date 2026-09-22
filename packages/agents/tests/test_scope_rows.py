@@ -304,6 +304,8 @@ class TestDossierBeforeAfterProvenance:
             )
 
     def test_a_measured_before_after_is_justified(self, manifest, pack):
+        from standardphysics_api.scope_manifest import DossierProvenanceError
+
         graph = build_graph()
         scenario = build_scenario()
         book = load_ledger()
@@ -329,13 +331,21 @@ class TestDossierBeforeAfterProvenance:
                 },
             }
 
-        dossier = build_evidence_dossier(
+        with pytest.raises(DossierProvenanceError) as refused:
+            build_evidence_dossier(
+                manifest, result.assessment, site={},
+                control_measurement_gaps=[], recapture_notes=[],
+                before_after=[{"before": record(31.0), "after": record(36.0)}],
+            )
+        assert "not yet supported" in str(refused.value)
+
+        empty = build_evidence_dossier(
             manifest, result.assessment, site={},
             control_measurement_gaps=[], recapture_notes=[],
-            before_after=[{"before": record(31.0), "after": record(36.0)}],
+            before_after=[],
         )
-        assert dossier["before_after"]["justified"] is True
-        assert len(dossier["before_after"]["entries"]) == 1
+        assert empty["before_after"]["justified"] is False
+        assert empty["before_after"]["entries"] == []
 
     def test_fabricated_provenance_strings_are_refused(self, manifest, pack):
         from standardphysics_api.scope_manifest import DossierProvenanceError

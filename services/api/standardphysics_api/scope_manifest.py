@@ -605,84 +605,21 @@ def _bind_assessment_identity(manifest: ScopeManifest, assessment: Assessment) -
 
 
 def _validated_before_after(entries: list | None, manifest: ScopeManifest) -> list:
-    """Only identity-bound, typed, measured before/after evidence may pass.
+    """Recommendation evidence stays off until real measured evidence exists.
 
-    Each entry names a `before` and an `after` record. A record's `measurement`
-    must validate as the pipeline's MeasurementBounds (typed, finite,
-    unit-tagged) with a source revision, and its `provenance` must bind that
-    measurement to this dossier's pinned scan identity: the scan id must parse
-    as a UUID and equal the manifest's, the revision must be an int matching
-    the measurement's source revision, and the method and actor must be real
-    non-empty names. Anything else — strings, shallow dicts, foreign scan ids —
-    is refused, so a fabricated claim can never be marked justified.
+    This pilot has no persisted, identity-bound, measured before/after
+    evidence store to look anything up in, so ANY nonempty entry is refused
+    outright: a dossier with recommendations marked justified must never
+    exist while a fabricated revision can still describe one. An empty list
+    is the honest default, and the dossier states the limitation when asked
+    to carry entries.
     """
-    from uuid import UUID
-
-    from pydantic import ValidationError
-    from standardphysics_pipeline.primitives.uncertainty import MeasurementBounds
-
-    clean = []
-    for entry in list(entries or []):
-        if not isinstance(entry, dict):
-            raise DossierProvenanceError(
-                f"before_after entry is not a record: {entry!r}"
-            )
-        for side in ("before", "after"):
-            record = entry.get(side)
-            if not isinstance(record, dict):
-                raise DossierProvenanceError(
-                    f"before_after entry {entry!r} has no {side} record"
-                )
-            provenance = record.get("provenance")
-            if not isinstance(provenance, dict):
-                raise DossierProvenanceError(
-                    f"before_after {side} provenance must be a record, not {provenance!r}"
-                )
-            scan_id = provenance.get("scan_id")
-            try:
-                if not isinstance(scan_id, str) or UUID(scan_id) != manifest.scan_id:
-                    raise DossierProvenanceError(
-                        f"before_after {side} provenance scan_id {scan_id!r} does "
-                        "not bind to the pinned scan identity"
-                    )
-            except ValueError as exc:
-                raise DossierProvenanceError(
-                    f"before_after {side} provenance scan_id {scan_id!r} is not a scan identity"
-                ) from exc
-            revision = provenance.get("revision")
-            if not isinstance(revision, int) or revision < 0:
-                raise DossierProvenanceError(
-                    f"before_after {side} provenance revision {revision!r} is not a revision"
-                )
-            for field in ("method", "actor"):
-                value = provenance.get(field)
-                if not isinstance(value, str) or not value.strip():
-                    raise DossierProvenanceError(
-                        f"before_after {side} provenance {field} {value!r} is not a real name"
-                    )
-            raw_measurement = record.get("measurement")
-            try:
-                bounds = MeasurementBounds.model_validate(raw_measurement)
-            except ValidationError as exc:
-                raise DossierProvenanceError(
-                    f"before_after {side} measurement is not a typed measurement: {exc}"
-                ) from exc
-            if not bounds.method.strip() or not bounds.unit.strip():
-                raise DossierProvenanceError(
-                    f"before_after {side} measurement has no method or unit"
-                )
-            if bounds.source_revision is None:
-                raise DossierProvenanceError(
-                    f"before_after {side} measurement carries no source revision"
-                )
-            if bounds.source_revision != revision:
-                raise DossierProvenanceError(
-                    f"before_after {side} provenance revision {revision} does not "
-                    f"match the measurement source revision {bounds.source_revision}"
-                )
-            record["measurement"] = bounds.model_dump()
-        clean.append(entry)
-    return clean
+    if entries:
+        raise DossierProvenanceError(
+            "before/after recommendation evidence is not yet supported: no persisted "
+            "measured-evidence lookup exists in this pilot; leave the list empty"
+        )
+    return []
 
 
 def _hash(**fields) -> str:
