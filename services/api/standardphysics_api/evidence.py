@@ -110,13 +110,6 @@ def _settled(
     return (datetime.now(UTC) - arrival).total_seconds() >= settle_seconds
 
 
-def mark_processed_if_complete(connection: sqlite3.Connection, scan_id: uuid.UUID) -> None:
-    """Record that the worker's semantic pass consumed the current bundle."""
-    bundle = repo.latest_bundle(connection, scan_id)
-    if bundle is not None and bundle.complete:
-        repo.bundle_processed(connection, scan_id, bundle.version, bundle.manifest_hash)
-
-
 def evidence_status_for(database: Database, scan: Scan) -> EvidenceStatus:
     with database.connect() as connection:
         bundle = repo.latest_bundle(connection, scan.id)
