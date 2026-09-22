@@ -613,3 +613,45 @@ class TestSuggestedStops:
             approach_stop=stop,
         )
         assert result.path is not None
+
+
+class TestUncertainTargetExtents:
+    def _proxy_target(self, graph: SceneGraph, stop: Vec3):
+        outlet = _outlet(graph, "west")
+        row = list(Mat4.identity().m)
+        row[13] = 0.5
+        target = outlet.model_copy(update={
+            "quality": "needs_another_look",
+            "dimensions": Vec3(x=0.12, y=0.03, z=0.12),
+            "transform": Mat4(m=row),
+        })
+        occupant = resize(MANUAL_WHEELCHAIR, horizontal_reach=HorizontalReach(20.0, "owner measured sideways grasp"))
+        return evaluate_approach(
+            graph, target, _start(graph),
+            measure=FixtureMeasure(), occupants=(occupant,),
+            approach_stop=stop,
+        )
+
+    def test_proxy_extents_never_produce_verified_reach_verdicts(self):
+        graph = _room("far_reach")
+        result = self._proxy_target(graph, Vec3(x=0.2, y=0.0, z=0.0))
+        record = result.reaches[0]
+        assert record.target_height_inches is None
+        assert record.horizontal_distance_inches is None
+        assert record.vertical_status == "unmeasured"
+        assert record.horizontal_status == "unmeasured"
+        assert result.status != "clear"
+        assert any("proxy geometry" in reason for reason in result.reasons)
+
+    def test_measured_extents_still_measure_the_same_reach(self):
+        graph = _room("far_reach")
+        outlet = _outlet(graph, "west")
+        occupant = resize(MANUAL_WHEELCHAIR, horizontal_reach=HorizontalReach(20.0, "owner measured sideways grasp"))
+        result = evaluate_approach(
+            graph, outlet, _start(graph),
+            measure=FixtureMeasure(), occupants=(occupant,),
+            approach_stop=Vec3(x=0.2, y=0.0, z=0.0),
+        )
+        record = result.reaches[0]
+        assert record.horizontal_distance_inches is not None
+        assert record.horizontal_status in ("within_horizontal_reach", "exceeded_horizontal_reach")

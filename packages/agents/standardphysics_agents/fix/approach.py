@@ -127,12 +127,25 @@ class ApproachResult:
     """The remainder that stays unknown even when the status is clear."""
 
 
-def target_height_inches(node: SceneNode) -> float | None:
-    """Top of the target above the floor, or None when the scan did not measure it.
+def _extents_trusted(node: SceneNode) -> bool:
+    """Whether the node's bounding extents are verified measurements.
 
-    A target with no height dimension or a zero height is unmeasured, not
-    zero inches tall.
+    `measured` came from LiDAR at high confidence and `confirmed` from a
+    person's hand. `needs_another_look` is proxy geometry: numbers derived
+    from it must stay unmeasured, never a verdict.
     """
+    return node.quality in ("measured", "confirmed")
+
+
+def target_height_inches(node: SceneNode) -> float | None:
+    """Top of the target above the floor, or None when the scan did not verify it.
+
+    A target with no height dimension, a zero height, or unverified proxy
+    extents is unmeasured, not zero inches tall. Support localization stays a
+    separate fact; it never upgrades a proxy's numbers.
+    """
+    if not _extents_trusted(node):
+        return None
     height = node.dimensions.z
     top = node.transform.position.z + height / 2
     if not math.isfinite(height) or height <= 0 or not math.isfinite(top) or top < 0:
@@ -286,7 +299,7 @@ def _reach_record(
     target: SceneNode, profile: OccupantProfile, stop: Vec3 | None
 ) -> ReachRecord:
     distance: float | None = None
-    if stop is not None:
+    if stop is not None and _extents_trusted(target):
         distance = _plan_gap_inches(stop, target)
 
     horizontal_status: HorizontalStatus = "unmeasured"
@@ -536,6 +549,13 @@ def evaluate_approach(
                 + ", ".join(obstructions)
             )
 
+    if not _extents_trusted(target):
+        localization = target.attachment.localization_quality if target.attachment else None
+        unverified.append(
+            "the target's extents are unverified proxy geometry "
+            f"(quality={target.quality}); height and distance stay unmeasured"
+            + (f"; support localization is separate evidence ({localization})" if localization == "verified_support" else "")
+        )
     if not floor_ok:
         unverified.append("the floor is unobserved; no support under the route")
     for record in reaches:
