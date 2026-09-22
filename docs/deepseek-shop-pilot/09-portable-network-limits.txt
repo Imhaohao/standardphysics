@@ -40,7 +40,10 @@ RESTART / ROLLBACK (loopback-proxy-safe)
         (run from <K> AND with the explicit PYTHONPATH above: the shared
         venv's editable install otherwise resolves packages to the ORIGINAL
         checkout; cwd alone does not select K sources).
-- Web:  cd <K>/apps/web && node node_modules/next/dist/bin/next start
-        -H 0.0.0.0 -p 8893   (SP_API_ORIGIN is baked at build time).
+- Web:  cd <K>/apps/web && SP_API_ORIGIN=http://127.0.0.1:8901 \
+        node node_modules/next/dist/bin/next start -H 0.0.0.0 -p 8893
+        SP_API_ORIGIN must be set at BUILD time (bakes /api proxy rewrites)
+        AND at START time (SSR reads it at runtime; without it api-origin.ts
+        falls back to 8788 and sign-in loops back to /sign-in).
 - Rollback: git tags pilot-candidate-20260921-k, pilot-candidate-20260922-k,
   pilot-candidate-final-k on codex/opencode-20260921-170615-k.
