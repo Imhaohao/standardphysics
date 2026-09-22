@@ -1,0 +1,142 @@
+{
+  "receipt_id": "MUT-M10",
+  "gate_id": "G00",
+  "mutation_id": "M10",
+  "outcome": "killed",
+  "run_id": "opencode-20260921-170615",
+  "lane_id": "Q",
+  "evidence_kind": "synthetic_component",
+  "source_commit": "586f284e886e14bf76628ca01e0af31a793671cd",
+  "eval_source_head": "bb8ded9 (final K HEAD)",
+  "dirty_source_digest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+  "dirty_source_files": {},
+  "contract_hash": "e6c9296dd360f8a3081f036771f874bc2e802ba24010e9c3ba1cb15a57f69f37",
+  "policy_hash": "8db915a80d13c75600e47f47b2f77c8210c44d34793d5d4c8fb613f755129b81",
+  "input_artifacts": [
+    {
+      "path": "uncertainty.py.original",
+      "sha256": "fb76fbb4c7c91ed71c9b08d944e8c3e19c97b10fe0ca68e4dc2315316b480a10",
+      "size_bytes": 7485,
+      "content_type": "text/plain"
+    }
+  ],
+  "output_artifacts": [
+    {
+      "path": "M10-mutated.log",
+      "sha256": "f1e193c632372f13494bb32b615b573aa253dba74e7a51ea2cd45d166253e780",
+      "size_bytes": 1527,
+      "content_type": "text/plain"
+    },
+    {
+      "path": "M10-clean-after.log",
+      "sha256": "835bd8236238804faad1c9b1658de8c49bca8b9758bb85bdbe5e18843ef93ef9",
+      "size_bytes": 99,
+      "content_type": "text/plain"
+    }
+  ],
+  "scan_id": null,
+  "revision_id": null,
+  "scenario_hash": null,
+  "scope_manifest_hash": null,
+  "evidence_manifest_hash": null,
+  "command_or_recorded_ui_steps": "pytest <owning suite> -q (clean); mutate packages/pipeline/standardphysics_pipeline/primitives/uncertainty.py; pytest <owning suite> -q (record outcome); restore source",
+  "working_directory": "/tmp/q-mutations or /tmp/q-review-s (disposable worktrees)",
+  "environment_versions": {
+    "python": "3.11"
+  },
+  "started_at": "2026-09-22T00:30:59.851987-07:00",
+  "finished_at": "2026-09-22T00:30:59.851987-07:00",
+  "exit_code": 1,
+  "assertions": [
+    {
+      "id": "mutated-run-failed-behaviorally",
+      "measurement_method": "text_contains",
+      "expected": true,
+      "observed": true,
+      "params": {
+        "substring": "assert 'satisfied' == 'needs_verification'",
+        "artifact": "M10-mutated.log"
+      },
+      "evidence_paths": [
+        "M10-mutated.log"
+      ]
+    },
+    {
+      "id": "mutated-run-recorded-kill-test",
+      "measurement_method": "text_contains",
+      "expected": true,
+      "observed": true,
+      "params": {
+        "substring": "packages/agents/tests/test_rule_intervals.py::TestThresholdStraddling::test_a_maximum_straddled_asks_for_verification",
+        "artifact": "M10-mutated.log"
+      },
+      "evidence_paths": [
+        "M10-mutated.log"
+      ]
+    },
+    {
+      "id": "clean-rerun-passed",
+      "measurement_method": "text_contains",
+      "expected": true,
+      "observed": true,
+      "params": {
+        "substring": "passed",
+        "artifact": "M10-clean-after.log"
+      },
+      "evidence_paths": [
+        "M10-clean-after.log"
+      ]
+    },
+    {
+      "id": "restored-source-hash",
+      "measurement_method": "file_sha256",
+      "expected": "fb76fbb4c7c91ed71c9b08d944e8c3e19c97b10fe0ca68e4dc2315316b480a10",
+      "params": {
+        "artifact": "uncertainty.py.original"
+      },
+      "evidence_paths": [
+        "uncertainty.py.original"
+      ]
+    },
+    {
+      "id": "logs-are-secret-free",
+      "measurement_method": "text_clean",
+      "expected": true,
+      "params": {
+        "artifact": "M10-mutated.log"
+      },
+      "evidence_paths": [
+        "M10-mutated.log"
+      ]
+    },
+    {
+      "id": "cmd-was-pytest",
+      "measurement_method": "command_matches",
+      "expected": true,
+      "params": {
+        "required_substrings": [
+          "pytest"
+        ]
+      },
+      "evidence_paths": []
+    }
+  ],
+  "raw_log_path": "M10-mutated.log",
+  "evaluator_identity": {
+    "actor": "lane-Q",
+    "attestation": "independent fault injection in a disposable worktree, reverted and hash-verified"
+  },
+  "fault": {
+    "id": "M10",
+    "source_head": "bb8ded9 (final K HEAD)",
+    "outcome": "killed",
+    "fault": "primitives/uncertainty.py: straddling interval replaced by its midpoint (favorable midpoint)",
+    "fault_file": "packages/pipeline/standardphysics_pipeline/primitives/uncertainty.py",
+    "restored_sha256": "fb76fbb4c7c91ed71c9b08d944e8c3e19c97b10fe0ca68e4dc2315316b480a10",
+    "killed_by": "packages/agents/tests/test_rule_intervals.py::TestThresholdStraddling::test_a_maximum_straddled_asks_for_verification",
+    "behavioral_assertion": "assert 'satisfied' == 'needs_verification'",
+    "mutated_log": "M10-mutated.log",
+    "clean_log": "M10-clean-after.log",
+    "original_copy": "uncertainty.py.original"
+  }
+}

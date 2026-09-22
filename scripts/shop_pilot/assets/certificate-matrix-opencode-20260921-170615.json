@@ -1,0 +1,497 @@
+{
+  "kind": "certificate_matrix_final",
+  "version": 10,
+  "run_id": "opencode-20260921-170615",
+  "evaluator": "lane Q independent (fireworks-ai deepseek-pro-latest)",
+  "computed_at": "2026-09-22T00:31:21-07:00",
+  "integration_head_evaluated": "8c5d40b (A chain integrated: dossier refuses all nonempty before/after until measured evidence)",
+  "policy": "frozen docs unchanged",
+  "verification_scope_at_this_head": "exact M06 mutation on test_orientation_end_to_end at bb8ded9 (clean 4 passed -> mutant 3 failed behaviorally -> restored hash b2ac0a9b... -> clean rerun 4 passed); M06 receipt rebound to bb8ded9. K states suites green at bb8ded9; no broad rerun of mine per dispatch.",
+  "gate_matrix": [
+    {
+      "id": "G00",
+      "status": "passed",
+      "blocker": null,
+      "note": "All 18 required controls with behavioral assertions, clean counterparts, restored hashes, raw logs. M17 re-executed against the SHIPPED G15 evaluator (scripts/evaluate_photo_mesh_500.py covered_fraction): deterministic 96/100 fixture, injected photographed:=ones(fixed_mask) once, killed by assert 0.0 == 0.04, restored 121a0d7e..., clean rerun. The earlier render_efficiency/metrics.py result is informative only and is NOT counted toward M17. M09/M11 re-killed and rebound at 8c5d40b (scope_manifest chain changed); M17 shipped-evaluator proof durable at 8c5d40b (clean 1 passed / mutant assert 0.0==0.04 / restore 121a0d7e / clean rerun)."
+    },
+    {
+      "id": "G01",
+      "status": "passed_targeted_with_note",
+      "blocker": null,
+      "note": "All previously-visible top-level reds verified resolved at 6e01067: audit_open_findings 10 passed + 3 xfailed (fixture fix 8ed34a3), astra+ontology 29 passed (R's reads_as_wall/ontology ratchet), tracked absolute .node_modules-link absent from the tree. Full-suite re-verify deferred to the frozen candidate per dispatch."
+    },
+    {
+      "id": "G02",
+      "status": "passed",
+      "blocker": null,
+      "note": "closure suite + review safety green at 534b7e0; convention unchanged by 6e01067 (test-only + predicate rename)."
+    },
+    {
+      "id": "G03",
+      "status": "passed",
+      "blocker": null,
+      "note": "S proxy-semantics chain integrated; end-to-end orientation test present; M06 mutation now killed at this head (was a survived gap)."
+    },
+    {
+      "id": "G04",
+      "status": "passed",
+      "blocker": null,
+      "note": "review-safety green; M08 mutation killed."
+    },
+    {
+      "id": "G05",
+      "status": "passed",
+      "blocker": null,
+      "note": "Direct reproduction of the supervisor consumer-gap at 6e01067: needs_another_look television (0.12x0.03x0.12m at z=0.5) yields _extents_trusted=False and target_height_inches=None - proxy extents can no longer produce within-reach verdicts."
+    },
+    {
+      "id": "G06",
+      "status": "passed",
+      "blocker": null,
+      "note": "scope rows green."
+    },
+    {
+      "id": "G07",
+      "status": "passed",
+      "blocker": null,
+      "note": "uncertain reach stays uncertain at this head (fix/approach guard + existing 56 approach/reach tests); approach UI is the remaining separate item."
+    },
+    {
+      "id": "G08",
+      "status": "passed_with_named_limitation",
+      "blocker": null,
+      "note": "root-independent 60/60 + 66/66 and visual overlay verification; physical touch deferred to G11."
+    },
+    {
+      "id": "G09",
+      "status": "pending",
+      "blocker": "literal policy gap, not a physical-phone requirement (G11 owns physical): authenticated LAN journey verified (owner-repaired account, scene/frames 200) and auth denials tested, but start.sh does not yet document the portable-network and unavailable-feature behavior blocks the policy asks for (E owns; only docs missing)."
+    },
+    {
+      "id": "G10",
+      "status": "pending",
+      "blocker": "real paid run + LAN-verified cached replay exist; policy has NO texture-completion requirement (removed that invented blocker). Still missing, literally from 04-hard-gates G10.requires: a real review and a scoped report saved under a NEW revision on the corrected replay; detector invocation, crops, truthful counts are already evidenced."
+    },
+    {
+      "id": "G11",
+      "status": "externally_blocked",
+      "blocker": "user LAN-only physical Safari review unanswered; capture+upload legs real and byte-verified."
+    },
+    {
+      "id": "G12",
+      "status": "pending",
+      "blocker": "human-reviewed held-out inventories; counts are not one-to-one accuracy."
+    },
+    {
+      "id": "G13",
+      "status": "passed",
+      "blocker": null,
+      "note": "boundary tests green at 8c5d40b (25): foreign scan_id/revision/graph_hash/rulepack refused; before_after stays empty until supported; measured before_after justified; A refused-all-nonempty stance implemented. Transitively blocked by G10 via depends_on."
+    },
+    {
+      "id": "G14",
+      "status": "externally_blocked",
+      "blocker": "qualified human legal review."
+    },
+    {
+      "id": "G15",
+      "status": "failed",
+      "blocker": "root c11 visual verdict FAILED (fragmented triangles/holes persist across quad images 0086/0001 and source maps). V code at bb8ded9/1dcfd8f is integration, not a quality pass; M17 confirmed the evaluator itself rejects denominator games."
+    },
+    {
+      "id": "G16",
+      "status": "externally_blocked",
+      "blocker": "cannot exist before the boba-shop visit."
+    },
+    {
+      "id": "G17",
+      "status": "externally_blocked",
+      "blocker": "field control measurements missing."
+    }
+  ],
+  "certificates": {
+    "software_verified": {
+      "status": "not_awarded",
+      "all_of": [
+        "G00",
+        "G01",
+        "G02",
+        "G03",
+        "G04",
+        "G05",
+        "G06",
+        "G07",
+        "G08",
+        "G09"
+      ],
+      "blocked_by": [
+        "G09"
+      ],
+      "derived_from_policy_lists": true
+    },
+    "saved_capture_verified": {
+      "status": "not_awarded",
+      "all_of": [
+        "G00",
+        "G01",
+        "G02",
+        "G03",
+        "G04",
+        "G05",
+        "G06",
+        "G07",
+        "G08",
+        "G09",
+        "G10"
+      ],
+      "blocked_by": [
+        "G09",
+        "G10"
+      ],
+      "derived_from_policy_lists": true
+    },
+    "phone_pilot_ready": {
+      "status": "not_awarded",
+      "all_of": [
+        "G00",
+        "G01",
+        "G02",
+        "G03",
+        "G04",
+        "G05",
+        "G06",
+        "G07",
+        "G08",
+        "G09",
+        "G11"
+      ],
+      "blocked_by": [
+        "G09",
+        "G11"
+      ],
+      "derived_from_policy_lists": true
+    },
+    "shop_field_validated": {
+      "status": "not_awarded",
+      "all_of": [
+        "G00",
+        "G01",
+        "G02",
+        "G03",
+        "G04",
+        "G05",
+        "G06",
+        "G07",
+        "G08",
+        "G09",
+        "G11",
+        "G16"
+      ],
+      "blocked_by": [
+        "G09",
+        "G11",
+        "G16"
+      ],
+      "derived_from_policy_lists": true
+    },
+    "automatic_semantics_benchmark_passed": {
+      "status": "not_awarded",
+      "all_of": [
+        "G00",
+        "G02",
+        "G03",
+        "G10",
+        "G12"
+      ],
+      "blocked_by": [
+        "G10",
+        "G12"
+      ],
+      "derived_from_policy_lists": true
+    },
+    "scoped_assessment_evidence_ready": {
+      "status": "not_awarded",
+      "all_of": [
+        "G00",
+        "G06",
+        "G08",
+        "G10",
+        "G13"
+      ],
+      "blocked_by": [
+        "G10",
+        "G13"
+      ],
+      "derived_from_policy_lists": true
+    },
+    "scoped_requirements_satisfied": {
+      "status": "not_awarded",
+      "all_of": [
+        "G00",
+        "G05",
+        "G06",
+        "G13",
+        "G14",
+        "G17"
+      ],
+      "blocked_by": [
+        "G13",
+        "G14",
+        "G17"
+      ],
+      "derived_from_policy_lists": true
+    },
+    "photo_mesh_500_verified": {
+      "status": "not_awarded",
+      "all_of": [
+        "G00",
+        "G05",
+        "G09",
+        "G15"
+      ],
+      "blocked_by": [
+        "G09",
+        "G15"
+      ],
+      "derived_from_policy_lists": true
+    },
+    "whole_site_ADA_compliance": {
+      "automated_certificate_allowed": false
+    }
+  },
+  "corrections_from_supervisor": [
+    "G15 durable test: blanket except/skip removed; plain import of the K evaluator, verified clean/mutated/restored at 8c5d40b",
+    "recompute_certificates: dispositions read from the current matrix, transitive depends_on honored, unknown/failed conservative; negative proofs committed",
+    "G10 texture 'requirement' removed (not in policy); literal missing items are review + scoped report under a new revision",
+    "G09': literal gap is the documentation block, not a phone probe (G11 owns physical)"
+  ],
+  "software_line": "K suites green at bb8ded9 per K; Q evidence: all prior recomputes + M06 mutation binding + targeted orientation cycle at this head. G09 portable-network test and G11 user review remain the physical blockers for certificates.",
+  "notes_ten_controls": "All 18 controls secured across source-bound heads; M17 bound to the ACTUAL shipped evaluator denominator with a deterministic fixture; certificate blocker lists are programmatically derived from the frozen policy, never hand-edited.",
+  "certificate_derivation": {
+    "gate_statuses_read_from_matrix": [
+      [
+        "G00",
+        "passed"
+      ],
+      [
+        "G01",
+        "passed_targeted_with_note"
+      ],
+      [
+        "G02",
+        "passed"
+      ],
+      [
+        "G03",
+        "passed"
+      ],
+      [
+        "G04",
+        "passed"
+      ],
+      [
+        "G05",
+        "passed"
+      ],
+      [
+        "G06",
+        "passed"
+      ],
+      [
+        "G07",
+        "passed"
+      ],
+      [
+        "G08",
+        "passed_with_named_limitation"
+      ],
+      [
+        "G09",
+        "pending"
+      ],
+      [
+        "G10",
+        "pending"
+      ],
+      [
+        "G11",
+        "externally_blocked"
+      ],
+      [
+        "G12",
+        "pending"
+      ],
+      [
+        "G13",
+        "passed"
+      ],
+      [
+        "G14",
+        "externally_blocked"
+      ],
+      [
+        "G15",
+        "failed"
+      ],
+      [
+        "G16",
+        "externally_blocked"
+      ],
+      [
+        "G17",
+        "externally_blocked"
+      ]
+    ],
+    "dependency_closure_respected": true,
+    "certificates": {
+      "software_verified": {
+        "status": "not_awarded",
+        "all_of": [
+          "G00",
+          "G01",
+          "G02",
+          "G03",
+          "G04",
+          "G05",
+          "G06",
+          "G07",
+          "G08",
+          "G09"
+        ],
+        "blocked_by": [
+          "G09"
+        ],
+        "derived_from_policy_lists": true
+      },
+      "saved_capture_verified": {
+        "status": "not_awarded",
+        "all_of": [
+          "G00",
+          "G01",
+          "G02",
+          "G03",
+          "G04",
+          "G05",
+          "G06",
+          "G07",
+          "G08",
+          "G09",
+          "G10"
+        ],
+        "blocked_by": [
+          "G09",
+          "G10"
+        ],
+        "derived_from_policy_lists": true
+      },
+      "phone_pilot_ready": {
+        "status": "not_awarded",
+        "all_of": [
+          "G00",
+          "G01",
+          "G02",
+          "G03",
+          "G04",
+          "G05",
+          "G06",
+          "G07",
+          "G08",
+          "G09",
+          "G11"
+        ],
+        "blocked_by": [
+          "G09",
+          "G11"
+        ],
+        "derived_from_policy_lists": true
+      },
+      "shop_field_validated": {
+        "status": "not_awarded",
+        "all_of": [
+          "G00",
+          "G01",
+          "G02",
+          "G03",
+          "G04",
+          "G05",
+          "G06",
+          "G07",
+          "G08",
+          "G09",
+          "G11",
+          "G16"
+        ],
+        "blocked_by": [
+          "G09",
+          "G11",
+          "G16"
+        ],
+        "derived_from_policy_lists": true
+      },
+      "automatic_semantics_benchmark_passed": {
+        "status": "not_awarded",
+        "all_of": [
+          "G00",
+          "G02",
+          "G03",
+          "G10",
+          "G12"
+        ],
+        "blocked_by": [
+          "G10",
+          "G12"
+        ],
+        "derived_from_policy_lists": true
+      },
+      "scoped_assessment_evidence_ready": {
+        "status": "not_awarded",
+        "all_of": [
+          "G00",
+          "G06",
+          "G08",
+          "G10",
+          "G13"
+        ],
+        "blocked_by": [
+          "G10",
+          "G13"
+        ],
+        "derived_from_policy_lists": true
+      },
+      "scoped_requirements_satisfied": {
+        "status": "not_awarded",
+        "all_of": [
+          "G00",
+          "G05",
+          "G06",
+          "G13",
+          "G14",
+          "G17"
+        ],
+        "blocked_by": [
+          "G13",
+          "G14",
+          "G17"
+        ],
+        "derived_from_policy_lists": true
+      },
+      "photo_mesh_500_verified": {
+        "status": "not_awarded",
+        "all_of": [
+          "G00",
+          "G05",
+          "G09",
+          "G15"
+        ],
+        "blocked_by": [
+          "G09",
+          "G15"
+        ],
+        "derived_from_policy_lists": true
+      },
+      "whole_site_ADA_compliance": {
+        "automated_certificate_allowed": false
+      }
+    }
+  }
+}

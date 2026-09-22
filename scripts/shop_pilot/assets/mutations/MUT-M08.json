@@ -1,0 +1,142 @@
+{
+  "receipt_id": "MUT-M08",
+  "gate_id": "G00",
+  "mutation_id": "M08",
+  "outcome": "killed",
+  "run_id": "opencode-20260921-170615",
+  "lane_id": "Q",
+  "evidence_kind": "synthetic_component",
+  "source_commit": "586f284e886e14bf76628ca01e0af31a793671cd",
+  "eval_source_head": "8b48f9e (final K HEAD)",
+  "dirty_source_digest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+  "dirty_source_files": {},
+  "contract_hash": "e6c9296dd360f8a3081f036771f874bc2e802ba24010e9c3ba1cb15a57f69f37",
+  "policy_hash": "8db915a80d13c75600e47f47b2f77c8210c44d34793d5d4c8fb613f755129b81",
+  "input_artifacts": [
+    {
+      "path": "worker.py.original",
+      "sha256": "be0dcd38cf27ae47c3ac5d6115d59e8a2df742098c5d72cd4f0c45858a1d454b",
+      "size_bytes": 17227,
+      "content_type": "text/plain"
+    }
+  ],
+  "output_artifacts": [
+    {
+      "path": "M08-mutated.log",
+      "sha256": "b4edfe7d05a435c6f3a8eaa04677d2922d8c1c0c278cba5f3912ecfac83ee606",
+      "size_bytes": 2639,
+      "content_type": "text/plain"
+    },
+    {
+      "path": "M08-clean-after.log",
+      "sha256": "3b6d028a5caa6ab55a173709681d711a5c5296fe9b19f737833f5f6ded3efd9e",
+      "size_bytes": 688,
+      "content_type": "text/plain"
+    }
+  ],
+  "scan_id": null,
+  "revision_id": null,
+  "scenario_hash": null,
+  "scope_manifest_hash": null,
+  "evidence_manifest_hash": null,
+  "command_or_recorded_ui_steps": "pytest <owning suite> -q (clean); mutate services/api/standardphysics_api/worker.py; pytest <owning suite> -q (record outcome); restore source",
+  "working_directory": "/tmp/q-mutations or /tmp/q-review-s (disposable worktrees)",
+  "environment_versions": {
+    "python": "3.11"
+  },
+  "started_at": "2026-09-22T00:30:59.851987-07:00",
+  "finished_at": "2026-09-22T00:30:59.851987-07:00",
+  "exit_code": 1,
+  "assertions": [
+    {
+      "id": "mutated-run-failed-behaviorally",
+      "measurement_method": "text_contains",
+      "expected": true,
+      "observed": true,
+      "params": {
+        "substring": "assert latest[\"revision\"] == 1",
+        "artifact": "M08-mutated.log"
+      },
+      "evidence_paths": [
+        "M08-mutated.log"
+      ]
+    },
+    {
+      "id": "mutated-run-recorded-kill-test",
+      "measurement_method": "text_contains",
+      "expected": true,
+      "observed": true,
+      "params": {
+        "substring": "services/api/tests/test_review_safety.py::test_late_process_job_replaces_ingest_revision_but_never_owner_decisions",
+        "artifact": "M08-mutated.log"
+      },
+      "evidence_paths": [
+        "M08-mutated.log"
+      ]
+    },
+    {
+      "id": "clean-rerun-passed",
+      "measurement_method": "text_contains",
+      "expected": true,
+      "observed": true,
+      "params": {
+        "substring": "passed",
+        "artifact": "M08-clean-after.log"
+      },
+      "evidence_paths": [
+        "M08-clean-after.log"
+      ]
+    },
+    {
+      "id": "restored-source-hash",
+      "measurement_method": "file_sha256",
+      "expected": "be0dcd38cf27ae47c3ac5d6115d59e8a2df742098c5d72cd4f0c45858a1d454b",
+      "params": {
+        "artifact": "worker.py.original"
+      },
+      "evidence_paths": [
+        "worker.py.original"
+      ]
+    },
+    {
+      "id": "logs-are-secret-free",
+      "measurement_method": "text_clean",
+      "expected": true,
+      "params": {
+        "artifact": "M08-mutated.log"
+      },
+      "evidence_paths": [
+        "M08-mutated.log"
+      ]
+    },
+    {
+      "id": "cmd-was-pytest",
+      "measurement_method": "command_matches",
+      "expected": true,
+      "params": {
+        "required_substrings": [
+          "pytest"
+        ]
+      },
+      "evidence_paths": []
+    }
+  ],
+  "raw_log_path": "M08-mutated.log",
+  "evaluator_identity": {
+    "actor": "lane-Q",
+    "attestation": "independent fault injection in a disposable worktree, reverted and hash-verified"
+  },
+  "fault": {
+    "id": "M08",
+    "source_head": "8b48f9e (final K HEAD)",
+    "outcome": "killed",
+    "fault": "worker.py: ingest saves at the latest owner revision, clobbering the reviewed graph (stale async overwrites review)",
+    "fault_file": "services/api/standardphysics_api/worker.py",
+    "restored_sha256": "be0dcd38cf27ae47c3ac5d6115d59e8a2df742098c5d72cd4f0c45858a1d454b",
+    "killed_by": "services/api/tests/test_review_safety.py::test_late_process_job_replaces_ingest_revision_but_never_owner_decisions",
+    "behavioral_assertion": "assert latest[\"revision\"] == 1",
+    "mutated_log": "M08-mutated.log",
+    "clean_log": "M08-clean-after.log",
+    "original_copy": "worker.py.original"
+  }
+}

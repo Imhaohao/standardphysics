@@ -1,0 +1,142 @@
+{
+  "receipt_id": "MUT-M12",
+  "gate_id": "G00",
+  "mutation_id": "M12",
+  "outcome": "killed",
+  "run_id": "opencode-20260921-170615",
+  "lane_id": "Q",
+  "evidence_kind": "synthetic_component",
+  "source_commit": "586f284e886e14bf76628ca01e0af31a793671cd",
+  "eval_source_head": "bb8ded9 (final K HEAD)",
+  "dirty_source_digest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+  "dirty_source_files": {},
+  "contract_hash": "e6c9296dd360f8a3081f036771f874bc2e802ba24010e9c3ba1cb15a57f69f37",
+  "policy_hash": "8db915a80d13c75600e47f47b2f77c8210c44d34793d5d4c8fb613f755129b81",
+  "input_artifacts": [
+    {
+      "path": "verification.py.original",
+      "sha256": "9cb503743b66e70352be797297acc82aaf2f967c1d654dcdd6a9d3d01cf059ea",
+      "size_bytes": 5805,
+      "content_type": "text/plain"
+    }
+  ],
+  "output_artifacts": [
+    {
+      "path": "M12-mutated.log",
+      "sha256": "0e20444e21b52086789280fab9c9d4587ae9f4d4128850e3ed52c3851ee40b3d",
+      "size_bytes": 4751,
+      "content_type": "text/plain"
+    },
+    {
+      "path": "M12-clean-after.log",
+      "sha256": "391fe3393230a3f7d6ced7d2a7c3207e71f09024f26689794cf10a89984d4910",
+      "size_bytes": 115,
+      "content_type": "text/plain"
+    }
+  ],
+  "scan_id": null,
+  "revision_id": null,
+  "scenario_hash": null,
+  "scope_manifest_hash": null,
+  "evidence_manifest_hash": null,
+  "command_or_recorded_ui_steps": "pytest <owning suite> -q (clean); mutate packages/agents/standardphysics_agents/rules/verification.py; pytest <owning suite> -q (record outcome); restore source",
+  "working_directory": "/tmp/q-mutations or /tmp/q-review-s (disposable worktrees)",
+  "environment_versions": {
+    "python": "3.11"
+  },
+  "started_at": "2026-09-22T00:30:59.851987-07:00",
+  "finished_at": "2026-09-22T00:30:59.851987-07:00",
+  "exit_code": 1,
+  "assertions": [
+    {
+      "id": "mutated-run-failed-behaviorally",
+      "measurement_method": "text_contains",
+      "expected": true,
+      "observed": true,
+      "params": {
+        "substring": "where False = all(",
+        "artifact": "M12-mutated.log"
+      },
+      "evidence_paths": [
+        "M12-mutated.log"
+      ]
+    },
+    {
+      "id": "mutated-run-recorded-kill-test",
+      "measurement_method": "text_contains",
+      "expected": true,
+      "observed": true,
+      "params": {
+        "substring": "packages/agents/tests/test_verification_preview.py::TestRealReviewers::test_a_second_check_cannot_promote_a_preview_entry",
+        "artifact": "M12-mutated.log"
+      },
+      "evidence_paths": [
+        "M12-mutated.log"
+      ]
+    },
+    {
+      "id": "clean-rerun-passed",
+      "measurement_method": "text_contains",
+      "expected": true,
+      "observed": true,
+      "params": {
+        "substring": "passed",
+        "artifact": "M12-clean-after.log"
+      },
+      "evidence_paths": [
+        "M12-clean-after.log"
+      ]
+    },
+    {
+      "id": "restored-source-hash",
+      "measurement_method": "file_sha256",
+      "expected": "9cb503743b66e70352be797297acc82aaf2f967c1d654dcdd6a9d3d01cf059ea",
+      "params": {
+        "artifact": "verification.py.original"
+      },
+      "evidence_paths": [
+        "verification.py.original"
+      ]
+    },
+    {
+      "id": "logs-are-secret-free",
+      "measurement_method": "text_clean",
+      "expected": true,
+      "params": {
+        "artifact": "M12-mutated.log"
+      },
+      "evidence_paths": [
+        "M12-mutated.log"
+      ]
+    },
+    {
+      "id": "cmd-was-pytest",
+      "measurement_method": "command_matches",
+      "expected": true,
+      "params": {
+        "required_substrings": [
+          "pytest"
+        ]
+      },
+      "evidence_paths": []
+    }
+  ],
+  "raw_log_path": "M12-mutated.log",
+  "evaluator_identity": {
+    "actor": "lane-Q",
+    "attestation": "independent fault injection in a disposable worktree, reverted and hash-verified"
+  },
+  "fault": {
+    "id": "M12",
+    "source_head": "bb8ded9 (final K HEAD)",
+    "outcome": "killed",
+    "fault": "rules/verification.py: preview ledger entries read as personally verified (preview as verified)",
+    "fault_file": "packages/agents/standardphysics_agents/rules/verification.py",
+    "restored_sha256": "9cb503743b66e70352be797297acc82aaf2f967c1d654dcdd6a9d3d01cf059ea",
+    "killed_by": "packages/agents/tests/test_verification_preview.py::TestRealReviewers::test_a_second_check_cannot_promote_a_preview_entry",
+    "behavioral_assertion": "where False = all(",
+    "mutated_log": "M12-mutated.log",
+    "clean_log": "M12-clean-after.log",
+    "original_copy": "verification.py.original"
+  }
+}
