@@ -254,6 +254,16 @@ def has_pending_process_job(connection: sqlite3.Connection, scan_id: uuid.UUID) 
     )
 
 
+def latest_semantic_arrival(connection: sqlite3.Connection, scan_id: uuid.UUID) -> str | None:
+    """The newest created_at among semantic-input artifacts, for the settle gate."""
+    placeholders = ", ".join("?" for _ in SEMANTIC_INPUT_KINDS)
+    row = connection.execute(
+        f"SELECT MAX(created_at) AS latest FROM artifacts WHERE scan_id = ? AND kind IN ({placeholders})",
+        (str(scan_id), *SEMANTIC_INPUT_KINDS),
+    ).fetchone()
+    return row["latest"] if row else None
+
+
 def process_job_states(connection: sqlite3.Connection, scan_id: uuid.UUID) -> tuple[str, ...]:
     """Every state a process job has been in for this scan, newest first."""
     rows = connection.execute(

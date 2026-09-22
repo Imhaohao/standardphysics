@@ -97,7 +97,7 @@ def _process_jobs(client, scan_id) -> list[tuple[str, int]]:
 
 def test_legacy_geometry_complete_stays_browsable_with_semantics_blocked(make_client):
     stages, calls = _closing_stages()
-    with make_client(stages=stages) as client:
+    with make_client(stages=stages, evidence_settle_seconds=0.0) as client:
         scan_id = create_scan(client)
         _complete_geometry(client, scan_id)
         completed = client.post(f"/api/scans/{scan_id}/complete")
@@ -118,7 +118,7 @@ def test_legacy_geometry_complete_stays_browsable_with_semantics_blocked(make_cl
 
 def test_late_evidence_closes_exactly_one_new_bundle_and_one_job(make_client):
     stages, calls = _closing_stages()
-    with make_client(stages=stages) as client:
+    with make_client(stages=stages, evidence_settle_seconds=0.0) as client:
         scan_id = create_scan(client)
         _complete_geometry(client, scan_id)
         client.post(f"/api/scans/{scan_id}/complete")
@@ -142,7 +142,7 @@ def test_late_evidence_closes_exactly_one_new_bundle_and_one_job(make_client):
 
 def test_identical_replay_after_closure_adds_no_bundle_or_job(make_client):
     stages, calls = _closing_stages()
-    with make_client(stages=stages) as client:
+    with make_client(stages=stages, evidence_settle_seconds=0.0) as client:
         scan_id = create_scan(client)
         _complete_geometry(client, scan_id)
         _complete_semantics(client, scan_id)
@@ -163,7 +163,7 @@ def test_identical_replay_after_closure_adds_no_bundle_or_job(make_client):
 
 def test_duplicate_upload_of_same_semantic_bytes_adds_no_bundle(make_client):
     stages, calls = _closing_stages()
-    with make_client(stages=stages) as client:
+    with make_client(stages=stages, evidence_settle_seconds=0.0) as client:
         scan_id = create_scan(client)
         _complete_geometry(client, scan_id)
         _complete_semantics(client, scan_id)
@@ -176,3 +176,58 @@ def test_duplicate_upload_of_same_semantic_bytes_adds_no_bundle(make_client):
         drain(client)
         assert _process_jobs(client, scan_id) == [("done", 1)]
         assert client.get(f"/api/scans/{scan_id}/evidence").json()["bundle_version"] == 1
+
+
+def _valid_manifest_bytes() -> bytes:
+    import json as _json
+    return _json.dumps({
+        "manifest_version": 1,
+        "poses_sha256": "a" * 64,
+        "frames": [{"frame_id": "frame-0000", "sha256": "b" * 64, "bytes": 11}],
+    }).encode()
+
+
+def test_settling_complete_evidence_waits_for_quiet_or_explicit_complete(make_client):
+    stages, calls = _closing_stages()
+    with make_client(stages=stages, evidence_settle_seconds=3600.0) as client:
+        scan_id = create_scan(client)
+        _complete_geometry(client, scan_id)
+        client.post(f"/api/scans/{scan_id}/complete")
+        drain(client)
+        assert _process_jobs(client, scan_id) == [("done", 1)]
+
+        _complete_semantics(client, scan_id)
+        status = client.get(f"/api/scans/{scan_id}/evidence").json()
+        assert status["bundle_version"] == 4
+        assert status["complete_evidence"] is True
+        assert status["semantic_state"] == "settling"
+        assert status["semantic_job_pending"] is False
+        drain(client)
+        assert _process_jobs(client, scan_id) == [("done", 1)]
+        assert calls["discover"] == 0
+
+        client.post(f"/api/scans/{scan_id}/complete")
+        status = client.get(f"/api/scans/{scan_id}/evidence").json()
+        assert status["semantic_job_pending"] is True
+        drain(client)
+        assert _process_jobs(client, scan_id) == [("done", 2)]
+        assert calls["discover"] == 1
+        assert client.get(f"/api/scans/{scan_id}/evidence").json()["semantic_state"] == "complete"
+
+
+def test_closing_manifest_settles_the_evidence_immediately(make_client):
+    stages, calls = _closing_stages()
+    with make_client(stages=stages, evidence_settle_seconds=3600.0) as client:
+        scan_id = create_scan(client)
+        _complete_geometry(client, scan_id)
+        client.post(f"/api/scans/{scan_id}/complete")
+        drain(client)
+
+        _complete_semantics(client, scan_id)
+        put_artifact(client, scan_id, "photo-manifest", _valid_manifest_bytes(), "photo_manifest")
+        status = client.get(f"/api/scans/{scan_id}/evidence").json()
+        assert status["semantic_state"] == "queued"
+        assert status["semantic_job_pending"] is True
+        drain(client)
+        assert _process_jobs(client, scan_id) == [("done", 2)]
+        assert calls["discover"] == 1

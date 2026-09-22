@@ -136,7 +136,7 @@
           "scan_id": {"type": "string", "format": "uuid"},
           "geometry_state": {"type": "string", "enum": ["awaiting", "ready", "failed"]},
           "evidence_state": {"type": "string", "enum": ["awaiting", "partial", "complete", "incomplete"]},
-          "semantic_state": {"type": "string", "enum": ["not_started", "blocked_incomplete_evidence", "queued", "running", "complete", "failed"]},
+          "semantic_state": {"type": "string", "enum": ["not_started", "blocked_incomplete_evidence", "settling", "queued", "running", "complete", "failed"]},
           "present_kinds": {"type": "array", "items": {"type": "string"}},
           "missing_geometry_kinds": {"type": "array", "items": {"type": "string"}},
           "missing_semantic_kinds": {"type": "array", "items": {"type": "string"}},

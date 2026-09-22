@@ -490,7 +490,8 @@ export interface EvidenceStatus {
   reasons: string[];
   scan_id: string;
   semantic_job_pending: boolean;
-  semantic_state: "not_started" | "blocked_incomplete_evidence" | "queued" | "running" | "complete" | "failed";
+  semantic_state:
+    "not_started" | "blocked_incomplete_evidence" | "settling" | "queued" | "running" | "complete" | "failed";
 }
 /**
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema

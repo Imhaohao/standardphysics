@@ -141,7 +141,7 @@ def create_app(settings: Settings | None = None, stages: Stages | None = None, r
     install_auth(app, database)
     install_architecture_export_routes(app, database)
     _install_scan_routes(app, database, store)
-    _install_upload_routes(app, database, store, worker)
+    _install_upload_routes(app, database, store, worker, settings)
     _install_workspace_routes(app, database, store)
     _install_combine_routes(app, database, store, worker)
     _install_file_routes(app, database, store)
@@ -275,7 +275,7 @@ def _validate_staged(store: ArtifactStore, staged, kind: str) -> None:
         raise ApiProblem(400, message) from None
 
 
-def _install_upload_routes(app: FastAPI, database: Database, store: ArtifactStore, worker: Worker) -> None:
+def _install_upload_routes(app: FastAPI, database: Database, store: ArtifactStore, worker: Worker, settings: Settings) -> None:
     @app.put("/api/scans/{scan_id}/artifacts/{artifact_id}", response_model=Artifact, status_code=201)
     async def upload_artifact(
         scan_id: uuid.UUID,
@@ -305,7 +305,10 @@ def _install_upload_routes(app: FastAPI, database: Database, store: ArtifactStor
                 scan = _scan_or_404(connection, scan_id)
                 if scan.state != "uploading":
                     record_closure(connection, scan)
-                    queued_semantic = maybe_queue_semantic(connection, scan, PROCESS) == "queued"
+                    queued_semantic = maybe_queue_semantic(
+                        connection, scan, PROCESS,
+                        settle_seconds=settings.evidence_settle_seconds,
+                    ) == "queued"
         if queued_semantic:
             worker.wake()
         return JSONResponse(artifact.model_dump(mode="json"), status_code=status)
@@ -313,7 +316,16 @@ def _install_upload_routes(app: FastAPI, database: Database, store: ArtifactStor
     @app.post("/api/scans/{scan_id}/complete", response_model=Scan)
     def complete(scan_id: uuid.UUID, body: CompleteRequest | None = None) -> Scan:
         scan, queued = _finalize(database, store, scan_id)
-        if queued:
+        if not queued and scan.state != "uploading":
+            with database.transaction() as connection:
+                current = _scan_or_404(connection, scan_id)
+                explicit = maybe_queue_semantic(
+                    connection, current, PROCESS,
+                    settle_seconds=settings.evidence_settle_seconds, explicit=True,
+                ) == "queued"
+            if explicit:
+                worker.wake()
+        elif queued:
             worker.wake()
         return scan
 

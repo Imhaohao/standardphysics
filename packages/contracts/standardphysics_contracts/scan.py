@@ -24,7 +24,7 @@ scan can carry adequate calibrated stills without video or a coverage pass.
 """
 
 SemanticState = Literal[
-    "not_started", "blocked_incomplete_evidence", "queued", "running", "complete", "failed"
+    "not_started", "blocked_incomplete_evidence", "settling", "queued", "running", "complete", "failed"
 ]
 
 GeometryState = Literal["awaiting", "ready", "failed"]

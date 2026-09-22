@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import sqlite3
 import uuid
+from datetime import UTC, datetime
 
 from standardphysics_contracts import (
     EvidenceBundle,
@@ -38,12 +39,22 @@ def record_closure(connection: sqlite3.Connection, scan: Scan) -> EvidenceBundle
     return candidate
 
 
-def maybe_queue_semantic(connection: sqlite3.Connection, scan: Scan, kind: str) -> str | None:
+def maybe_queue_semantic(
+    connection: sqlite3.Connection,
+    scan: Scan,
+    kind: str,
+    *,
+    settle_seconds: float = 30.0,
+    explicit: bool = False,
+) -> str | None:
     """Queue one semantic job for an unprocessed complete bundle.
 
-    Returns "queued" when a job was queued, "pending" while one is already
-    queued or running, and None when nothing is due. The caller wakes the
-    worker exactly when this returns "queued".
+    A phone delivers evidence over minutes (frames one by one, manifest last):
+    queueing per arrival would run hundreds of provider jobs on partial
+    evidence. A job is only due when the bundle is complete, no result has been
+    published for it, nothing is already queued, and either the caller asks
+    explicitly (a re-posted /complete) or the evidence has been quiet for
+    `settle_seconds`. Returns "queued", "pending", or None.
     """
     bundle = repo.latest_bundle(connection, scan.id)
     if bundle is None or not bundle.complete:
@@ -52,8 +63,26 @@ def maybe_queue_semantic(connection: sqlite3.Connection, scan: Scan, kind: str) 
         return None
     if repo.has_pending_process_job(connection, scan.id):
         return "pending"
+    if not explicit and not _settled(connection, scan.id, bundle, settle_seconds):
+        return None
     repo.queue_job_again(connection, scan.id, kind, 0)
     return "queued"
+
+
+def _settled(
+    connection: sqlite3.Connection,
+    scan_id: uuid.UUID,
+    bundle: EvidenceBundle,
+    settle_seconds: float,
+) -> bool:
+    """The evidence has stopped moving: the closing manifest is in, or it is quiet."""
+    if "photo_manifest" in bundle.artifact_hashes:
+        return True
+    latest = repo.latest_semantic_arrival(connection, scan_id)
+    if latest is None:
+        return True
+    arrival = datetime.fromisoformat(latest)
+    return (datetime.now(UTC) - arrival).total_seconds() >= settle_seconds
 
 
 def mark_processed_if_complete(connection: sqlite3.Connection, scan_id: uuid.UUID) -> None:
@@ -112,9 +141,9 @@ def _semantic_state(scan: Scan, bundle: EvidenceBundle | None, pending: bool, st
         return "complete"
     if pending:
         return "running" if "running" in states else "queued"
-    if not bundle.complete:
-        return "blocked_incomplete_evidence"
-    return "not_started"
+    if bundle.complete:
+        return "settling"
+    return "blocked_incomplete_evidence"
 
 
 def _semantic_notes(scan: Scan, bundle: EvidenceBundle | None, missing_semantic: list[str]) -> list[str]:
@@ -126,4 +155,6 @@ def _semantic_notes(scan: Scan, bundle: EvidenceBundle | None, missing_semantic:
         )
     if scan.state == "ready" and bundle is not None and not bundle.complete:
         notes.append("geometry is usable but the scan is not evidence-complete for semantic detection")
+    if bundle is not None and bundle.complete and bundle.semantic_processed_hash != bundle.manifest_hash:
+        notes.append("complete evidence has not settled yet; recognition waits for it to stop changing")
     return notes
