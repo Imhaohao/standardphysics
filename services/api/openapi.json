@@ -55,11 +55,40 @@
     "/api/scans/{scan_id}/complete": {
       "post": {
         "summary": "Finalize the upload and queue processing",
-        "description": "Idempotent. Requires room_usdz and room_json. Queues reconstruct, validate, check, evaluate, propose as one job; retrying creates no duplicates.",
+        "description": "Idempotent. Requires room_usdz and room_json. The optional body lets a new client declare what it believes it finished; the server decides from stored bytes, so a legacy call with no body behaves exactly as before. Geometry can be ready while photo evidence is still incomplete; GET /api/scans/{scan_id}/evidence says which.",
         "parameters": [{"name": "scan_id", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}}],
+        "requestBody": {
+          "required": false,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CompleteRequest"}}}
+        },
         "responses": {
           "200": {"description": "Queued", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Scan"}}}},
           "409": {"description": "Missing required artifacts"}
+        }
+      }
+    },
+    "/api/scans/{scan_id}/evidence": {
+      "get": {
+        "summary": "Geometry, evidence and semantic readiness of a scan",
+        "parameters": [{"name": "scan_id", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}}],
+        "responses": {
+          "200": {"description": "Readiness", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/EvidenceStatus"}}}}
+        }
+      }
+    },
+    "/api/scans/{scan_id}/revisions/{base_revision}/observations": {
+      "put": {
+        "summary": "Store a person's manual photo mark for a target the pipeline did not find",
+        "description": "With node_id the mark attaches to that measured object's evidence; without one it is stored unlocalized. Manual marks keep their actor and time and are never reported as automatic detections.",
+        "parameters": [
+          {"name": "scan_id", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+          {"name": "base_revision", "in": "path", "required": true, "schema": {"type": "integer"}}
+        ],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ManualMarkRequest"}}}},
+        "responses": {
+          "201": {"description": "Saved revision with the observation"},
+          "404": {"description": "Unknown scan, revision or node"},
+          "409": {"description": "Stale base revision"}
         }
       }
     },
@@ -85,12 +114,50 @@
     "schemas": {
       "ArtifactKind": {
         "type": "string",
-        "enum": ["room_usdz", "room_json", "room_metadata", "walkthrough_mp4", "frames", "poses", "coverage", "lidar_mesh"]
+        "enum": ["room_usdz", "room_json", "room_metadata", "walkthrough_mp4", "frames", "poses", "coverage", "lidar_mesh", "photo_manifest"]
       },
       "ScanState": {
         "type": "string",
         "enum": ["uploading", "measuring", "checking", "ready", "failed"],
-        "description": "The app shows these as Uploading, Measuring your shop, Checking, Ready."
+        "description": "The app shows these as Uploading, Measuring your shop, Checking, Ready. Ready on this state does not mean photo recognition used complete evidence; see EvidenceStatus."
+      },
+      "CompleteRequest": {
+        "type": "object",
+        "properties": {
+          "declared_complete": {"type": "boolean"},
+          "manifest_hash": {"type": ["string", "null"]},
+          "client_version": {"type": ["string", "null"]}
+        }
+      },
+      "EvidenceStatus": {
+        "type": "object",
+        "required": ["scan_id", "geometry_state", "evidence_state", "semantic_state"],
+        "properties": {
+          "scan_id": {"type": "string", "format": "uuid"},
+          "geometry_state": {"type": "string", "enum": ["awaiting", "ready", "failed"]},
+          "evidence_state": {"type": "string", "enum": ["awaiting", "partial", "complete", "incomplete"]},
+          "semantic_state": {"type": "string", "enum": ["not_started", "blocked_incomplete_evidence", "queued", "running", "complete", "failed"]},
+          "present_kinds": {"type": "array", "items": {"type": "string"}},
+          "missing_geometry_kinds": {"type": "array", "items": {"type": "string"}},
+          "missing_semantic_kinds": {"type": "array", "items": {"type": "string"}},
+          "reasons": {"type": "array", "items": {"type": "string"}},
+          "bundle_version": {"type": "integer"},
+          "manifest_hash": {"type": ["string", "null"]},
+          "complete_evidence": {"type": "boolean"},
+          "semantic_job_pending": {"type": "boolean"}
+        }
+      },
+      "ManualMarkRequest": {
+        "type": "object",
+        "required": ["target_class", "frame_id", "sensor_box"],
+        "properties": {
+          "target_class": {"type": "string", "enum": ["outlet", "television", "service_counter", "restroom_entrance", "sofa", "table", "whiteboard", "monitor", "other"]},
+          "frame_id": {"type": "string"},
+          "sensor_box": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "number"}},
+          "node_id": {"type": ["string", "null"], "format": "uuid"},
+          "note": {"type": ["string", "null"]},
+          "review_status": {"type": "string", "enum": ["candidate", "confirmed_by_user"]}
+        }
       },
       "Artifact": {
         "type": "object",
