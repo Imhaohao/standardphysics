@@ -90,8 +90,26 @@ def maybe_queue_semantic(
         return "pending"
     if not explicit and not _settled(connection, scan.id, bundle, settle_seconds):
         return None
+    if not explicit and _attempted_this_input(connection, scan.id, bundle.manifest_hash):
+        return None
     repo.queue_job_again(connection, scan.id, kind, 0)
     return "queued"
+
+
+def _attempted_this_input(connection: sqlite3.Connection, scan_id: uuid.UUID, manifest_hash: str) -> bool:
+    """Whether a process job already ran on this exact manifest.
+
+    A deferred run never counts, and a failed one must not spin: with no new
+    evidence the settled sweep would otherwise re-queue the same doomed job
+    every idle tick. New evidence changes the manifest, so its first attempt
+    always passes this gate. An explicit /complete bypasses it on purpose.
+    A job that never bound an input failed before it knew what it consumed;
+    it is treated the same rather than retried blind.
+    """
+    last = repo.latest_process_job(connection, scan_id)
+    if last is None:
+        return False
+    return last["input_hash"] is None or last["input_hash"] == manifest_hash
 
 
 def _settled(

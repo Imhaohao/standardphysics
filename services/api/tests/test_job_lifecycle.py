@@ -523,6 +523,74 @@ def test_quiet_late_evidence_settles_by_worker_sweep_across_restart(tmp_path):
         assert [row[:2] for row in _job_states(client, scan_id)] == [("done", 2)]
 
 
+def test_sweep_never_retries_a_failed_input_until_new_evidence(tmp_path):
+    import conftest
+
+    calls = {"discover": 0}
+
+    def flaky(inputs):
+        calls["discover"] += 1
+        if calls["discover"] == 1:
+            raise RuntimeError("provider died")
+        return DiscoveryResult()
+
+    client_ctx = _restarted_client(
+        tmp_path,
+        _stages(flaky),
+        conftest.OWNER_EMAIL,
+        conftest.OWNER_PASSWORD,
+        sign_in=False,
+        settle_seconds=0.0,
+    )
+    with client_ctx as client:
+        assert (
+            client.post(
+                "/api/auth/sign-up",
+                json={"email": "storm@example.com", "password": "storm-owner-password", "shop_name": "storm"},
+            ).status_code
+            == 201
+        )
+        scan_id = create_scan(client)
+        _complete_geometry(client, scan_id)
+        _complete_semantics(client, scan_id)
+        assert client.post(f"/api/scans/{scan_id}/complete").status_code == 200
+        deadline = time.monotonic() + 60
+        while time.monotonic() < deadline:
+            status = client.get(f"/api/scans/{scan_id}/evidence").json()
+            if status["semantic_state"] == "failed":
+                break
+            time.sleep(0.1)
+        failed = client.get(f"/api/scans/{scan_id}/evidence").json()
+        assert failed["semantic_state"] == "failed", failed
+        with client.app.state.database.connect() as connection:
+            attempts_after_failure = connection.execute(
+                "SELECT attempts FROM jobs WHERE scan_id = ? AND kind = 'process'",
+                (scan_id,),
+            ).fetchone()[0]
+        assert attempts_after_failure == 1
+
+        # Let the idle sweep tick several times; nothing may re-queue the same input.
+        time.sleep(6)
+        with client.app.state.database.connect() as connection:
+            row = connection.execute(
+                "SELECT state, attempts FROM jobs WHERE scan_id = ? AND kind = 'process'",
+                (scan_id,),
+            ).fetchone()
+        assert tuple(row) == ("failed", 1), tuple(row)
+
+        put_artifact(client, scan_id, "frames-fresh", b"evidence that changes the input", "frames")
+        deadline = time.monotonic() + 60
+        while time.monotonic() < deadline:
+            status = client.get(f"/api/scans/{scan_id}/evidence").json()
+            if status["semantic_state"] == "complete":
+                break
+            time.sleep(0.1)
+        settled = client.get(f"/api/scans/{scan_id}/evidence").json()
+        assert settled["semantic_state"] == "complete", settled
+        assert calls["discover"] == 2
+        assert [row[:2] for row in _job_states(client, scan_id)] == [("done", 2)]
+
+
 def test_discovery_inputs_point_crops_at_the_scan_crop_dir(tmp_path):
     import uuid as uuid_module
 

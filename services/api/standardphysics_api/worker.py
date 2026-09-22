@@ -207,6 +207,9 @@ class Worker:
         with self.database.connect() as connection:
             bundle = repo.latest_bundle(connection, scan_id)
             consumed = (bundle.version, bundle.manifest_hash) if bundle else None
+        if consumed is not None:
+            with self.database.transaction() as connection:
+                repo.set_job_binding(connection, job["id"], consumed[1], None)
         association_state, association_failure, declared = evidence.association_state(
             self.database, self.store, scan_id
         )
