@@ -1,0 +1,17 @@
+{
+  "objective": "Room 6 (cdb7ced5-b67f-4f94-8639-0257a1dd8e9a) as a testbed: render the whole room without gaps using ElevenLabs-generated materials.",
+  "status": "complete",
+  "updated_at": "2026-09-22T17:00:00-07:00",
+  "findings": {
+    "scan_holes": "Room 6 LiDAR scan has no surface over 25% of wall area and 63% of floor area (5 cm grid, 6 cm tolerance); colour cannot fill holes, so the gapless view is the box model (scene.glb).",
+    "box_model_coverage": "Photos reach 48% of the box model's texels; the other 52% now take room materials.",
+    "tinting": "Tinting room-generated materials to the photographed median made a wall mid-grey (dark projected shapes pulled the median down); room materials now keep their own colour, generic ones are still tinted."
+  },
+  "phases": [
+    {"name": "outlet discovery on room 6", "status": "complete", "notes": "99 photos read, 11 objects; added as revision 2: 1 outlet, 1 candidate outlet, television, sofa, 2 whiteboards. Needs Settings.from_environment() for .env keys and SSL_CERT_FILE=certifi bundle (python.org Python has no CA store)."},
+    {"name": "material keys per labelled object + shared fill core", "status": "complete"},
+    {"name": "box model (atlas) fill for unphotographed texels", "status": "complete"},
+    {"name": "room-matched materials from photo crops via gpt-image-2 inline references", "status": "complete", "notes": "8 materials: chair, floor, front door, table, television, wall, whiteboard, window. Outlet and sofa skipped: fewer than 200 photographed points each."},
+    {"name": "rebuild room 6 textures and render before/after", "status": "complete", "notes": "runs/surface-materials-preview/room6-box-before-after.jpg, room6-scan-before-after.jpg, room6-references-vs-materials.jpg"}
+  ]
+}

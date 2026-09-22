@@ -17,6 +17,7 @@ from standardphysics_contracts import PhotoManifest, PoseRecord, SceneGraph, Tex
 from standardphysics_pipeline.ingest import capture_to_room_from_payload
 from standardphysics_pipeline.textures import BakeInputs, bake_graph_for, stale_node_ids, texture_build_key
 from standardphysics_pipeline.textures.scan_colour import paint_the_scan
+from standardphysics_pipeline.textures.surface_materials import materials_digest
 
 from . import repository as repo
 from .errors import ApiProblem
@@ -72,14 +73,20 @@ def _inputs_from_poses(connection, store, scan_id):
         if artifact is None or artifact.kind != "frames":
             return "waiting_for_photos", None, None
         frames[frame_id], shas[frame_id] = artifact.id, artifact.sha256
-    return "not_started", _built(connection, scan_id, poses, frames, shas), None
+    return "not_started", _built(connection, store, scan_id, poses, frames, shas), None
 
 
-def _built(connection, scan_id, poses, frames: dict, shas: dict) -> dict:
-    """The bake inputs, keyed by the photos themselves.
+def room_materials_dir(store, scan_id) -> pathlib.Path:
+    """Where a room's own generated materials live, if it has any."""
+    return store.scan_dir(scan_id) / "materials"
+
+
+def _built(connection, store, scan_id, poses, frames: dict, shas: dict) -> dict:
+    """The bake inputs, keyed by the photos themselves and the room's own materials.
 
     The key has to name the same build whether the phone's manifest arrived or
-    the poses stood in for it, or one capture bakes twice under two names.
+    the poses stood in for it, or one capture bakes twice under two names. New
+    materials for a room change how it looks, so they change the key too.
     """
     lidar = repo.artifact_of_kind(connection, scan_id, "lidar_mesh")
     digest = hashlib.sha256(poses.sha256.encode())
@@ -87,6 +94,7 @@ def _built(connection, scan_id, poses, frames: dict, shas: dict) -> dict:
         digest.update(frame_id.encode())
         digest.update(shas[frame_id].encode())
     digest.update((lidar.sha256 if lidar else "").encode())
+    digest.update(materials_digest(room_materials_dir(store, scan_id)).encode())
     return {
         "poses": poses.id, "frames": frames,
         "lidar": lidar.id if lidar else None, "digest": digest.hexdigest(),
@@ -128,7 +136,7 @@ def _inputs(connection, store, scan_id):
         if uploaded is None:
             return "waiting_for_photos", None, None
         frames, shas = uploaded
-        return "not_started", _built(connection, scan_id, poses, frames, shas), None
+        return "not_started", _built(connection, store, scan_id, poses, frames, shas), None
     except (ValueError, TypeError, OSError, ValidationError) as error:
         return "failed", None, str(error)[:300]
 
@@ -195,6 +203,16 @@ def texture_status(database, store, scan_id, revision=None):
         return _status(connection, store, scan_id, revision)[0]
 
 
+def bake_inputs(database, store, scan_id, revision=None):
+    """The layout a build would bake for this revision and the stored inputs it would read.
+
+    Returns (bake_graph, inputs), where inputs is None while photos are missing.
+    """
+    with database.connect() as connection:
+        _, bake, inputs, _ = _status(connection, store, scan_id, revision)
+    return bake, inputs
+
+
 def queue_texture(database, store, worker, scan_id, revision=None, *, retry=False):
     with database.transaction() as connection:
         status, bake, inputs, key = _status(connection, store, scan_id, revision)
@@ -240,6 +258,7 @@ def _paint_the_scan(store, scan_id, graph, inputs, out_dir) -> bool:
             frame_paths={key: store.artifact_path(scan_id, value) for key, value in inputs["frames"].items()},
             graph=graph,
             out_path=out_dir / "scan.glb",
+            materials_dir=room_materials_dir(store, scan_id),
         )
     except (ValueError, OSError, RuntimeError) as error:
         log.warning("no coloured scan for %s: %s", scan_id, error)
@@ -321,6 +340,7 @@ def run_texture(database, store, stages, scan_id, build_id):
                 frame_paths={key: store.artifact_path(scan_id, value) for key, value in inputs["frames"].items()},
                 lidar_mesh_path=store.artifact_path(scan_id, inputs["lidar"]) if inputs["lidar"] else None,
                 out_dir=temporary,
+                materials_dir=room_materials_dir(store, scan_id),
             ))
             prefix = build_prefix(scan_id, row["build_key"])
             if not baked.glb_path.is_file() or baked.glb_path.name != "scene.glb" or baked.glb_path.parent != temporary:

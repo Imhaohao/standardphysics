@@ -1,22 +1,27 @@
-"""Generated materials for the stretches of wall and floor no photo reached.
+"""Generated materials for whatever part of a room no photo reached.
 
-A scanned vertex no camera saw used to stay the scan's neutral grey, so a wall
-read as photo patches floating on blank sheet. Here each of those vertices on a
-room surface takes a repeating material instead, sampled at its real position
-so the pattern keeps its physical size, and tinted to the median colour the
-photos did record on that same surface so the fill meets the photo without a
-step in brightness.
+A surface no camera saw used to keep one flat colour, so a room read as photo
+patches floating on blank sheet. Here every unphotographed point that belongs
+to a wall, a floor or a labelled object takes a repeating material for what it
+is, sampled at its real position so the pattern keeps its physical size, and
+tinted to the median colour the photos did record on that same thing so the
+fill meets the photo without a step in brightness.
 
-Display only. `seen` is never touched: a filled vertex is a picture of what the
-surface probably looks like, and coverage keeps reporting what a camera measured.
+Materials are keyed by what a surface is: "wall", "floor", or an object's label
+in lower case ("chair", "television", "outlet"). The generic set ships with the
+package; a room may carry its own set, generated from its own photos, which
+overrides the generic one key by key.
+
+Display only. Coverage is never touched: a filled point is a picture of what
+the surface probably looks like, and coverage keeps reporting what a camera saw.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import pathlib
 from dataclasses import dataclass, replace
-from typing import Literal
 
 import numpy as np
 from PIL import Image
@@ -25,17 +30,17 @@ from standardphysics_contracts import SceneGraph, SceneNode, bounds_the_room, st
 from .project import to_linear, to_srgb
 from .scan_colour import ColouredScan, vertex_normals
 
-SurfaceKind = Literal["wall", "floor"]
-SURFACE_KINDS: tuple[SurfaceKind, ...] = ("wall", "floor")
 MATERIALS_DIR = pathlib.Path(__file__).parent / "materials"
 MANIFEST = "materials.json"
 
 SURFACE_REACH = 0.10
 """How far off a measured sheet, in metres, a scanned vertex may sit and still belong to it."""
+OBJECT_REACH = 0.03
+"""How far outside a labelled object's box a scanned vertex may sit and still belong to it."""
 FACING_THE_SHEET = 0.8
 """How nearly a vertex must face along the sheet's normal to belong to it."""
 MIN_SEEN_FOR_TINT = 50
-"""Photographed vertices a surface needs before its own colour sets the tint."""
+"""Photographed points a surface needs before its own colour sets the tint."""
 
 
 @dataclass(frozen=True)
@@ -44,31 +49,71 @@ class SurfaceMaterial:
     """Linear RGB, float32, height x width x 3, repeating seamlessly in both directions."""
     metres_across: float
     """The real width one repetition of the tile covers."""
+    tint: bool = True
+    """Whether to move the tile onto the photographed colour of what it fills.
+
+    A generic tile is a neutral grey and must be tinted. A room's own tile was
+    generated from its own photo and already has the right colour; tinting it
+    to a median dragged dark by a reflection or a poster only makes it wrong.
+    """
+
+    @property
+    def median(self) -> np.ndarray:
+        return np.median(self.tile.reshape(-1, 3), axis=0)
 
 
-@dataclass(frozen=True)
-class RoomSurfaces:
-    kinds: np.ndarray
-    """Index into SURFACE_KINDS per vertex, or -1 for anything that is not a room surface."""
-    owners: np.ndarray
-    """Index of the graph node each vertex belongs to, or -1."""
+def material_key(node: SceneNode) -> str:
+    """What a node is, as far as choosing a material goes.
+
+    Discovery names things like "Outlet (electrical outlet)" or "Candidate outlet
+    (power outlet)"; both are an outlet, and look like the one RoomPlan calls
+    "Outlet", so the gloss in brackets and the word "candidate" are dropped.
+    """
+    if _is_room_sheet(node):
+        return "wall" if stands_upright(node) else "floor"
+    name = node.label.split("(")[0].strip().lower()
+    return name.removeprefix("candidate ").strip()
 
 
-def load_materials(directory: pathlib.Path = MATERIALS_DIR) -> dict[SurfaceKind, SurfaceMaterial]:
-    """The generated tiles, keyed by surface. No manifest means no materials, not an error."""
-    manifest_path = directory / MANIFEST
-    if not manifest_path.is_file():
-        return {}
-    manifest = json.loads(manifest_path.read_text())
-    materials: dict[SurfaceKind, SurfaceMaterial] = {}
-    for kind in SURFACE_KINDS:
-        entry = manifest.get(kind)
-        if entry is None:
+def _manifest(directory: pathlib.Path) -> dict:
+    path = directory / MANIFEST
+    return json.loads(path.read_text()) if path.is_file() else {}
+
+
+def _material_from(directory: pathlib.Path, entry: dict) -> SurfaceMaterial:
+    with Image.open(directory / entry["image"]) as opened:
+        srgb = np.asarray(opened.convert("RGB"), dtype=np.float32) / 255.0
+    return SurfaceMaterial(to_linear(srgb).astype(np.float32), float(entry["metres_across"]), bool(entry.get("tint", True)))
+
+
+def load_materials(*directories: pathlib.Path | None) -> dict[str, SurfaceMaterial]:
+    """Every material in the given folders; a later folder overrides an earlier one key by key.
+
+    With no folders given, the generic set that ships with the package. A folder
+    without a manifest contributes nothing rather than failing.
+    """
+    materials: dict[str, SurfaceMaterial] = {}
+    for directory in directories or (MATERIALS_DIR,):
+        if directory is None:
             continue
-        with Image.open(directory / entry["image"]) as opened:
-            srgb = np.asarray(opened.convert("RGB"), dtype=np.float32) / 255.0
-        materials[kind] = SurfaceMaterial(to_linear(srgb).astype(np.float32), float(entry["metres_across"]))
+        for key, entry in _manifest(directory).items():
+            materials[key] = _material_from(directory, entry)
     return materials
+
+
+def room_materials(room_directory: pathlib.Path | None) -> dict[str, SurfaceMaterial]:
+    """The generic set with a room's own materials laid over it."""
+    return load_materials(MATERIALS_DIR, room_directory)
+
+
+def materials_digest(directory: pathlib.Path | None) -> str:
+    """A fingerprint of a room's own materials, so a build made before they changed is not reused."""
+    if directory is None or not (directory / MANIFEST).is_file():
+        return ""
+    digest = hashlib.sha256((directory / MANIFEST).read_bytes())
+    for entry in sorted(_manifest(directory).values(), key=lambda entry: entry["image"]):
+        digest.update((directory / entry["image"]).read_bytes())
+    return digest.hexdigest()
 
 
 def _is_room_sheet(node: SceneNode) -> bool:
@@ -82,40 +127,46 @@ def _node_frame(node: SceneNode) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     return matrix[:3, :3], matrix[:3, 3], half
 
 
-def _vertices_on_sheet(node: SceneNode, vertices: np.ndarray, normals: np.ndarray) -> np.ndarray:
+def _inside(node: SceneNode, vertices: np.ndarray, reach: float) -> np.ndarray:
+    rotation, centre, half = _node_frame(node)
+    local = (vertices - centre) @ rotation
+    return np.all(np.abs(local) <= half + reach, axis=1)
+
+
+def _on_sheet(node: SceneNode, vertices: np.ndarray, normals: np.ndarray) -> np.ndarray:
     """Vertices inside the sheet's padded box that face the room from it.
 
     A wall is seen from either side, so either facing counts. A floor is only
     ever its top: a vertex facing down inside a floor's box is the underside of
     something standing on it.
     """
-    rotation, centre, half = _node_frame(node)
-    local = (vertices - centre) @ rotation
-    within = np.all(np.abs(local) <= half + SURFACE_REACH, axis=1)
+    within = _inside(node, vertices, SURFACE_REACH)
     if stands_upright(node):
+        rotation, _, half = _node_frame(node)
         sheet_normal = rotation[:, int(np.argmin(half))]
         return within & (np.abs(normals @ sheet_normal) >= FACING_THE_SHEET)
     return within & (normals[:, 2] >= FACING_THE_SHEET)
 
 
-def room_surfaces(vertices: np.ndarray, normals: np.ndarray, graph: SceneGraph) -> RoomSurfaces:
-    """Which measured wall or floor each scanned vertex lies on.
+def room_owners(vertices: np.ndarray, normals: np.ndarray, graph: SceneGraph) -> np.ndarray:
+    """Index of the graph node each scanned vertex lies on, or -1 when it lies on none.
 
-    The graph and the scan share the room frame, Z up. A vertex belongs to a
+    The graph and the scan share the room frame, Z up. Objects claim first, so a
+    television or whiteboard on a wall is itself and not the wall behind it. A
+    vertex belongs to an object when it sits inside the object's box, and to a
     sheet when it sits inside the sheet's box, padded because a wall is measured
     as a plane of no thickness, and faces along the sheet's normal, so the side
     of a cabinet pressed against a wall is not taken for the wall. Room graphs
-    carry no ceiling, so a ceiling is left to whatever fills the rest.
+    carry no ceiling, so a ceiling belongs to nothing.
     """
-    kinds = np.full(len(vertices), -1, dtype=np.int8)
     owners = np.full(len(vertices), -1, dtype=np.int32)
-    for index, node in enumerate(graph.nodes):
-        if not _is_room_sheet(node):
-            continue
-        claimed = _vertices_on_sheet(node, vertices, normals) & (owners < 0)
-        owners[claimed] = index
-        kinds[claimed] = SURFACE_KINDS.index("wall" if stands_upright(node) else "floor")
-    return RoomSurfaces(kinds, owners)
+    objects = [(index, node) for index, node in enumerate(graph.nodes) if not _is_room_sheet(node)]
+    sheets = [(index, node) for index, node in enumerate(graph.nodes) if _is_room_sheet(node)]
+    for index, node in objects:
+        owners[_inside(node, vertices, OBJECT_REACH) & (owners < 0)] = index
+    for index, node in sheets:
+        owners[_on_sheet(node, vertices, normals) & (owners < 0)] = index
+    return owners
 
 
 def _wrapped_bilinear(tile: np.ndarray, u: np.ndarray, v: np.ndarray) -> np.ndarray:
@@ -147,52 +198,67 @@ def tinted_to(pattern: np.ndarray, target: np.ndarray, pattern_median: np.ndarra
     return np.clip(pattern * (target / np.maximum(pattern_median, 1e-4)), 0.0, 1.0)
 
 
-def _median_linear(colours_srgb: np.ndarray) -> np.ndarray | None:
-    if len(colours_srgb) < MIN_SEEN_FOR_TINT:
-        return None
-    return np.median(to_linear(colours_srgb), axis=0)
+def _median_of(colours: np.ndarray) -> np.ndarray | None:
+    return np.median(colours, axis=0) if len(colours) >= MIN_SEEN_FOR_TINT else None
 
 
-def _tint_targets(scan: ColouredScan, surfaces: RoomSurfaces, kind_index: int) -> dict[int, np.ndarray]:
-    """The photographed colour of each sheet of this kind, falling back to the room's for that kind."""
-    of_kind = surfaces.kinds == kind_index
-    room_colour = _median_linear(scan.colours[of_kind & scan.seen])
-    targets = {}
-    for owner in np.unique(surfaces.owners[of_kind]):
-        own_colour = _median_linear(scan.colours[of_kind & scan.seen & (surfaces.owners == owner)])
-        chosen = own_colour if own_colour is not None else room_colour
-        if chosen is not None:
-            targets[int(owner)] = chosen
-    return targets
+@dataclass(frozen=True)
+class MaterialFill:
+    """Which material each owner takes, and the materials themselves."""
 
+    owner_keys: list[str]
+    """The material key of each owner, indexed the way the owners array indexes them."""
+    materials: dict[str, SurfaceMaterial]
 
-def _fill_kind(
-    scan: ColouredScan, normals: np.ndarray, surfaces: RoomSurfaces,
-    kind_index: int, material: SurfaceMaterial, colours: np.ndarray,
-) -> None:
-    unseen = (surfaces.kinds == kind_index) & ~scan.seen
-    if not unseen.any():
-        return
-    pattern_median = np.median(material.tile.reshape(-1, 3), axis=0)
-    targets = _tint_targets(scan, surfaces, kind_index)
-    for owner in np.unique(surfaces.owners[unseen]):
-        here = np.flatnonzero(unseen & (surfaces.owners == owner))
-        pattern = planar_sample(material, scan.vertices[here], normals[here])
-        target = targets.get(int(owner), pattern_median)
-        colours[here] = to_srgb(tinted_to(pattern, target, pattern_median))
+    @classmethod
+    def for_graph(cls, graph: SceneGraph, materials: dict[str, SurfaceMaterial]) -> MaterialFill:
+        return cls([material_key(node) for node in graph.nodes], materials)
+
+    def _tint_targets(self, colours: np.ndarray, photographed: np.ndarray, owners: np.ndarray) -> dict[int, np.ndarray]:
+        """Each owner's photographed colour, falling back to the colour of everything sharing its key."""
+        by_key: dict[str, np.ndarray] = {}
+        for key in set(self.owner_keys):
+            same_key = np.isin(owners, [i for i, k in enumerate(self.owner_keys) if k == key])
+            colour = _median_of(colours[same_key & photographed])
+            if colour is not None:
+                by_key[key] = colour
+        targets = {}
+        for owner in np.unique(owners[owners >= 0]):
+            own = _median_of(colours[photographed & (owners == owner)])
+            chosen = own if own is not None else by_key.get(self.owner_keys[owner])
+            if chosen is not None:
+                targets[int(owner)] = chosen
+        return targets
+
+    def apply(
+        self, colours: np.ndarray, photographed: np.ndarray,
+        positions: np.ndarray, normals: np.ndarray, owners: np.ndarray,
+    ) -> np.ndarray:
+        """Linear colours with every unphotographed point that has a material given it."""
+        if not self.materials or photographed.all():
+            return colours
+        filled = colours.copy()
+        targets = self._tint_targets(colours, photographed, owners)
+        unphotographed = ~photographed & (owners >= 0)
+        for owner in np.unique(owners[unphotographed]):
+            material = self.materials.get(self.owner_keys[owner])
+            if material is None:
+                continue
+            here = np.flatnonzero(unphotographed & (owners == owner))
+            pattern = planar_sample(material, positions[here], normals[here])
+            target = targets.get(int(owner), material.median) if material.tint else material.median
+            filled[here] = tinted_to(pattern, target, material.median)
+        return filled
 
 
 def unseen_surfaces_filled(
-    scan: ColouredScan, graph: SceneGraph, materials: dict[SurfaceKind, SurfaceMaterial]
+    scan: ColouredScan, graph: SceneGraph, materials: dict[str, SurfaceMaterial]
 ) -> ColouredScan:
-    """The scan with every unphotographed wall and floor vertex given its material."""
+    """The scan with every unphotographed vertex on a wall, floor or labelled object given its material."""
     if not materials or scan.seen.all():
         return scan
     normals = vertex_normals(scan.vertices, scan.triangles)
-    surfaces = room_surfaces(scan.vertices, normals, graph)
-    colours = scan.colours.copy()
-    for kind_index, kind in enumerate(SURFACE_KINDS):
-        material = materials.get(kind)
-        if material is not None:
-            _fill_kind(scan, normals, surfaces, kind_index, material, colours)
-    return replace(scan, colours=colours)
+    owners = room_owners(scan.vertices, normals, graph)
+    linear = to_linear(scan.colours).astype(np.float32)
+    filled = MaterialFill.for_graph(graph, materials).apply(linear, scan.seen, scan.vertices, normals, owners)
+    return replace(scan, colours=to_srgb(filled).astype(np.float32))

@@ -245,37 +245,53 @@ def _photo(path: pathlib.Path) -> np.ndarray:
         return np.asarray(image, dtype=np.float32) / 255.0
 
 
+def coloured_scan(
+    mesh_path: pathlib.Path,
+    poses_path: pathlib.Path,
+    frame_paths: dict[str, pathlib.Path],
+    capture_to_room,
+) -> tuple[ColouredScan, list[PhotoCamera]]:
+    """The captured surface in the room frame, each vertex coloured by its best photo.
+
+    Returns the cameras at the stored photos' own resolution too, so a caller can
+    go back to a full-size photo for a vertex its `sources` names.
+    """
+    vertices, triangles = scan_geometry(mesh_path, capture_to_room)
+    cameras = [
+        camera for camera in load_cameras(poses_path, frame_paths, capture_to_room)
+        if frame_paths.get(camera.frame_id, pathlib.Path()).is_file()
+    ]
+    cameras = _evenly_spread(cameras, MAX_PHOTOS)
+    if not cameras:
+        raise ValueError("no stored photo has a usable camera pose")
+    images = [_photo(frame_paths[camera.frame_id]) for camera in cameras]
+    resized = [camera.resized(*image.shape[1::-1]) for camera, image in zip(cameras, images)]
+    return unused_vertices_removed(colour_the_scan(vertices, triangles, resized, images)), cameras
+
+
 def paint_the_scan(
     mesh_path: pathlib.Path,
     poses_path: pathlib.Path,
     frame_paths: dict[str, pathlib.Path],
     graph: SceneGraph,
     out_path: pathlib.Path,
+    materials_dir: pathlib.Path | None = None,
 ) -> ScanPaint:
     """The captured surface, coloured from the photos, as a glTF the viewer can show.
 
-    Walls and floors no photo reached take their generated material, so the room
-    reads whole rather than as photo patches on grey. Everything else stays the
+    Walls, floors and labelled objects no photo reached take their generated
+    material, the room's own when `materials_dir` holds one, so the room reads
+    whole rather than as photo patches on grey. Everything else stays the
     neutral grey: copying the nearest photographed colour was tried and smeared
     vivid streaks across ceilings and undersides. `painted_fraction` is measured
     before the fill, so it still reports only what a camera saw.
     """
     import time
 
-    from .surface_materials import load_materials, unseen_surfaces_filled
+    from .surface_materials import room_materials, unseen_surfaces_filled
 
     started = time.monotonic()
-    vertices, triangles = scan_geometry(mesh_path, graph.capture_to_room)
-    cameras = [
-        camera for camera in load_cameras(poses_path, frame_paths, graph.capture_to_room)
-        if frame_paths.get(camera.frame_id, pathlib.Path()).is_file()
-    ]
-    cameras = _evenly_spread(cameras, MAX_PHOTOS)
-    if not cameras:
-        raise ValueError("no stored photo has a usable camera pose")
-    resized = [camera.resized(*_photo(frame_paths[camera.frame_id]).shape[1::-1]) for camera in cameras]
-    images = [_photo(frame_paths[camera.frame_id]) for camera in cameras]
-    scan = unused_vertices_removed(colour_the_scan(vertices, triangles, resized, images))
-    filled = unseen_surfaces_filled(scan, graph, load_materials())
+    scan, cameras = coloured_scan(mesh_path, poses_path, frame_paths, graph.capture_to_room)
+    filled = unseen_surfaces_filled(scan, graph, room_materials(materials_dir))
     write_scan_glb(filled, out_path)
     return ScanPaint(out_path, scan.painted_fraction, len(cameras), time.monotonic() - started)

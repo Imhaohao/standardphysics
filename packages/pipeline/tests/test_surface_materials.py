@@ -6,23 +6,28 @@ real measured sheets, so which vertex belongs to which surface is geometry.
 
 from __future__ import annotations
 
+import json
 import uuid
 
 import numpy as np
 import pytest
+from PIL import Image
 from standardphysics_contracts import Mat4, SceneGraph, SceneNode, Vec3
 from standardphysics_pipeline.textures.project import to_linear
 from standardphysics_pipeline.textures.scan_colour import ColouredScan, vertex_normals
 from standardphysics_pipeline.textures.surface_materials import (
-    SURFACE_KINDS,
+    MANIFEST,
+    MaterialFill,
     SurfaceMaterial,
     load_materials,
+    material_key,
+    materials_digest,
     planar_sample,
-    room_surfaces,
+    room_owners,
     unseen_surfaces_filled,
 )
 
-WALL, FLOOR = SURFACE_KINDS.index("wall"), SURFACE_KINDS.index("floor")
+WALL, FLOOR, TELEVISION = 0, 1, 2
 
 
 def sheet(label: str, size: tuple[float, float, float], at: tuple[float, float, float]) -> SceneNode:
@@ -36,6 +41,7 @@ def room() -> SceneGraph:
     return SceneGraph(scan_id=uuid.uuid4(), nodes=[
         sheet("Wall", (4.0, 0.0, 3.0), (0.0, 2.0, 1.5)),
         sheet("Floor", (4.0, 4.0, 0.0), (0.0, 0.0, 0.0)),
+        sheet("Television", (1.2, 0.08, 0.7), (1.4, 1.94, 1.5)),
     ])
 
 
@@ -73,31 +79,45 @@ def flat_material(value: float = 0.5) -> SurfaceMaterial:
     return SurfaceMaterial(np.full((8, 8, 3), value, dtype=np.float32), metres_across=1.0)
 
 
-def classified(vertices, triangles):
-    return room_surfaces(vertices, vertex_normals(vertices, triangles), room())
+def owners_of(vertices, triangles):
+    return room_owners(vertices, vertex_normals(vertices, triangles), room())
 
 
 def test_wall_and_floor_vertices_are_told_apart():
     vertices, triangles = joined(wall_patch(), floor_patch())
-    surfaces = classified(vertices, triangles)
+    owners = owners_of(vertices, triangles)
     wall_count = len(wall_patch()[0])
-    assert (surfaces.kinds[:wall_count] == WALL).all()
-    assert (surfaces.kinds[wall_count:] == FLOOR).all()
+    assert (owners[:wall_count] == WALL).all()
+    assert (owners[wall_count:] == FLOOR).all()
+
+
+def test_a_television_on_the_wall_is_the_television():
+    vertices, triangles = patch((1.0, 1.9, 1.3), (0.8, 0.0, 0.0), (0.0, 0.0, 0.4))
+    assert (owners_of(vertices, triangles) == TELEVISION).all()
 
 
 def test_a_shelf_top_inside_the_wall_box_is_not_the_wall():
     vertices, triangles = patch((-1.0, 1.9, 1.2), (1.0, 0.0, 0.0), (0.0, 0.08, 0.0))
-    assert (classified(vertices, triangles).kinds == -1).all()
+    assert (owners_of(vertices, triangles) == -1).all()
 
 
 def test_the_underside_of_something_on_the_floor_is_not_the_floor():
     vertices, triangles = patch((-1.0, -1.0, 0.05), (0.0, 1.0, 0.0), (1.0, 0.0, 0.0))
-    assert (classified(vertices, triangles).kinds == -1).all()
+    assert (owners_of(vertices, triangles) == -1).all()
 
 
 def test_things_away_from_every_sheet_are_left_alone():
     vertices, triangles = patch((-0.5, 0.0, 1.0), (1.0, 0.0, 0.0), (0.0, 0.0, 1.0))
-    assert (classified(vertices, triangles).kinds == -1).all()
+    assert (owners_of(vertices, triangles) == -1).all()
+
+
+def test_material_keys_name_what_a_node_is():
+    assert [material_key(node) for node in room().nodes] == ["wall", "floor", "television"]
+
+
+@pytest.mark.parametrize("label", ["Outlet", "Outlet (electrical outlet)", "Candidate outlet (power outlet)"])
+def test_every_name_for_an_outlet_shares_one_material(label):
+    assert material_key(sheet(label, (0.12, 0.03, 0.12), (0.0, 1.98, 0.4))) == "outlet"
 
 
 def half_seen_wall(photo_colour: float = 0.7) -> ColouredScan:
@@ -139,9 +159,57 @@ def test_a_missing_manifest_means_no_materials(tmp_path):
     assert load_materials(tmp_path) == {}
 
 
-@pytest.mark.parametrize("kind", SURFACE_KINDS)
+def write_material(directory, key, value):
+    directory.mkdir(parents=True, exist_ok=True)
+    Image.fromarray(np.full((4, 4, 3), value, dtype=np.uint8), "RGB").save(directory / f"{key}.png")
+    manifest = directory / MANIFEST
+    entries = json.loads(manifest.read_text()) if manifest.is_file() else {}
+    entries[key] = {"image": f"{key}.png", "metres_across": 1.0}
+    manifest.write_text(json.dumps(entries))
+
+
+def test_a_room_material_overrides_the_generic_one_key_by_key(tmp_path):
+    write_material(tmp_path / "generic", "wall", 50)
+    write_material(tmp_path / "generic", "floor", 60)
+    write_material(tmp_path / "room", "wall", 200)
+    materials = load_materials(tmp_path / "generic", tmp_path / "room")
+    assert float(materials["wall"].tile.mean()) > float(materials["floor"].tile.mean())
+
+
+def test_new_room_materials_change_the_fingerprint(tmp_path):
+    assert materials_digest(tmp_path) == ""
+    write_material(tmp_path, "wall", 50)
+    first = materials_digest(tmp_path)
+    write_material(tmp_path, "wall", 51)
+    assert first and materials_digest(tmp_path) != first
+
+
+def test_the_same_fill_paints_atlas_texels():
+    owners = np.array([0, 0, 0, 1])
+    photographed = np.array([True, False, False, False])
+    colours = np.full((4, 3), 0.1, dtype=np.float32)
+    fill = MaterialFill(["wall", "chair"], {"wall": flat_material(0.5)})
+    positions = np.zeros((4, 3))
+    normals = np.tile([0.0, 1.0, 0.0], (4, 1))
+    filled = fill.apply(colours, photographed, positions, normals, owners)
+    np.testing.assert_allclose(filled[1:3], 0.5, atol=1e-6)
+    np.testing.assert_array_equal(filled[[0, 3]], colours[[0, 3]])
+
+
+@pytest.mark.parametrize("kind", ["wall", "floor"])
 def test_the_shipped_tiles_load_as_linear_colour(kind):
     material = load_materials()[kind]
     assert material.tile.ndim == 3 and material.tile.shape[2] == 3
     assert material.metres_across > 0
     assert 0.0 < float(material.tile.mean()) < float(to_linear(np.array(1.0)))
+
+
+def test_a_room_material_keeps_its_own_colour():
+    owners = np.array([0, 0])
+    photographed = np.array([True, False])
+    colours = np.full((2, 3), 0.05, dtype=np.float32)
+    own = SurfaceMaterial(np.full((8, 8, 3), 0.6, dtype=np.float32), metres_across=1.0, tint=False)
+    filled = MaterialFill(["wall"], {"wall": own}).apply(
+        colours, photographed, np.zeros((2, 3)), np.tile([0.0, 1.0, 0.0], (2, 1)), owners,
+    )
+    np.testing.assert_allclose(filled[1], 0.6, atol=1e-6)
