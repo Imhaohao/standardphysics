@@ -72,6 +72,7 @@ def _discovery_inputs(
         frame_paths=frames,
         lidar_mesh_path=lidar_mesh_path,
         cache_dir=lidar_mesh_path.parent.parent / "detections",
+        crop_dir=lidar_mesh_path.parent.parent / "crops",
     )
 
 
