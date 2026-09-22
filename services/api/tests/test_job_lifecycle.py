@@ -355,6 +355,13 @@ def test_manifest_declaring_missing_photos_defers_discovery_until_all_arrive(mak
         status = client.get(f"/api/scans/{scan_id}/evidence").json()
         assert status["latest_bundle"]["semantic_processed_hash"] is None
         assert status["complete_evidence"] is True
+        with client.app.state.database.connect() as connection:
+            marked = connection.execute(
+                "SELECT COUNT(*) FROM evidence_bundles WHERE scan_id = ?"
+                " AND semantic_processed_hash IS NOT NULL",
+                (scan_id,),
+            ).fetchone()[0]
+        assert marked == 0
 
         put_artifact(client, scan_id, "frame-0007", b"frame-bytes", "frames")
         drain(client)
