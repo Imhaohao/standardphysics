@@ -18,7 +18,6 @@ import sqlite3
 import time
 
 import numpy as np
-
 from standardphysics_contracts import SceneGraph, TextureBuild, TextureCoverage
 from standardphysics_pipeline.ingest import capture_to_room_from_payload
 from standardphysics_pipeline.textures.camera import load_cameras

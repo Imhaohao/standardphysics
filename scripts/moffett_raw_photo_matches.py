@@ -13,14 +13,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Sequence
 
 import cv2
 import numpy as np
-
 
 CAPTURES = {
     "bottom_left": "D9946491-26FD-4864-9673-C88180328109",

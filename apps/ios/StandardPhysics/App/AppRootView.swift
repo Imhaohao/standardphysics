@@ -17,6 +17,7 @@ final class AppModel: ObservableObject {
     @Published var screen: Screen = .start
     @Published private(set) var savedScans = CaptureLibrary.all()
     @Published var deletionMessage: String?
+    @Published var accountDeletionMessage: String?
     @Published private(set) var captureSessionID = UUID()
     @Published private(set) var recoveryDirectories: [URL] = []
     @Published private(set) var recoveryMessage: String?
@@ -44,6 +45,26 @@ final class AppModel: ObservableObject {
         uploads.values.forEach { $0.cancel() }
         uploads.removeAll()
         session.signOut()
+        screen = .signIn
+    }
+
+    /// Ends the account, then clears what this phone was holding for it.
+    ///
+    /// The server goes first. If it refuses, the scans are still on the phone
+    /// and still on the server, and the owner can try again knowing nothing
+    /// was half-done.
+    func deleteAccount() async {
+        do {
+            try await session.deleteAccount()
+        } catch {
+            accountDeletionMessage = error.localizedDescription
+            return
+        }
+        uploads.values.forEach { $0.cancel() }
+        uploads.removeAll()
+        CaptureLibrary.all().forEach { try? CaptureLibrary.remove($0) }
+        savedScans = CaptureLibrary.all()
+        accountDeletionMessage = nil
         screen = .signIn
     }
 
@@ -370,6 +391,8 @@ private struct AccountRow: View {
     @ObservedObject var model: AppModel
     @ObservedObject var session: SessionStore
 
+    @State private var confirmingDeletion = false
+
     var body: some View {
         if let owner = session.owner {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.small) {
@@ -383,6 +406,25 @@ private struct AccountRow: View {
                 }
                 Button("Sign out") { model.signOut() }
                     .buttonStyle(AppButtonStyle(.secondary))
+                Button("Delete account") { confirmingDeletion = true }
+                    .buttonStyle(AppButtonStyle(.destructive))
+                if let message = model.accountDeletionMessage {
+                    Text(message)
+                        .font(AppTheme.Typography.secondary)
+                        .foregroundStyle(AppTheme.problem)
+                }
+            }
+            .confirmationDialog(
+                "Delete your account?",
+                isPresented: $confirmingDeletion,
+                titleVisibility: .visible
+            ) {
+                Button("Delete account", role: .destructive) {
+                    Task { await model.deleteAccount() }
+                }
+                Button("Keep it", role: .cancel) { confirmingDeletion = false }
+            } message: {
+                Text("Every shop you have scanned, and every measurement taken in one, goes from this phone and from the server. There is no undo.")
             }
         } else {
             Button("Sign in to upload") { model.screen = .signIn }

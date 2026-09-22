@@ -26,6 +26,7 @@ from . import repository as repo
 from .accounts import EmailAlreadyRegistered, Owner, WeakPassword
 from .db import Database
 from .errors import ApiProblem
+from .store import ArtifactStore
 
 COOKIE_NAME = "sp_session"
 GUARDED_PREFIX = "/api/scans"
@@ -124,7 +125,7 @@ def _owns_scan(database: Database, scan_id: uuid.UUID, owner: Owner) -> bool:
         return not repo.scan_exists(connection, scan_id)
 
 
-def install_auth(app: FastAPI, database: Database) -> None:
+def install_auth(app: FastAPI, database: Database, store: ArtifactStore) -> None:
     limiter = AttemptLimiter()
 
     class RequireOwner(BaseHTTPMiddleware):
@@ -141,7 +142,7 @@ def install_auth(app: FastAPI, database: Database) -> None:
             return await call_next(request)
 
     app.add_middleware(RequireOwner)
-    _install_auth_routes(app, database, limiter)
+    _install_auth_routes(app, database, store, limiter)
 
 
 def _problem(status: int, message: str) -> JSONResponse:
@@ -191,7 +192,30 @@ def _authenticate(database: Database, body: SignInRequest, limiter: AttemptLimit
     return owner
 
 
-def _install_auth_routes(app: FastAPI, database: Database, limiter: AttemptLimiter) -> None:
+def _erase_owner(database: Database, owner: Owner) -> list[uuid.UUID]:
+    """Drop every row belonging to this owner, and say which scans to unfile.
+
+    One transaction, so a half-deleted account cannot be signed into. The files
+    are left to the caller for the reason `delete_scan` gives: a stored file
+    with no row is invisible and reclaimable, while a row whose files have gone
+    is a listing that breaks the moment anyone opens it.
+
+    A running job is not waited for. Deleting a scan refuses while one is in
+    flight, but an account has to be deletable whatever the worker is doing, so
+    the job row goes with everything else and any bytes it writes afterwards
+    land in a directory nothing points at.
+    """
+    with database.transaction() as connection:
+        scan_ids = [scan.id for scan in repo.list_scans(connection, owner.id)]
+        for scan_id in scan_ids:
+            repo.delete_scan(connection, scan_id)
+        accounts.delete_owner(connection, owner.id)
+    return scan_ids
+
+
+def _install_auth_routes(
+    app: FastAPI, database: Database, store: ArtifactStore, limiter: AttemptLimiter
+) -> None:
     @app.post("/api/auth/sign-up", status_code=201, response_model=Session)
     def sign_up(body: SignUpRequest, request: Request, response: Response) -> Session:
         owner, token = _open(database, _register(database, body))
@@ -210,6 +234,24 @@ def _install_auth_routes(app: FastAPI, database: Database, limiter: AttemptLimit
         if token:
             with database.transaction() as connection:
                 accounts.close_session(connection, token)
+        response = Response(status_code=204)
+        response.delete_cookie(COOKIE_NAME, path="/")
+        return response
+
+    @app.delete("/api/account", status_code=204)
+    def delete_account(request: Request) -> Response:
+        """Erase the account, its shops and everything measured in them.
+
+        Apple requires an owner who can create an account in the app to be able
+        to end it there too, and an owner who walked us around their shop is
+        owed the same. There is no undo and no grace period: the scans are gone
+        when this returns.
+        """
+        owner = _resolve_owner(database, request)
+        if owner is None:
+            raise ApiProblem(401, "sign in to continue")
+        for scan_id in _erase_owner(database, owner):
+            store.remove_scan(scan_id)
         response = Response(status_code=204)
         response.delete_cookie(COOKIE_NAME, path="/")
         return response

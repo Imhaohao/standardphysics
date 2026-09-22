@@ -10,16 +10,14 @@ the reconstructed 3D library floor.
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import pathlib
 import shutil
 import sqlite3
+import ssl
 import time
 import urllib.request
-import ssl
-from uuid import UUID
 
 from standardphysics_contracts import (
     DisplayAppearance,
@@ -27,6 +25,7 @@ from standardphysics_contracts import (
     DisplayReconstruction,
     SceneGraph,
     SceneNode,
+    bounds_the_room,
     graph_hash,
 )
 from standardphysics_pipeline.blender import export_glb
@@ -487,6 +486,23 @@ def reconstruct_sink(node: SceneNode) -> tuple[DisplayReconstruction, DisplayApp
     return reconstruction, appearance, "Service Counter"
 
 
+RECONSTRUCTORS = {
+    "table": reconstruct_table,
+    "desk": reconstruct_table,
+    "chair": reconstruct_chair,
+    "sofa": reconstruct_sofa,
+    "bed": reconstruct_sofa,
+    "storage": reconstruct_storage,
+    "sink": lambda node, specs: reconstruct_sink(node),
+}
+"""How to rebuild each thing the scanner has a word for, and a table otherwise.
+
+A chain of comparisons on the category made this the longest branch in the file
+and said the same thing less clearly. Anything unrecognised is still rebuilt, so
+a room holding something nobody listed does not come back empty.
+"""
+
+
 def main():
     print(f"=== Astra Full Floor Reconstruction for Scan {SCAN_ID} ===")
     api_key = load_openrouter_key()
@@ -507,23 +523,12 @@ def main():
     reconstructed_count = 0
 
     for node in base_graph.nodes:
-        if node.kind != "object":
+        if bounds_the_room(node):
             updated_nodes.append(node)
             continue
 
-        cat = node.raw_category.lower()
-        if cat in ("table", "desk"):
-            rec, app, lbl = reconstruct_table(node, specs)
-        elif cat == "chair":
-            rec, app, lbl = reconstruct_chair(node, specs)
-        elif cat in ("sofa", "bed"):
-            rec, app, lbl = reconstruct_sofa(node, specs)
-        elif cat == "storage":
-            rec, app, lbl = reconstruct_storage(node, specs)
-        elif cat == "sink":
-            rec, app, lbl = reconstruct_sink(node)
-        else:
-            rec, app, lbl = reconstruct_table(node, specs)
+        build = RECONSTRUCTORS.get(node.raw_category.lower(), reconstruct_table)
+        rec, app, lbl = build(node, specs)
 
         updated = node.model_copy(update={
             "label": lbl,

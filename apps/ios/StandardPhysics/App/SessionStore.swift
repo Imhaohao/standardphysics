@@ -24,7 +24,7 @@ final class SessionStore: ObservableObject {
         }
     }
 
-    enum SignInError: LocalizedError {
+    enum ServerError: LocalizedError {
         case noServer
         case refused(String)
         case unreachable
@@ -58,7 +58,7 @@ final class SessionStore: ObservableObject {
 
     func signIn(email: String, password: String) async throws {
         guard let baseURL = AppEnvironment.apiBaseURL, let account = accountKey else {
-            throw SignInError.noServer
+            throw ServerError.noServer
         }
         var request = URLRequest(url: baseURL.appendingPathComponent("api/auth/sign-in"))
         request.httpMethod = "POST"
@@ -66,14 +66,33 @@ final class SessionStore: ObservableObject {
         request.httpBody = try JSONEncoder().encode(["email": email, "password": password])
 
         let (data, response) = try await dataOrUnreachable(for: request)
-        guard let http = response as? HTTPURLResponse else { throw SignInError.unreachable }
-        guard http.statusCode == 200 else { throw SignInError.refused(Self.reason(in: data, status: http.statusCode)) }
+        guard let http = response as? HTTPURLResponse else { throw ServerError.unreachable }
+        guard http.statusCode == 200 else { throw ServerError.refused(Self.reason(in: data, status: http.statusCode)) }
 
-        guard let bearer = Self.bearerToken(in: response) else { throw SignInError.unreachable }
+        guard let bearer = Self.bearerToken(in: response) else { throw ServerError.unreachable }
         let signedIn = try JSONDecoder().decode(Owner.self, from: data)
         Keychain.write(bearer, service: service, account: account)
         storedOwner = signedIn
         owner = signedIn
+    }
+
+    /// Ends the account on the server, then forgets it here.
+    ///
+    /// The server erases the shops and their scans in the same call, so there
+    /// is nothing left to sign back in to. The local copy is cleared by the
+    /// caller, which owns the list on screen.
+    func deleteAccount() async throws {
+        guard let baseURL = AppEnvironment.apiBaseURL, let token else { throw ServerError.noServer }
+        var request = URLRequest(url: baseURL.appendingPathComponent("api/account"))
+        request.httpMethod = "DELETE"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await dataOrUnreachable(for: request)
+        guard let http = response as? HTTPURLResponse else { throw ServerError.unreachable }
+        guard http.statusCode == 204 else {
+            throw ServerError.refused(Self.reason(in: data, status: http.statusCode))
+        }
+        signOut()
     }
 
     func signOut() {
@@ -113,7 +132,7 @@ final class SessionStore: ObservableObject {
         do {
             return try await session.data(for: request)
         } catch {
-            throw SignInError.unreachable
+            throw ServerError.unreachable
         }
     }
 

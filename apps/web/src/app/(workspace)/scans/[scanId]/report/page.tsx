@@ -152,6 +152,26 @@ function NextStepsSection({ questions }: { questions: Finding[] }) {
   );
 }
 
+function WhatThisIsNot() {
+  return (
+    <section className="mt-12 break-inside-avoid border-t border-rule pt-8">
+      <h2 className="heading-display text-2xl">What this report is not</h2>
+      <div className="mt-3 flex flex-col gap-3 text-ink-muted">
+        <p>
+          Standard Physics measures what the scan could see and compares it against the 2010 ADA
+          Standards for Accessible Design. It does not measure what the scan could not see, and the
+          coverage above says how much of the shop that was.
+        </p>
+        <p>
+          This is not an inspection and it is not legal advice. Only a Certified Access Specialist
+          can inspect your shop in person, and only their report carries legal weight. Fixing what
+          is listed here first makes that inspection shorter and cheaper.
+        </p>
+      </div>
+    </section>
+  );
+}
+
 function PreviewNotice({ preview }: { preview: boolean }) {
   if (!preview) return null;
   return (
@@ -223,6 +243,7 @@ export default async function ReportPage({ params }: PageProps<"/scans/[scanId]/
       <NextStepsSection questions={groups.questions} />
 
       <WhatWeChecked scenario={scenario} passes={groups.passes} rules={rules} />
+      <WhatThisIsNot />
     </main>
   );
 }

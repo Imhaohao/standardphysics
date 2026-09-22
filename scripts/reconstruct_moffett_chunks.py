@@ -70,6 +70,28 @@ def metric_fit(directory, frames):
     return result
 
 
+def _stage_inputs(directory: Path, images: Path, chunk: list, prepared: Path, start: int) -> None:
+    """Put this chunk's photos where the reconstructor expects them.
+
+    Hard links rather than copies, and an existing directory has to hold exactly
+    the same inputs: a chunk that is half one run and half another reconstructs
+    into something neither of them describes.
+    """
+    images.mkdir(parents=True, exist_ok=True)
+    manifest_path = directory/'input-manifest.json'
+    payload = {'frames': chunk, 'source_manifest': str(prepared.resolve()), 'start': start}
+    if manifest_path.exists() and json.loads(manifest_path.read_text()) != payload:
+        raise ValueError(f'different existing input at {directory}')
+    for frame in chunk:
+        target = images/frame['filename']
+        source = Path(frame['source'])
+        if not target.exists():
+            os.link(source, target)
+        elif not target.samefile(source):
+            raise ValueError(f'input does not match original {target}')
+    manifest_path.write_text(json.dumps(payload, indent=2)+'\n')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('prepared', type=Path)
@@ -95,21 +117,8 @@ def main():
             continue
         directory = args.output/f'chunk-{index:03d}'
         images = directory/'images'
-        images.mkdir(parents=True, exist_ok=True)
         chunk = frames[start:start+size]
-        manifest_path = directory/'input-manifest.json'
-        payload = {'frames': chunk, 'source_manifest': str(args.prepared.resolve()), 'start': start}
-        if manifest_path.exists() and json.loads(manifest_path.read_text()) != payload:
-            raise ValueError(f'different existing input at {directory}')
-        for frame in chunk:
-            target = images/frame['filename']
-            source = Path(frame['source'])
-            if target.exists():
-                if not target.samefile(source):
-                    raise ValueError(f'input does not match original {target}')
-            else:
-                os.link(source, target)
-        manifest_path.write_text(json.dumps(payload, indent=2)+'\n')
+        _stage_inputs(directory, images, chunk, args.prepared, start)
         command = [str(args.cli.resolve()), str(images.resolve()), str((directory/'model.usdz').resolve()),
                    '--detail', 'medium', '--ordering', 'unordered', '--checkpoint', str((directory/'checkpoints').resolve()),
                    '--poses-output', str((directory/'recovered-poses.json').resolve())]

@@ -18,6 +18,7 @@ Owners spend less on consultants and more time building the shop of their dreams
 | Lane D, contracts, API, web | [`docs/lanes/LANE_D.md`](docs/lanes/LANE_D.md) |
 | Anyone writing UI or copy | [`CLAUDE.md`](CLAUDE.md), then section 2 of the plan |
 | Anyone pointing ARIA at the evaluation | [`docs/aria.md`](docs/aria.md) |
+| Anyone putting this in front of a real shop | [`docs/DEPLOY.md`](docs/DEPLOY.md), then [`docs/APP_STORE.md`](docs/APP_STORE.md) |
 | Anyone opening the reactive notebook | [`docs/marimo.md`](docs/marimo.md) |
 
 ## Setup
