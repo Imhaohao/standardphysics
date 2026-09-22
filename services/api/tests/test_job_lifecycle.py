@@ -94,8 +94,7 @@ def _stages(discover):
 def _job_states(client, scan_id) -> list[tuple[str, int]]:
     with client.app.state.database.connect() as connection:
         rows = connection.execute(
-            "SELECT state, attempts, input_hash, note FROM jobs WHERE scan_id = ?"
-            " AND kind = 'process' ORDER BY id",
+            "SELECT state, attempts, input_hash, note FROM jobs WHERE scan_id = ? AND kind = 'process' ORDER BY id",
             (scan_id,),
         ).fetchall()
     return [(row["state"], row["attempts"], row["input_hash"], row["note"]) for row in rows]
@@ -106,7 +105,7 @@ def _complete_geometry(client, scan_id) -> None:
     put_artifact(client, scan_id, "room-usdz", b"usdz", "room_usdz")
 
 
-def _complete_semantics(client, scan_id, frame_id="frames", frame= b"frame-bytes") -> None:
+def _complete_semantics(client, scan_id, frame_id="frames", frame=b"frame-bytes") -> None:
     put_artifact(client, scan_id, frame_id, frame, "frames")
     put_artifact(client, scan_id, "poses", _poses(), "poses")
     put_artifact(client, scan_id, "lidar-mesh", _mesh_bytes(), "lidar_mesh")
@@ -206,8 +205,7 @@ def test_late_upload_during_a_run_never_marks_the_newer_bundle_processed(make_cl
             marks = [
                 row["semantic_processed_hash"]
                 for row in connection.execute(
-                    "SELECT semantic_processed_hash FROM evidence_bundles WHERE scan_id = ?"
-                    " ORDER BY version",
+                    "SELECT semantic_processed_hash FROM evidence_bundles WHERE scan_id = ? ORDER BY version",
                     (scan_id,),
                 ).fetchall()
             ]
@@ -252,8 +250,7 @@ def test_crash_after_claim_recovers_with_one_coherent_revision(make_client, tmp_
         client.post(f"/api/scans/{scan_id}/complete")
         with client.app.state.database.transaction() as connection:
             connection.execute(
-                "UPDATE jobs SET state = 'running', attempts = 1"
-                " WHERE scan_id = ? AND kind = 'process'",
+                "UPDATE jobs SET state = 'running', attempts = 1 WHERE scan_id = ? AND kind = 'process'",
                 (scan_id,),
             )
 
@@ -275,9 +272,7 @@ def test_crash_after_claim_recovers_with_one_coherent_revision(make_client, tmp_
         status = client.get(f"/api/scans/{scan_id}/evidence").json()
         assert status["semantic_state"] == "complete", status
         with client.app.state.database.connect() as connection:
-            revisions = connection.execute(
-                "SELECT revision FROM revisions WHERE scan_id = ?", (scan_id,)
-            ).fetchall()
+            revisions = connection.execute("SELECT revision FROM revisions WHERE scan_id = ?", (scan_id,)).fetchall()
             processed = connection.execute(
                 "SELECT semantic_processed_hash FROM evidence_bundles WHERE scan_id = ?",
                 (scan_id,),
@@ -404,6 +399,32 @@ def test_provider_failure_categories_are_visible_and_secret_free(make_client, mo
         assert "read 3 photos" in text
         assert "found 0 objects" in text
         assert "unread" not in text
+
+
+def test_discovery_inputs_point_crops_at_the_scan_crop_dir(tmp_path):
+    import uuid as uuid_module
+
+    from standardphysics_contracts import SceneGraph
+
+    from standardphysics_api.stages import _discovery_inputs
+
+    scan_root = tmp_path / "scans" / str(uuid_module.uuid4())
+    artifacts = scan_root / "artifacts"
+    artifacts.mkdir(parents=True)
+    frame = artifacts / "frame-0007"
+    poses = artifacts / "poses"
+    lidar = artifacts / "lidar_mesh"
+    for path, payload in ((frame, b"jpeg"), (poses, b"{}"), (lidar, b"mesh")):
+        path.write_bytes(payload)
+
+    graph = SceneGraph(scan_id=uuid_module.uuid4(), nodes=[])
+    inputs = _discovery_inputs(graph, [frame], poses, lidar)
+    assert inputs is not None
+    assert inputs.crop_dir == scan_root / "crops"
+    assert inputs.cache_dir == scan_root / "detections"
+
+    missing = _discovery_inputs(graph, [frame], poses, artifacts / "nope_mesh")
+    assert missing is None
 
 
 def test_failed_job_is_not_rerun_without_new_inputs(make_client):
