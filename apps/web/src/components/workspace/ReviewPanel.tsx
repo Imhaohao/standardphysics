@@ -26,7 +26,9 @@ import {
   type TargetClassFilter,
 } from "@/lib/review-targets";
 import { cropUrl, reviewAttachment } from "@/lib/review-client";
+import { evaluateApproach } from "@/lib/approach-client";
 import type { ObservationCrop, SceneGraph, SceneNode } from "@/types/contracts";
+import { ApproachCheck } from "./ApproachCheck";
 import { MarkInPhoto } from "./MarkInPhoto";
 
 const REVIEW_CHIP: Record<string, { label: string; className: string }> = {
@@ -245,6 +247,20 @@ function SelectedDetails({ scanId, scene, entry, onPersisted }: {
         </Button>
         <MarkButton scanId={scanId} scene={scene} targetClass={targetClass} currentNodeId={node.id} onPersisted={onPersisted} />
       </div>
+      <ApproachCheck
+        scanId={scanId}
+        revision={scene.revision}
+        nodeId={node.id}
+        run={(body) =>
+          evaluateApproach(scanId, scene.revision, {
+            target_node_id: body.target_node_id,
+            occupant_profile: "manual-wheelchair",
+            horizontal_reach_inches: null,
+            horizontal_reach_provenance: null,
+            approach_stop: null,
+          })
+        }
+      />
       {problem && <p role="alert" className="text-xs text-problem">{problem}</p>}
     </div>
   );
