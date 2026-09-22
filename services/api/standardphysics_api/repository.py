@@ -519,6 +519,12 @@ def assessment_for_revision(connection: sqlite3.Connection, scan_id: uuid.UUID, 
     if row is None:
         return None
     current = scenario_version(connection, scan_id)
-    if row["scenario_version"] is not None and current is not None and row["scenario_version"] != current:
+    stored = row["scenario_version"]
+    if stored is not None and current is not None and stored != current:
+        return None
+    # Assessments saved before any route existed predate the run they should
+    # re-measure once a route is confirmed. Databases migrated with a version-0
+    # scenario row keep the older tolerance so untouched scans stay readable.
+    if stored is None and current is not None and current > 0:
         return None
     return Assessment.model_validate_json(row["assessment_json"])
