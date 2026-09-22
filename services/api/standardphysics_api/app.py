@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 import contextlib
+import io
 import json
 import logging
 import pathlib
+import re
 import uuid
 from typing import Annotated
 
 from fastapi import FastAPI, Header, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from PIL import Image as PILImage
 from pydantic import BaseModel
 from standardphysics_agents import init_tracing, project_url, shutdown_tracing
 from standardphysics_contracts import (
@@ -23,6 +26,8 @@ from standardphysics_contracts import (
     CompleteRequest,
     CreateScanRequest,
     EvidenceStatus,
+    FrameEntry,
+    FrameListing,
     LayoutCheckRequest,
     LayoutCheckResult,
     LoopRequest,
@@ -41,6 +46,7 @@ from standardphysics_contracts import (
     SimulationStatus,
     graph_hash,
 )
+from standardphysics_contracts.textures import FRAME_ID_PATTERN
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import accounts
@@ -151,7 +157,7 @@ def create_app(settings: Settings | None = None, stages: Stages | None = None, r
     install_replay_routes(app, database, store)
     install_texture_routes(app, database, store, worker)
     install_splat_routes(app, database, store)
-    _install_label_routes(app, database, worker)
+    _install_label_routes(app, database, store, worker)
 
     @app.get("/api/scans/{scan_id}/report", response_model=Report)
     def report(scan_id: uuid.UUID) -> Report:
@@ -342,6 +348,23 @@ def _file_or_404(path: str | pathlib.Path | None, media_type: str) -> FileRespon
     return FileResponse(path, media_type=media_type)
 
 
+def _jpeg_sensor_size(data: bytes) -> tuple[int, int]:
+    """The stored sensor pixel dimensions declared by the frame's own header."""
+    with PILImage.open(io.BytesIO(data)) as opened:
+        width, height = opened.size
+    return width, height
+
+
+def _frame_entry(store: ArtifactStore, scan_id: uuid.UUID, artifact: Artifact) -> FrameEntry:
+    width, height = _jpeg_sensor_size(store.artifact_path(scan_id, artifact.id).read_bytes())
+    return FrameEntry(
+        frame_id=artifact.id,
+        width=width,
+        height=height,
+        image_url=f"/api/scans/{scan_id}/frames/{artifact.id}",
+    )
+
+
 def _install_workspace_routes(app: FastAPI, database: Database, store: ArtifactStore) -> None:
     @app.get("/api/scans/{scan_id}/scene", response_model=SceneGraph)
     def scene(scan_id: uuid.UUID, revision: int | None = None) -> SceneGraph:
@@ -424,7 +447,7 @@ class ReviewOutletRequest(BaseModel):
     status: str
 
 
-def _install_label_routes(app: FastAPI, database: Database, worker: Worker) -> None:
+def _install_label_routes(app: FastAPI, database: Database, store: ArtifactStore, worker: Worker) -> None:
     counter_path = "/api/scans/{scan_id}/revisions/{base_revision}/counters/{node_id}"
 
     @app.put(counter_path, response_model=SceneGraph, status_code=201)
@@ -461,7 +484,7 @@ def _install_label_routes(app: FastAPI, database: Database, worker: Worker) -> N
         stored unlocalized on the graph, never given an invented position.
         """
         return mark_observation(
-            database, worker, scan_id, base_revision, body, owner_of(request).email
+            database, store, worker, scan_id, base_revision, body, owner_of(request).email
         )
 
 
@@ -522,6 +545,34 @@ def _install_file_routes(app: FastAPI, database: Database, store: ArtifactStore)
             raise ApiProblem(404, "crop not found")
         media_type = "image/png" if filename.endswith(".png") else "image/jpeg"
         return FileResponse(crop_path, media_type=media_type)
+
+    @app.get("/api/scans/{scan_id}/frames", response_model=FrameListing)
+    def frames(scan_id: uuid.UUID) -> FrameListing:
+        """The stored source-resolution frames a photo review can open.
+
+        Authenticated by the same ownership middleware as every other scan
+        route. Each entry names one ACTUAL stored frame artifact; a scan with
+        no frames returns an empty list, never invented identities.
+        """
+        with database.connect() as connection:
+            _scan_or_404(connection, scan_id)
+            stored = repo.artifacts_of_kind(connection, scan_id, "frames")
+        return FrameListing(frames=[_frame_entry(store, scan_id, artifact) for artifact in stored])
+
+    @app.get("/api/scans/{scan_id}/frames/{frame_id}")
+    def frame_bytes(scan_id: uuid.UUID, frame_id: str) -> Response:
+        """The original bytes of one stored frame, never a downscaled copy."""
+        if not re.fullmatch(FRAME_ID_PATTERN, frame_id):
+            raise ApiProblem(400, "invalid frame id")
+        with database.connect() as connection:
+            _scan_or_404(connection, scan_id)
+            artifact = repo.find_artifact(connection, scan_id, frame_id)
+        if artifact is None or artifact.kind != "frames":
+            raise ApiProblem(404, "frame not found")
+        return Response(
+            content=store.artifact_path(scan_id, artifact.id).read_bytes(),
+            media_type="image/jpeg",
+        )
 
 
 def _install_simulation_routes(app: FastAPI, database: Database, stages: Stages, worker: Worker) -> None:

@@ -29,6 +29,24 @@ class ScanList(BaseModel):
     scans: list[Scan]
 
 
+class FrameEntry(BaseModel):
+    """One stored source-resolution frame a photo review can open.
+
+    `width` and `height` are the stored sensor pixels this frame was captured
+    at, read from the bytes the server holds - never EXIF display orientation.
+    `image_url` is the route serving that exact frame's original bytes.
+    """
+
+    frame_id: str
+    width: int
+    height: int
+    image_url: str
+
+
+class FrameListing(BaseModel):
+    frames: list[FrameEntry]
+
+
 class ApiError(BaseModel):
     error: str
     need: list[str] | None = None
