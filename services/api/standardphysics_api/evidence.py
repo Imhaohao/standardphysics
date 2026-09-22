@@ -110,6 +110,31 @@ def _settled(
     return (datetime.now(UTC) - arrival).total_seconds() >= settle_seconds
 
 
+def due_semantic_scans(connection: sqlite3.Connection, settle_seconds: float) -> list[Scan]:
+    """Scans whose latest complete bundle is unpublished and quiet long enough.
+
+    The worker sweeps this on its idle tick, so a capture whose only trigger
+    would have been its last upload still gets its one recognition job after
+    the settle window elapses, without any further HTTP request. The decision
+    is recomputed from the database on every tick, so a restart loses nothing.
+    """
+    candidates = connection.execute(
+        "SELECT scan_id FROM evidence_bundles WHERE complete = 1"
+        " AND (semantic_processed_hash IS NULL OR semantic_processed_hash != manifest_hash)"
+        " AND version = (SELECT MAX(v.version) FROM evidence_bundles v WHERE v.scan_id = evidence_bundles.scan_id)"
+    ).fetchall()
+    due: list[Scan] = []
+    for row in candidates:
+        scan_id = uuid.UUID(row["scan_id"])
+        scan = repo.get_scan(connection, scan_id)
+        if scan is None or scan.state == "uploading":
+            continue
+        bundle = repo.latest_bundle(connection, scan_id)
+        if bundle is None or _settled(connection, scan_id, bundle, settle_seconds):
+            due.append(scan)
+    return due
+
+
 def evidence_status_for(database: Database, scan: Scan) -> EvidenceStatus:
     with database.connect() as connection:
         bundle = repo.latest_bundle(connection, scan.id)

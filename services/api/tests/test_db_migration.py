@@ -105,7 +105,7 @@ def test_legacy_database_opens_additively_and_keeps_old_rows(make_client, tmp_pa
     )
     database_path = tmp_path / "var" / "standardphysics.sqlite3"
     _legacy_database(database_path)
-    with make_client(seed=False, stages=closing) as client:
+    with make_client(seed=False, stages=closing, evidence_settle_seconds=0.0) as client:
         from standardphysics_api import repository as repo
 
         with client.app.state.database.connect() as connection:

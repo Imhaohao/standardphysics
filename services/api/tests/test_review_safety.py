@@ -111,7 +111,7 @@ def _stages(discover):
 
 
 def _ready_scan(make_client, discover):
-    client = make_client(stages=_stages(discover))
+    client = make_client(stages=_stages(discover), evidence_settle_seconds=0.0)
     scan_id = create_scan(client)
     put_artifact(client, scan_id, "room-json", _room_payload(), "room_json")
     put_artifact(client, scan_id, "room-usdz", b"usdz", "room_usdz")

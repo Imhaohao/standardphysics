@@ -132,9 +132,44 @@ class Worker:
 
     def _loop(self, texture_only: bool = False) -> None:
         while not self._stop.is_set():
-            if not self.run_once(texture_only):
-                self._wake.wait(timeout=2.0)
-                self._wake.clear()
+            if self.run_once(texture_only):
+                continue
+            if not texture_only:
+                self._sweep_due_settled()
+            self._wake.wait(timeout=2.0)
+            self._wake.clear()
+
+    def _sweep_due_settled(self) -> None:
+        """Queue the one due recognition job for every quiet complete bundle.
+
+        Without this, evidence that stops arriving never settles: the next
+        trigger would have to be another request, which a finished upload never
+        makes. The sweep reads the database each tick, so a restart re-derives
+        the same decision with nothing persisted in memory.
+        """
+        try:
+            with self.database.connect() as connection:
+                due = evidence.due_semantic_scans(connection, self.settings.evidence_settle_seconds)
+        except Exception:
+            log.warning("due-settled sweep could not read scans:\n%s", traceback.format_exc())
+            return
+        queued = False
+        for scan in due:
+            try:
+                with self.database.transaction() as connection:
+                    queued = (
+                        evidence.maybe_queue_semantic(
+                            connection,
+                            scan,
+                            PROCESS,
+                            settle_seconds=self.settings.evidence_settle_seconds,
+                        )
+                        == "queued"
+                    ) or queued
+            except Exception:
+                log.warning("due-settled sweep skipped %s:\n%s", scan.id, traceback.format_exc())
+        if queued:
+            self.wake()
 
     def _run(self, job) -> _JobOutcome:
         scan_id, revision = uuid.UUID(job["scan_id"]), job["revision"]
