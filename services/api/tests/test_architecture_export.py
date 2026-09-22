@@ -416,12 +416,12 @@ def _mesh_bytes() -> bytes:
 
 
 def test_report_assessment_and_zip_agree_on_the_pinned_scope(make_client):
-    from conftest import create_scan, put_artifact
+    from conftest import create_scan, put_artifact, usdz_fixture
 
     with make_client(stages=_full_journey_stages()) as client:
         scan_id = create_scan(client)
         put_artifact(client, scan_id, "room-json", _room_payload(), "room_json")
-        put_artifact(client, scan_id, "room-usdz", b"usdz", "room_usdz")
+        put_artifact(client, scan_id, "room-usdz", usdz_fixture(), "room_usdz")
         put_artifact(client, scan_id, "frames", b"frames", "frames")
         put_artifact(client, scan_id, "poses", b"{}", "poses")
         put_artifact(client, scan_id, "lidar-mesh", _mesh_bytes(), "lidar_mesh")
