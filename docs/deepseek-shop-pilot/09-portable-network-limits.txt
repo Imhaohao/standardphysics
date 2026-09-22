@@ -35,9 +35,11 @@ UNAVAILABLE-FEATURE BEHAVIOR (observed, not speculative)
 
 RESTART / ROLLBACK (loopback-proxy-safe)
 - API:  SP_DATA_DIR=<run>/k-api-8901-data SP_API_PORT=8901
-        SP_PREVIEW_UNVERIFIED_RULES=1 .venv/bin/python -m standardphysics_api
-        (run from the K worktree so imports resolve to K sources; the shared
-        venv's editable install otherwise resolves the ORIGINAL checkout).
+        SP_PREVIEW_UNVERIFIED_RULES=1 PYTHONPATH=<K>/packages/contracts:<K>/packages/pipeline:<K>/packages/agents:<K>/packages/fixtures:<K>/services/api
+        .venv/bin/python -m standardphysics_api
+        (run from <K> AND with the explicit PYTHONPATH above: the shared
+        venv's editable install otherwise resolves packages to the ORIGINAL
+        checkout; cwd alone does not select K sources).
 - Web:  cd <K>/apps/web && node node_modules/next/dist/bin/next start
         -H 0.0.0.0 -p 8893   (SP_API_ORIGIN is baked at build time).
 - Rollback: git tags pilot-candidate-20260921-k, pilot-candidate-20260922-k,
