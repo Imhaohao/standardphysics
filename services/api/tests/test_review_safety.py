@@ -230,6 +230,9 @@ def test_late_process_job_replaces_ingest_revision_but_never_owner_decisions(mak
     worker.stages.discover = second_pass
     with client:
         put_artifact(client, scan_id, "frames-2", b"late evidence arrives", "frames")
+        # An explicit complete is idempotent (frozen contract); with K's settle
+        # gate it forces processing now, without it it is a no-op.
+        client.post(f"/api/scans/{scan_id}/complete")
         drain(client)
 
         latest = client.get(f"/api/scans/{scan_id}/scene").json()
@@ -271,6 +274,8 @@ def test_changed_scenario_retires_the_old_assessment_until_rechecked(make_client
         assert confirmed.status_code == 200, confirmed.text
         retired = client.get(f"/api/scans/{scan_id}/assessment")
         assert retired.status_code == 404
+        # Idempotent completion; forces the re-check now under K's settle gate.
+        client.post(f"/api/scans/{scan_id}/complete")
         drain(client)
         fresh = client.get(f"/api/scans/{scan_id}/assessment").json()
         assert fresh["created_at"] != first
