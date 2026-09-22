@@ -118,7 +118,7 @@ function PhysicsResults({ result, labels }: { result: NonNullable<SimulationStat
 
 function ResultFeedback({ feedback, labels }: { feedback: SimulationFeedback[]; labels: Map<string, string> }) {
   if (feedback.length === 0) return null;
-  return <details className="rounded-lg bg-rule/30 p-3"><summary className="cursor-pointer font-medium">Profile failures and blockers</summary><ul className="mt-3 space-y-2">{feedback.map((item) => <Feedback key={`${item.workflow_title}-${item.profile_title}`} feedback={item} labels={labels} />)}</ul></details>;
+  return <details className="rounded-lg bg-rule/30 p-3"><summary className="cursor-pointer font-medium">Profile failures and blockers</summary><ul className="mt-3 space-y-2">{feedback.map((item, index) => <Feedback key={index} feedback={item} labels={labels} />)}</ul></details>;
 }
 
 function ResultLimitations({ limitations }: { limitations: string[] }) {
@@ -136,7 +136,7 @@ function AstraRedesign({ result }: { result: NonNullable<SimulationStatus["resul
   return <div className="space-y-1 rounded-lg bg-rule/30 p-3 text-sm">
     <p className="font-medium">Astra repairs: {result.adaptive_rounds.filter((round) => round.accepted).length} accepted</p>
     <p className="text-ink-muted">Model: {result.redesign_model}. Attempts: {result.adaptive_rounds.length}.</p>
-    {result.redesign_reasons.length > 0 && <ul className="list-disc space-y-1 pl-5 text-ink-muted">{result.redesign_reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>}
+    {result.redesign_reasons.length > 0 && <ul className="list-disc space-y-1 pl-5 text-ink-muted">{result.redesign_reasons.map((reason, index) => <li key={index}>{reason}</li>)}</ul>}
   </div>;
 }
 
