@@ -1,0 +1,143 @@
+{
+  "receipt_id": "MUT-M17",
+  "gate_id": "G00",
+  "mutation_id": "M17",
+  "outcome": "killed",
+  "run_id": "opencode-20260921-170615",
+  "lane_id": "Q",
+  "evidence_kind": "synthetic_component",
+  "source_commit": "586f284e886e14bf76628ca01e0af31a793671cd",
+  "eval_source_head": "1dcfd8f (final K HEAD)",
+  "dirty_source_digest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+  "dirty_source_files": {},
+  "contract_hash": "e6c9296dd360f8a3081f036771f874bc2e802ba24010e9c3ba1cb15a57f69f37",
+  "policy_hash": "8db915a80d13c75600e47f47b2f77c8210c44d34793d5d4c8fb613f755129b81",
+  "input_artifacts": [
+    {
+      "path": "evaluate_photo_mesh_500.py.original",
+      "sha256": "121a0d7e0dbc6c78555c1899ff2cd9758cfcac0b814c0863b3d3fa08bc733f9c",
+      "size_bytes": 22855,
+      "content_type": "text/plain"
+    }
+  ],
+  "output_artifacts": [
+    {
+      "path": "M17-evaluator-mutated.log",
+      "sha256": "0bdcd96c68b33e06a35a079ef78c95f36f1afb0a95259a979b8eacfc5b8fb840",
+      "size_bytes": 1249,
+      "content_type": "text/plain"
+    },
+    {
+      "path": "M17-evaluator-clean.log",
+      "sha256": "073b1bbed3fedd224b758a734fc16517c5bf3d17bd10f69d131ecd1b1c9690ca",
+      "size_bytes": 98,
+      "content_type": "text/plain"
+    }
+  ],
+  "scan_id": null,
+  "revision_id": null,
+  "scenario_hash": null,
+  "scope_manifest_hash": null,
+  "evidence_manifest_hash": null,
+  "command_or_recorded_ui_steps": "pytest <owning suite> -q (clean); mutate scripts/evaluate_photo_mesh_500.py (the shipped G15 evaluator, line 251 denominator); pytest <owning suite> -q (record outcome); restore source",
+  "working_directory": "/tmp/q-mutations or /tmp/q-review-s (disposable worktrees)",
+  "environment_versions": {
+    "python": "3.11"
+  },
+  "started_at": "2026-09-22T00:30:59.851987-07:00",
+  "finished_at": "2026-09-22T00:30:59.851987-07:00",
+  "exit_code": 1,
+  "assertions": [
+    {
+      "id": "mutated-run-failed-behaviorally",
+      "measurement_method": "text_contains",
+      "expected": true,
+      "observed": true,
+      "params": {
+        "substring": "assert 0.0 == 0.04",
+        "artifact": "M17-evaluator-mutated.log"
+      },
+      "evidence_paths": [
+        "M17-evaluator-mutated.log"
+      ]
+    },
+    {
+      "id": "mutated-run-recorded-kill-test",
+      "measurement_method": "text_contains",
+      "expected": true,
+      "observed": true,
+      "params": {
+        "substring": "test_denominator_counts_only_photographed_pixels",
+        "artifact": "M17-evaluator-mutated.log"
+      },
+      "evidence_paths": [
+        "M17-evaluator-mutated.log"
+      ]
+    },
+    {
+      "id": "clean-rerun-passed",
+      "measurement_method": "text_contains",
+      "expected": true,
+      "observed": true,
+      "params": {
+        "substring": "passed",
+        "artifact": "M17-evaluator-clean.log"
+      },
+      "evidence_paths": [
+        "M17-evaluator-clean.log"
+      ]
+    },
+    {
+      "id": "restored-source-hash",
+      "measurement_method": "file_sha256",
+      "expected": "121a0d7e0dbc6c78555c1899ff2cd9758cfcac0b814c0863b3d3fa08bc733f9c",
+      "params": {
+        "artifact": "evaluate_photo_mesh_500.py.original"
+      },
+      "evidence_paths": [
+        "evaluate_photo_mesh_500.py.original"
+      ]
+    },
+    {
+      "id": "logs-are-secret-free",
+      "measurement_method": "text_clean",
+      "expected": true,
+      "params": {
+        "artifact": "M17-evaluator-mutated.log"
+      },
+      "evidence_paths": [
+        "M17-evaluator-mutated.log"
+      ]
+    },
+    {
+      "id": "cmd-was-pytest",
+      "measurement_method": "command_matches",
+      "expected": true,
+      "params": {
+        "required_substrings": [
+          "pytest"
+        ]
+      },
+      "evidence_paths": []
+    }
+  ],
+  "raw_log_path": "M17-evaluator-mutated.log",
+  "evaluator_identity": {
+    "actor": "lane-Q",
+    "attestation": "independent fault injection in a disposable worktree, reverted and hash-verified"
+  },
+  "fault": {
+    "id": "M17",
+    "source_head": "1dcfd8f (final K HEAD)",
+    "outcome": "killed",
+    "fault": "scripts/evaluate_photo_mesh_500.py covered_fraction: counted transparent/unphotographed pixels as photographed (photographed := ones(fixed_mask.shape))",
+    "fault_file": "scripts/evaluate_photo_mesh_500.py (the shipped G15 evaluator, line 251 denominator)",
+    "restored_sha256": "121a0d7e0dbc6c78555c1899ff2cd9758cfcac0b814c0863b3d3fa08bc733f9c",
+    "killed_by": "test_denominator_counts_only_photographed_pixels",
+    "behavioral_assertion": "assert 0.0 == 0.04",
+    "mutated_log": "M17-evaluator-mutated.log",
+    "clean_log": "M17-evaluator-clean.log",
+    "original_copy": "evaluate_photo_mesh_500.py.original",
+    "note": "re-executed against the SHIPPED evaluator call graph (evaluate_view -> covered_fraction) with a deterministic 96/100 fixture; the earlier render_efficiency/metrics.py test is informative but not proof for the c9/c11 denominator and is not counted"
+  }
+}

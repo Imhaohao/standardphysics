@@ -1,0 +1,143 @@
+{
+  "receipt_id": "MUT-M06",
+  "gate_id": "G00",
+  "mutation_id": "M06",
+  "outcome": "killed",
+  "run_id": "opencode-20260921-170615",
+  "lane_id": "Q",
+  "evidence_kind": "synthetic_component",
+  "source_commit": "586f284e886e14bf76628ca01e0af31a793671cd",
+  "eval_source_head": "bb8ded9 (final K HEAD)",
+  "dirty_source_digest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+  "dirty_source_files": {},
+  "contract_hash": "e6c9296dd360f8a3081f036771f874bc2e802ba24010e9c3ba1cb15a57f69f37",
+  "policy_hash": "8db915a80d13c75600e47f47b2f77c8210c44d34793d5d4c8fb613f755129b81",
+  "input_artifacts": [
+    {
+      "path": "detect-s-head.py.original",
+      "sha256": "b2ac0a9b2e05812d30dcd20ed1a816c0e9a308618782fbbb98c1277e8ae55432",
+      "size_bytes": 24618,
+      "content_type": "text/plain"
+    }
+  ],
+  "output_artifacts": [
+    {
+      "path": "M06-mutated.log",
+      "sha256": "41213bb1575ed906e46c01d61ac43cee48c8767d295fafd56186d162f67247b0",
+      "size_bytes": 8927,
+      "content_type": "text/plain"
+    },
+    {
+      "path": "M06-clean-after.log",
+      "sha256": "b4e6716fbd6745e8531d806d530757d7b2e907a881718c8369d92405a53c4ebc",
+      "size_bytes": 98,
+      "content_type": "text/plain"
+    }
+  ],
+  "scan_id": null,
+  "revision_id": null,
+  "scenario_hash": null,
+  "scope_manifest_hash": null,
+  "evidence_manifest_hash": null,
+  "command_or_recorded_ui_steps": "pytest <owning suite> -q (clean); mutate packages/pipeline/standardphysics_pipeline/discovery/detect.py; pytest <owning suite> -q (record outcome); restore source",
+  "working_directory": "/tmp/q-mutations or /tmp/q-review-s (disposable worktrees)",
+  "environment_versions": {
+    "python": "3.11"
+  },
+  "started_at": "2026-09-22T00:30:59.851987-07:00",
+  "finished_at": "2026-09-22T00:30:59.851987-07:00",
+  "exit_code": 1,
+  "assertions": [
+    {
+      "id": "mutated-run-failed-behaviorally",
+      "measurement_method": "text_contains",
+      "expected": true,
+      "observed": true,
+      "params": {
+        "substring": "landscape_left: patch seen at (639.5, 514.5), expected (160.0, 85.0) upright",
+        "artifact": "M06-mutated.log"
+      },
+      "evidence_paths": [
+        "M06-mutated.log"
+      ]
+    },
+    {
+      "id": "mutated-run-recorded-kill-test",
+      "measurement_method": "text_contains",
+      "expected": true,
+      "observed": true,
+      "params": {
+        "substring": "packages/pipeline/tests/test_orientation_end_to_end.py::TestEncodeFrameOrientationEndToEnd",
+        "artifact": "M06-mutated.log"
+      },
+      "evidence_paths": [
+        "M06-mutated.log"
+      ]
+    },
+    {
+      "id": "clean-rerun-passed",
+      "measurement_method": "text_contains",
+      "expected": true,
+      "observed": true,
+      "params": {
+        "substring": "passed",
+        "artifact": "M06-clean-after.log"
+      },
+      "evidence_paths": [
+        "M06-clean-after.log"
+      ]
+    },
+    {
+      "id": "restored-source-hash",
+      "measurement_method": "file_sha256",
+      "expected": "b2ac0a9b2e05812d30dcd20ed1a816c0e9a308618782fbbb98c1277e8ae55432",
+      "params": {
+        "artifact": "detect-s-head.py.original"
+      },
+      "evidence_paths": [
+        "detect-s-head.py.original"
+      ]
+    },
+    {
+      "id": "logs-are-secret-free",
+      "measurement_method": "text_clean",
+      "expected": true,
+      "params": {
+        "artifact": "M06-mutated.log"
+      },
+      "evidence_paths": [
+        "M06-mutated.log"
+      ]
+    },
+    {
+      "id": "cmd-was-pytest",
+      "measurement_method": "command_matches",
+      "expected": true,
+      "params": {
+        "required_substrings": [
+          "pytest"
+        ]
+      },
+      "evidence_paths": []
+    }
+  ],
+  "raw_log_path": "M06-mutated.log",
+  "evaluator_identity": {
+    "actor": "lane-Q",
+    "attestation": "independent fault injection in a disposable worktree, reverted and hash-verified"
+  },
+  "fault": {
+    "id": "M06",
+    "source_head": "bb8ded9 (final K HEAD)",
+    "outcome": "killed",
+    "fault": "detect.py: encode_frame orientation rotation zeroed (turns=0)",
+    "fault_file": "packages/pipeline/standardphysics_pipeline/discovery/detect.py",
+    "restored_sha256": "b2ac0a9b2e05812d30dcd20ed1a816c0e9a308618782fbbb98c1277e8ae55432",
+    "killed_by": "packages/pipeline/tests/test_orientation_end_to_end.py::TestEncodeFrameOrientationEndToEnd",
+    "behavioral_assertion": "landscape_left: patch seen at (639.5, 514.5), expected (160.0, 85.0) upright",
+    "mutated_log": "M06-mutated.log",
+    "clean_log": "M06-clean-after.log",
+    "original_copy": "detect-s-head.py.original",
+    "note": "S closed the M06 gap with test_orientation_end_to_end.py at 6e01067; the mutation now dies behaviorally"
+  }
+}

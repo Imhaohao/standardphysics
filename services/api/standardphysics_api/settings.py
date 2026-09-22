@@ -72,6 +72,15 @@ class Settings:
     auto_deep_typesafe_call_limit: int = 3000
     auto_deep_astra_rounds: int = 4
     auto_deep_exhaustive_evaluations: int = 1_000_000
+    evidence_settle_seconds: float = 30.0
+    """Quiet time before late evidence auto-queues exactly one semantic job.
+
+    A phone uploads its evidence over minutes: 465 frames arrive one by one,
+    the photo manifest last. Queueing per arriving frame would run hundreds of
+    provider jobs on partial evidence. When a complete unprocessed bundle has
+    not changed for this long (or an explicit /complete arrives), one semantic
+    job is queued. Zero keeps the immediate per-artifact behavior for tests.
+    """
 
     @property
     def database_path(self) -> pathlib.Path:
@@ -89,6 +98,9 @@ class Settings:
             weave_project=os.environ.get(PROJECT_ENV) or None,
             weave_entity=os.environ.get(ENTITY_ENV) or None,
             auto_deep_simulation=_flag("SP_AUTO_DEEP_SIMULATION"),
+            evidence_settle_seconds=_bounded_integer(
+                "SP_EVIDENCE_SETTLE_SECONDS", 30, 0, 86_400
+            ),
             auto_deep_samples=_bounded_integer(
                 "SP_AUTO_DEEP_SAMPLES", 1000, 1, 10_000
             ),

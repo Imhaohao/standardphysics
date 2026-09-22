@@ -1,0 +1,142 @@
+{
+  "receipt_id": "MUT-M03",
+  "gate_id": "G00",
+  "mutation_id": "M03",
+  "outcome": "killed",
+  "run_id": "opencode-20260921-170615",
+  "lane_id": "Q",
+  "evidence_kind": "synthetic_component",
+  "source_commit": "586f284e886e14bf76628ca01e0af31a793671cd",
+  "eval_source_head": "8b48f9e (final K HEAD)",
+  "dirty_source_digest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+  "dirty_source_files": {},
+  "contract_hash": "e6c9296dd360f8a3081f036771f874bc2e802ba24010e9c3ba1cb15a57f69f37",
+  "policy_hash": "8db915a80d13c75600e47f47b2f77c8210c44d34793d5d4c8fb613f755129b81",
+  "input_artifacts": [
+    {
+      "path": "repository.py.original",
+      "sha256": "ec82157b9fdff3bdd37e2794e15c0bf35f2d92094153859326c965f8ee1d6851",
+      "size_bytes": 23401,
+      "content_type": "text/plain"
+    }
+  ],
+  "output_artifacts": [
+    {
+      "path": "M03-mutated.log",
+      "sha256": "496aae7a3577888114cdc9027913632950e4052df1a2874cb515fda9a8fc7bac",
+      "size_bytes": 2072,
+      "content_type": "text/plain"
+    },
+    {
+      "path": "M03-clean-after.log",
+      "sha256": "7051221594f3eaa966517b8092d01db528077aa0c0f700516019a696338a0825",
+      "size_bytes": 686,
+      "content_type": "text/plain"
+    }
+  ],
+  "scan_id": null,
+  "revision_id": null,
+  "scenario_hash": null,
+  "scope_manifest_hash": null,
+  "evidence_manifest_hash": null,
+  "command_or_recorded_ui_steps": "pytest <owning suite> -q (clean); mutate services/api/standardphysics_api/repository.py; pytest <owning suite> -q (record outcome); restore source",
+  "working_directory": "/tmp/q-mutations or /tmp/q-review-s (disposable worktrees)",
+  "environment_versions": {
+    "python": "3.11"
+  },
+  "started_at": "2026-09-22T00:30:59.851987-07:00",
+  "finished_at": "2026-09-22T00:30:59.851987-07:00",
+  "exit_code": 1,
+  "assertions": [
+    {
+      "id": "mutated-run-failed-behaviorally",
+      "measurement_method": "text_contains",
+      "expected": true,
+      "observed": true,
+      "params": {
+        "substring": "assert 'complete' == 'blocked_incomplete_evidence'",
+        "artifact": "M03-mutated.log"
+      },
+      "evidence_paths": [
+        "M03-mutated.log"
+      ]
+    },
+    {
+      "id": "mutated-run-recorded-kill-test",
+      "measurement_method": "text_contains",
+      "expected": true,
+      "observed": true,
+      "params": {
+        "substring": "services/api/tests/test_evidence_closure.py::test_legacy_geometry_complete_stays_browsable_with_semantics_blocked",
+        "artifact": "M03-mutated.log"
+      },
+      "evidence_paths": [
+        "M03-mutated.log"
+      ]
+    },
+    {
+      "id": "clean-rerun-passed",
+      "measurement_method": "text_contains",
+      "expected": true,
+      "observed": true,
+      "params": {
+        "substring": "passed",
+        "artifact": "M03-clean-after.log"
+      },
+      "evidence_paths": [
+        "M03-clean-after.log"
+      ]
+    },
+    {
+      "id": "restored-source-hash",
+      "measurement_method": "file_sha256",
+      "expected": "ec82157b9fdff3bdd37e2794e15c0bf35f2d92094153859326c965f8ee1d6851",
+      "params": {
+        "artifact": "repository.py.original"
+      },
+      "evidence_paths": [
+        "repository.py.original"
+      ]
+    },
+    {
+      "id": "logs-are-secret-free",
+      "measurement_method": "text_clean",
+      "expected": true,
+      "params": {
+        "artifact": "M03-mutated.log"
+      },
+      "evidence_paths": [
+        "M03-mutated.log"
+      ]
+    },
+    {
+      "id": "cmd-was-pytest",
+      "measurement_method": "command_matches",
+      "expected": true,
+      "params": {
+        "required_substrings": [
+          "pytest"
+        ]
+      },
+      "evidence_paths": []
+    }
+  ],
+  "raw_log_path": "M03-mutated.log",
+  "evaluator_identity": {
+    "actor": "lane-Q",
+    "attestation": "independent fault injection in a disposable worktree, reverted and hash-verified"
+  },
+  "fault": {
+    "id": "M03",
+    "source_head": "8b48f9e (final K HEAD)",
+    "outcome": "killed",
+    "fault": "repository.py: evidence bundle declared complete despite missing required kinds (early finalize)",
+    "fault_file": "services/api/standardphysics_api/repository.py",
+    "restored_sha256": "ec82157b9fdff3bdd37e2794e15c0bf35f2d92094153859326c965f8ee1d6851",
+    "killed_by": "services/api/tests/test_evidence_closure.py::test_legacy_geometry_complete_stays_browsable_with_semantics_blocked",
+    "behavioral_assertion": "assert 'complete' == 'blocked_incomplete_evidence'",
+    "mutated_log": "M03-mutated.log",
+    "clean_log": "M03-clean-after.log",
+    "original_copy": "repository.py.original"
+  }
+}

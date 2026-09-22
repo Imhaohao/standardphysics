@@ -70,7 +70,7 @@ class StructuredGaussianModel(nn.Module):
 
     def scale_anisotropy_loss(self, max_ratio: float = 3.0) -> torch.Tensor:
         """Penalize Gaussians whose aspect ratio exceeds max_ratio.
-        
+
         This directly stops needle-like elongation along camera rays.
         """
         scales = self.scales

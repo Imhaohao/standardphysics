@@ -1,0 +1,473 @@
+{
+  "kind": "certificate_matrix_final",
+  "version": "final",
+  "run_id": "opencode-20260921-170615",
+  "evaluator": "lane Q independent (fireworks-ai deepseek-pro-latest)",
+  "computed_at": "2026-09-22T01:37:14-07:00",
+  "integration_head_evaluated": "0142090d1ec7b049537a72729573a2ed272375da",
+  "policy": "frozen docs unchanged",
+  "verification_scope_at_this_head": "exact M06 mutation on test_orientation_end_to_end at bb8ded9 (clean 4 passed -> mutant 3 failed behaviorally -> restored hash b2ac0a9b... -> clean rerun 4 passed); M06 receipt rebound to bb8ded9. K states suites green at bb8ded9; no broad rerun of mine per dispatch.",
+  "gate_matrix": [
+    {
+      "id": "G00",
+      "status": "passed",
+      "blocker": null,
+      "note": "All 18 required controls with behavioral assertions, clean counterparts, restored hashes, raw logs. M17 re-executed against the SHIPPED G15 evaluator (scripts/evaluate_photo_mesh_500.py covered_fraction): deterministic 96/100 fixture, injected photographed:=ones(fixed_mask) once, killed by assert 0.0 == 0.04, restored 121a0d7e..., clean rerun. The earlier render_efficiency/metrics.py result is informative only and is NOT counted toward M17. All 18 controls remain receipt-valid; acceptance suite rerun at e431829: 46 passed (isolated K packages, no skips)."
+    },
+    {
+      "id": "G01",
+      "status": "passed_targeted_with_note",
+      "blocker": null,
+      "note": "All previously-visible top-level reds verified resolved at 6e01067: audit_open_findings 10 passed + 3 xfailed (fixture fix 8ed34a3), astra+ontology 29 passed (R's reads_as_wall/ontology ratchet), tracked absolute .node_modules-link absent from the tree. Full-suite re-verify deferred to the frozen candidate per dispatch."
+    },
+    {
+      "id": "G02",
+      "status": "passed",
+      "blocker": null,
+      "note": "closure suite + review safety green at 534b7e0; convention unchanged by 6e01067 (test-only + predicate rename)."
+    },
+    {
+      "id": "G03",
+      "status": "passed",
+      "blocker": null,
+      "note": "S proxy-semantics chain integrated; end-to-end orientation test present; M06 mutation now killed at this head (was a survived gap)."
+    },
+    {
+      "id": "G04",
+      "status": "passed",
+      "blocker": null,
+      "note": "review-safety green; M08 mutation killed."
+    },
+    {
+      "id": "G05",
+      "status": "passed",
+      "blocker": null,
+      "note": "Direct reproduction of the supervisor consumer-gap at 6e01067: needs_another_look television (0.12x0.03x0.12m at z=0.5) yields _extents_trusted=False and target_height_inches=None - proxy extents can no longer produce within-reach verdicts."
+    },
+    {
+      "id": "G06",
+      "status": "passed",
+      "blocker": null,
+      "note": "Shared producer repaired (15688d2, in this head): numeric threshold rows can no longer conclude satisfied/violation with unknown bounds. Verified live in two artifacts: the regenerated whiteboard report (all 10 findings question/needs_verification, zero unknown-bounds verdicts) and the rebuilt Moffett dossier (30 rows; the only satisfied row is coverage:service_counter class presence with no measurement; passing_space etc. now needs_verification). Root 32 scope+ontology tests independent pass; my earlier Q-15 defect is closed at source, not hand-edited."
+    },
+    {
+      "id": "G07",
+      "status": "passed",
+      "blocker": null,
+      "note": "uncertain reach stays uncertain at this head (fix/approach guard + existing 56 approach/reach tests); approach UI is the remaining separate item."
+    },
+    {
+      "id": "G08",
+      "status": "passed",
+      "blocker": null,
+      "note": "U's row-major fix integrated at 0142090: review-targets.ts nodePosition now reads translation indices 3/7/11 (previously m[12]/m[13]/m[14]); rotation-aware regression 12/12 vitest pass at this head; root's browser demo shows real review positions on scan b86a89cf. Physical touch remains G11's item."
+    },
+    {
+      "id": "G09",
+      "status": "passed",
+      "blocker": null,
+      "note": "Root's actual browser journey: sign-in POST 200, then authenticated / and /scans/b86a89cf with a real outlet crop reviewed, after restarting the web process with runtime SP_API_ORIGIN (SSR loopback defect found and fixed in the run recipe, log k-web-runtime-origin-fix.log; docs 31bf51e now require SP_API_ORIGIN at both build and start). Authenticated LAN API journeys and denial tests previously verified; browser demo is NOT phone evidence (G11)."
+    },
+    {
+      "id": "G10",
+      "status": "passed",
+      "blocker": null,
+      "note": "Revision-5 copy verified: zip sha256 57271bcec6... == recomputed; scene+assessment revision 5; manual record on f4213100 with its own crop id frame-0309-751385505449bca0, provenance manual, marked_by='automated QA on the isolated copy' and marked_at=2026-09-22T07:51:20.376701Z (both PRESENT in the artifact - v12's 'no actor/time string' wording was a field-name miss, corrected), embedded AI-assisted note with cross-node identity NOT established; 126c3739 cleaned; localization needs_verification unchanged; rev3/rev4 artifacts preserved."
+    },
+    {
+      "id": "G11",
+      "status": "externally_blocked",
+      "blocker": "user LAN-only physical Safari review unanswered; capture+upload legs real and byte-verified."
+    },
+    {
+      "id": "G12",
+      "status": "pending",
+      "blocker": "human-reviewed held-out inventories; counts are not one-to-one accuracy."
+    },
+    {
+      "id": "G13",
+      "status": "passed",
+      "blocker": null,
+      "note": "Reproducible bundle verified byte-level (gate-evidence-lane-A/moffett-work): dossier pinned f143082d rev7 graph_hash 7a8250e306beb3f2..., assessment-rev7 id 1666780a-eedd-5280-9c71-6154fd4311cf with same hash, manifest-rev7 id 1447def5-09f8-5caf-9a16-7b5b45e32443, working.sqlite3 sha256 b74ccfc94a... == original-db-copy pin == my recompute; recipe names producer/head/suites. Both v13 audit findings resolved: identity pins saved beside the dossier; unknown-bounds satisfaction eliminated by the G06 producer fix. before_after empty, controls/recapture explicit."
+    },
+    {
+      "id": "G14",
+      "status": "externally_blocked",
+      "blocker": "qualified human legal review."
+    },
+    {
+      "id": "G15",
+      "status": "failed",
+      "blocker": "root c11 visual verdict FAILED (fragmented triangles/holes persist across quad images 0086/0001 and source maps). V code at bb8ded9/1dcfd8f is integration, not a quality pass; M17 confirmed the evaluator itself rejects denominator games."
+    },
+    {
+      "id": "G16",
+      "status": "externally_blocked",
+      "blocker": "cannot exist before the boba-shop visit."
+    },
+    {
+      "id": "G17",
+      "status": "externally_blocked",
+      "blocker": "field control measurements missing."
+    }
+  ],
+  "certificates": {
+    "software_verified": {
+      "status": "awarded",
+      "all_of": [
+        "G00",
+        "G01",
+        "G02",
+        "G03",
+        "G04",
+        "G05",
+        "G06",
+        "G07",
+        "G08",
+        "G09"
+      ],
+      "blocked_by": [],
+      "derived_from_policy_lists": true
+    },
+    "saved_capture_verified": {
+      "status": "awarded",
+      "all_of": [
+        "G00",
+        "G01",
+        "G02",
+        "G03",
+        "G04",
+        "G05",
+        "G06",
+        "G07",
+        "G08",
+        "G09",
+        "G10"
+      ],
+      "blocked_by": [],
+      "derived_from_policy_lists": true
+    },
+    "phone_pilot_ready": {
+      "status": "not_awarded",
+      "all_of": [
+        "G00",
+        "G01",
+        "G02",
+        "G03",
+        "G04",
+        "G05",
+        "G06",
+        "G07",
+        "G08",
+        "G09",
+        "G11"
+      ],
+      "blocked_by": [
+        "G11"
+      ],
+      "derived_from_policy_lists": true
+    },
+    "shop_field_validated": {
+      "status": "not_awarded",
+      "all_of": [
+        "G00",
+        "G01",
+        "G02",
+        "G03",
+        "G04",
+        "G05",
+        "G06",
+        "G07",
+        "G08",
+        "G09",
+        "G11",
+        "G16"
+      ],
+      "blocked_by": [
+        "G11",
+        "G16"
+      ],
+      "derived_from_policy_lists": true
+    },
+    "automatic_semantics_benchmark_passed": {
+      "status": "not_awarded",
+      "all_of": [
+        "G00",
+        "G02",
+        "G03",
+        "G10",
+        "G12"
+      ],
+      "blocked_by": [
+        "G12"
+      ],
+      "derived_from_policy_lists": true
+    },
+    "scoped_assessment_evidence_ready": {
+      "status": "awarded",
+      "all_of": [
+        "G00",
+        "G06",
+        "G08",
+        "G10",
+        "G13"
+      ],
+      "blocked_by": [],
+      "derived_from_policy_lists": true
+    },
+    "scoped_requirements_satisfied": {
+      "status": "not_awarded",
+      "all_of": [
+        "G00",
+        "G05",
+        "G06",
+        "G13",
+        "G14",
+        "G17"
+      ],
+      "blocked_by": [
+        "G14",
+        "G17"
+      ],
+      "derived_from_policy_lists": true
+    },
+    "photo_mesh_500_verified": {
+      "status": "not_awarded",
+      "all_of": [
+        "G00",
+        "G05",
+        "G09",
+        "G15"
+      ],
+      "blocked_by": [
+        "G15"
+      ],
+      "derived_from_policy_lists": true
+    },
+    "whole_site_ADA_compliance": {
+      "automated_certificate_allowed": false
+    }
+  },
+  "corrections_from_supervisor": [
+    "G15 durable test: blanket except/skip removed; plain import of the K evaluator, verified clean/mutated/restored at 8c5d40b",
+    "recompute_certificates: dispositions read from the current matrix, transitive depends_on honored, unknown/failed conservative; negative proofs committed",
+    "G10 texture 'requirement' removed (not in policy); literal missing items are review + scoped report under a new revision",
+    "G09': literal gap is the documentation block, not a phone probe (G11 owns physical)"
+  ],
+  "software_line": "K suites green at bb8ded9 per K; Q evidence: all prior recomputes + M06 mutation binding + targeted orientation cycle at this head. G09 portable-network test and G11 user review remain the physical blockers for certificates.",
+  "notes_ten_controls": "All 18 controls secured across source-bound heads; M17 bound to the ACTUAL shipped evaluator denominator with a deterministic fixture; certificate blocker lists are programmatically derived from the frozen policy, never hand-edited.",
+  "certificate_derivation": {
+    "gate_statuses_read_from_matrix": [
+      [
+        "G00",
+        "passed"
+      ],
+      [
+        "G01",
+        "passed_targeted_with_note"
+      ],
+      [
+        "G02",
+        "passed"
+      ],
+      [
+        "G03",
+        "passed"
+      ],
+      [
+        "G04",
+        "passed"
+      ],
+      [
+        "G05",
+        "passed"
+      ],
+      [
+        "G06",
+        "passed"
+      ],
+      [
+        "G07",
+        "passed"
+      ],
+      [
+        "G08",
+        "passed"
+      ],
+      [
+        "G09",
+        "passed"
+      ],
+      [
+        "G10",
+        "passed"
+      ],
+      [
+        "G11",
+        "externally_blocked"
+      ],
+      [
+        "G12",
+        "pending"
+      ],
+      [
+        "G13",
+        "passed"
+      ],
+      [
+        "G14",
+        "externally_blocked"
+      ],
+      [
+        "G15",
+        "failed"
+      ],
+      [
+        "G16",
+        "externally_blocked"
+      ],
+      [
+        "G17",
+        "externally_blocked"
+      ]
+    ],
+    "dependency_closure_respected": true,
+    "certificates": {
+      "software_verified": {
+        "status": "awarded",
+        "all_of": [
+          "G00",
+          "G01",
+          "G02",
+          "G03",
+          "G04",
+          "G05",
+          "G06",
+          "G07",
+          "G08",
+          "G09"
+        ],
+        "blocked_by": [],
+        "derived_from_policy_lists": true
+      },
+      "saved_capture_verified": {
+        "status": "awarded",
+        "all_of": [
+          "G00",
+          "G01",
+          "G02",
+          "G03",
+          "G04",
+          "G05",
+          "G06",
+          "G07",
+          "G08",
+          "G09",
+          "G10"
+        ],
+        "blocked_by": [],
+        "derived_from_policy_lists": true
+      },
+      "phone_pilot_ready": {
+        "status": "not_awarded",
+        "all_of": [
+          "G00",
+          "G01",
+          "G02",
+          "G03",
+          "G04",
+          "G05",
+          "G06",
+          "G07",
+          "G08",
+          "G09",
+          "G11"
+        ],
+        "blocked_by": [
+          "G11"
+        ],
+        "derived_from_policy_lists": true
+      },
+      "shop_field_validated": {
+        "status": "not_awarded",
+        "all_of": [
+          "G00",
+          "G01",
+          "G02",
+          "G03",
+          "G04",
+          "G05",
+          "G06",
+          "G07",
+          "G08",
+          "G09",
+          "G11",
+          "G16"
+        ],
+        "blocked_by": [
+          "G11",
+          "G16"
+        ],
+        "derived_from_policy_lists": true
+      },
+      "automatic_semantics_benchmark_passed": {
+        "status": "not_awarded",
+        "all_of": [
+          "G00",
+          "G02",
+          "G03",
+          "G10",
+          "G12"
+        ],
+        "blocked_by": [
+          "G12"
+        ],
+        "derived_from_policy_lists": true
+      },
+      "scoped_assessment_evidence_ready": {
+        "status": "awarded",
+        "all_of": [
+          "G00",
+          "G06",
+          "G08",
+          "G10",
+          "G13"
+        ],
+        "blocked_by": [],
+        "derived_from_policy_lists": true
+      },
+      "scoped_requirements_satisfied": {
+        "status": "not_awarded",
+        "all_of": [
+          "G00",
+          "G05",
+          "G06",
+          "G13",
+          "G14",
+          "G17"
+        ],
+        "blocked_by": [
+          "G14",
+          "G17"
+        ],
+        "derived_from_policy_lists": true
+      },
+      "photo_mesh_500_verified": {
+        "status": "not_awarded",
+        "all_of": [
+          "G00",
+          "G05",
+          "G09",
+          "G15"
+        ],
+        "blocked_by": [
+          "G15"
+        ],
+        "derived_from_policy_lists": true
+      },
+      "whole_site_ADA_compliance": {
+        "automated_certificate_allowed": false
+      }
+    }
+  }
+}

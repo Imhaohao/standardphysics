@@ -45,6 +45,8 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any, Callable
 
+from . import taxonomy
+
 MODEL_ENV = "DISCOVERY_MODEL"
 API_KEY_ENV = "DISCOVERY_API_KEY"
 BASE_URL_ENV = "DISCOVERY_BASE_URL"
@@ -74,10 +76,7 @@ BOX_SCALE = 1000.0
 MIN_BOX_FRACTION = 0.0015
 """A box thinner than this share of the frame carries too few mesh points to fit."""
 
-PERSON_NAMES = frozenset({
-    "person", "people", "human", "man", "woman", "child", "customer",
-    "shopper", "employee", "staff", "worker", "hand", "arm", "leg", "face",
-})
+PERSON_NAMES = taxonomy.names_for(taxonomy.PERSON)
 
 FIXED_NAMES = frozenset({
     "wall", "floor", "ceiling", "window", "door", "doorway", "column",
@@ -127,18 +126,28 @@ DETECTION_SCHEMA: dict[str, Any] = {
     },
 }
 
-OUTLET_NAMES = frozenset({
-    "outlet", "electrical outlet", "power outlet", "wall outlet",
-    "receptacle", "electrical receptacle", "power strip", "extension lead",
-    "socket", "plug socket", "duplex outlet",
-})
+OUTLET_NAMES = taxonomy.names_for(taxonomy.OUTLET)
 
-CONFUSER_NAMES = frozenset({
-    "switch", "light switch", "data port", "ethernet port", "network port",
-    "cable plate", "blank plate", "phone jack", "coaxial port",
-})
+CONFUSER_NAMES = taxonomy.names_for(taxonomy.SWITCH) | taxonomy.names_for(taxonomy.SIGN)
+"""Names that look like a target but are not one, so nothing is forced into a finding."""
 
 Transport = Callable[[str, dict[str, Any], dict[str, str]], dict[str, Any]]
+
+
+@dataclass(frozen=True)
+class ModelRequestInfo:
+    """What one real detector request actually was, kept for the evidence trail.
+
+    The provider, the model, the provider's request id, usage and the upright
+    orientation the frame was shown in. Never the frame's pixels or a secret.
+    """
+
+    frame_id: str
+    provider: str
+    model: str
+    orientation: str
+    request_id: str | None = None
+    usage: dict[str, int] | None = None
 
 
 class DetectionError(RuntimeError):
@@ -176,12 +185,52 @@ class Detection:
         return self.name.strip().lower() in PERSON_NAMES
 
     @property
+    def class_key(self) -> str:
+        """The fixed class this finding's free-text name resolves to."""
+        if self.category == "outlet":
+            return taxonomy.OUTLET
+        if self.category == "confuser":
+            return taxonomy.classify(self.name) if taxonomy.classify(self.name) in taxonomy.CONFUSER_CLASSES else taxonomy.SIGN
+        return taxonomy.classify(self.name)
+
+    @property
     def is_outlet(self) -> bool:
-        return self.name.strip().lower() in OUTLET_NAMES or self.category == "outlet"
+        return self.class_key == taxonomy.OUTLET or self.name.strip().lower() in OUTLET_NAMES
 
     @property
     def is_confuser(self) -> bool:
-        return self.name.strip().lower() in CONFUSER_NAMES or self.category == "confuser"
+        return self.class_key in taxonomy.CONFUSER_CLASSES or self.category == "confuser"
+
+    @property
+    def is_television(self) -> bool:
+        return self.class_key == taxonomy.TELEVISION
+
+    @property
+    def is_service_counter(self) -> bool:
+        return self.class_key == taxonomy.SERVICE_COUNTER
+
+    @property
+    def is_restroom_entrance(self) -> bool:
+        return self.class_key == taxonomy.RESTROOM_ENTRANCE
+
+    @property
+    def is_surface_target(self) -> bool:
+        """A target that hangs off a measured vertical surface rather than standing on the floor."""
+        return self.class_key in taxonomy.SURFACE_TARGET_CLASSES or self.is_outlet
+
+    @property
+    def is_attachable_target(self) -> bool:
+        """A target the surface-attachment pipeline owns: an outlet or a television.
+
+        Whiteboards are excluded here because their owner is the semantic
+        correction pass, which attaches them to walls itself.
+        """
+        return self.is_outlet or self.class_key == taxonomy.TELEVISION
+
+    @property
+    def needs_owner_confirmation(self) -> bool:
+        """Counter and restroom candidates are never confirmed by the detector."""
+        return self.class_key in taxonomy.OWNER_CONFIRMATION_CLASSES
 
     @property
     def width(self) -> float:
@@ -225,8 +274,18 @@ def detect_objects(
     *,
     orientation: str = "landscape_right",
     transport: Transport | None = None,
+    recorded: list[ModelRequestInfo] | None = None,
 ) -> list[Detection]:
-    """Every object the model finds in one frame, boxed in that frame's stored pixels."""
+    """Every object the model finds in one frame, boxed in that frame's stored pixels.
+
+    `recorded`, when given, receives one `ModelRequestInfo` per actual provider
+    response: provider, model, provider request id, usage and orientation.
+    The entry is captured from the response envelope the moment it arrives,
+    before any parsing, so a billed response whose content later fails to
+    parse still leaves its request metadata in the trail. Entries are only
+    appended for real responses: never for cache hits (the caller asks the
+    model only on a miss), never for a request that ended without a response.
+    """
     frame = encode_frame(image_path, orientation)
     api_key = _api_key()
     if transport is None and not api_key:
@@ -234,7 +293,11 @@ def detect_objects(
     body = _request_body(frame)
     for attempt in range(1, MAX_ATTEMPTS + 1):
         try:
-            return _detections_from(_post(transport, body, api_key), frame, frame_id)
+            payload = _post(transport, body, api_key)
+            if recorded is not None:
+                recorded.append(_request_info(payload, frame_id, orientation))
+            detections = _detections_from(payload, frame, frame_id)
+            return detections
         except (DetectionAuthError, DetectionSchemaError):
             raise
         except DetectionError:
@@ -289,6 +352,26 @@ def _api_key() -> str:
 def _base_url() -> str:
     configured = os.environ.get(BASE_URL_ENV) or os.environ.get(FALLBACK_BASE_URL_ENV)
     return (configured or DEFAULT_BASE_URL).rstrip("/")
+
+
+def _request_info(payload: dict[str, Any], frame_id: str, orientation: str) -> ModelRequestInfo:
+    """Provider, model, request id and usage from a real response, without secrets."""
+    import urllib.parse
+
+    host = urllib.parse.urlsplit(_base_url()).hostname or "unknown"
+    usage = payload.get("usage")
+    if isinstance(usage, dict):
+        usage = {str(key): int(value) for key, value in usage.items() if isinstance(value, (int, float))}
+    else:
+        usage = None
+    return ModelRequestInfo(
+        frame_id=frame_id,
+        provider=host,
+        model=os.environ.get(MODEL_ENV) or DEFAULT_MODEL,
+        orientation=orientation,
+        request_id=payload.get("id"),
+        usage=usage,
+    )
 
 
 def _request_body(frame: EncodedFrame) -> dict[str, Any]:
@@ -371,6 +454,9 @@ def _one_detection(
     crop_box: tuple[float, float, float, float] | None = None,
 ) -> Detection | None:
     name = str(item.get("name", "")).strip().lower()
+    confidence = _finite_confidence(item.get("confidence", 1.0))
+    if confidence is None:
+        return None
     raw_box = item.get("box_2d")
     if crop_box is not None:
         box = map_crop_box_to_sensor(raw_box, crop_box, frame.turns)
@@ -398,7 +484,7 @@ def _one_detection(
         name=name,
         box=box,
         movable=bool(item.get("movable", True)) and name not in FIXED_NAMES,
-        confidence=_clamped(item.get("confidence", 1.0)),
+        confidence=confidence,
         category=category,
         crop_box=crop_box,
         sockets=sockets,
@@ -544,3 +630,20 @@ def _clamped(value: Any) -> float:
         return min(1.0, max(0.0, float(value)))
     except (TypeError, ValueError):
         return 0.0
+
+
+def _finite_confidence(value: Any) -> float | None:
+    """A confidence the model actually gave, clipped to [0, 1], or nothing.
+
+    NaN and infinity are rejected rather than silently clamped: a missing
+    number must never become a confident detection.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        try:
+            value = float(value)
+        except (TypeError, ValueError):
+            return None
+    number = float(value)
+    if number != number or number in (float("inf"), float("-inf")):
+        return None
+    return min(1.0, max(0.0, number))

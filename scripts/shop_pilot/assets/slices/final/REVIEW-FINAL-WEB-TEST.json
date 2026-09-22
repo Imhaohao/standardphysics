@@ -1,0 +1,73 @@
+{
+  "receipt_id": "REVIEW-FINAL-WEB-TEST",
+  "gate_id": "G01",
+  "run_id": "opencode-20260921-170615",
+  "lane_id": "Q",
+  "evidence_kind": "synthetic_component",
+  "source_commit": "aa8fd81c51bf85cbaa2b948ed2dfe1a0668eb819",
+  "dirty_source_digest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+  "dirty_source_files": {},
+  "contract_hash": "eb8c31f1addb1f7c0e58d01c4b62f222237fc31444bababd7d80e5aa9c01836f",
+  "policy_hash": "8db915a80d13c75600e47f47b2f77c8210c44d34793d5d4c8fb613f755129b81",
+  "input_artifacts": [],
+  "output_artifacts": [
+    {
+      "path": "web-test.log",
+      "sha256": "c20eb817dbcf6b7c4cf2a8f3af13a25e3db6ede5e8f7aa50f99dda82735fb8c3",
+      "size_bytes": 758,
+      "content_type": "text/plain"
+    }
+  ],
+  "scan_id": null,
+  "revision_id": null,
+  "scenario_hash": null,
+  "scope_manifest_hash": null,
+  "evidence_manifest_hash": null,
+  "command_or_recorded_ui_steps": "suite transcription on disposable worktree at lane FINAL HEAD aa8fd81",
+  "working_directory": "/tmp/q-review-final",
+  "environment_versions": {
+    "python": "3.11",
+    "node": "shared node_modules (read-only)"
+  },
+  "started_at": "2026-09-21T22:35:06.729911-07:00",
+  "finished_at": "2026-09-21T22:35:06.729911-07:00",
+  "exit_code": 0,
+  "assertions": [
+    {
+      "id": "claim-0",
+      "measurement_method": "text_contains",
+      "expected": true,
+      "observed": true,
+      "params": {
+        "substring": "169 passed (169)",
+        "artifact": "web-test.log"
+      },
+      "evidence_paths": [
+        "web-test.log"
+      ]
+    },
+    {
+      "id": "log-hash",
+      "measurement_method": "file_sha256",
+      "expected": "c20eb817dbcf6b7c4cf2a8f3af13a25e3db6ede5e8f7aa50f99dda82735fb8c3",
+      "observed": "c20eb817dbcf6b7c4cf2a8f3af13a25e3db6ede5e8f7aa50f99dda82735fb8c3",
+      "params": {
+        "artifact": "web-test.log"
+      },
+      "evidence_paths": [
+        "web-test.log"
+      ]
+    }
+  ],
+  "raw_log_path": "web-test.log",
+  "evaluator_identity": {
+    "actor": "lane-Q",
+    "attestation": "independent recompute on a disposable worktree"
+  },
+  "findings": {
+    "head_label": "K integration HEAD aa8fd81",
+    "suite_green": "API 211, pipeline+contracts 315/32, agents 776, web tc+169 tests+build all green at aa8fd81",
+    "top_tests_failures": "exactly the 4 pre-existing astra(2)/ontology(2) failures, identical to baseline inventory; none new, assigned B/R",
+    "web_build_command": "npm run build (next build) exit 0 with routes listed"
+  }
+}

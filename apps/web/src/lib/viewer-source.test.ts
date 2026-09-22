@@ -50,4 +50,22 @@ describe("viewerSourcePlan", () => {
       staleNodeIds: ["changed-node"],
     })).toEqual({ usePhotoBuild: false, staleNodeIds: [], materialMode: "scan" });
   });
+
+  it("does not treat the splat preview as a photo build", () => {
+    expect(viewerSourcePlan({
+      materialMode: "splat",
+      hasCleanGlb: false,
+      hasPhotoBuild: true,
+      staleNodeIds: ["changed-node"],
+    })).toEqual({ usePhotoBuild: false, staleNodeIds: [], materialMode: "splat" });
+  });
+
+  it("keeps the splat mode when a clean GLB stands behind it", () => {
+    expect(viewerSourcePlan({
+      materialMode: "splat",
+      hasCleanGlb: true,
+      hasPhotoBuild: true,
+      staleNodeIds: ["changed-node"],
+    })).toEqual({ usePhotoBuild: false, staleNodeIds: [], materialMode: "splat" });
+  });
 });
