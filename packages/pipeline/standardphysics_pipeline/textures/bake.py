@@ -144,7 +144,7 @@ def bake_textures(inputs: BakeInputs) -> BakeResult:
                 own = texels.owners == owner
                 texels_by_owner[owner] += int((own & reachable).sum())
                 covered_by_owner[owner] += int(covered[own].sum())
-            atlas_path = inputs.out_dir / f"atlas-{atlas}.png"
+            atlas_path = work / f"atlas-{atlas}.png"
             mask_path = inputs.out_dir / f"coverage-{atlas}.png"
             Image.fromarray(atlas_image, "RGB").save(atlas_path, optimize=True)
             mask = np.zeros((ATLAS_SIZE, ATLAS_SIZE), dtype=np.uint8)
