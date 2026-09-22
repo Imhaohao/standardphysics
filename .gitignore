@@ -13,3 +13,12 @@ uv.lock
 # Playwright and Xcode leave build artefacts where they are run
 .playwright-mcp/
 apps/ios/build/
+.gstack/
+
+# Local dependencies, build outputs, and private capture data
+.venv
+node_modules/
+target/
+.DS_Store
+datasets/phone/moffett/
+datasets/phone/moffett.zip

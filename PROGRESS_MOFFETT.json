@@ -1,0 +1,364 @@
+{
+  "objective": "Align four full-floor Moffett scans using overlap evidence; reconstruct photorealistic captured detail; wheelchair exploration on web and phone; object simulation; downloadable architecture map with sourced accessibility reasoning and measurement uncertainty.",
+  "status": "queued_trials_evaluated_goal_incomplete",
+  "previous_turn": "All queued jobs finished and reviewed. HQ30k retained as optional comparison only; native bottom-left/left/top all failed imageAlignment. Published revision3 preserved. Automation stopped as requested.",
+  "tasks": [
+    {
+      "task": "Preserve and inventory original phone captures",
+      "tier": "Luna/Sonnet",
+      "status": "complete: four phone originals copied, file sizes checked against phone inventory, SHA-256 manifest saved"
+    },
+    {
+      "task": "Verify and refine scan alignment using A-103 and overlap correspondences",
+      "tier": "Frontier primary",
+      "status": "complete: four scans aligned in new A102 revision3; old revisions preserved; registration limitations documented"
+    },
+    {
+      "task": "Recover photographic detail from original captures",
+      "tier": "Frontier primary",
+      "status": "Queued reconstruction trials evaluated; no accepted improvement; published four-scan photographic preview retained; overall realism unresolved"
+    },
+    {
+      "task": "Wheelchair web/mobile controls and object interaction",
+      "tier": "Terra/Sonnet",
+      "status": "Adjustable wheelchair profile, measured-node picking, floor axes, floor-gap docking checks and HUD contrast implemented; physical phone acceptance pending."
+    },
+    {
+      "task": "Evidence-based architectural export and measurement reasoning",
+      "tier": "Terra/Sonnet",
+      "status": "complete: revision-pinned architectural ZIP generated and API/UI integrated; includes raw facts and unknown placement rationale"
+    },
+    {
+      "task": "Visual and automated acceptance verification",
+      "tier": "Luna/Sonnet",
+      "status": "Web104 tests/typecheck and preview build passed; seated HQ30k comparison fails realism; actual authenticated app and phone acceptance still pending"
+    }
+  ],
+  "facts": [
+    "Claude CLI authenticated",
+    "iPhone available via CoreDevice",
+    "Handoff read; procedural furniture script is not photographic reconstruction",
+    "User confirms all video in Standard Physics app; no tape reference measurements",
+    "Original colored build 24.76% coverage using 200/3524 cameras",
+    "All four raw captures preserved in datasets/phone/moffett, 3564 files, 3534320197 bytes",
+    "3-room reference normalized to center differs from Gemini top rotation by about 90 degrees; registration investigation ongoing",
+    "Per-capture scene height correction relative A102 revision0: left0m,top+0.1595054m,bottomleft-0.1051312m,center-0.1291985m. Must correct before height auditing.",
+    "Coarse eroded depth-buffer suppresses scan photo coverage: center100camera visible17%; full-resolution point-buffer diagnostic reaches72% (not production verified).",
+    "Initial image correspondence pipeline found verified top-left greenbench and center-left (86 image+LiDAR inliers); bottomleft still lacks verified overlap.",
+    "128 frames per capture registration: center-left 86 matched points RMS5.1cm; top-left174 points RMS4.4cm. These give better global starting transforms than A103 manual reference. Bottom-left remains unverified."
+  ],
+  "agents": [
+    {
+      "name": "capture_inventory",
+      "tier": "Luna",
+      "status": "complete",
+      "cost": "unavailable"
+    },
+    {
+      "name": "Claude CLI audit",
+      "requested_tier": "Sonnet",
+      "actual_provider_model": "Fireworks deepseek-pro-latest (existing user CLI routing)",
+      "status": "complete",
+      "tool_reported_cost_usd": 0.933801
+    },
+    {
+      "name": "wheelchair_evidence",
+      "tier": "Terra",
+      "status": "complete",
+      "cost": "unavailable"
+    },
+    {
+      "name": "wheelchair_motion",
+      "tier": "Terra",
+      "status": "complete",
+      "cost": "unavailable"
+    },
+    {
+      "name": "architecture_export",
+      "tier": "Terra",
+      "status": "complete",
+      "cost": "unavailable"
+    },
+    {
+      "name": "photogrammetry_cli",
+      "tier": "Luna",
+      "status": "complete: capture/calibration audits, mask fallback and resume metadata, full-body trial rejected",
+      "cost": "unavailable"
+    },
+    {
+      "name": "bottom_photo_match",
+      "tier": "Luna",
+      "status": "complete: harness, camera paths, sequential native room queue",
+      "cost": "unavailable"
+    },
+    {
+      "name": "splat_picking",
+      "tier": "Terra",
+      "status": "complete: picking, profiles, floor/docking fixes, PaintedScan UV/emissive materials",
+      "cost": "unavailable"
+    }
+  ],
+  "capture_manifest": "datasets/phone/moffett/preservation-manifest.json",
+  "registration_run": {
+    "session": 51257,
+    "script": "scripts/moffett_image_registration.py --frames 128",
+    "output": "runs/moffett",
+    "status": "complete: reliable photographic links center-left and top-left; zero bottom-left pairs",
+    "bottom_candidate": "Accepted bottom-center column/baseboard correspondence: 21 metric inliers, 4.16 cm RMS; shared patch about 0.8 m. Earlier fountain hypotheses rejected."
+  },
+  "validation": {
+    "web_typecheck": "passed with final 104-test suite",
+    "web_tests": "104 tests / 27 files passed",
+    "architecture_tests": "6 passed",
+    "rendered_app": "Actual production Viewer in local harness: masked/unmasked A/B source now correct; LOD rendering works for center SH2; invisible picking returns measured node selection. Authenticated app remains unverified.",
+    "ios_download": "4 focused tests passed; per-download temporary-directory cleanup",
+    "splat_api": "4 focused tests passed; manifest validation pins graph/revision",
+    "compression_tests": "11 scripts tests passed incl alignment and atomic compression",
+    "architecture_download": "runs/moffett/deliverables/moffett-aligned-r3-architecture.zip generated from published revision3; ZIP integrity verified",
+    "publication_regression": "13 script tests pass; existing-revision-directory preservation covered",
+    "api_and_scripts": "27focused tests passed",
+    "mobile_preview": "390x844 Viewer/profile adjustment verified previously; HUD contrast fixed",
+    "harness_build": "Passed after adding optional HQ30k comparison; no production code changed this heartbeat",
+    "harness_default": "Whole-floor measured overview and all four asset readiness verified in browser; GPU released using about:blank"
+  },
+  "surface_bake": {
+    "script": "scripts/bake_moffett_photo_mesh.py",
+    "module": "packages/pipeline/standardphysics_pipeline/textures/surface_photos.py",
+    "artifact": "runs/moffett/photo-surfaces/center/photo-mesh.glb",
+    "tests": "4 visibility tests pass: interior occluder, sloped plane, unseen face, visible face"
+  },
+  "visual_acceptance": {
+    "status": "failed; queued trials exhausted",
+    "evidence": [
+      "runs/moffett/photo-surfaces/center/render-188.png",
+      "runs/moffett/photo-surfaces/center/render-565.png",
+      "runs/moffett/photo-surfaces/center/render-900.png"
+    ],
+    "findings": [
+      "Close bench texture shows real cable and wood detail",
+      "Many unobserved triangles and noisy geometry obstruct views; 56.7% surface area coverage is not acceptable",
+      "Do not publish this prototype as photorealistic completion",
+      "Actual four-room seated renders all load; residual people and strong blur remain",
+      "LiDAR-support filter removes49,914splats and some detached haze,but can remove unmeasured real detail; remainsoptionalexperiment",
+      "HQ 20k mean background PSNR 18.6798 vs 18.6771 at 15k; practically unchanged. Current result still fails photorealistic acceptance."
+    ],
+    "next": "Further progress needs a newly justified reconstruction approach or targeted supplemental captures; do not automatically repeat failed runs",
+    "splat_heldout_psnr": {
+      "5000": 18.48,
+      "10000": 18.65,
+      "15000": 18.78
+    },
+    "splat_status": "Masked center improves ghost person but retains blur/floaters; not photorealistic acceptance",
+    "matched_resolution_psnr": {
+      "center-quality/15000": 18.830638081747985,
+      "center-refined-masked/15000": 18.275642466394626,
+      "center-original-masked-hq/5000": 18.387587094504443,
+      "center-original-masked-hq/10000": 18.569771026541726,
+      "center-original-masked-hq/15000": 18.677076878098312,
+      "center-original-masked-hq/20000": 18.679816739984943,
+      "center-original-masked-hq/25000": 18.562307995635045,
+      "center-original-masked-hq/30000": 18.57914283661484
+    },
+    "metric_note": "34 held-out views compared at 1280x960, background masks >250; settings and poses differ, not isolated causal experiments. PSNR is not realism or measurement accuracy."
+  },
+  "native_photogrammetry": {
+    "script": "scripts/reconstruct_capture.swift",
+    "full_center_400": "failed in imageAlignment processError",
+    "first80": "Inspected native GLB: crisp cables, wood grain, BUZZ lettering and outlet; major holes and person fragment. Not published.",
+    "first80_camera_fit_rms_m": 0.0584,
+    "session": 28774,
+    "chunks": "only 1 of6 additional center chunks succeeded; insufficient as full-floor solution",
+    "first80_glb": "runs/moffett/photogrammetry-center-first80/center-native-detail.glb",
+    "queue": {
+      "status_file": "runs/moffett/photogrammetry-full-rooms/queue-status.json",
+      "pid": 45430,
+      "session": 57751,
+      "caffeinate_session": 97165,
+      "state": "completed; all three native jobs failed",
+      "order": [
+        "bottom_left (414)",
+        "left (500)",
+        "top (500)"
+      ],
+      "publication": "review candidates only, metric fit and visual inspection required",
+      "room_states": {
+        "bottom_left": "failed",
+        "left": "failed",
+        "top": "failed"
+      },
+      "review_snapshot": "runs/moffett/photogrammetry-full-rooms/native-review-snapshot.json",
+      "final_review": "runs/moffett/photogrammetry-full-rooms/final-review.json"
+    },
+    "bottom_left_failure": "imageAlignment processError, no model or recovered poses; retained checkpoints; do not rerun unchanged"
+  },
+  "splat_training": {
+    "engine": "Brush v0.3.0, local Metal/WebGPU",
+    "binary_sha256_archive": "65b2631398c839be3c1d4d7160fe2326389dec87830aac0710985e6690a1048c",
+    "dataset": "runs/moffett/splat-datasets/center",
+    "pilot": "2000 steps complete; recognizable but too blurred; needs longer training",
+    "quality_run": "complete 30000 steps; visual quality still insufficient",
+    "output": "runs/moffett/splat-training/center-quality",
+    "metric_note": "known captured camera poses and metric LiDAR initialization; splats display only",
+    "camera_checks": "4 independent reprojection checks passed",
+    "quality_session": 40103,
+    "last_checkpoint": 30000,
+    "compressed_10k": {
+      "size_bytes": 35519470,
+      "splats": 1800000,
+      "maximum_coordinate_roundtrip_error_m": 0.00012207,
+      "file": "runs/moffett/splat-training/center-quality/export_10000.spz"
+    },
+    "coordinate_verification": "Numerical xyz bounds match Z-up LiDAR; Brush header Vertical axis:y is not evidence of conversion.",
+    "center_30k_spz": "runs/moffett/splat-training/center-quality/export_30000.spz",
+    "left_masked": "complete 15000; visual review active",
+    "top_masked": "complete15000;23,007,231-byte SPZ",
+    "center_refined_masked": {
+      "status": "complete15000;36,698,995-byte SPZ; actual masked preview inspected, ghost person removed but blur remains"
+    },
+    "bottom_masked": {
+      "status": "complete15000;compressed24,903,517bytes"
+    },
+    "top_spz_bytes": 23007231,
+    "center_original_masked_hq": {
+      "status": "complete and evaluated; rejected for production replacement due persistent blur/people artifacts",
+      "pid": 38927,
+      "session": 70264,
+      "output": "runs/moffett/splat-training/center-original-masked-hq",
+      "last_checkpoint": 30000,
+      "checkpoint_spz_bytes": 66205971,
+      "review": "runs/moffett/splat-training/center-original-masked-hq/final-review.json"
+    }
+  },
+  "delegation": [
+    {
+      "task": "Alignment, training, publication correctness",
+      "model_tier": "Frontier primary"
+    },
+    {
+      "task": "Raw overlap correspondence search and person masking",
+      "model_tier": "Luna"
+    },
+    {
+      "task": "Web/iOS integration review",
+      "model_tier": "Terra"
+    }
+  ],
+  "pending": [
+    "Requested photorealistic full-floor quality remains unmet; existing assets retain blur, gaps and person artifacts",
+    "All-object mechanics remain unimplemented; captured shapes do not establish moving parts or physical behavior",
+    "Fine metric accuracy not independently established; unseen details and original placement reasons cannot be inferred",
+    "Authenticated product and physical iPhone acceptance remain unverified"
+  ],
+  "updated_at": "2026-09-19T12:19:41.204758+00:00",
+  "camera_refinement": {
+    "status": "complete;302 refined poses accepted;masked trial has lower background held-out PSNR than original unmasked, confounded comparison",
+    "pid": 25857,
+    "corrected_first80_reprojection_px": [
+      1.614,
+      0.657
+    ],
+    "accepted_poses": 302,
+    "retained_original_poses": 98,
+    "points": 17439,
+    "before_after_reprojection_px": [
+      1.6177,
+      0.6584
+    ],
+    "scale": 0.99924
+  },
+  "masks": "Brush loss masking source verified at official v0.3.0: input alpha masks RGB L1/SSIM losses. LPIPS default disabled.",
+  "publication_tool": "scripts/align_moffett_floor.py; revision3 published;13 script tests passed including safe failure cleanup",
+  "alignment": {
+    "status": "published revision3",
+    "scan_id": "f143082d-f529-494b-b80d-97729234e334",
+    "graph_hash": "883cd1787c1042b3d4ca89aac9ac3362f863c98706e6306f76ffd18f2cac3f87",
+    "four_transforms": "runs/moffett/verified-four-room-transforms.json",
+    "report": "runs/moffett/a102-aligned-proposal/report.json",
+    "limits": "Scan alignment estimate. Bottom shared patch<1m. Absolute measurement accuracy not established."
+  },
+  "capture_audit": "All3524 JPEG/pose pairs and3564 preserved files match hashes; per-frame intrinsics vary; no evidenced pose/JPEG mismatch",
+  "wheelchair_profile": "Implemented adjustable eye height,speed,circular collision radius with finite bounds. Session-only. Not exact wheelchair footprint.",
+  "photographic_publication": {
+    "revision": 3,
+    "status": "preview published;not photorealistic acceptance",
+    "total_bytes": 107820584,
+    "report": "runs/moffett/deliverables/photographic-preview-publication.json",
+    "verification": "production manifest loader accepts4assets;unsigned manifest and asset HTTP401"
+  },
+  "wheelchair_floor_audit": {
+    "status": "fixed sourcefloor axis selection;4navigation floors now found",
+    "primary_component": "All4capture floor regions connect at default45cm radius;9smaller islands unresolved",
+    "artifact": "runs/moffett/wheelchair-audit-revision3.json",
+    "caution": "Sampled collision rectangles,not certified navigability or measured wholefloor percentage"
+  },
+  "camera_loader_audit": "Brush uses per-frame intrinsics and matching masks;distortion coefficients ignored but none captured;earlierexplicit1280resize,current1920trial",
+  "stronger_person_masks": {
+    "script": "scripts/mask_capture_people.swift",
+    "variant": "runs/moffett/splat-datasets/center-masked-detection/variant.json",
+    "mask_count": 400,
+    "confirmed_detection_frames": 109,
+    "confirmed_boxes": 144,
+    "training_started": false,
+    "review": "Contact sheet and bottom-left frame 121 overlay visually reviewed: confirms additional torso detections but legs and some people remain missed; coarse boxes exclude furniture too. Do not claim complete removal.",
+    "next": "No further training queued; wait for HQ30k and native room comparisons",
+    "full_body_probe": "Rejected: full-body detector misses bottom-left121 entirely, has fewer selected-frame detections; retain existing upper-body opt-in fallback",
+    "validation": "swiftc warnings-as-errors passed; default mask byte-identical; resume retains detected-person metadata and marks skipped files; CGContext failures now explicit",
+    "status": "Scoped experiment complete; masks remain separate and untrained"
+  },
+  "automation": {
+    "id": "finish-moffett-reconstruction",
+    "kind": "heartbeat",
+    "status": "PAUSED",
+    "interval_minutes": 15,
+    "note": "Existing automation; do not duplicate. Continue from checkpoint, notify meaningful changes only.",
+    "stop_reason": "All queued results evaluated; none qualifies as a production replacement; requested overall realism remains incomplete"
+  },
+  "historical_facts_note": "Earlier facts and registration_run describe intermediate hypotheses, superseded by alignment and verified-four-room-transforms.json.",
+  "system_graph": {
+    "nodes": [
+      "Preserved phone captures",
+      "Verified alignment",
+      "Measured floor and objects",
+      "Photographic preview",
+      "Wheelchair exploration",
+      "Architecture map and evidence"
+    ],
+    "edges": [
+      [
+        "Preserved phone captures",
+        "Verified alignment"
+      ],
+      [
+        "Verified alignment",
+        "Measured floor and objects"
+      ],
+      [
+        "Verified alignment",
+        "Photographic preview"
+      ],
+      [
+        "Measured floor and objects",
+        "Wheelchair exploration"
+      ],
+      [
+        "Photographic preview",
+        "Wheelchair exploration"
+      ],
+      [
+        "Measured floor and objects",
+        "Architecture map and evidence"
+      ]
+    ]
+  },
+  "heartbeat_review": {
+    "time": "2026-09-19T12:18:39.907236+00:00",
+    "agent": "bottom_photo_match (Luna)",
+    "task": "Native queue/error review",
+    "cost": "unavailable",
+    "unchanged_production_assets": true
+  },
+  "next_options": [
+    "Targeted supplemental capture: slow overlapping views in a mostly empty room, include outlets, counter edges, undersides and doorways; retain calibration and depth; a few independently measured reference dimensions would permit accuracy checks",
+    "A different reconstruction pipeline may improve existing data, but current results do not establish its expected gain; generic RealityKit errors do not prove insufficient capture coverage"
+  ]
+}

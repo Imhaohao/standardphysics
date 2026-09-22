@@ -29,7 +29,10 @@ async function submitCredentials(mode: Mode, form: FormData): Promise<string | n
   });
   if (response.ok) return null;
   const problem = await response.json().catch(() => null);
-  return problem?.error ?? "Something went wrong on our end. Try again.";
+  const reason = problem?.error;
+  if (typeof reason === "string") return reason;
+  if (reason && typeof reason === "object" && typeof reason.message === "string") return reason.message;
+  return "Something went wrong on our end. Try again.";
 }
 
 export function AuthForm({ initialMode }: { initialMode: Mode }) {

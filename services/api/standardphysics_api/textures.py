@@ -251,6 +251,55 @@ def _paint_the_scan(store, scan_id, graph, inputs, out_dir) -> bool:
     return painted.glb_path.is_file()
 
 
+def build_prefix(scan_id, build_key: str) -> str:
+    """Where the asset route below serves this build's files from."""
+    return f"/api/scans/{scan_id}/textures/{build_key}"
+
+
+def build_dir(store, scan_id) -> pathlib.Path:
+    root = store.scan_dir(scan_id) / "textures"
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def staged_build_dir(store, scan_id) -> pathlib.Path:
+    """A directory to assemble a build in, renamed into place only once it is whole."""
+    return pathlib.Path(tempfile.mkdtemp(prefix=".bake-", dir=build_dir(store, scan_id)))
+
+
+def finish_build(staged: pathlib.Path, destination: pathlib.Path, result: TextureBuild) -> None:
+    """Seal a staged build and move it into place under its own name.
+
+    The rename is what makes a build appear all at once. Nothing may be written into
+    the destination directly, because the asset route serves whatever is there and a
+    half-copied GLB is indistinguishable from a finished one.
+    """
+    for path in staged.iterdir():
+        if not ASSET_NAME.fullmatch(path.name):
+            raise ValueError(f"not a texture asset: {path.name}")
+    (staged / "result.json").write_text(result.model_dump_json())
+    staged.rename(destination)
+
+
+def record_build(database, scan_id, build_key: str, graph: SceneGraph, inputs: dict, result: TextureBuild) -> None:
+    """Record a build the job queue never queued, such as one a script produced.
+
+    `run_texture` updates the row its own queued job already owns; this inserts one for
+    a build that has no job behind it. Both write the row only after `finish_build` has
+    renamed the files into place, so a row never points at a directory still being made.
+    """
+    with database.transaction() as connection:
+        connection.execute(
+            "INSERT INTO texture_builds (scan_id, build_key, graph_json, inputs_json, result_json, created_at)"
+            " VALUES (?, ?, ?, ?, ?, ?)"
+            " ON CONFLICT(scan_id, build_key) DO UPDATE SET result_json=excluded.result_json",
+            (
+                str(scan_id), build_key, graph.model_dump_json(),
+                json.dumps(inputs), result.model_dump_json(), repo.now(),
+            ),
+        )
+
+
 def run_texture(database, store, stages, scan_id, build_id):
     with database.connect() as connection:
         row = connection.execute(
@@ -260,14 +309,12 @@ def run_texture(database, store, stages, scan_id, build_id):
         return
     graph = SceneGraph.model_validate_json(row["graph_json"])
     inputs = json.loads(row["inputs_json"])
-    root = store.scan_dir(scan_id) / "textures"
-    root.mkdir(parents=True, exist_ok=True)
-    destination = root / row["build_key"]
+    destination = build_dir(store, scan_id) / row["build_key"]
     result_path = destination / "result.json"
     if result_path.is_file():
         result = TextureBuild.model_validate_json(result_path.read_bytes())
     else:
-        temporary = pathlib.Path(tempfile.mkdtemp(prefix=".bake-", dir=root))
+        temporary = staged_build_dir(store, scan_id)
         try:
             baked = stages.bake_textures(BakeInputs(
                 bake_graph=graph, poses_path=store.artifact_path(scan_id, inputs["poses"]),
@@ -275,7 +322,7 @@ def run_texture(database, store, stages, scan_id, build_id):
                 lidar_mesh_path=store.artifact_path(scan_id, inputs["lidar"]) if inputs["lidar"] else None,
                 out_dir=temporary,
             ))
-            prefix = f"/api/scans/{scan_id}/textures/{row['build_key']}"
+            prefix = build_prefix(scan_id, row["build_key"])
             if not baked.glb_path.is_file() or baked.glb_path.name != "scene.glb" or baked.glb_path.parent != temporary:
                 raise ValueError("baker did not produce scene.glb")
             for mask in baked.coverage_mask_paths:
@@ -289,8 +336,7 @@ def run_texture(database, store, stages, scan_id, build_id):
                 bake_graph=graph, coverage=baked.coverage,
                 frames_used=baked.frames_used, seconds=baked.seconds,
             )
-            (temporary / "result.json").write_text(result.model_dump_json())
-            temporary.rename(destination)
+            finish_build(temporary, destination, result)
         finally:
             if temporary.exists():
                 shutil.rmtree(temporary)
