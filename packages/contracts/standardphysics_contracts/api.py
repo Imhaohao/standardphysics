@@ -13,6 +13,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, RootModel
 
 from .findings import Finding, Locus
+from .geometry import Vec3
 from .loop import Assessment, NodeMove, Proposal, RouterAction
 from .rules import Check
 from .scan import Scan
@@ -51,6 +52,54 @@ class FrameListing(BaseModel):
     Their dimensions stay unknown, their original bytes remain downloadable
     through the frame route, and the valid photos around them stay usable.
     """
+
+
+class ApproachRequest(BaseModel):
+    """One measured journey to one target, evaluated with the owner's profile.
+
+    Nothing reaches here by default: without a person-provided horizontal
+    reach the evaluation reports it unmeasured, and an unmeasured input is
+    never an answer.
+    """
+
+    target_node_id: UUID
+    occupant_profile: str = "manual-wheelchair"
+    """One of the screening catalog ids (manual-wheelchair, power-wheelchair,
+    walker, cane-user, person)."""
+    horizontal_reach_inches: float | None = None
+    """The person's actual sideways grasp distance, when someone provided it."""
+    horizontal_reach_provenance: str | None = None
+    """Who provided the number, e.g. 'owner measured'. Required with a value."""
+    approach_stop: Vec3 | None = None
+
+
+class ReachReport(BaseModel):
+    occupant_title: str
+    target_height_inches: float | None
+    vertical_status: str
+    horizontal_distance_inches: float | None
+    horizontal_reach_inches: float | None
+    horizontal_reach_provenance: str | None
+    horizontal_status: str
+
+
+class ApproachReport(BaseModel):
+    """Conservative screening answer, never a legal claim (contract 4/6)."""
+
+    target_id: UUID
+    status: str
+    """clear | blocked | needs_verification."""
+    reasons: list[str]
+    approach_stop: Vec3 | None
+    path: list[Vec3] | None
+    aisle_width_inches: float | None
+    turning_space_inches: float | None
+    obstruction_labels: list[str]
+    floor_supported: bool | None
+    mesh_checked: bool
+    mesh_collision: bool
+    reaches: list[ReachReport]
+    unverified: list[str]
 
 
 class ApiError(BaseModel):

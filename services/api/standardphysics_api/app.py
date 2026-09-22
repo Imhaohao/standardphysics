@@ -18,6 +18,8 @@ from PIL import Image as PILImage
 from pydantic import BaseModel
 from standardphysics_agents import init_tracing, project_url, shutdown_tracing
 from standardphysics_contracts import (
+    ApproachReport,
+    ApproachRequest,
     Artifact,
     ArtifactKind,
     AskAnswer,
@@ -51,6 +53,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import accounts
 from . import repository as repo
+from .approach import evaluate as evaluate_approach
 from .architecture_export import install_architecture_export_routes
 from .auth import install_auth, owner_of
 from .combine import SaveCombineRequest, save_combine
@@ -153,7 +156,7 @@ def create_app(settings: Settings | None = None, stages: Stages | None = None, r
     _install_combine_routes(app, database, store, worker)
     _install_file_routes(app, database, store)
     _install_layout_routes(app, database, stages, worker)
-    _install_route_routes(app, database, worker)
+    _install_route_routes(app, database, stages, worker)
     _install_simulation_routes(app, database, stages, worker)
     install_replay_routes(app, database, store)
     install_texture_routes(app, database, store, worker)
@@ -494,7 +497,7 @@ def _install_label_routes(app: FastAPI, database: Database, store: ArtifactStore
         )
 
 
-def _install_route_routes(app: FastAPI, database: Database, worker: Worker) -> None:
+def _install_route_routes(app: FastAPI, database: Database, stages: Stages, worker: Worker) -> None:
     @app.get("/api/scans/{scan_id}/scenario/suggestion", response_model=Scenario)
     def scenario_suggestion(scan_id: uuid.UUID) -> Scenario:
         return suggestion(database, scan_id)
@@ -502,6 +505,16 @@ def _install_route_routes(app: FastAPI, database: Database, worker: Worker) -> N
     @app.put("/api/scans/{scan_id}/scenario", response_model=Scenario)
     def confirm_scenario(scan_id: uuid.UUID, body: Scenario) -> Scenario:
         return confirm(database, worker, scan_id, body)
+
+    @app.post("/api/scans/{scan_id}/revisions/{base_revision}/approach",
+              response_model=ApproachReport)
+    def approach(scan_id: uuid.UUID, base_revision: int, body: ApproachRequest) -> ApproachReport:
+        """One measured journey to one target for the signed-in owner.
+
+        Wrap R's conservative evaluator: an unmeasured horizontal reach stays
+        needs_verification, never clear; a reach needs a named provenance.
+        """
+        return evaluate_approach(database, stages, scan_id, base_revision, body)
 
 
 def _install_file_routes(app: FastAPI, database: Database, store: ArtifactStore) -> None:
