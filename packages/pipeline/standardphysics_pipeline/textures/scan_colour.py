@@ -28,17 +28,28 @@ import numpy as np
 
 from ..lidar import load_mesh
 from .camera import PhotoCamera, load_cameras
-from .project import bilinear, depth_buffer, to_linear, to_srgb
+from .project import (
+    MAX_EXPOSURE_POINTS,
+    TopViews,
+    bilinear,
+    depth_buffer,
+    exposure_gains,
+    to_linear,
+    to_srgb,
+)
 
 MAX_PHOTOS = 60
-"""Photos read for colour. Every vertex keeps only its best view, so more
-photos raise coverage and never blend; this is where the gain flattens."""
+"""Photos read for colour. More photos raise coverage; this is where the gain flattens."""
 MAX_PHOTO_EDGE = 1600
 
 SEEN_TOLERANCE = 0.05
 """How close to the nearest scanned surface a vertex must be to count as seen."""
 MIN_FACING = 0.20
 BORDER_FALLOFF_PIXELS = 24.0
+BLEND_SHARPNESS = 4.0
+"""Power applied to view weights before blending. A view twice as good as the
+next contributes sixteen times as much, so detail stays from the best photo and
+only near-ties, which is where the best photo changes, mix."""
 UNSEEN = np.array([0.62, 0.60, 0.58], dtype=np.float32)
 """What a vertex no photo reached is left as: the scan's own neutral grey."""
 
@@ -128,7 +139,13 @@ def colour_the_scan(
     images: list[np.ndarray],
     masks: list[np.ndarray] | None = None,
 ) -> ColouredScan:
-    """Every vertex given the colour of the photo that saw it best.
+    """Every vertex coloured from the photos that saw it best, evened out for exposure.
+
+    Photos disagree about brightness, so each gets a per-channel gain solved
+    from the vertices several of them saw, the same correction the atlas bake
+    applies. The top few views are then blended with weights sharpened so the
+    best view dominates wherever one clearly wins, and neighbours sourced from
+    different photos meet in a soft blend rather than a hard edge.
 
     ``masks``, when provided, are static-region masks (one per photo,
     full resolution); they are resampled to the depth-buffer grid and samples
@@ -139,30 +156,59 @@ def colour_the_scan(
     if masks is not None and len(masks) != len(images):
         raise ValueError("masks must have one entry per image")
     normals = vertex_normals(vertices, triangles)
+    views = [_ScanView(camera, photo, *_occlusion(camera, vertices, masks, index))
+             for index, (camera, photo) in enumerate(zip(cameras, images))]
+    gains = _exposure_gains(views, vertices, normals)
+    blend = TopViews(len(vertices))
     best = np.zeros(len(vertices), dtype=np.float32)
-    colours = np.tile(UNSEEN, (len(vertices), 1))
-    source_ids = [None] * len(vertices)
-    for index, (camera, photo) in enumerate(zip(cameras, images)):
-        buffer = depth_buffer(camera, vertices)
-        image_mask = None
-        if masks is not None:
-            image_mask = _small_static_mask(masks[index], *buffer.shape)
-        weight, columns, rows = _weights_from(camera, vertices, normals, buffer, image_mask)
-        better = np.flatnonzero(weight > best)
-        if not len(better):
+    best_view = np.full(len(vertices), -1, dtype=np.int64)
+    for index, (view, gain) in enumerate(zip(views, gains)):
+        weight, columns, rows = view.weights(vertices, normals)
+        seen = np.flatnonzero(weight > 0)
+        if not len(seen):
             continue
-        sampled = bilinear(photo, columns[better], rows[better])
-        colours[better] = to_srgb(to_linear(sampled.astype(np.float32)))
+        colours = np.clip(view.linear(columns[seen], rows[seen]) * gain, 0.0, 1.0)
+        blend.add(seen, weight[seen] ** BLEND_SHARPNESS, colours)
+        better = seen[weight[seen] > best[seen]]
         best[better] = weight[better]
-        for vertex in better:
-            source_ids[vertex] = camera.frame_id
-    return ColouredScan(
-        vertices,
-        triangles,
-        np.clip(colours, 0.0, 1.0),
-        best > 0,
-        sources=np.asarray(source_ids, dtype=object),
-    )
+        best_view[better] = index
+    painted = best > 0
+    colours = np.tile(UNSEEN, (len(vertices), 1))
+    colours[painted] = to_srgb(blend.resolve()[0][painted])
+    frame_ids = np.asarray([camera.frame_id for camera in cameras] + [None], dtype=object)
+    return ColouredScan(vertices, triangles, np.clip(colours, 0.0, 1.0), painted, sources=frame_ids[best_view])
+
+
+@dataclass(frozen=True)
+class _ScanView:
+    camera: PhotoCamera
+    photo: np.ndarray
+    buffer: np.ndarray
+    mask: np.ndarray | None
+
+    def weights(self, vertices: np.ndarray, normals: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        return _weights_from(self.camera, vertices, normals, self.buffer, self.mask)
+
+    def linear(self, columns: np.ndarray, rows: np.ndarray) -> np.ndarray:
+        return to_linear(bilinear(self.photo, columns, rows).astype(np.float32))
+
+
+def _occlusion(camera, vertices, masks, index) -> tuple[np.ndarray, np.ndarray | None]:
+    buffer = depth_buffer(camera, vertices)
+    if masks is None:
+        return buffer, None
+    return buffer, _small_static_mask(masks[index], *buffer.shape)
+
+
+def _exposure_gains(views: list[_ScanView], vertices: np.ndarray, normals: np.ndarray) -> np.ndarray:
+    """Per-photo linear gains from an even sample of the vertices several photos saw."""
+    picked = np.unique(np.linspace(0, len(vertices) - 1, min(len(vertices), MAX_EXPOSURE_POINTS)).astype(np.int64))
+    observations = []
+    for view in views:
+        weight, columns, rows = view.weights(vertices[picked], normals[picked])
+        seen = np.flatnonzero(weight > 0)
+        observations.append((seen, view.linear(columns[seen], rows[seen])))
+    return exposure_gains(observations, len(views), len(picked))
 
 
 def scan_geometry(mesh_path: pathlib.Path, capture_to_room) -> tuple[np.ndarray, np.ndarray]:

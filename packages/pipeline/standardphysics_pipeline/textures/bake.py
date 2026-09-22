@@ -17,6 +17,7 @@ from ..footprints import floor_polygon
 from ..lidar import load_mesh, triangles_in_arkit_world
 from .camera import CameraMetadataError, PhotoCamera, load_cameras
 from .project import (
+    MAX_EXPOSURE_POINTS,
     DepthBuffers,
     TopViews,
     bilinear,
@@ -42,7 +43,6 @@ MAX_LIDAR_TRIANGLES = 2_000_000
 MAX_SOURCE_BYTES = 32 * 1024 * 1024
 MAX_SOURCE_PIXELS = 24_000_000
 MAX_IMAGE_EDGE = 2048
-MAX_EXPOSURE_POINTS = 20_000
 
 
 class TextureBakeError(RuntimeError):
