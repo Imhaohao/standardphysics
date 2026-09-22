@@ -45,6 +45,12 @@ class FrameEntry(BaseModel):
 
 class FrameListing(BaseModel):
     frames: list[FrameEntry]
+    unreadable: list[str] = []
+    """Real stored frame artifacts whose bytes are not a readable image.
+
+    Their dimensions stay unknown, their original bytes remain downloadable
+    through the frame route, and the valid photos around them stay usable.
+    """
 
 
 class ApiError(BaseModel):

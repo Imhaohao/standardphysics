@@ -515,6 +515,7 @@ export interface FrameEntry {
  */
 export interface FrameListing {
   frames: FrameEntry[];
+  unreadable: string[];
 }
 /**
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema

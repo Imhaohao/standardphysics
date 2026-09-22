@@ -8,9 +8,11 @@ and checks the shop again.
 
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import UTC, datetime
 
+from PIL import Image
 from standardphysics_contracts import (
     ManualMarkRequest,
     ObservationCrop,
@@ -20,6 +22,7 @@ from standardphysics_contracts import (
     UnlocalizedObservation,
     bounds_the_room,
 )
+from standardphysics_contracts.textures import FRAME_ID_PATTERN
 from standardphysics_pipeline.discovery.crops import save_crop
 
 from . import repository as repo
@@ -94,7 +97,7 @@ def mark_observation(
     look at exactly what the person pointed at.
     """
     base = _base_graph(database, scan_id, base_revision)
-    crop = _manual_crop(body, actor_email, image_url=_cut_crop(store, scan_id, body))
+    crop = _manual_crop(body, actor_email, image_url=_cut_crop(database, store, scan_id, body))
     crop_id = crop.image_url
 
     if body.node_id is not None:
@@ -141,18 +144,34 @@ def mark_observation(
     return saved
 
 
-def _cut_crop(store, scan_id: uuid.UUID, body: ManualMarkRequest) -> str | None:
+def _cut_crop(database: Database, store, scan_id: uuid.UUID, body: ManualMarkRequest) -> str | None:
     """Cut the deterministic source-resolution crop of the marked box, or None.
 
-    The frame must be a stored frame artifact and the box usable; anything else
-    is a clear 400, because a mark without resolvable pixels must never look
-    like a mark with them.
+    The frame must be a REGISTERED frame-kind artifact whose bytes decode, and
+    the box must lie inside the stored sensor pixels. Anything else is a clear
+    400: a mark without resolvable pixels must never look like a mark with
+    them, and an out-of-image box must never be persisted while the crop is
+    silently clamped elsewhere.
     """
-    frame_path = store.artifact_path(scan_id, body.frame_id)
-    if not frame_path.is_file():
+    if not re.fullmatch(FRAME_ID_PATTERN, body.frame_id):
         raise ApiProblem(400, "frame not stored for this mark")
+    with database.connect() as connection:
+        artifact = repo.find_artifact(connection, scan_id, body.frame_id)
+    if artifact is None or artifact.kind != "frames":
+        raise ApiProblem(400, "frame not stored for this mark")
+    frame_path = store.artifact_path(scan_id, body.frame_id)
+    try:
+        with Image.open(frame_path) as opened:
+            width, height = opened.size
+    except (OSError, ValueError):
+        raise ApiProblem(400, "frame image cannot be read") from None
+    left, top, right, bottom = body.sensor_box
+    if not (right > left and bottom > top):
+        raise ApiProblem(400, "sensor box does not describe a usable image region")
+    if left < 0 or top < 0 or right > width or bottom > height:
+        raise ApiProblem(400, "sensor box lies outside the stored frame")
     crop_dir = store.scan_dir(scan_id) / "crops"
-    crop_id = save_crop(frame_path, body.frame_id, tuple(body.sensor_box), crop_dir)
+    crop_id = save_crop(frame_path, body.frame_id, (left, top, right, bottom), crop_dir)
     if crop_id is None:
         raise ApiProblem(400, "sensor box does not describe a usable image region")
     return crop_id

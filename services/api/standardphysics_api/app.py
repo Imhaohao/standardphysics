@@ -355,8 +355,12 @@ def _jpeg_sensor_size(data: bytes) -> tuple[int, int]:
     return width, height
 
 
-def _frame_entry(store: ArtifactStore, scan_id: uuid.UUID, artifact: Artifact) -> FrameEntry:
-    width, height = _jpeg_sensor_size(store.artifact_path(scan_id, artifact.id).read_bytes())
+def _frame_entry(store: ArtifactStore, scan_id: uuid.UUID, artifact: Artifact) -> FrameEntry | None:
+    """One listing entry, or None when the stored bytes are not a readable image."""
+    try:
+        width, height = _jpeg_sensor_size(store.artifact_path(scan_id, artifact.id).read_bytes())
+    except (OSError, ValueError):
+        return None
     return FrameEntry(
         frame_id=artifact.id,
         width=width,
@@ -552,12 +556,22 @@ def _install_file_routes(app: FastAPI, database: Database, store: ArtifactStore)
 
         Authenticated by the same ownership middleware as every other scan
         route. Each entry names one ACTUAL stored frame artifact; a scan with
-        no frames returns an empty list, never invented identities.
+        no frames returns an empty list, never invented identities. A stored
+        artifact whose bytes are not a readable image is reported by id under
+        `unreadable` instead of failing the whole listing.
         """
         with database.connect() as connection:
             _scan_or_404(connection, scan_id)
             stored = repo.artifacts_of_kind(connection, scan_id, "frames")
-        return FrameListing(frames=[_frame_entry(store, scan_id, artifact) for artifact in stored])
+        entries: list[FrameEntry] = []
+        unreadable: list[str] = []
+        for artifact in stored:
+            entry = _frame_entry(store, scan_id, artifact)
+            if entry is None:
+                unreadable.append(artifact.id)
+            else:
+                entries.append(entry)
+        return FrameListing(frames=entries, unreadable=unreadable)
 
     @app.get("/api/scans/{scan_id}/frames/{frame_id}")
     def frame_bytes(scan_id: uuid.UUID, frame_id: str) -> Response:
