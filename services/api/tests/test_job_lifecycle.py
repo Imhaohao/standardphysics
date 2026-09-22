@@ -213,7 +213,7 @@ def test_late_upload_during_a_run_never_marks_the_newer_bundle_processed(make_cl
         assert marks[-1] == final["manifest_hash"]
 
 
-def _restarted_client(tmp_path, stages, owner_email, owner_password):
+def _restarted_client(tmp_path, stages, owner_email, owner_password, sign_in: bool = True):
     """A second app on the same database, with its worker really running.
 
     Entering the context starts the worker, which re-queues any job a crashed
@@ -232,11 +232,12 @@ def _restarted_client(tmp_path, stages, owner_email, owner_password):
         )
         test_client = TestClient(create_app(settings, stages, run_worker=True))
         with test_client:
-            response = test_client.post(
-                "/api/auth/sign-in",
-                json={"email": owner_email, "password": owner_password},
-            )
-            assert response.status_code == 200, response.text
+            if sign_in:
+                response = test_client.post(
+                    "/api/auth/sign-in",
+                    json={"email": owner_email, "password": owner_password},
+                )
+                assert response.status_code == 200, response.text
             yield test_client
 
     return build()
@@ -357,8 +358,7 @@ def test_manifest_declaring_missing_photos_defers_discovery_until_all_arrive(mak
         assert status["complete_evidence"] is True
         with client.app.state.database.connect() as connection:
             marked = connection.execute(
-                "SELECT COUNT(*) FROM evidence_bundles WHERE scan_id = ?"
-                " AND semantic_processed_hash IS NOT NULL",
+                "SELECT COUNT(*) FROM evidence_bundles WHERE scan_id = ? AND semantic_processed_hash IS NOT NULL",
                 (scan_id,),
             ).fetchone()[0]
         assert marked == 0
@@ -406,6 +406,58 @@ def test_provider_failure_categories_are_visible_and_secret_free(make_client, mo
         assert "read 3 photos" in text
         assert "found 0 objects" in text
         assert "unread" not in text
+
+
+def test_background_worker_settles_late_evidence_without_a_manual_drain(tmp_path):
+    import conftest
+
+    client_ctx = _restarted_client(
+        tmp_path,
+        _stages(lambda inputs: DiscoveryResult()),
+        conftest.OWNER_EMAIL,
+        conftest.OWNER_PASSWORD,
+        sign_in=False,
+    )
+    with client_ctx as client:
+        assert (
+            client.post(
+                "/api/auth/sign-up",
+                json={"email": "late@example.com", "password": "late-evidence-password", "shop_name": "late"},
+            ).status_code
+            == 201
+        )
+        scan_id = create_scan(client)
+        _complete_geometry(client, scan_id)
+        _complete_semantics(client, scan_id)
+        assert client.post(f"/api/scans/{scan_id}/complete").status_code == 200
+
+        deadline = time.monotonic() + 60
+        while time.monotonic() < deadline:
+            status = client.get(f"/api/scans/{scan_id}/evidence").json()
+            if status["semantic_state"] == "complete":
+                break
+            time.sleep(0.1)
+        first = client.get(f"/api/scans/{scan_id}/evidence").json()
+        assert first["semantic_state"] == "complete", first
+        assert first["semantic_job_pending"] is False
+
+        put_artifact(client, scan_id, "frames-late", b"late evidence bytes", "frames")
+        deadline = time.monotonic() + 60
+        while time.monotonic() < deadline:
+            status = client.get(f"/api/scans/{scan_id}/evidence").json()
+            if (
+                status["semantic_job_pending"] is False
+                and status["semantic_state"] == "complete"
+                and status["manifest_hash"] != first["manifest_hash"]
+            ):
+                break
+            time.sleep(0.1)
+        settled = client.get(f"/api/scans/{scan_id}/evidence").json()
+        assert settled["semantic_job_pending"] is False
+        assert settled["semantic_state"] == "complete"
+        assert settled["manifest_hash"] != first["manifest_hash"]
+        assert settled["latest_bundle"]["semantic_processed_hash"] == settled["manifest_hash"]
+        assert [row[:2] for row in _job_states(client, scan_id)] == [("done", 2)]
 
 
 def test_discovery_inputs_point_crops_at_the_scan_crop_dir(tmp_path):
