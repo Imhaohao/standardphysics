@@ -122,6 +122,18 @@ CREATE TABLE IF NOT EXISTS evidence_bundles (
     semantic_processed_hash TEXT,
     PRIMARY KEY (scan_id, version)
 );
+CREATE TABLE IF NOT EXISTS job_attempts (
+    job_id INTEGER NOT NULL REFERENCES jobs(id),
+    attempt INTEGER NOT NULL,
+    scan_id TEXT NOT NULL,
+    input_hash TEXT,
+    state TEXT NOT NULL,
+    error TEXT,
+    note TEXT,
+    model_requests_json TEXT,
+    recorded_at TEXT NOT NULL,
+    PRIMARY KEY (job_id, attempt)
+);
 """
 
 

@@ -113,6 +113,7 @@ class Worker:
         outcome = self._run(job)
         with self.database.transaction() as connection:
             repo.finish_job(connection, job["id"], outcome.error)
+            repo.record_job_attempt(connection, job["id"], job["attempts"], uuid.UUID(job["scan_id"]))
         if outcome.follow_up and outcome.error is None:
             self._queue_follow_up_if_due(uuid.UUID(job["scan_id"]))
         return True
