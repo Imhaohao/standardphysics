@@ -39,7 +39,7 @@ const makeOutlet = (id: string, x: number, y: number, z: number, floorTop = 0.10
       review_status: "detected",
       uncertainty_reasons: [],
       sockets: [{ id: "s-1", center: { x, y, z }, confidence: 0.9, status: "observed" }],
-      observations: [{ frame_id: "f-1", sensor_box: [0, 0, 10, 10], confidence: 0.9, image_url: "crops/c-1.jpg" }],
+      observations: [{ frame_id: "f-1", sensor_box: [0, 0, 10, 10], confidence: 0.9, image_url: "crops/c-1.jpg", provenance: "automatic", marked_by: null, marked_at: null, note: null }],
       localization_quality: "verified_support",
       identity_confidence: 0.9,
       local_anchor: null,

@@ -658,7 +658,7 @@ function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, te
           wheelchairMode={wheelchairMode}
           onToggleWheelchair={toggleWheelchairMode}
           visibility={{ cutWalls, onToggleWalls: () => setCutWalls((current) => !current), evidenceAvailable, evidenceShown: showScanEvidence, onToggleEvidence: () => setShowScanEvidence((current) => !current) }}
-          textures={{ status: textures.status, requesting: textures.requesting, error: textures.error, mode: materialMode, onMode: setChosenMaterialMode, onRequest: () => { void textures.request(); }, reconstruction: { count: reconstructionCount, pending: reconstructionPending }, capturedSplats: hasSplats }}
+          textures={{ status: textures.status, requesting: textures.requesting, error: textures.error, mode: materialMode === "splat" ? "plain" : materialMode, onMode: setChosenMaterialMode, onRequest: () => { void textures.request(); }, reconstruction: { count: reconstructionCount, pending: reconstructionPending }, capturedSplats: hasSplats }}
           downloadUrl={sourceGlbUrl && !visuals.arrangement.hasMoves && task !== "compare" ? sourceGlbUrl : null}
         />
       </section>
