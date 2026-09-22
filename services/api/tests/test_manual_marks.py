@@ -8,7 +8,7 @@ hardening; U consumes these exact shapes.
 
 import json
 
-from conftest import create_scan, drain, put_artifact, usdz_fixture, usdz_fixture
+from conftest import create_scan, drain, put_artifact, usdz_fixture
 
 
 def _stages():

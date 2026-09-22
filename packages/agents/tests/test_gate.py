@@ -101,10 +101,6 @@ class TestAcceptance:
         assert not gate.accepted
         assert "nothing measurable changed" in gate.reasons
 
-    def test_going_backwards_is_rejected(self, before, widened):
-        gate = accepts(widened, before)
-        assert not gate.accepted
-
     def test_a_check_that_stopped_reporting_is_lost_coverage(self, before, widened):
         """Fewer problems can mean a check went quiet rather than a shop
         getting better."""

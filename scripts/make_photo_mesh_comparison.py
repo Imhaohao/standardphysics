@@ -27,12 +27,6 @@ def main() -> None:
     rows = []
     first = evaluations[0]
     for view in first["views"]:
-        passes = view["passes"]
-        path = Path(passes["rgb"])
-        if path.name.endswith(".png") and "-rgb.png" not in path.name:
-            rgb500 = base / path.parent.name / f"{view['id']}-rgb-500.png"
-        else:
-            rgb500 = path
         cells = []
         for evaluation, label in zip(evaluations, args.labels):
             matching = [v for v in evaluation["views"] if v["id"] == view["id"]]
