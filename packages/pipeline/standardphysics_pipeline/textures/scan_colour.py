@@ -25,6 +25,7 @@ import pathlib
 from dataclasses import dataclass
 
 import numpy as np
+from standardphysics_contracts import SceneGraph
 
 from ..lidar import load_mesh
 from .camera import PhotoCamera, load_cameras
@@ -248,16 +249,25 @@ def paint_the_scan(
     mesh_path: pathlib.Path,
     poses_path: pathlib.Path,
     frame_paths: dict[str, pathlib.Path],
-    capture_to_room,
+    graph: SceneGraph,
     out_path: pathlib.Path,
 ) -> ScanPaint:
-    """The captured surface, coloured from the photos, as a glTF the viewer can show."""
+    """The captured surface, coloured from the photos, as a glTF the viewer can show.
+
+    Walls and floors no photo reached take their generated material, so the room
+    reads whole rather than as photo patches on grey. Everything else stays the
+    neutral grey: copying the nearest photographed colour was tried and smeared
+    vivid streaks across ceilings and undersides. `painted_fraction` is measured
+    before the fill, so it still reports only what a camera saw.
+    """
     import time
 
+    from .surface_materials import load_materials, unseen_surfaces_filled
+
     started = time.monotonic()
-    vertices, triangles = scan_geometry(mesh_path, capture_to_room)
+    vertices, triangles = scan_geometry(mesh_path, graph.capture_to_room)
     cameras = [
-        camera for camera in load_cameras(poses_path, frame_paths, capture_to_room)
+        camera for camera in load_cameras(poses_path, frame_paths, graph.capture_to_room)
         if frame_paths.get(camera.frame_id, pathlib.Path()).is_file()
     ]
     cameras = _evenly_spread(cameras, MAX_PHOTOS)
@@ -266,5 +276,6 @@ def paint_the_scan(
     resized = [camera.resized(*_photo(frame_paths[camera.frame_id]).shape[1::-1]) for camera in cameras]
     images = [_photo(frame_paths[camera.frame_id]) for camera in cameras]
     scan = unused_vertices_removed(colour_the_scan(vertices, triangles, resized, images))
-    write_scan_glb(scan, out_path)
+    filled = unseen_surfaces_filled(scan, graph, load_materials())
+    write_scan_glb(filled, out_path)
     return ScanPaint(out_path, scan.painted_fraction, len(cameras), time.monotonic() - started)

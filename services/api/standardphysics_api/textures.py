@@ -238,7 +238,7 @@ def _paint_the_scan(store, scan_id, graph, inputs, out_dir) -> bool:
             mesh_path=store.artifact_path(scan_id, inputs["lidar"]),
             poses_path=store.artifact_path(scan_id, inputs["poses"]),
             frame_paths={key: store.artifact_path(scan_id, value) for key, value in inputs["frames"].items()},
-            capture_to_room=graph.capture_to_room,
+            graph=graph,
             out_path=out_dir / "scan.glb",
         )
     except (ValueError, OSError, RuntimeError) as error:
