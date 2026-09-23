@@ -36,7 +36,7 @@ cannot sign in to.
 
 In App Store Connect, create the app record with bundle id
 `com.standardphysics.capture`, and set the privacy policy URL to
-`https://app.standardphysics.app/privacy`. Make sure the address on that page can
+`https://standardphysics.app/privacy`. Make sure the address on that page can
 receive mail before you submit; App Review does write to it.
 
 ## Archive and upload

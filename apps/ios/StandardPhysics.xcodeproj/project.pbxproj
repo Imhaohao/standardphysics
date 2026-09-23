@@ -549,7 +549,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CAPTURE_API_BASE_URL = "https://api.standardphysics.app";
-				CAPTURE_WORKSPACE_BASE_URL = "https://app.standardphysics.app";
+				CAPTURE_WORKSPACE_BASE_URL = "https://standardphysics.app";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = StandardPhysics/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -625,7 +625,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CAPTURE_API_BASE_URL = "https://api.standardphysics.app";
-				CAPTURE_WORKSPACE_BASE_URL = "https://app.standardphysics.app";
+				CAPTURE_WORKSPACE_BASE_URL = "https://standardphysics.app";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = StandardPhysics/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (

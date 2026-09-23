@@ -58,7 +58,7 @@ targets:
         # prefers whatever is already saved in UserDefaults. A phone that was
         # pointed at a laptop keeps pointing there until someone clears it.
         CAPTURE_API_BASE_URL: https://api.standardphysics.app
-        CAPTURE_WORKSPACE_BASE_URL: https://app.standardphysics.app
+        CAPTURE_WORKSPACE_BASE_URL: https://standardphysics.app
     scheme:
       testTargets:
         - StandardPhysicsTests

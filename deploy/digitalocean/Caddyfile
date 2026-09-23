@@ -22,6 +22,9 @@
 	}
 }
 
+# People type the bare name, so that is what the workspace answers on. Only the
+# API gets a subdomain, and it earns it: a scan bundle goes straight there
+# rather than through the workspace's Next rewrite.
 {$APP_DOMAIN} {
 	reverse_proxy web:3000 {
 		# Reconstruction can hold a request open while a model call finishes,
@@ -31,4 +34,8 @@
 			write_timeout 5m
 		}
 	}
+}
+
+www.{$APP_DOMAIN} {
+	redir https://{$APP_DOMAIN}{uri} permanent
 }
