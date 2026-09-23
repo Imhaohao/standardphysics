@@ -233,6 +233,18 @@ class TestHardConstraints:
         test_shape = collision_shape(node)
         assert max(x for x, _ in test_shape) < max(x for x, _ in real)
 
+    @pytest.mark.parametrize(("into_the_wall_mm", "collides"), [(4, False), (6, True), (9, True)])
+    def test_two_pieces_may_overlap_by_the_tolerance_and_no_more(
+        self, graph, into_the_wall_mm, collides
+    ):
+        """A-26. Both shapes used to give up the whole 5 mm, which let a case
+        sit 9 mm inside a wall, an arrangement nobody could build."""
+        case = graph.by_id(CASE_EAST)
+        wall_face = 3.0 - 0.05
+        dx = wall_face - (case.transform.position.x + case.dimensions.x / 2) + into_the_wall_mm / 1000
+        moved = apply_moves(graph, [NodeMove(node_id=CASE_EAST, delta_translation=Vec3(x=dx, y=0.0, z=0.0))])
+        assert ("collided" in _kinds(graph, moved)) is collides
+
 
 class TestMoves:
     def test_a_move_never_touches_a_dimension(self, graph):
