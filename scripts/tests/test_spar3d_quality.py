@@ -1,6 +1,8 @@
 import uuid
 from types import SimpleNamespace
 
+import pytest
+
 from scripts import spar3d_furniture_experiment as experiment
 from standardphysics_api.furniture import furniture_class
 
@@ -60,3 +62,19 @@ def test_batch_reuses_room_evidence_and_retries_only_failed_candidates(tmp_path,
     experiment.run_batch(scan_id, [first, second], tmp_path)
     assert loads == [scan_id, scan_id]
     assert calls == [first, second, second]
+
+
+def test_missing_heldout_photos_skip_candidate_before_inference(tmp_path, monkeypatch):
+    node_id = uuid.uuid4()
+    room = SimpleNamespace(graph=SimpleNamespace(nodes=[SimpleNamespace(id=node_id)]))
+    evidence = SimpleNamespace(crop=object(), crop_frame_id="frame-1")
+    monkeypatch.setattr(experiment, "prepare_object", lambda *_: (evidence, {"node_id": str(node_id)}))
+
+    def no_heldout_photos(*_):
+        raise experiment.InsufficientHeldoutViews("at least five distinct held-out calibrated photos are required")
+
+    monkeypatch.setattr(experiment, "heldout_cameras", no_heldout_photos)
+    monkeypatch.setattr(experiment, "weights_available", lambda: pytest.fail("inference should not start"))
+    result = experiment.run_evidence(room, node_id, tmp_path)
+    assert result["status"] == "skipped"
+    assert "held-out" in result["reason"]

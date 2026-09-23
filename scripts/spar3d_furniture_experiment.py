@@ -59,6 +59,10 @@ HOLDOUT_FRAMES = ("frame-0086", "frame-0087", "frame-0091", "frame-0092", "frame
 RENDER_SIZE = (960, 720)
 
 
+class InsufficientHeldoutViews(RuntimeError):
+    """The capture cannot support the required independent photo comparison."""
+
+
 @dataclass(frozen=True)
 class RoomEvidence:
     graph: SceneGraph
@@ -207,7 +211,7 @@ def heldout_cameras(room: RoomEvidence, input_frame: str, evidence: FurnitureEvi
             picks = np.linspace(0, len(visible) - 1, 5).round().astype(int)
             frames = [visible[index] for index in picks]
     if len(frames) < 5:
-        raise RuntimeError("at least five distinct held-out calibrated photos are required")
+        raise InsufficientHeldoutViews("at least five distinct held-out calibrated photos are required")
     return [by_frame[frame] for frame in frames]
 
 
@@ -378,6 +382,10 @@ def run_evidence(room: RoomEvidence, node_id: uuid.UUID, directory: pathlib.Path
         return record
     try:
         heldout_cameras(room, evidence.crop_frame_id, evidence)
+    except InsufficientHeldoutViews as error:
+        record.update(status="skipped", reason=str(error))
+        return record
+    try:
         if not weights_available():
             record.update(status="blocked", reason="SPAR3D weights are unavailable")
             return record
