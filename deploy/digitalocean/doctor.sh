@@ -129,6 +129,19 @@ check_containers() {
   [ "$any" = "0" ] && note "nothing started yet: docker compose up -d --build"
 }
 
+check_blender() {
+  head_ "Blender"
+  local version
+  version="$(docker compose exec -T api /opt/blender/blender --version 2>/dev/null | head -1)"
+  if [ -n "$version" ]; then
+    ok "$version"
+  else
+    bad "the API container has no working Blender" \
+        "rebuild the image: docker compose up -d --build"
+    note "without it every texture build fails and reports come out with no pictures"
+  fi
+}
+
 show_recent_errors() {
   head_ "Last words from the API"
   local lines
@@ -146,6 +159,7 @@ main() {
   check_memory
   check_dns
   check_containers
+  check_blender
   show_recent_errors
 
   head_ "Summary"
