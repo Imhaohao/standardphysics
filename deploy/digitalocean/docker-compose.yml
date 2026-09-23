@@ -40,6 +40,12 @@ services:
     environment:
       SP_API_PORT: "8787"
       SP_DATA_DIR: /data
+      # Caddy sends X-Forwarded-Proto, and uvicorn ignores it unless the hop it
+      # came from is trusted. Without this the API believes every request
+      # arrived over plain HTTP and hands back a session cookie without the
+      # Secure flag. Trusting any hop is safe here because the API publishes no
+      # port: nothing but Caddy can reach it.
+      FORWARDED_ALLOW_IPS: "*"
     volumes:
       # create_host_path: false is the whole point of the long form here. The
       # short form lets Docker invent a missing directory, owned by root, which

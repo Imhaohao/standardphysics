@@ -1,38 +1,50 @@
 # TLS, and the only thing on the box listening to the internet.
 #
-# Two names rather than one path-routed name. The phone uploads a scan bundle
-# that may reach the gigabyte ceiling in Settings.max_artifact_bytes, and
-# pushing that through the workspace's Next rewrite would buy nothing and cost
-# a hop. So the phone talks to the API and the browser talks to the workspace.
-#
 # Caddy gets a certificate from Let's Encrypt on first boot and renews it
 # without being asked. That needs port 80 reachable and the DNS already
 # pointing here.
 
-{$API_DOMAIN} {
+# One definition of the upstream, because both names send /api to it. The
+# timeouts are for a slow walk around a big shop on shop Wi-Fi.
+(scan_api) {
 	reverse_proxy api:8787 {
-		# A slow walk around a big shop uploads for a long time on shop Wi-Fi.
 		transport http {
 			read_timeout 30m
 			write_timeout 30m
 		}
 	}
+}
+
+{$API_DOMAIN} {
+	import scan_api
 	request_body {
 		max_size 1GB
 	}
 }
 
-# People type the bare name, so that is what the workspace answers on. Only the
-# API gets a subdomain, and it earns it: a scan bundle goes straight there
-# rather than through the workspace's Next rewrite.
+# People type the bare name, so that is what the workspace answers on.
 {$APP_DOMAIN} {
-	reverse_proxy web:3000 {
-		# Reconstruction can hold a request open while a model call finishes,
-		# which next.config.ts already allows three minutes for.
-		transport http {
-			read_timeout 5m
-			write_timeout 5m
+	# /api is the backend's, not Next's. The workspace has no route handlers
+	# of its own under it, and `next build` bakes the rewrite destination into
+	# routes-manifest.json, so SP_API_ORIGIN set at runtime never reaches the
+	# rewrite: the workspace container would proxy to its own 127.0.0.1:8787,
+	# where nothing is listening, and answer 500. Sending /api straight to the
+	# API from here is both correct and one hop shorter.
+	handle /api/* {
+		import scan_api
+	}
+	handle {
+		reverse_proxy web:3000 {
+			# Reconstruction can hold a request open while a model call
+			# finishes, which next.config.ts already allows three minutes for.
+			transport http {
+				read_timeout 5m
+				write_timeout 5m
+			}
 		}
+	}
+	request_body {
+		max_size 1GB
 	}
 }
 
