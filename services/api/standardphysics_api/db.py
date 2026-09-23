@@ -42,6 +42,9 @@ CREATE TABLE IF NOT EXISTS jobs (
     attempts INTEGER NOT NULL DEFAULT 0,
     error TEXT,
     created_at TEXT NOT NULL,
+    input_hash TEXT,
+    note TEXT,
+    model_requests_json TEXT,
     UNIQUE (scan_id, kind, revision)
 );
 CREATE TABLE IF NOT EXISTS revisions (
@@ -57,7 +60,8 @@ CREATE TABLE IF NOT EXISTS revisions (
 );
 CREATE TABLE IF NOT EXISTS scenarios (
     scan_id TEXT PRIMARY KEY REFERENCES scans(id),
-    scenario_json TEXT NOT NULL
+    scenario_json TEXT NOT NULL,
+    version INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS simulations (
     scan_id TEXT NOT NULL REFERENCES scans(id),
@@ -102,7 +106,33 @@ CREATE TABLE IF NOT EXISTS assessments (
     scan_id TEXT NOT NULL REFERENCES scans(id),
     graph_revision INTEGER NOT NULL,
     assessment_json TEXT NOT NULL,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    scenario_version INTEGER
+);
+CREATE TABLE IF NOT EXISTS evidence_bundles (
+    scan_id TEXT NOT NULL REFERENCES scans(id),
+    version INTEGER NOT NULL,
+    manifest_hash TEXT NOT NULL,
+    artifact_ids_json TEXT NOT NULL DEFAULT '[]',
+    artifact_hashes_json TEXT NOT NULL DEFAULT '{}',
+    complete INTEGER NOT NULL DEFAULT 0,
+    missing_required_kinds_json TEXT NOT NULL DEFAULT '[]',
+    reasons_json TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT NOT NULL,
+    semantic_processed_hash TEXT,
+    PRIMARY KEY (scan_id, version)
+);
+CREATE TABLE IF NOT EXISTS job_attempts (
+    job_id INTEGER NOT NULL REFERENCES jobs(id),
+    attempt INTEGER NOT NULL,
+    scan_id TEXT NOT NULL,
+    input_hash TEXT,
+    state TEXT NOT NULL,
+    error TEXT,
+    note TEXT,
+    model_requests_json TEXT,
+    recorded_at TEXT NOT NULL,
+    PRIMARY KEY (job_id, attempt)
 );
 """
 
@@ -113,6 +143,13 @@ ADDED_COLUMNS = {
         ("candidate_graph_json", "TEXT"),
     ),
     "scans": (("owner_id", "TEXT REFERENCES owners(id)"),),
+    "jobs": (
+        ("input_hash", "TEXT"),
+        ("note", "TEXT"),
+        ("model_requests_json", "TEXT"),
+    ),
+    "scenarios": (("version", "INTEGER NOT NULL DEFAULT 0"),),
+    "assessments": (("scenario_version", "INTEGER"),),
 }
 """Columns that arrived after a table shipped, by the table they belong to.
 

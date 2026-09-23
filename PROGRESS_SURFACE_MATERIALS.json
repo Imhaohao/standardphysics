@@ -1,0 +1,70 @@
+{
+  "objective": "Room 6 (cdb7ced5-b67f-4f94-8639-0257a1dd8e9a) as a testbed: render the whole room without gaps using ElevenLabs-generated materials.",
+  "status": "complete",
+  "updated_at": "2026-09-22T23:43:24-07:00",
+  "findings": {
+    "scan_holes": "Room 6 LiDAR scan has no surface over 25% of wall area and 63% of floor area (5 cm grid, 6 cm tolerance); colour cannot fill holes, so the gapless view is the box model (scene.glb).",
+    "box_model_coverage": "Photos reach 48% of the box model's texels; the other 52% now take room materials.",
+    "tinting": "Tinting room-generated materials to the photographed median made a wall mid-grey (dark projected shapes pulled the median down); room materials now keep their own colour, generic ones are still tinted."
+  },
+  "phases": [
+    {
+      "name": "outlet discovery on room 6",
+      "status": "complete",
+      "notes": "99 photos read, 11 objects; added as revision 2: 1 outlet, 1 candidate outlet, television, sofa, 2 whiteboards. Needs Settings.from_environment() for .env keys and SSL_CERT_FILE=certifi bundle (python.org Python has no CA store)."
+    },
+    {
+      "name": "material keys per labelled object + shared fill core",
+      "status": "complete"
+    },
+    {
+      "name": "box model (atlas) fill for unphotographed texels",
+      "status": "complete"
+    },
+    {
+      "name": "room-matched materials from photo crops via gpt-image-2 inline references",
+      "status": "complete",
+      "notes": "8 materials: chair, floor, front door, table, television, wall, whiteboard, window. Outlet and sofa skipped: fewer than 200 photographed points each."
+    },
+    {
+      "name": "rebuild room 6 textures and render before/after",
+      "status": "complete",
+      "notes": "runs/surface-materials-preview/room6-box-before-after.jpg, room6-scan-before-after.jpg, room6-references-vs-materials.jpg"
+    },
+    {
+      "name": "step 1: patch LiDAR holes in walls and floor with their planes",
+      "status": "complete",
+      "notes": "Room 6: 17.5 m2 of patches; 23% coloured by a photo, 77% by room materials. Walls and floor inside the walls have no gaps left except door and window (cut_into) openings. Photo colour is refused where a measured object box stands between camera and patch (stops chair colour leaking onto floor). Floor patches stay inside the hull of the wall ends. Render: runs/surface-materials-preview/room6-hole-patches.jpg"
+    },
+    {
+      "name": "OpenRouter default model",
+      "status": "complete",
+      "notes": "anthropic/claude-opus-5.5 in .env and as code default; provider pinned from the model id."
+    },
+    {
+      "name": "people out of the displayed scan, their holes in furniture closed, person pixels masked",
+      "status": "complete",
+      "notes": "Room 6: people in 63 of 99 photos. discovery's any-photo rule (person_points) marked 13% of the scan including 33% of the TV and 40% of the table, so display uses mostly_people: a person in at least half the photos that see the point. That removes 3.6% (4,806 points), TV 0%. Holes inside object boxes with rims <= 2.5 m are capped with rings every 3 cm (one centre point gave a starburst on the TV). Person boxes mask photo pixels during colouring. Detections come from discovery's cache only (known_detections) and their digest is in the build key. Render: runs/surface-materials-preview/room6-people-removed.jpg. Next: step 2, completing half-seen furniture."
+    },
+    {
+      "name": "step 2: complete half-seen furniture by reflection",
+      "status": "complete",
+      "notes": "Per object, every upright plane through its box (offsets +-8 cm) is scored by agreement (reflected points within 3 cm of scanned surface) minus contradiction (reflected points in space a camera saw through). Planes need agreement >= 0.4 and margin >= 0.15; the first test without contradiction scored ~95% on every axis and was useless. All passing planes apply, best first, each filling only what is still missing. Reflected vertices copy their source's final colour. Room 6: 2,097 vertices; chairs 3-11%, sofa 16%, televisions 25-26% (screen gaps), table and two chairs none. Render: runs/surface-materials-preview/room6-mirrored.jpg"
+    },
+    {
+      "name": "two cameras must see through a point before it counts as empty",
+      "status": "complete",
+      "notes": "Room 6 mirrored vertices 2,097 -> 5,246; all six chairs 3-14%, table 0% -> 33%, sofa 16% -> 24%. Render: runs/surface-materials-preview/room6-mirrored-two-cameras.jpg"
+    },
+    {
+      "name": "research: clean 3D furniture models (NotebookLM)",
+      "status": "complete",
+      "notes": "Notebook https://notebooklm.google.com/notebook/26aeb46d-e385-4087-937a-9f7f3ccd2ed6 (15 arXiv papers, 11 repos, all verified). Report: runs/surface-materials-preview/furniture-3d-research-report.md. Licences read from LICENSE files: Hunyuan3D 2.x Tencent Community (excludes EU/UK/KR), SPAR3D/SF3D Stability Community (free under US$1M revenue), TRELLIS.2 MIT but CUDA-only. Recommended: SPAR3D on MPS conditioned on the object's LiDAR points, scaled into the measured box, textured by projecting our own photos. The licence access blocker was resolved before the experiment."
+    },
+    {
+      "name": "SPAR3D furniture experiment",
+      "status": "complete",
+      "notes": "Gated weights approved and SPAR3D ran on MPS for room 6 chair 5f279283-7cde-40af-b61a-6c0d6075ec61: 552.35 s, 12.026 GB peak process memory, 17.888 GB MPS driver memory at end. Fitted box IoU 1.00 passes the 0.85 gate, but mean LiDAR-to-surface distance is 11.43 cm. Five held-out views average SSIM 0.636 (LiDAR baseline 0.621); visual review shows missing arms and wheeled base, pale texture, and only 44.7% of the generated mesh painted from room photos. Background removal left neighboring furniture in the input crop. The sofa was skipped because its 0.179 x 0.466 x 0.381 m box is a fragment with no whole-sofa crop. Do not integrate this mesh; improve object isolation and source geometry before retrying. Outputs: runs/spar3d-experiment/metrics.json and chair/views/."
+    }
+  ]
+}

@@ -54,14 +54,11 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.standardphysics.capture
         TARGETED_DEVICE_FAMILY: "1,2"
-        # Fill both in before archiving for TestFlight or the App Store, with
-        # the two names from docs/DEPLOY.md. Empty is the right value while
-        # there is no server: AppEnvironment falls back to the connection
-        # screen, which is what a developer pointing the phone at a laptop
-        # wants and what an owner must never see. A build shipped with these
-        # empty is a build App Review cannot sign in to.
-        CAPTURE_API_BASE_URL: ""
-        CAPTURE_WORKSPACE_BASE_URL: ""
+        # Changing either means shipping a new build, because AppEnvironment
+        # prefers whatever is already saved in UserDefaults. A phone that was
+        # pointed at a laptop keeps pointing there until someone clears it.
+        CAPTURE_API_BASE_URL: https://api.standardphysics.app
+        CAPTURE_WORKSPACE_BASE_URL: https://standardphysics.app
     scheme:
       testTargets:
         - StandardPhysicsTests

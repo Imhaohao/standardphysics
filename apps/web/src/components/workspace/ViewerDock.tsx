@@ -1,6 +1,6 @@
 "use client";
 
-import { ChartPieSlice, CircleNotch, Cube, CubeTransparent, DownloadSimple, ImageSquare, Scan, Shapes, Square, SquareHalfBottom, Wall, Wheelchair } from "@phosphor-icons/react";
+import { ChartPieSlice, CircleNotch, Cube, CubeTransparent, DownloadSimple, ImageSquare, Scan, Shapes, Sparkle, Square, SquareHalfBottom, Wall, Wheelchair } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { IconButton, IconLink } from "@/components/ui/IconButton";
@@ -108,10 +108,25 @@ function photoLabel(textures: Textures, status: TextureStatus, statusMessage: st
   return "Photo textures";
 }
 
+/**
+ * The splats, which the scanned mesh and the boxes both sit beside rather than replace.
+ *
+ * Shown in two places — next to the scanned mesh once a photo build exists, and on its
+ * own before one does — so the label and the icon are settled here rather than at each.
+ */
+function SplatMode({ textures }: { textures: Textures }) {
+  if (!textures.capturedSplats) return null;
+  return (
+    <IconButton label="The room rebuilt from the photos" aria-pressed={textures.mode === "splat"} onClick={() => textures.onMode("splat")}>
+      <Sparkle size={ICON_SIZE} aria-hidden />
+    </IconButton>
+  );
+}
+
 function BuiltModes({ textures, status }: { textures: Textures; status: TextureStatus }) {
   return (
     <>
-      {status.build?.scan_glb_url && !textures.capturedSplats && (
+      {status.build?.scan_glb_url && (
         <IconButton
           label="The room as it was scanned"
           aria-pressed={textures.mode === "scan"}
@@ -120,6 +135,7 @@ function BuiltModes({ textures, status }: { textures: Textures; status: TextureS
           <Scan size={ICON_SIZE} aria-hidden />
         </IconButton>
       )}
+      <SplatMode textures={textures} />
       <IconButton label="Plain materials" aria-pressed={textures.mode === "plain"} onClick={() => textures.onMode("plain")}>
         <Square size={ICON_SIZE} aria-hidden />
       </IconButton>
@@ -169,7 +185,7 @@ function MaterialGroup({ textures }: { textures: Textures }) {
   if (!status && textures.reconstruction.count === 0 && !textures.capturedSplats) return null;
   return (
     <DockGroup label="Materials">
-      {textures.capturedSplats && <IconButton label="Photographic preview" aria-pressed={textures.mode === "scan"} onClick={() => textures.onMode("scan")}><Scan size={ICON_SIZE} aria-hidden /></IconButton>}
+      {!status && <SplatMode textures={textures} />}
       <ReconstructedMode textures={textures} />
       {status && <PhotoModes textures={textures} status={status} />}
     </DockGroup>

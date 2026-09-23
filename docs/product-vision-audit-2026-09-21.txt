@@ -1,0 +1,260 @@
+STANDARD PHYSICS: DISTANCE FROM THE SHOP-SCANNING VISION
+Audit date: 2026-09-21
+Code examined: 3fe4fba and the current working tree, including uncommitted work.
+Scope: capture -> evidence -> scene -> useful objects -> accessibility screening
+-> redesign -> web/phone experience/export. Read-only source/product-data audit;
+no product code changed, new paid recognition calls, deployment or capture run.
+
+ASSESSMENT
+There is a substantial working prototype: authenticated capture/upload, measured
+scene graphs, web inspection, selected geometric rule checks, furniture-layout
+search, revision history and exports. There is not yet a demonstrated repeatable
+journey in which a new shop is scanned and its outlets, TVs, cashier and restroom
+are reliably identified and turned into trustworthy, complete ADA redesign advice.
+
+The closest useful product is an ASSISTED accessibility screening tool: an owner
+confirms roles and photos, verifies uncertain dimensions, and receives selected
+route/counter/furniture suggestions. That is materially closer than autonomous
+whole-shop assessment. Neither should be described as finished or certified.
+Rendering is one gap; evidence ingestion, semantic integration, measurement
+validation and legal applicability are at least as important to this vision.
+
+Do not report a percentage complete from test counts or lines of code. Feature
+implementation, real-scan accuracy, legal scope and field acceptance are different
+dimensions. The evidence supports a prototype-stage judgment, not a release date.
+
+CAPABILITY SCORECARD
+1. Scan and upload a room — IMPLEMENTED; CURRENT PHYSICAL JOURNEY UNVERIFIED.
+   iPhone RoomPlan/ARKit records room geometry, calibrated RGB/poses, LiDAR and
+   other artifacts; authentication, Keychain token storage and resumable upload
+   exist. Four preserved Moffett captures contain 3,524 photo/pose pairs.
+   Evidence: apps/ios/StandardPhysics/Capture/{FrameRecorder,PoseRecord,
+   LidarMeshRecorder,SceneCaptureConfiguration}.swift; Upload/ScanUploadClient.swift.
+   There is no current recorded new-shop phone acceptance spanning the whole flow.
+
+2. Convert a new scan into a usable scene — BASIC PATH IMPLEMENTED; DETAILED
+   PHOTOGRAPHIC PATH PARTLY EXPERIMENTAL.
+   Worker ingest calls RoomPlan parsing, labeling and discovery; generic texture
+   jobs and GLB viewing exist. Rooms can also display clean approximate geometry.
+   The newest Moffett 500px bake/repair remains offline scripts rather than the
+   API's new-scan pipeline. Current visual quality still fails the requested goal.
+
+3. Automatically combine an entire shop — NOT DEMONSTRATED.
+   Product combine is owner alignment/drag/rotation, not automatic registration.
+   Moffett's overlap investigation and saved transforms were a special workflow.
+   Multi-room artifacts do not establish an unattended new-shop capability.
+
+4. Locate outlets — ALGORITHMS AND REVIEW/REACH UI IMPLEMENTED; REAL ACCEPTANCE OPEN.
+   Photo detections, surface attachment, reconciliation, persistent review and
+   estimated wheelchair approach/reach exist. They have regression fixtures.
+   Current A-102 revision 4 has zero outlet/candidate nodes, zero attachments and
+   zero photographic observations. A synthetic demo is not an actual detection.
+   PROGRESS_MOFFETT_OUTLET_REPAIR.json still has real acceptance unfinished.
+
+5. Locate televisions — BASIC CATEGORY SUPPORT; NO DEDICATED VERIFIED FLOW.
+   RoomPlan/generic labeling can represent televisions; one other stored scan
+   ('room 6') has a Television object. Moffett has none. Generic discovery merges
+   tv with screen; there is no demonstrated evidence-backed TV-finding workflow
+   or TV-specific accessibility decision. Recognition, screen visibility and
+   reach to a control would be separate questions with different evidence.
+
+6. Locate cashier/service counter — MANUAL ROLE CONFIRMATION WORKS.
+   API/UI can mark an object as service counter, persist a revision and recheck.
+   A-102's one service counter is explicitly owner-labeled. A measured box or
+   model-produced name does not establish customer side, accessible section,
+   register location, counter type or the applicable approach requirement.
+
+7. Locate/access/check restroom — MAJOR MISSING PRODUCT CAPABILITY.
+   No dedicated restroom recognition, room classification, fixture relationship
+   or complete assessment flow was found. The rule engine asks for restroom
+   evidence rather than measuring full toilet/lavatory/grab-bar/door requirements.
+   Labeling a door 'restroom' alone would not establish that the room is accessible.
+
+8. Check selected ADA-related geometry — IMPLEMENTED WITH MATERIAL LIMITATIONS.
+   Rules and measurement code cover selected aisle/route, door, turning/passing,
+   counter and related geometric conditions. Source sections and URLs are stored.
+   Default assessment is Tier 1. Catalog = 18 rules; 16 ledger entries; two Tier-1
+   rules lack verification; higher tiers are not enabled by default.
+   Neither this catalog nor the default checks cover whole-shop compliance.
+
+9. Suggest an actionable redesign — WORKS FOR A LIMITED CLASS OF FURNITURE MOVES.
+   Search proposes translations/rotations of movable items, re-measures, rejects
+   invalid/newly problematic layouts and saves revisions. There is synthetic
+   proof of the find/move/recheck cycle; actual-scan findings often remain asks.
+   Lowering/replacing a counter, moving plumbing, installing grab bars, changing
+   a doorway or relocating electrical services are not solved by that search.
+
+10. Explain/export the result — IMPLEMENTED, BUT EVIDENCE/PRECISION REMAIN LIMITED.
+    Architecture ZIP, captured/measured/inferred distinctions and revision-pinned
+    output exist. They do not prove unknown placement reasons, outlet function,
+    exact centimetre accuracy, construction feasibility or ADA compliance.
+    Outlet UI currently shows frame/confidence text rather than its actual crop.
+
+DIRECT PRODUCT-DATA SNAPSHOT
+Read-only default local database: services/api/var/standardphysics.sqlite3.
+This is the default database, not a claim about every deployment or private run.
+9 saved scans, 23 revisions, 20 assessments, 5 scenarios, 8 simulations and
+4 texture-build rows. Nine scans say ready; ready is not photographic acceptance.
+Jobs include 3 failed simulations and 1 failed texture job; causes not inferred
+from their counts. Authentication/ownership and revision mechanisms are present.
+
+Latest A-102 Moffett revision 4: 284 nodes, including 19 RoomPlan sofas and one
+owner-labeled service counter. Zero outlets, whiteboards, TVs or restroom labels;
+zero attached-photo observations. Latest assessment reports 12 rules checked,
+2 problems, 15 questions and 1 pass. Finding counts are not rule coverage counts.
+Default stored scenes contain no outlet attachment nodes. The runtime can still
+have separate experimental output files; those are not published semantic results.
+
+PRIORITY FINDINGS
+P1 — New-shop evidence can arrive AFTER processing starts.
+apps/ios/StandardPhysics/Upload/UploadViewModel.swift:110-124 finalizes core data,
+then uploads optional photos/video/manifest while polling status. Lines263-273
+classify those artifacts as optional. stages.py:59-66 declines discovery inputs
+when required detailed evidence is missing; lines134-146 retain RoomPlan nodes on
+discovery failure. Later photo arrival can enable texturing, but the initial
+ready graph is not proof that semantic discovery used complete photo evidence.
+Required outcome: distinct geometry-ready/evidence-ready/discovery-complete states
+and a verified, idempotent recognition job after the evidence receipt is complete.
+
+P1 — Object recognition and correction are not fully connected or validated.
+stages.py:112-124 calls labeling/discovery, not
+discovery/semantic_corrections.py:256 apply_secondary_semantic_corrections.
+Whiteboard attachment and photo-driven sofa/table correction tests therefore do
+not prove production use. detect.py has generic object prompts/class handling;
+surface_attach accepts image_url but discover.py does not supply it to the outlet
+attachment call. OutletPanel.tsx:269-277 shows only frame/confidence text.
+Required outcome: actual source crops, world location/support surface, calibrated
+confidence/unknown state, persistent corrections and live object findings on a
+previously unseen shop through the real ingest path.
+
+The older recognition run claimed missing API keys. Root verified that both
+DISCOVERY_API_KEY and OPENROUTER_API_KEY are present after the normal .env load.
+Their values were not printed; no request was sent, so validity/service access
+remain untested. Do not ask for a new login solely because the historical run
+did not inherit configuration. That historical blocker is not current evidence.
+
+P1 — Two reproducible regressions undermine measurement/check reliability.
+services/api/tests/test_combine_scans.py:68 expects merged floors at Z=0 but gets
+Z=-1.0; fails both full suite and isolated rerun. This establishes a contract
+failure, not that every saved Moffett dimension is exactly one metre wrong.
+packages/agents/tests/test_tiers.py:181 expects a deep protruding shelf to produce
+a problem but receives passes. This is a Tier-2 test, not proof default Tier-1
+production always runs that check. Repair both before expanding acceptance.
+
+P1 — Legal verification is weaker than the product description implies.
+All 16 rule-ledger entries name 'Automated threshold check (needs a person's
+second check)' and second_check_by is null. rules/verification.py:59-60 enables
+matching entries without requiring that human second check. Stored thresholds
+and source text are useful, but are not evidence of professional review of all
+conditions, exceptions, applicability, local amendments or measurement methods.
+Counter checks chiefly implement a parallel-approach path, not every accessible
+counter configuration. Route exceptions, passing/turning shapes, door approaches,
+reach orientations and restroom fixtures have limited or absent implementations.
+Required outcome: explicitly scoped rule versions, applicability questions and
+reviewed rule tests against real examples; no global compliance claim.
+
+P1 — Unanswered checks and measurement uncertainty do not fully reach the owner.
+checks/observation.py:50-59 says Unevaluated never reaches owners;
+services/api/standardphysics_api/stages.py:199-202 logs these gaps and returns the
+assessment. Absent roles may produce no observations. Thus 'no findings' cannot
+establish that every relevant item was checked. Six explicit questions do exist
+for thresholds/hardware/force/floor/restroom/reach; that is a useful foundation.
+Rules use numerical tolerances, not experimentally established capture confidence
+intervals. Outlet UI can consume user-supplied uncertainty but that does not
+create measured scan error bounds. No tape/control measurements for Moffett were
+provided, so absolute centimetre accuracy has not been established.
+Required outcome: visible pass/problem/needs-verification/not-applicable with
+reasons, plus measurement provenance and threshold decisions aware of uncertainty.
+
+P2 — Photographic quality remains below acceptance; reports overstate one gate.
+Latest commits f8f5faa/3fe4fba improve offline mesh evaluation, GLB handling and
+display-geometry drift. Current c7 captured views still show triangular gaps,
+fragmented surfaces and people. Root visually inspected frame0086 and frame0095.
+c7 frame0086 reports 86.62% photographed target pixels and a 10.19% largest hole.
+The handoff/checkpoint says critical ROI>=98% passed, but actual values include
+96.63%,95.98%,94.58%,93.66%; it did not pass that policy. Resolution uses a
+sqrt-determinant proxy instead of the policy's weaker-axis/source/mip-aware check.
+Do not use these summaries as release evidence. Four room bakes are not a verified
+stitched walkthrough or actual browser/phone performance result.
+
+P2 — Deployment and physical-product acceptance are incomplete.
+The default Dockerfile installs neither Blender nor the optional reconstruction
+extra; real scans can therefore fall back to boxes even where local scripts work.
+worker.py:1-6 assumes one process per database; ordinary multi-worker scale-out is
+not supported by that queue model. Physical iPhone upload-to-results, browser
+runtime, detailed mesh loading and a new-store usability test remain unverified
+in this audit. These are separate from passing component/unit tests.
+
+WHAT THE CURRENT REDESIGN CAN AND CANNOT MEAN
+Evidence-backed example: 'This modeled route narrows to X; the selected rule
+requires Y for the confirmed scenario. Moving this movable table by Z improves
+the modeled clearance, and these other modeled checks still pass.' The engine
+has the basic mechanisms for that statement, subject to the limitations above.
+It cannot yet support 'Every outlet is reachable, the restroom is compliant and
+this shop is ADA compliant after these edits.' Outlet presence/function, public
+restroom scope, door operation, floor slope/surface, fixture placement, precise
+dimensions and local applicability need separate evidence and checks.
+
+HOW FAR / NEXT PRODUCT MILESTONES
+An assisted single-shop pilot is within the existing architecture: considerable
+code can be reused. It still needs integrated recognition, trustworthy result
+states, repaired regressions and physical validation. It is not one render fix
+or another overnight model run away from dependable unattended operation.
+The full multi-shop, multi-room vision also requires new restroom/fixture and
+rule-applicability capabilities plus generalization evidence across real shops.
+No defensible calendar estimate follows from this audit; measure it after the
+first unseen-shop acceptance run and the source-quality/accuracy study.
+
+Milestone A: one complete assisted journey, without a perfect 3D renderer.
+Use a clear measured plan plus original photographs and markers. On a NEW small
+shop, upload all evidence, review detected outlets/TV/counter/restroom entrance,
+show their photo crops and approximate measured positions, confirm customer stops,
+and return one supported selected-rule issue with a verified furniture proposal.
+Do not require game-like graphics before learning whether that workflow is useful.
+
+Milestone B: repeatable evidence and measurement quality.
+Create manually checked inventories and independent physical dimensions across
+several different shops; keep evaluation images/shops out of tuning. Report
+precision/recall for objects that were actually photographed, unobserved areas,
+position/height errors, near-threshold uncertainty, missed hazards and false
+alarms. A missing detection must not be reported as proof no outlet/restroom exists.
+One photo can show a useful candidate; multiple consistent views strengthen it.
+Device/capture failures must produce an actionable targeted recapture request.
+
+Milestone C: scoped professional accessibility screening and broader redesign.
+Review applicable rules with a qualified accessibility practitioner, expose gaps,
+support relevant counter/door/restroom/reach conditions, and separate furniture
+moves from fixture/construction recommendations requiring further assessment.
+Validate every recommendation against the measured revision and uncertainty;
+retain evidence photos, exact rule scope, before/after measurements and remaining
+unknowns. Add automatic multi-room alignment and improve mesh quality in parallel
+once the core outcome works. Physical phone and deployed-server tests are required.
+
+No new Gaussian-splatting work is necessary for these milestones. Existing splat,
+SplatX and DeepFusion experiments do not establish any missing semantic or legal
+capability. Keep them outside the critical path for this user-requested mesh product.
+
+VERIFICATION PERFORMED NOW
+Root: API suite 176 passed, 1 failed; isolated repeat confirms floor test failure.
+Root: web typecheck passed; 138 tests passed in 29 files.
+Root: focused semantics/outlet API/acceptance/mesh tests 22 passed, 1 skipped.
+ADA auditor: project-venv tier/fix suite 79 passed, 1 failed (protruding shelf).
+ADA auditor: 41 web outlet/motion tests passed (subset of root web suite).
+Capture auditor: 7 passed, 1 skipped in its narrower environment; root repeated
+the relevant files in project venv as part of the 22-test focused run.
+These counts overlap; do not sum them into an independent overall test count.
+No fresh physical scan, actual-phone usability/performance test, paid vision
+request or independent live legal-source validation was performed. API tests
+use the real pipeline except substituted Blender operations in their fixture.
+
+Audit subagents (read-only, Terra): audit_product_capture, audit_product_semantics,
+audit_product_ada. Each performed the named bounded audit; costs unavailable.
+Root handled cross-feature integration, live local DB evidence and combined tests.
+No source fixes were made during this audit; ongoing work was preserved.
+
+FOLLOW-UP TASK -> MODEL-TIER DELEGATION
+Ground-truth inventory, evidence pages, fixture regression checks -> Luna/Sonnet
+Evidence-ready job wiring, crop UI, role persistence and pipeline integration -> Terra
+Coordinate/measurement errors, uncertainty, rule applicability architecture -> Sol
+Bulk image/geometry measurement -> local scripts
+Rule interpretation and field acceptance -> qualified human reviewer and shop user

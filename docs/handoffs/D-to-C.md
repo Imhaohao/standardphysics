@@ -451,3 +451,21 @@ about 20 s:
 Could the policy send the register to ASK_OWNER after the first failed fix,
 instead of trying FIX twice more? Moving the card reader is a sentence for the
 owner, and that pass would read better on stage than a repeat.
+
+## 2026-09-23: changes Lane D made in your files
+
+| Commit | What changed | Why |
+|---|---|---|
+| `1084818` | `door_clearance_blocked` now expects the route finding and `FIX`. | With A-6 fixed, the way in past a chair left in the doorway reads 16.7 in, the pocket's real depth, and moving the chair clears both findings. `750743c` had set the old label to match what the exemption let the geometry say. Revert it if the intent was never to report one chair twice. |
+| `9944fbf` | `route_width_verdict` takes every reduced run and fails runs closer than `separating_segment_min_length_inches`. `door_opening_force` asks about the doors other than the entrance, with new copy. `point_of_sale_height`'s `source_text` quotes Advisory 904.2 word for word. | Three "verify, fix logic" verdicts in `D-to-C-rule-review.md`. The ledger binds id, section, threshold and unit, none of which moved. |
+| `2382bd3` | `passing_space` tests a square turned to the route through `largest_square`. | A 60 in circle does not hold a 60 in square. |
+| `4bff1bc` | `service_counter_approach` measures in front of the lowered section when one stands beside the counter. | 904.4.1 puts the space beside the 36 in portion. The lawsuit fixture now reports a chair in that space. |
+| `a2ed9d2` | `_overlapping` shrinks each shape by half of `OVERLAP_TOLERANCE`. | A-26. |
+
+Still open from the review, each needing a decision rather than code:
+
+- `turning_space` cites 304.3.1 as a requirement at dead ends, which the Access Board guide lists only as a recommendation. A `recommendation` outcome needs a contract change, and `dead_end_tight` expects the problem today.
+- `service_counter_height` still misses a lowered part built into one box, the 904.4.2 forward approach, 227.3's "at least one of each type" and the full-depth condition.
+- `exit_path` stays on hold until someone with CBC access pins the section.
+
+Nothing in `rules/data/verification.json` changed. `scripts/verify_rulepack.py` rewrites that ledger when run, so run it only when an automated entry is what you want.

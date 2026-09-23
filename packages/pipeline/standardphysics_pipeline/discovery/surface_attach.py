@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import math
 import uuid
-from collections.abc import Sequence
 from dataclasses import dataclass
 
 import numpy as np
@@ -22,19 +21,79 @@ from standardphysics_contracts import (
     SocketTarget,
     SurfaceAttachment,
     Vec3,
-    can_host_a_fitting,
+    bounds_the_room,
 )
 
 from ..textures.camera import PhotoCamera
+from . import taxonomy
 from .boxes import _frame, to_local
 from .detect import Detection
 
 GRAZING_ANGLE_COS_THRESHOLD = 0.2588  # ~75 degrees from normal (cos 75 deg ≈ 0.2588)
 MIN_SUPPORT_RAYS = 3
-DEPTH_AGREEMENT_M = 0.08
-"""How far the measured depth may sit from the surface and still be the same surface."""
 TOTAL_SAMPLE_RAYS = 9
 FACEPLATE_DEFAULT_SIZE = (0.12, 0.03, 0.12)  # Width 12cm, thickness 3cm, height 12cm
+
+
+def _review_status(detection: Detection) -> str:
+    """A counter or restroom entrance stays a candidate until the owner confirms its role and public use."""
+    return "candidate" if detection.needs_owner_confirmation else detection.review_status
+
+
+def _node_kind(detection: Detection) -> str:
+    if detection.is_outlet:
+        return "outlet"
+    if detection.is_confuser:
+        return "confuser"
+    return detection.class_key
+
+
+def _node_label(detection: Detection) -> str:
+    if detection.is_outlet:
+        return f"Outlet ({detection.name})"
+    if detection.is_confuser or detection.class_key == taxonomy.OBJECT:
+        return detection.name
+    return f"{taxonomy.semantic_class(detection.class_key).label} ({detection.name})"
+
+
+def _candidate_kind(detection: Detection) -> str:
+    if detection.is_outlet:
+        return "candidate_outlet"
+    return f"candidate_{detection.class_key}"
+
+
+def _surface_dimensions(
+    detection: Detection,
+    observed_region: list[Vec3],
+    normal: np.ndarray,
+) -> Vec3:
+    """The node's extent, separated into what is and is not measured.
+
+    An outlet faceplate is a documented default: the size of the plate is
+    standard and small. Everything else attached to a surface has no device
+    size from a photo: the honest extent is the span of the observed region
+    on the support plane, with depth left as a display-only proxy and the
+    node marked needs_another_look, never measured.
+    """
+    if detection.is_outlet:
+        return Vec3(x=FACEPLATE_DEFAULT_SIZE[0], y=FACEPLATE_DEFAULT_SIZE[1], z=FACEPLATE_DEFAULT_SIZE[2])
+    if not observed_region:
+        return Vec3(x=0.0, y=0.0, z=0.0)
+    up = np.array([0.0, 0.0, 1.0], dtype=np.float64)
+    tangent = np.cross(normal, up)
+    if np.linalg.norm(tangent) < 1e-4:
+        tangent = np.array([1.0, 0.0, 0.0], dtype=np.float64)
+    else:
+        tangent /= np.linalg.norm(tangent)
+    bitangent = np.cross(normal, tangent)
+    points = np.asarray([[point.x, point.y, point.z] for point in observed_region], dtype=np.float64)
+    span = points @ tangent
+    rise = points @ bitangent
+    return Vec3(
+        x=round(float(span.max() - span.min()), 3),
+        y=FACEPLATE_DEFAULT_SIZE[1],
+        z=round(float(rise.max() - rise.min()), 3),
+    )
 
 
 @dataclass(frozen=True)
@@ -157,66 +216,179 @@ def cast_and_intersect(
     return hits
 
 
-def _dominant_support(hits: Sequence) -> tuple[uuid.UUID | None, list, int]:
-    """The surface most of the rays landed on, and how many surfaces they spread over."""
-    counts: dict[uuid.UUID, int] = {}
-    for hit in hits:
-        counts[hit.support_node.id] = counts.get(hit.support_node.id, 0) + 1
-    if not counts:
-        return None, [], 0
-    winner = max(counts, key=counts.get)
-    return winner, [hit for hit in hits if hit.support_node.id == winner], len(counts)
+def _dominant_support(
+    unoccluded_hits: list[RayHit],
+) -> tuple[dict[uuid.UUID, int], uuid.UUID | None, list[RayHit]]:
+    support_counts: dict[uuid.UUID, int] = {}
+    for hit in unoccluded_hits:
+        support_counts[hit.support_node.id] = support_counts.get(hit.support_node.id, 0) + 1
+    dominant_node_id = max(support_counts, key=support_counts.get) if support_counts else None
+    dominant_hits = [h for h in unoccluded_hits if h.support_node.id == dominant_node_id] if dominant_node_id else []
+    return support_counts, dominant_node_id, dominant_hits
 
 
-def _lidar_agrees(hits: Sequence, camera: PhotoCamera, depth_buffer: np.ndarray | None) -> bool:
-    """Whether the measured depth along these rays matches where the surface was said to be."""
+def _lidar_verified(camera: PhotoCamera, dominant_hits: list[RayHit], depth_buffer: np.ndarray | None) -> bool:
     if depth_buffer is None:
         return False
-    rows, columns = depth_buffer.shape
-    agreed = 0
-    for hit in hits:
-        col = int(np.clip(round(hit.col * columns / camera.width), 0, columns - 1))
-        row = int(np.clip(round(hit.row * rows / camera.height), 0, rows - 1))
-        measured = float(depth_buffer[row, col])
-        along_ray = float(camera.to_camera(hit.point.reshape(1, 3))[0, 2])
-        if math.isfinite(measured) and abs(measured - along_ray) <= DEPTH_AGREEMENT_M:
-            agreed += 1
-    return agreed >= MIN_SUPPORT_RAYS
+    h_buf, w_buf = depth_buffer.shape
+    matching_hits = 0
+    for hit in dominant_hits:
+        c_idx = int(np.clip(round(hit.col * w_buf / camera.width), 0, w_buf - 1))
+        r_idx = int(np.clip(round(hit.row * h_buf / camera.height), 0, h_buf - 1))
+        buffer_depth = float(depth_buffer[r_idx, c_idx])
+        hit_z = float(camera.to_camera(hit.point.reshape(1, 3))[0, 2])
+        if math.isfinite(buffer_depth) and abs(buffer_depth - hit_z) <= 0.08:
+            matching_hits += 1
+    return matching_hits >= MIN_SUPPORT_RAYS
 
 
-def _doubts(hits: Sequence, surfaces_hit: int, rays_cast: int) -> list[str]:
-    """What about this attachment a person should be told, in plain words."""
-    reasons = []
-    if surfaces_hit > 1:
-        reasons.append("mixed support surfaces intersected near object boundary")
-    elif len(hits) < rays_cast:
-        reasons.append("partial support coverage near surface edge or mesh boundary")
-    if any(hit.is_grazing for hit in hits):
-        reasons.append("camera ray grazing angle exceeds 75 degrees from surface normal")
-    return reasons
+def _socket_targets(detection: Detection, camera: PhotoCamera, support_node: SceneNode) -> list[SocketTarget]:
+    sockets: list[SocketTarget] = []
+    for index, (s_col, s_row) in enumerate(detection.sockets):
+        origin, direction = ray_for_pixel(camera, s_col, s_row)
+        hit = intersect_node_surface(origin, direction, support_node)
+        if hit is None:
+            continue
+        _, point, _ = hit
+        sockets.append(SocketTarget(
+            id=f"{detection.frame_id}_sock_{index}",
+            center=Vec3(x=float(point[0]), y=float(point[1]), z=float(point[2])),
+            status="observed",
+            confidence=detection.confidence,
+        ))
+    return sockets
 
 
-def _points_on_surface(
-    camera: PhotoCamera, pixels: Sequence[tuple[float, float]], support_node: SceneNode
-) -> list[Vec3]:
-    """Where each of these pixels meets the support, dropping the ones that miss it."""
-    found = []
-    for col, row in pixels:
+def _observed_region(detection: Detection, camera: PhotoCamera, support_node: SceneNode) -> list[Vec3]:
+    corners = [
+        (detection.box[0], detection.box[1]),
+        (detection.box[2], detection.box[1]),
+        (detection.box[2], detection.box[3]),
+        (detection.box[0], detection.box[3]),
+    ]
+    region: list[Vec3] = []
+    for col, row in corners:
         origin, direction = ray_for_pixel(camera, col, row)
-        landed = intersect_node_surface(origin, direction, support_node)
-        if landed is not None:
-            _, point, _ = landed
-            found.append(Vec3(x=float(point[0]), y=float(point[1]), z=float(point[2])))
-    return found
+        hit = intersect_node_surface(origin, direction, support_node)
+        if hit is None:
+            continue
+        _, point, _ = hit
+        region.append(Vec3(x=float(point[0]), y=float(point[1]), z=float(point[2])))
+    return region
 
 
-def _aligned_with_surface(normal_vec: np.ndarray) -> np.ndarray:
-    """A frame whose second axis is the surface normal, upright where the surface allows."""
+def _node_size(
+    detection: Detection,
+    observed_region: list[Vec3],
+    normal: np.ndarray,
+    uncertainty_reasons: list[str],
+) -> tuple[Vec3, str]:
+    """The node's extent and its quality, never letting proxy geometry read as measured.
+
+    Neither an outlet's standard faceplate nor a television's wall-plane span
+    is an observed device size. Both get extent placeholders for display and a
+    needs_another_look quality, so every downstream measurement inherits that
+    label instead of a fabricated measured claim. Where the object actually
+    sits is a separate matter, tracked by the attachment's localization
+    quality.
+    """
+    dimensions = _surface_dimensions(detection, observed_region, normal)
+    if detection.is_outlet:
+        if not any("faceplate extent is a documented default" in reason for reason in uncertainty_reasons):
+            uncertainty_reasons.append(
+                "faceplate extent is a documented default, not an observed measurement; "
+                "localization quality is tracked separately"
+            )
+        return dimensions, "needs_another_look"
+    if not any("display proxy geometry" in reason for reason in uncertainty_reasons):
+        uncertainty_reasons.append(
+            "display proxy geometry: extent is an estimate from the wall-plane span of the observed "
+            "region, not a physical device size; never read as a measured television"
+        )
+    return dimensions, "needs_another_look"
+
+
+def _anchored_attachment(
+    detection: Detection,
+    camera: PhotoCamera,
+    graph: SceneGraph,
+    dominant_node_id: uuid.UUID,
+    dominant_hits: list[RayHit],
+    support_counts: dict[uuid.UUID, int],
+    sample_point_count: int,
+    uncertainty_reasons: list[str],
+    obs_crop: ObservationCrop,
+    depth_buffer: np.ndarray | None,
+) -> tuple[SurfaceAttachment, SceneNode]:
+    """Builds the verified or qualified attachment and its node on the dominant support."""
+    support_node = graph.by_id(dominant_node_id)
+    hit_points = np.stack([hit.point for hit in dominant_hits], axis=0)
+    center_pt = np.mean(hit_points, axis=0)
+    normal_vec = dominant_hits[0].normal
+
+    if len(support_counts) > 1:
+        uncertainty_reasons.append("mixed support surfaces intersected near object boundary")
+    elif len(dominant_hits) < sample_point_count:
+        uncertainty_reasons.append("partial support coverage near surface edge or mesh boundary")
+
+    if any(hit.is_grazing for hit in dominant_hits):
+        uncertainty_reasons.append("camera ray grazing angle exceeds 75 degrees from surface normal")
+
+    support_type = "lidar_surface" if _lidar_verified(camera, dominant_hits, depth_buffer) else "roomplan_plane"
+    if support_type == "roomplan_plane":
+        uncertainty_reasons.append("attached to inferred RoomPlan plane; not independently verified by LiDAR")
+
+    local_anchor = to_local(center_pt, support_node)
+    sockets = _socket_targets(detection, camera, support_node)
+    observed_region = _observed_region(detection, camera, support_node)
+    localization_quality = "verified_support" if support_type == "lidar_surface" and not uncertainty_reasons else "needs_verification"
+    dimensions, node_quality = _node_size(detection, observed_region, normal_vec, uncertainty_reasons)
+
+    attachment = SurfaceAttachment(
+        support_node_id=support_node.id,
+        support_type=support_type,
+        local_anchor=Vec3(x=float(local_anchor[0]), y=float(local_anchor[1]), z=float(local_anchor[2])),
+        normal=Vec3(x=float(normal_vec[0]), y=float(normal_vec[1]), z=float(normal_vec[2])),
+        observed_region=observed_region,
+        sockets=sockets,
+        observations=[obs_crop],
+        identity_confidence=detection.confidence,
+        localization_quality=localization_quality,
+        review_status=_review_status(detection),
+        uncertainty_reasons=uncertainty_reasons,
+    )
+
     up = np.array([0.0, 0.0, 1.0], dtype=np.float64)
     tangent = np.cross(normal_vec, up)
-    length = np.linalg.norm(tangent)
-    tangent = np.array([1.0, 0.0, 0.0]) if length < 1e-4 else tangent / length
-    return np.column_stack([tangent, normal_vec, np.cross(normal_vec, tangent)])
+    if np.linalg.norm(tangent) < 1e-4:
+        tangent = np.array([1.0, 0.0, 0.0], dtype=np.float64)
+    else:
+        tangent /= np.linalg.norm(tangent)
+    bitangent = np.cross(normal_vec, tangent)
+    rot_matrix = np.column_stack([tangent, normal_vec, bitangent])
+
+    stable_seed = f"{support_node.id}_{round(float(center_pt[0]), 2)}_{round(float(center_pt[1]), 2)}_{round(float(center_pt[2]), 2)}"
+    node_id = uuid.uuid5(uuid.NAMESPACE_OID, stable_seed)
+    node = SceneNode(
+        id=node_id,
+        kind=_node_kind(detection),
+        label=_node_label(detection),
+        raw_category=detection.name,
+        dimensions=dimensions,
+        transform=Mat4(m=[
+            rot_matrix[0, 0], rot_matrix[0, 1], rot_matrix[0, 2], float(center_pt[0]),
+            rot_matrix[1, 0], rot_matrix[1, 1], rot_matrix[1, 2], float(center_pt[1]),
+            rot_matrix[2, 0], rot_matrix[2, 1], rot_matrix[2, 2], float(center_pt[2]),
+            0.0, 0.0, 0.0, 1.0,
+        ]),
+        quality=node_quality,
+        movable=False,
+        labeled_by="discovery",
+        parent_id=support_node.id,
+        relation="mounted_on",
+        attachment=attachment,
+    )
+    return attachment, node
 
 
 def attach_detection_to_surface(
@@ -232,17 +404,15 @@ def attach_detection_to_surface(
     if expected_revision is not None and graph.revision != expected_revision:
         raise ValueError(f"stale scene graph revision: expected {expected_revision}, got {graph.revision}")
 
-    candidate_nodes = [node for node in graph.nodes if can_host_a_fitting(node)]
+    candidate_nodes = [n for n in graph.nodes if bounds_the_room(n) or n.kind in ("wall", "counter", "table", "desk")]
     sample_points = sample_ray_points(detection.box)
     all_hits = cast_and_intersect(camera, sample_points, candidate_nodes, depth_buffer)
-
-    unoccluded_hits = [h for h in all_hits if not h.is_occluded]
+    unoccluded_hits = [hit for hit in all_hits if not hit.is_occluded]
     uncertainty_reasons: list[str] = []
-
     if len(all_hits) > 0 and len(unoccluded_hits) == 0:
         uncertainty_reasons.append("detection is fully occluded by foreground geometry")
 
-    dominant_node_id, dominant_hits, surfaces_hit = _dominant_support(unoccluded_hits)
+    support_counts, dominant_node_id, dominant_hits = _dominant_support(unoccluded_hits)
 
     obs_crop = ObservationCrop(
         frame_id=detection.frame_id,
@@ -252,79 +422,65 @@ def attach_detection_to_surface(
     )
 
     if len(dominant_hits) >= MIN_SUPPORT_RAYS and dominant_node_id is not None:
-        support_node = graph.by_id(dominant_node_id)
-        hit_points = np.stack([h.point for h in dominant_hits], axis=0)
-        center_pt = np.mean(hit_points, axis=0)
-        normal_vec = dominant_hits[0].normal
-
-        uncertainty_reasons += _doubts(dominant_hits, surfaces_hit, len(sample_points))
-
-        measured = _lidar_agrees(dominant_hits, camera, depth_buffer)
-        support_type = "lidar_surface" if measured else "roomplan_plane"
-        if support_type == "roomplan_plane":
-            uncertainty_reasons.append("attached to inferred RoomPlan plane; not independently verified by LiDAR")
-
-        local_anchor = to_local(center_pt, support_node)
-
-        sockets = [
-            SocketTarget(
-                id=f"{detection.frame_id}_sock_{i}",
-                center=centre,
-                status="observed",
-                confidence=detection.confidence,
-            )
-            for i, centre in enumerate(_points_on_surface(camera, detection.sockets, support_node))
-        ]
-
-        left, top, right, bottom = detection.box
-        observed_region = _points_on_surface(
-            camera, [(left, top), (right, top), (right, bottom), (left, bottom)], support_node
+        return _anchored_attachment(
+            detection, camera, graph, dominant_node_id, dominant_hits, support_counts,
+            len(sample_points), uncertainty_reasons, obs_crop, depth_buffer,
         )
+    return _unanchored_candidate(detection, camera, obs_crop, uncertainty_reasons)
 
-        localization_quality = "verified_support" if support_type == "lidar_surface" and not uncertainty_reasons else "needs_verification"
 
-        attachment = SurfaceAttachment(
-            support_node_id=support_node.id,
-            support_type=support_type,
-            local_anchor=Vec3(x=float(local_anchor[0]), y=float(local_anchor[1]), z=float(local_anchor[2])),
-            normal=Vec3(x=float(normal_vec[0]), y=float(normal_vec[1]), z=float(normal_vec[2])),
-            observed_region=observed_region,
-            sockets=sockets,
-            observations=[obs_crop],
-            identity_confidence=detection.confidence,
-            localization_quality=localization_quality,
-            review_status=detection.review_status,
-            uncertainty_reasons=uncertainty_reasons,
+def _unanchored_candidate(
+    detection: Detection,
+    camera: PhotoCamera,
+    obs_crop: ObservationCrop,
+    uncertainty_reasons: list[str],
+) -> tuple[SurfaceAttachment, SceneNode]:
+    """A candidate with no reliable measured surface: its position is not asserted."""
+    uncertainty_reasons.append("no support surface intersected by sufficient rays; unanchored candidate")
+    if not detection.is_outlet:
+        uncertainty_reasons.append(
+            "candidate has no measured size; zero display extent must not be read as device geometry"
         )
-
-        rot_matrix = _aligned_with_surface(normal_vec)
-
-        stable_seed = f"{support_node.id}_{round(float(center_pt[0]), 2)}_{round(float(center_pt[1]), 2)}_{round(float(center_pt[2]), 2)}"
-        node_id = uuid.uuid5(uuid.NAMESPACE_OID, stable_seed)
-
-        node = SceneNode(
-            id=node_id,
-            kind="outlet" if detection.is_outlet else ("confuser" if detection.is_confuser else "object"),
-            label=f"Outlet ({detection.name})" if detection.is_outlet else detection.name,
-            raw_category=detection.name,
-            dimensions=Vec3(x=FACEPLATE_DEFAULT_SIZE[0], y=FACEPLATE_DEFAULT_SIZE[1], z=FACEPLATE_DEFAULT_SIZE[2]),
-            transform=Mat4(m=[
-                rot_matrix[0, 0], rot_matrix[0, 1], rot_matrix[0, 2], float(center_pt[0]),
-                rot_matrix[1, 0], rot_matrix[1, 1], rot_matrix[1, 2], float(center_pt[1]),
-                rot_matrix[2, 0], rot_matrix[2, 1], rot_matrix[2, 2], float(center_pt[2]),
-                0.0, 0.0, 0.0, 1.0,
-            ]),
-            quality="measured" if support_type == "lidar_surface" else "needs_another_look",
-            movable=False,
-            labeled_by="discovery",
-            parent_id=support_node.id,
-            relation="mounted_on",
-            attachment=attachment,
-        )
-        return attachment, node
+    attachment = SurfaceAttachment(
+        support_node_id=None,
+        support_type="unanchored",
+        observations=[obs_crop],
+        identity_confidence=detection.confidence,
+        localization_quality="unanchored",
+        review_status="candidate",
+        uncertainty_reasons=uncertainty_reasons,
+    )
+    cam_pos = camera.position
+    est_pt = cam_pos + camera.forward * 1.5
+    stable_seed = f"unanchored_{detection.frame_id}_{round(float(detection.box[0]), 1)}_{round(float(detection.box[1]), 1)}"
+    node_id = uuid.uuid5(uuid.NAMESPACE_OID, stable_seed)
+    node = SceneNode(
+        id=node_id,
+        kind=_candidate_kind(detection),
+        label=f"Candidate {taxonomy.semantic_class(detection.class_key).label.lower()} ({detection.name})",
+        raw_category=detection.name,
+        dimensions=_surface_dimensions(detection, [], np.zeros(3)),
+        transform=Mat4(m=[
+            1.0, 0.0, 0.0, float(est_pt[0]),
+            0.0, 1.0, 0.0, float(est_pt[1]),
+            0.0, 0.0, 1.0, float(est_pt[2]),
+            0.0, 0.0, 0.0, 1.0,
+        ]),
+        quality="needs_another_look",
+        movable=False,
+        labeled_by="discovery",
+        parent_id=None,
+        relation=None,
+        attachment=attachment,
+    )
+    return attachment, node
 
     # Fallback: unanchored candidate
     uncertainty_reasons.append("no support surface intersected by sufficient rays; unanchored candidate")
+    if not detection.is_outlet:
+        uncertainty_reasons.append(
+            "candidate has no measured size; zero display extent must not be read as device geometry"
+        )
     attachment = SurfaceAttachment(
         support_node_id=None,
         support_type="unanchored",
@@ -342,10 +498,10 @@ def attach_detection_to_surface(
     node_id = uuid.uuid5(uuid.NAMESPACE_OID, stable_seed)
     node = SceneNode(
         id=node_id,
-        kind="candidate_outlet",
-        label=f"Candidate outlet ({detection.name})",
+        kind=_candidate_kind(detection),
+        label=f"Candidate {taxonomy.semantic_class(detection.class_key).label.lower()} ({detection.name})",
         raw_category=detection.name,
-        dimensions=Vec3(x=FACEPLATE_DEFAULT_SIZE[0], y=FACEPLATE_DEFAULT_SIZE[1], z=FACEPLATE_DEFAULT_SIZE[2]),
+        dimensions=_surface_dimensions(detection, [], np.zeros(3)),
         transform=Mat4(m=[
             1.0, 0.0, 0.0, float(est_pt[0]),
             0.0, 1.0, 0.0, float(est_pt[1]),

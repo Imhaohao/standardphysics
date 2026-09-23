@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "benchmark_id": "moffett-photo-mesh-500-v1",
+  "kind": "requirements_not_implemented_evaluator",
+  "status": "proposed_targets_not_measured_results",
+  "plan": "docs/deepseek-moffett-photo-mesh-500-plan.txt",
+  "gaussian_splatting_allowed": false,
+  "generated_detail_allowed": false,
+  "preserve_originals_and_prior_revisions": true,
+  "publication": "isolated_local_candidate",
+  "budgets": {
+    "total_minutes": 480,
+    "stage_minutes": {"preflight": 30, "sources": 60, "diagnosis": 60, "repair": 120, "transfer": 90, "product_checks": 60, "handoff": 60},
+    "candidate_configs_excluding_two_baselines": 6,
+    "max_concurrent_heavy_jobs": 1,
+    "max_repairs_per_hypothesis": 3,
+    "max_hypotheses_per_blocker": 2,
+    "memory_limit": "min(24 GiB, 0.5 * physical RAM)",
+    "prejob_free_disk": "max(20 GiB, 2 * estimated additional output)",
+    "pause_allocations_below_free_gib": 10,
+    "checkpoint_interval_minutes": 10
+  },
+  "benchmark": {
+    "image_width_px": 500,
+    "image_height_px": 500,
+    "minimum_native_framebuffer_width_px": 500,
+    "minimum_native_framebuffer_height_px": 500,
+    "canonical_dpr": 1,
+    "render_format": "lossless RGB PNG",
+    "upscaling_from_lower_render_resolution_allowed": false,
+    "comparison_display": "100 percent image size; no CSS enlargement or interpolation",
+    "captured_validation_view_target": 6,
+    "captured_test_view_target": 6,
+    "novel_seated_views_per_room": 8,
+    "full_floor_novel_views": 32,
+    "novel_default_eye_height_m": 1.15,
+    "novel_vertical_fov_degrees": 60,
+    "captured_reference_projection": "actual camera intrinsics with frozen square crop and resize",
+    "area_probes_per_room": 100000,
+    "area_probe_seed": 500,
+    "test_independence": "whole reviewed duplicate groups withheld; disclose exposure history",
+    "evaluation_mask": "fixed geometry-derived measured target, not candidate alpha",
+    "reference_warp_or_candidate_specific_registration_allowed": false
+  },
+  "visual_gates": {
+    "alignment": {
+      "minimum_independently_checked_landmarks": 20,
+      "median_error_px_max": 1.5,
+      "p95_error_px_max": 3.0,
+      "critical_feature_error_px_max": 2.0,
+      "scope": "frozen visible static correspondences at 500 x 500; not metric accuracy"
+    },
+    "detail": {
+      "minimum_clear_edge_profiles": 10,
+      "metric": "render minus reference 10-to-90-percent edge width in pixels, signed; report overshoot separately",
+      "median_added_edge_width_px_max": 1.0,
+      "p95_added_edge_width_px_max": 2.0,
+      "critical_feature_min_reference_extent_px": 12,
+      "critical_feature_review": "all source-readable preregistered features retain recognizable structure; no invented sockets or text",
+      "numeric_limits_alone_are_sufficient": false
+    },
+    "coverage": {
+      "min_photographed_target_pixel_fraction_each_view": 0.95,
+      "min_photographed_critical_roi_fraction_each": 0.98,
+      "max_single_untextured_hole_target_pixel_fraction": 0.01,
+      "max_new_untextured_hole_fraction_vs_baseline": 0.0,
+      "source_supported_subset_and_total_reported_separately": true,
+      "unknown_and_inpainted_regions_count_as_observed": false,
+      "critical_roi_may_be_removed_after_failure": false
+    },
+    "effective_resolution": {
+      "min_source_samples_per_output_pixel_linear": 1.0,
+      "min_baked_texels_per_output_pixel_linear": 1.0,
+      "min_fraction_supported_target_pixels_meeting_both": 0.95,
+      "critical_roi_target_samples_per_output_pixel_linear": 2.0,
+      "measurement": "local projection and UV Jacobians, weaker linear axis, native source size and active mip level; no credit for upsampling",
+      "critical_ratio_is_diagnostic_target": true,
+      "visual_detail_gate_remains_required": true
+    },
+    "perceptual_review": {
+      "review_every_fixed_view": true,
+      "display_size": "500 x 500 at 100 percent",
+      "require_no_obvious_blockiness_smear_double_edges_or_stretched_features": true,
+      "require_no_person_ghosts_in_target_region": true,
+      "require_motion_review_for_seams_flicker_and_popping": true,
+      "agent_review_status": "provisional_agent_reviewed",
+      "user_review_required_for_user_accepted": true,
+      "missing_user_review_status": "pending"
+    }
+  },
+  "supporting_metrics": {
+    "psnr_ssim": "report per captured view on fixed total and eligible masks, never novel views without references",
+    "universal_psnr_ssim_pass_threshold": null,
+    "psnr_ssim_may_override_visual_failure": false,
+    "reference_resize": "fixed aspect-preserving crop then downsample; record exact filter",
+    "exposure_or_mask_fitting_on_test": false
+  },
+  "runtime_gates": {
+    "warmup_seconds": 10,
+    "route_seconds": 60,
+    "runs_per_actual_device": 3,
+    "p95_frame_time_ms_max_each_run": 33.4,
+    "p99_frame_time_ms_max_each_run": 100.0,
+    "cold_first_usable_view_seconds_max": 5.0,
+    "cold_load_conditions": "empty asset cache, predefined initial room, local server and stable LAN >=100 Mbps; record actual conditions",
+    "remote_internet_load_claim_from_local_test_allowed": false,
+    "physical_phone_required_for_phone_pass": true,
+    "native_app_claim_requires_native_app_test": true,
+    "missing_device_status": "pending",
+    "splat_assets_loaded_in_mesh_mode": 0,
+    "console_errors_context_loss_missing_textures_allowed": false
+  },
+  "initial_optimization_settings_not_quality_substitutes": {
+    "atlas_page_px": 2048,
+    "larger_page_trial_px": 4096,
+    "display_triangles_per_room": 250000,
+    "visible_triangles": 500000,
+    "estimated_resident_texture_mib": 256,
+    "source_subset_sizes_if_useful": [32, 64, 128, 200],
+    "visibility_depth_tolerance_m": 0.05
+  },
+  "evidence_rules": {
+    "all_required_gates_must_pass": true,
+    "weighted_selection_score": null,
+    "recompute_metrics_from_actual_artifacts": true,
+    "caller_supplied_pass_boolean_is_evidence": false,
+    "hashes_without_actual_validated_content_are_evidence": false,
+    "missing_nan_stale_or_mismatched_evidence": "fail_or_pending_never_pass",
+    "threshold_changes_require_new_benchmark_version": true,
+    "phone_user_review_and_full_floor_states_separate": true,
+    "original_capture_hashes_unchanged": true,
+    "measured_collision_and_export_revision_preserved": true
+  },
+  "stop_rule": {
+    "consecutive_nonimproving_trials": 2,
+    "min_gain_in_failing_coverage_percentage_points": 2.0,
+    "min_reduction_in_failing_p95_edge_error_px": 0.25,
+    "min_reduction_in_failing_p95_frame_time_fraction": 0.10,
+    "documented_correctness_fix_exception": true,
+    "rule_means_quality_pass": false
+  },
+  "delegation": [
+    {"task": "Inventory, comparison pages, scoped fixtures", "model_tier": "Luna/Sonnet"},
+    {"task": "Texture and viewer implementation after diagnosis", "model_tier": "Terra"},
+    {"task": "Coordinates, geometry ambiguity, acceptance design", "model_tier": "Sol/frontier"},
+    {"task": "Bulk image measurements", "model_tier": "Local scripts"},
+    {"task": "Final perceptual acceptance", "model_tier": "User"}
+  ]
+}

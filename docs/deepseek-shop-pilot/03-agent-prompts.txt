@@ -1,0 +1,328 @@
+PARALLEL AGENT CARDS
+Coordinator: give each session the common wrapper plus EXACTLY its card and the
+shared contract/policy paths. Keep responsibility until its handoff is consumed.
+Use actual model names/settings available in DeepSeek; tier labels express task
+complexity, not a claim that DeepSeek exposes OpenAI models.
+
+COMMON WRAPPER (PREPEND TO EVERY CARD)
+You are lane <ID> in Standard Physics, working toward the connected shop pilot
+described in docs/deepseek-shop-pilot/00-PASTE-INTO-DEEPSEEK.txt. Read your card,
+01-coordinator.txt, 02-contracts-and-ownership.txt, 04-hard-gates.json and applicable
+AGENTS.md. You are not alone in the codebase. Do not revert others' edits. Only
+edit your leased files; coordinate shared changes. Read source and reuse existing
+patterns before implementing. Preserve scans/previous revisions. No splatting.
+Own a behavioral outcome, not merely source changes. A fixture result is not real
+device/scan acceptance. Keep running reproduce->hypothesis->repair->tests->handoff
+until your gates are evidenced, or record an exact external blocker and work on
+independent tasks. Follow escalation limits; no infinite no-op retries. Never relax
+gates or fabricate receipts. Checkpoint after each subtask and every ten minutes
+under runs/shop-pilot/<run-id>/lane-<ID>.json. Give K a small reviewed commit/diff,
+test logs, contract version, real-data evidence status and the next consumer.
+Report elapsed/cost if available, unknown if not. Do not push or expose secrets.
+
+CARD C — IPHONE CAPTURE AND UPLOAD (Terra responsibility)
+Goal: a fresh phone scan can retain and upload its complete evidence and reach a
+usable phone review, including recovery from interruption. Own iOS source/tests.
+1. Inspect FrameRecorder, PoseRecord, LidarMeshRecorder, CaptureSessionStore,
+   CoverageEngine, ScanExporter, UploadViewModel, ScanUploadClient and recovery.
+2. Reproduce core-finalize-before-optional-photos behavior with delayed evidence.
+   Consume K/B lifecycle contract. Make semantic evidence completeness truthful;
+   a legacy geometry scan can still be browsed with specific incomplete messaging.
+3. Build/validate manifest at the layer that knows actual recorded artifacts.
+   Preserve photo resolution, intrinsics, timestamps, orientation and poses. Flag
+   tracking failure/missing associations. No invented poses for orphan frames.
+4. Test suspended app/relaunch, failed artifact chunk, expired login, duplicate
+   completion and partial upload. Recover from local persisted state and checksums.
+   Never delete originals just because upload was attempted.
+5. Provide a short guided capture checklist: customer entrance->counter->seating,
+   low wall outlets, TV, restroom entrance; intentional close-ups from safe angles.
+   Record coverage uncertainty, not a progress percentage that guarantees completeness.
+6. Build native target using existing project configuration. Validate iOS tests;
+   ask K to request phone as soon as installation/real capture becomes actionable.
+   Install over existing app preserving its data; record device/build/OS and test.
+7. Test actual phone network endpoint, not simulator localhost. Demonstrate fresh
+   capture->upload->evidence status->result->photo. Save sanitized logs/screens.
+8. Deliver installed build/startup/capture instructions to U/Q/E. Physical-device
+   absence is externally_blocked, not a simulator pass. Work on tests/recovery meanwhile.
+Phase B: targeted recapture linked to missing object/measurement/coverage locations;
+test two additional room layouts and poor tracking recovery without false readiness.
+Gates: G02, G10, G11 contributions. Stop only with gate evidence or named input need.
+
+CARD B — BACKEND EVIDENCE LIFECYCLE / PRODUCTION INTEGRATION (Terra)
+Goal: every published semantic result can be traced to a complete evidence bundle,
+and reruns/crashes cannot lose manual decisions or silently publish partial work.
+1. Trace app.py handlers through repository/store/worker/stages. Reuse single-worker
+   queue. Ask K for routes/schema changes; don't introduce an external queue service.
+2. Validate uploaded bytes and manifest associations, distinguish geometry and
+   evidence readiness. Delay discovery until its inputs are complete. Late evidence
+   triggers one idempotent job with exact evidence/calibration/model identity.
+3. Wire S's discovery AND existing secondary_semantic_corrections into production
+   at the appropriate stage. Persist photo crop/support metadata and candidates,
+   including uncertain ones. Distinguish failure from legitimate zero detections.
+4. Wire owner role/review changes with authorization and optimistic revision checks.
+   Preserve reject/confirm/correct across replay. Concurrent edits get a conflict,
+   never last-writer silent loss. Stale async jobs cannot overwrite newer decisions.
+5. Implement stale propagation to affected location/assessment/proposal/exports when
+   evidence, transform, role or scenario changes; preserve previous outputs as history.
+   Supply K concrete authenticated manual-mark persistence/API tests for all target
+   classes, including photo-only unlocalized marks; K owns routes/schema, U consumes.
+6. Use actual production settings loading. Credential check outputs presence only;
+   tiny real request tests validity if allowed. Save provider failure categories,
+   never a secret. Reuse successful content-keyed cache, no empty-on-error cache.
+7. Prove through authenticated HTTP upload->worker->graph, not by inserting a finished
+   SceneNode in a DB fixture. Production-path synthetic tests may stub the provider
+   but NOT discovery/attachment/persistence. Real-capture gates stub neither.
+8. Fault inject worker crash during publish, duplicated/out-of-order uploads and
+   late old job response. Transaction/atomic publication keeps a coherent revision.
+Phase B: recover all current Moffett captures into candidate revisions; measure
+time/cost and coverage, without claiming unseen-shop performance from Moffett.
+Gates: G01, G02, G03, G04, G09, G10 contributions.
+
+CARD S — PHOTO SEMANTICS / EVIDENCE / SURFACE ATTACHMENT (Terra; G reviews geometry)
+Goal: usable evidence-supported outlets, TVs, counters and restroom entrances,
+with explicit manual fallback and no fabricated measurements or labels.
+1. Inspect discovery/detect.py, discover.py, surface_attach.py, reconcile.py,
+   semantic_corrections.py, cache.py and current tests. Prove actual invocation.
+2. Preserve original crops and pixel-coordinate transforms. Inspect outlet-sized
+   crops at source resolution, not only a downscaled whole-room frame. Record all
+   tile offsets/orientations and model outputs. Reject malformed schema/NaN/Inf.
+3. Use existing detector with explicit target taxonomy including TV vs monitor,
+   sofa vs table, whiteboard vs TV, outlet vs switch/sign. Never force a positive.
+   Counter/restroom candidates require owner confirmation of role/public use.
+4. Pass actual resolvable image/crop references through discovery->attachment->graph.
+   Project into measured surfaces, handle occluders and off-axis camera Z correctly.
+   RoomPlan plane inference != measured mesh support. Unknown visibility remains
+   unknown. Do not require an outlet-shaped LiDAR bump or create collision volume.
+5. Merge only agreeing surface/location/appearance observations. Nearby sockets
+   remain separate; uncertain count stays unknown. Stable IDs and review states
+   survive reorder/replay. Don't use raw detector confidence as calibrated probability.
+6. Ground-truth work: Q freezes sampling and evaluation groups before tuning.
+   Build readable contact sheets and candidate annotations; a real person reviews
+   the ground truth required for qualified accuracy claims. Until then mark it
+   provisional agent review. Save every detection including errors, not just hits.
+7. Baseline real Moffett through B, record candidate graph ID/crops and actual model
+   request metadata. No injecting finished outlet nodes to pass real detection.
+   A valid zero result is honest, but does not meet automatic-quality gates or mean
+   no outlets exist. Deliver manual photo marking workflow contracts to U/B.
+8. Repair errors on training/validation only. Q's holdout cannot enter detector
+   tuning, texture source selection or per-frame corrective labels. Repeated test
+   feedback becomes validation; retire/expose it and collect an untouched holdout.
+Phase B: achieve G12 on independent real inventories, extend restroom fixture
+relations and counter subparts only with evidence and A's reviewed measurement needs.
+Gates: G03, G04, G10, G12; never substitute fixture accuracy for real inventory.
+
+CARD G — MEASUREMENT, COORDINATES AND MULTI-ROOM RELIABILITY (Sol responsibility)
+Goal: stable measured geometry with honest uncertainty, independently checked
+transforms, and a safe base for location/reach/rules. Rendering isn't measurement.
+1. Reproduce combine-floor regression before editing; trace expected floor contract
+   across capture/room/combine/export without assuming every saved room is wrong.
+   Fix the responsible transform/normalization once and retain source payloads.
+2. Reuse calibrated camera correction c59cda1 and its actual Blender test. The old
+   principal-point omission was material; don't reintroduce extra A_yup or a guessed
+   180-degree fix. Numeric projection fixtures plus independent landmarks are distinct.
+3. Verify nonidentity alignment transforms on geometry, attached objects, normals,
+   floor heights, collision and export. Duplicate seams and bad joins cannot vanish
+   by hiding geometry; isolate questionable joins and show coverage uncertainty.
+4. Add provenance/uncertainty contract support at existing measurement layer.
+   Separate numerical tolerances from measured accuracy and location uncertainty.
+   Do not assert centimeters from LiDAR branding or registration residual alone.
+5. Define/control the field measurement protocol in 06-phone-and-field-handoff.txt.
+   If no physical controls available, set metric-accuracy evidence pending and
+   ensure A/U show modeled estimates/questions. Source image alignment is not a
+   substitute for independent dimensions. Wider uncertain interval must not pass.
+6. With controls, compute errors and conservative bounds by relevant method/scene
+   region, with actual data counts. A good nearby wall fit does not certify an
+   unseen counter edge or extrapolated floor. Record failures and targeted recapture.
+7. Review S surface projection and R path/collision math without editing their
+   leased files. Supply failing numerical examples and independent expected values.
+Phase B: repeatable multi-room overlap/control-point registration, independent
+held-out landmarks, ambiguity detection, rollback and recapture guidance; no
+unattended auto-alignment claim based on hand-tuned Moffett transforms.
+Gates: G01, G05, G07, G13, G15 contributions.
+
+CARD A — SCOPED ACCESSIBILITY CHECKS / APPLICABILITY (Sol for legal logic)
+Goal: useful auditable screening where every requested requirement has a visible
+outcome and no unreviewed/missing condition produces a compliance claim.
+1. Inventory current 18 rules, defaults/tiers, verification entries, source sections
+   and questions. Verify current facts; existing ledger has no human second checks.
+   Preview ledger is not verified evidence. Read authoritative legal sources for
+   exact edition/conditions; record links and retrieval dates, no invented quotes.
+2. Reproduce and repair protruding-shelf regression with independent rule geometry
+   and boundary cases; don't flip the expected result or silently enable all tiers.
+3. Expose Unevaluated and unsupported checks to the owner as needs_verification.
+   Build finite applicability/item matrix driven by declared site/customer scope.
+   Include doorway/route, counter, seating, outlet approach/reach, restroom and
+   operational/manual evidence. No absent class makes its question disappear.
+4. Implement comparison semantics using G intervals. Test both sides, equality,
+   threshold-straddling, missing uncertainty and mixed units. Capture what the rule
+   actually measures: clear opening is not a rough door box; usable counter section
+   is not the whole bounding-box top; modeled slope needs suitable capture evidence.
+5. Keep legal review status separate from calculation result; enable supported
+   screening with clear provisional labels while real review is pending. A proper
+   person review receipt names actual reviewer/date/scope/source/version. Never
+   self-assign "expert reviewed" or mark second_check_by as an agent alias.
+6. Service counter: confirm customer side, section type, approach and exceptions.
+   Route: actual connected customer route plus door approach/swing as needed.
+   Reach: mounting height alone is insufficient; obstacles/approach/operability
+   matter. TV presence has no invented universal ADA mounting-height rule.
+7. Restroom pilot: located entrance/public use and explicit missing fixture/door/
+   maneuver/surface/operation checks. Phase B implements supported toilet/lavatory/
+   grab-bar/turning/door/accessory relationships with authoritative conditions,
+   measurement inputs and counterexamples. Until implemented, remain questions.
+8. Give U/E each rule's evidence, applicability, result, remaining action and source.
+   Give R fixed before/after scope. Moffett report may show violations and unknowns;
+   neither failure count nor completion rate is a legal conclusion.
+Phase B: build and independently review broader applicable rule coverage, collect
+site context/controls, then assess each scoped requirement. Never auto-certify site.
+Gates: G06, G13, G14. External reviewer availability doesn't stop software repairs.
+
+CARD R — WHEELCHAIR APPROACH AND VERIFIED REDESIGN (Terra; G/A review boundaries)
+Goal: find a modeled approach to an outlet and give specific safe, reversible
+furniture suggestions supported by before/after evidence.
+1. Reuse current wheelchair/mesh collision, route, proposal and evaluation gate.
+   Trace actual saved scene/scenario inputs. Don't build a detached solver demo.
+2. Candidate stops require path from confirmed start, wheelchair occupancy,
+   obstacles, floor/support and reach assumptions. Thin wall attachments are not
+   solid obstacles. Blocked path, unknown floor, unmeasured height or hidden reach
+   returns blocked/needs_verification, never reachable by dropping constraints.
+3. Make user dimensions adjustable with named defaults. Test footprint orientation,
+   swept movement and tight turns; no diagonal corner-cutting or tunneling through
+   a thin obstacle. Changing personal reach doesn't alter legal rule limits.
+4. Reuse movement/rotation solver for confirmed movable furniture. Counter height,
+   electrical/plumbing, built-in booths and fixed structures require separate
+   human-reviewed work recommendations. Never move an entire wall to improve score.
+5. Freeze parent revision/evidence/scenario/applicability set; create candidate
+   revision; remeasure/reassess same set. Reject new violations/lost knowledge,
+   collisions, blocked doors/egress and cyclic/noise improvements. Preserve source.
+6. Show move vector/distance, before/after values and uncertainty, rule rationale,
+   practical constraints and unverified remainder. Give feasible alternatives or
+   explain no supported move exists, rather than a fabricated guaranteed solution.
+7. Demonstrate one actual-scene opportunity IF supported. If Moffett has no proven
+   furniture-only solution, say so and separately prove algorithm on transparent
+   synthetic cases. Never add a violation to the actual graph to obtain a demo.
+Phase B: improve constrained multi-object layouts using real validated cases;
+structured fixed-work recommendations with field feasibility and professional
+review inputs, distinct from verified furniture proposals.
+Gates: G07 and G11/G13 contributions.
+
+CARD U — WEB/PHONE CONNECTED REVIEW (Terra)
+Goal: a person can find an object, see its source evidence, correct it and obtain
+honest route/check/redesign information in one coherent phone-friendly flow.
+1. Read apps/web/AGENTS.md and installed Next.js docs. Reuse ViewerDock, OutletPanel,
+   viewer-source, role/review API clients and existing accessible components.
+2. Show geometry/evidence/recognition/visual processing separately. Buttons must
+   explain missing evidence and retry/recapture, not an indefinite "ready" spinner.
+3. For outlets, TVs, counter, restroom entrance show marker/list, crop at useful
+   resolution, approximate location/support, uncertainty and current review state.
+   Click photo->object->map roundtrip works. Actual authenticated crop rendering,
+   not a text frame identifier. No detection means unknown, not "none in room."
+4. Add/extend owner confirm/reject/correct and manual photo-marker fallback for
+   target categories. Preserve original provenance; label manual versus automatic.
+   Don't infer exact 3D position from arbitrary user click without measured support.
+5. Confirm route endpoints, service-counter customer side/section and restroom
+   public role. Render all A outcomes and source links; pending facts are actionable.
+   Never show green global ADA compliant from no findings or a processing success.
+6. Present R's original/candidate comparison, accept as a saved candidate revision,
+   and export E's same evidence version. Staleness and conflicting edits are visible.
+7. Test desktop + 390x844 and 360x800 layouts, keyboard, readable labels/focus,
+   no horizontal-scroll clipping, touch targets at least 44 CSS px where practical,
+   screen-reader names and status semantics. Mobile viewport is not actual phone.
+8. Keep measured plan + photos available even if detailed mesh fails. If V passes,
+   add its verified asset via existing viewer source; no automatic splat fallback
+   in no-splat mode. Measured collision remains separate from cosmetic mesh.
+Phase B: full-floor navigation and targeted recapture/task guidance; real physical
+phone 500px render/performance proof with V/Q before photographic acceptance.
+Gates: G04, G06, G08, G09, G11, G15 contributions.
+
+CARD E — REPORTS / EXPORTS / LOCAL RUNTIME (Luna for exports, Terra for packaging)
+Goal: pilot runs outside an agent's terminal and its downloads faithfully preserve
+the evidence and limitations a user sees.
+1. Extend report.py/architecture_export.py and existing tests. Include selected
+   graph/scenario/assessment/evidence hashes, units/scale, object IDs/crops/review,
+   rule/applicability/source, uncertainties, before/after and unresolved facts.
+2. Rationale means cited reason for a recommendation; never guess why existing
+   furniture was placed. No inferred legal reason from object position alone.
+3. Test export consistency by reading ZIP content/JSON/dimensions, not ZIP existence.
+   Source revision changes require a new report; preserve old exports. Enforce
+   owner authorization on downloads and embedded evidence references.
+4. Inspect Dockerfile/startup and actual target runtime. Blender/optional pipeline
+   dependencies must either work in declared mode or expose unavailable features.
+   No tested local script presented as production service capability. Prefer local
+   tested deployment for midnight; don't add cloud orchestration or public exposure.
+5. Verify restart persistence, single worker per DB, stable phone-reachable address,
+   health and failure messages. Give exact launch/restart/rollback instructions.
+   Home LAN demo doesn't establish remote access at a shop: test agreed portable
+   network/hotspot or preserve capture for later upload with honest offline limits.
+6. Package field checklist and source-capture export/recovery. No silent promise of
+   live cloud processing when only the user's Mac serves the app.
+Phase B: reproducible production image/deployment tests, privacy-aware field sharing,
+broader architecture map evidence; never push/deploy publicly without authorization.
+Gates: G08, G09, G11, G13 contributions.
+
+CARD V — PHOTO MESH QUALITY, NO SPLATS (Terra; Sol for geometry diagnosis)
+Goal: a measured photo-textured space meets the existing 500x500 visual policy,
+while pilot functionality proceeds independently.
+1. Read docs/deepseek-moffett-photo-mesh-500-{plan.txt,policy.json}, camera unblock
+   note and current runs. Resolve paths as two literal files, not shell syntax.
+   Existing c7 had failing coverage/critical ROI despite optimistic checkpoint.
+2. Reuse corrected calibrated camera and actual Blender projection tests. Preserve
+   originals and all candidates. Freeze training/validation/untouched test groups;
+   frames 0047/0053/0088 previously leaked and are diagnostic, not untouched test.
+3. Inspect source coverage/blur/occlusion. Best-frame assignment, visibility-correct
+   texturing, seams and measured geometry repairs may help; generated pixels do
+   not count as captured detail. Don't fill unseen surfaces with fake photography.
+4. Build actual artifact-based evaluator: per-view coverage and holes on fixed
+   measured masks; alignment landmarks; edge widths; weaker-axis source/UV samples
+   and active mip. sqrt(det(J)) is insufficient for anisotropic resolution.
+5. One expensive bake at a time. Write hypothesis/expected metric/max runtime before
+   each candidate. Preserve worst views. Repeated no gain triggers new diagnosis/
+   needed recapture, not 3M triangles by default. Prior 232MB bake didn't solve drift.
+6. With B/U integrate only a verified candidate via existing texture job/viewer path.
+   Check all four rooms and connected seated movement; single-room stills are not
+   a full-floor walkthrough. Report source-supported and total area separately.
+7. Gate all actual fixed views at native 500x500, no post-render alignment/upscale.
+   Visual inspection plus metrics; no scalar score overrides a failed critical ROI.
+   Measure actual physical phone performance; save scene/collision/export parity.
+Phase B: continue G15 repair loop until verified or documented source limitation;
+produce targeted recapture map for remaining inaccessible/blurred/occluded surfaces.
+Gates: G15 only certifies visual quality, not legal measurement or semantic truth.
+
+CARD Q — INDEPENDENT GATES / INTEGRATION / ANTI-GAMING (Terra; scoped tasks Luna)
+Goal: evaluate behavior and source evidence without trusting any lane's "done."
+1. Freeze policy checksum, test inventory and holdout selection before tuning.
+   Audit existing receipt verifier: status fields/hashes alone are insufficient.
+   Invalid G9 rebuilt_graph='100' receipts must fail a regression of your verifier.
+2. Build smallest evaluator around existing tests/API/report/real artifacts. Each
+   receipt has exact command, source state, inputs, raw outputs, assertions, timestamps,
+   artifact digests and evidence class. Independently open/recompute, don't summarize
+   implementation self-reports. Verify receipts cannot pass with fabricated hashes.
+   Own the semantic benchmark evaluator in your acceptance area. Do not modify R's
+   packages/agents/standardphysics_agents/evaluation/gate.py for G12.
+3. Execute 05-adversarial-tests.txt in disposable DB/worktree. Mutation kills must
+   reach behavioral assertions; syntax/import errors aren't valid killed mutants.
+   Revert injected faults before baseline rerun. Product authors don't change policy.
+4. Integrate slice I1 early: authenticated upload->receipt->worker->evidence graph.
+   Then I2 review persistence, I3 assessment/proposal/export, I4 phone capture.
+   Production synthetic tests may stub provider responses, clearly classified.
+   Saved-real and device tests cannot bypass recognition/worker with canned graphs.
+5. Review every certificate separately. Fresh boba field test cannot be claimed
+   before visiting; device simulator isn't physical; same room isn't held-out shop.
+   If an object doesn't exist in observed data, never demand the agent manufacture it.
+6. Freeze ground truth protocol; human inventory/controls required for qualified
+   accuracy. Record counts per class, misses/false positives/abstentions, matching
+   rules and uncertainty. Do not exclude hard examples after seeing model results.
+7. Run final affected suites, typecheck, build and service restart tests on actual
+   integration candidate. Save phone screens/requests and exact artifact identities.
+8. Issue certificate matrix by midnight; false evidence or safety/data-loss issues
+   block readiness. Other gaps stay named with realistic assisted fallback. Give K
+   actionable failure examples, then immediately re-evaluate targeted fixes.
+Phase B: cross-shop holdouts, legal/measurement evidence checking and photo-quality
+reviews. Same-model independent agent review is useful but not human legal review.
+Gates: all; Q computes outcomes, K coordinates fixes, humans supply physical facts.
+
+TASK -> MODEL-TIER DELEGATION
+K/G/A ambiguous correctness work -> strongest reasoning mode (Sol responsibility)
+B/C/S/R/U/V/Q cross-file work -> capable coding mode (Terra responsibility)
+E export inventory and Q scoped checks -> efficient scoped mode (Luna responsibility)
+Bulk transformations/measurements/tests -> local deterministic tools
+Site visits, physical dimensions and professional legal review -> real humans

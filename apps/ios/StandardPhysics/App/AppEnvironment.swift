@@ -9,14 +9,33 @@ enum AppEnvironment {
         configuredURL(named: "WORKSPACE_BASE_URL")
     }
 
+    /// True when this build knows where the server is without being told.
+    ///
+    /// A release build does. A development build leaves the two addresses empty
+    /// so a phone can be pointed at a laptop, and that is the only case where
+    /// anyone should be shown a connection screen.
+    static var addressesAreCompiledIn: Bool { compiled(named: "API_BASE_URL") != nil }
+
+    /// The compiled address wins over a saved one.
+    ///
+    /// It used to be the other way around, which meant a phone that had once
+    /// been pointed at a developer's laptop kept trying to reach that laptop
+    /// forever, through every update, with no way back but deleting the app.
+    /// An address built into the app is the shipped answer; a saved one is a
+    /// development override and only applies where there is no shipped answer.
     private static func configuredURL(named name: String) -> URL? {
-        let defaults = UserDefaults.standard
         if let value = ProcessInfo.processInfo.environment[name], let url = try? ServiceAddress.parse(value) {
-            defaults.set(url.absoluteString, forKey: name)
             return url
         }
-        let value = defaults.string(forKey: name) ?? Bundle.main.object(forInfoDictionaryKey: name) as? String
-        return value.flatMap { try? ServiceAddress.parse($0) }
+        if let url = compiled(named: name) {
+            return url
+        }
+        return UserDefaults.standard.string(forKey: name).flatMap { try? ServiceAddress.parse($0) }
+    }
+
+    private static func compiled(named name: String) -> URL? {
+        guard let value = Bundle.main.object(forInfoDictionaryKey: name) as? String else { return nil }
+        return try? ServiceAddress.parse(value)
     }
 
     static func save(api: String, workspace: String) throws {

@@ -87,30 +87,42 @@ def service_counter_height(ctx: CheckContext) -> list[Observation]:
 
 @traced("checks.service_counter_approach")
 def service_counter_approach(ctx: CheckContext) -> list[Observation]:
+    """The clear floor space for a parallel approach, beside the part of the
+    counter 904.4.1 asks for.
+
+    904.4.1 places the space "adjacent to the 36 inch minimum length of
+    counter", so where a lowered section stands beside a counter the space is
+    measured in front of that section. Measuring in front of the middle of the
+    whole counter tested floor by the high part, where nobody in a wheelchair
+    is served.
+    """
     rule = ctx.rule(APPROACH_RULE)
+    height_rule = ctx.rule(HEIGHT_RULE)
     observations = []
     for counter in roles.service_counters(ctx.graph):
-        result = ctx.measure.counter_approach(ctx.graph, counter.id)
-        observations.append(_approach(ctx, rule, counter, result))
+        at = _portion_for(ctx.graph, counter, height_rule) or counter
+        result = ctx.measure.counter_approach(ctx.graph, at.id)
+        observations.append(_approach(ctx, rule, counter, at, result))
     return observations
 
 
-def _approach(ctx: CheckContext, rule: RuleSpec, counter, result) -> Observation:
+def _approach(ctx: CheckContext, rule: RuleSpec, counter, at, result) -> Observation:
     required_wide = rule.parameter("clear_width_min_inches")
     required_deep = rule.parameter("clear_depth_min_inches")
     satisfied = fits_rectangle(result, required_wide, required_deep)
+    beside = frozenset({counter.id, at.id})
     return Observation(
         rule_id=APPROACH_RULE,
         satisfied=satisfied,
         measured_inches=min(result.inches_wide, result.inches_deep),
         required_inches=rule.threshold,
-        relied_on=(counter.id,),
-        locus=region_locus(result, [counter.id, *(
+        relied_on=(counter.id,) if at is counter else (counter.id, at.id),
+        locus=region_locus(result, [at.id, *(
             intruders(ctx.graph, rectangle(
                 result.center, to_meters(required_wide), to_meters(required_deep),
-                facing(ctx.graph, counter),
-            ), ignoring=frozenset({counter.id})) if not satisfied else []
-        )], rotation=facing(ctx.graph, counter)),
+                facing(ctx.graph, at),
+            ), ignoring=beside) if not satisfied else []
+        )], rotation=facing(ctx.graph, at)),
         facts={
             "counter": counter.label,
             "measured_wide": result.inches_wide,

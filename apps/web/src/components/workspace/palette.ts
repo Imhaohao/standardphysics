@@ -17,7 +17,7 @@ export const MODEL = {
 
 export const WALL_CUT_HEIGHT = 1.2;
 
-const KIND_COLORS: Record<string, string> = {
+const NODE_COLORS: Record<string, string> = {
   outlet: MODEL.outlet,
   candidate_outlet: MODEL.candidate_outlet,
   wall: MODEL.wall,
@@ -26,10 +26,8 @@ const KIND_COLORS: Record<string, string> = {
 
 export function nodeColor(node: SceneNode): string {
   if (node.appearance?.base_color) return node.appearance.base_color;
-  const byKind = KIND_COLORS[node.kind];
-  if (byKind) return byKind;
-  if (node.kind !== "object") return MODEL.opening;
-  return node.movable ? MODEL.movable : MODEL.fixture;
+  if (node.kind === "object") return node.movable ? MODEL.movable : MODEL.fixture;
+  return NODE_COLORS[node.kind] ?? MODEL.opening;
 }
 
 export function outcomeColor(outcome: Finding["outcome"]): string {

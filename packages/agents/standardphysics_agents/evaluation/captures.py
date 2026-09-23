@@ -426,12 +426,11 @@ quantises at 25 mm, so a step right along the edge is still on it."""
 def on_the_floor(graph: SceneGraph, path: list[Vec3]) -> list[bool]:
     """Whether each step of a path landed on the scanned floor.
 
-    `routes.widest_path` keeps a trip inside the room while the scanned floor
-    joins its two stops, so a route that left the floor is one the room could
-    not answer: a stop standing outside, or two stops the floor cannot connect
-    without going around. That is the difference between a route through the
-    shop and a walk around the block, so the plan draws the two differently
-    rather than presenting both as the trip.
+    `routes.widest_path` keeps a trip between two stops on the floor inside the
+    room, so a route that left the floor is one with a stop standing outside.
+    That is the difference between a route through the shop and a walk around
+    the block, so the plan draws the two differently rather than presenting
+    both as the trip.
     """
     outline = floor_outline(graph)
     if outline is None:

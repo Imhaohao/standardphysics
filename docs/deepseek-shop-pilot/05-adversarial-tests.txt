@@ -1,0 +1,199 @@
+INDEPENDENT ACCEPTANCE AND ADVERSARIAL PROOF
+Requirements for Q. This is a test specification, not a claim tests have run.
+Use existing fixtures/helpers and real production paths. Small focused test files
+plus an artifact evaluator are sufficient; do not build an orchestration platform.
+
+TEST LEVELS — LABEL EACH RECEIPT
+L1 deterministic unit/component: hand-constructed cases, independent expected math.
+L2 production-path synthetic: actual HTTP/server/worker/discovery/persistence, with
+only external provider/device input substituted at the trust boundary. Stubbed
+Blender/provider results MUST be disclosed and cannot prove those runtime operations.
+L3 saved real capture: original Moffett files, actual detector and production path.
+L4 fresh actual phone: capture produced on device in this run; actual upload and UI.
+L5 new-shop field: actual new location, user observation and control measurements.
+L6 human legal/measurement review: actual attributable input, not an agent assertion.
+These are different evidence types, not points that can be added together.
+
+FIRST: VALIDATE THE VALIDATOR
+Make a regression fixture from the SHAPE of old G9 receipts: success prose, a
+command unrelated to detection and artifact map {rebuilt_graph: "100"}. Never copy
+secrets or rerun its key-printing command. Expected: invalid_evidence, no certificate.
+Also present a valid-looking 64-character digest for a nonexistent file; a changed
+file with old digest; an empty parseable graph claimed to contain an outlet; and
+a graph from the wrong owner/revision. All must fail. A hash proves identity, not
+truth: open bytes, validate IDs, inspect provenance and recompute assertions.
+Q should independently execute a real production run or replay traceable inputs
+where possible. Screenshot/text claims alone cannot establish detector invocation.
+Review policy hashes and source state on every receipt. Changed dependency invalidates
+only affected receipts, but no stale result can appear to prove current behavior.
+
+EXACTLY 18 REQUIRED FAULT INJECTIONS / NEGATIVE CONTROLS
+Each has a clean passing counterpart and a behavioral failing assertion. Record
+fault location, observed assertion, raw test log, restored source hash and clean
+rerun. Compile/import errors don't count as a killed mutation. Do not damage real
+captures or use production accounts. Use isolated DB/worktree/input copies.
+
+M01 FAKE RECEIPT: submit a passed result with invented/nonexistent artifact or old
+G9 rebuilt_graph=100 shape. Must reject regardless of status fields and exit code.
+M02 WRONG REVISION: replace output/crop/export with another revision's valid file.
+Hash alone still valid; evaluator must reject identity/dependency mismatch.
+M03 EARLY FINALIZE: defer final required photo/pose/manifest until after /complete.
+Geometry may show, but semantics incomplete; after verified closure exactly one job
+runs. A mutated backend that marks semantic-complete early must fail the test.
+M04 RETRY/CRASH: crash after storing partial derived results, then restart and
+repeat completion three times. No duplicate nodes/published partial graph; latest
+manual decision retained. Mutated idempotency/atomic publication must be detected.
+M05 GEOMETRY BYPASS: remove production surface attachment/crop wiring. Tests must
+fail on missing evidence/support or incorrect unlocalized status, not still pass
+because a finished outlet graph was inserted by test setup.
+M06 OCCLUSION/COORDINATES: remove crop rotation/principal point or support occlusion
+check on off-axis nonidentity example. Test catches location discrepancy or false
+verified support behind obstacle. Pick one injected fault per run; record both
+baseline coordinate and visibility cases in normal test suite.
+M07 MERGE TOO MUCH: intentionally merge adjacent physical outlets or manufacture
+duplex socket positions from unknown count. Must fail stable distinct identities
+and unknown-count assertions, even if average detection count looks acceptable.
+M08 REVIEW LOSS: rerun discovery after owner rejects/corrects an item, with stale
+worker response arriving last. Mutation overwrites review; test must catch it.
+M09 HIDDEN UNKNOWN: remove one requested rule/item or drop Unevaluated from owner
+output. Fixed scope cardinality/parity must fail, even if remaining findings pass.
+Also replace the scope manifest with a smaller one while retaining old certificate;
+its hash/version and row-diff check must invalidate the assessment. Known item IDs
+may be added after discovery, but unresolved area/class obligations cannot vanish.
+M10 FAVORABLE MIDPOINT: interval straddles a legal threshold; substitute midpoint
+or numerical epsilon as measurement certainty. Must reject satisfied conclusion.
+M11 INVENTED N/A: replace unknown applicability with not_applicable without facts/
+review attribution. Must fail even if remaining scope has zero questions.
+M12 PREVIEW AS VERIFIED: enable release conclusion using preview_ledger or automated
+unchecked ledger entry. Must stay preview/unreviewed, not verified legal evidence.
+M13 REACH SHORTCUT: omit a swept/path obstacle or let a diagonal corner cut pass.
+Target approach/reach cannot become clear from endpoint distance alone; assertion
+checks path and footprint, and preserves unknown for absent floor/height evidence.
+M14 FALSE REDESIGN: improve one route while moving fixed furniture or worsening
+another frozen in-scope check/coverage. Candidate cannot promote; original unchanged.
+Use normal suite cases for cyclic A->B->A and improvement below uncertainty too.
+M15 AUTH LEAK: attempt graph/crop/review/export with anonymous and second account,
+including crafted path/ID and cached response. Must deny without bytes or mutation;
+for deliberate auth-guard removal test, prove denial assertion fails behaviorally.
+M16 MODEL FAILURE AS EMPTY: injected timeout/auth/malformed response is converted
+to empty successful detection. Must fail distinguishable failure/status/cache test.
+M17 CHERRY-PICKED RENDER: drop a bad preregistered ROI/view or count transparent/
+inpainted/unobserved pixels as photographed. Evaluator rejects denominator change;
+stored optimistic checkpoint cannot override raw coverage recomputation.
+M18 SIMULATED FIELD: offer simulator/fixture/saved Moffett output as a fresh-phone
+or new-shop receipt; or agent identity as human review. Certificate must reject
+missing actual provenance/attestation and show externally_blocked, never passed.
+
+ORDINARY POSITIVE/BOUNDARY MATRIX (IN ADDITION TO MUTATIONS)
+Capture: complete manifest; corrupt/truncated photo; no poses; mismatched dimensions;
+unsupported schema; out-of-order chunks; repeated resume after reboot; auth expiry;
+low storage; source export and original-hash preservation. Changes of API base URL
+must not reuse another server's upload identity/session silently.
+Semantics: all four image rotations, off-center crops, multiple tiles and tiny
+objects; near wall, grazing ray, intervening furniture, missing depth; sofa/table,
+whiteboard/TV/monitor, switch/outlet/sign confusion; distinct adjacent sockets;
+two views agreeing vs disagreeing; valid empty detection and explicit provider error.
+At least 12 confusion cases, including each named confusion pair and true positives.
+Numbers: meters/cm/mm conversion; NaN/Inf reject; negative/degenerate geometry;
+nonidentity capture transforms; floor offset; repeated transform; rule equality;
+below/above/straddling/unknown bounds. Include min, max and range requirements.
+Roles: user confirms counter/customer side/access section; no cashier object;
+restroom sign only; private/staff-only restroom; no observed restroom entrance;
+TV vs whiteboard manual correction with source label preserved; reject/reload/replay.
+Approach: at least six layouts: clear approach, blocked aisle, tight turning corner,
+obstacle below reach, unobserved floor, fixed counter/no valid furniture move.
+Redesign: valid route improvement, newly blocked door, fixed-object move, lost
+question/scope row, no-progress cycle and no legal move. Actual route choice is
+required; the shortest empty straight-line path isn't an accessible route proof.
+Reports: parse ZIP and scene/measurement/evidence files, verify unit/scale and
+before/after revisions; no invented placement causes; missing crop and stale rules;
+download on owning account after restart; another account cannot retrieve it.
+UI: errors/loading/empty/candidate/confirmed/rejected/stale states; crop returns
+actual image; selecting list and marker stays in sync; phone widths, keyboard and
+focus restoration; check screen-reader labels and status announcements manually.
+
+REAL PRODUCTION REPLAY PROCEDURE
+1. Q selects authentic capture(s), hashes originals and records frozen processing
+   config. Test DB/accounts isolated from user originals; runtime matches intended
+   local deployment. Load normal settings, never print secrets.
+2. Upload through actual endpoints with artifact bytes, close manifest, run actual
+   worker and provider, then fetch graph as owning user. Provider raw output may be
+   stored locally with privacy restrictions; record ID/model/prompt/input hashes.
+3. Assert graph observations/crops support returned detections; inspect them. Real
+   image recognition may find nothing: report that honestly. No forced positives.
+4. Review an actual candidate when available. If none, use manual photo marking
+   with explicit provenance and explain automatic result. A fixture remains a
+   separate fixture. Confirm role/route only where actual evidence supports it.
+5. Assess, optionally propose a justified furniture change, recheck, render UI and
+   export. Fetch exact saved revisions and compare report. Record actual errors.
+6. Read-only compare original hashes and persisted history. Replaying identical
+   inputs and discovery cannot erase review or duplicate candidates. After changed
+   evidence, assert derived results become stale/recomputed with new identities.
+
+SEMANTIC ACCURACY EVALUATION
+Before tuning: freeze site split and unique physical-object inventory protocol.
+Independent human inventory lists each visible/photographed target and negative
+region, ambiguous targets and unobserved areas. Annotators cannot quietly remove
+missed targets after seeing predictions. Annotate source-readable boundaries and
+localization support. Same physical socket in 20 frames is one object, not 20 TPs.
+Use one-to-one matching: class plus preregistered IoU>=0.5 for image boxes; for 3D
+objects use supporting surface and independently verified anchor tolerance where
+available. Define ambiguous cases before running the evaluator, show them separately.
+Tiny-object boundary ambiguity may require a reviewed alternative criterion, but
+only under a new frozen benchmark with both old/new results, never retroactive pass.
+TP/FP/FN report per class/site; candidate abstention on a visible target is not a
+positive. Precision=TP/(TP+FP), recall=TP/(TP+FN). Zero denominator is insufficient
+evidence, not 100%. Report sample counts and binomial intervals; do not claim
+guaranteed population accuracy from the proposed minimum sample count. False
+positives include emitted unsupported candidates under the predeclared operating
+point; don't hide them by renaming everything candidate after seeing the test.
+Keep automatic detections, reviewed detections and manual markings separate.
+All G12 classes must meet their own thresholds; averaging outlets with large
+easy TVs is forbidden. If samples absent, G12 pending; assisted pilot still possible.
+
+MEASUREMENT EVALUATION
+Controls are independent physical measurements, not another measurement from the
+same mesh. Use calibration subset and a held-out subset, both chosen before fitting.
+Save exact endpoints, method/instrument uncertainty and acquisition date. Report
+each residual and method/region grouping, median/max/p95 with sample count. With
+small samples, empirical percentiles don't establish a validated 95% confidence
+bound; report conservative bounds and limits. Do not remove near-threshold cases.
+10 controls/site and 5 held out are starting minimums, not permission to certify
+all kinds of measurement. A width calibration does not prove counter height.
+G17's 2cm and 10cm targets are engineering checks, not legal tolerances. Outlet
+navigation marker error of 10cm may still be inadequate for legal reach evaluation.
+Every claimed dimension needs its own adequate evidence and margin analysis.
+
+RENDER EVALUATION
+Read frozen existing 500px policy. Verify at least 20 independent static landmarks,
+10 clear edge profiles and source-readable critical features; missing data does
+not reduce minimums into a pass. Captured validation/test and novel seated views
+are different categories; no PSNR against nonexistent novel ground truth.
+Coverage denominator is fixed measured target mask, never candidate alpha. Use
+per-view 95%, per-critical-ROI 98%, largest hole <=1%, all fixed views not average.
+Effective resolution uses smaller singular value of local source/UV projection
+Jacobians and active mip: min-axis source and baked samples/output pixel >=1 for
+>=95% of supported target pixels. A 2x critical sampling ratio is the existing
+diagnostic target, not a replacement for human-recognizable source detail.
+Render actual native 500x500 without upscaling/posthoc warp, inspect at 100%.
+Report blurred/inpainted/unknown areas separately; no photo credit for generated
+pixels. Motion review catches seams/popping; look at every room and worst views.
+Physical-device runtime: existing policy's three 60s routes after 10s warmup,
+p95<=33.4ms, p99<=100ms each; cold first usable view <=5s on defined >=100Mbps LAN.
+These performance gates apply to visual certificate; an honest map/photo pilot
+is evaluated separately. Remote-shop connectivity needs its own actual test.
+
+HANDOFF / INDEPENDENCE
+Q does not change a threshold because its implementation fails. If the test itself
+is wrong, show the responsible invariant, independent expected result and proposed
+policy version to K for review, preserve old failure and run both versions. Repeated
+exposure to holdout makes it validation; disclose and replenish untouched data.
+Report gate ID, observed failure, exact artifact and next owner. At deadline give
+certificates with transitive dependencies, not a green summary manufactured from
+individual lane status. Proof of a violation is good assessment, not product failure.
+
+TASK -> MODEL-TIER DELEGATION
+Gate design and ambiguous expected behavior -> independent Sol/Terra-level reviewer
+HTTP/worker/phone integration and mutation execution -> Terra-level QA
+Artifact verification, counts and fixture preparation -> Luna-level QA/local scripts
+Ground truth, field controls and legal review -> actual humans with attribution

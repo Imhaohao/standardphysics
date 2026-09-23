@@ -1,0 +1,143 @@
+{
+  "receipt_id": "MUT-M18",
+  "gate_id": "G00",
+  "mutation_id": "M18",
+  "outcome": "killed",
+  "run_id": "opencode-20260921-170615",
+  "lane_id": "Q",
+  "evidence_kind": "synthetic_component",
+  "source_commit": "586f284e886e14bf76628ca01e0af31a793671cd",
+  "eval_source_head": "q-safe-director verifier (validator-side control; no product mutation)",
+  "dirty_source_digest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+  "dirty_source_files": {},
+  "contract_hash": "e6c9296dd360f8a3081f036771f874bc2e802ba24010e9c3ba1cb15a57f69f37",
+  "policy_hash": "8db915a80d13c75600e47f47b2f77c8210c44d34793d5d4c8fb613f755129b81",
+  "input_artifacts": [
+    {
+      "path": "receipt_verifier.py.original",
+      "sha256": "85988087b4dab1f1e484138a6c34a5765ab340ae43084a808e1f1b51727984b0",
+      "size_bytes": 14241,
+      "content_type": "text/plain"
+    }
+  ],
+  "output_artifacts": [
+    {
+      "path": "M18-mutated.log",
+      "sha256": "8ef3aeffe6a0ef336381954db0cd2dfd9c33972e5be5e66117896c3aa231fe3a",
+      "size_bytes": 3141,
+      "content_type": "text/plain"
+    },
+    {
+      "path": "M01-clean-after.log",
+      "sha256": "8ef3aeffe6a0ef336381954db0cd2dfd9c33972e5be5e66117896c3aa231fe3a",
+      "size_bytes": 3141,
+      "content_type": "text/plain"
+    }
+  ],
+  "scan_id": null,
+  "revision_id": null,
+  "scenario_hash": null,
+  "scope_manifest_hash": null,
+  "evidence_manifest_hash": null,
+  "command_or_recorded_ui_steps": "pytest <owning suite> -q (clean); mutate scripts/shop_pilot/receipt_verifier.py + certificates.py (the injected receipt, not product source); pytest <owning suite> -q (record outcome); restore source",
+  "working_directory": "/tmp/q-mutations or /tmp/q-review-s (disposable worktrees)",
+  "environment_versions": {
+    "python": "3.11"
+  },
+  "started_at": "2026-09-22T00:30:59.851987-07:00",
+  "finished_at": "2026-09-22T00:30:59.851987-07:00",
+  "exit_code": 1,
+  "assertions": [
+    {
+      "id": "mutated-run-failed-behaviorally",
+      "measurement_method": "text_contains",
+      "expected": true,
+      "observed": true,
+      "params": {
+        "substring": "test_fixture_receipt_cannot_claim_new_shop_field PASSED",
+        "artifact": "M18-mutated.log"
+      },
+      "evidence_paths": [
+        "M18-mutated.log"
+      ]
+    },
+    {
+      "id": "mutated-run-recorded-kill-test",
+      "measurement_method": "text_contains",
+      "expected": true,
+      "observed": true,
+      "params": {
+        "substring": "scripts/shop_pilot/tests/test_receipt_verifier.py::test_fixture_receipt_cannot_claim_new_shop_field",
+        "artifact": "M18-mutated.log"
+      },
+      "evidence_paths": [
+        "M18-mutated.log"
+      ]
+    },
+    {
+      "id": "clean-rerun-passed",
+      "measurement_method": "text_contains",
+      "expected": true,
+      "observed": true,
+      "params": {
+        "substring": "passed",
+        "artifact": "M01-clean-after.log"
+      },
+      "evidence_paths": [
+        "M01-clean-after.log"
+      ]
+    },
+    {
+      "id": "restored-source-hash",
+      "measurement_method": "file_sha256",
+      "expected": "85988087b4dab1f1e484138a6c34a5765ab340ae43084a808e1f1b51727984b0",
+      "params": {
+        "artifact": "receipt_verifier.py.original"
+      },
+      "evidence_paths": [
+        "receipt_verifier.py.original"
+      ]
+    },
+    {
+      "id": "logs-are-secret-free",
+      "measurement_method": "text_clean",
+      "expected": true,
+      "params": {
+        "artifact": "M18-mutated.log"
+      },
+      "evidence_paths": [
+        "M18-mutated.log"
+      ]
+    },
+    {
+      "id": "cmd-was-pytest",
+      "measurement_method": "command_matches",
+      "expected": true,
+      "params": {
+        "required_substrings": [
+          "pytest"
+        ]
+      },
+      "evidence_paths": []
+    }
+  ],
+  "raw_log_path": "M18-mutated.log",
+  "evaluator_identity": {
+    "actor": "lane-Q",
+    "attestation": "independent fault injection in a disposable worktree, reverted and hash-verified"
+  },
+  "fault": {
+    "id": "M18",
+    "source_head": "q-safe-director verifier (validator-side control; no product mutation)",
+    "outcome": "killed",
+    "fault": "simulator/fixture evidence offered as fresh-phone/new-shop; agent identity offered as human review",
+    "fault_file": "scripts/shop_pilot/receipt_verifier.py + certificates.py (the injected receipt, not product source)",
+    "restored_sha256": "85988087b4dab1f1e484138a6c34a5765ab340ae43084a808e1f1b51727984b0",
+    "killed_by": "scripts/shop_pilot/tests/test_receipt_verifier.py::test_fixture_receipt_cannot_claim_new_shop_field",
+    "behavioral_assertion": "test_fixture_receipt_cannot_claim_new_shop_field PASSED",
+    "mutated_log": "M18-mutated.log",
+    "clean_log": "M01-clean-after.log",
+    "original_copy": "receipt_verifier.py.original",
+    "note": "05-adversarial M18 is a certificate rejection behavior: synthetic receipt can never carry a physical gate"
+  }
+}

@@ -36,6 +36,7 @@ from standardphysics_contracts import (
 from .footprints import footprint, gap_between
 from .ingest import FIXED_CATEGORIES
 from .mesh_evidence import object_mesh_profiles
+from .occupancy import reads_as_wall
 from .textures.camera import CameraMetadataError, camera_from_pose
 
 logger = logging.getLogger(__name__)
@@ -44,8 +45,14 @@ API_KEY_ENV = "OPENROUTER_API_KEY"
 MODEL_ENV = "OPENROUTER_MODEL"
 BASE_URL_ENV = "OPENROUTER_BASE_URL"
 DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
-DEFAULT_MODEL = "openai/gpt-6-astra"
-PROVIDER_ROUTING = {"order": ["openai"], "allow_fallbacks": False, "data_collection": "deny"}
+DEFAULT_MODEL = "anthropic/claude-opus-5.5"
+
+
+def provider_routing(model: str) -> dict:
+    """Pin the request to the provider that makes the model, and retain nothing."""
+    return {"order": [model.split("/")[0]], "allow_fallbacks": False, "data_collection": "deny"}
+
+
 REQUEST_TIMEOUT_SECONDS = 120.0
 MAX_RECONSTRUCTION_WORKERS = 3
 RECONSTRUCTION_WALL_TIMEOUT_SECONDS = 150.0
@@ -228,7 +235,11 @@ def apply_patches(
 
 
 def local_patches(graph: SceneGraph) -> list[LabelPatch]:
-    walls = [node for node in graph.nodes if stands_upright(node)]
+    # A's SHEET_THICKNESS calibration (0.05m) means a real scan's walls read as
+    # sheets but a labelled wall measured 0.15m thick does not; the scanner's
+    # kind label is the fallback, matching the pipeline's reads_as_wall test
+    # and agents/checks/walls. upright_walls.
+    walls = [node for node in graph.nodes if reads_as_wall(node)]
     objects = graph.contents()
     return [_local_patch(node, walls, objects, graph) for node in graph.nodes]
 
@@ -451,13 +462,14 @@ def _chat_body(
     )
     if image_messages:
         content = [{"type": "text", "text": content}, *image_messages]
+    model = os.environ.get(MODEL_ENV) or DEFAULT_MODEL
     return {
-        "model": os.environ.get(MODEL_ENV) or DEFAULT_MODEL,
+        "model": model,
         "max_tokens": MAX_OUTPUT_TOKENS,
         "reasoning": {"effort": "low"},
         "messages": [{"role": "system", "content": INSTRUCTION}, {"role": "user", "content": content}],
         "response_format": {"type": "json_schema", "json_schema": {"name": "astra_labels", "strict": True, "schema": LABEL_SCHEMA}},
-        "provider": PROVIDER_ROUTING,
+        "provider": provider_routing(model),
     }
 
 

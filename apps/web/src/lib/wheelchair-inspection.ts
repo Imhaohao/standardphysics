@@ -32,30 +32,21 @@ export type InspectionCategory =
   | "candidate_outlet"
   | "object";
 
-const ELECTRICAL = /(outlet|receptacle|power strip)/;
-
-/** What the words attached to a region suggest it is, tried in order. */
-const WORD_CATEGORIES: [RegExp, InspectionCategory][] = [
-  [/(table|desk|work surface|dining)/, "dining_or_work_candidate"],
-  [/(chair|sofa|stool|seat)/, "seat"],
-];
-
-/** A counter is a service counter when the words say who it serves. */
-function counterCategory(words: string): InspectionCategory {
-  return /(service|sales|checkout|cashier|ordering)/.test(words)
-    ? "service_or_sales_counter"
-    : "unclassified_counter";
-}
-
 export function inspectionCategory(node: SceneNode): InspectionCategory {
-  if (node.kind === "outlet" || node.kind === "candidate_outlet") return node.kind;
+  if (node.kind === "outlet") return "outlet";
+  if (node.kind === "candidate_outlet") return "candidate_outlet";
+  const category = `${node.raw_category} ${node.label}`.toLowerCase();
 
-  const words = `${node.raw_category} ${node.label}`.toLowerCase();
-  if (ELECTRICAL.test(words)) return "outlet";
-  if (words.includes("counter")) return counterCategory(words);
-
-  const matched = WORD_CATEGORIES.find(([pattern]) => pattern.test(words));
-  return matched ? matched[1] : "object";
+  if (/outlet|receptacle|power strip/.test(category)) return "outlet";
+  if (category.includes("counter")) {
+    if (/(service|sales|checkout|cashier|ordering)/.test(category)) {
+      return "service_or_sales_counter";
+    }
+    return "unclassified_counter";
+  }
+  if (/(table|desk|work surface|dining)/.test(category)) return "dining_or_work_candidate";
+  if (/(chair|sofa|stool|seat)/.test(category)) return "seat";
+  return "object";
 }
 
 export function inspectionCategoryLabel(category: InspectionCategory) {

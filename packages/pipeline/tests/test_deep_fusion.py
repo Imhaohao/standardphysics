@@ -1,29 +1,19 @@
-"""Unit tests for DeepFusion Gaussian Splatting modules.
-
-Torch is a dependency of nothing else here and is declared nowhere, so on a
-machine without it these skip. Erroring instead took the whole suite's
-collection down over a predictor nothing else depends on.
-"""
+"""Unit tests for DeepFusion Gaussian Splatting modules."""
 
 from __future__ import annotations
+
+import pytest
+
+pytest.importorskip("torch", reason="the deep fusion model is torch-only; install packages/pipeline[splats]")
 
 import pathlib
 
 import numpy as np
-import pytest
-
-torch = pytest.importorskip("torch")
-
-from standardphysics_pipeline.splats.deep_fusion import InverseAug, LearnableAlign  # noqa: E402
-from standardphysics_pipeline.splats.deep_gaussian_model import (  # noqa: E402
-    DeepFusionGaussianModel,
-    GaussianSplatPrediction,
-)
-from standardphysics_pipeline.splats.feature_extractor import (  # noqa: E402
-    ImageFeatureExtractor,
-    PointFeatureEncoder,
-)
-from standardphysics_pipeline.textures.camera import PhotoCamera  # noqa: E402
+import torch
+from standardphysics_pipeline.splats.deep_fusion import InverseAug, LearnableAlign
+from standardphysics_pipeline.splats.deep_gaussian_model import DeepFusionGaussianModel, GaussianSplatPrediction
+from standardphysics_pipeline.splats.feature_extractor import ImageFeatureExtractor, PointFeatureEncoder
+from standardphysics_pipeline.textures.camera import PhotoCamera
 
 
 def test_inverse_aug_projection():

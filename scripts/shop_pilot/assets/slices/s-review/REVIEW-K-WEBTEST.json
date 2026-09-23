@@ -1,0 +1,74 @@
+{
+  "receipt_id": "REVIEW-K-WEBTEST",
+  "gate_id": "G00",
+  "run_id": "opencode-20260921-170615",
+  "lane_id": "Q",
+  "evidence_kind": "synthetic_component",
+  "source_commit": "fcf681fb5ae8ce251b9a210adadb379c4ce9f9c3",
+  "dirty_source_digest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+  "dirty_source_files": {},
+  "contract_hash": "eb8c31f1addb1f7c0e58d01c4b62f222237fc31444bababd7d80e5aa9c01836f",
+  "policy_hash": "8db915a80d13c75600e47f47b2f77c8210c44d34793d5d4c8fb613f755129b81",
+  "input_artifacts": [],
+  "output_artifacts": [
+    {
+      "path": "k-webtest.log",
+      "sha256": "ec291a185e2022d9de201a3bd18f6f359b89309804f589f89dddedcc24addca9",
+      "size_bytes": 761,
+      "content_type": "text/plain"
+    }
+  ],
+  "scan_id": null,
+  "revision_id": null,
+  "scenario_hash": null,
+  "scope_manifest_hash": null,
+  "evidence_manifest_hash": null,
+  "command_or_recorded_ui_steps": "suite transcription on disposable worktree at lane K HEAD fcf681f",
+  "working_directory": "/tmp/q-review-k",
+  "environment_versions": {
+    "python": "3.11",
+    "node": "shared node_modules (read-only)"
+  },
+  "started_at": "2026-09-21T22:35:06.729911-07:00",
+  "finished_at": "2026-09-21T22:35:06.729911-07:00",
+  "exit_code": 0,
+  "assertions": [
+    {
+      "id": "claim-0",
+      "measurement_method": "text_contains",
+      "expected": true,
+      "observed": true,
+      "params": {
+        "substring": "134 passed (134)",
+        "artifact": "k-webtest.log"
+      },
+      "evidence_paths": [
+        "k-webtest.log"
+      ]
+    },
+    {
+      "id": "log-hash",
+      "measurement_method": "file_sha256",
+      "expected": "ec291a185e2022d9de201a3bd18f6f359b89309804f589f89dddedcc24addca9",
+      "observed": "ec291a185e2022d9de201a3bd18f6f359b89309804f589f89dddedcc24addca9",
+      "params": {
+        "artifact": "k-webtest.log"
+      },
+      "evidence_paths": [
+        "k-webtest.log"
+      ]
+    }
+  ],
+  "raw_log_path": "k-webtest.log",
+  "evaluator_identity": {
+    "actor": "lane-Q",
+    "attestation": "independent recompute on a disposable worktree"
+  },
+  "findings": {
+    "claim_api_182_pass_only_combine_fails": "CONFIRMED with 184 passed (K's message understated by 2 test counts) and exactly the one known combine-floor failure",
+    "claim_contracts_pipeline_green": "CONFIRMED (272 passed, 32 skipped)",
+    "claim_agents_7_baseline": "CONFIRMED (identical failure set to base)",
+    "claim_web_tests_134_typecheck_green": "CONFIRMED; generated contracts.ts did not drift from the committed copy",
+    "contract_freeze_consumed": "2857f10 cherry-picked into lane Q worktree; freeze tests 17 passed"
+  }
+}

@@ -8,7 +8,7 @@ its end to reach the counter.
 import uuid
 
 import pytest
-from standardphysics_contracts import Mat4, Scenario, SceneGraph, SceneNode, Stop, Vec3
+from standardphysics_contracts import Mat4, Scenario, SceneGraph, SceneNode, Stop, Vec3, to_inches
 from standardphysics_pipeline.measure import PipelineMeasurements
 from standardphysics_pipeline.turns import Turn, find_turn
 
@@ -82,9 +82,16 @@ def test_the_turn_names_what_it_goes_around(narrow_turn):
     assert turn.pivot_id is not None
 
 
-
-
-
+def test_each_zone_measures_the_gap_the_route_runs_through(narrow_turn):
+    """The south and north halves each run 3.8 m from the partition's face to
+    the wall's, and the partition's end stands 0.95 m off the east wall. Twice
+    the distance to the nearest obstacle reads the partition's own corner there
+    instead, which is how a compliant turn used to read as a failing one."""
+    graph, scenario, measure = narrow_turn
+    turn = measure.turn_detail(graph, scenario, 0)
+    lane = pytest.approx(to_inches(3.8), abs=0.5)
+    assert (turn.approach_inches, turn.leaving_inches) == (lane, lane)
+    assert turn.at_turn_inches == pytest.approx(to_inches(0.95), abs=0.5)
 
 
 def test_turn_clear_width_falls_back_on_a_straight_leg():

@@ -40,8 +40,23 @@ services:
     environment:
       SP_API_PORT: "8787"
       SP_DATA_DIR: /data
+      # Caddy sends X-Forwarded-Proto, and uvicorn ignores it unless the hop it
+      # came from is trusted. Without this the API believes every request
+      # arrived over plain HTTP and hands back a session cookie without the
+      # Secure flag. Trusting any hop is safe here because the API publishes no
+      # port: nothing but Caddy can reach it.
+      FORWARDED_ALLOW_IPS: "*"
     volumes:
-      - ${SCANS_PATH:?set SCANS_PATH in .env}:/data
+      # create_host_path: false is the whole point of the long form here. The
+      # short form lets Docker invent a missing directory, owned by root, which
+      # the container cannot write to: the API then fails to create its database
+      # and exits, and the only symptom anyone sees is Caddy reporting that its
+      # dependency did not start. Refusing to start is the better answer.
+      - type: bind
+        source: ${SCANS_PATH:?set SCANS_PATH in .env}
+        target: /data
+        bind:
+          create_host_path: false
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 10s

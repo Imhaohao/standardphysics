@@ -1,6 +1,6 @@
 {
   "lane": "D",
-  "updated": "2026-09-13T10:20:00Z",
+  "updated": "2026-09-23T08:00:00Z",
   "done": [
     "contracts and fixture shop (21bbc65)",
     "Stop.anchor_node_id and WidthResult.needs_measurement (audit A-6, A-9)",
@@ -36,7 +36,12 @@
     "Fix what I can: the workspace runs Lane C's run_loop and shows each pass, the router's choice and whether the re-measure kept it",
     "ARIA: the evaluation grid is in W&B as one run per configuration, and docs/aria.md says what a run holds, what a person has to turn on, and which questions to ask",
     "marimo: notebooks/scenario_sweep.py varies the shop's dimensions and the routine through Lane C's run_case, with a sweep chart whose sampled boundary lands on the number the check cites (docs/marimo.md)",
-    "ARIA: nine runs uploaded, six questions asked and answered, one improvement shipped from what it found. docs/aria_responses.md holds its answers and docs/aria.md holds what changed"
+    "ARIA: nine runs uploaded, six questions asked and answered, one improvement shipped from what it found. docs/aria_responses.md holds its answers and docs/aria.md holds what changed",
+    "routes stay in the room: RoomPlan's zero-thickness walls are drawn solid, a trip between two stops on the floor never uses the outside, and a stop inside furniture is reached from its open side (b6da05c)",
+    "audit A-6: the endpoint exemption keeps only what a stop stands at (1084818)",
+    "audit A-14, A-15, A-16: 403.5.2 widths measured across the gaps the route runs through (1d6a685)",
+    "audit A-17 camera over the floor (790381d), A-26 overlap tolerance (a2ed9d2), A-47 coverage history (93a720c, gate thresholds left to Lane A)",
+    "rule review: 403.5.1 separation condition, 404.2.9 asks about inside doors, Advisory 904.2 quoted word for word (9944fbf); 403.5.3 square passing space (2382bd3); 904.4.1 approach beside the lowered section (4bff1bc)"
   ],
   "in_progress": null,
   "blocked_on": null,
@@ -60,13 +65,17 @@
     "the viewer's Mark as the counter chip when a piece is picked",
     "POST /api/scans/{id}/loop and LoopRequest, LoopPass, LoopResult",
     "packages/agents/standardphysics_agents/evaluation/scenarios.py: Knobs, run_knobs, sweep_knob, verdicts and held, for building a room from dimensions and reading it back through the same evaluator",
-    "notebooks/scenario_sweep.py, opened with .venv/bin/marimo edit; start.sh installs the notebook extra"
+    "notebooks/scenario_sweep.py, opened with .venv/bin/marimo edit; start.sh installs the notebook extra",
+    "PipelineMeasurements.route_runs_below: every stretch of a leg below a threshold, as inches along the leg",
+    "PipelineMeasurements.largest_square: the largest clear square at a point, turned to a heading",
+    "widest_path(anchors=...): stops' anchor_node_id, which narrows the endpoint exemption"
   ],
   "needs_human": [
-    "Verify the rule pack thresholds (Lane C's cli rules verify). Until then real scans report no findings; SP_PREVIEW_UNVERIFIED_RULES=1 is for development only",
-    "Every key from .env.example in .env on the demo machine; OPENROUTER_API_KEY is blocking Lane B",
-    "W&B project created with public visibility settings",
-    "Confirm submission deadline and eligibility with organizers",
+    "Verify the rule pack thresholds and record a second check (docs/handoffs/D-to-C-rule-review.md). Until then real scans report no findings; SP_PREVIEW_UNVERIFIED_RULES=1 is for development only",
+    "Lane A: decide what the capture gate requires; PROGRESS.md A-47 has the data",
+    "Decide whether dead-end turning space (304.3.1) is a recommendation, which needs a new Finding outcome in contracts",
+    "Decide whether door_clearance_blocked should report the chair in the doorway as a route finding too (relabelled in 1084818)",
+    "A scan that includes a door, and tape measurements to check it against (A-50, G17)",
     "Keep the demo machine stable and awake, with Blender 5.x installed"
   ]
 }

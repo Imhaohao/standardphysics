@@ -249,12 +249,19 @@ private struct StartView: View {
         .plainRow(top: 64)
     }
 
+    /// A shop owner is never asked where the server is.
+    ///
+    /// The address is built into a release build, so the only person who needs
+    /// to change it is someone pointing a phone at their own laptop, and only a
+    /// build without a compiled address can be in that position.
     private var controls: some View {
         VStack(spacing: AppTheme.Spacing.small) {
             Button("Start scanning") { model.beginCapture() }
                 .buttonStyle(AppButtonStyle())
-            Button("Change the upload address") { model.screen = .connection }
-                .buttonStyle(AppButtonStyle(.secondary))
+            if !AppEnvironment.addressesAreCompiledIn {
+                Button("Change the upload address") { model.screen = .connection }
+                    .buttonStyle(AppButtonStyle(.secondary))
+            }
         }
         .plainRow(top: AppTheme.Spacing.page)
     }

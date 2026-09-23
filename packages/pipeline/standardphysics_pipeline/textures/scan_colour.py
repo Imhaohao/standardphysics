@@ -22,23 +22,36 @@ distance, and it means no unwrapping, no charts, no seams and no gutters.
 from __future__ import annotations
 
 import pathlib
-from dataclasses import dataclass
+from collections.abc import Callable
+from dataclasses import dataclass, replace
 
 import numpy as np
+from standardphysics_contracts import SceneGraph
 
 from ..lidar import load_mesh
 from .camera import PhotoCamera, load_cameras
-from .project import bilinear, depth_buffer, to_linear, to_srgb
+from .project import (
+    MAX_EXPOSURE_POINTS,
+    TopViews,
+    bilinear,
+    depth_buffer,
+    exposure_gains,
+    to_linear,
+    to_srgb,
+)
 
 MAX_PHOTOS = 60
-"""Photos read for colour. Every vertex keeps only its best view, so more
-photos raise coverage and never blend; this is where the gain flattens."""
+"""Photos read for colour. More photos raise coverage; this is where the gain flattens."""
 MAX_PHOTO_EDGE = 1600
 
 SEEN_TOLERANCE = 0.05
 """How close to the nearest scanned surface a vertex must be to count as seen."""
 MIN_FACING = 0.20
 BORDER_FALLOFF_PIXELS = 24.0
+BLEND_SHARPNESS = 4.0
+"""Power applied to view weights before blending. A view twice as good as the
+next contributes sixteen times as much, so detail stays from the best photo and
+only near-ties, which is where the best photo changes, mix."""
 UNSEEN = np.array([0.62, 0.60, 0.58], dtype=np.float32)
 """What a vertex no photo reached is left as: the scan's own neutral grey."""
 
@@ -53,10 +66,22 @@ class ColouredScan:
     """Whether any photo reached each vertex."""
     sources: np.ndarray | None = None
     """Per-vertex source frame ID of the best view (object dtype), None when unseen."""
+    inferred: np.ndarray | None = None
+    """Whether each vertex was added to patch a hole rather than scanned; None when nothing was."""
+    sheet_patches: np.ndarray | None = None
+    """The added vertices that patch a wall or floor, as opposed to closing a hole in an object."""
+    mirror_source: np.ndarray | None = None
+    """For a vertex reflected in to complete an object, the vertex it mirrors; -1 otherwise."""
+
+    @property
+    def scanned(self) -> np.ndarray:
+        return ~self.inferred if self.inferred is not None else np.ones(len(self.seen), dtype=bool)
 
     @property
     def painted_fraction(self) -> float:
-        return float(self.seen.mean()) if len(self.seen) else 0.0
+        """The share of scanned vertices a photo reached. Patches never count."""
+        seen = self.seen[self.scanned]
+        return float(seen.mean()) if len(seen) else 0.0
 
 
 def vertex_normals(vertices: np.ndarray, triangles: np.ndarray) -> np.ndarray:
@@ -127,42 +152,90 @@ def colour_the_scan(
     cameras: list[PhotoCamera],
     images: list[np.ndarray],
     masks: list[np.ndarray] | None = None,
+    hidden: Callable[[PhotoCamera], np.ndarray] | None = None,
 ) -> ColouredScan:
-    """Every vertex given the colour of the photo that saw it best.
+    """Every vertex coloured from the photos that saw it best, evened out for exposure.
+
+    Photos disagree about brightness, so each gets a per-channel gain solved
+    from the vertices several of them saw, the same correction the atlas bake
+    applies. The top few views are then blended with weights sharpened so the
+    best view dominates wherever one clearly wins, and neighbours sourced from
+    different photos meet in a soft blend rather than a hard edge.
 
     ``masks``, when provided, are static-region masks (one per photo,
     full resolution); they are resampled to the depth-buffer grid and samples
-    outside the static region are never painted.  The resulting scan records
+    outside the static region are never painted. ``hidden``, when provided,
+    names the vertices a camera cannot really see even though nothing scanned
+    stands in the way, such as floor under a chair the LiDAR missed.  The resulting scan records
     the best source frame ID per vertex so downstream sampling can prove
     photo support rather than assert it.
     """
     if masks is not None and len(masks) != len(images):
         raise ValueError("masks must have one entry per image")
     normals = vertex_normals(vertices, triangles)
+    views = [_ScanView(camera, photo, *_occlusion(camera, vertices, masks, index))
+             for index, (camera, photo) in enumerate(zip(cameras, images))]
+    hidden_masks = [hidden(view.camera) for view in views] if hidden is not None else None
+    gains = _exposure_gains(views, vertices, normals, hidden_masks)
+    blend = TopViews(len(vertices))
     best = np.zeros(len(vertices), dtype=np.float32)
-    colours = np.tile(UNSEEN, (len(vertices), 1))
-    source_ids = [None] * len(vertices)
-    for index, (camera, photo) in enumerate(zip(cameras, images)):
-        buffer = depth_buffer(camera, vertices)
-        image_mask = None
-        if masks is not None:
-            image_mask = _small_static_mask(masks[index], *buffer.shape)
-        weight, columns, rows = _weights_from(camera, vertices, normals, buffer, image_mask)
-        better = np.flatnonzero(weight > best)
-        if not len(better):
+    best_view = np.full(len(vertices), -1, dtype=np.int64)
+    for index, (view, gain) in enumerate(zip(views, gains)):
+        weight, columns, rows = view.weights(vertices, normals)
+        if hidden_masks is not None:
+            weight = np.where(hidden_masks[index], 0.0, weight)
+        seen = np.flatnonzero(weight > 0)
+        if not len(seen):
             continue
-        sampled = bilinear(photo, columns[better], rows[better])
-        colours[better] = to_srgb(to_linear(sampled.astype(np.float32)))
+        colours = np.clip(view.linear(columns[seen], rows[seen]) * gain, 0.0, 1.0)
+        blend.add(seen, weight[seen] ** BLEND_SHARPNESS, colours)
+        better = seen[weight[seen] > best[seen]]
         best[better] = weight[better]
-        for vertex in better:
-            source_ids[vertex] = camera.frame_id
-    return ColouredScan(
-        vertices,
-        triangles,
-        np.clip(colours, 0.0, 1.0),
-        best > 0,
-        sources=np.asarray(source_ids, dtype=object),
-    )
+        best_view[better] = index
+    painted = best > 0
+    colours = np.tile(UNSEEN, (len(vertices), 1))
+    colours[painted] = to_srgb(blend.resolve()[0][painted])
+    frame_ids = np.asarray([camera.frame_id for camera in cameras] + [None], dtype=object)
+    return ColouredScan(vertices, triangles, np.clip(colours, 0.0, 1.0), painted, sources=frame_ids[best_view])
+
+
+@dataclass(frozen=True)
+class _ScanView:
+    camera: PhotoCamera
+    photo: np.ndarray
+    buffer: np.ndarray
+    mask: np.ndarray | None
+
+    def weights(self, vertices: np.ndarray, normals: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        return _weights_from(self.camera, vertices, normals, self.buffer, self.mask)
+
+    def linear(self, columns: np.ndarray, rows: np.ndarray) -> np.ndarray:
+        return to_linear(bilinear(self.photo, columns, rows).astype(np.float32))
+
+
+def _occlusion(camera, vertices, masks, index) -> tuple[np.ndarray, np.ndarray | None]:
+    buffer = depth_buffer(camera, vertices)
+    if masks is None:
+        return buffer, None
+    return buffer, _small_static_mask(masks[index], *buffer.shape)
+
+
+def _exposure_gains(
+    views: list[_ScanView],
+    vertices: np.ndarray,
+    normals: np.ndarray,
+    hidden_masks: list[np.ndarray] | None = None,
+) -> np.ndarray:
+    """Per-photo linear gains from an even sample of the vertices several photos saw."""
+    picked = np.unique(np.linspace(0, len(vertices) - 1, min(len(vertices), MAX_EXPOSURE_POINTS)).astype(np.int64))
+    observations = []
+    for index, view in enumerate(views):
+        weight, columns, rows = view.weights(vertices[picked], normals[picked])
+        if hidden_masks is not None:
+            weight = np.where(hidden_masks[index][picked], 0.0, weight)
+        seen = np.flatnonzero(weight > 0)
+        observations.append((seen, view.linear(columns[seen], rows[seen])))
+    return exposure_gains(observations, len(views), len(picked))
 
 
 def scan_geometry(mesh_path: pathlib.Path, capture_to_room) -> tuple[np.ndarray, np.ndarray]:
@@ -187,12 +260,19 @@ def unused_vertices_removed(scan: ColouredScan) -> ColouredScan:
     used = np.unique(scan.triangles)
     remap = np.full(len(scan.vertices), -1, dtype=np.int64)
     remap[used] = np.arange(len(used))
+    mirror_source = None
+    if scan.mirror_source is not None:
+        kept = scan.mirror_source[used]
+        mirror_source = np.where(kept >= 0, remap[np.maximum(kept, 0)], -1)
     return ColouredScan(
         vertices=scan.vertices[used],
         triangles=remap[scan.triangles],
         colours=scan.colours[used],
         seen=scan.seen[used],
         sources=scan.sources[used] if scan.sources is not None else None,
+        inferred=scan.inferred[used] if scan.inferred is not None else None,
+        sheet_patches=scan.sheet_patches[used] if scan.sheet_patches is not None else None,
+        mirror_source=mirror_source,
     )
 
 
@@ -244,27 +324,137 @@ def _photo(path: pathlib.Path) -> np.ndarray:
         return np.asarray(image, dtype=np.float32) / 255.0
 
 
-def paint_the_scan(
+@dataclass(frozen=True)
+class DisplayGeometry:
+    vertices: np.ndarray
+    triangles: np.ndarray
+    inferred: np.ndarray
+    """Whether each vertex was added rather than scanned."""
+    sheet_patches: np.ndarray
+    """The added vertices that patch a wall or floor."""
+    mirror_source: np.ndarray
+    """For a vertex reflected in to complete an object, the vertex it mirrors; -1 otherwise."""
+
+
+def _display_geometry(
+    vertices: np.ndarray, triangles: np.ndarray, graph: SceneGraph,
+    cameras: list[PhotoCamera], people: dict | None,
+) -> DisplayGeometry:
+    """The scan as it should be shown.
+
+    People out, the holes they leave in furniture closed, half-seen furniture
+    completed from its other half, and walls and floor made whole, in that order.
+    """
+    from ..discovery.people import mostly_people
+    from .hole_patches import with_holes_patched
+    from .object_holes import closed_object_holes, without_vertices
+    from .symmetry import mirrored_completion, seen_through_by
+
+    if people:
+        views = [(camera, people.get(camera.frame_id, []), depth_buffer(camera, vertices)) for camera in cameras]
+        vertices, triangles = without_vertices(vertices, triangles, mostly_people(vertices, graph, views))
+    capped = closed_object_holes(vertices, triangles, graph)
+    seen_through = seen_through_by(cameras, [depth_buffer(camera, capped.vertices) for camera in cameras])
+    completed = mirrored_completion(capped.vertices, capped.triangles, graph, seen_through)
+    added_so_far = np.concatenate([capped.inferred, completed.added[len(capped.vertices):]])
+    patched = with_holes_patched(completed.vertices, completed.triangles, graph)
+    extra = len(patched.vertices) - len(completed.vertices)
+    return DisplayGeometry(
+        vertices=patched.vertices,
+        triangles=patched.triangles,
+        inferred=np.concatenate([added_so_far, np.ones(extra, dtype=bool)]),
+        sheet_patches=patched.inferred,
+        mirror_source=np.concatenate([completed.source, np.full(extra, -1, dtype=np.int64)]),
+    )
+
+
+def with_mirrored_colours(scan: ColouredScan) -> ColouredScan:
+    """Every reflected vertex coloured like the vertex it mirrors, photographed or filled."""
+    if scan.mirror_source is None or not (scan.mirror_source >= 0).any():
+        return scan
+    colours = scan.colours.copy()
+    reflected = np.flatnonzero(scan.mirror_source >= 0)
+    colours[reflected] = colours[scan.mirror_source[reflected]]
+    return replace(scan, colours=colours)
+
+
+def coloured_scan(
     mesh_path: pathlib.Path,
     poses_path: pathlib.Path,
     frame_paths: dict[str, pathlib.Path],
     capture_to_room,
-    out_path: pathlib.Path,
-) -> ScanPaint:
-    """The captured surface, coloured from the photos, as a glTF the viewer can show."""
-    import time
+    patch_holes_from: SceneGraph | None = None,
+    people: dict | None = None,
+) -> tuple[ColouredScan, list[PhotoCamera]]:
+    """The captured surface in the room frame, each vertex coloured by its best photo.
 
-    started = time.monotonic()
-    vertices, triangles = scan_geometry(mesh_path, capture_to_room)
-    cameras = [
+    With `patch_holes_from`, the scan is first made fit to show: the people in
+    `people` (detections per frame id) are taken out, the holes they leave in
+    furniture are closed, and the holes in the graph's walls and floor are
+    patched, all before colouring, so added surface is coloured by the same
+    photos and hidden by the same scanned surfaces as everything else. Photo
+    pixels where a person stood never colour anything. Returns the cameras at
+    the stored photos' own resolution too, so a caller can go back to a full-size
+    photo for a vertex its `sources` names.
+    """
+    from .hole_patches import hidden_behind_objects
+    from .object_holes import people_masks
+
+    all_cameras = [
         camera for camera in load_cameras(poses_path, frame_paths, capture_to_room)
         if frame_paths.get(camera.frame_id, pathlib.Path()).is_file()
     ]
-    cameras = _evenly_spread(cameras, MAX_PHOTOS)
+    cameras = _evenly_spread(all_cameras, MAX_PHOTOS)
     if not cameras:
         raise ValueError("no stored photo has a usable camera pose")
-    resized = [camera.resized(*_photo(frame_paths[camera.frame_id]).shape[1::-1]) for camera in cameras]
+    vertices, triangles = scan_geometry(mesh_path, capture_to_room)
+    inferred, sheet_patches, mirror_source, hidden = None, None, None, None
+    if patch_holes_from is not None:
+        shown = _display_geometry(vertices, triangles, patch_holes_from, all_cameras, people)
+        vertices, triangles = shown.vertices, shown.triangles
+        inferred, sheet_patches, mirror_source = shown.inferred, shown.sheet_patches, shown.mirror_source
+        hidden = hidden_behind_objects(patch_holes_from, vertices, sheet_patches)
     images = [_photo(frame_paths[camera.frame_id]) for camera in cameras]
-    scan = unused_vertices_removed(colour_the_scan(vertices, triangles, resized, images))
-    write_scan_glb(scan, out_path)
+    resized = [camera.resized(*image.shape[1::-1]) for camera, image in zip(cameras, images)]
+    masks = None
+    if people:
+        by_frame = people_masks(people, cameras, {c.frame_id: i.shape[:2] for c, i in zip(cameras, images)})
+        masks = [by_frame[camera.frame_id] for camera in cameras]
+    coloured = colour_the_scan(vertices, triangles, resized, images, masks=masks, hidden=hidden)
+    scan = replace(coloured, inferred=inferred, sheet_patches=sheet_patches, mirror_source=mirror_source)
+    return unused_vertices_removed(scan), cameras
+
+
+def paint_the_scan(
+    mesh_path: pathlib.Path,
+    poses_path: pathlib.Path,
+    frame_paths: dict[str, pathlib.Path],
+    graph: SceneGraph,
+    out_path: pathlib.Path,
+    materials_dir: pathlib.Path | None = None,
+    people: dict | None = None,
+) -> ScanPaint:
+    """The captured surface, coloured from the photos, as a glTF the viewer can show.
+
+    People found by discovery (`people`, detections per frame id) are taken out
+    and the holes they leave in furniture closed. Holes the LiDAR left in walls
+    and floor are patched with the planes they lie on and coloured from whichever
+    photo saw them. Walls, floors and labelled
+    objects no photo reached take their generated material, the room's own when
+    `materials_dir` holds one, so the room reads whole rather than as photo
+    patches on grey and gaps. Everything else stays the
+    neutral grey: copying the nearest photographed colour was tried and smeared
+    vivid streaks across ceilings and undersides. `painted_fraction` is measured
+    before the fill, so it still reports only what a camera saw.
+    """
+    import time
+
+    from .surface_materials import room_materials, unseen_surfaces_filled
+
+    started = time.monotonic()
+    scan, cameras = coloured_scan(
+        mesh_path, poses_path, frame_paths, graph.capture_to_room, patch_holes_from=graph, people=people,
+    )
+    filled = with_mirrored_colours(unseen_surfaces_filled(scan, graph, room_materials(materials_dir)))
+    write_scan_glb(filled, out_path)
     return ScanPaint(out_path, scan.painted_fraction, len(cameras), time.monotonic() - started)

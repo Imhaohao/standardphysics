@@ -1,0 +1,49 @@
+Standard Physics pilot: portable-network and unavailable-feature behavior
+Run ID opencode-20260921-170615 — factual runtime notes, not a field-test claim.
+
+NETWORK MODELS OBSERVED
+1. Mac-served LAN (the tested pilot shape): the API process binds 0.0.0.0 on
+   the Mac, the built web app binds 0.0.0.0 and proxies /api/* to the API over
+   loopback at build time. A phone on the same LAN opens the web origin with
+   the Mac's current address (10.43.59.47 tonight; addresses drift, so the
+   start recipe names env over the address).
+2. Capture is offline-safe: photos, poses, mesh and manifest persist in the
+   app's saved scans and survive failed/absent upload; the upload resumes
+   against the same remote scan on a later connection (unit-tested).
+3. Processing (worker + discovery + assessment + export) requires the API to
+   reach its stored artifacts and, for recognition, configured provider
+   credentials. Without both, a scan's geometry can still be browsed and its
+   evidence status says exactly which semantic inputs are missing.
+4. No cloud hosting, no public exposure and no cross-shop remote claim was
+   tested. A hotspot/portable-Mac setup is documented as the intended field
+   shape and is NOT yet evidenced end-to-end.
+
+UNAVAILABLE-FEATURE BEHAVIOR (observed, not speculative)
+- Blender geometry/render jobs: queued; when Blender is missing they fail
+  visibly on the job with the display lane marked failed while findings,
+  evidence and reports continue. Views degrade to the measured GLB or nothing,
+  never to invented geometry.
+- Photo mesh quality: G15 remains failed (c11 visual rejection). The 500px
+  policy is NOT satisfied and the map/photo review path does not depend on it.
+- Recognition without provider keys: discovery reads zero photos and the job
+  note records the exact configuration reason; it is never converted into an
+  empty-but-successful result.
+- The workshop's default production build uses Turbopack and panics in the
+  linked-dependency worktree layout; the supported fallback is
+  `npm run build -- --webpack` (build log k-web-build-final.log). The webpack
+  build is fully verified; no code relies on Turbopack-specific behavior.
+
+RESTART / ROLLBACK (loopback-proxy-safe)
+- API:  SP_DATA_DIR=<run>/k-api-8901-data SP_API_PORT=8901
+        SP_PREVIEW_UNVERIFIED_RULES=1 PYTHONPATH=<K>/packages/contracts:<K>/packages/pipeline:<K>/packages/agents:<K>/packages/fixtures:<K>/services/api
+        .venv/bin/python -m standardphysics_api
+        (run from <K> AND with the explicit PYTHONPATH above: the shared
+        venv's editable install otherwise resolves packages to the ORIGINAL
+        checkout; cwd alone does not select K sources).
+- Web:  cd <K>/apps/web && SP_API_ORIGIN=http://127.0.0.1:8901 \
+        node node_modules/next/dist/bin/next start -H 0.0.0.0 -p 8893
+        SP_API_ORIGIN must be set at BUILD time (bakes /api proxy rewrites)
+        AND at START time (SSR reads it at runtime; without it api-origin.ts
+        falls back to 8788 and sign-in loops back to /sign-in).
+- Rollback: git tags pilot-candidate-20260921-k, pilot-candidate-20260922-k,
+  pilot-candidate-final-k on codex/opencode-20260921-170615-k.

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pytest import approx
 from standardphysics_agents import VerificationLedger, assess
+from standardphysics_agents.checks.questions import _inside_door_nodes as inside_door_nodes
 from standardphysics_agents.checks.route_geometry import is_reversal, reversal_stops
 from standardphysics_agents.checks.route_width import route_width_verdict
 from standardphysics_agents.checks.turn_width import turn_verdict
@@ -188,6 +189,20 @@ def test_a_question_never_carries_a_fix(graph, scenario, measure, ledger):
     assert all(f.fix is None for f in result.questions)
 
 
+def test_the_door_force_question_never_names_the_front_door(graph):
+    """404.2.9 sets no opening force for exterior hinged doors, so asking a
+    shop to push its front door against 5 pounds asks for a number no section
+    requires. An inside door is what the question is about."""
+    restroom = graph.by_id(node_id("door_front")).model_copy(
+        deep=True, update={"id": node_id("door_restroom"), "label": "Restroom door"}
+    )
+    restroom.transform.m[3], restroom.transform.m[7] = 2.4, 4.0
+    with_restroom = graph.model_copy(update={"nodes": [*graph.nodes, restroom]})
+
+    assert inside_door_nodes(graph) == []
+    assert [door.id for door in inside_door_nodes(with_restroom)] == [node_id("door_restroom")]
+
+
 def test_problems_come_before_questions_and_questions_before_passes(
     graph, scenario, measure, ledger
 ):
@@ -236,14 +251,24 @@ class TestRouteWidthRule:
         assert verdict.reason == "below_minimum"
 
     def test_a_short_reduced_run_is_permitted(self, pack):
-        verdict = route_width_verdict(32.0, 24.0, pack.by_id("route_clear_width"))
+        verdict = route_width_verdict(32.0, [(10.0, 34.0)], pack.by_id("route_clear_width"))
         assert verdict.satisfied
         assert verdict.reason == "reduction_permitted"
 
     def test_a_long_reduced_run_is_not(self, pack):
-        verdict = route_width_verdict(32.0, 25.0, pack.by_id("route_clear_width"))
+        verdict = route_width_verdict(32.0, [(10.0, 35.0)], pack.by_id("route_clear_width"))
         assert not verdict.satisfied
         assert verdict.reason == "reduction_too_long"
+
+    def test_short_runs_need_forty_eight_inches_of_full_width_between_them(self, pack):
+        """Two 24 inch pinches 10 inches apart are one long squeeze to the
+        person in the chair, and the exception says so."""
+        rule = pack.by_id("route_clear_width")
+        too_close = route_width_verdict(32.0, [(0.0, 24.0), (34.0, 58.0)], rule)
+        far_enough = route_width_verdict(32.0, [(0.0, 24.0), (72.0, 96.0)], rule)
+        assert not too_close.satisfied
+        assert too_close.reason == "reductions_too_close"
+        assert far_enough.satisfied
 
     def test_an_unmeasured_run_length_fails_closed(self, pack):
         """The exception has a length condition. Passing without checking it
@@ -326,6 +351,16 @@ def test_a_lowered_section_meets_the_height_rule(pipeline, ledger):
     height = [f for f in result.findings if f.check_id == "service_counter_height"]
     assert height and height[0].outcome == "passes"
     assert height[0].measured_inches == approx(36.0)
+
+
+def test_the_approach_is_measured_beside_the_lowered_section(pipeline, ledger):
+    """904.4.1 puts the clear floor space adjacent to the 36 inch portion. In
+    front of the high part is floor nobody in a wheelchair is served from."""
+    graph = build_lawsuit_graph()
+    lowered = next(node for node in graph.nodes if node.label == "Lowered counter section")
+    result = assess(graph, build_lawsuit_scenario(), pipeline, ledger=ledger)
+    approach = next(f for f in result.findings if f.check_id == "service_counter_approach")
+    assert approach.locus.point.x == approx(lowered.transform.position.x, abs=0.01)
 
 
 def test_a_card_reader_on_the_high_counter_is_the_finding(pipeline, ledger):

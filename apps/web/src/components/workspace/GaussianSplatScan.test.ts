@@ -1,6 +1,7 @@
 import { Matrix4, Vector3 } from "three";
-import { describe, expect, it } from "vitest";
-import { toSplatViewerMatrix } from "./GaussianSplatScan";
+import { describe, expect, it, vi } from "vitest";
+import { disposeSparkRenderer, toSplatViewerMatrix } from "./GaussianSplatScan";
+import type { SparkRenderer } from "@sparkjsdev/spark";
 
 const translation = (x: number, y: number, z: number) => [
   1, 0, 0, x,
@@ -20,5 +21,50 @@ describe("toSplatViewerMatrix", () => {
 
   it("rejects malformed asset alignment data before allocating splat resources", () => {
     expect(() => toSplatViewerMatrix([1, 2, 3])).toThrow("finite row-major 4x4 matrix");
+  });
+});
+
+describe("disposeSparkRenderer", () => {
+  it("clears pending worker messages and neutralizes callbacks before disposal", () => {
+    const rejectFn = vi.fn();
+    const disposeFn = vi.fn();
+    const mockSpark = {
+      autoUpdate: true,
+      sortTimeoutId: 123,
+      updateTimeoutId: 456,
+      sortWorker: {
+        messages: { 1: { reject: rejectFn } },
+        dispose: disposeFn,
+      },
+      lodWorker: {
+        messages: { 2: { reject: rejectFn } },
+        dispose: disposeFn,
+      },
+      driveSort: vi.fn(),
+      driveLod: vi.fn(),
+      updateInternal: vi.fn(),
+      update: vi.fn(),
+      onBeforeRender: vi.fn(),
+      dispose: vi.fn(),
+    } as unknown as SparkRenderer;
+
+    disposeSparkRenderer(mockSpark);
+
+    expect(mockSpark.autoUpdate).toBe(false);
+    expect(mockSpark.sortWorker?.messages).toEqual({});
+    expect(mockSpark.lodWorker?.messages).toEqual({});
+    expect(mockSpark.dispose).toHaveBeenCalled();
+  });
+
+  it("safely ignores undefined spark or errors during dispose", () => {
+    expect(() => disposeSparkRenderer(undefined)).not.toThrow();
+
+    const throwingSpark = {
+      dispose: () => {
+        throw new Error("Disposal error");
+      },
+    } as unknown as SparkRenderer;
+
+    expect(() => disposeSparkRenderer(throwingSpark)).not.toThrow();
   });
 });

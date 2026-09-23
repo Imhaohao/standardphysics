@@ -2,7 +2,7 @@ import hashlib
 import json
 import shutil
 
-from standardphysics_contracts import Mat4, NodeTextureCoverage, TextureCoverage
+from standardphysics_contracts import Mat4, NodeTextureCoverage, TextureBuild, TextureCoverage
 from standardphysics_fixtures import build_graph
 from standardphysics_pipeline.textures import BakeResult
 
@@ -149,6 +149,48 @@ def test_published_files_recover_after_interruption_without_rebaking(make_client
         after=client.get(f'/api/scans/{scan}/textures').json()
         assert after['state']=='complete' and after['build']['glb_url']==before
         assert len(calls)==1
+
+
+def _scan_build(scan_id, graph, key):
+    from standardphysics_api.textures import build_prefix
+    prefix = build_prefix(scan_id, key)
+    return TextureBuild(build_id=key, glb_url=prefix + '/scene.glb', scan_glb_url=prefix + '/scan.glb',
+                        coverage_mask_urls=[], bake_graph=graph,
+                        coverage=TextureCoverage(textured_fraction=0.43, nodes=[], needs_another_view=[]),
+                        frames_used=360, seconds=12.0)
+
+
+def test_a_build_made_outside_the_queue_is_served_like_any_other(client):
+    """A script that paints a scan registers it the same way the worker does."""
+    from standardphysics_api.textures import build_dir, finish_build, record_build, staged_build_dir
+    scan_id, graph = _room(client)
+    key = hashlib.sha256(b'four rooms').hexdigest()
+    staged = staged_build_dir(client.app.state.store, scan_id)
+    shutil.copyfile(FIXTURE_DATA / 'shop.glb', staged / 'scan.glb')
+    shutil.copyfile(FIXTURE_DATA / 'shop.glb', staged / 'scene.glb')
+    result = _scan_build(scan_id, graph, key)
+    finish_build(staged, build_dir(client.app.state.store, scan_id) / key, result)
+    record_build(client.app.state.database, scan_id, key, graph, {'rooms': 4}, result)
+    assert not staged.exists()
+    assert client.get(f'/api/scans/{scan_id}/textures/{key}/scan.glb').status_code == 200
+    status = client.get(f'/api/scans/{scan_id}/textures').json()
+    assert status['build']['scan_glb_url'] == f'/api/scans/{scan_id}/textures/{key}/scan.glb'
+    assert status['build']['coverage']['textured_fraction'] == 0.43
+
+
+def test_a_staged_build_carrying_a_stray_file_is_refused(client):
+    """The asset route serves whatever is in the directory, so only assets may enter it."""
+    import pytest
+
+    from standardphysics_api.textures import build_dir, finish_build, staged_build_dir
+    scan_id, graph = _room(client)
+    key = hashlib.sha256(b'stray').hexdigest()
+    staged = staged_build_dir(client.app.state.store, scan_id)
+    shutil.copyfile(FIXTURE_DATA / 'shop.glb', staged / 'scan.glb')
+    (staged / 'notes.txt').write_text('not an asset')
+    with pytest.raises(ValueError):
+        finish_build(staged, build_dir(client.app.state.store, scan_id) / key, _scan_build(scan_id, graph, key))
+    assert not (build_dir(client.app.state.store, scan_id) / key).exists()
 
 
 def test_camera_metadata_rejects_nonfinite_or_nonrigid_transforms():

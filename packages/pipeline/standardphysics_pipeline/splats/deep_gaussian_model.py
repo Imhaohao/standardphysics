@@ -163,7 +163,6 @@ class DeepFusionGaussianModel(nn.Module):
         """
         device = points.device
 
-
         # 1. Encode LiDAR points
         if normals is None:
             normals = torch.tensor([0.0, 0.0, 1.0], device=device).expand_as(points)

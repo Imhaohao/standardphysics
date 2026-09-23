@@ -66,9 +66,11 @@ different names, and nothing above has to change.
 
 Today `SceneNode.parent_id` exists and `discovery.boxes.resting_parent` fills it
 one level deep by testing whether one box floats above another's top face.
-`NodeKind` is a six-member list of wall, door, window, opening, floor and
-object, and 91 places in the code ask what kind of thing something is. All of that is the assumption
-this requirement removes.
+`NodeKind` was a six-member list of wall, door, window, opening, floor and
+object. It is now a plain string, so a region can carry whatever word the scan
+or a model gave it, but about 50 places outside the tests still branch on what
+a node is called (`.kind ==` and its relatives, counted on 2026-09-23). Those
+branches are the assumption this requirement removes.
 
 ### 4. Answer anything, and show the answer
 
@@ -78,10 +80,12 @@ These are the questions, verbatim, that the app has to handle:
 - What did it say on my whiteboard?
 - How could I arrange this room if I had another roommate move in?
 
-`ask/` today parses a question into one of eight kinds and hands it to one of
-eight executors. Anything outside that set is rejected. None of the three
-questions above is in the set, and adding them as a ninth, tenth and eleventh
-kind is the same mistake as writing a check per ADA provision.
+`ask/` today reads its list of question kinds from the executors that register
+them (`ask/query.py`, `register_kind`), rather than from a list in the parser.
+The set is still closed: a question no executor registered is refused as
+`unknown_question`. None of the three questions above has an executor, and
+adding one per example is the same mistake as writing a check per ADA
+provision.
 
 Those three are examples. They are not the specification either, and building
 a primitive per example is the same failure one level down: a question about

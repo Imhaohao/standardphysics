@@ -114,7 +114,14 @@ def test_vertex_only_lidar_npz_is_rejected_instead_of_inventing_faces(tmp_path):
         baker._lidar_triangles(mesh, capture_to_room(0).m, tmp_path)
 
 
-def test_oversize_lidar_mesh_is_rejected_instead_of_being_thinned(tmp_path, monkeypatch):
+def test_a_mesh_too_large_to_transform_at_once_is_still_textured(tmp_path):
+    """A long walk is not a reason to refuse a room its photographs.
+
+    The bake used to stop above two million faces, because it turned the whole
+    mesh into each camera's frame in one allocation. Three of four captures of
+    one library floor came back over that and were never textured at all. The
+    faces go through in batches now, so the only limit left is patience.
+    """
     mesh = tmp_path / "lidar-mesh"
     mesh.write_text(json.dumps({
         "parts": [{
@@ -124,7 +131,7 @@ def test_oversize_lidar_mesh_is_rejected_instead_of_being_thinned(tmp_path, monk
             "triangles": [0, 1, 2, 1, 3, 2],
         }],
     }))
-    monkeypatch.setattr(baker, "MAX_LIDAR_TRIANGLES", 1)
 
-    with pytest.raises(TextureBakeError, match="maximum supported"):
-        baker._lidar_triangles(mesh, capture_to_room(0).m, tmp_path)
+    triangles = baker._lidar_triangles(mesh, capture_to_room(0).m, tmp_path)
+    assert len(triangles) == 2
+    assert not hasattr(baker, "MAX_LIDAR_TRIANGLES")

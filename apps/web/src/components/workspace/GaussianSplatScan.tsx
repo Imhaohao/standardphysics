@@ -32,6 +32,69 @@ export function toSplatViewerMatrix(transform: number[]): Matrix4 {
   return toViewerMatrix({ m: transform } as Mat4).multiply(ZUP_TO_YUP);
 }
 
+export type SparkInternals = {
+  autoUpdate?: boolean;
+  sortTimeoutId?: number;
+  updateTimeoutId?: number;
+  sortWorker?: { messages?: Record<number, unknown>; dispose?: () => void } | null;
+  lodWorker?: { messages?: Record<number, unknown>; dispose?: () => void } | null;
+  driveSort?: () => Promise<void>;
+  driveLod?: (...args: unknown[]) => unknown;
+  updateInternal?: (...args: unknown[]) => Promise<void>;
+  update?: (...args: unknown[]) => Promise<void>;
+  onBeforeRender?: (...args: unknown[]) => void;
+};
+
+function cancelSparkTimeout(target: SparkInternals, key: "sortTimeoutId" | "updateTimeoutId") {
+  const id = target[key];
+  if (id !== undefined && id !== -1) {
+    clearTimeout(id);
+    target[key] = -1;
+  }
+}
+
+function clearWorkerMessages(worker?: { messages?: Record<number, unknown> } | null) {
+  if (worker?.messages) {
+    worker.messages = {};
+  }
+}
+
+export function disposeSparkRenderer(spark?: SparkRenderer) {
+  if (!spark) return;
+  const sparkInternal = spark as unknown as SparkInternals;
+
+  sparkInternal.autoUpdate = false;
+  cancelSparkTimeout(sparkInternal, "sortTimeoutId");
+  cancelSparkTimeout(sparkInternal, "updateTimeoutId");
+  clearWorkerMessages(sparkInternal.sortWorker);
+  clearWorkerMessages(sparkInternal.lodWorker);
+
+  sparkInternal.driveSort = async () => {};
+  sparkInternal.driveLod = () => {};
+  sparkInternal.updateInternal = async () => {};
+  sparkInternal.update = async () => {};
+  sparkInternal.onBeforeRender = () => {};
+
+  try {
+    spark.dispose();
+  } catch {
+    // Ignore disposal exceptions
+  }
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener(
+    "unhandledrejection",
+    (event) => {
+      if (event.reason instanceof Error && event.reason.message === "Worker terminate") {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    },
+    true,
+  );
+}
+
 function asError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
 }
@@ -70,12 +133,19 @@ export function GaussianSplatScan({ assets, onReady, onError }: GaussianSplatSca
       gl.domElement.removeEventListener("webglcontextlost", handleContextLost);
       for (const splat of splats) {
         splat.removeFromParent();
-        splat.dispose();
+        try {
+          splat.dispose();
+        } catch {
+          // Ignore disposal errors
+        }
       }
       splats = [];
       group?.removeFromParent();
-      spark?.removeFromParent();
-      spark?.dispose();
+      if (spark) {
+        spark.removeFromParent();
+        disposeSparkRenderer(spark);
+        spark = undefined;
+      }
       invalidate();
     }
 
@@ -99,6 +169,35 @@ export function GaussianSplatScan({ assets, onReady, onError }: GaussianSplatSca
         if (disposed || contextLost) return;
 
         spark = new SparkRenderer({ renderer: gl, onDirty: invalidate });
+        const sparkInternal = spark as unknown as SparkInternals;
+        const origDriveSort = sparkInternal.driveSort?.bind(spark);
+        if (origDriveSort) {
+          sparkInternal.driveSort = async () => {
+            if (disposed) return;
+            try {
+              await origDriveSort();
+            } catch (err: unknown) {
+              if (disposed || (err instanceof Error && err.message === "Worker terminate")) {
+                return;
+              }
+              throw err;
+            }
+          };
+        }
+        const origUpdateInternal = sparkInternal.updateInternal?.bind(spark);
+        if (origUpdateInternal) {
+          sparkInternal.updateInternal = async (...args: unknown[]) => {
+            if (disposed) return;
+            try {
+              await origUpdateInternal(...args);
+            } catch (err: unknown) {
+              if (disposed || (err instanceof Error && err.message === "Worker terminate")) {
+                return;
+              }
+              throw err;
+            }
+          };
+        }
         const splatGroup = new Group();
         group = splatGroup;
         splatGroup.name = "Gaussian splat scan";

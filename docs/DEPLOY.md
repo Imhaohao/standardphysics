@@ -10,9 +10,9 @@ a scan bundle can reach the 1 GB ceiling in `Settings.max_artifact_bytes` and
 there is no reason to push that through a Next rewrite.
 
 ```
- iPhone ──── https://api.<your domain> ───┐
+ iPhone ──── https://api.standardphysics.app ───┐
                                           ├── Caddy ──┬── api  + /mnt volume
- Browser ─── https://app.<your domain> ───┘           └── web
+ Browser ─── https://standardphysics.app ───┘           └── web
 ```
 
 Everything lives in `deploy/digitalocean/`.
@@ -41,7 +41,7 @@ Then, on the Droplet as root:
 ```bash
 git clone https://github.com/Imhaohao/standardphysics.git
 cd standardphysics/deploy/digitalocean
-VOLUME_NAME=standardphysics_scans ./setup.sh
+VOLUME_NAME=standardphysics-scans ./setup.sh
 ```
 
 That installs Docker, mounts the volume, adds swap, closes every port but SSH
@@ -75,11 +75,25 @@ rooms somewhere else.
 ```bash
 docker compose up -d --build
 docker compose logs -f caddy    # watch the certificate arrive
-curl https://<your api domain>/health
+curl https://api.standardphysics.app/health
 ```
 
 The first build takes a while: it installs the Python packages and builds the
 workspace on the box.
+
+## When it will not start
+
+```bash
+./doctor.sh
+```
+
+It checks the configuration, the mount and its ownership, swap, the two names
+in DNS, and every container's state, then prints the command to run for each
+thing that is wrong. It changes nothing itself.
+
+The symptom is almost never the cause here. Caddy reporting that its
+dependency failed to start says only that the API exited, and the API usually
+exited because it could not write to `/data`.
 
 ## Updating
 
@@ -109,7 +123,7 @@ the plan. For a real copy:
 docker compose exec api /opt/venv/bin/python -c \
   "import sqlite3; s=sqlite3.connect('/data/standardphysics.sqlite3'); \
    d=sqlite3.connect('/data/backup.sqlite3'); s.backup(d)"
-scp root@<droplet>:/mnt/standardphysics_scans/backup.sqlite3 .
+scp root@<droplet>:/mnt/standardphysics-scans/backup.sqlite3 .
 ```
 
 The scan artifacts sit beside it under the same mount and are the larger half.
@@ -123,8 +137,8 @@ The iPhone app ships with both addresses compiled in, set in
 `apps/ios/project.yml`:
 
 ```
-CAPTURE_API_BASE_URL: https://api.<your domain>
-CAPTURE_WORKSPACE_BASE_URL: https://app.<your domain>
+CAPTURE_API_BASE_URL: https://api.standardphysics.app
+CAPTURE_WORKSPACE_BASE_URL: https://standardphysics.app
 ```
 
 The connection screen stays in the app for development, and an owner never has

@@ -26,9 +26,9 @@ from standardphysics_contracts import (
     SurfaceAttachment,
     Vec3,
     bounds_the_room,
-    stands_upright,
 )
 
+from ..occupancy import reads_as_wall
 from ..textures.camera import PhotoCamera
 from .detect import Detection
 from .surface_attach import intersect_node_surface, ray_for_pixel
@@ -173,7 +173,7 @@ def detect_and_attach_whiteboard(
     Does not fabricate missing whiteboards: requires confident photographic evidence.
     Does not alter wall collision: surface attachment metadata excludes it from solid obstacles.
     """
-    if not stands_upright(wall_node):
+    if not reads_as_wall(wall_node):
         return None
 
     if detection.confidence < MIN_WHITEBOARD_CONFIDENCE:
@@ -238,7 +238,10 @@ def detect_and_attach_whiteboard(
         identity_confidence=float(detection.confidence),
         review_status="detected",
         observations=[crop],
-        uncertainty_reasons=[],
+        uncertainty_reasons=[
+            "extent is an estimate from the wall-plane span of the observed region, "
+            "not a physical device size; never read as a measured whiteboard"
+        ],
     )
 
     return SceneNode(
@@ -250,41 +253,29 @@ def detect_and_attach_whiteboard(
         transform=Mat4(m=[round(val, 6) for val in rot_matrix.ravel().tolist()]),
         parent_id=wall_node.id,
         relation="attached_to",
+        quality="needs_another_look",
         attachment=attachment,
     )
 
 
-def _photographs(
-    detections_by_frame: dict[str, list[Detection]], cameras_by_id: dict[str, PhotoCamera]
-):
-    """Every detection paired with the camera that saw it, skipping frames with no pose."""
+def _best_whiteboard(
+    wall_node: SceneNode,
+    detections_by_frame: dict[str, list[Detection]],
+    cameras_by_id: dict[str, PhotoCamera],
+) -> SceneNode | None:
+    """The highest-confidence whiteboard detection on one wall, or nothing."""
+    best_board: SceneNode | None = None
+    best_confidence = -1.0
     for frame_id, detections in detections_by_frame.items():
         camera = cameras_by_id.get(frame_id)
         if camera is None:
             continue
-        for detection in detections:
-            yield detection, camera
-
-
-def _relabelled(node: SceneNode, photographs) -> SceneNode:
-    """The node as the photos show it to be, or unchanged when none contradict its label."""
-    for detection, camera in photographs:
-        corrected = correct_furniture_label(node, detection, camera)
-        if corrected is not None:
-            return corrected
-    return node
-
-
-def _whiteboards_on(walls: list[SceneNode], photographs) -> list[SceneNode]:
-    found: list[SceneNode] = []
-    seen: set = set()
-    for wall in walls:
-        for detection, camera in photographs:
-            board = detect_and_attach_whiteboard(wall, detection, camera)
-            if board is not None and board.id not in seen:
-                seen.add(board.id)
-                found.append(board)
-    return found
+        for det in detections:
+            board = detect_and_attach_whiteboard(wall_node, det, camera)
+            if board is not None and det.confidence > best_confidence:
+                best_board = board
+                best_confidence = det.confidence
+    return best_board
 
 
 def apply_secondary_semantic_corrections(
@@ -298,18 +289,39 @@ def apply_secondary_semantic_corrections(
     - Adds wall-attached whiteboards evidenced by photos.
     - Preserves owner corrections, raw categories, and measured geometry.
     """
-    cameras_by_id = {camera.frame_id: camera for camera in cameras}
-    photographs = list(_photographs(detections_by_frame, cameras_by_id))
+    cameras_by_id = {cam.frame_id: cam for cam in cameras}
+    updated_nodes: list[SceneNode] = []
+    whiteboards: list[SceneNode] = []
 
-    updated_nodes = [_relabelled(node, photographs) for node in graph.nodes]
-    whiteboards = _whiteboards_on(
-        [node for node in updated_nodes if stands_upright(node)], photographs
-    )
+    # 1. Check existing nodes for sofa/table corrections
+    for node in graph.nodes:
+        current_node = node
+        # Try to find a photo detection that provides a label correction
+        for frame_id, detections in detections_by_frame.items():
+            camera = cameras_by_id.get(frame_id)
+            if camera is None:
+                continue
+            for det in detections:
+                corrected = correct_furniture_label(current_node, det, camera)
+                if corrected is not None:
+                    current_node = corrected
+                    break
+            if current_node.labeled_by == "discovery":
+                break
+        updated_nodes.append(current_node)
 
-    anything_changed = bool(whiteboards) or any(
-        node.labeled_by == "discovery" for node in updated_nodes
-    )
+    # 2. Check walls for whiteboard attachments: one board per wall,
+    # the best-evidenced view, so many frames of one board are not many boards.
+    whiteboards = [
+        board
+        for wall in updated_nodes
+        if reads_as_wall(wall)
+        for board in [_best_whiteboard(wall, detections_by_frame, cameras_by_id)]
+        if board is not None
+    ]
+
+    all_nodes = [*updated_nodes, *whiteboards]
     return graph.model_copy(update={
-        "revision": graph.revision + (1 if anything_changed else 0),
-        "nodes": [*updated_nodes, *whiteboards],
+        "revision": graph.revision + (1 if (len(whiteboards) > 0 or any(n.labeled_by == "discovery" for n in updated_nodes)) else 0),
+        "nodes": all_nodes,
     })

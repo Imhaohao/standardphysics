@@ -54,6 +54,57 @@ export interface ApiError {
   need: string[] | null;
 }
 /**
+ * Conservative screening answer, never a legal claim (contract 4/6).
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "ApproachReport".
+ */
+export interface ApproachReport {
+  aisle_width_inches: number | null;
+  approach_stop: Vec3 | null;
+  floor_supported: boolean | null;
+  mesh_checked: boolean;
+  mesh_collision: boolean;
+  obstruction_labels: string[];
+  path: Vec3[] | null;
+  reaches: ReachReport[];
+  reasons: string[];
+  status: string;
+  target_id: string;
+  turning_space_inches: number | null;
+  unverified: string[];
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "ReachReport".
+ */
+export interface ReachReport {
+  horizontal_distance_inches: number | null;
+  horizontal_reach_inches: number | null;
+  horizontal_reach_provenance: string | null;
+  horizontal_status: string;
+  occupant_title: string;
+  target_height_inches: number | null;
+  vertical_status: string;
+}
+/**
+ * One measured journey to one target, evaluated with the owner's profile.
+ *
+ * Nothing reaches here by default: without a person-provided horizontal
+ * reach the evaluation reports it unmeasured, and an unmeasured input is
+ * never an answer.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "ApproachRequest".
+ */
+export interface ApproachRequest {
+  approach_stop: Vec3 | null;
+  horizontal_reach_inches: number | null;
+  horizontal_reach_provenance: string | null;
+  occupant_profile: string;
+  target_node_id: string;
+}
+/**
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
  * via the `definition` "Artifact".
  */
@@ -192,6 +243,7 @@ export interface Assessment {
   rulepack_version: string;
   rules_checked: number | null;
   scan_id: string;
+  scope: ScopeManifest | null;
   weave_run_url: string | null;
 }
 /**
@@ -208,6 +260,70 @@ export interface Decision {
   question: string | null;
   rationale: string | null;
   target_finding_ids: string[];
+}
+/**
+ * The immutable, hashed list of everything this assessment was asked to cover.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "ScopeManifest".
+ */
+export interface ScopeManifest {
+  applicability_questions: string[];
+  created_at: string;
+  graph_hash: string;
+  graph_revision: number;
+  id: string;
+  manifest_hash: string;
+  requested_classes: string[];
+  requested_requirements: string[];
+  route_endpoints: string[];
+  rows: ScopeRow[];
+  rulepack_version: string;
+  scan_id: string;
+  surveyed_areas: string[];
+  unobserved_areas: string[];
+  unresolved_questions: string[];
+  version: number;
+}
+/**
+ * One requested requirement applied to one item, with its outcome.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "ScopeRow".
+ */
+export interface ScopeRow {
+  applicability: "applicable" | "not_applicable" | "unknown";
+  applicability_facts: string[];
+  applicability_reason: string | null;
+  evidence_refs: string[];
+  item: ScopeItem;
+  legal_review_status: "unreviewed_preview" | "needs_review" | "reviewer_supplied";
+  measurement: {
+    [k: string]: unknown;
+  } | null;
+  outcome: "satisfied" | "violation" | "needs_verification" | "not_applicable" | "unobserved";
+  reason: string | null;
+  requested: boolean;
+  requirement_id: string;
+  source_version: string | null;
+}
+/**
+ * One thing an outcome can be about: an object, an area, or a route leg.
+ *
+ * `item_id` names a SceneNode when the item was found. An unresolved class or
+ * an unobserved area keeps a stable slug so the obligation survives every
+ * later revision.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "ScopeItem".
+ */
+export interface ScopeItem {
+  item_id: string | null;
+  item_kind: "object" | "area" | "route" | "site" | "class";
+  item_slug: string;
+  label: string;
+  observed: boolean;
+  source: "measured" | "owner_confirmed" | "manual_photo" | "requested_not_observed";
 }
 /**
  * A hard constraint a layout breaks, from Lane C's fix constraints.
@@ -243,6 +359,21 @@ export interface ClearFloorResult {
   fits: boolean;
   inches_deep: number;
   inches_wide: number;
+}
+/**
+ * The optional body of POST /complete.
+ *
+ * A legacy client sends no body at all and keeps its existing behavior. A
+ * client that tracks its own uploads can declare what it believes it uploaded;
+ * the server still decides readiness from stored bytes.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "CompleteRequest".
+ */
+export interface CompleteRequest {
+  client_version: string | null;
+  declared_complete: boolean;
+  manifest_hash: string | null;
 }
 /**
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
@@ -362,6 +493,80 @@ export interface Evidence {
   at: Vec3 | null;
   frames: string[];
   subjects: string[];
+}
+/**
+ * One immutable closure of the artifacts a scan has at a point in time.
+ *
+ * Version 1 is written when the scan is first completed. Evidence that arrives
+ * after the first closure becomes version 2, and so on; old bundles are kept.
+ * `semantic_processed_hash` records the manifest a semantic job actually
+ * consumed, which is how a changed bundle schedules exactly one new job.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "EvidenceBundle".
+ */
+export interface EvidenceBundle {
+  artifact_hashes: {
+    [k: string]: string;
+  };
+  artifact_ids: string[];
+  complete: boolean;
+  created_at: string | null;
+  manifest_hash: string;
+  missing_required_kinds: string[];
+  reasons: string[];
+  semantic_processed_hash: string | null;
+  version: number;
+}
+/**
+ * Where a scan is between raw upload and processed semantic evidence.
+ *
+ * The three states are separate on purpose: a room can have usable geometry
+ * while photo recognition is still blocked, and "ready" on the legacy Scan
+ * state must not be read as complete evidence.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "EvidenceStatus".
+ */
+export interface EvidenceStatus {
+  bundle_version: number;
+  complete_evidence: boolean;
+  evidence_state: "awaiting" | "partial" | "complete" | "incomplete";
+  geometry_state: "awaiting" | "ready" | "failed";
+  latest_bundle: EvidenceBundle | null;
+  manifest_hash: string | null;
+  missing_geometry_kinds: string[];
+  missing_semantic_kinds: string[];
+  present_kinds: string[];
+  reasons: string[];
+  scan_id: string;
+  semantic_job_pending: boolean;
+  semantic_state:
+    "not_started" | "blocked_incomplete_evidence" | "settling" | "queued" | "running" | "complete" | "failed";
+}
+/**
+ * One stored source-resolution frame a photo review can open.
+ *
+ * `width` and `height` are the stored sensor pixels this frame was captured
+ * at, read from the bytes the server holds - never EXIF display orientation.
+ * `image_url` is the route serving that exact frame's original bytes.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "FrameEntry".
+ */
+export interface FrameEntry {
+  frame_id: string;
+  height: number;
+  image_url: string;
+  width: number;
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "FrameListing".
+ */
+export interface FrameListing {
+  frames: FrameEntry[];
+  unreadable: string[];
 }
 /**
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
@@ -524,6 +729,37 @@ export interface LoopRequest {
   base_revision: number;
 }
 /**
+ * A person points at the pixels of a target the pipeline did not find.
+ *
+ * With a `node_id` the mark attaches to that measured object. Without one it
+ * is stored unlocalized. Either way the evidence is the actual crop, and the
+ * server records who marked it and when.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "ManualMarkRequest".
+ */
+export interface ManualMarkRequest {
+  frame_id: string;
+  node_id: string | null;
+  note: string | null;
+  review_status: "candidate" | "confirmed_by_user";
+  /**
+   * @minItems 4
+   * @maxItems 4
+   */
+  sensor_box: [number, number, number, number, ...number[]];
+  target_class:
+    | "outlet"
+    | "television"
+    | "service_counter"
+    | "restroom_entrance"
+    | "sofa"
+    | "table"
+    | "whiteboard"
+    | "monitor"
+    | "other";
+}
+/**
  * Row-major 4x4 transform.
  *
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
@@ -582,6 +818,10 @@ export interface ObservationCrop {
   confidence: number;
   frame_id: string;
   image_url: string | null;
+  marked_at: string | null;
+  marked_by: string | null;
+  note: string | null;
+  provenance: "automatic" | "manual";
   /**
    * @minItems 4
    * @maxItems 4
@@ -611,6 +851,16 @@ export interface PhotoManifestFrame {
   bytes: number;
   frame_id: string;
   sha256: string;
+}
+/**
+ * A named point a row's evidence is about, for a map marker or a crop link.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "PointRef".
+ */
+export interface PointRef {
+  name: string;
+  position: Vec3;
 }
 /**
  * One keyframe in poses.json. Version 1 records lack the image metadata.
@@ -840,6 +1090,7 @@ export interface SceneGraph {
   nodes: SceneNode[];
   revision: number;
   scan_id: string;
+  unlocalized_observations?: UnlocalizedObservation[];
 }
 /**
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
@@ -911,6 +1162,41 @@ export interface SurfaceText {
   evidence_frame_ids: [string, ...string[]];
   face: ("top" | "front" | "back" | "left" | "right" | "bottom") | null;
   text: string;
+}
+/**
+ * A real thing photographed where no reliable measured surface places it.
+ *
+ * It stays a first-class observation with its source pixels; it is not a
+ * SceneNode, because giving it a position would invent geometry. Only a
+ * person can create one, and every consumer must show it as unlocalized.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "UnlocalizedObservation".
+ */
+export interface UnlocalizedObservation {
+  frame_id: string;
+  id: string;
+  image_url: string | null;
+  marked_at: string | null;
+  marked_by: string | null;
+  note: string | null;
+  provenance: "automatic" | "manual";
+  review_status: "candidate" | "confirmed_by_user" | "rejected_by_user";
+  /**
+   * @minItems 4
+   * @maxItems 4
+   */
+  sensor_box: [number, number, number, number, ...number[]];
+  target_class:
+    | "outlet"
+    | "television"
+    | "service_counter"
+    | "restroom_entrance"
+    | "sofa"
+    | "table"
+    | "whiteboard"
+    | "monitor"
+    | "other";
 }
 /**
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema

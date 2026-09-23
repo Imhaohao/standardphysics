@@ -1,0 +1,304 @@
+MOFFETT PHOTO-TEXTURED MESH: 500 x 500 VISUAL ACCEPTANCE PLAN
+Version 1 | 2026-09-21 | Handoff for implementation, not a completion report
+
+GOAL AND SCOPE
+Improve the preserved Moffett Library captures into a photographically textured
+LiDAR mesh that looks clear at normal viewing size in a 500 x 500 pixel viewport.
+Use conventional triangle rendering on the Mac, web and phone. No Gaussian
+splat generation/training, neural scene training, CUDA requirement, paid compute,
+generative detail, or replacement of original captures. This plan supersedes
+the splat branches of previous handoffs for this work only.
+
+500 x 500 is the minimum output viewport, NOT the texture atlas size or a promise
+that every distant outlet will be legible. A 500-pixel image can still be blurry.
+Acceptance therefore includes evidence-backed detail, alignment, missing-surface
+checks, native-size visual review and actual-device performance. The user must
+judge the final perceptual result; automated scores cannot certify naked-eye
+quality. A detail that occupies two pixels cannot be required to be readable.
+Allow approaching an object and provide an original-photo evidence view.
+
+Read docs/deepseek-moffett-photo-mesh-500-policy.json with this plan. Its values
+are proposed engineering acceptance targets, not observed results, published
+standards, validated psychophysical limits or centimetre-accuracy claims.
+
+EXISTING WORK: EXTEND IT, DO NOT REBUILD IT
+- PROGRESS_MOFFETT.json records the existing photographic surface prototype and
+  its failed visual review. It is historical; reconcile with current files.
+- scripts/bake_moffett_photo_mesh.py already projects original photographs onto
+  actual LiDAR triangles. It uses a decimated display mesh, original geometry
+  for depth checks, cropped full-resolution images and unlit GLTF materials.
+- packages/pipeline/standardphysics_pipeline/textures/surface_photos.py owns
+  triangle depth rasterization, visibility and per-face view assignment.
+- packages/pipeline/tests/test_surface_photos.py already covers an interior
+  occluder, sloping depth, an unseen face and a visible face. Reuse those tests.
+- textures/scan_colour.py is the separate vertex-color baseline. Do not describe
+  vertex coloring and photographic UV texturing as the same implementation.
+- textures/project.py and textures/bake.py contain atlas, exposure and gutter
+  operations for modeled geometry. Reuse only after verifying their conventions
+  and visibility behavior; the point-depth path differs from surface_photos.
+- apps/web/src/components/workspace/PaintedScan.tsx already preserves UV maps
+  and displays photographic materials unlit. Viewer.tsx and viewer-source.ts
+  own mode selection. Reuse the scan path, not the splat loader.
+- scripts/bake_library_textures.py can write product database records. Do not
+  execute it as a harmless baseline renderer. Do not count its nearest-color
+  filling of unseen areas as photographed coverage.
+- runs/moffett/verified-four-room-transforms.json is the existing alignment
+  input. Residuals and the small bottom-left overlap remain limitations.
+- Latest located coverage checkpoint, render-efficiency/r004/checkpoint.json,
+  records initialization with an empty stages object; it does not prove a bake.
+  Inspect the latest actual run state on execution and coordinate with its owner.
+- Four original inventories previously contained 942/901/1267/414 photo-pose
+  pairs (center/left/top/bottom-left), total 3,524. Verify current identities.
+- The old surface prototype reported roughly 56.7% photographed mesh area.
+  That is neither this benchmark's screen coverage nor proof of capture failure.
+
+SYSTEM
+Original photos + per-frame calibration + LiDAR
+  -> source/pose inventory -> fixed evaluation views -> fault diagnosis
+  -> measured mesh with photo textures -> room-sized GLB chunks -> existing viewer
+Measured geometry separately -> collision, dimensions and reach assessment
+Source-photo evidence separately -> outlet/whiteboard verification
+
+PREFLIGHT AND OWNERSHIP (30 minutes)
+1. Read applicable AGENTS.md, current git status, progress and latest checkpoints.
+   Never revert concurrent work or commit someone else's dirty files. Branch
+   first if on the default branch; an isolated checkout is optional and does not
+   copy ignored captures. No push, production deployment or automation restart.
+2. Create runs/moffett/photo-mesh-500/r001, or a fresh numbered directory. Resume
+   only an identical input/config run, never overwrite an incompatible output.
+   Write checkpoint.json: stage states, code/plan/policy hashes, input inventory,
+   commands with integer exit codes, budgets, artifacts and unresolved issues.
+   Update after each stage and every 10 minutes during long work.
+3. Check disk and memory. On plan preparation the Mac had about 213 GiB free;
+   remeasure, since the previous low-disk condition is no longer current. Before
+   a job require free space >= max(20 GiB, 2 x estimated additional output).
+   Pause allocating work below 10 GiB free. Delete no originals or prior results.
+4. Use one heavy bake at a time, <= min(24 GiB, half physical RAM) measured process
+   budget, with GPU/unified memory accounting stated honestly. Record current
+   hardware and tool versions. Total first run <= 8 hours, final hour for handoff.
+   This is a work budget, not a promise that all four rooms will pass overnight.
+
+STAGE A: ESTABLISH SOURCES AND A SMALL TEST AREA (60 minutes)
+1. Select a wall and adjacent furniture with visibly sharp source photographs.
+   Prefer an outlet; if none is evidenced, mark outlet-detail testing blocked and
+   use a real whiteboard edge, sign or socket-sized feature for rendering tests.
+   Never relabel a substitute as an outlet. Add an occluded/underside challenge.
+2. Inventory ALL original photo/pose pairs in the relevant capture. Record
+   capture+frame ID, hashes, dimensions/orientation, per-frame intrinsics,
+   timestamp/pose validity, exposure/blur observations and selection reasons.
+   Derive thumbnails for selection; retain native RGB for final texture baking.
+   No arbitrary 32-frame cap; no assumed constant intrinsics across frames.
+3. Inspect near and far source crops at native size. Record whether desired
+   detail is present, blurred, hidden or simply too small. Do not use generative
+   upscaling, sharpened hallucinations or painted replacements to pass.
+4. Use existing photos first. Extract extra video frames only if video exists,
+   adds useful coverage and has recoverable calibration/timing. Do not guess
+   missing frame poses. Flag unregistered images rather than painting with them.
+5. Before tuning, freeze a geometry-based region, per-surface IDs, 6 captured
+   validation views, 6 additional captured test views and 8 novel seated views.
+   Reserve duplicate/adjacent view groups; training images must be distinct.
+   Start duplicate investigation at <=1s or <=0.15m and <=10 degrees, plus image
+   similarity. These are review triggers, not guarantees of independence; avoid
+   chaining the whole walk into one group. Train views may show the same surfaces
+   from independent positions: this is interpolation, not unseen-room synthesis.
+   If view counts/independence are unavailable, mark reduced evidence explicitly.
+6. Previously inspected test images are exposed diagnostics, not a sealed test.
+   Keep a fresh test set unused for tuning when possible. If the executing agent
+   has already seen all frames, label it held-out-from-bake, not independently
+   blind. Record split access history. Do not replace hard views after failures.
+
+STAGE B: REPRODUCE BASELINES AND LOCATE THE FAULT (60 minutes)
+1. Save both vertex-color and existing surface-photo baselines at identical
+   geometry, view, viewport, color settings and source allowances. Reuse cached
+   assets only after checking their source/parameter hashes. Existing cache names
+   based solely on face count are insufficient when mesh or code changes.
+2. Diagnostic views: actual render; neutral measured mesh; source photograph;
+   projected features; selected source ID map; depth/occlusion map; missing-photo
+   mask; effective texture/source resolution map. Preserve each independently.
+3. Inspect at least 20 manually checked static landmarks across wall and furniture
+   at multiple depths and 10 clear edge profiles. Use source-supported details.
+   Freeze annotations before comparing candidates; record any annotation change.
+4. Assign observed defects to a cause: insufficient source detail, wrong pose or
+   transform, visibility rejection, geometry error, low texel density, texture
+   seam or runtime sampling. Write a falsifiable hypothesis and one small test.
+5. Check local/global axes exactly once. Room Z-up to GLTF Y-up is (x,z,-y).
+   For local-to-world T, c2w_world=T@c2w_local and w2c_world=w2c_local@inverse(T).
+   Transforming already-converted geometry again is forbidden. Verify corners
+   numerically and in the viewer. Imported alignment RMS is not absolute accuracy.
+6. Known issues to investigate, not automatically change: one photo per triangle;
+   no blur term in current view ranking; all corners plus center must be visible;
+   depth holes/near-plane clipping; normal orientation; no person masking in the
+   prototype; seams between independent photographs; projective distortion on
+   large/slanted faces; duplicate surfaces at scan boundaries; canvas settings
+   influenced by presence of unused splat assets. Fix only evidenced causes.
+
+STAGE C: REPAIR AND BAKE THE TEST AREA (120 minutes)
+1. Extend the current mesh script with explicit region, source allowlist, output
+   and provenance options as needed. Refuse existing incompatible outputs and
+   use atomic completion records. Do not create a second reconstruction service.
+2. Select source views by newly covered area, sharpness at the target feature,
+   projected resolution, viewing angle and occlusion. Try nested 32/64/128/200
+   source subsets only when useful; process native images lazily. Selection uses
+   bake/training data, not test photographs. Measure why additional frames help.
+3. Correct visibility in the responsible helper. Preserve foreground occlusion;
+   nonfinite depth is unknown, not visible. Evaluate partial triangles or subdivide
+   supported regions rather than requiring every corner to pass indiscriminately.
+   Masks exclude people from source texture selection. Do not mask a real sofa
+   out of the benchmark to improve coverage. Store rejection reasons and counts.
+4. Retain the current 0.05m visibility tolerance initially. Change only after
+   comparing valid surface residuals against actual occluders, with hard-negative
+   tests. It is a depth-consistency tolerance, not a claim of 5cm scan accuracy.
+5. Refine poses only when misregistration is demonstrated. Use static multiview
+   feature matches and LiDAR constraints; preserve metric scale and originals.
+   Validate on separate correspondences and depths. Do not optimize camera pose
+   separately for each evaluation render to hide geometry errors.
+6. Keep measured geometry authoritative. Derive display-only simplification with
+   silhouette/edge checks. Do not bridge missing geometry with invented surfaces.
+   If a real surface needs reconstruction from photos, treat that as a separate
+   evidenced geometry experiment with its own uncertainty and time budget.
+7. Reuse the current full-resolution photo-UV path for the first corrected bake.
+   If coarse-face projective error is measured, either resample calibrated photos
+   per texel onto proper UV charts or subdivide the display mesh to <=1px measured
+   projection error at the fixed views. Plain vertex UV assignment is not always
+   projectively accurate across a large oblique triangle. Test a slanted checker.
+8. Add packed atlases only if existing per-photo materials cause measured load or
+   draw-call problems. Reuse installed UV/atlas tools or the existing baker where
+   compatible. Start at 2048-square pages; try 4096 locally only if source detail
+   and screen footprint justify it. Never set the atlas to 500-square for a room.
+   Budget resident textures with mipmaps (~4/3 base storage for full mip chains).
+9. Prefer one sharp, valid view per patch; apply exposure correction in linear
+   color and seams within overlap. Never average misaligned outlet edges into
+   blur. Pad chart gutters and test mip levels for bleed. Keep missing areas
+   neutral with a separate coverage diagnostic; nearest-color filling is not
+   photographic evidence and does not increase measured source coverage.
+10. Keep photographic rendering unlit, with correct sRGB decoding, tone/color
+    settings and anisotropic filtering as supported. Do not apply artificial
+    lighting on top of photographed shadows. Optimize after visual correctness.
+
+STAGE D: EVALUATE AND TRANSFER (90 minutes)
+Apply the companion policy. Save raw 500 x 500 lossless RGB renders, framebuffer
+dimensions, camera intrinsics/extrinsics, source/config hashes, diagnostic masks
+and machine-readable per-view metrics. UI chrome must be excluded from comparison.
+
+Captured reference views use the identical preregistered camera projection and
+square crop/resize transform. No nonrigid warp, autozoom, per-candidate registration
+or fitted color correction in evaluation. Reference and candidate color spaces
+must agree. Novel seated views have no photographic ground truth: do not assign
+them ground-truth PSNR or SSIM. Use their geometry/coverage and visual checks.
+
+Use a fixed measured-surface screen denominator, independent of candidate alpha
+or success. Report total surface coverage and source-supported subset separately.
+Background sky/void is excluded by the frozen geometry mask, not by candidate
+opacity. Missing photographed geometry and unsupported surfaces stay in the
+total result; do not quietly shrink the area of interest to make a candidate pass.
+Triangle/vertex counts are not area coverage. Use fixed area-weighted probes
+for room coverage (100,000 per room, fixed seed) and projected pixel masks for
+screen coverage. Distinguish observation support from correctness of its color.
+
+Once the first area passes provisional machine and agent review, transfer to a
+second different area containing furniture and a boundary/occlusion challenge.
+The same settings must work or require a recorded, limited reason for adaptation.
+Only then attempt all four rooms and their joins. Freeze 8 seated views per room,
+including close inspection, ordinary navigation, occlusions and capture seams.
+Use adjustable 1.15m default eye height and 60-degree vertical field of view for
+novel square views; these are benchmark choices, not the user's measured body.
+Captured-reference cameras retain actual intrinsics rather than this default FOV.
+Do not declare full-floor completion from two good wall screenshots.
+
+STAGE E: PRODUCT AND DEVICE CHECKS (60 minutes)
+Use an isolated local candidate build tied to the existing scan/revision. Preview
+the actual app's scan mesh mode with the exact GLB hashes from evaluation. Avoid
+temporary mock viewers as final evidence. Preserve the stable revision and mode
+choices. A build manifest must bind the assets, geometry revision and transforms.
+
+Ensure the mesh path does not instantiate Spark or load splat assets. Fix canvas
+quality decisions using the active rendering mode if measurements show a problem.
+Use mipmaps, room chunk loading and distance LOD only while preserving the 500
+quality gates. Measure triangle counts, draw calls, texture dimensions, resident
+texture estimate, downloaded bytes and frame traces rather than reporting a
+single guessed FPS. Start with <=250k display triangles per room, <=500k visible
+at once and <=256 MiB estimated resident textures; these are optimization starting
+budgets, not permission to destroy detail or substitutes for actual-device tests.
+
+Test desktop 500 x 500 at native framebuffer resolution and the normal desktop
+viewport. Test phone layout at 390 x 844 CSS pixels and test a physical phone if
+available, recording model/browser-or-app/version and actual framebuffer size.
+A responsive web screenshot does not prove native-app or physical-phone success.
+Record cold load and a continuous 60-second seated route after 10-second warmup.
+Exercise mode switching, unloading/reloading rooms and memory cleanup, with no
+texture popping at inspection stops or severe seam flicker during motion.
+
+Check existing wheelchair collision/selection against measured geometry, not
+texture pixels. Re-run the existing wall, furniture and floor-gap cases; visual
+appearance improvements must not alter reach conclusions. Confirm downloading
+and reopening the candidate mesh retains textures/transforms and that architecture
+export still identifies its measured revision and uncertainty. Do not redesign
+semantic recognition or the export system during this rendering task.
+
+QUALITY LOOP AND STOP RULES
+Baseline -> one diagnosed cause -> one bounded change -> tests -> same fixed
+renders -> recomputed measurements -> keep/reject with reasons -> checkpoint.
+No repeated unchanged bake. A trial differs in one causal category; record all
+actual parameter deltas. Maximum 6 candidate configurations beyond the 2 baselines,
+3 repair attempts per hypothesis and 2 hypotheses per blocker, within 8 hours.
+Do not spend the budget filling a dashboard with unsupported pass labels.
+
+Promotion is conjunctive, never a weighted score: correct inputs AND alignment
+AND detail AND coverage AND visual review. Runtime and actual-phone acceptance
+are additional product gates. Improvements may be retained as provisional local
+artifacts even when one gate fails. Unit tests alone do not prove rendering.
+
+Stop a line of experiments after 2 consecutive changes improve neither failing
+coverage by >=2 percentage points nor failing p95 edge error by >=0.25px nor
+failing p95 frame time by >=10%, unless a specific correctness failure was fixed.
+This is a compute stop rule, not a quality pass. Switch to the next diagnosed
+cause within budget. Never relax thresholds after seeing results without issuing
+a new benchmark version and reporting both old and new outcomes.
+
+If source detail is insufficient, show exact original-frame crops and affected
+surface/view IDs. Inspect all relevant preserved frames and rejection reasons
+before concluding a rescan is needed. If a feature was never captured, provide a
+targeted capture checklist; do not ask the user to redo the whole floor by default.
+If user/phone review is unavailable, keep those gates pending and deliver the
+best evidenced local candidate with a clear incomplete status. Never restart
+the old reconstruction automation to manufacture overnight persistence.
+
+REQUIRED TESTS AND EVIDENCE
+- Projection: per-frame intrinsics, image rotation/resize/crop, local/world axes,
+  transform-once, per-pixel slanted surface UV reprojection and near-plane cases.
+- Visibility: foreground triangle interiors, holes/nonfinite depth, normals,
+  partial-face support, person masks, thin foreground occluders and hidden backs.
+- Appearance: native photo detail survives GLB export/import; correct UVs/sRGB;
+  no second lighting pass; atlas gutters at mip levels; no sharpness fabricated.
+- Provenance/cache: changed mesh/poses/frame/config invalidates cache; original
+  hashes unchanged; all selected frames belong to the bake split; no overwrite.
+- Evaluator CLI refuses empty evidence, missing/wrong-sized images, stale hashes,
+  duplicate/missing views, changed masks, NaN metrics and caller-supplied pass=true.
+  Reproduce the known policy bypass from docs/deepseek-render-r003-audit.txt;
+  do not inherit its selected_for_review claim as proof. Extend only the necessary
+  existing evaluator path, not a general experiment platform.
+- Viewer: actual active mesh loader, framebuffer size, texture preservation,
+  unloaded unused splats, resource cleanup and unchanged collision/export tests.
+Run focused Python tests, web typecheck and relevant viewer tests; run broader
+tests if shared behavior changes. Skipped optional dependencies are not passes.
+
+HANDOFF (final 60 minutes)
+Produce checkpoint.json, inventory/splits, baseline and candidate manifests,
+per-view measurements, native-size comparison HTML, source-crop evidence,
+500 x 500 PNGs, a short walkthrough, actual web/device traces, test logs, preview
+URL and a concise result.txt. Preserve all originals and previous revisions.
+Record separate states for implementation, pilot area, second-area transfer,
+four-room coverage, perceptual review, desktop runtime, phone runtime and export.
+Use not_started / running / passed / failed / pending / blocked_by_source as
+appropriate. Missing evidence means pending or failed, never implicit success.
+Human review records need reviewer identity, time, view hashes and comments;
+agent review is agent_reviewed, never user_accepted. Commit only owned verified
+changes under repository rules. Do not push. State subagents and actual cost if
+available; otherwise cost unknown, not zero.
+
+TASK -> MODEL-TIER DELEGATION
+Inventory, hashes, comparison pages, bounded fixture tests -> Luna/Sonnet
+Texture/UV and viewer implementation after diagnosis -> Terra
+Coordinate errors, geometry ambiguity, acceptance design -> Sol/frontier
+Bulk image statistics offline -> local scripts; local model only if useful
+Native-size final perceptual approval -> user; agent review remains provisional

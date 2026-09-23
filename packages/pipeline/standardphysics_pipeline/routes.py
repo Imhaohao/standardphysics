@@ -13,7 +13,9 @@ corridor width, and the cell where it occurs is the pinch the camera flies to.
 from __future__ import annotations
 
 import heapq
+import itertools
 import math
+from collections import deque
 from dataclasses import dataclass
 from uuid import UUID
 
@@ -24,6 +26,8 @@ from standardphysics_contracts import Vec3, to_inches, to_meters
 from .occupancy import Grid, occupancy_excluding
 
 NEIGHBOURS = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
+EIGHT_CONNECTED = np.ones((3, 3), dtype=bool)
+"""The same neighbourhood as `NEIGHBOURS`, for `ndimage.label`."""
 
 MAX_EXEMPT_SHARE = 0.35
 """Most of a leg has to remain measurable.
@@ -59,6 +63,14 @@ class PathResult:
     the route wanders and its clearance there describes nothing. Anything
     reading per-point values needs to know which ones to ignore."""
 
+    clearance: np.ndarray | None = None
+    """Metres from each cell to the nearest cell this trip could not use.
+
+    A trip held inside the room cannot use the ground beyond its floor, so that
+    ground is no more room to pass than a wall is. Per-point widths along the
+    route have to be read from this field rather than from `clearance_map`, or
+    they describe space the search was never allowed into."""
+
     @property
     def width_meters(self) -> float:
         return self.clearance_radius * 2
@@ -92,33 +104,54 @@ def _stands_indoors(grid: Grid, cell: tuple[int, int]) -> bool:
     )
 
 
-def _connected(walkable: np.ndarray, start, goal) -> bool:
-    regions, _ = ndimage.label(walkable)
-    return regions[start] != 0 and regions[start] == regions[goal]
+@dataclass(frozen=True)
+class _RouteWorld:
+    """The cells one trip may use, and its two stops snapped onto them."""
+
+    walkable: np.ndarray
+    in_the_room: bool
+    start: tuple[int, int] | None
+    goal: tuple[int, int] | None
 
 
-def _route_world(grid: Grid, start, goal):
-    """The cells a route may use, with its two stops snapped into them.
+def _walkable(grid: Grid, occupied: np.ndarray, in_the_room: bool) -> np.ndarray:
+    """Free cells, held to the scanned floor when both stops stand on it.
 
     `occupancy.OUTSIDE_MARGIN` keeps open ground beyond the walls so a customer
     arriving from the street has somewhere to stand. Nothing is out there, which
-    makes it the widest corridor in the capture, so a scan whose walls do not
-    close sends the search out through the gap and around the building: on the
-    Apple living room sample 92 per cent of the route ran outdoors, and the
-    width it reported was the width of the garden.
+    makes it the widest corridor in the capture, so a search allowed onto it
+    leaves through a doorway or a gap in the walls and walks around the
+    building: on the Apple living room sample 92 per cent of the route ran
+    outdoors, and the width it reported was the width of the garden.
 
-    A trip between two stops in the room is a trip through the room, so the
-    outside is held back for it. It opens again when the room cannot answer on
-    its own: a stop standing outside, or a goal the floor genuinely cannot
-    reach without leaving.
+    A trip between two stops in the room is a trip through the room, so it
+    never gets the outside, even when the floor cannot join its stops. A room
+    that cannot answer from its own floor is blocked, and `what_sealed_the_route`
+    names what blocks it. Only a stop standing outside opens the outside.
+
+    `occupied` is an argument so a caller asking what one object's removal
+    would open gets the same rule applied to the altered floor.
     """
-    free = ~grid.occupied
-    if _stands_indoors(grid, start) and _stands_indoors(grid, goal):
-        inside = free & grid.indoors
-        here, there = _nearest(inside, start), _nearest(inside, goal)
-        if here is not None and there is not None and _connected(inside, here, there):
-            return inside, here, there
-    return free, _nearest(free, start), _nearest(free, goal)
+    free = ~occupied
+    return free & grid.indoors if in_the_room else free
+
+
+def _route_world(grid: Grid, start, goal) -> _RouteWorld:
+    in_the_room = _stands_indoors(grid, start) and _stands_indoors(grid, goal)
+    walkable = _walkable(grid, grid.occupied, in_the_room)
+    return _RouteWorld(
+        walkable, in_the_room, _nearest(walkable, start), _nearest(walkable, goal)
+    )
+
+
+def _clearance_within(
+    grid: Grid, clearance: np.ndarray, walkable: np.ndarray
+) -> np.ndarray:
+    """`clearance`, cut short wherever the trip's own world ends first."""
+    if not (~grid.occupied & ~walkable).any():
+        return clearance
+    edge = ndimage.distance_transform_edt(walkable) * grid.cell_size
+    return np.minimum(clearance, edge)
 
 
 def _exempt_mask(
@@ -147,60 +180,226 @@ def widest_path(
     goal: tuple[int, int],
     endpoint_exemption: float = ENDPOINT_EXEMPTION,
     extra_exempt: np.ndarray | None = None,
+    anchors: tuple[UUID | None, UUID | None] = (None, None),
 ) -> PathResult:
-    """Bottleneck Dijkstra: maximise the smallest clearance along the route."""
-    walkable, start, goal = _route_world(grid, start, goal)
-    if start is None or goal is None:
+    """Bottleneck Dijkstra: maximise the smallest clearance along the route.
+
+    `anchors` are the objects the two stops stand at, from `Stop.anchor_node_id`.
+    """
+    world = _route_world(grid, start, goal)
+    if world.start is None or world.goal is None:
         return PathResult(0.0, None, [], reachable=False)
 
-    radius = _exemption_radius(grid, start, goal, endpoint_exemption)
-    exempt = _exempt_mask(grid, [start, goal], radius)
+    clearance = _clearance_within(grid, clearance, world.walkable)
+    radius = _exemption_radius(grid, world.start, world.goal, endpoint_exemption)
+    leaving, arriving = _standing_rooms(grid, world, start, goal, radius)
+    exempt = _stop_exemption(
+        grid, world.walkable, [(world.start, anchors[0]), (world.goal, anchors[1])], radius
+    ) | leaving | arriving
     if extra_exempt is not None:
         exempt |= extra_exempt
     search_field = np.where(exempt, np.inf, clearance)
 
-    best, came_from = _bottleneck_search(grid, walkable, search_field, start, goal)
-
-    if best[goal] < 0:
+    came_from, arrival = _bottleneck_search(
+        grid, world.walkable, search_field, np.argwhere(leaving), arriving
+    )
+    if arrival is None:
         return PathResult(0.0, None, [], reachable=False)
 
-    path = _retrace(came_from, start, goal)
+    between = _retrace(came_from, arrival)
+    path = (
+        _walk_within(grid, leaving, between[0], start)[:0:-1]
+        + between
+        + _walk_within(grid, arriving, between[-1], goal)[1:]
+    )
     measured = [cell for cell in path if not exempt[cell]]
     if not measured:
         measured = path
     pinch = min(measured, key=lambda cell: clearance[cell])
     return PathResult(
-        float(clearance[pinch]), pinch, path, reachable=True, exempt=exempt
+        float(clearance[pinch]), pinch, path, reachable=True, exempt=exempt,
+        clearance=clearance,
     )
+
+
+def _stop_exemption(
+    grid: Grid,
+    walkable: np.ndarray,
+    stops: list[tuple[tuple[int, int], UUID | None]],
+    radius: float,
+) -> np.ndarray:
+    """The cells near each stop that say nothing about the route.
+
+    Within `radius` of a stop, two kinds of floor. One is floor whose nearest
+    obstacle is the object the stop stands at, so a counter cannot set the
+    bottleneck of the trip to it. The other is floor no closer to its nearest
+    obstacle than the stop itself stands: a pickup point 2 inches from a
+    display case starts every route out of it 2 inches from the case, and
+    stepping away from something is not squeezing past it. What is left is
+    floor where the route closes in on something the stop was clear of, which
+    is a gap the route has to pass.
+
+    Exempting the whole radius hid whatever else stood near a stop: two signs
+    20 inches apart just inside the front door read as the 31 inch aisle beyond
+    them, because the gap between them was exempt. A stop that names no anchor
+    still gets the whole radius, since nothing then says which of the things
+    around it is the destination and which is in the way.
+    """
+    exempt = np.zeros(grid.shape, dtype=bool)
+    nearest = None
+    for cell, anchor in stops:
+        around = _exempt_mask(grid, [cell], radius)
+        if anchor not in grid.node_ids:
+            exempt |= around
+            continue
+        if nearest is None:
+            nearest = _NearestObstacle.of(walkable)
+        exempt |= around & (
+            (grid.owner[nearest.rows, nearest.cols] == grid.node_ids.index(anchor))
+            | nearest.no_closer_than(cell)
+        )
+    return exempt
+
+
+@dataclass(frozen=True)
+class _NearestObstacle:
+    """For every cell, how far away the nearest cell a trip cannot use is, and
+    which cell that is."""
+
+    distance: np.ndarray
+    rows: np.ndarray
+    cols: np.ndarray
+
+    @classmethod
+    def of(cls, walkable: np.ndarray) -> _NearestObstacle:
+        distance, (rows, cols) = ndimage.distance_transform_edt(
+            walkable, return_indices=True
+        )
+        return cls(distance, rows, cols)
+
+    def no_closer_than(self, stop: tuple[int, int]) -> np.ndarray:
+        """Cells at least as far from their nearest obstacle as `stop` is from
+        that same obstacle."""
+        from_stop = np.hypot(self.rows - stop[0], self.cols - stop[1])
+        return self.distance >= from_stop
+
+
+def _standing_rooms(
+    grid: Grid, world: _RouteWorld, start, goal, radius: float
+) -> tuple[np.ndarray, np.ndarray]:
+    """Both stops' standing room, with any floor they share split between them.
+
+    Two large objects side by side, a bed and the chair beside it, reach far
+    enough to share floor. A route whose first cell is already a goal has
+    nowhere to go, so each shared cell goes to the stop it is nearer, and each
+    stop keeps the cell it landed on.
+    """
+    leaving = _standing_room(grid, world.walkable, start, world.start, radius)
+    arriving = _standing_room(grid, world.walkable, goal, world.goal, radius)
+    shared = leaving & arriving
+    if not shared.any():
+        return leaving, arriving
+    rows, cols = np.ogrid[: grid.shape[0], : grid.shape[1]]
+    nearer_start = (rows - start[0]) ** 2 + (cols - start[1]) ** 2 <= (
+        (rows - goal[0]) ** 2 + (cols - goal[1]) ** 2
+    )
+    leaving &= ~(shared & ~nearer_start)
+    arriving &= ~(shared & nearer_start)
+    leaving[world.goal], arriving[world.start] = False, False
+    leaving[world.start], arriving[world.goal] = True, True
+    return leaving, arriving
+
+
+def _standing_room(
+    grid: Grid,
+    walkable: np.ndarray,
+    stop: tuple[int, int],
+    landed: tuple[int, int],
+    radius: float,
+) -> np.ndarray:
+    """The cells a trip may begin or end on for one stop.
+
+    A stop on open floor is exactly where it stands. A stop inside an object,
+    which is where an anchor at a sofa's or a counter's centre lands, has to be
+    reached from the floor beside the object, and the single nearest free cell
+    is a poor choice of which floor: beside a chair pushed against the wall it
+    is the sliver between the two, sealed off from the room, and beside a
+    television on its stand it is the gap behind the stand.
+
+    So the standing room is all the floor around the stop out to its nearest
+    free cell plus the exemption radius, and the search arrives on whichever
+    part of it the widest route reaches. The caller exempts it along with the
+    exemption itself: standing at an object puts you beside it, and the
+    tightest point of that is not a question about the route.
+    """
+    cells = np.zeros(grid.shape, dtype=bool)
+    if landed == stop or radius <= 0:
+        cells[landed] = True
+        return cells
+    reach = math.dist(stop, landed) * grid.cell_size + radius
+    return _exempt_mask(grid, [stop], reach) & walkable
+
+
+def _walk_within(
+    grid: Grid, room: np.ndarray, entry: tuple[int, int], stop: tuple[int, int]
+) -> list[tuple[int, int]]:
+    """The shortest walk from where a route met a stop's standing room to the
+    cell of it nearest the stop, starting at `entry`.
+
+    The search ends as soon as it meets the standing room, which can be most
+    of an exemption radius short of the object. Every cell of the room it met
+    is reached at the same width, so the widest route has already decided
+    which side of the object to arrive on, and this only finishes the trip.
+    """
+    labels, _ = ndimage.label(room, structure=EIGHT_CONNECTED)
+    piece = labels == labels[entry]
+    target = _nearest(piece, stop)
+    came_from: dict[tuple[int, int], tuple[int, int] | None] = {entry: None}
+    frontier = deque([entry])
+    while frontier and target not in came_from:
+        cell = frontier.popleft()
+        for neighbour in _walkable_neighbours(grid, piece, cell):
+            if neighbour not in came_from:
+                came_from[neighbour] = cell
+                frontier.append(neighbour)
+    walk = [target]
+    while came_from[walk[-1]] is not None:
+        walk.append(came_from[walk[-1]])
+    return walk[::-1]
 
 
 def _bottleneck_search(
     grid: Grid,
     walkable: np.ndarray,
     search_field: np.ndarray,
-    start: tuple[int, int],
-    goal: tuple[int, int],
-) -> tuple[np.ndarray, dict[tuple[int, int], tuple[int, int]]]:
+    sources: np.ndarray,
+    goals: np.ndarray,
+) -> tuple[dict[tuple[int, int], tuple[int, int]], tuple[int, int] | None]:
     """Dijkstra on the widest bottleneck rather than the shortest distance.
 
-    `best[cell]` is the largest clearance a route from start can guarantee all
-    the way to that cell, so relaxing an edge takes the minimum of the width so
-    far and the neighbour's own clearance.
+    `best[cell]` is the largest clearance a route from any source can guarantee
+    all the way to that cell, so relaxing an edge takes the minimum of the
+    width so far and the neighbour's own clearance. Cells leave the queue
+    widest first, so the first goal cell out is the one the widest route
+    reaches. Returns how each cell was reached and that goal cell, or `None`
+    when no goal can be reached.
     """
-    rows, cols = grid.shape
-    best = np.full((rows, cols), -1.0)
+    best = np.full(grid.shape, -1.0)
     came_from: dict[tuple[int, int], tuple[int, int]] = {}
 
-    best[start] = search_field[start]
-    queue = [(-best[start], start)]
+    queue = []
+    for row, col in sources:
+        best[row, col] = search_field[row, col]
+        queue.append((-best[row, col], (int(row), int(col))))
+    heapq.heapify(queue)
 
     while queue:
         negative_width, cell = heapq.heappop(queue)
         width = -negative_width
         if width < best[cell]:
             continue
-        if cell == goal:
-            break
+        if goals[cell]:
+            return came_from, cell
         for neighbour in _walkable_neighbours(grid, walkable, cell):
             candidate = min(width, search_field[neighbour])
             if candidate > best[neighbour]:
@@ -208,7 +407,7 @@ def _bottleneck_search(
                 came_from[neighbour] = cell
                 heapq.heappush(queue, (-candidate, neighbour))
 
-    return best, came_from
+    return came_from, None
 
 
 def _walkable_neighbours(grid: Grid, walkable: np.ndarray, cell: tuple[int, int]):
@@ -219,9 +418,13 @@ def _walkable_neighbours(grid: Grid, walkable: np.ndarray, cell: tuple[int, int]
             yield neighbour
 
 
-def _retrace(came_from, start, goal) -> list[tuple[int, int]]:
-    path = [goal]
-    while path[-1] != start:
+def _retrace(came_from, arrival) -> list[tuple[int, int]]:
+    """Walk back from the arrival to the source it was reached from.
+
+    A source never gains a `came_from` entry: the search seeds it with its own
+    clearance, and no route through it can do better than that."""
+    path = [arrival]
+    while path[-1] in came_from:
         path.append(came_from[path[-1]])
     path.reverse()
     return path
@@ -321,28 +524,48 @@ def longest_run_below(
     long narrow stretch on a leg that was never narrow: on the fixture, 75 of
     the 124 sub-36 inch cells on leg 2 were exempt ones.
     """
-    longest = 0.0
-    current = 0.0
-    previous = None
+    runs = runs_below(grid, clearance, cells, threshold_inches, exempt)
+    return max((end - start for start, end in runs), default=0.0)
+
+
+def runs_below(
+    grid: Grid,
+    clearance: np.ndarray,
+    cells: list[tuple[int, int]],
+    threshold_inches: float,
+    exempt: np.ndarray | None = None,
+) -> list[tuple[float, float]]:
+    """Every unbroken stretch of a route narrower than `threshold_inches`, as
+    inches along the route where each starts and ends.
+
+    403.5.1's exception has two conditions. A narrow stretch may run 24 inches
+    at most, and narrow stretches have to be separated by 48 inches of full
+    width route, so two 24 inch pinches 10 inches apart do not qualify. The
+    longest run alone answers the first condition and not the second.
+
+    A stretch runs from its first narrow cell to its last, and exempt cells
+    break it, as in `longest_run_below`.
+    """
     limit = to_meters(threshold_inches) / 2
+    along = _inches_along(grid, cells)
+    runs: list[tuple[float, float]] = []
+    start = None
+    for index, cell in enumerate(cells):
+        narrow = clearance[cell] < limit and not (exempt is not None and exempt[cell])
+        if narrow and start is None:
+            start = along[index]
+        if not narrow and start is not None:
+            runs.append((start, along[index - 1]))
+            start = None
+    if start is not None:
+        runs.append((start, along[-1]))
+    return runs
 
-    for cell in cells:
-        if exempt is not None and exempt[cell]:
-            longest = max(longest, current)
-            current = 0.0
-            previous = None
-            continue
-        below = clearance[cell] < limit
-        if below and previous is not None:
-            current += math.dist(previous, cell) * grid.cell_size
-        elif below:
-            current = 0.0
-        else:
-            longest = max(longest, current)
-            current = 0.0
-        previous = cell if below else None
 
-    return to_inches(max(longest, current))
+def _inches_along(grid: Grid, cells: list[tuple[int, int]]) -> list[float]:
+    """How far along the route each cell sits, in inches."""
+    steps = [0.0] + [math.dist(a, b) * grid.cell_size for a, b in zip(cells, cells[1:])]
+    return [to_inches(metres) for metres in itertools.accumulate(steps)]
 
 
 def what_sealed_the_route(
@@ -361,16 +584,21 @@ def what_sealed_the_route(
     The seal is what touches **both** sides. Nearest-to-the-goal is not enough:
     the walls beside a counter are closer to it than the shelving unit across
     the aisle, and naming those tells nobody anything they can act on.
+
+    The two sides are the ones `widest_path` searched: a trip held inside the
+    room is sealed when its floor is, whatever lies outside the walls.
     """
-    free = ~grid.occupied
     if not (grid.contains(*start) and grid.contains(*goal)):
         return []
-    if not (free[start] and free[goal]):
+    if grid.occupied[start] or grid.occupied[goal]:
+        return []
+    world = _route_world(grid, start, goal)
+    if world.start is None or world.goal is None:
         return []
 
-    regions, _ = ndimage.label(free)
-    here, there = regions[start], regions[goal]
-    if here == there or here == 0 or there == 0:
+    regions, _ = ndimage.label(world.walkable)
+    here, there = regions[world.start], regions[world.goal]
+    if here == there:
         return []
 
     candidates = _owners_touching(grid, regions == here) & _owners_touching(
@@ -380,25 +608,19 @@ def what_sealed_the_route(
     opening = [
         owner
         for owner in candidates
-        if _would_open(grid, owner, start, goal, graph)
+        if _would_open(grid, owner, world, graph)
     ]
 
-    # Walls border both pockets and technically "open" the route, because with
-    # one gone you can step outside and come back in through the front door.
-    # That is true and useless. If anything movable seals the route, name only
-    # those: they are what the owner can act on, and a fix agent given a wall
-    # has nothing to try.
+    # On a trip from outside, walls border both pockets and technically "open"
+    # the route, because with one gone you can step outside and come back in
+    # through the front door. That is true and useless. If anything movable
+    # seals the route, name only those: they are what the owner can act on,
+    # and a fix agent given a wall has nothing to try.
     actionable = [o for o in opening if grid.node_ids[o] in movable]
     return _nearest_owners(grid, actionable or opening or candidates, goal, movable)
 
 
-def _would_open(
-    grid: Grid,
-    owner: int,
-    start: tuple[int, int],
-    goal: tuple[int, int],
-    graph=None,
-) -> bool:
+def _would_open(grid: Grid, owner: int, world: _RouteWorld, graph=None) -> bool:
     """Whether taking this one object away reconnects the two sides.
 
     The exact question a shop owner is asking, and the only way to tell a
@@ -410,11 +632,11 @@ def _would_open(
     other one still covers.
     """
     if graph is None:
-        free = ~grid.occupied | (grid.owner == owner)
+        occupied = grid.occupied & (grid.owner != owner)
     else:
-        free = ~occupancy_excluding(graph, grid, grid.node_ids[owner])
-    regions, _ = ndimage.label(free)
-    return regions[start] != 0 and regions[start] == regions[goal]
+        occupied = occupancy_excluding(graph, grid, grid.node_ids[owner])
+    regions, _ = ndimage.label(_walkable(grid, occupied, world.in_the_room))
+    return regions[world.start] != 0 and regions[world.start] == regions[world.goal]
 
 
 def _owners_touching(grid: Grid, region: np.ndarray) -> set[int]:

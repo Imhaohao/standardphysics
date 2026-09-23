@@ -254,8 +254,8 @@ QUESTIONS = {
         detail="Straight on, close enough to see its shape. We'll check it opens with a closed fist and sits between 34 and 48 inches up.",
     ),
     "door_opening_force": FindingCopy(
-        title="Push the front door open with one finger and tell us if it gives",
-        detail="A door should open with 5 pounds of push, and one finger is about right for that.",
+        title="Check how hard the doors inside the shop are to push open",
+        detail="Inside doors, like a restroom door, should open with no more than 5 pounds of push. A door pressure gauge from a hardware store measures it. The front door isn't part of this, because the federal rule sets no limit for outside doors.",
     ),
     "floor_surface": FindingCopy(
         title="Send a photo of the floor just inside the front door",

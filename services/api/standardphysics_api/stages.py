@@ -39,6 +39,8 @@ from standardphysics_pipeline import PipelineMeasurements, blender, parse_room_j
 from standardphysics_pipeline.discovery import DiscoveryError, DiscoveryInputs, DiscoveryResult, discover_objects
 from standardphysics_pipeline.textures import BakeInputs, BakeResult, bake_textures
 
+from .scope_manifest import build_scope_manifest
+
 log = logging.getLogger(__name__)
 
 PREVIEW_REVIEWER = "unverified preview (development only)"
@@ -70,7 +72,38 @@ def _discovery_inputs(
         frame_paths=frames,
         lidar_mesh_path=lidar_mesh_path,
         cache_dir=lidar_mesh_path.parent.parent / "detections",
+        crop_dir=lidar_mesh_path.parent.parent / "crops",
     )
+
+
+@dataclass
+class DiscoveryOutcome:
+    """What the discovery pass did, so an empty result is told apart from a failed one."""
+
+    attempted: bool = False
+    """False when discovery was deferred or had no usable inputs."""
+    deferred_reason: str | None = None
+    frames_read: int = 0
+    object_count: int = 0
+    people_points_removed: int = 0
+    failures: list[str] = field(default_factory=list)
+    model_requests: list = field(default_factory=list)
+    """S's ModelRequestInfo per actual detector request, persisted for the trail."""
+
+    def note(self) -> str | None:
+        """One visible line for the job record; categories only, never secrets."""
+        if self.deferred_reason is not None:
+            return f"semantic discovery deferred: {self.deferred_reason}"
+        if not self.attempted:
+            return None
+        parts = [
+            f"read {self.frames_read} photos",
+            f"found {self.object_count} objects",
+        ]
+        if self.failures:
+            example = str(self.failures[0])[:200]
+            parts.append(f"{len(self.failures)} frame(s) unread, e.g. {example}")
+        return "discovery: " + ", ".join(parts)
 
 
 def preview_ledger() -> VerificationLedger:
@@ -118,10 +151,38 @@ class Stages:
         poses_path: pathlib.Path | None = None,
         lidar_mesh_path: pathlib.Path | None = None,
     ) -> SceneGraph:
+        graph, _ = self.ingest_with_report(
+            room_json,
+            scan_id,
+            frame_paths=frame_paths,
+            poses_path=poses_path,
+            lidar_mesh_path=lidar_mesh_path,
+        )
+        return graph
+
+    def ingest_with_report(
+        self,
+        room_json: pathlib.Path,
+        scan_id,
+        *,
+        frame_paths: list[pathlib.Path] | None = None,
+        poses_path: pathlib.Path | None = None,
+        lidar_mesh_path: pathlib.Path | None = None,
+        run_discovery: bool = True,
+    ) -> tuple[SceneGraph, DiscoveryOutcome]:
+        """Ingest like `ingest`, plus what the discovery pass actually saw.
+
+        The outcome lets the worker record why a graph has no new nodes: the
+        photos are still uploading, discovery could not run, or it ran and
+        legitimately found nothing.
+        """
         graph = parse_room_json(json.loads(room_json.read_bytes()), scan_id=scan_id)
         graph = self.label_scan(graph, frame_paths=frame_paths, poses_path=poses_path, lidar_mesh_path=lidar_mesh_path)
-        return self.discover_scan(graph, frame_paths=frame_paths, poses_path=poses_path,
-                                  lidar_mesh_path=lidar_mesh_path)
+        if not run_discovery:
+            return graph, DiscoveryOutcome()
+        return self.discover_scan_with_report(
+            graph, frame_paths=frame_paths, poses_path=poses_path, lidar_mesh_path=lidar_mesh_path
+        )
 
     def discover_scan(
         self,
@@ -136,23 +197,46 @@ class Stages:
         A scan with no photos, or one the vision model cannot reach, keeps the
         nodes RoomPlan measured. Discovery only ever adds.
         """
+        graph, _ = self.discover_scan_with_report(
+            graph, frame_paths=frame_paths, poses_path=poses_path, lidar_mesh_path=lidar_mesh_path
+        )
+        return graph
+
+    def discover_scan_with_report(
+        self,
+        graph: SceneGraph,
+        *,
+        frame_paths: list[pathlib.Path] | None,
+        poses_path: pathlib.Path | None,
+        lidar_mesh_path: pathlib.Path | None,
+    ) -> tuple[SceneGraph, DiscoveryOutcome]:
         inputs = _discovery_inputs(graph, frame_paths, poses_path, lidar_mesh_path)
         if inputs is None:
-            return graph
+            return graph, DiscoveryOutcome()
         try:
             result = self.discover(inputs)
         except (DiscoveryError, OSError) as exc:
             log.warning("no object discovery for %s: %s", graph.scan_id, exc)
-            return graph
+            return graph, DiscoveryOutcome(attempted=True, failures=[f"discovery could not run: {exc}"])
         for failure in result.failures:
-            log.info("discovery could not read a frame: %s", failure)
+            log.info("discovery could not read a frame %s: %s", graph.scan_id, failure)
         log.info(
             "discovered %d objects for %s, and took %d mesh points of people out",
-            len(result.nodes), graph.scan_id, result.people_points_removed,
+            len(result.nodes),
+            graph.scan_id,
+            result.people_points_removed,
         )
         existing_ids = {n.id for n in result.nodes}
         preserved = [n for n in graph.nodes if n.id not in existing_ids]
-        return graph.model_copy(update={"nodes": [*preserved, *result.nodes]})
+        outcome = DiscoveryOutcome(
+            attempted=True,
+            frames_read=result.frames_read,
+            object_count=len(result.nodes),
+            people_points_removed=result.people_points_removed,
+            failures=list(result.failures),
+            model_requests=list(result.model_requests),
+        )
+        return graph.model_copy(update={"nodes": [*preserved, *result.nodes]}), outcome
 
     def label_scan(
         self,
@@ -173,33 +257,46 @@ class Stages:
         if self.label is reconstruct:
             captured = {node.id: node for node in capture_graph.nodes} if capture_graph else {}
             # Furniture may have moved since these photos were captured.
-            evidence_graph = graph.model_copy(update={
-                "capture_to_room": graph.capture_to_room or (capture_graph.capture_to_room if capture_graph else None),
-                "nodes": [
-                    node.model_copy(update={"transform": captured[node.id].transform}) if node.id in captured else node
-                    for node in graph.nodes
-                ],
-            })
+            evidence_graph = graph.model_copy(
+                update={
+                    "capture_to_room": graph.capture_to_room
+                    or (capture_graph.capture_to_room if capture_graph else None),
+                    "nodes": [
+                        node.model_copy(update={"transform": captured[node.id].transform})
+                        if node.id in captured
+                        else node
+                        for node in graph.nodes
+                    ],
+                }
+            )
             result = reconstruct(
                 evidence_graph, frame_paths=frame_paths, poses_path=poses_path, lidar_mesh_path=lidar_mesh_path
             )
             placements = {node.id: node.transform for node in graph.nodes}
-            return result.model_copy(update={"nodes": [
-                node.model_copy(update={"transform": placements[node.id]}) for node in result.nodes
-            ]})
+            return result.model_copy(
+                update={"nodes": [node.model_copy(update={"transform": placements[node.id]}) for node in result.nodes]}
+            )
         return self.label(graph)
 
     def assess(self, graph: SceneGraph, scenario: Scenario | None, pass_number: int) -> Assessment:
-        """Every verified rule, or only the rules that need no route until the owner confirms one."""
+        """Every verified rule, or only the rules that need no route until the owner confirms one.
+
+        The frozen scope manifest rides on the assessment (contract 5): one
+        visible outcome per requested requirement, with unevaluated checks as
+        unobserved rows. Lane A hardens applicability behind it.
+        """
         ledger = self.ledger_factory()
+        pack = load_pack()
         if scenario is None:
             ledger, scenario = without_route_rules(ledger), NO_ROUTE_YET
         with self._assess_lock:
             result = assess(graph, scenario, self.measure, ledger=ledger, pass_number=pass_number)
         for missing in result.unevaluated:
             log.info("rule %s not evaluated: %s", missing.rule_id, missing.waiting_on)
-        checked = len(load_pack().enabled(ledger, max_tier=1))
-        return result.assessment.model_copy(update={"rules_checked": checked})
+        checked = len(pack.enabled(ledger, max_tier=1))
+        waiting = {gap.rule_id: gap.waiting_on for gap in result.unevaluated}
+        scope = build_scope_manifest(graph, scenario, result.assessment, pack.enabled(ledger, max_tier=1), waiting)
+        return result.assessment.model_copy(update={"rules_checked": checked, "scope": scope})
 
     def propose(self, graph: SceneGraph, scenario: Scenario, targets: list[Finding]) -> FixOutcome:
         """Lane C's fix agent: one arrangement that clears the targets, or one thing to ask."""

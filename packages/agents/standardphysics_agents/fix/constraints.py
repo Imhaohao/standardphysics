@@ -12,11 +12,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from standardphysics_contracts import SceneGraph, SceneNode, Vec3, lies_flat, stands_upright
+from standardphysics_contracts import SceneGraph, SceneNode, Vec3, lies_flat
 from standardphysics_pipeline import footprint, gap_between
 from standardphysics_pipeline.footprints import Polygon, distance_outside, floor_polygon, polygon_bounds
 from standardphysics_pipeline.occupancy import blocks_floor
 
+from ..checks.walls import upright_walls
 from ..hashing import inventory
 from .moves import floor_height, rests_on_something, top_of, underside
 
@@ -117,7 +118,7 @@ def interior_bounds(graph: SceneGraph) -> tuple[float, float, float, float] | No
     min_x, min_y, max_x, max_y = bounds
     centre_x, centre_y = (min_x + max_x) / 2, (min_y + max_y) / 2
 
-    for wall in (node for node in graph.nodes if stands_upright(node)):
+    for wall in upright_walls(graph):
         shape = footprint(wall)
         low_x, high_x = min(x for x, _ in shape), max(x for x, _ in shape)
         low_y, high_y = min(y for _, y in shape), max(y for _, y in shape)
@@ -193,7 +194,14 @@ def _one_above_the_other(a: SceneNode, b: SceneNode) -> bool:
 
 
 def _overlapping(a: SceneNode, b: SceneNode) -> bool:
-    return gap_between(collision_shape(a), collision_shape(b)) == 0.0 and not _one_above_the_other(a, b)
+    # Each shape gives up half the tolerance, so together the two may
+    # interpenetrate by OVERLAP_TOLERANCE and no more. Pulling both in by the
+    # whole of it allowed twice that: a case slid 9 mm into a wall passed.
+    half = OVERLAP_TOLERANCE / 2
+    return (
+        gap_between(collision_shape(a, half), collision_shape(b, half)) == 0.0
+        and not _one_above_the_other(a, b)
+    )
 
 
 def _in_swing(node: SceneNode, keep_clear: Polygon, floor_z: float) -> bool:
@@ -215,10 +223,12 @@ class _Scene:
 
 def _collisions(base: SceneGraph, candidate: SceneGraph, moved: list[SceneNode]) -> list[Violation]:
     moved_ids = {node.id for node in moved}
+    wall_ids = {node.id for node in upright_walls(candidate)}
     obstacles = [
         node
         for node in candidate.nodes
-        if node.id not in moved_ids and (blocks_floor(node) or stands_upright(node))
+        if node.id not in moved_ids
+        and (blocks_floor(node) or node.id in wall_ids)
     ]
     swings = [node for node in candidate.nodes if node.kind in SWING_KINDS]
     scene = _Scene(before={node.id: node for node in base.nodes}, floor_z=floor_height(base))

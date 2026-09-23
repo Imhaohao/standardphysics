@@ -104,16 +104,27 @@ final class ScanUploadClientTests: XCTestCase {
 }
 
 final class WorkspaceWebViewTests: XCTestCase {
-    func testNoSignInDemoIsRestrictedToLocalWorkspaces() throws {
-        for address in ["http://MacBook-Pro.local:3000", "http://10.20.9.207:3000", "http://localhost:3000"] {
+    func testAWorkspaceIsOpenedOverHTTPSOrOnTheLocalNetwork() throws {
+        for address in [
+            "https://standardphysics.app",
+            "https://workspace.example",
+            "http://MacBook-Pro.local:3000",
+            "http://10.20.9.207:3000",
+            "http://localhost:3000",
+        ] {
             let origin = try XCTUnwrap(WebOrigin(url: URL(string: address)!))
-            XCTAssertTrue(origin.allowsLocalDemo)
-            XCTAssertFalse(origin.contains(URL(string: "http://other.local:3000")!))
+            XCTAssertTrue(origin.allowsWorkspace, address)
         }
-        for address in ["https://workspace.example", "http://127.evil.example", "http://10.a.0.0.1", "http://10..0.1"] {
+        // Plain HTTP off the local network, including hosts that only look local.
+        for address in ["http://workspace.example", "http://127.evil.example", "http://10.a.0.0.1", "http://10..0.1"] {
             let origin = try XCTUnwrap(WebOrigin(url: URL(string: address)!))
-            XCTAssertFalse(origin.allowsLocalDemo)
+            XCTAssertFalse(origin.allowsWorkspace, address)
         }
+    }
+
+    func testAWorkspaceStillRefusesAnotherOrigin() throws {
+        let origin = try XCTUnwrap(WebOrigin(url: URL(string: "http://MacBook-Pro.local:3000")!))
+        XCTAssertFalse(origin.contains(URL(string: "http://other.local:3000")!))
     }
 
     func testWebOriginRequiresTheSameSchemeHostAndPort() {

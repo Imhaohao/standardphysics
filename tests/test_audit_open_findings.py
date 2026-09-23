@@ -41,6 +41,7 @@ from standardphysics_api.stages import Stages
 THICKNESS = 0.1
 DEPTH = 4.0
 REAL_EXPORTS = Path(standardphysics_fixtures.__file__).parent / "data" / "real"
+DATASET_PHONE = Path(__file__).resolve().parents[1] / "datasets" / "phone"
 
 
 def _box(name: str, kind: str, centre, dims, movable: bool = False) -> SceneNode:
@@ -80,7 +81,6 @@ def _turn_room(lane_inches: float, tip_gap_inches: float):
     return SceneGraph(scan_id=uuid.uuid4(), nodes=nodes), scenario
 
 
-@pytest.mark.xfail(strict=True, reason="A-14: turn widths measure the pivot's corner, not the gap")
 def test_a14_a_compliant_turn_measures_its_real_gaps():
     graph, scenario = _turn_room(lane_inches=43, tip_gap_inches=49)
     turn = PipelineMeasurements().turn_detail(graph, scenario, 0)
@@ -88,14 +88,12 @@ def test_a14_a_compliant_turn_measures_its_real_gaps():
     assert widths == pytest.approx((43.0, 49.0, 43.0), abs=0.5)
 
 
-@pytest.mark.xfail(strict=True, reason="A-15: a turn over 60 in is undermeasured, so the exemption cannot apply")
 def test_a15_a_turn_over_sixty_inches_measures_over_sixty():
     graph, scenario = _turn_room(lane_inches=36, tip_gap_inches=61)
     turn = PipelineMeasurements().turn_detail(graph, scenario, 0)
     assert turn.at_turn_inches == pytest.approx(61.0, abs=0.5)
 
 
-@pytest.mark.xfail(strict=True, reason="A-6: everything near a stop is ignored, not only its anchor")
 def test_a6_an_obstruction_just_inside_the_entrance_narrows_the_route():
     graph, scenario = build_graph(), build_scenario()
     entrance = scenario.stops[0].position
@@ -201,7 +199,7 @@ def test_a49_a_real_scan_that_is_ready_has_been_checked(tmp_path):
         scan_id = client.post("/api/scans", json=body).json()["id"]
         room = (REAL_EXPORTS / "apple_bedroom3.room.json").read_bytes()
         _upload(client, scan_id, "room-json", room, "room_json")
-        _upload(client, scan_id, "room-usdz", b"usdz", "room_usdz")
+        _upload(client, scan_id, "room-usdz", (DATASET_PHONE / "test1" / "room.usdz").read_bytes(), "room_usdz")
         assert _finalize_and_process(client, scan_id) == "ready"
         assert client.get(f"/api/scans/{scan_id}/scene").json()["nodes"]
         assert client.get(f"/api/scans/{scan_id}/assessment").status_code == 200
@@ -212,7 +210,7 @@ def test_a29_a_failed_scan_is_processed_again_once_a_readable_room_arrives(tmp_p
         body = {"name": "Corner cafe", "device_model": "iPhone17,1", "duration_seconds": 60.0}
         scan_id = client.post("/api/scans", json=body).json()["id"]
         _upload(client, scan_id, "room-json", b"{not json", "room_json")
-        _upload(client, scan_id, "room-usdz", b"usdz", "room_usdz")
+        _upload(client, scan_id, "room-usdz", (DATASET_PHONE / "test1" / "room.usdz").read_bytes(), "room_usdz")
         assert _finalize_and_process(client, scan_id) == "failed"
         readable = (REAL_EXPORTS / "apple_bedroom3.room.json").read_bytes()
         _upload(client, scan_id, "room-json-2", readable, "room_json")

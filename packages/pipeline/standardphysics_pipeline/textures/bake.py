@@ -18,6 +18,7 @@ from ..footprints import floor_polygon
 from ..lidar import load_mesh, triangles_in_arkit_world
 from .camera import CameraMetadataError, PhotoCamera, load_cameras
 from .project import (
+    MAX_EXPOSURE_POINTS,
     DepthBuffers,
     TopViews,
     bilinear,
@@ -30,6 +31,7 @@ from .project import (
     triangle_depth_buffer,
     view_samples,
 )
+from .surface_materials import MaterialFill, material_key, room_materials
 
 
 def _budget(name: str, fallback: int) -> int:
@@ -62,7 +64,6 @@ CHUNK_SIZE = 100_000
 MAX_SOURCE_BYTES = 32 * 1024 * 1024
 MAX_SOURCE_PIXELS = 24_000_000
 MAX_IMAGE_EDGE = 2048
-MAX_EXPOSURE_POINTS = 20_000
 
 
 class TextureBakeError(RuntimeError):
@@ -79,6 +80,8 @@ class BakeInputs:
     lidar_mesh_path: pathlib.Path | None
     out_dir: pathlib.Path
     """An empty directory that receives scene.glb and coverage-<atlas>.png."""
+    materials_dir: pathlib.Path | None = None
+    """This room's own generated materials, laid over the generic set, when it has any."""
 
 
 @dataclass(frozen=True)
@@ -143,6 +146,7 @@ def bake_textures(inputs: BakeInputs) -> BakeResult:
         gains = _exposure_gains(world, cameras, images, clean_buffers, lidar_buffers)
 
         node_meta = meta["nodes"]
+        fill = _material_fill(graph, node_meta, inputs.materials_dir)
         atlas_by_owner = np.asarray([node["atlas"] for node in node_meta], dtype=np.int32)
         base_by_owner = np.asarray([node["base_colour"] for node in node_meta], dtype=np.float32)
         if face_colours is None:
@@ -158,13 +162,13 @@ def bake_textures(inputs: BakeInputs) -> BakeResult:
                 face_colours[selection],
             )
             atlas_image, covered, reachable = _bake_atlas(
-                texels, cameras, images, clean_buffers, lidar_buffers, gains, quality
+                texels, cameras, images, clean_buffers, lidar_buffers, gains, quality, fill
             )
             for owner in np.unique(texels.owners):
                 own = texels.owners == owner
                 texels_by_owner[owner] += int((own & reachable).sum())
                 covered_by_owner[owner] += int(covered[own].sum())
-            atlas_path = inputs.out_dir / f"atlas-{atlas}.png"
+            atlas_path = work / f"atlas-{atlas}.png"
             mask_path = inputs.out_dir / f"coverage-{atlas}.png"
             Image.fromarray(atlas_image, "RGB").save(atlas_path, optimize=True)
             mask = np.zeros((ATLAS_SIZE, ATLAS_SIZE), dtype=np.uint8)
@@ -369,12 +373,22 @@ def _lidar_triangles(path: pathlib.Path | None, capture_to_room: list[float], wo
     return triangles
 
 
+def _material_fill(graph: SceneGraph, node_meta: list[dict], materials_dir: pathlib.Path | None) -> MaterialFill:
+    """Material keys indexed the way the layout indexes its owners."""
+    by_id = {str(node.id): node for node in graph.nodes}
+    keys = [material_key(by_id[node["id"]]) if node["id"] in by_id else "" for node in node_meta]
+    return MaterialFill(keys, room_materials(materials_dir))
+
+
 def _bake_atlas(
-    texels, cameras, images, clean_buffers, lidar_buffers, gains, quality
+    texels, cameras, images, clean_buffers, lidar_buffers, gains, quality, fill: MaterialFill
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """The painted atlas, which texels received colour, and which could ever have."""
+    """The painted atlas, which texels received colour, and which could ever have.
+
+    Texels no photo reached take their owner's generated material, or its plain
+    base colour when it has none.
+    """
     image = np.zeros((ATLAS_SIZE, ATLAS_SIZE, 3), dtype=np.float32)
-    image[texels.rows, texels.columns] = to_linear(texels.base_colours)
     views = TopViews(len(texels))
     reachable = np.zeros(len(texels), dtype=bool)
     for camera, photo, clean, lidar, gain, view_quality in zip(cameras, images, clean_buffers, lidar_buffers, gains, quality):
@@ -391,7 +405,9 @@ def _bake_atlas(
             if len(disagreement):
                 views.note_disagreement(disagreement + start)
     colors, covered = views.resolve()
-    image[texels.rows[covered], texels.columns[covered]] = colors[covered]
+    painted = to_linear(texels.base_colours).astype(np.float32)
+    painted[covered] = colors[covered]
+    image[texels.rows, texels.columns] = fill.apply(painted, covered, texels.positions, texels.normals, texels.owners)
     filled = np.zeros((ATLAS_SIZE, ATLAS_SIZE), dtype=bool)
     filled[texels.rows, texels.columns] = True
     image = pad_gutters(image, filled)

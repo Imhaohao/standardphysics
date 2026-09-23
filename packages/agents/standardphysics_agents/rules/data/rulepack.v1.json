@@ -171,7 +171,7 @@
         "point_of_sale"
       ],
       "evidence": "measured",
-      "source_text": "904.4.1 Parallel Approach. A portion of the counter surface that is 36 inches (915 mm) long minimum and 36 inches (915 mm) high maximum above the finish floor shall be provided. Advisory 904.2 Approach. Where a cash register is provided at the sales or service counter, locate the cash register at the accessible section of the counter.",
+      "source_text": "904.4.1 Parallel Approach. A portion of the counter surface that is 36 inches (915 mm) long minimum and 36 inches (915 mm) high maximum above the finish floor shall be provided. Advisory 904.2 Approach. If a cash register is provided at the sales or service counter, locate the accessible counter close to the cash register so that a person using a wheelchair is visible to sales or service personnel and to minimize the reach for a person with a disability.",
       "review_note": "904.2's register sentence is an advisory. The check fires only when a lowered section already meets 904.4.1 and the point of sale still sits on a higher section, which is the fact pattern in Whitaker v. T Rock Inc.",
       "resolved_by": "moving_things"
     },

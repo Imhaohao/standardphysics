@@ -1,59 +1,59 @@
 """Multi-view reconciliation of surface-attached detections.
 
-Reconciles observations from multiple camera views without coarse distance-based
-merging that would collapse adjacent outlets, duplex plates, or fixtures on
-opposite sides of a wall.
+Reconciles observations from multiple camera views, and refuses to merge
+anything without agreeing visual evidence: proximity alone never collapses
+two adjacent outlets into one, because the count of nearby devices is unknown
+until their photos actually show the same device.
 """
 
 from __future__ import annotations
 
-import uuid
 from typing import Sequence
 
 import numpy as np
-from standardphysics_contracts import ObservationCrop, SceneNode, SurfaceAttachment
+from standardphysics_contracts import SceneNode, SurfaceAttachment
 
 from ..textures.camera import PhotoCamera
+from .detect import box_iou
 
 MIN_INDEPENDENT_VIEW_DISTANCE_M = 0.50
 MAX_SAME_OUTLET_SURFACE_DISTANCE_M = 0.06  # 6 cm faceplate tolerance
 NORMAL_ALIGNMENT_MIN_COS = 0.85
+VISUAL_AGREEMENT_IOU = 0.30
+"""How much two boxes in the same photo must overlap to count as one detection."""
 
 
-CROP_PADDING = 0.20
-"""How far outside a recorded crop a reprojected point may land and still be it."""
+def _visually_agree(att_a: SurfaceAttachment, att_b: SurfaceAttachment) -> bool:
+    """Whether some single photo shows both crops overlapping substantially.
 
-
-def _centre(node: SceneNode) -> np.ndarray:
-    return np.array([node.transform.m[3], node.transform.m[7], node.transform.m[11]], dtype=np.float64)
-
-
-def _normals_point_the_same_way(a: SurfaceAttachment, b: SurfaceAttachment) -> bool:
-    """Two faceplates on opposite sides of one wall share a parent but not a direction."""
-    if a.normal is None or b.normal is None:
-        return False
-    facing_a = np.array([a.normal.x, a.normal.y, a.normal.z], dtype=np.float64)
-    facing_b = np.array([b.normal.x, b.normal.y, b.normal.z], dtype=np.float64)
-    return float(np.dot(facing_a, facing_b)) >= NORMAL_ALIGNMENT_MIN_COS
-
-
-def _lands_in_the_crop(
-    camera: PhotoCamera | None, attachment: SurfaceAttachment, point: np.ndarray
-) -> bool:
-    """Where this camera saw its own outlet, the other's centre should appear too.
-
-    Without a camera or a recorded crop there is nothing to disagree with, so
-    the check passes rather than inventing a disagreement.
+    Two detections in the same frame that cover the same region are strong
+    evidence of one device read twice. Detections from different frames carry
+    no such evidence without a camera to verify against.
     """
-    if camera is None or not attachment.observations:
-        return True
-    col, row, depth = camera.project(point.reshape(1, 3))
+    for obs_a in att_a.observations:
+        for obs_b in att_b.observations:
+            if obs_a.frame_id != obs_b.frame_id:
+                continue
+            if box_iou(tuple(obs_a.sensor_box), tuple(obs_b.sensor_box)) >= VISUAL_AGREEMENT_IOU:
+                return True
+    return False
+
+
+def _reprojection_agrees(
+    att: SurfaceAttachment,
+    pos_other: np.ndarray,
+    camera: PhotoCamera,
+) -> bool:
+    """Whether the other node's 3D centre lands inside this observation's padded photo box."""
+    if not att.observations:
+        return False
+    col, row, depth = camera.project(pos_other.reshape(1, 3))
     if depth[0] <= 0:
         return False
-    left, top, right, bottom = attachment.observations[0].sensor_box
-    pad_x = (right - left) * CROP_PADDING
-    pad_y = (bottom - top) * CROP_PADDING
-    return left - pad_x <= col[0] <= right + pad_x and top - pad_y <= row[0] <= bottom + pad_y
+    obs_box = att.observations[0].sensor_box
+    pad_x = (obs_box[2] - obs_box[0]) * 0.20
+    pad_y = (obs_box[3] - obs_box[1]) * 0.20
+    return obs_box[0] - pad_x <= col[0] <= obs_box[2] + pad_x and obs_box[1] - pad_y <= row[0] <= obs_box[3] + pad_y
 
 
 def are_compatible_observations(
@@ -62,154 +62,182 @@ def are_compatible_observations(
     camera_a: PhotoCamera | None = None,
     camera_b: PhotoCamera | None = None,
 ) -> bool:
-    """Whether two surface-attached observations are one physical outlet.
-
-    Distance alone would collapse the two halves of a duplex plate, a pair of
-    outlets a hand's width apart, and two fixtures back to back through one
-    wall. So sharing a support, facing the same way and reprojecting into each
-    other's crop all have to hold as well.
+    """Checks whether two surface-attached observations represent the same physical outlet.
+    
+    Rejects:
+    - Different support parents (different walls or furniture)
+    - Opposite or tilted surface normals (e.g. opposite sides of a wall)
+    - Surface distance exceeding faceplate tolerance (e.g. adjacent duplex sockets)
+    - Reprojection mismatches when cameras are provided
+    - Any pair with neither camera nor shared-photo visual agreement:
+      distance on its own never proves one device, so adjacent outlets stay
+      separate and the count stays unknown
     """
     att_a = node_a.attachment
     att_b = node_b.attachment
     if att_a is None or att_b is None:
         return False
-    if att_a.support_node_id != att_b.support_node_id:
+    if att_a.support_node_id != att_b.support_node_id or att_a.normal is None or att_b.normal is None:
         return False
-    if not _normals_point_the_same_way(att_a, att_b):
+    norm_a = np.array([att_a.normal.x, att_a.normal.y, att_a.normal.z], dtype=np.float64)
+    norm_b = np.array([att_b.normal.x, att_b.normal.y, att_b.normal.z], dtype=np.float64)
+    if float(np.dot(norm_a, norm_b)) < NORMAL_ALIGNMENT_MIN_COS:
+        return False
+    pos_a = np.array([node_a.transform.m[3], node_a.transform.m[7], node_a.transform.m[11]], dtype=np.float64)
+    pos_b = np.array([node_b.transform.m[3], node_b.transform.m[7], node_b.transform.m[11]], dtype=np.float64)
+    if float(np.linalg.norm(pos_a - pos_b)) > MAX_SAME_OUTLET_SURFACE_DISTANCE_M:
         return False
 
-    here, there = _centre(node_a), _centre(node_b)
-    if float(np.linalg.norm(here - there)) > MAX_SAME_OUTLET_SURFACE_DISTANCE_M:
-        return False
+    verified = False
+    if camera_a is not None:
+        if not _reprojection_agrees(att_a, pos_b, camera_a):
+            return False
+        verified = True
+    if camera_b is not None:
+        if not _reprojection_agrees(att_b, pos_a, camera_b):
+            return False
+        verified = True
 
-    return _lands_in_the_crop(camera_a, att_a, there) and _lands_in_the_crop(camera_b, att_b, here)
+    if verified:
+        return True
+    return _visually_agree(att_a, att_b)
 
 
-def _attachments(cluster: Sequence[SceneNode]) -> list[SurfaceAttachment]:
-    return [node.attachment for node in cluster if node.attachment]
-
-
-def _observations_once_per_frame(cluster: Sequence[SceneNode]) -> list[ObservationCrop]:
-    """Every frame that saw this thing, each counted once."""
-    seen: set[str] = set()
+def _merged_observations(cluster: Sequence[SceneNode]) -> list:
+    """Every observation in the cluster, one per frame."""
+    seen_frames: set[str] = set()
     merged = []
-    for attachment in _attachments(cluster):
-        for obs in attachment.observations:
-            if obs.frame_id not in seen:
+    for node in cluster:
+        if not node.attachment:
+            continue
+        for obs in node.attachment.observations:
+            if obs.frame_id not in seen_frames:
                 merged.append(obs)
-                seen.add(obs.frame_id)
+                seen_frames.add(obs.frame_id)
     return merged
 
 
-def _averaged_position(cluster: Sequence[SceneNode]) -> np.ndarray:
-    return np.mean(
-        [
-            np.array([n.transform.m[3], n.transform.m[7], n.transform.m[11]], dtype=np.float64)
-            for n in cluster
-        ],
-        axis=0,
-    )
-
-
-def _sockets_without_repeats(cluster: Sequence[SceneNode]) -> list:
-    """Sockets closer than 3 cm are the same socket seen twice."""
+def _merged_sockets(cluster: Sequence[SceneNode]) -> list:
+    """Every socket in the cluster, with ones within 3cm treated as the same socket."""
     merged: list = []
-    for attachment in _attachments(cluster):
-        for socket in attachment.sockets:
-            here = np.array([socket.center.x, socket.center.y, socket.center.z], dtype=np.float64)
-            already = any(
-                np.linalg.norm(here - np.array([m.center.x, m.center.y, m.center.z])) < 0.03
+    for node in cluster:
+        if not node.attachment:
+            continue
+        for socket in node.attachment.sockets:
+            point = np.array([socket.center.x, socket.center.y, socket.center.z], dtype=np.float64)
+            if not any(
+                np.linalg.norm(point - np.array([m.center.x, m.center.y, m.center.z])) < 0.03
                 for m in merged
-            )
-            if not already:
+            ):
                 merged.append(socket)
     return merged
 
 
-def _seen_from_separate_places(
-    observations: Sequence[ObservationCrop], cameras: dict[str, PhotoCamera] | None
+def _seen_from_independent_views(
+    cameras: dict[str, PhotoCamera] | None, observations: Sequence
 ) -> bool:
-    """Two cameras half a metre apart make a second look, rather than a second frame."""
-    if cameras is None:
+    """Whether two of the observing cameras stood far enough apart to corroborate.
+
+    Two frames taken from the same spot are one viewpoint twice, however many
+    of them there are, so the test is distance between cameras rather than a
+    count of observations.
+    """
+    if cameras is None or len(observations) < 2:
         return False
-    positions = [cameras[obs.frame_id].position for obs in observations if obs.frame_id in cameras]
+    observing = [cameras[obs.frame_id] for obs in observations if obs.frame_id in cameras]
     return any(
-        np.linalg.norm(positions[i] - positions[j]) >= MIN_INDEPENDENT_VIEW_DISTANCE_M
-        for i in range(len(positions))
-        for j in range(i + 1, len(positions))
+        np.linalg.norm(observing[i].position - observing[j].position) >= MIN_INDEPENDENT_VIEW_DISTANCE_M
+        for i in range(len(observing))
+        for j in range(i + 1, len(observing))
     )
 
 
-def _review_status(cluster: Sequence[SceneNode], fallback: str) -> str:
-    """What an owner said outlives what a detector found, and a rejection outranks a confirmation."""
-    said = {attachment.review_status for attachment in _attachments(cluster)}
-    if "rejected_by_user" in said:
+def _merged_review_status(cluster: Sequence[SceneNode], first_att) -> str:
+    """An owner's decision survives the merge, and a rejection outranks a confirmation."""
+    if any(n.attachment and n.attachment.review_status == "rejected_by_user" for n in cluster):
         return "rejected_by_user"
-    if "confirmed_by_user" in said:
+    if any(n.attachment and n.attachment.review_status == "confirmed_by_user" for n in cluster):
         return "confirmed_by_user"
-    return fallback
+    return first_att.review_status
 
 
-def _uncertainty_reasons(cluster: Sequence[SceneNode], independent_views: bool) -> list[str]:
+def _merged_uncertainty_reasons(cluster: Sequence[SceneNode], independent_views: bool) -> list[str]:
+    """Each node's reasons, minus the single-viewpoint note, which is re-decided here.
+
+    A cluster can be corroborated even when none of its members was, so the old
+    note is dropped and re-added only if the merged evidence still stands on one
+    viewpoint.
+    """
     reasons: list[str] = []
-    for attachment in _attachments(cluster):
-        for reason in attachment.uncertainty_reasons:
+    for node in cluster:
+        if not node.attachment:
+            continue
+        for reason in node.attachment.uncertainty_reasons:
             if "single viewpoint" not in reason and reason not in reasons:
                 reasons.append(reason)
     if not independent_views:
-        reasons.append(
-            "single viewpoint observation; not independently verified from separate angle"
-        )
+        reasons.append("single viewpoint observation; not independently verified from separate angle")
     return reasons
-
-
-def _localization_quality(
-    cluster: Sequence[SceneNode], first: SurfaceAttachment, independent_views: bool
-) -> str:
-    unsure = any(
-        attachment.localization_quality == "needs_verification"
-        for attachment in _attachments(cluster)
-    )
-    if not independent_views or unsure or first.support_type != "lidar_surface":
-        return "needs_verification"
-    return "verified_support"
 
 
 def merge_cluster(cluster: Sequence[SceneNode], cameras: dict[str, PhotoCamera] | None = None) -> SceneNode:
     """Merges a cluster of compatible outlet nodes, consolidating evidence and updating uncertainty."""
-    first = cluster[0].attachment
-    assert first is not None
+    import uuid
 
-    observations = _observations_once_per_frame(cluster)
-    position = _averaged_position(cluster)
-    independent_views = _seen_from_separate_places(observations, cameras)
+    first_att = cluster[0].attachment
+    assert first_att is not None
+
+    merged_obs = _merged_observations(cluster)
+    merged_sockets = _merged_sockets(cluster)
+    independent_views = _seen_from_independent_views(cameras, merged_obs)
+    merged_review_status = _merged_review_status(cluster, first_att)
+    uncertainty_reasons = _merged_uncertainty_reasons(cluster, independent_views)
+
+    all_pos = [
+        np.array([n.transform.m[3], n.transform.m[7], n.transform.m[11]], dtype=np.float64)
+        for n in cluster
+    ]
+    merged_pos = np.mean(all_pos, axis=0)
+
+    needs_verification = any(
+        n.attachment and n.attachment.localization_quality == "needs_verification"
+        for n in cluster
+    )
+    if not independent_views or needs_verification or first_att.support_type != "lidar_surface":
+        localization_quality = "needs_verification"
+    else:
+        localization_quality = "verified_support"
+
+    max_confidence = max(
+        (n.attachment.identity_confidence for n in cluster if n.attachment),
+        default=first_att.identity_confidence,
+    )
 
     merged_att = SurfaceAttachment(
-        support_node_id=first.support_node_id,
-        support_type=first.support_type,
-        local_anchor=first.local_anchor,
-        normal=first.normal,
-        observed_region=first.observed_region,
-        sockets=_sockets_without_repeats(cluster),
-        observations=observations,
-        identity_confidence=max(
-            (attachment.identity_confidence for attachment in _attachments(cluster)),
-            default=first.identity_confidence,
-        ),
-        localization_quality=_localization_quality(cluster, first, independent_views),
-        review_status=_review_status(cluster, first.review_status),
-        uncertainty_reasons=_uncertainty_reasons(cluster, independent_views),
+        support_node_id=first_att.support_node_id,
+        support_type=first_att.support_type,
+        local_anchor=first_att.local_anchor,
+        normal=first_att.normal,
+        observed_region=first_att.observed_region,
+        sockets=merged_sockets,
+        observations=merged_obs,
+        identity_confidence=max_confidence,
+        localization_quality=localization_quality,
+        review_status=merged_review_status,
+        uncertainty_reasons=uncertainty_reasons,
     )
 
-    placed = list(cluster[0].transform.m)
-    placed[3], placed[7], placed[11] = (float(value) for value in position)
+    new_m = list(cluster[0].transform.m)
+    new_m[3] = float(merged_pos[0])
+    new_m[7] = float(merged_pos[1])
+    new_m[11] = float(merged_pos[2])
 
-    seed = "_".join(
-        [str(merged_att.support_node_id)] + [str(round(float(value), 2)) for value in position]
-    )
+    stable_seed = f"{merged_att.support_node_id}_{round(float(merged_pos[0]), 2)}_{round(float(merged_pos[1]), 2)}_{round(float(merged_pos[2]), 2)}"
+    merged_id = uuid.uuid5(uuid.NAMESPACE_OID, stable_seed)
+
     return cluster[0].model_copy(update={
-        "id": uuid.uuid5(uuid.NAMESPACE_OID, seed),
-        "transform": cluster[0].transform.model_copy(update={"m": placed}),
+        "id": merged_id,
+        "transform": cluster[0].transform.model_copy(update={"m": new_m}),
         "attachment": merged_att,
     })
 

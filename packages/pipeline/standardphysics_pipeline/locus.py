@@ -26,7 +26,7 @@ from standardphysics_contracts import (
     to_meters,
 )
 
-from .footprints import closest_points, floor_polygon, footprint, rotation_about_z
+from .footprints import Polygon, closest_points, contains_point, floor_polygon, footprint, rotation_about_z
 
 EYE_PITCH_DEGREES = 55.0
 """How far above the floor the camera sits, in degrees from horizontal.
@@ -104,14 +104,27 @@ def camera_for(
     radius: float,
     view_direction: tuple[float, float],
     fov_degrees: float = DEFAULT_FOV,
+    room: Polygon | None = None,
 ) -> CameraPose:
-    """Frame a sphere of `radius` around `subject` from the given direction."""
+    """Frame a sphere of `radius` around `subject` from the given direction.
+
+    Given the room's floor outline, the camera stays over it. A subject framed
+    with a lot of surroundings pushes the camera back, and a pinch against a
+    wall pushed it through the wall: (-3.19, -3.57) for a room whose wall
+    stands at x = -3. The camera then comes in to the floor's edge and rises to
+    keep the same distance, looking down more steeply rather than from outside.
+    """
     half_fov = math.radians(fov_degrees) / 2
     distance = max(radius * FRAMING_MARGIN / math.tan(half_fov), MIN_CAMERA_DISTANCE)
     pitch = math.radians(EYE_PITCH_DEGREES)
 
     ground = distance * math.cos(pitch)
     height = max(distance * math.sin(pitch), MIN_EYE_HEIGHT)
+    if room is not None:
+        inside = _ground_inside(room, subject, view_direction, ground)
+        if inside < ground:
+            ground = inside
+            height = max(math.sqrt(distance**2 - ground**2), MIN_EYE_HEIGHT)
     return CameraPose(
         position=Vec3(
             x=subject.x + view_direction[0] * ground,
@@ -121,6 +134,36 @@ def camera_for(
         target=subject,
         fov_degrees=fov_degrees,
     )
+
+
+CAMERA_WALL_INSET = 0.1
+"""Metres a camera keeps inside the floor's edge, where the wall stands."""
+
+GROUND_SEARCH_STEPS = 16
+
+
+def _ground_inside(
+    room: Polygon, subject: Vec3, direction: tuple[float, float], ground: float
+) -> float:
+    """The furthest the camera can stand back from `subject` along `direction`
+    and still be over the room, up to `ground`."""
+    def over_the_room(offset: float) -> bool:
+        point = (subject.x + direction[0] * offset, subject.y + direction[1] * offset)
+        return contains_point(room, point, -CAMERA_WALL_INSET)
+
+    if over_the_room(ground) or not over_the_room(0.0):
+        return ground
+    near, far = 0.0, ground
+    for _ in range(GROUND_SEARCH_STEPS):
+        middle = (near + far) / 2
+        near, far = (middle, far) if over_the_room(middle) else (near, middle)
+    return near
+
+
+def room_outline(graph: SceneGraph) -> Polygon | None:
+    """The scanned floor as a ground polygon, for keeping a camera inside it."""
+    floor = next((node for node in graph.nodes if lies_flat(node)), None)
+    return floor_polygon(floor) if floor is not None else None
 
 
 def _bbox(points: list[Vec3], padding: float) -> tuple[Vec3, Vec3]:
@@ -157,7 +200,7 @@ def width_locus(
             points=[start, end],
             label=format_inches(result.inches),
         ),
-        camera=camera_for(subject, radius, direction),
+        camera=camera_for(subject, radius, direction, room=room_outline(graph)),
     )
 
 

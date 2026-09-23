@@ -38,7 +38,7 @@ const makeOutlet = (id: string, x: number, y: number, z: number): SceneNode =>
       review_status: "detected",
       uncertainty_reasons: [],
       sockets: [{ id: "s-1", center: { x, y, z }, confidence: 0.9, status: "observed" }],
-      observations: [{ frame_id: "f-1", sensor_box: [0, 0, 10, 10], confidence: 0.9, image_url: "crops/c-1.jpg" }],
+      observations: [{ frame_id: "f-1", sensor_box: [0, 0, 10, 10], confidence: 0.9, image_url: "crops/c-1.jpg", provenance: "automatic", marked_by: null, marked_at: null, note: null }],
       localization_quality: "verified_support",
       identity_confidence: 0.9,
       local_anchor: null,
@@ -195,7 +195,8 @@ describe("Outlet UI acceptance cases (UI-01 through UI-04)", () => {
         makeOutlet(outletId, 0, 1.9, 0.50),
       ],
     };
-    mockResponse.nodes[0].attachment!.review_status = "confirmed_by_user";
+    const baseAttachment = mockResponse.nodes[0].attachment;
+    if (baseAttachment) baseAttachment.review_status = "confirmed_by_user";
 
     // Mock global fetch
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
