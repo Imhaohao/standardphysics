@@ -148,7 +148,9 @@ def _on_sheet(node: SceneNode, vertices: np.ndarray, normals: np.ndarray) -> np.
     return within & (normals[:, 2] >= FACING_THE_SHEET)
 
 
-def room_owners(vertices: np.ndarray, normals: np.ndarray, graph: SceneGraph) -> np.ndarray:
+def room_owners(
+    vertices: np.ndarray, normals: np.ndarray, graph: SceneGraph, patches: np.ndarray | None = None,
+) -> np.ndarray:
     """Index of the graph node each scanned vertex lies on, or -1 when it lies on none.
 
     The graph and the scan share the room frame, Z up. Objects claim first, so a
@@ -157,13 +159,16 @@ def room_owners(vertices: np.ndarray, normals: np.ndarray, graph: SceneGraph) ->
     sheet when it sits inside the sheet's box, padded because a wall is measured
     as a plane of no thickness, and faces along the sheet's normal, so the side
     of a cabinet pressed against a wall is not taken for the wall. Room graphs
-    carry no ceiling, so a ceiling belongs to nothing.
+    carry no ceiling, so a ceiling belongs to nothing. `patches` marks vertices
+    that patch a hole in a wall or floor; they are that sheet by construction, so
+    the floor patched under a chair never takes the chair's fabric.
     """
     owners = np.full(len(vertices), -1, dtype=np.int32)
+    claimable = ~patches if patches is not None else np.ones(len(vertices), dtype=bool)
     objects = [(index, node) for index, node in enumerate(graph.nodes) if not _is_room_sheet(node)]
     sheets = [(index, node) for index, node in enumerate(graph.nodes) if _is_room_sheet(node)]
     for index, node in objects:
-        owners[_inside(node, vertices, OBJECT_REACH) & (owners < 0)] = index
+        owners[_inside(node, vertices, OBJECT_REACH) & (owners < 0) & claimable] = index
     for index, node in sheets:
         owners[_on_sheet(node, vertices, normals) & (owners < 0)] = index
     return owners
@@ -258,7 +263,7 @@ def unseen_surfaces_filled(
     if not materials or scan.seen.all():
         return scan
     normals = vertex_normals(scan.vertices, scan.triangles)
-    owners = room_owners(scan.vertices, normals, graph)
+    owners = room_owners(scan.vertices, normals, graph, patches=scan.inferred)
     linear = to_linear(scan.colours).astype(np.float32)
     filled = MaterialFill.for_graph(graph, materials).apply(linear, scan.seen, scan.vertices, normals, owners)
     return replace(scan, colours=to_srgb(filled).astype(np.float32))

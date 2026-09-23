@@ -14,7 +14,7 @@ from uuid import UUID
 
 from standardphysics_contracts import SceneGraph, SceneNode, stands_upright
 
-TEXTURE_PIPELINE_VERSION = "8"
+TEXTURE_PIPELINE_VERSION = "11"
 PRECISION = 6
 PORTAL_KINDS = frozenset({"door", "window", "opening"})
 PLACEMENT_BOUND_KINDS = frozenset({"wall", "floor", "door", "window", "opening"})

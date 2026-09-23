@@ -22,7 +22,8 @@ distance, and it means no unwrapping, no charts, no seams and no gutters.
 from __future__ import annotations
 
 import pathlib
-from dataclasses import dataclass
+from collections.abc import Callable
+from dataclasses import dataclass, replace
 
 import numpy as np
 from standardphysics_contracts import SceneGraph
@@ -54,10 +55,18 @@ class ColouredScan:
     """Whether any photo reached each vertex."""
     sources: np.ndarray | None = None
     """Per-vertex source frame ID of the best view (object dtype), None when unseen."""
+    inferred: np.ndarray | None = None
+    """Whether each vertex was added to patch a hole rather than scanned; None when nothing was."""
+
+    @property
+    def scanned(self) -> np.ndarray:
+        return ~self.inferred if self.inferred is not None else np.ones(len(self.seen), dtype=bool)
 
     @property
     def painted_fraction(self) -> float:
-        return float(self.seen.mean()) if len(self.seen) else 0.0
+        """The share of scanned vertices a photo reached. Patches never count."""
+        seen = self.seen[self.scanned]
+        return float(seen.mean()) if len(seen) else 0.0
 
 
 def vertex_normals(vertices: np.ndarray, triangles: np.ndarray) -> np.ndarray:
@@ -128,12 +137,15 @@ def colour_the_scan(
     cameras: list[PhotoCamera],
     images: list[np.ndarray],
     masks: list[np.ndarray] | None = None,
+    hidden: Callable[[PhotoCamera], np.ndarray] | None = None,
 ) -> ColouredScan:
     """Every vertex given the colour of the photo that saw it best.
 
     ``masks``, when provided, are static-region masks (one per photo,
     full resolution); they are resampled to the depth-buffer grid and samples
-    outside the static region are never painted.  The resulting scan records
+    outside the static region are never painted. ``hidden``, when provided,
+    names the vertices a camera cannot really see even though nothing scanned
+    stands in the way, such as floor under a chair the LiDAR missed.  The resulting scan records
     the best source frame ID per vertex so downstream sampling can prove
     photo support rather than assert it.
     """
@@ -149,6 +161,8 @@ def colour_the_scan(
         if masks is not None:
             image_mask = _small_static_mask(masks[index], *buffer.shape)
         weight, columns, rows = _weights_from(camera, vertices, normals, buffer, image_mask)
+        if hidden is not None:
+            weight = np.where(hidden(camera), 0.0, weight)
         better = np.flatnonzero(weight > best)
         if not len(better):
             continue
@@ -194,6 +208,7 @@ def unused_vertices_removed(scan: ColouredScan) -> ColouredScan:
         colours=scan.colours[used],
         seen=scan.seen[used],
         sources=scan.sources[used] if scan.sources is not None else None,
+        inferred=scan.inferred[used] if scan.inferred is not None else None,
     )
 
 
@@ -250,13 +265,24 @@ def coloured_scan(
     poses_path: pathlib.Path,
     frame_paths: dict[str, pathlib.Path],
     capture_to_room,
+    patch_holes_from: SceneGraph | None = None,
 ) -> tuple[ColouredScan, list[PhotoCamera]]:
     """The captured surface in the room frame, each vertex coloured by its best photo.
 
-    Returns the cameras at the stored photos' own resolution too, so a caller can
-    go back to a full-size photo for a vertex its `sources` names.
+    With `patch_holes_from`, the holes in that graph's walls and floor are patched
+    first, so the patches are coloured by the same photos and hidden by the same
+    scanned surfaces as everything else. Returns the cameras at the stored photos'
+    own resolution too, so a caller can go back to a full-size photo for a vertex
+    its `sources` names.
     """
+    from .hole_patches import hidden_behind_objects, with_holes_patched
+
     vertices, triangles = scan_geometry(mesh_path, capture_to_room)
+    inferred, hidden = None, None
+    if patch_holes_from is not None:
+        patched = with_holes_patched(vertices, triangles, patch_holes_from)
+        vertices, triangles, inferred = patched.vertices, patched.triangles, patched.inferred
+        hidden = hidden_behind_objects(patch_holes_from, vertices, inferred)
     cameras = [
         camera for camera in load_cameras(poses_path, frame_paths, capture_to_room)
         if frame_paths.get(camera.frame_id, pathlib.Path()).is_file()
@@ -266,7 +292,8 @@ def coloured_scan(
         raise ValueError("no stored photo has a usable camera pose")
     images = [_photo(frame_paths[camera.frame_id]) for camera in cameras]
     resized = [camera.resized(*image.shape[1::-1]) for camera, image in zip(cameras, images)]
-    return unused_vertices_removed(colour_the_scan(vertices, triangles, resized, images)), cameras
+    scan = replace(colour_the_scan(vertices, triangles, resized, images, hidden=hidden), inferred=inferred)
+    return unused_vertices_removed(scan), cameras
 
 
 def paint_the_scan(
@@ -279,9 +306,11 @@ def paint_the_scan(
 ) -> ScanPaint:
     """The captured surface, coloured from the photos, as a glTF the viewer can show.
 
-    Walls, floors and labelled objects no photo reached take their generated
-    material, the room's own when `materials_dir` holds one, so the room reads
-    whole rather than as photo patches on grey. Everything else stays the
+    Holes the LiDAR left in walls and floor are patched with the planes they lie
+    on and coloured from whichever photo saw them. Walls, floors and labelled
+    objects no photo reached take their generated material, the room's own when
+    `materials_dir` holds one, so the room reads whole rather than as photo
+    patches on grey and gaps. Everything else stays the
     neutral grey: copying the nearest photographed colour was tried and smeared
     vivid streaks across ceilings and undersides. `painted_fraction` is measured
     before the fill, so it still reports only what a camera saw.
@@ -291,7 +320,7 @@ def paint_the_scan(
     from .surface_materials import room_materials, unseen_surfaces_filled
 
     started = time.monotonic()
-    scan, cameras = coloured_scan(mesh_path, poses_path, frame_paths, graph.capture_to_room)
+    scan, cameras = coloured_scan(mesh_path, poses_path, frame_paths, graph.capture_to_room, patch_holes_from=graph)
     filled = unseen_surfaces_filled(scan, graph, room_materials(materials_dir))
     write_scan_glb(filled, out_path)
     return ScanPaint(out_path, scan.painted_fraction, len(cameras), time.monotonic() - started)
