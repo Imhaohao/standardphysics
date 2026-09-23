@@ -369,7 +369,7 @@ def _display_geometry(
         vertices=patched.vertices,
         triangles=patched.triangles,
         inferred=np.concatenate([added_so_far, np.ones(extra, dtype=bool)]),
-        sheet_patches=patched.inferred,
+        sheet_patches=patched.sheet_patches,
         mirror_source=np.concatenate([completed.source, np.full(extra, -1, dtype=np.int64)]),
     )
 
