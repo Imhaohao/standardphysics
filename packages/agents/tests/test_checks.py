@@ -353,6 +353,16 @@ def test_a_lowered_section_meets_the_height_rule(pipeline, ledger):
     assert height[0].measured_inches == approx(36.0)
 
 
+def test_the_approach_is_measured_beside_the_lowered_section(pipeline, ledger):
+    """904.4.1 puts the clear floor space adjacent to the 36 inch portion. In
+    front of the high part is floor nobody in a wheelchair is served from."""
+    graph = build_lawsuit_graph()
+    lowered = next(node for node in graph.nodes if node.label == "Lowered counter section")
+    result = assess(graph, build_lawsuit_scenario(), pipeline, ledger=ledger)
+    approach = next(f for f in result.findings if f.check_id == "service_counter_approach")
+    assert approach.locus.point.x == approx(lowered.transform.position.x, abs=0.01)
+
+
 def test_a_card_reader_on_the_high_counter_is_the_finding(pipeline, ledger):
     result = assess(
         build_lawsuit_graph(), build_lawsuit_scenario(), pipeline, ledger=ledger
