@@ -38,6 +38,7 @@ from .routes import (
     clearance_map,
     longest_run_below,
     path_clearances,
+    runs_below,
     straddling_blockers,
     what_sealed_the_route,
     widest_path,
@@ -249,6 +250,26 @@ class PipelineMeasurements:
         if not result.reachable:
             return 0.0
         return longest_run_below(
+            grid, result.clearance, result.path, threshold_inches, exempt=result.exempt
+        )
+
+    def route_runs_below(
+        self,
+        graph: SceneGraph,
+        scenario: Scenario,
+        leg_index: int,
+        threshold_inches: float,
+    ) -> list[tuple[float, float]]:
+        """Every stretch of this leg narrower than the threshold, as inches
+        along the leg where each starts and ends.
+
+        403.5.1's exception also asks that narrow stretches be separated by
+        48 inches of full width route, which the longest run cannot answer.
+        """
+        grid, result = self._leg(graph, scenario, leg_index)
+        if not result.reachable:
+            return []
+        return runs_below(
             grid, result.clearance, result.path, threshold_inches, exempt=result.exempt
         )
 

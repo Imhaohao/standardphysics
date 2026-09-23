@@ -35,7 +35,7 @@ from standardphysics_pipeline.occupancy import (
     blocks_floor,
     build_grid,
 )
-from standardphysics_pipeline.routes import clearance_map, widest_path
+from standardphysics_pipeline.routes import clearance_map, longest_run_below, runs_below, widest_path
 
 
 @pytest.fixture
@@ -512,3 +512,20 @@ def test_exhaustive_customer_route_matrix_stays_in_the_path_cache(shop, monkeypa
     measure.route_clear_width(graph, scenarios[0], 0)
 
     assert len(calls) == len(scenarios)
+
+
+def test_every_narrow_stretch_is_reported_where_it_lies():
+    """403.5.1 wants 48 inches of full width between reduced stretches, so the
+    check needs each stretch, not only the longest."""
+    cell = to_meters(1.0)
+    occupied = np.zeros((1, 100), dtype=bool)
+    grid = Grid(0.0, 0.0, cell, occupied, np.full(occupied.shape, -1, dtype=np.int32), [])
+    clearance = np.full(occupied.shape, to_meters(20.0))
+    clearance[0, 10:25] = to_meters(16.0)
+    clearance[0, 40:50] = to_meters(16.0)
+    cells = [(0, col) for col in range(100)]
+
+    runs = runs_below(grid, clearance, cells, 36.0)
+
+    assert runs == [pytest.approx((10.0, 24.0)), pytest.approx((40.0, 49.0))]
+    assert longest_run_below(grid, clearance, cells, 36.0) == pytest.approx(14.0)

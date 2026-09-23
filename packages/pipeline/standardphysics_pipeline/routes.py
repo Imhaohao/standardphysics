@@ -13,6 +13,7 @@ corridor width, and the cell where it occurs is the pinch the camera flies to.
 from __future__ import annotations
 
 import heapq
+import itertools
 import math
 from collections import deque
 from dataclasses import dataclass
@@ -523,28 +524,48 @@ def longest_run_below(
     long narrow stretch on a leg that was never narrow: on the fixture, 75 of
     the 124 sub-36 inch cells on leg 2 were exempt ones.
     """
-    longest = 0.0
-    current = 0.0
-    previous = None
+    runs = runs_below(grid, clearance, cells, threshold_inches, exempt)
+    return max((end - start for start, end in runs), default=0.0)
+
+
+def runs_below(
+    grid: Grid,
+    clearance: np.ndarray,
+    cells: list[tuple[int, int]],
+    threshold_inches: float,
+    exempt: np.ndarray | None = None,
+) -> list[tuple[float, float]]:
+    """Every unbroken stretch of a route narrower than `threshold_inches`, as
+    inches along the route where each starts and ends.
+
+    403.5.1's exception has two conditions. A narrow stretch may run 24 inches
+    at most, and narrow stretches have to be separated by 48 inches of full
+    width route, so two 24 inch pinches 10 inches apart do not qualify. The
+    longest run alone answers the first condition and not the second.
+
+    A stretch runs from its first narrow cell to its last, and exempt cells
+    break it, as in `longest_run_below`.
+    """
     limit = to_meters(threshold_inches) / 2
+    along = _inches_along(grid, cells)
+    runs: list[tuple[float, float]] = []
+    start = None
+    for index, cell in enumerate(cells):
+        narrow = clearance[cell] < limit and not (exempt is not None and exempt[cell])
+        if narrow and start is None:
+            start = along[index]
+        if not narrow and start is not None:
+            runs.append((start, along[index - 1]))
+            start = None
+    if start is not None:
+        runs.append((start, along[-1]))
+    return runs
 
-    for cell in cells:
-        if exempt is not None and exempt[cell]:
-            longest = max(longest, current)
-            current = 0.0
-            previous = None
-            continue
-        below = clearance[cell] < limit
-        if below and previous is not None:
-            current += math.dist(previous, cell) * grid.cell_size
-        elif below:
-            current = 0.0
-        else:
-            longest = max(longest, current)
-            current = 0.0
-        previous = cell if below else None
 
-    return to_inches(max(longest, current))
+def _inches_along(grid: Grid, cells: list[tuple[int, int]]) -> list[float]:
+    """How far along the route each cell sits, in inches."""
+    steps = [0.0] + [math.dist(a, b) * grid.cell_size for a, b in zip(cells, cells[1:])]
+    return [to_inches(metres) for metres in itertools.accumulate(steps)]
 
 
 def what_sealed_the_route(
