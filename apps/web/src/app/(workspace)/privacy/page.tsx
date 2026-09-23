@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   description: "What a scan of your shop contains, where it goes, and how to delete it.",
 };
 
-const UPDATED = "20 September 2026";
+const UPDATED = "23 September 2026";
 const CONTACT = "privacy@standardphysics.app";
 
 function Section({ heading, children }: { heading: string; children: React.ReactNode }) {
@@ -50,6 +50,14 @@ export default function PrivacyPage() {
           To work out what is in a room, the server sends photographs from the scan to a model
           provider that identifies and counts objects in them. Nothing else about you is sent with
           them, and the provider is set to retain nothing.
+        </p>
+      </Section>
+
+      <Section heading="TestFlight waitlist">
+        <p>
+          When you join the waitlist, we store your email and whether you are a student or a shop owner.
+          We use your email to send a TestFlight invite when a place is available. Write to {CONTACT} if you
+          want us to remove your waitlist entry.
         </p>
       </Section>
 

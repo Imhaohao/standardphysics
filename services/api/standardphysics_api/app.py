@@ -79,6 +79,7 @@ from .stages import Stages, preview_ledger
 from .store import ArtifactStore, ArtifactTooLarge, InvalidArtifactId
 from .textures import install_texture_routes, maybe_queue_texture, validate_manifest
 from .usdz_validation import InvalidUsdz, validate_room_usdz
+from .waitlist import install_waitlist_routes
 from .worker import ASSESS, PROCESS, Worker
 
 log = logging.getLogger(__name__)
@@ -149,6 +150,7 @@ def create_app(settings: Settings | None = None, stages: Stages | None = None, r
     app.state.database, app.state.store, app.state.worker = database, store, worker
     _install_error_handlers(app)
     install_auth(app, database, store)
+    install_waitlist_routes(app, database, settings)
     install_architecture_export_routes(app, database)
     _install_scan_routes(app, database, store)
     _install_upload_routes(app, database, store, worker, settings)

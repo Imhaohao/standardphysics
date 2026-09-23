@@ -67,6 +67,7 @@ class Settings:
     """Traces go to Weave when this is set, and nowhere when it is not. Only
     `from_environment` fills it in, so a server built in a test stays local."""
     weave_entity: str | None = None
+    waitlist_admin_token: str | None = None
     auto_deep_simulation: bool = False
     auto_deep_samples: int = 1000
     auto_deep_typesafe_call_limit: int = 3000
@@ -97,6 +98,7 @@ class Settings:
             seed_owner_password=os.environ.get("SP_SEED_OWNER_PASSWORD") or secrets.token_urlsafe(12),
             weave_project=os.environ.get(PROJECT_ENV) or None,
             weave_entity=os.environ.get(ENTITY_ENV) or None,
+            waitlist_admin_token=os.environ.get("SP_WAITLIST_ADMIN_TOKEN") or None,
             auto_deep_simulation=_flag("SP_AUTO_DEEP_SIMULATION"),
             evidence_settle_seconds=_bounded_integer(
                 "SP_EVIDENCE_SETTLE_SECONDS", 30, 0, 86_400
