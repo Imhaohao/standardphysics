@@ -339,25 +339,47 @@ final class CoverageEngineTests: XCTestCase {
         XCTAssertFalse(engine.snapshot.surfaces[0].isDone)
     }
 
-    func testFinalReconciliationPreservesOnlyMatchingIDsAndStartsUnknownIDsAtZero() {
+    func testFinalReconciliationScoresEverySurfaceAgainstTheWholeWalk() {
         let observedID = UUID()
-        let unknownID = UUID()
+        let settledLateID = UUID()
+        let outOfSightID = UUID()
         let observed = standardSurface(id: observedID)
-        let unknown = standardSurface(id: unknownID)
+        let settledLate = standardSurface(id: settledLateID)
+        var behindTransform = matrix_identity_float4x4
+        behindTransform.columns.3 = SIMD4(0, 0, 6, 1)
+        let outOfSight = SurfaceSnapshot(id: outOfSightID, width: 1, height: 1, transform: behindTransform, confidence: .high)
         var engine = CoverageEngine(gridSize: 1)
 
         engine.update(surfaces: [observed], camera: .lookingStraightAhead(position: SIMD3<Float>(0, 0, 2)))
         engine.update(surfaces: [observed], camera: .lookingStraightAhead(position: SIMD3<Float>(1.1, 0, 2)))
-        let reconciled = engine.reconcile(finalSurfaces: [observed, unknown])
+        let reconciled = engine.reconcile(finalSurfaces: [observed, settledLate, outOfSight])
 
-        XCTAssertEqual(reconciled.surfaces.map(\.id), [observedID, unknownID])
+        XCTAssertEqual(reconciled.surfaces.map(\.id), [observedID, settledLateID, outOfSightID])
         XCTAssertEqual(reconciled.surfaces[0].observedFraction, 1, accuracy: 0.001)
         XCTAssertEqual(reconciled.surfaces[0].viewpointCount, 2)
-        XCTAssertEqual(reconciled.surfaces[1].observedFraction, 0, accuracy: 0.001)
-        XCTAssertEqual(reconciled.surfaces[1].viewpointCount, 0)
+        XCTAssertEqual(reconciled.surfaces[1].observedFraction, 1, accuracy: 0.001)
+        XCTAssertEqual(reconciled.surfaces[1].viewpointCount, 2)
+        XCTAssertEqual(reconciled.surfaces[2].observedFraction, 0, accuracy: 0.001)
+        XCTAssertEqual(reconciled.surfaces[2].viewpointCount, 0)
 
-        let afterDeletion = engine.reconcile(finalSurfaces: [unknown])
-        XCTAssertEqual(afterDeletion.surfaces.map(\.id), [unknownID])
+        let afterDeletion = engine.reconcile(finalSurfaces: [settledLate])
+        XCTAssertEqual(afterDeletion.surfaces.map(\.id), [settledLateID])
+    }
+
+    func testARefinedWallKeepsTheViewsOfWhereItEndsUp() {
+        let id = UUID()
+        var firstGuessTransform = matrix_identity_float4x4
+        firstGuessTransform.columns.3 = SIMD4(3, 0, 0, 1)
+        let firstGuess = SurfaceSnapshot(id: id, width: 1, height: 1, transform: firstGuessTransform, confidence: .high)
+        let refined = standardSurface(id: id)
+        var engine = CoverageEngine(gridSize: 1)
+
+        engine.update(surfaces: [firstGuess], camera: .lookingStraightAhead(position: SIMD3<Float>(0, 0, 2)))
+        engine.update(surfaces: [firstGuess], camera: .lookingStraightAhead(position: SIMD3<Float>(1.1, 0, 2)))
+        engine.update(surfaces: [refined], camera: .lookingStraightAhead(position: SIMD3<Float>(0, 0, 9)))
+
+        XCTAssertEqual(engine.snapshot.surfaces[0].observedFraction, 1, accuracy: 0.001)
+        XCTAssertEqual(engine.snapshot.surfaces[0].viewpointCount, 2)
     }
 
     func testFinalReconciliationDoesNotCarryGridCellsAcrossChangedGeometry() {
