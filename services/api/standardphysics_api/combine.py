@@ -2,8 +2,10 @@
 
 The owner aligns the scans in the workspace and saves their placements. A
 placement moves every node in a room the same way: rotate about the room's
-centroid, then slide it on the floor. Nodes stay a pure rotation about the
-vertical axis plus a translation, which is all a RoomPlan surface carries.
+centroid, then slide it on the floor. The turn is about the vertical and is
+applied to each node's whole rotation, because not every surface stands upright
+in its own frame: RoomPlan lays a floor flat by tilting it, and rebuilding that
+from its heading alone stood every floor on its edge.
 
 The math here mirrors the web's `lib/room-groups.ts` exactly, so the preview
 before saving and the graph after saving agree to the float.
@@ -26,7 +28,6 @@ from .errors import ApiProblem
 from .store import ArtifactStore
 from .worker import ASSESS, Worker
 
-FORWARD_AXIS = (0, 4)
 POSITION = (3, 7, 11)
 
 
@@ -38,17 +39,19 @@ def _compose(
     tx: float,
     ty: float,
 ) -> list[float]:
-    """A node transform after the room rotates `yaw` about its centroid and shifts by (tx, ty)."""
-    angle = math.atan2(m[FORWARD_AXIS[1]], m[FORWARD_AXIS[0]]) + yaw
-    cos_a, sin_a = math.cos(angle), math.sin(angle)
+    """A node transform after the room rotates `yaw` about its centroid and shifts by (tx, ty).
+
+    Every column of the rotation turns with the room, and the vertical row is
+    left alone, so whatever lay flat still lies flat.
+    """
     cos_y, sin_y = math.cos(yaw), math.sin(yaw)
     px, py = m[POSITION[0]] - centroid_x, m[POSITION[1]] - centroid_y
-    rx = px * cos_y - py * sin_y
-    ry = px * sin_y + py * cos_y
+    x_row = [cos_y * m[column] - sin_y * m[4 + column] for column in range(3)]
+    y_row = [sin_y * m[column] + cos_y * m[4 + column] for column in range(3)]
     return [
-        cos_a, -sin_a, 0.0, centroid_x + rx + tx,
-        sin_a, cos_a, 0.0, centroid_y + ry + ty,
-        0.0, 0.0, 1.0, m[POSITION[2]],
+        *x_row, centroid_x + px * cos_y - py * sin_y + tx,
+        *y_row, centroid_y + px * sin_y + py * cos_y + ty,
+        m[8], m[9], m[10], m[POSITION[2]],
         0.0, 0.0, 0.0, 1.0,
     ]
 

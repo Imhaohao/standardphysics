@@ -99,12 +99,15 @@ def scan_exists(connection: sqlite3.Connection, scan_id: uuid.UUID) -> bool:
     return connection.execute("SELECT 1 FROM scans WHERE id = ?", (str(scan_id),)).fetchone() is not None
 
 
-CHILD_TABLES = ("texture_builds", "simulations", "assessments", "scenarios", "revisions", "jobs", "artifacts")
+CHILD_TABLES = (
+    "texture_builds", "simulations", "assessments", "evidence_bundles", "scenarios", "revisions",
+    "job_attempts", "jobs", "artifacts",
+)
 """Everything that references a scan, deepest first.
 
-SQLite does not enforce the foreign keys by default, so leaving a child row
-behind would not fail loudly. It would sit in the database pointing at a scan
-that no longer exists until something joined on it.
+Connections turn foreign keys on, so a table missing from this list makes
+deleting any scan that has rows in it fail. Job attempts and evidence bundles
+were missing, which meant no scan the worker had processed could be deleted.
 """
 
 

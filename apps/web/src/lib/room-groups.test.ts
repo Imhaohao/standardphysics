@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Mat4, SceneNode } from "@/types/contracts";
 import { moveNode, roomMeshPose, type CapturePose, type RoomPlacement } from "./room-groups";
@@ -41,5 +43,32 @@ describe("roomMeshPose", () => {
     const [meshX, meshY] = drawnAt(roomMeshPose(turn), 1, 0);
     expect(meshX).toBeCloseTo(0, 9);
     expect(meshY).toBeCloseTo(1, 9);
+  });
+});
+
+/** The real test1 scan's floor, carried from ARKit's column-major Y-up matrix into the room frame as ingest does. */
+function realFloor(): SceneNode {
+  const payload = JSON.parse(readFileSync(join(__dirname, "../../../../datasets/phone/test1/room.json"), "utf8"));
+  const c: number[] = payload.floors[0].transform;
+  const rows = [0, 1, 2, 3].map((r) => [c[r], c[4 + r], c[8 + r], c[12 + r]]);
+  const [x, y, z, w] = rows;
+  const zUp = [x, z.map((v) => -v), y, w];
+  const m = zUp.flatMap((row) => [row[0], -row[2], row[1], row[3]]);
+  return { id: "floor", transform: { m } as Mat4 } as SceneNode;
+}
+
+describe("moveNode", () => {
+  it("turns a real floor about the vertical without standing it up", () => {
+    const floor = realFloor();
+    expect(Math.abs(floor.transform.m[10])).toBeLessThan(0.5);
+    const moved = moveNode(floor, { yawDegrees: 92, tx: 10, ty: 5, cx: 0, cy: 0 }).transform.m;
+    const cos = Math.cos((92 * Math.PI) / 180);
+    const sin = Math.sin((92 * Math.PI) / 180);
+    const m = floor.transform.m;
+    for (const column of [0, 1, 2]) {
+      expect(moved[column]).toBeCloseTo(cos * m[column] - sin * m[4 + column], 6);
+      expect(moved[4 + column]).toBeCloseTo(sin * m[column] + cos * m[4 + column], 6);
+      expect(moved[8 + column]).toBeCloseTo(m[8 + column], 6);
+    }
   });
 });
