@@ -41,7 +41,7 @@ Then, on the Droplet as root:
 ```bash
 git clone https://github.com/Imhaohao/standardphysics.git
 cd standardphysics/deploy/digitalocean
-VOLUME_NAME=standardphysics_scans ./setup.sh
+VOLUME_NAME=standardphysics-scans ./setup.sh
 ```
 
 That installs Docker, mounts the volume, adds swap, closes every port but SSH
@@ -109,7 +109,7 @@ the plan. For a real copy:
 docker compose exec api /opt/venv/bin/python -c \
   "import sqlite3; s=sqlite3.connect('/data/standardphysics.sqlite3'); \
    d=sqlite3.connect('/data/backup.sqlite3'); s.backup(d)"
-scp root@<droplet>:/mnt/standardphysics_scans/backup.sqlite3 .
+scp root@<droplet>:/mnt/standardphysics-scans/backup.sqlite3 .
 ```
 
 The scan artifacts sit beside it under the same mount and are the larger half.
