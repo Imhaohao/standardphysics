@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import pathlib
 import subprocess
@@ -20,6 +21,11 @@ from .textures import build_dir, build_prefix
 FURNITURE = "furniture"
 FURNITURE_CLASSES = frozenset({"chair", "sofa", "table", "bed", "stool"})
 INFERENCE_SCRIPT = pathlib.Path(__file__).resolve().parents[3] / "scripts" / "spar3d_furniture_experiment.py"
+
+
+def furniture_mesh_url(scan_id: uuid.UUID, build_key: str, path: pathlib.Path) -> str:
+    version = hashlib.sha256(path.read_bytes()).hexdigest()[:16]
+    return build_prefix(scan_id, build_key) + f"/scan-furniture.glb?v={version}"
 
 
 def candidate_nodes(graph: SceneGraph) -> list[uuid.UUID]:
@@ -50,7 +56,9 @@ def _run_candidate(scan_id: uuid.UUID, node_id: uuid.UUID, directory: pathlib.Pa
     directory.mkdir(parents=True, exist_ok=True)
     result_path = directory / "metrics.json"
     if result_path.is_file():
-        return json.loads(result_path.read_text())
+        cached = json.loads(result_path.read_text())
+        if cached.get("status") not in {"failed", "blocked"}:
+            return cached
     command = [
         sys.executable, str(INFERENCE_SCRIPT), "--scan-id", str(scan_id),
         "--node-id", str(node_id), "--output-dir", str(directory),
@@ -106,15 +114,19 @@ def run_furniture(database, store, scan_id: uuid.UUID, build_id: int) -> None:
         if any(report.get("node_id") == str(node.id) and report.get("accepted_for_display") for report in reports)
     ]
     output = directory / "scan-furniture.glb"
-    if accepted and not output.is_file():
+    if accepted:
         _accepted_mesh(directory / "scan.glb", graph, accepted, output)
     report = {"scan_id": str(scan_id), "build_id": row["build_key"], "objects": reports, "accepted": len(accepted)}
     (directory / "furniture.json").write_text(json.dumps(report, indent=2) + "\n")
-    if not accepted:
-        return
-    texture = TextureBuild.model_validate_json(row["result_json"])
-    changed = texture.model_copy(update={
-        "scan_glb_url": build_prefix(scan_id, row["build_key"]) + "/scan-furniture.glb"
-    })
-    with database.transaction() as connection:
-        connection.execute("UPDATE texture_builds SET result_json=? WHERE id=?", (changed.model_dump_json(), build_id))
+    if accepted:
+        texture = TextureBuild.model_validate_json(row["result_json"])
+        changed = texture.model_copy(update={
+            "scan_glb_url": furniture_mesh_url(scan_id, row["build_key"], output)
+        })
+        with database.transaction() as connection:
+            connection.execute(
+                "UPDATE texture_builds SET result_json=? WHERE id=?", (changed.model_dump_json(), build_id),
+            )
+    failed = sum(report.get("status") in {"failed", "blocked"} for report in reports)
+    if failed:
+        raise RuntimeError(f"{failed} furniture candidates need retry")

@@ -473,5 +473,8 @@ def install_texture_routes(app: FastAPI, database, store, worker):
         return FileResponse(
             path,
             media_type="model/gltf-binary" if filename.endswith(".glb") else "image/png",
-            headers={"Cache-Control": "private, max-age=31536000, immutable"},
+            headers={"Cache-Control": (
+                "private, no-cache" if filename == "scan-furniture.glb"
+                else "private, max-age=31536000, immutable"
+            )},
         )

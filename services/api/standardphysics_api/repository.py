@@ -367,13 +367,22 @@ def queue_job_again(connection: sqlite3.Connection, scan_id: uuid.UUID, kind: st
     )
 
 
-def claim_job(connection: sqlite3.Connection, texture_only: bool | None = None) -> sqlite3.Row | None:
+def claim_job(
+    connection: sqlite3.Connection, texture_only: bool | None = None, *, furniture_only: bool = False,
+) -> sqlite3.Row | None:
+    if furniture_only:
+        kind_filter = "kind='furniture'"
+    elif texture_only is True:
+        kind_filter = "kind='texture'"
+    elif texture_only is False:
+        kind_filter = "kind NOT IN ('texture','furniture')"
+    else:
+        kind_filter = "1=1"
     return connection.execute(
         "UPDATE jobs SET state = 'running', attempts = attempts + 1"
         " WHERE id = (SELECT id FROM jobs WHERE state = 'queued'"
-        " AND (? IS NULL OR (kind IN ('texture','furniture'))=?) ORDER BY id LIMIT 1)"
-        " RETURNING id, scan_id, kind, revision, attempts",
-        (texture_only, texture_only),
+        f" AND {kind_filter} ORDER BY id LIMIT 1)"
+        " RETURNING id, scan_id, kind, revision, attempts"
     ).fetchone()
 
 

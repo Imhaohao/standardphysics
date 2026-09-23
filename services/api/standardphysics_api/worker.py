@@ -61,6 +61,7 @@ class Worker:
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._texture_thread: threading.Thread | None = None
+        self._furniture_thread: threading.Thread | None = None
 
     def start(self) -> None:
         with self.database.transaction() as connection:
@@ -79,6 +80,13 @@ class Worker:
             daemon=True,
         )
         self._texture_thread.start()
+        self._furniture_thread = threading.Thread(
+            target=self._loop,
+            args=(None, True),
+            name="standardphysics-furniture",
+            daemon=True,
+        )
+        self._furniture_thread.start()
 
     def stop(self) -> None:
         self._stop.set()
@@ -87,6 +95,8 @@ class Worker:
             self._thread.join(timeout=5)
         if self._texture_thread is not None:
             self._texture_thread.join(timeout=5)
+        if self._furniture_thread is not None:
+            self._furniture_thread.join(timeout=5)
 
     def wake(self) -> None:
         self._wake.set()
@@ -106,9 +116,9 @@ class Worker:
         while self.run_once():
             pass
 
-    def run_once(self, texture_only: bool | None = None) -> bool:
+    def run_once(self, texture_only: bool | None = None, *, furniture_only: bool = False) -> bool:
         with self.database.transaction() as connection:
-            job = repo.claim_job(connection, texture_only)
+            job = repo.claim_job(connection, texture_only, furniture_only=furniture_only)
         if job is None:
             return False
         outcome = self._run(job)
@@ -133,11 +143,11 @@ class Worker:
             repo.queue_job_again(connection, scan_id, PROCESS, 0)
             self.wake()
 
-    def _loop(self, texture_only: bool = False) -> None:
+    def _loop(self, texture_only: bool | None = False, furniture_only: bool = False) -> None:
         while not self._stop.is_set():
-            if self.run_once(texture_only):
+            if self.run_once(texture_only, furniture_only=furniture_only):
                 continue
-            if not texture_only:
+            if texture_only is False and not furniture_only:
                 self._sweep_due_settled()
             self._wake.wait(timeout=2.0)
             self._wake.clear()

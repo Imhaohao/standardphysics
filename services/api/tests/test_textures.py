@@ -122,8 +122,11 @@ def test_separate_workers_claim_only_their_job_kind(client):
     with client.app.state.database.transaction() as c:
         repo.enqueue_job(c,graph.scan_id,'display',0)
         repo.enqueue_job(c,graph.scan_id,'texture',99)
+        repo.enqueue_job(c,graph.scan_id,'furniture',98)
         assert repo.claim_job(c,True)['kind']=='texture'
         assert repo.claim_job(c,True) is None
+        assert repo.claim_job(c,furniture_only=True)['kind']=='furniture'
+        assert repo.claim_job(c,furniture_only=True) is None
         assert repo.claim_job(c,False)['kind']=='display'
 
 
@@ -197,6 +200,8 @@ def test_furniture_runs_after_a_photo_build_and_publishes_only_accepted_mesh(cli
     def fake_candidate(scan_id, node_id, directory):
         calls.append(str(node_id))
         if str(node_id) == chosen:
+            if calls.count(chosen) == 1:
+                return {'node_id': chosen, 'status': 'failed', 'error': 'temporary inference error'}
             return {'node_id': chosen, 'status': 'accepted', 'accepted_for_display': True}
         return {'node_id': str(node_id), 'status': 'skipped'}
 
@@ -210,13 +215,18 @@ def test_furniture_runs_after_a_photo_build_and_publishes_only_accepted_mesh(cli
         build_id = connection.execute('SELECT id FROM texture_builds WHERE scan_id=?', (scan_id,)).fetchone()[0]
     furniture.queue_furniture(client.app.state.database, client.app.state.worker, graph.scan_id, build_id)
     drain(client)
+    failed = client.get(f'/api/scans/{scan_id}/furniture').json()
+    assert failed['state'] == 'failed' and failed['report']['accepted'] == 0
+    with client.app.state.database.transaction() as connection:
+        repo.queue_job_again(connection, graph.scan_id, furniture.FURNITURE, build_id)
+    drain(client)
     updated = client.get(f'/api/scans/{scan_id}/textures').json()
-    assert updated['build']['scan_glb_url'].endswith('/scan-furniture.glb')
+    assert '/scan-furniture.glb?v=' in updated['build']['scan_glb_url']
     assert client.get(updated['build']['scan_glb_url']).status_code == 200
     assert client.get(f'/api/scans/{scan_id}/furniture').json()['report']['accepted'] == 1
-    assert len(calls) == len(furniture.candidate_nodes(graph))
+    assert len(calls) == 2 * len(furniture.candidate_nodes(graph))
     drain(client)
-    assert len(calls) == len(furniture.candidate_nodes(graph))
+    assert len(calls) == 2 * len(furniture.candidate_nodes(graph))
 
 
 def test_finished_upload_automatically_queues_furniture_after_scan_paint(make_client, monkeypatch):
@@ -226,10 +236,13 @@ def test_finished_upload_automatically_queues_furniture_after_scan_paint(make_cl
         textures, '_paint_the_scan',
         lambda store, scan_id, graph, inputs, out_dir: bool(shutil.copyfile(FIXTURE_DATA / 'shop.glb', out_dir / 'scan.glb')),
     )
-    monkeypatch.setattr(
-        furniture, '_run_candidate',
-        lambda scan_id, node_id, directory: {'node_id': str(node_id), 'status': 'skipped'},
-    )
+    calls = []
+
+    def candidate(scan_id, node_id, directory):
+        calls.append(str(node_id))
+        return {'node_id': str(node_id), 'status': 'failed' if len(calls) == 1 else 'skipped'}
+
+    monkeypatch.setattr(furniture, '_run_candidate', candidate)
     with make_client(stages=no_blender_stages(bake_textures=_bake)) as client:
         scan_id, _ = _room(client)
         lidar = json.dumps({'parts': [{
@@ -241,9 +254,13 @@ def test_finished_upload_automatically_queues_furniture_after_scan_paint(make_cl
         assert put_artifact(client, scan_id, 'lidar-mesh', lidar, 'lidar_mesh').status_code == 201
         _photos(client, scan_id)
         drain(client)
+        assert client.get(f'/api/scans/{scan_id}/furniture').json()['state'] == 'failed'
+        assert client.post(f'/api/scans/{scan_id}/furniture').status_code == 200
+        drain(client)
         furniture_status = client.get(f'/api/scans/{scan_id}/furniture').json()
         assert furniture_status['state'] == 'done'
         assert furniture_status['report']['accepted'] == 0
+        assert len(calls) > 1
         with client.app.state.database.connect() as connection:
             assert connection.execute("SELECT COUNT(*) FROM jobs WHERE kind='furniture'").fetchone()[0] == 1
 
