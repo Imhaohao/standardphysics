@@ -197,19 +197,21 @@ def test_furniture_runs_after_a_photo_build_and_publishes_only_accepted_mesh(cli
     chosen = str(furniture.candidate_nodes(graph)[0])
     calls = []
 
-    def fake_candidate(scan_id, node_id, directory):
-        calls.append(str(node_id))
-        if str(node_id) == chosen:
-            if calls.count(chosen) == 1:
-                return {'node_id': chosen, 'status': 'failed', 'error': 'temporary inference error'}
-            return {'node_id': chosen, 'status': 'accepted', 'accepted_for_display': True}
-        return {'node_id': str(node_id), 'status': 'skipped'}
+    def fake_candidates(scan_id, node_ids, directory):
+        calls.extend(str(node_id) for node_id in node_ids)
+        reports = [{'node_id': str(node_id), 'status': 'skipped'} for node_id in node_ids]
+        reports[0] = (
+            {'node_id': chosen, 'status': 'failed', 'error': 'temporary inference error'}
+            if calls.count(chosen) == 1
+            else {'node_id': chosen, 'status': 'accepted', 'accepted_for_display': True}
+        )
+        return reports
 
     def fake_merge(base, graph, accepted, output):
         assert len(accepted) == 1 and str(graph.nodes[accepted[0][0]].id) == chosen
         shutil.copyfile(base, output)
 
-    monkeypatch.setattr(furniture, '_run_candidate', fake_candidate)
+    monkeypatch.setattr(furniture, '_run_candidates', fake_candidates)
     monkeypatch.setattr(furniture, '_accepted_mesh', fake_merge)
     with client.app.state.database.connect() as connection:
         build_id = connection.execute('SELECT id FROM texture_builds WHERE scan_id=?', (scan_id,)).fetchone()[0]
@@ -238,11 +240,14 @@ def test_finished_upload_automatically_queues_furniture_after_scan_paint(make_cl
     )
     calls = []
 
-    def candidate(scan_id, node_id, directory):
-        calls.append(str(node_id))
-        return {'node_id': str(node_id), 'status': 'failed' if len(calls) == 1 else 'skipped'}
+    def candidates(scan_id, node_ids, directory):
+        calls.extend(str(node_id) for node_id in node_ids)
+        return [
+            {'node_id': str(node_id), 'status': 'failed' if len(calls) == len(node_ids) and index == 0 else 'skipped'}
+            for index, node_id in enumerate(node_ids)
+        ]
 
-    monkeypatch.setattr(furniture, '_run_candidate', candidate)
+    monkeypatch.setattr(furniture, '_run_candidates', candidates)
     with make_client(stages=no_blender_stages(bake_textures=_bake)) as client:
         scan_id, _ = _room(client)
         lidar = json.dumps({'parts': [{

@@ -28,10 +28,17 @@ def furniture_mesh_url(scan_id: uuid.UUID, build_key: str, path: pathlib.Path) -
     return build_prefix(scan_id, build_key) + f"/scan-furniture.glb?v={version}"
 
 
+def furniture_class(node) -> str | None:
+    label = node.label.strip().casefold()
+    if node.labeled_by == "discovery":
+        return label if label in FURNITURE_CLASSES else None
+    return node.raw_category if node.raw_category in FURNITURE_CLASSES else None
+
+
 def candidate_nodes(graph: SceneGraph) -> list[uuid.UUID]:
     return [
         node.id for node in graph.nodes
-        if node.kind == "object" and node.raw_category in FURNITURE_CLASSES
+        if node.kind == "object" and furniture_class(node) is not None
         and min(node.dimensions.x, node.dimensions.y, node.dimensions.z) > 0
     ]
 
@@ -52,24 +59,26 @@ def queue_furniture(database, worker, scan_id: uuid.UUID, build_id: int) -> None
     worker.wake()
 
 
-def _run_candidate(scan_id: uuid.UUID, node_id: uuid.UUID, directory: pathlib.Path) -> dict:
+def _run_candidates(scan_id: uuid.UUID, node_ids: list[uuid.UUID], directory: pathlib.Path) -> list[dict]:
+    if not node_ids:
+        return []
     directory.mkdir(parents=True, exist_ok=True)
-    result_path = directory / "metrics.json"
-    if result_path.is_file():
-        cached = json.loads(result_path.read_text())
-        if cached.get("status") not in {"failed", "blocked"}:
-            return cached
     command = [
         sys.executable, str(INFERENCE_SCRIPT), "--scan-id", str(scan_id),
-        "--node-id", str(node_id), "--output-dir", str(directory),
+        "--output-dir", str(directory),
     ]
-    result = subprocess.run(command, capture_output=True, text=True, timeout=2700)
+    for node_id in node_ids:
+        command.extend(("--batch-node", str(node_id)))
+    result = subprocess.run(command, capture_output=True, text=True)
     (directory / "process.log").write_text((result.stdout + "\n" + result.stderr)[-6000:])
-    if result.returncode or not result_path.is_file():
-        report = {"node_id": str(node_id), "status": "failed", "error": f"SPAR3D process exited {result.returncode}"}
-        result_path.write_text(json.dumps(report))
-        return report
-    return json.loads(result_path.read_text())
+    reports = []
+    for node_id in node_ids:
+        result_path = directory / str(node_id) / "metrics.json"
+        reports.append(
+            json.loads(result_path.read_text()) if result_path.is_file()
+            else {"node_id": str(node_id), "status": "failed", "error": f"SPAR3D process exited {result.returncode}"}
+        )
+    return reports
 
 
 def _accepted_mesh(
@@ -105,9 +114,7 @@ def run_furniture(database, store, scan_id: uuid.UUID, build_id: int) -> None:
         raise ValueError("furniture job has no completed texture build")
     graph = SceneGraph.model_validate_json(row["graph_json"])
     directory = build_dir(store, scan_id) / row["build_key"]
-    reports = []
-    for node_id in candidate_nodes(graph):
-        reports.append(_run_candidate(scan_id, node_id, directory / "furniture-work" / str(node_id)))
+    reports = _run_candidates(scan_id, candidate_nodes(graph), directory / "furniture-work")
     accepted = [
         (index, directory / "furniture-work" / str(node.id) / "fitted.glb")
         for index, node in enumerate(graph.nodes)

@@ -160,6 +160,10 @@ def prepare_object(room: RoomEvidence, node_index: int, directory: pathlib.Path,
 
 
 def infer(directory: pathlib.Path) -> dict:
+    directory = directory.resolve()
+    metrics = directory / "inference.json"
+    if (directory / "raw.glb").is_file() and metrics.is_file():
+        return json.loads(metrics.read_text())
     if not SPAR_PYTHON.is_file() or not (SOURCE / "spar3d/system.py").is_file():
         raise RuntimeError("SPAR3D source or its isolated virtualenv is missing")
     environment = {
@@ -175,7 +179,7 @@ def infer(directory: pathlib.Path) -> dict:
     (directory / "inference.log").write_text(result.stdout + "\n" + result.stderr)
     if result.returncode:
         raise RuntimeError(f"SPAR3D inference failed; see {directory / 'inference.log'}")
-    return json.loads((directory / "inference.json").read_text())
+    return json.loads(metrics.read_text())
 
 
 def weights_available() -> bool:
@@ -365,6 +369,7 @@ def accepted_for_display(record: dict) -> bool:
 
 
 def run_evidence(room: RoomEvidence, node_id: uuid.UUID, directory: pathlib.Path) -> dict:
+    directory = directory.resolve()
     node_index = next((index for index, node in enumerate(room.graph.nodes) if node.id == node_id), None)
     if node_index is None:
         raise ValueError(f"node {node_id} does not belong to this capture")
@@ -390,14 +395,41 @@ def run_one(scan_id: uuid.UUID, node_id: uuid.UUID, directory: pathlib.Path) -> 
     return run_evidence(room_evidence(scan_id), node_id, directory)
 
 
+def run_batch(scan_id: uuid.UUID, node_ids: list[uuid.UUID], directory: pathlib.Path) -> list[dict]:
+    room = room_evidence(scan_id)
+    reports = []
+    for node_id in node_ids:
+        output = directory / str(node_id)
+        output.mkdir(parents=True, exist_ok=True)
+        result_path = output / "metrics.json"
+        cached = json.loads(result_path.read_text()) if result_path.is_file() else None
+        if cached is not None and cached.get("status") not in {"failed", "blocked"}:
+            report = cached
+        else:
+            try:
+                report = run_evidence(room, node_id, output)
+            except Exception as error:
+                report = {"node_id": str(node_id), "status": "failed", "error": str(error)}
+            result_path.write_text(json.dumps(report, indent=2) + "\n")
+        reports.append(report)
+        print(json.dumps({"node_id": str(node_id), "status": report["status"]}), flush=True)
+    return reports
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
     parser.add_argument("--prepare-only", action="store_true", help="write scan evidence without loading gated weights")
     parser.add_argument("--scan-id", type=uuid.UUID)
     parser.add_argument("--source-room", choices=("center", "top", "bottom_left", "left"))
     parser.add_argument("--node-id", type=uuid.UUID)
+    parser.add_argument("--batch-node", type=uuid.UUID, action="append")
     parser.add_argument("--output-dir", type=pathlib.Path)
     args = parser.parse_args()
+    if args.batch_node:
+        if args.scan_id is None or args.source_room is not None or args.node_id is not None or args.output_dir is None:
+            parser.error("batch mode needs --scan-id, --batch-node and --output-dir")
+        run_batch(args.scan_id, args.batch_node, args.output_dir)
+        return
     if args.scan_id is not None or args.source_room is not None or args.node_id is not None or args.output_dir is not None:
         if args.node_id is None or args.output_dir is None or (args.scan_id is None) == (args.source_room is None):
             parser.error("supply --node-id, --output-dir and exactly one of --scan-id or --source-room")

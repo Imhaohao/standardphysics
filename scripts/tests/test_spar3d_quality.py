@@ -1,4 +1,17 @@
-from scripts.spar3d_furniture_experiment import accepted_for_display
+import uuid
+from types import SimpleNamespace
+
+from scripts import spar3d_furniture_experiment as experiment
+from standardphysics_api.furniture import furniture_class
+
+accepted_for_display = experiment.accepted_for_display
+
+
+def test_photo_label_selects_furniture_type_for_refinement():
+    corrected_table = SimpleNamespace(label="Table", raw_category="sofa", labeled_by="discovery")
+    discovered_sofa = SimpleNamespace(label="Sofa", raw_category="storage", labeled_by="discovery")
+    assert furniture_class(corrected_table) == "table"
+    assert furniture_class(discovered_sofa) == "sofa"
 
 
 def test_small_visual_gain_cannot_override_bad_measured_geometry():
@@ -23,3 +36,27 @@ def test_good_geometry_still_needs_five_independent_views():
     assert not accepted_for_display(record)
     record["views"].append({"lidar_ssim": 0.6})
     assert accepted_for_display(record)
+
+
+def test_batch_reuses_room_evidence_and_retries_only_failed_candidates(tmp_path, monkeypatch):
+    first, second = uuid.uuid4(), uuid.uuid4()
+    loads, calls = [], []
+
+    def room_evidence(scan_id):
+        loads.append(scan_id)
+        return object()
+
+    def run_evidence(room, node_id, directory):
+        calls.append(node_id)
+        return {
+            "node_id": str(node_id),
+            "status": "failed" if node_id == second and calls.count(second) == 1 else "skipped",
+        }
+
+    monkeypatch.setattr(experiment, "room_evidence", room_evidence)
+    monkeypatch.setattr(experiment, "run_evidence", run_evidence)
+    scan_id = uuid.uuid4()
+    experiment.run_batch(scan_id, [first, second], tmp_path)
+    experiment.run_batch(scan_id, [first, second], tmp_path)
+    assert loads == [scan_id, scan_id]
+    assert calls == [first, second, second]
