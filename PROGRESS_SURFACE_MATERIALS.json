@@ -1,7 +1,7 @@
 {
   "objective": "Room 6 (cdb7ced5-b67f-4f94-8639-0257a1dd8e9a) as a testbed: render the whole room without gaps using ElevenLabs-generated materials.",
   "status": "complete",
-  "updated_at": "2026-09-22T21:40:00-07:00",
+  "updated_at": "2026-09-22T22:10:00-07:00",
   "findings": {
     "scan_holes": "Room 6 LiDAR scan has no surface over 25% of wall area and 63% of floor area (5 cm grid, 6 cm tolerance); colour cannot fill holes, so the gapless view is the box model (scene.glb).",
     "box_model_coverage": "Photos reach 48% of the box model's texels; the other 52% now take room materials.",
@@ -45,6 +45,11 @@
       "name": "people out of the displayed scan, their holes in furniture closed, person pixels masked",
       "status": "complete",
       "notes": "Room 6: people in 63 of 99 photos. discovery's any-photo rule (person_points) marked 13% of the scan including 33% of the TV and 40% of the table, so display uses mostly_people: a person in at least half the photos that see the point. That removes 3.6% (4,806 points), TV 0%. Holes inside object boxes with rims <= 2.5 m are capped with rings every 3 cm (one centre point gave a starburst on the TV). Person boxes mask photo pixels during colouring. Detections come from discovery's cache only (known_detections) and their digest is in the build key. Render: runs/surface-materials-preview/room6-people-removed.jpg. Next: step 2, completing half-seen furniture."
+    },
+    {
+      "name": "step 2: complete half-seen furniture by reflection",
+      "status": "complete",
+      "notes": "Per object, every upright plane through its box (offsets +-8 cm) is scored by agreement (reflected points within 3 cm of scanned surface) minus contradiction (reflected points in space a camera saw through). Planes need agreement >= 0.4 and margin >= 0.15; the first test without contradiction scored ~95% on every axis and was useless. All passing planes apply, best first, each filling only what is still missing. Reflected vertices copy their source's final colour. Room 6: 2,097 vertices; chairs 3-11%, sofa 16%, televisions 25-26% (screen gaps), table and two chairs none. Render: runs/surface-materials-preview/room6-mirrored.jpg"
     }
   ]
 }

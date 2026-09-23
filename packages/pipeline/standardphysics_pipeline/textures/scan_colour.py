@@ -59,6 +59,8 @@ class ColouredScan:
     """Whether each vertex was added to patch a hole rather than scanned; None when nothing was."""
     sheet_patches: np.ndarray | None = None
     """The added vertices that patch a wall or floor, as opposed to closing a hole in an object."""
+    mirror_source: np.ndarray | None = None
+    """For a vertex reflected in to complete an object, the vertex it mirrors; -1 otherwise."""
 
     @property
     def scanned(self) -> np.ndarray:
@@ -204,6 +206,10 @@ def unused_vertices_removed(scan: ColouredScan) -> ColouredScan:
     used = np.unique(scan.triangles)
     remap = np.full(len(scan.vertices), -1, dtype=np.int64)
     remap[used] = np.arange(len(used))
+    mirror_source = None
+    if scan.mirror_source is not None:
+        kept = scan.mirror_source[used]
+        mirror_source = np.where(kept >= 0, remap[np.maximum(kept, 0)], -1)
     return ColouredScan(
         vertices=scan.vertices[used],
         triangles=remap[scan.triangles],
@@ -212,6 +218,7 @@ def unused_vertices_removed(scan: ColouredScan) -> ColouredScan:
         sources=scan.sources[used] if scan.sources is not None else None,
         inferred=scan.inferred[used] if scan.inferred is not None else None,
         sheet_patches=scan.sheet_patches[used] if scan.sheet_patches is not None else None,
+        mirror_source=mirror_source,
     )
 
 
@@ -263,28 +270,58 @@ def _photo(path: pathlib.Path) -> np.ndarray:
         return np.asarray(image, dtype=np.float32) / 255.0
 
 
+@dataclass(frozen=True)
+class DisplayGeometry:
+    vertices: np.ndarray
+    triangles: np.ndarray
+    inferred: np.ndarray
+    """Whether each vertex was added rather than scanned."""
+    sheet_patches: np.ndarray
+    """The added vertices that patch a wall or floor."""
+    mirror_source: np.ndarray
+    """For a vertex reflected in to complete an object, the vertex it mirrors; -1 otherwise."""
+
+
 def _display_geometry(
     vertices: np.ndarray, triangles: np.ndarray, graph: SceneGraph,
     cameras: list[PhotoCamera], people: dict | None,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """The scan as it should be shown: people out, their holes in furniture closed, walls and floor whole.
+) -> DisplayGeometry:
+    """The scan as it should be shown.
 
-    Returns the vertices, the triangles, which vertices were added rather than
-    scanned, and which of those patch a wall or floor.
+    People out, the holes they leave in furniture closed, half-seen furniture
+    completed from its other half, and walls and floor made whole, in that order.
     """
     from ..discovery.people import mostly_people
     from .hole_patches import with_holes_patched
     from .object_holes import closed_object_holes, without_vertices
+    from .symmetry import mirrored_completion, seen_through_by
 
     if people:
         views = [(camera, people.get(camera.frame_id, []), depth_buffer(camera, vertices)) for camera in cameras]
-        is_person = mostly_people(vertices, graph, views)
-        vertices, triangles = without_vertices(vertices, triangles, is_person)
+        vertices, triangles = without_vertices(vertices, triangles, mostly_people(vertices, graph, views))
     capped = closed_object_holes(vertices, triangles, graph)
-    patched = with_holes_patched(capped.vertices, capped.triangles, graph)
-    sheet_patches = patched.inferred
-    inferred = np.concatenate([capped.inferred, sheet_patches[len(capped.vertices):]])
-    return patched.vertices, patched.triangles, inferred, sheet_patches
+    seen_through = seen_through_by(cameras, [depth_buffer(camera, capped.vertices) for camera in cameras])
+    completed = mirrored_completion(capped.vertices, capped.triangles, graph, seen_through)
+    added_so_far = np.concatenate([capped.inferred, completed.added[len(capped.vertices):]])
+    patched = with_holes_patched(completed.vertices, completed.triangles, graph)
+    extra = len(patched.vertices) - len(completed.vertices)
+    return DisplayGeometry(
+        vertices=patched.vertices,
+        triangles=patched.triangles,
+        inferred=np.concatenate([added_so_far, np.ones(extra, dtype=bool)]),
+        sheet_patches=patched.inferred,
+        mirror_source=np.concatenate([completed.source, np.full(extra, -1, dtype=np.int64)]),
+    )
+
+
+def with_mirrored_colours(scan: ColouredScan) -> ColouredScan:
+    """Every reflected vertex coloured like the vertex it mirrors, photographed or filled."""
+    if scan.mirror_source is None or not (scan.mirror_source >= 0).any():
+        return scan
+    colours = scan.colours.copy()
+    reflected = np.flatnonzero(scan.mirror_source >= 0)
+    colours[reflected] = colours[scan.mirror_source[reflected]]
+    return replace(scan, colours=colours)
 
 
 def coloured_scan(
@@ -317,11 +354,11 @@ def coloured_scan(
     if not cameras:
         raise ValueError("no stored photo has a usable camera pose")
     vertices, triangles = scan_geometry(mesh_path, capture_to_room)
-    inferred, sheet_patches, hidden = None, None, None
+    inferred, sheet_patches, mirror_source, hidden = None, None, None, None
     if patch_holes_from is not None:
-        vertices, triangles, inferred, sheet_patches = _display_geometry(
-            vertices, triangles, patch_holes_from, all_cameras, people,
-        )
+        shown = _display_geometry(vertices, triangles, patch_holes_from, all_cameras, people)
+        vertices, triangles = shown.vertices, shown.triangles
+        inferred, sheet_patches, mirror_source = shown.inferred, shown.sheet_patches, shown.mirror_source
         hidden = hidden_behind_objects(patch_holes_from, vertices, sheet_patches)
     images = [_photo(frame_paths[camera.frame_id]) for camera in cameras]
     resized = [camera.resized(*image.shape[1::-1]) for camera, image in zip(cameras, images)]
@@ -330,7 +367,7 @@ def coloured_scan(
         by_frame = people_masks(people, cameras, {c.frame_id: i.shape[:2] for c, i in zip(cameras, images)})
         masks = [by_frame[camera.frame_id] for camera in cameras]
     coloured = colour_the_scan(vertices, triangles, resized, images, masks=masks, hidden=hidden)
-    scan = replace(coloured, inferred=inferred, sheet_patches=sheet_patches)
+    scan = replace(coloured, inferred=inferred, sheet_patches=sheet_patches, mirror_source=mirror_source)
     return unused_vertices_removed(scan), cameras
 
 
@@ -364,6 +401,6 @@ def paint_the_scan(
     scan, cameras = coloured_scan(
         mesh_path, poses_path, frame_paths, graph.capture_to_room, patch_holes_from=graph, people=people,
     )
-    filled = unseen_surfaces_filled(scan, graph, room_materials(materials_dir))
+    filled = with_mirrored_colours(unseen_surfaces_filled(scan, graph, room_materials(materials_dir)))
     write_scan_glb(filled, out_path)
     return ScanPaint(out_path, scan.painted_fraction, len(cameras), time.monotonic() - started)
