@@ -199,3 +199,32 @@ def _better(best, first: Point, second: Point):
     if best is None or distance < best[0]:
         return (distance, first, second)
     return best
+
+
+def closest_point(polygon: Polygon, point: Point) -> Point:
+    """Where on a footprint's outline the given point is nearest."""
+    return _closest_on_segment(point, *_nearest_edge(point, polygon))
+
+
+def ray_distance(origin: Point, direction: Point, polygon: Polygon) -> float | None:
+    """How far along a unit ray it first meets a footprint's outline, or None
+    when it never does."""
+    hits = [
+        t
+        for start, end in _edges(polygon)
+        if (t := _ray_meets_segment(origin, direction, start, end)) is not None
+    ]
+    return min(hits) if hits else None
+
+
+def _ray_meets_segment(origin: Point, direction: Point, a: Point, b: Point) -> float | None:
+    edge = (b[0] - a[0], b[1] - a[1])
+    denominator = direction[0] * edge[1] - direction[1] * edge[0]
+    if abs(denominator) < 1e-12:
+        return None
+    offset = (a[0] - origin[0], a[1] - origin[1])
+    along_ray = (offset[0] * edge[1] - offset[1] * edge[0]) / denominator
+    along_edge = (offset[0] * direction[1] - offset[1] * direction[0]) / denominator
+    if along_ray < 0 or not 0 <= along_edge <= 1:
+        return None
+    return along_ray
