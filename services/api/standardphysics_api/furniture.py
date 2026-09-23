@@ -1,0 +1,120 @@
+"""Quality-gated SPAR3D jobs for photographed, measured furniture."""
+
+from __future__ import annotations
+
+import json
+import pathlib
+import subprocess
+import sys
+import uuid
+
+import numpy as np
+import trimesh
+from standardphysics_contracts import SceneGraph, TextureBuild
+from standardphysics_pipeline.textures.scan_colour import vertex_normals
+from standardphysics_pipeline.textures.surface_materials import room_owners
+
+from . import repository as repo
+from .textures import build_dir, build_prefix
+
+FURNITURE = "furniture"
+FURNITURE_CLASSES = frozenset({"chair", "sofa", "table", "bed", "stool"})
+INFERENCE_SCRIPT = pathlib.Path(__file__).resolve().parents[3] / "scripts" / "spar3d_furniture_experiment.py"
+
+
+def candidate_nodes(graph: SceneGraph) -> list[uuid.UUID]:
+    return [
+        node.id for node in graph.nodes
+        if node.kind == "object" and node.raw_category in FURNITURE_CLASSES
+        and min(node.dimensions.x, node.dimensions.y, node.dimensions.z) > 0
+    ]
+
+
+def queue_furniture(database, worker, scan_id: uuid.UUID, build_id: int) -> None:
+    with database.transaction() as connection:
+        row = connection.execute(
+            "SELECT result_json, inputs_json FROM texture_builds WHERE id=? AND scan_id=?",
+            (build_id, str(scan_id)),
+        ).fetchone()
+        if row is None or row["result_json"] is None:
+            return
+        inputs = json.loads(row["inputs_json"])
+        build = TextureBuild.model_validate_json(row["result_json"])
+        if not inputs.get("lidar") or not inputs.get("frames") or not build.scan_glb_url:
+            return
+        repo.enqueue_job(connection, scan_id, FURNITURE, build_id)
+    worker.wake()
+
+
+def _run_candidate(scan_id: uuid.UUID, node_id: uuid.UUID, directory: pathlib.Path) -> dict:
+    directory.mkdir(parents=True, exist_ok=True)
+    result_path = directory / "metrics.json"
+    if result_path.is_file():
+        return json.loads(result_path.read_text())
+    command = [
+        sys.executable, str(INFERENCE_SCRIPT), "--scan-id", str(scan_id),
+        "--node-id", str(node_id), "--output-dir", str(directory),
+    ]
+    result = subprocess.run(command, capture_output=True, text=True, timeout=2700)
+    (directory / "process.log").write_text((result.stdout + "\n" + result.stderr)[-6000:])
+    if result.returncode or not result_path.is_file():
+        report = {"node_id": str(node_id), "status": "failed", "error": f"SPAR3D process exited {result.returncode}"}
+        result_path.write_text(json.dumps(report))
+        return report
+    return json.loads(result_path.read_text())
+
+
+def _accepted_mesh(
+    base_path: pathlib.Path, graph: SceneGraph,
+    accepted: list[tuple[int, pathlib.Path]], output: pathlib.Path,
+) -> None:
+    base = trimesh.load(base_path, force="mesh")
+    if not isinstance(base, trimesh.Trimesh):
+        raise ValueError("the painted scan is not a triangle mesh")
+    owners = room_owners(base.vertices, vertex_normals(base.vertices, base.faces), graph)
+    remove = np.zeros(len(base.faces), dtype=bool)
+    meshes = [base]
+    for index, path in accepted:
+        remove |= np.all(owners[base.faces] == index, axis=1)
+        fitted = trimesh.load(path, force="mesh")
+        if not isinstance(fitted, trimesh.Trimesh):
+            raise ValueError(f"SPAR3D output is not a triangle mesh: {path}")
+        meshes.append(fitted)
+    base.update_faces(~remove)
+    base.remove_unreferenced_vertices()
+    combined = trimesh.util.concatenate(meshes)
+    temporary = output.with_name(f".{output.name}.tmp")
+    combined.export(temporary, file_type="glb")
+    temporary.replace(output)
+
+
+def run_furniture(database, store, scan_id: uuid.UUID, build_id: int) -> None:
+    with database.connect() as connection:
+        row = connection.execute(
+            "SELECT * FROM texture_builds WHERE id=? AND scan_id=?", (build_id, str(scan_id))
+        ).fetchone()
+    if row is None or not row["result_json"]:
+        raise ValueError("furniture job has no completed texture build")
+    graph = SceneGraph.model_validate_json(row["graph_json"])
+    directory = build_dir(store, scan_id) / row["build_key"]
+    reports = []
+    for node_id in candidate_nodes(graph):
+        reports.append(_run_candidate(scan_id, node_id, directory / "furniture-work" / str(node_id)))
+    accepted = [
+        (index, directory / "furniture-work" / str(node.id) / "fitted.glb")
+        for index, node in enumerate(graph.nodes)
+        if any(report.get("node_id") == str(node.id) and report.get("accepted_for_display") for report in reports)
+    ]
+    output = directory / "scan-furniture.glb"
+    if accepted and not output.is_file():
+        _accepted_mesh(directory / "scan.glb", graph, accepted, output)
+    report = {"scan_id": str(scan_id), "build_id": row["build_key"], "objects": reports, "accepted": len(accepted)}
+    (directory / "furniture.json").write_text(json.dumps(report, indent=2) + "\n")
+    if not accepted:
+        return
+    texture = TextureBuild.model_validate_json(row["result_json"])
+    changed = texture.model_copy(update={
+        "scan_glb_url": build_prefix(scan_id, row["build_key"]) + "/scan-furniture.glb"
+    })
+    with database.transaction() as connection:
+        connection.execute("UPDATE texture_builds SET result_json=? WHERE id=?", (changed.model_dump_json(), build_id))

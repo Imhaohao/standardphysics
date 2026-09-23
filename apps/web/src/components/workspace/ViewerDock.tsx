@@ -84,6 +84,15 @@ export type Textures = {
   onRequest: () => void;
   reconstruction: { count: number; pending: boolean };
   capturedSplats?: boolean;
+  furniture: FurnitureRefinement | null;
+  onRetryFurniture: () => void;
+};
+
+export type FurnitureRefinement = {
+  state: "waiting_for_textures" | "not_applicable" | "not_started" | "queued" | "running" | "done" | "failed";
+  build_id: string | null;
+  error?: string | null;
+  report?: { accepted: number } | null;
 };
 
 function coverageLabel(status: TextureStatus) {
@@ -175,9 +184,24 @@ function PhotoModes({ textures, status }: { textures: Textures; status: TextureS
       </IconButton>
       {hasBuild && <BuiltModes textures={textures} status={status} />}
       <TextureAction textures={textures} actionLabel={view.actionLabel} />
+      <FurnitureProgress textures={textures} />
       {view.working && <span className="sr-only" role="status">{view.message}</span>}
     </>
   );
+}
+
+function FurnitureProgress({ textures }: { textures: Textures }) {
+  const furniture = textures.furniture;
+  if (!furniture || ["not_applicable", "waiting_for_textures"].includes(furniture.state)) return null;
+  if (["queued", "running", "not_started"].includes(furniture.state)) {
+    return <span role="status" className="flex items-center gap-2 text-sm text-ink-muted"><CircleNotch size={16} className="motion-safe:animate-spin" aria-hidden />Refining furniture</span>;
+  }
+  if (furniture.state === "failed") {
+    return <Button variant="chip" onClick={textures.onRetryFurniture}>Try furniture again</Button>;
+  }
+  const accepted = furniture.report?.accepted ?? 0;
+  if (accepted === 0) return null;
+  return <span role="status" className="text-sm text-ink-muted">Furniture refined: {accepted}</span>;
 }
 
 function MaterialGroup({ textures }: { textures: Textures }) {

@@ -22,6 +22,7 @@ from . import evidence
 from . import repository as repo
 from .db import Database
 from .errors import ApiProblem
+from .furniture import FURNITURE, queue_furniture, run_furniture
 from .settings import Settings
 from .simulations import SIMULATE, queue_simulation, run_simulation
 from .stages import DiscoveryOutcome, Stages
@@ -181,16 +182,17 @@ class Worker:
             DISPLAY: self._display,
             SIMULATE: self._simulate,
             TEXTURE: self._texture,
+            FURNITURE: self._furniture,
         }[job["kind"]]
         try:
-            if job["kind"] == TEXTURE:
+            if job["kind"] in (TEXTURE, FURNITURE):
                 follow_up = handler(scan_id=scan_id, build_id=revision, job=job)
             else:
                 follow_up = handler(scan_id=scan_id, revision=revision, job=job)
             return _JobOutcome(follow_up=follow_up)
         except Exception as exc:
             log.error("job %s %s failed:\n%s", job["kind"], scan_id, traceback.format_exc())
-            if job["kind"] not in (DISPLAY, SIMULATE, TEXTURE):
+            if job["kind"] not in (DISPLAY, SIMULATE, TEXTURE, FURNITURE):
                 with self.database.transaction() as connection:
                     repo.set_state(connection, scan_id, "failed")
             if job["kind"] == SIMULATE:
@@ -199,6 +201,11 @@ class Worker:
 
     def _texture(self, scan_id, build_id, job=None) -> bool:
         run_texture(self.database, self.store, self.stages, scan_id, build_id)
+        queue_furniture(self.database, self, scan_id, build_id)
+        return False
+
+    def _furniture(self, scan_id, build_id, job=None) -> bool:
+        run_furniture(self.database, self.store, scan_id, build_id)
         return False
 
     def _simulate(self, scan_id: uuid.UUID, revision: int, job=None) -> bool:

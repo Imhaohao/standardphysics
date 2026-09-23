@@ -371,7 +371,7 @@ def claim_job(connection: sqlite3.Connection, texture_only: bool | None = None) 
     return connection.execute(
         "UPDATE jobs SET state = 'running', attempts = attempts + 1"
         " WHERE id = (SELECT id FROM jobs WHERE state = 'queued'"
-        " AND (? IS NULL OR (kind='texture')=?) ORDER BY id LIMIT 1)"
+        " AND (? IS NULL OR (kind IN ('texture','furniture'))=?) ORDER BY id LIMIT 1)"
         " RETURNING id, scan_id, kind, revision, attempts",
         (texture_only, texture_only),
     ).fetchone()
