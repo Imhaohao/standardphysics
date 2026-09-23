@@ -28,7 +28,7 @@ from standardphysics_agents.ask import (
 from standardphysics_agents.ask.shapes import group
 from standardphysics_agents.evaluation import variants as v
 from standardphysics_agents.fix import violations
-from standardphysics_agents.models import PROVIDER_ROUTING, OpenRouter
+from standardphysics_agents.models import OpenRouter, provider_routing
 from standardphysics_contracts import to_inches
 from standardphysics_fixtures.shop import node_id
 
@@ -198,8 +198,13 @@ class TestTheModelCall:
         )
         assert isinstance(query, Query)
         sent = client.requests[0]
-        assert sent["extra_body"]["provider"] == PROVIDER_ROUTING
+        assert sent["extra_body"]["provider"] == provider_routing(sent["model"])
         assert sent["response_format"]["json_schema"]["schema"] == query_schema()
+
+    def test_the_pinned_provider_is_the_one_that_makes_the_model(self):
+        assert provider_routing("anthropic/claude-opus-5.5")["order"] == ["anthropic"]
+        assert provider_routing("openai/gpt-6-astra")["order"] == ["openai"]
+        assert provider_routing("anthropic/claude-opus-5.5")["data_collection"] == "deny"
 
     def test_the_prompt_carries_no_key_and_no_transforms(self, graph, scenario):
         client = FakeModel('{"kind": "COUNT", "subject_labels": ["x"], "restated": "y"}')
