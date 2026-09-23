@@ -222,36 +222,25 @@ function Wheelchair({ scene, wheelchairMode, wheelchairProfile, onWheelchairStat
   );
 }
 
-export default function Viewer({
-  scene,
-  exported,
-  arrange,
-  dragAllNodes,
-  lightweight,
-  route,
-  dragging,
-  cutWalls,
-  glbUrl,
-  scanGlbUrl,
-  splatAssets,
-  onSplatError,
-  lidarUrl,
-  pose,
-  selected,
-  onSelectNode,
-  onClearSelection,
-  materialMode,
-  staleNodeIds,
-  coverage,
-  wheelchairMode = false,
-  wheelchairProfile,
-  onWheelchairStateChange,
-  wheelchairDockTarget = null,
-  wheelchairDockDestination = null,
-  onClearWheelchairDock,
-  onWheelchairSelectNode,
-  onWheelchairExit,
-}: ViewerProps) {
+export default function Viewer(viewerProps: ViewerProps) {
+  const {
+    scene,
+    lightweight,
+    route,
+    dragging,
+    splatAssets,
+    pose,
+    selected,
+    onClearSelection,
+    wheelchairMode = false,
+    wheelchairProfile,
+    onWheelchairStateChange,
+    wheelchairDockTarget = null,
+    wheelchairDockDestination = null,
+    onClearWheelchairDock,
+    onWheelchairSelectNode,
+    onWheelchairExit,
+  } = viewerProps;
   const tuning = canvasTuning(lightweight, splatAssets);
   return (
     <Canvas
@@ -286,7 +275,7 @@ export default function Viewer({
         <planeGeometry args={GROUND_PLANE_ARGS} />
         <meshStandardMaterial color={MODEL.ground} roughness={1} />
       </mesh>
-      <ShopSurfaces scene={scene} exported={exported} arrange={arrange} dragAllNodes={dragAllNodes} lightweight={lightweight} glbUrl={glbUrl} scanGlbUrl={scanGlbUrl} splatAssets={splatAssets} onSplatError={onSplatError} lidarUrl={lidarUrl} selected={selected} onSelectNode={onSelectNode} cutWalls={cutWalls} materialMode={materialMode} staleNodeIds={staleNodeIds} coverage={coverage} />
+      <ShopSurfaces {...viewerProps} />
       {selected && <FindingAnnotation finding={selected} />}
       {route && <StopMarkers route={route} />}
     </Canvas>
