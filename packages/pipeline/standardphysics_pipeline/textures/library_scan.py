@@ -129,6 +129,30 @@ def painted_room(room: RoomCapture) -> tuple[ColouredScan, int]:
     return moved_to_floor(unobserved_filled_from_nearest(scan), room.to_floor), len(cameras)
 
 
+def painted_scans_joined(
+    scans: Sequence[tuple[pathlib.Path, np.ndarray]],
+    out_path: pathlib.Path,
+    max_triangles: int = MAX_FLOOR_TRIANGLES,
+) -> pathlib.Path:
+    """Rooms already painted one by one, each moved by its 4x4 `to_floor` and written as one glTF.
+
+    Painting a floor in one pass spreads one photo budget over every room, so each
+    room is painted from a fraction of the photos it gets alone. Rooms that were
+    already painted keep their own paint, and only their placement is new.
+    """
+    from ..blender import _run
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    command = ["--out", str(out_path), "--max-triangles", str(max_triangles)]
+    for glb_path, to_floor in scans:
+        values = np.asarray(to_floor, dtype=np.float64).reshape(16)
+        command.extend(["--scan", str(glb_path), "--placement", " ".join(f"{value:.9g}" for value in values)])
+    output = _run("join_scans.py", command)
+    if "FLOOR_GLB_WRITTEN" not in output:
+        raise RuntimeError(f"Blender did not write the floor:\n{output[-1500:]}")
+    return out_path
+
+
 def paint_the_rooms(
     rooms: list[RoomCapture],
     out_path: pathlib.Path,

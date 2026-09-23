@@ -11,15 +11,19 @@ before saving and the graph after saving agree to the float.
 
 from __future__ import annotations
 
+import json
 import math
 import uuid
 
 from pydantic import BaseModel
 from standardphysics_contracts import Mat4, SceneGraph
+from standardphysics_pipeline.ingest import parse_room_json
+from standardphysics_pipeline.registration import PlaneAlignment, align_points
 
 from . import repository as repo
 from .db import Database
 from .errors import ApiProblem
+from .store import ArtifactStore
 from .worker import ASSESS, Worker
 
 FORWARD_AXIS = (0, 4)
@@ -100,3 +104,59 @@ def save_combine(database: Database, worker: Worker, scan_id: uuid.UUID, body: S
         repo.enqueue_job(connection, scan_id, ASSESS, saved.revision)
     worker.wake()
     return saved
+
+
+PLACEMENT_TOLERANCE_M = 0.05
+"""How far a placed box may sit from the motion fitted to all of a walk's boxes.
+
+Every placement moves each box of a walk by exactly one motion, so the residual
+is arithmetic, not measurement. The tolerance only has to absorb rounding.
+"""
+
+
+def placement_since_capture(capture: SceneGraph, placed: SceneGraph, node_ids: list[str]) -> PlaneAlignment:
+    """The motion from where the phone measured a walk to where its boxes stand now.
+
+    The merged scan's first revision already carries the offset that spread the
+    walks apart to be dragged, and every save adds a placement on top. Anything
+    still in the capture's own frame, the LiDAR, the cameras and the photographed
+    models, has seen none of that, so it needs the whole way across in one motion.
+
+    Boxes pair by position in the list, which is the order they were copied in.
+    The fit refuses with `AmbiguousRegistration` when they disagree on one motion.
+    """
+    end = {str(node.id): node for node in placed.nodes}
+    pairs = [(node, end[node_id]) for node, node_id in zip(capture.nodes, node_ids) if node_id in end]
+    source = [(a.transform.m[3], a.transform.m[7]) for a, _ in pairs]
+    target = [(b.transform.m[3], b.transform.m[7]) for _, b in pairs]
+    return align_points(source, target, tolerance=PLACEMENT_TOLERANCE_M)
+
+
+def captured_graph(store: ArtifactStore, scan_id: uuid.UUID) -> SceneGraph:
+    """A walk's boxes as its phone measured them, in the capture's own frame."""
+    return parse_room_json(json.loads(store.artifact_path(scan_id, "room-json").read_text()))
+
+
+def _capture_pose(store: ArtifactStore, room: dict, placed: SceneGraph) -> dict | None:
+    if not room.get("source_scan_id"):
+        return None
+    try:
+        capture = captured_graph(store, uuid.UUID(room["source_scan_id"]))
+        motion = placement_since_capture(capture, placed, room["node_ids"])
+    except (OSError, ValueError):
+        return None
+    return {"yaw_degrees": math.degrees(motion.yaw), "tx": motion.translation[0], "ty": motion.translation[1]}
+
+
+def rooms_of(database: Database, store: ArtifactStore, scan_id: uuid.UUID, revision: int | None) -> dict:
+    """The combined scan's walks, each with where its capture frame stands in this revision."""
+    manifest = store.scan_dir(scan_id) / "rooms.json"
+    if not manifest.exists():
+        return {"rooms": []}
+    rooms = json.loads(manifest.read_text())["rooms"]
+    with database.connect() as connection:
+        row = repo.get_revision(connection, scan_id, revision)
+    if row is None:
+        return {"rooms": rooms}
+    placed = repo.graph_of(row)
+    return {"rooms": [{**room, "capture_pose": _capture_pose(store, room, placed)} for room in rooms]}

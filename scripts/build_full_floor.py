@@ -6,160 +6,199 @@ place in the workspace and saves, because the geometry cannot say how they fit:
 a floor of parallel shelf rows correlates with itself at many angles.
 
 This takes that saved placement and applies it to everything the boxes stood
-for. Each walk's LiDAR mesh and camera poses are moved by the same in-plane
-motion the owner gave its boxes, so the photographs keep pointing at the
-surfaces they photographed, and the result is one scan a texture bake can read.
+for. Each walk was uploaded as a scan of its own, and the merged scan's
+`rooms.json` names it. That scan's LiDAR mesh and camera poses are moved by the
+same motion the owner gave its boxes, so the photographs keep pointing at the
+surfaces they photographed. Its painted surface is moved the same way and
+joined with the others, so the floor looks the way each walk already looked.
 
-The motion is recovered rather than trusted: every node's placed position is a
-correspondence against where it started, and those go through the registration
-fit, which refuses when they do not agree on one rigid motion. A walk nobody
-moved comes through as the identity it is.
+The motion is recovered rather than trusted: every box's placed position is a
+correspondence against where the phone measured it, and those go through the
+registration fit, which refuses when they do not agree on one rigid motion.
+
+The mesh and the poses are ARKit's, Y up, while the boxes are ours, Z up with
+each walk's floor at zero. A turn on the floor plan is therefore a turn about
+ARKit's Y, and each walk's own floor height has to come out on the way in.
+Every walk leaves in one shared ARKit frame whose floor is at Y = 0.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import os
 import pathlib
 import shutil
 import sys
 import uuid
+from dataclasses import dataclass
 
 import numpy as np
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "services" / "api"))
 
-from standardphysics_contracts import CreateScanRequest, SceneGraph  # noqa: E402
-from standardphysics_pipeline.ingest import parse_room_json  # noqa: E402
-from standardphysics_pipeline.registration import align_points  # noqa: E402
+from standardphysics_contracts import (  # noqa: E402
+    Artifact,
+    CreateScanRequest,
+    SceneGraph,
+    TextureBuild,
+    TextureCoverage,
+)
+from standardphysics_pipeline.blender import export_glb  # noqa: E402
+from standardphysics_pipeline.coords import capture_to_room  # noqa: E402
+from standardphysics_pipeline.registration import PlaneAlignment  # noqa: E402
+from standardphysics_pipeline.textures import texture_build_key  # noqa: E402
+from standardphysics_pipeline.textures.library_scan import painted_scans_joined  # noqa: E402
 
 from standardphysics_api import repository  # noqa: E402
+from standardphysics_api.combine import captured_graph, placement_since_capture  # noqa: E402
 from standardphysics_api.db import Database  # noqa: E402
+from standardphysics_api.store import ArtifactStore  # noqa: E402
+from standardphysics_api.textures import (  # noqa: E402
+    bake_inputs,
+    build_dir,
+    build_prefix,
+    finish_build,
+    record_build,
+    staged_build_dir,
+)
+from standardphysics_api.worker import ASSESS  # noqa: E402
 
-PLACEMENT_TOLERANCE_M = 0.05
-"""How far a placed box may sit from the motion fitted to all of them.
+FRAMES_PER_WALK = 10_000
+"""Each walk's photos are renumbered into a block of their own, since a frame id is only digits."""
 
-A drag moves every box of a walk by exactly one motion, so the residual here is
-arithmetic, not measurement. The tolerance only has to absorb rounding.
-"""
+SHARED_FLOOR = capture_to_room(0.0)
+"""The merged scan's own capture frame: ARKit's axes, with every walk's floor at Y = 0."""
 
 
-def _graph(connection, scan_id: uuid.UUID, revision: int | None) -> SceneGraph:
-    row = repository.get_revision(connection, scan_id, revision)
+@dataclass(frozen=True)
+class Walk:
+    name: str
+    scan_id: uuid.UUID
+    placement: PlaneAlignment
+    capture_to_room: np.ndarray
+    first_frame: int
+
+    @property
+    def to_floor(self) -> np.ndarray:
+        """Row-major 4x4 in the room frame: the walk as measured to the walk as placed."""
+        cos, sin = np.cos(self.placement.yaw), np.sin(self.placement.yaw)
+        tx, ty = self.placement.translation
+        return np.array([[cos, -sin, 0, tx], [sin, cos, 0, ty], [0, 0, 1, 0], [0, 0, 0, 1]])
+
+    @property
+    def arkit_motion(self) -> np.ndarray:
+        """Into the room frame, onto the floor, and back out to the shared ARKit frame."""
+        shared = np.asarray(SHARED_FLOOR.m, dtype=np.float64).reshape(4, 4)
+        return np.linalg.inv(shared) @ self.to_floor @ self.capture_to_room
+
+    def frame_id(self, original: str) -> str:
+        return f"frame-{self.first_frame + int(original.removeprefix('frame-')):05d}"
+
+
+def _latest_graph(connection, scan_id: uuid.UUID) -> SceneGraph:
+    row = repository.get_revision(connection, scan_id, None)
     if row is None:
-        raise SystemExit(f"no revision {revision} on {scan_id}")
+        raise SystemExit(f"nothing saved on {scan_id}")
     return repository.graph_of(row)
 
 
-def _placement_of(capture: SceneGraph, after: SceneGraph, node_ids: list[str]):
-    """The motion from where a walk was measured to where the owner put it.
-
-    Read from the capture's own frame rather than from the merged scan's first
-    revision, because that revision already carries the offset that spread the
-    walks apart to be dragged. The mesh and the cameras have never seen that
-    offset: they are still where the phone recorded them, so the motion they
-    need is the whole way across, in one step.
-
-    Boxes pair by position in the list, which is the order they were copied in.
-    """
-    end = {str(node.id): node for node in after.nodes}
-    pairs = [
-        (node, end[node_id])
-        for node, node_id in zip(capture.nodes, node_ids)
-        if node_id in end
-    ]
-    if len(pairs) < 3:
-        raise SystemExit("a walk needs at least three boxes to read its placement from")
-    source = [(a.transform.m[3], a.transform.m[7]) for a, _ in pairs]
-    target = [(b.transform.m[3], b.transform.m[7]) for _, b in pairs]
-    return align_points(source, target, tolerance=PLACEMENT_TOLERANCE_M)
+def _walk(store: ArtifactStore, room: dict, placed: SceneGraph, index: int) -> Walk:
+    if not room.get("source_scan_id"):
+        raise SystemExit(f"the walk called {room['name']} does not say which scan it was uploaded as")
+    scan_id = uuid.UUID(room["source_scan_id"])
+    capture = captured_graph(store, scan_id)
+    return Walk(
+        name=room["name"],
+        scan_id=scan_id,
+        placement=placement_since_capture(capture, placed, room["node_ids"]),
+        capture_to_room=np.asarray(capture.capture_to_room.m, dtype=np.float64).reshape(4, 4),
+        first_frame=(index + 1) * FRAMES_PER_WALK,
+    )
 
 
-def _moved_mesh(mesh: dict, alignment) -> dict:
-    """Every LiDAR part turned and slid with the boxes it was measured beside."""
-    cos, sin = np.cos(alignment.yaw), np.sin(alignment.yaw)
-    tx, ty = alignment.translation
-    for part in mesh.get("parts", []):
-        m = list(part["transform"])
-        x, y = m[12], m[13]
-        m[12], m[13] = cos * x - sin * y + tx, sin * x + cos * y + ty
-        r00, r01, r10, r11 = m[0], m[1], m[4], m[5]
-        m[0], m[1] = cos * r00 - sin * r10, cos * r01 - sin * r11
-        m[4], m[5] = sin * r00 + cos * r10, sin * r01 + cos * r11
-        part["transform"] = m
-    return mesh
+def _moved(columns: list[float], motion: np.ndarray) -> list[float]:
+    """An ARKit column-major transform, carried by a row-major motion."""
+    matrix = np.asarray(columns, dtype=np.float64).reshape(4, 4, order="F")
+    return (motion @ matrix).reshape(16, order="F").tolist()
 
 
-def _moved_poses(poses: list[dict] | dict, alignment):
-    """Every camera turned and slid, so it still looks where it looked."""
-    records = poses if isinstance(poses, list) else poses.get("poses", [])
-    cos, sin = np.cos(alignment.yaw), np.sin(alignment.yaw)
-    tx, ty = alignment.translation
+def _mesh_parts(store: ArtifactStore, walk: Walk) -> list[dict]:
+    mesh = json.loads(store.artifact_path(walk.scan_id, "lidar-mesh").read_text())
+    for part in mesh["parts"]:
+        part["transform"] = _moved(part["transform"], walk.arkit_motion)
+    return mesh["parts"]
+
+
+def _poses(store: ArtifactStore, walk: Walk) -> list[dict]:
+    records = json.loads(store.artifact_path(walk.scan_id, "poses").read_text())
     for record in records:
-        m = list(record["transform"])
-        x, y = m[12], m[13]
-        m[12], m[13] = cos * x - sin * y + tx, sin * x + cos * y + ty
-        r00, r01, r10, r11 = m[0], m[1], m[4], m[5]
-        m[0], m[1] = cos * r00 - sin * r10, cos * r01 - sin * r11
-        m[4], m[5] = sin * r00 + cos * r10, sin * r01 + cos * r11
-        record["transform"] = m
-    return poses
+        record["transform"] = _moved(record["transform"], walk.arkit_motion)
+        if record.get("frame_id"):
+            record["frame_id"] = walk.frame_id(record["frame_id"])
+    return records
 
 
-def _carry_frames(source: pathlib.Path, destination: pathlib.Path, prefix: str) -> int:
-    """Photographs copied under a name that says which walk took them."""
-    frames = sorted(source.glob("frame-*"))
-    for frame in frames:
-        shutil.copy2(frame, destination / f"{prefix}-{frame.name}")
-    return len(frames)
+def _frames(connection, store: ArtifactStore, walk: Walk, scan_id: uuid.UUID) -> list[Artifact]:
+    """Every photograph linked in under its new number, with the checksum it arrived with."""
+    rows = connection.execute(
+        "SELECT id, sha256, bytes FROM artifacts WHERE scan_id=? AND kind='frames'", (str(walk.scan_id),)
+    ).fetchall()
+    carried = []
+    for row in rows:
+        artifact = Artifact(id=walk.frame_id(row["id"]), kind="frames", sha256=row["sha256"], bytes=row["bytes"])
+        os.link(store.artifact_path(walk.scan_id, row["id"]), store.artifact_path(scan_id, artifact.id))
+        carried.append(artifact)
+    return carried
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--placed-scan", required=True, help="the merged scan whose walks were placed")
-    parser.add_argument("--captures", required=True, type=pathlib.Path, help="directory of capture folders")
-    parser.add_argument("--name", required=True)
-    parser.add_argument("--owner", required=True)
-    parser.add_argument("--db", type=pathlib.Path, default=pathlib.Path("services/api/var/standardphysics.sqlite3"))
-    parser.add_argument("--scans", type=pathlib.Path, default=pathlib.Path("services/api/var/scans"))
-    args = parser.parse_args()
+def _written(store: ArtifactStore, scan_id: uuid.UUID, artifact_id: str, kind: str, payload) -> Artifact:
+    data = json.dumps(payload, separators=(",", ":")).encode()
+    store.artifact_path(scan_id, artifact_id).write_bytes(data)
+    return Artifact(id=artifact_id, kind=kind, sha256=hashlib.sha256(data).hexdigest(), bytes=len(data))
 
-    placed_id = uuid.UUID(args.placed_scan)
-    manifest = json.loads((args.scans / str(placed_id) / "rooms.json").read_text())
 
-    database = Database(args.db)
-    with database.connect() as connection:
-        after = _graph(connection, placed_id, None)
-    if after.revision == 0:
-        raise SystemExit("that scan's walks have not been placed yet: align them and save first")
+def _painted_scan(connection, store: ArtifactStore, walk: Walk) -> pathlib.Path:
+    """The newest painted surface the walk's own scan has, as the bake wrote it."""
+    row = connection.execute(
+        "SELECT result_json FROM texture_builds WHERE scan_id=? AND json_extract(result_json, '$.scan_glb_url')"
+        " IS NOT NULL ORDER BY id DESC LIMIT 1",
+        (str(walk.scan_id),),
+    ).fetchone()
+    if row is None:
+        raise SystemExit(f"the walk called {walk.name} has never been painted: bake its own scan first")
+    build = TextureBuild.model_validate_json(row["result_json"])
+    return build_dir(store, walk.scan_id) / build.build_id / "scan.glb"
 
-    by_name = {directory.name: directory for directory in args.captures.iterdir() if directory.is_dir()}
-    scan_id = uuid.uuid4()
-    out = args.scans / str(scan_id) / "artifacts"
-    out.mkdir(parents=True, exist_ok=True)
 
-    parts, poses, frames = [], [], 0
-    for room in manifest["rooms"]:
-        directory = next((d for d in by_name.values() if _capture_name(d) == room["name"]), None)
-        if directory is None:
-            raise SystemExit(f"no capture folder for the walk called {room['name']}")
-        alignment = _placement_of(_capture_graph(directory), after, room["node_ids"])
-        mesh = _moved_mesh(json.loads((directory / "lidar-mesh.json").read_text()), alignment)
-        parts.extend(mesh.get("parts", []))
-        walk = _moved_poses(json.loads((directory / "poses.json").read_text()), alignment)
-        records = walk if isinstance(walk, list) else walk.get("poses", [])
-        prefix = room["name"].replace(" ", "-")
-        for record in records:
-            record["frame_id"] = f"{prefix}-{record['frame_id']}"
-        poses.extend(records)
-        frames += _carry_frames(directory / "frames", out, prefix)
-        print(f"  {room['name']:12} turned {np.degrees(alignment.yaw):7.2f}°, "
-              f"residual {alignment.residual_max * 1000:.1f} mm")
+def _publish_floor(database: Database, store: ArtifactStore, scan_id: uuid.UUID, walks: list[Walk], painted: list[pathlib.Path]) -> str:
+    """The walks' painted surfaces, placed and joined, published as the merged scan's photo build."""
+    bake, inputs = bake_inputs(database, store, scan_id)
+    if inputs is None:
+        raise SystemExit("the merged scan's photographs did not register")
+    key = texture_build_key(bake, inputs["digest"])
+    staged = staged_build_dir(store, scan_id)
+    try:
+        painted_scans_joined([(path, walk.to_floor) for path, walk in zip(painted, walks)], staged / "scan.glb")
+        export_glb(bake, staged / "scene.glb")
+        prefix = build_prefix(scan_id, key)
+        result = TextureBuild(
+            build_id=key, glb_url=prefix + "/scene.glb", scan_glb_url=prefix + "/scan.glb",
+            coverage_mask_urls=[], bake_graph=bake,
+            coverage=TextureCoverage(textured_fraction=0.0, nodes=[], needs_another_view=[]),
+            frames_used=len(inputs["frames"]), seconds=0.0,
+        )
+        finish_build(staged, build_dir(store, scan_id) / key, result)
+    finally:
+        if staged.exists():
+            shutil.rmtree(staged)
+    record_build(database, scan_id, key, bake, inputs, result)
+    return result.scan_glb_url
 
-    (out / "lidar-mesh").write_text(json.dumps({"parts": parts}))
-    (out / "poses").write_text(json.dumps(poses))
-    (out / "room-json").write_text(after.model_dump_json())
 
+def _insert_scan(database: Database, args: argparse.Namespace, scan_id: uuid.UUID, placed: SceneGraph, artifacts: list[Artifact]) -> None:
+    graph = placed.model_copy(update={"scan_id": scan_id, "revision": 0, "capture_to_room": SHARED_FLOOR})
     with database.transaction() as connection:
         repository.insert_scan(
             connection,
@@ -168,28 +207,55 @@ def main() -> int:
             scan_id=scan_id,
             state="ready",
         )
-        repository.save_revision(connection, after.model_copy(update={"scan_id": scan_id, "revision": 0}), source="owner")
+        for artifact in artifacts:
+            repository.insert_artifact(connection, scan_id, artifact)
+        repository.save_revision(connection, graph, source="owner")
+        repository.enqueue_job(connection, scan_id, ASSESS, 0)
 
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--placed-scan", required=True, help="the merged scan whose walks were placed")
+    parser.add_argument("--name", required=True)
+    parser.add_argument("--owner", required=True)
+    parser.add_argument("--db", type=pathlib.Path, default=pathlib.Path("services/api/var/standardphysics.sqlite3"))
+    parser.add_argument("--scans", type=pathlib.Path, default=pathlib.Path("services/api/var/scans"))
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = _parse_args()
+    placed_id = uuid.UUID(args.placed_scan)
+    manifest = json.loads((args.scans / str(placed_id) / "rooms.json").read_text())
+    database = Database(args.db)
+    store = ArtifactStore(args.scans.parent, max_bytes=0)
+    with database.connect() as connection:
+        placed = _latest_graph(connection, placed_id)
+        if placed.revision == 0:
+            raise SystemExit("that scan's walks have not been placed yet: align them and save first")
+        walks = [_walk(store, room, placed, index) for index, room in enumerate(manifest["rooms"])]
+        painted = [_painted_scan(connection, store, walk) for walk in walks]
+
+    scan_id = uuid.uuid4()
+    store.artifact_path(scan_id, "poses").parent.mkdir(parents=True, exist_ok=True)
+    parts, poses, frames = [], [], []
+    with database.connect() as connection:
+        for walk in walks:
+            parts.extend(_mesh_parts(store, walk))
+            poses.extend(_poses(store, walk))
+            frames.extend(_frames(connection, store, walk, scan_id))
+            print(f"  {walk.name:12} turned {np.degrees(walk.placement.yaw):8.2f}°, "
+                  f"residual {walk.placement.residual_max * 1000:.1f} mm")
+    artifacts = [
+        _written(store, scan_id, "lidar-mesh", "lidar_mesh", {"floorY": 0.0, "parts": parts}),
+        _written(store, scan_id, "poses", "poses", poses),
+        *frames,
+    ]
+    _insert_scan(database, args, scan_id, placed, artifacts)
     print(f"\n{args.name}: {scan_id}")
-    print(f"  {len(parts)} mesh parts, {len(poses)} cameras, {frames} photographs")
+    print(f"  {len(parts)} mesh parts, {len(poses)} cameras, {len(frames)} photographs")
+    print(f"  painted floor at {_publish_floor(database, store, scan_id, walks, painted)}")
     return 0
-
-
-def _capture_graph(directory: pathlib.Path) -> SceneGraph:
-    """The walk as the phone measured it, before anything spread it out."""
-    room = directory / "room.json"
-    if not room.is_file():
-        room = directory / "artifacts" / "room-json"
-    return parse_room_json(json.loads(room.read_text()))
-
-
-def _capture_name(directory: pathlib.Path) -> str:
-    capture = directory / "capture.json"
-    if capture.is_file():
-        name = json.loads(capture.read_text()).get("name")
-        if name:
-            return str(name)
-    return directory.name[:8]
 
 
 if __name__ == "__main__":
