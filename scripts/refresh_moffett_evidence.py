@@ -126,9 +126,12 @@ def enhanced_floor_graph(head: SceneGraph, room_graphs: dict[str, SceneGraph], t
             index = existing.get(node.id)
             if index is not None:
                 floor = nodes[index]
-                if node.labeled_by == "discovery" and floor.labeled_by != "owner" and floor.label != node.label:
-                    nodes[index] = floor.model_copy(update={"label": node.label, "labeled_by": "discovery"})
-                    relabelled += 1
+                if floor.labeled_by == "owner":
+                    continue
+                if node.labeled_by == "discovery" or floor.labeled_by == "discovery":
+                    if (floor.label, floor.labeled_by) != (node.label, node.labeled_by):
+                        nodes[index] = floor.model_copy(update={"label": node.label, "labeled_by": node.labeled_by})
+                        relabelled += 1
             elif node.id not in seen and node.id in available:
                 additions.append(floor_node(node, transforms[transform_name], correction, name, available))
                 seen.add(node.id)

@@ -9,9 +9,9 @@
 from __future__ import annotations
 
 import uuid
+
 import numpy as np
 import pytest
-
 from standardphysics_contracts import Mat4, SceneGraph, SceneNode, SurfaceAttachment, Vec3
 from standardphysics_pipeline.discovery.detect import Detection
 from standardphysics_pipeline.discovery.semantic_corrections import (
@@ -272,6 +272,8 @@ def test_apply_secondary_semantic_corrections_end_to_end():
     from dataclasses import replace
     cam1 = camera_at(position=[-1.0, 0.0, 0.4], looking_at=[-1.0, 1.5, 0.4])
     cam1 = replace(cam1, frame_id="frame-table")
+    cam3 = camera_at(position=[-2.0, 0.0, 0.4], looking_at=[-1.0, 1.5, 0.4])
+    cam3 = replace(cam3, frame_id="frame-table-second-view")
 
     cam2 = camera_at(position=[0.0, 1.0, 1.5], looking_at=[0.0, 3.0, 1.5])
     cam2 = replace(cam2, frame_id="frame-wall")
@@ -281,6 +283,9 @@ def test_apply_secondary_semantic_corrections_end_to_end():
             Detection(frame_id="frame-table", name="sofa", box=(200.0, 150.0, 440.0, 330.0), movable=True, confidence=0.85),
             Detection(frame_id="frame-table", name="sofa", box=(200.0, 150.0, 440.0, 330.0), movable=True, confidence=0.90),
         ],
+        "frame-table-second-view": [
+            Detection(frame_id="frame-table-second-view", name="sofa", box=(200.0, 150.0, 440.0, 330.0), movable=True, confidence=0.88),
+        ],
         "frame-wall": [
             Detection(frame_id="frame-wall", name="whiteboard", box=(220.0, 160.0, 420.0, 320.0), movable=False, confidence=0.82),
         ],
@@ -289,7 +294,7 @@ def test_apply_secondary_semantic_corrections_end_to_end():
     updated_graph = apply_secondary_semantic_corrections(
         graph,
         detections_by_frame=detections_by_frame,
-        cameras=[cam1, cam2],
+        cameras=[cam1, cam2, cam3],
     )
 
     # 1. Table was corrected to Sofa
@@ -309,3 +314,29 @@ def test_apply_secondary_semantic_corrections_end_to_end():
     assert wb_nodes[0].parent_id == wall.id
     assert wb_nodes[0].attachment is not None
     assert wb_nodes[0].attachment.support_node_id == wall.id
+
+
+def test_one_wrong_sofa_detection_does_not_overrule_table_views():
+    from dataclasses import replace
+
+    table = SceneNode(
+        id=uuid.uuid4(), kind="object", label="Table", raw_category="table",
+        dimensions=Vec3(x=1.8, y=1.2, z=0.8), transform=Mat4.translation(0.0, 2.0, 0.4),
+    )
+    chair = table.model_copy(update={"id": uuid.uuid4(), "label": "Chair", "raw_category": "chair"})
+    graph = SceneGraph(scan_id=uuid.uuid4(), revision=0, nodes=[table, chair])
+    cameras = [
+        replace(camera_at(position=[x, 0.0, 0.4], looking_at=[0.0, 2.0, 0.4]), frame_id=f"frame-{index}")
+        for index, x in enumerate((-1.0, 0.0, 1.0))
+    ]
+    detections = {
+        camera.frame_id: [Detection(
+            frame_id=camera.frame_id, name="sofa" if index == 0 else "table",
+            box=(200.0, 150.0, 440.0, 330.0), movable=True, confidence=0.9,
+        )]
+        for index, camera in enumerate(cameras)
+    }
+    corrected = apply_secondary_semantic_corrections(graph, detections, cameras)
+    assert corrected.by_id(table.id).label == "Table"
+    assert corrected.by_id(table.id).labeled_by != "discovery"
+    assert corrected.by_id(chair.id).label == "Chair"
