@@ -9,8 +9,23 @@ import { requireSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * The walks of a combined scan, each with the photographed mesh it was scanned as.
+ *
+ * Placing four walks against each other means recognising them, and the boxes
+ * are white and featureless: every room looks like every other. Each walk was
+ * uploaded as a scan of its own and photographed onto its mesh, so the URL of
+ * that mesh comes along and the owner drags a room they can see.
+ */
 async function roomsFor(scanId: string): Promise<RoomGroup[]> {
-  return (await getRooms(scanId))?.rooms ?? [];
+  const rooms = (await getRooms(scanId))?.rooms ?? [];
+  return Promise.all(rooms.map(withCapturedMesh));
+}
+
+async function withCapturedMesh(room: RoomGroup): Promise<RoomGroup> {
+  if (!room.source_scan_id) return room;
+  const status = await getTextureStatus(room.source_scan_id, 0);
+  return { ...room, scan_glb_url: status?.build?.scan_glb_url ?? null };
 }
 
 /** Whether a GLB exists, and the revision whose layout it was exported from. */

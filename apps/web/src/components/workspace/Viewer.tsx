@@ -10,9 +10,11 @@ import { CameraRig } from "./CameraRig";
 import { MODEL, outcomeColor } from "./palette";
 import { type ArrangeHandlers, BoxShopModel, GlbShopModel } from "./ShopModel";
 import { LidarShopModel } from "./LidarShopModel";
+import { CombinedRooms } from "./CombinedRooms";
 import { PaintedScan } from "./PaintedScan";
 import { GaussianSplatScan } from "./GaussianSplatScan";
 import type { CapturedSplatAsset } from "@/lib/captured-splats";
+import type { RoomGroup, RoomPlacement } from "@/lib/room-groups";
 import { showsSplats } from "@/lib/viewer-source";
 import type { MotionPoint, WheelchairProfile } from "@/lib/wheelchair-motion";
 import { type RouteHandles, StopMarkers } from "./StopMarkers";
@@ -21,6 +23,8 @@ import { WheelchairController, type WheelchairState } from "./WheelchairControll
 type ViewerProps = {
   scene: SceneGraph;
   highlightNodeIds?: string[] | null;
+  /** The walks of a combined scan and where they have been dragged, drawn as captured surface. */
+  combinedRooms?: { rooms: RoomGroup[]; placements: Record<string, RoomPlacement> } | null;
   exported: SceneGraph;
   arrange: ArrangeHandlers | null;
   dragAllNodes?: boolean;
@@ -91,7 +95,7 @@ function Lights() {
   );
 }
 
-type ShopSurfacesProps = Pick<ViewerProps, "scene" | "exported" | "arrange" | "dragAllNodes" | "lightweight" | "glbUrl" | "scanGlbUrl" | "splatAssets" | "onSplatError" | "lidarUrl" | "selected" | "onSelectNode" | "cutWalls" | "materialMode" | "staleNodeIds" | "coverage" | "highlightNodeIds">;
+type ShopSurfacesProps = Pick<ViewerProps, "scene" | "exported" | "arrange" | "dragAllNodes" | "lightweight" | "glbUrl" | "scanGlbUrl" | "splatAssets" | "onSplatError" | "lidarUrl" | "selected" | "onSelectNode" | "cutWalls" | "materialMode" | "staleNodeIds" | "coverage" | "highlightNodeIds" | "combinedRooms">;
 
 /** The boxes have no captured surface to show, so the captured modes fall back to plain material on them. */
 function boxMaterialMode(mode: ViewerProps["materialMode"]) {
@@ -139,6 +143,14 @@ function ShopSurfaces(props: ShopSurfacesProps) {
 
   const boxes = <BoxShopModel {...modelProps} />;
   const picking = <BoxShopModel {...modelProps} pickOnly />;
+  if (props.combinedRooms?.rooms.some((room) => room.scan_glb_url)) {
+    return (
+      <>
+        {boxes}
+        <CombinedRooms rooms={props.combinedRooms.rooms} placements={props.combinedRooms.placements} />
+      </>
+    );
+  }
   const captured = capturedRoom(props, boxes, picking);
   if (captured) return captured;
   const reconstructed = !glbUrl ? boxes : (

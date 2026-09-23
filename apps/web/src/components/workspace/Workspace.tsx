@@ -592,6 +592,7 @@ function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, te
         <Viewer
           scene={visuals.shown}
           highlightNodeIds={task === "combine" ? activeRoomNodeIds(visuals.combine) : null}
+          combinedRooms={task === "combine" ? { rooms: visuals.combine.rooms, placements: visuals.combine.placements } : null}
           exported={sourceGraph}
           arrange={wheelchairMode ? null : visuals.handlers}
           dragAllNodes={visuals.dragAllNodes}

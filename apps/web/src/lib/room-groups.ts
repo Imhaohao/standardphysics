@@ -4,7 +4,28 @@ import type { Mat4, SceneGraph, SceneNode } from "@/types/contracts";
 export type RoomGroup = {
   name: string;
   node_ids: string[];
+  /** The scan this walk was uploaded as, whose photographed mesh stands in for its boxes. */
+  source_scan_id?: string | null;
+  /** That scan's captured surface, resolved on the server so the browser can load it. */
+  scan_glb_url?: string | null;
 };
+
+/**
+ * Where to put a walk's captured mesh so it sits where its boxes sit.
+ *
+ * The boxes are moved one at a time by `moveNode`; a mesh is one object, so it
+ * takes the same motion as a position and a turn about the vertical. Three.js
+ * is y-up where the room frame is z-up, so the room's x and y arrive as x and
+ * -z, the same swap the viewer makes everywhere else.
+ */
+export function roomMeshPose(placement: RoomPlacement) {
+  const yaw = (placement.yawDegrees * Math.PI) / 180;
+  const cos = Math.cos(yaw);
+  const sin = Math.sin(yaw);
+  const x = placement.cx + placement.tx - (placement.cx * cos - placement.cy * sin);
+  const y = placement.cy + placement.ty - (placement.cx * sin + placement.cy * cos);
+  return { position: [x, 0, -y] as [number, number, number], yaw };
+}
 
 /** Where the owner has dragged one room: rotate about its centroid, then slide. */
 export type RoomPlacement = {
