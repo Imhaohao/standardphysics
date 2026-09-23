@@ -17,7 +17,7 @@ from standardphysics_pipeline.textures.scan_colour import (
     vertex_normals,
     with_mirrored_colours,
 )
-from standardphysics_pipeline.textures.symmetry import mirrored_completion
+from standardphysics_pipeline.textures.symmetry import mirrored_completion, seen_through_by
 
 
 def chair_box() -> SceneNode:
@@ -115,3 +115,20 @@ def test_mirror_links_survive_dropping_unused_vertices():
     )
     kept = unused_vertices_removed(scan)
     np.testing.assert_array_equal(kept.mirror_source, [-1, -1, 0, 1])
+
+
+class StraightAhead:
+    """A camera that sees every point at the middle of its frame, one metre away."""
+
+    width, height = 10, 10
+
+    def project(self, points):
+        count = len(points)
+        return np.full(count, 5.0), np.full(count, 5.0), np.full(count, 1.0)
+
+
+def test_one_camera_seeing_past_a_point_is_not_enough_to_call_it_empty():
+    beyond = np.full((10, 10), 3.0)
+    point = np.zeros((1, 3))
+    assert not seen_through_by([StraightAhead()], [beyond])(point).any()
+    assert seen_through_by([StraightAhead(), StraightAhead()], [beyond, beyond])(point).all()

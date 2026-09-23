@@ -39,6 +39,13 @@ ABOVE_FLOOR = 0.05
 """Points this close to the floor are left out of the verdict: floor is symmetric in every direction."""
 SEEN_THROUGH_MARGIN = 0.08
 """How much farther than a point a camera must have seen for that point to count as empty space."""
+MIN_SEEN_THROUGH_VIEWS = 2
+"""Cameras that must each have seen past a point before it counts as empty.
+
+One camera is not enough: its depth reading slips past a thin chair leg or
+through a gap in the scan often enough that a single view blocked most of a
+chair's hidden side. Two independent views agreeing is far harder to fake.
+"""
 OFFSETS = np.linspace(-0.08, 0.08, 9)
 """Where the plane may sit relative to the box centre, since a measured box is not always centred."""
 MISSING_DISTANCE = 0.05
@@ -48,11 +55,13 @@ SeenThrough = Callable[[np.ndarray], np.ndarray]
 """Which of the given room-frame points some camera saw past, so they are known to be empty."""
 
 
-def seen_through_by(cameras, depth_buffers: list[np.ndarray]) -> SeenThrough:
-    """Points a camera saw beyond: the surface it recorded along that ray lies well behind them."""
+def seen_through_by(
+    cameras, depth_buffers: list[np.ndarray], min_views: int = MIN_SEEN_THROUGH_VIEWS,
+) -> SeenThrough:
+    """Points enough cameras saw beyond: the surface each recorded along that ray lies well behind them."""
 
     def seen_through(points: np.ndarray) -> np.ndarray:
-        empty = np.zeros(len(points), dtype=bool)
+        views = np.zeros(len(points), dtype=np.int32)
         for camera, buffer in zip(cameras, depth_buffers):
             columns, rows, depth = camera.project(points)
             in_view = (depth > 0.2) & (columns >= 0) & (columns < camera.width) & (rows >= 0) & (rows < camera.height)
@@ -61,8 +70,8 @@ def seen_through_by(cameras, depth_buffers: list[np.ndarray]) -> SeenThrough:
                 np.clip((rows * height / camera.height).astype(np.int64), 0, height - 1),
                 np.clip((columns * width / camera.width).astype(np.int64), 0, width - 1),
             ]
-            empty |= in_view & np.isfinite(recorded) & (recorded > depth + SEEN_THROUGH_MARGIN)
-        return empty
+            views += in_view & np.isfinite(recorded) & (recorded > depth + SEEN_THROUGH_MARGIN)
+        return views >= min_views
 
     return seen_through
 
