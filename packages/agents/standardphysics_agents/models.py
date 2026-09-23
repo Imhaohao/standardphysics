@@ -29,19 +29,19 @@ MODEL_ENV = "OPENROUTER_MODEL"
 BASE_URL_ENV = "OPENROUTER_BASE_URL"
 
 DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
-DEFAULT_MODEL = "openai/gpt-6-astra"
+DEFAULT_MODEL = "anthropic/claude-opus-5.5"
 
-PROVIDER_ROUTING = {
-    "order": ["openai"],
-    "allow_fallbacks": False,
-    "data_collection": "deny",
-}
-"""One backend for the whole demo, and nothing retained.
 
-Pinning the provider keeps a rehearsal and the live run on the same model.
-`data_collection: deny` is the per-request half of zero data retention; the
-account setting is the other half and a person sets that one.
-"""
+def provider_routing(model: str) -> dict:
+    """Pin the request to the provider that makes the model, and retain nothing.
+
+    OpenRouter names a model "<provider>/<model>", so the provider comes from the
+    name: pinning OpenAI while asking for an Anthropic model fails every request.
+    Pinning keeps a rehearsal and the live run on the same backend.
+    `data_collection: deny` is the per-request half of zero data retention; the
+    account setting is the other half and a person sets that one.
+    """
+    return {"order": [model.split("/")[0]], "allow_fallbacks": False, "data_collection": "deny"}
 
 REQUEST_TIMEOUT_SECONDS = 30.0
 """Long enough for one structured answer about a room.
@@ -147,7 +147,7 @@ class OpenRouter:
             },
         }
         if self.routes_through_openrouter:
-            request["extra_body"] = {"provider": PROVIDER_ROUTING}
+            request["extra_body"] = {"provider": provider_routing(self.model)}
         return request
 
     def _answer(self, response: Any) -> ModelAnswer | Rejected:

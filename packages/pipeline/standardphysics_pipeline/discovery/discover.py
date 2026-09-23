@@ -23,6 +23,7 @@ wrong measurement.
 from __future__ import annotations
 
 import concurrent.futures
+import hashlib
 import json
 import logging
 import os
@@ -239,6 +240,33 @@ def _orientations(poses_path: pathlib.Path) -> dict[str, str]:
         for item in payload
         if isinstance(item, dict) and item.get("frame_id")
     }
+
+
+def known_detections(
+    frame_paths: dict[str, pathlib.Path], poses_path: pathlib.Path, cache_dir: pathlib.Path,
+) -> dict[str, list[Detection]]:
+    """What the model already said about each photo, read from the cache and never asked.
+
+    A texture build uses this to find the people in its photos without spending
+    a request; a photo discovery has not read yet simply has no entry.
+    """
+    cache = DetectionCache(cache_dir, os.environ.get(MODEL_ENV) or DEFAULT_MODEL)
+    orientations = _orientations(poses_path)
+    known = {}
+    for frame_id, path in frame_paths.items():
+        stored = cache.get(path, frame_id, orientations.get(frame_id, ""))
+        if stored is not None:
+            known[frame_id] = stored
+    return known
+
+
+def detections_digest(cache_dir: pathlib.Path) -> str:
+    """A fingerprint of every stored answer, so a build made before discovery ran is not reused."""
+    digest = hashlib.sha256()
+    for entry in sorted(pathlib.Path(cache_dir).glob("*.json")):
+        digest.update(entry.name.encode())
+        digest.update(entry.read_bytes())
+    return digest.hexdigest() if pathlib.Path(cache_dir).is_dir() else ""
 
 
 def _cache_for(inputs: DiscoveryInputs) -> DetectionCache | None:

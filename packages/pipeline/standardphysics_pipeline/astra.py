@@ -45,8 +45,14 @@ API_KEY_ENV = "OPENROUTER_API_KEY"
 MODEL_ENV = "OPENROUTER_MODEL"
 BASE_URL_ENV = "OPENROUTER_BASE_URL"
 DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
-DEFAULT_MODEL = "openai/gpt-6-astra"
-PROVIDER_ROUTING = {"order": ["openai"], "allow_fallbacks": False, "data_collection": "deny"}
+DEFAULT_MODEL = "anthropic/claude-opus-5.5"
+
+
+def provider_routing(model: str) -> dict:
+    """Pin the request to the provider that makes the model, and retain nothing."""
+    return {"order": [model.split("/")[0]], "allow_fallbacks": False, "data_collection": "deny"}
+
+
 REQUEST_TIMEOUT_SECONDS = 120.0
 MAX_RECONSTRUCTION_WORKERS = 3
 RECONSTRUCTION_WALL_TIMEOUT_SECONDS = 150.0
@@ -456,13 +462,14 @@ def _chat_body(
     )
     if image_messages:
         content = [{"type": "text", "text": content}, *image_messages]
+    model = os.environ.get(MODEL_ENV) or DEFAULT_MODEL
     return {
-        "model": os.environ.get(MODEL_ENV) or DEFAULT_MODEL,
+        "model": model,
         "max_tokens": MAX_OUTPUT_TOKENS,
         "reasoning": {"effort": "low"},
         "messages": [{"role": "system", "content": INSTRUCTION}, {"role": "user", "content": content}],
         "response_format": {"type": "json_schema", "json_schema": {"name": "astra_labels", "strict": True, "schema": LABEL_SCHEMA}},
-        "provider": PROVIDER_ROUTING,
+        "provider": provider_routing(model),
     }
 
 

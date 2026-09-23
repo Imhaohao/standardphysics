@@ -1,0 +1,16 @@
+{
+  "wall": {
+    "image": "wall.png",
+    "metres_across": 1.0,
+    "model": "gpt-image-2",
+    "prompt": "A square close-up photograph of a matte painted interior wall, taken straight on so the wall fills the whole frame. Soft, even daylight. You can just see a fine paint roller stipple in the surface. A seamless texture swatch for a 3D material library.",
+    "generation_id": "e7hWKjH5HXZWWf7DLoLg"
+  },
+  "floor": {
+    "image": "floor.png",
+    "metres_across": 2.0,
+    "model": "gpt-image-2",
+    "prompt": "A square top-down photograph of a sealed polished concrete floor, taken straight down so the floor fills the whole frame. Soft, even overhead light. Gentle cloudy mottling and a fine aggregate grain. A seamless texture swatch for a 3D material library.",
+    "generation_id": "rzmbMn6mIFXqJbFkjehb"
+  }
+}
