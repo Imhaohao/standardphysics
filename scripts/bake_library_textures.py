@@ -19,8 +19,10 @@ import shutil
 import uuid
 
 import numpy as np
-from standardphysics_contracts import SceneGraph, TextureBuild, TextureCoverage
-from standardphysics_pipeline.ingest import capture_to_room_from_payload
+from align_moffett_floor import DEFAULT_FLOOR_ORIGIN_CORRECTIONS_M
+from standardphysics_contracts import SceneGraph, TextureBuild, TextureCoverage, graph_hash
+from standardphysics_pipeline.discovery.discover import detections_digest
+from standardphysics_pipeline.ingest import capture_to_room_from_payload, parse_room_json
 from standardphysics_pipeline.textures.library_scan import RoomCapture, paint_the_rooms
 
 from standardphysics_api.db import Database
@@ -31,6 +33,7 @@ SCAN_ID = uuid.UUID("f143082d-f529-494b-b80d-97729234e334")
 DATA_DIR = pathlib.Path("services/api/var")
 DATASETS_DIR = pathlib.Path("datasets/phone/moffett")
 TRANSFORMS_PATH = pathlib.Path("runs/moffett/verified-four-room-transforms.json")
+ENHANCEMENTS_DIR = DATA_DIR / "scans" / str(SCAN_ID) / "enhancements"
 
 ROOMS = {
     "center": ("454B3661-D3F8-46E8-ADAA-3123E759AA64", 90),
@@ -40,7 +43,10 @@ ROOMS = {
 }
 
 
-def room_capture(name: str, capture_id: str, max_photos: int, to_floor: np.ndarray) -> RoomCapture:
+def room_capture(
+    name: str, capture_id: str, max_photos: int, to_floor: np.ndarray, *,
+    use_enhancements: bool = True,
+) -> RoomCapture:
     directory = DATASETS_DIR / capture_id
     poses_path = directory / "poses.json"
     frames = directory / "frames"
@@ -49,14 +55,22 @@ def room_capture(name: str, capture_id: str, max_photos: int, to_floor: np.ndarr
         for pose in json.loads(poses_path.read_text())
         if pose.get("frame_id")
     }
+    room_payload = json.loads((directory / "room.json").read_text())
+    enhanced = ENHANCEMENTS_DIR / f"{name}-graph.json"
+    graph = (
+        SceneGraph.model_validate_json(enhanced.read_text())
+        if use_enhancements and enhanced.is_file() else parse_room_json(room_payload)
+    )
     return RoomCapture(
         name=name,
         mesh_path=directory / "lidar-mesh.json",
         poses_path=poses_path,
         frame_paths=frame_paths,
-        capture_to_room=capture_to_room_from_payload(json.loads((directory / "room.json").read_text())),
+        capture_to_room=capture_to_room_from_payload(room_payload),
         to_floor=np.asarray(to_floor, dtype=np.float64),
         max_photos=max_photos,
+        graph=graph,
+        detections_dir=directory / "detections",
     )
 
 
@@ -120,12 +134,23 @@ def main() -> None:
     args = parser.parse_args()
 
     to_floor = json.loads(args.transforms.read_text())["room_transforms"]
-    rooms = [room_capture(name, capture, photos, to_floor[name]) for name, (capture, photos) in ROOMS.items()]
+    rooms = []
+    for name, (capture, photos) in ROOMS.items():
+        matrix = np.asarray(to_floor[name], dtype=np.float64)
+        correction = DEFAULT_FLOOR_ORIGIN_CORRECTIONS_M["bottom" if name == "bottom_left" else name]
+        matrix[2, 3] += correction
+        rooms.append(room_capture(name, capture, photos, matrix))
 
     database = Database(args.data_dir / "standardphysics.sqlite3")
     # max_bytes caps uploads, and this script only reads paths out of the store.
     store = ArtifactStore(args.data_dir, max_bytes=0)
-    inputs = {"rooms": sorted(ROOMS), "transforms": str(args.transforms)}
+    inputs = {
+        "rooms": sorted(ROOMS),
+        "transforms_sha256": hashlib.sha256(args.transforms.read_bytes()).hexdigest(),
+        "room_graph_hashes": {room.name: graph_hash(room.graph) for room in rooms if room.graph is not None},
+        "detections": {room.name: detections_digest(room.detections_dir) for room in rooms if room.detections_dir is not None},
+        "pipeline": "patched-library-v1",
+    }
     print(f"published {published(database, store, latest_graph(database), rooms, inputs)}")
 
 
