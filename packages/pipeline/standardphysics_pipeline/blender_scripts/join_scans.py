@@ -14,8 +14,8 @@ import sys
 import bpy
 from mathutils import Matrix
 
-MAX_TRIANGLES = 850_000
-"""A whole floor of scans, thinned so a browser can still draw it."""
+MAX_TRIANGLES = 1_100_000
+"""A whole floor of scans, thinned only past what a browser can still draw."""
 
 
 def parse_args() -> argparse.Namespace:

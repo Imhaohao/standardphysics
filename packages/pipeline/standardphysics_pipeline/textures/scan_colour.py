@@ -277,7 +277,13 @@ def unused_vertices_removed(scan: ColouredScan) -> ColouredScan:
 
 
 def write_scan_glb(scan: ColouredScan, out_path: pathlib.Path, max_triangles: int | None = None) -> pathlib.Path:
-    """Hand the coloured scan to Blender, which writes the glTF the viewer reads."""
+    """Hand the coloured scan to Blender, which writes the glTF the viewer reads.
+
+    glTF vertex colours are linear, and the viewer encodes them for the screen.
+    The scan's colours are the photographs' own sRGB values, so they are made
+    linear on the way out; stored as they were, every colour was brightened a
+    second time and the whole room looked washed out.
+    """
     import tempfile
 
     from ..blender import _run
@@ -289,7 +295,7 @@ def write_scan_glb(scan: ColouredScan, out_path: pathlib.Path, max_triangles: in
             archive,
             vertices=scan.vertices.astype(np.float32),
             triangles=scan.triangles.astype(np.int32),
-            colours=scan.colours.astype(np.float32),
+            colours=to_linear(scan.colours).astype(np.float32),
         )
         command = ["--scan", str(archive), "--out", str(out_path)]
         if max_triangles is not None:
@@ -436,6 +442,11 @@ def paint_the_scan(
 ) -> ScanPaint:
     """The captured surface, coloured from the photos, as a glTF the viewer can show.
 
+    The vertices are painted first, from an evenly spaced sample of photos, and
+    that painting is what a texel falls back to. The viewer then gets the
+    surface thinned, unwrapped and baked from every photo into an atlas, which
+    is what makes a shelf of books read as books rather than a smear.
+
     People found by discovery (`people`, detections per frame id) are taken out
     and the holes they leave in furniture closed. Holes the LiDAR left in walls
     and floor are patched with the planes they lie on and coloured from whichever
@@ -449,12 +460,17 @@ def paint_the_scan(
     """
     import time
 
+    from .scan_atlas import bake_scan_atlas
     from .surface_materials import room_materials, unseen_surfaces_filled
 
     started = time.monotonic()
-    scan, cameras = coloured_scan(
+    scan, _ = coloured_scan(
         mesh_path, poses_path, frame_paths, graph.capture_to_room, patch_holes_from=graph, people=people,
     )
     filled = with_mirrored_colours(unseen_surfaces_filled(scan, graph, room_materials(materials_dir)))
-    write_scan_glb(filled, out_path)
-    return ScanPaint(out_path, scan.painted_fraction, len(cameras), time.monotonic() - started)
+    every_photo = [
+        camera for camera in load_cameras(poses_path, frame_paths, graph.capture_to_room)
+        if frame_paths.get(camera.frame_id, pathlib.Path()).is_file()
+    ]
+    baked = bake_scan_atlas(filled, graph, every_photo, frame_paths, out_path, people=people)
+    return ScanPaint(out_path, baked.painted_fraction, baked.photos_used, time.monotonic() - started)

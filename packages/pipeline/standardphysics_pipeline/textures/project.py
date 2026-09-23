@@ -323,9 +323,9 @@ def to_srgb(linear: np.ndarray) -> np.ndarray:
 class TopViews:
     """The strongest few views per texel, with their colors, plus how often the scan contradicted the model."""
 
-    def __init__(self, count: int):
-        self.weights = np.zeros((count, TOP_VIEWS), dtype=np.float32)
-        self.colors = np.zeros((count, TOP_VIEWS, 3), dtype=np.float32)
+    def __init__(self, count: int, slots: int = TOP_VIEWS):
+        self.weights = np.zeros((count, slots), dtype=np.float32)
+        self.colors = np.zeros((count, slots, 3), dtype=np.float32)
         self.accepted = np.zeros(count, dtype=np.int16)
         self.disagreed = np.zeros(count, dtype=np.int16)
 

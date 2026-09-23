@@ -42,6 +42,12 @@ from .scan_colour import (
 
 MAX_FLOOR_TRIANGLES = 850_000
 """What the merged floor is decimated to before it is written, so the viewer can load it."""
+JOINED_FLOOR_TRIANGLES = 1_100_000
+"""Enough for four walks already thinned to 260,000 each, so joining them never thins them again.
+
+A second thinning moves the corners of faces whose texels were baked where the
+corners were, and the photographs slide across the surface.
+"""
 
 
 @dataclass(frozen=True)
@@ -132,7 +138,7 @@ def painted_room(room: RoomCapture) -> tuple[ColouredScan, int]:
 def painted_scans_joined(
     scans: Sequence[tuple[pathlib.Path, np.ndarray]],
     out_path: pathlib.Path,
-    max_triangles: int = MAX_FLOOR_TRIANGLES,
+    max_triangles: int = JOINED_FLOOR_TRIANGLES,
 ) -> pathlib.Path:
     """Rooms already painted one by one, each moved by its 4x4 `to_floor` and written as one glTF.
 
