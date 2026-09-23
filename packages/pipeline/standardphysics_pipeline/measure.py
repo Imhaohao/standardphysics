@@ -52,6 +52,33 @@ COUNTER_CLEAR_DEPTH = to_meters(30.0)
 48 in side running along the counter."""
 MAX_CACHED_ROUTE_PATHS = 5_000
 
+MAX_SQUARE = 3.0
+"""Metres of side past which a clear square stops being measured."""
+
+SQUARE_SEARCH_STEPS = 12
+"""Halvings of `MAX_SQUARE`, which leaves under a millimetre of uncertainty,
+well inside the grid's own 25 mm."""
+
+
+def _square_is_clear(grid: Grid, at: Vec3, heading: tuple[float, float], side: float) -> bool:
+    """Whether a `side` metre square centred on `at` and turned to `heading`
+    covers no occupied cell, and stays on the grid."""
+    half = side / 2
+    reach = half * 2**0.5 + grid.cell_size
+    row0, col0 = grid.to_cell(at.x - reach, at.y - reach)
+    row1, col1 = grid.to_cell(at.x + reach, at.y + reach)
+    if not (grid.contains(row0, col0) and grid.contains(row1, col1)):
+        return False
+    rows = np.arange(row0, row1 + 1)
+    cols = np.arange(col0, col1 + 1)
+    xs = grid.origin_x + (cols + 0.5) * grid.cell_size - at.x
+    ys = grid.origin_y + (rows + 0.5) * grid.cell_size - at.y
+    world_x, world_y = np.meshgrid(xs, ys)
+    along = world_x * heading[0] + world_y * heading[1]
+    across = -world_x * heading[1] + world_y * heading[0]
+    inside = (np.abs(along) <= half) & (np.abs(across) <= half)
+    return not grid.occupied[row0 : row1 + 1, col0 : col1 + 1][inside].any()
+
 
 def _signature(graph: SceneGraph) -> tuple:
     """Everything the grid depends on, so moving, turning or resizing any node
@@ -336,6 +363,35 @@ class PipelineMeasurements:
             center=at,
             fits=diameter >= 60.0,
         )
+
+    def largest_square(
+        self, graph: SceneGraph, at: Vec3, heading: tuple[float, float]
+    ) -> ClearFloorResult:
+        """The largest clear square centred on `at`, two of its sides along
+        `heading`.
+
+        403.5.3's passing space is a 60 by 60 inch square, and the widest clear
+        circle at a point is not that question. A 60 inch circle cannot hold the
+        square, whose corners sit 42 inches from its centre, and a 60 inch wide
+        aisle that holds the square has only a 60 inch circle in it. Aligning
+        the square with the route is how a passing space sits in an aisle.
+
+        Saturates at `MAX_SQUARE`, past which the answer describes the room
+        rather than the space. `fits` says the reported square is clear, so the
+        size is compared against the rule pack's number by the caller.
+        """
+        grid, _ = self._field(graph)
+        if not grid.contains(*grid.to_cell(at.x, at.y)):
+            return ClearFloorResult(inches_wide=0.0, inches_deep=0.0, center=at, fits=False)
+        low, high = 0.0, MAX_SQUARE
+        for _ in range(SQUARE_SEARCH_STEPS):
+            middle = (low + high) / 2
+            if _square_is_clear(grid, at, heading, middle):
+                low = middle
+            else:
+                high = middle
+        side = to_inches(low)
+        return ClearFloorResult(inches_wide=side, inches_deep=side, center=at, fits=low > 0)
 
     def door_clear_width(self, graph: SceneGraph, door_id: UUID) -> WidthResult:
         """The doorway's opening, flagged as something a scan cannot settle.

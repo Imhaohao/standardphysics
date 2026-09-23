@@ -95,16 +95,39 @@ def _spaces_along(
     ctx: CheckContext, rule: RuleSpec, legs: list[WidthResult]
 ) -> list[ClearFloorResult]:
     minimum = rule.parameter("space_min_inches")
-    found: list[ClearFloorResult] = []
-    for point in _sample_points(legs):
-        space = ctx.measure.turning_space(ctx.graph, point)
-        if fits_square(space, minimum):
-            found.append(space)
-    return found
+    return [
+        space
+        for point, heading in _sample_points(legs)
+        if fits_square(space := _square_at(ctx, point, heading), minimum)
+    ]
 
 
-def _sample_points(legs: list[WidthResult]) -> list[Vec3]:
-    points: list[Vec3] = []
+def _square_at(ctx: CheckContext, point: Vec3, heading: tuple[float, float]) -> ClearFloorResult:
+    """The clear square at a point on the route, turned to the route.
+
+    A provider that cannot measure a square is asked for its clear circle, the
+    reading this check used before providers could. A 60 inch circle does not
+    hold a 60 inch square, so that reading passes spaces that are too small.
+    """
+    measure_square = getattr(ctx.measure, "largest_square", None)
+    if measure_square is None:
+        return ctx.measure.turning_space(ctx.graph, point)
+    return measure_square(ctx.graph, point, heading)
+
+
+def _sample_points(legs: list[WidthResult]) -> list[tuple[Vec3, tuple[float, float]]]:
+    """Points along each leg, with the direction the route runs there."""
+    samples: list[tuple[Vec3, tuple[float, float]]] = []
     for leg in legs:
-        points.extend(sample_path(leg.path, SAMPLE_SPACING_METERS))
-    return points
+        points = sample_path(leg.path, SAMPLE_SPACING_METERS)
+        for index, point in enumerate(points):
+            ahead = points[min(index + 1, len(points) - 1)]
+            behind = points[max(index - 1, 0)]
+            samples.append((point, _heading(behind, ahead)))
+    return samples
+
+
+def _heading(behind: Vec3, ahead: Vec3) -> tuple[float, float]:
+    dx, dy = ahead.x - behind.x, ahead.y - behind.y
+    length = math.hypot(dx, dy)
+    return (1.0, 0.0) if length < 1e-9 else (dx / length, dy / length)

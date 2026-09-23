@@ -529,3 +529,31 @@ def test_every_narrow_stretch_is_reported_where_it_lies():
 
     assert runs == [pytest.approx((10.0, 24.0)), pytest.approx((40.0, 49.0))]
     assert longest_run_below(grid, clearance, cells, 36.0) == pytest.approx(14.0)
+
+
+def test_a_passing_space_is_a_square_turned_to_the_route():
+    """A 60 inch aisle holds a 60 inch square along it. Turned 45 degrees to the
+    aisle the same square does not fit, which is why the square follows the
+    route rather than taking the widest circle at the point."""
+    width = to_meters(60.0)
+
+    def shelf(name, y):
+        return SceneNode(
+            id=node_id(name), kind="object", label="Shelf", raw_category="storage",
+            dimensions=Vec3(x=4.0, y=0.5, z=1.5), transform=Mat4.translation(0.0, y, 0.75),
+        )
+
+    floor = SceneNode(
+        id=node_id("aisle_floor"), kind="floor", label="Floor", raw_category="floor",
+        dimensions=Vec3(x=4.0, y=4.0, z=0.01), transform=Mat4.translation(0.0, 0.0, 0.0),
+    )
+    graph = SceneGraph(
+        scan_id=node_id("aisle"),
+        nodes=[floor, shelf("north", width / 2 + 0.25), shelf("south", -width / 2 - 0.25)],
+    )
+    measure = PipelineMeasurements()
+    centre = Vec3(x=0.0, y=0.0, z=0.0)
+    along = measure.largest_square(graph, centre, (1.0, 0.0))
+    diagonal = measure.largest_square(graph, centre, (2**-0.5, 2**-0.5))
+    assert along.inches_wide == pytest.approx(60.0, abs=1.0)
+    assert diagonal.inches_wide == pytest.approx(60.0 / 2**0.5, abs=1.0)
