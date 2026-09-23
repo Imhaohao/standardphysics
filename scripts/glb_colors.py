@@ -16,11 +16,8 @@ COMPONENT_UBYTE = 5121
 COMPONENT_USHORT = 5123
 
 
-def glb_vertex_colors(path: Path) -> list[np.ndarray]:
-    payload = path.read_bytes()
-    if payload[:4] != b"glTF":
-        return []
-    header = struct.unpack_from("<III", payload, 0)
+def _glb_chunks(payload: bytes) -> tuple[bytes | None, bytes | None]:
+    """The JSON and binary chunks of a GLB container, in that order."""
     offset = 12
     json_blob = None
     bin_blob = None
@@ -33,6 +30,47 @@ def glb_vertex_colors(path: Path) -> list[np.ndarray]:
             json_blob = chunk
         elif kind == 0x004E4942:
             bin_blob = chunk
+    return json_blob, bin_blob
+
+
+def _colour_layout(accessor: dict, view: dict) -> tuple | None:
+    """How one COLOR_0 accessor is packed, or None for a component we cannot read."""
+    component = accessor.get("componentType", COMPONENT_FLOAT)
+    if component == COMPONENT_FLOAT:
+        dtype, size, normalized = np.float32, 4, False
+    elif component == COMPONENT_UBYTE:
+        dtype, size, normalized = np.float32, 1, accessor.get("normalized", False)
+    else:
+        return None
+    element_count = {"SCALAR": 1, "VEC2": 2, "VEC3": 3, "VEC4": 4}[accessor.get("type", "VEC3")]
+    stride = view.get("byteStride", size * element_count)
+    start = view.get("byteOffset", 0) + accessor.get("byteOffset", 0)
+    return component, dtype, size, normalized, element_count, stride, start
+
+
+def _colour_rows(accessor: dict, view: dict, bin_blob: bytes) -> np.ndarray | None:
+    """The RGB rows of one COLOR_0 accessor, alpha dropped."""
+    layout = _colour_layout(accessor, view)
+    if layout is None:
+        return None
+    component, dtype, size, normalized, element_count, stride, start = layout
+    count = accessor.get("count", 0)
+    width = min(3, element_count)
+    rows = np.zeros((count, 3), dtype=np.float32)
+    for index in range(count):
+        base = start + index * stride
+        values = np.frombuffer(bin_blob[base:base + size * element_count], dtype=np.dtype(dtype))
+        if component == COMPONENT_UBYTE:
+            values = values / 255.0 if normalized else values.astype(np.float32)
+        rows[index, :width] = values[:width]
+    return rows
+
+
+def glb_vertex_colors(path: Path) -> list[np.ndarray]:
+    payload = path.read_bytes()
+    if payload[:4] != b"glTF":
+        return []
+    json_blob, bin_blob = _glb_chunks(payload)
     if json_blob is None or bin_blob is None:
         return []
     document = json.loads(json_blob.decode("utf-8"))
@@ -45,34 +83,7 @@ def glb_vertex_colors(path: Path) -> list[np.ndarray]:
             if colour is None:
                 continue
             accessor = accessors[colour]
-            view = buffer_views[accessor.get("bufferView")]
-            start = view.get("byteOffset", 0) + accessor.get("byteOffset", 0)
-            if "byteStride" in view:
-                stride = view["byteStride"]
-            else:
-                stride = None
-            component = accessor.get("componentType", COMPONENT_FLOAT)
-            element_count = {"SCALAR": 1, "VEC2": 2, "VEC3": 3, "VEC4": 4}[accessor.get("type", "VEC3")]
-            count = accessor.get("count", 0)
-            if component == COMPONENT_FLOAT:
-                dtype = np.float32
-                size = 4
-            elif component == COMPONENT_UBYTE:
-                dtype = np.float32
-                size = 1
-                normalized = accessor.get("normalized", False)
-            else:
-                continue
-            if stride is None:
-                stride = size * element_count
-            rows = np.zeros((count, 3), dtype=np.float32)
-            for index in range(count):
-                base = start + index * stride
-                values = np.frombuffer(bin_blob[base:base + size * element_count], dtype=np.dtype(dtype))
-                if component == COMPONENT_UBYTE and normalized:
-                    values = values / 255.0
-                if component == COMPONENT_UBYTE and not normalized:
-                    values = values.astype(np.float32)
-                rows[index, :min(3, element_count)] = values[:min(3, element_count)]
-            arrays.append(rows)
+            rows = _colour_rows(accessor, buffer_views[accessor.get("bufferView")], bin_blob)
+            if rows is not None:
+                arrays.append(rows)
     return arrays

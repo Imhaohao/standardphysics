@@ -1,5 +1,9 @@
 """Midpoint subdivision of masked faces: coplanar split, rest unchanged."""
 
+import pytest
+
+pytest.importorskip("numba", reason="surface_photos compiles with numba; install packages/pipeline[reconstruction]")
+
 import numpy as np
 from standardphysics_pipeline.textures.surface_photos import snap_to_measured, subdivide_masked_faces
 

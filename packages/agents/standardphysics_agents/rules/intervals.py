@@ -18,8 +18,7 @@ import math
 from typing import Literal
 
 from standardphysics_contracts import to_inches
-from standardphysics_pipeline.primitives.uncertainty import MeasurementBounds, compare
-from standardphysics_pipeline.primitives.uncertainty import Verdict
+from standardphysics_pipeline.primitives.uncertainty import MeasurementBounds, Verdict, compare
 
 from .pack import COMPARISON_EPSILON, RuleSpec
 

@@ -8,7 +8,6 @@ produce satisfied, however far the estimate sits from the limit.
 
 from __future__ import annotations
 
-import pytest
 from standardphysics_agents import load_pack
 from standardphysics_agents.rules.intervals import (
     rule_verdict,

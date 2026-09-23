@@ -10,15 +10,13 @@ from __future__ import annotations
 import argparse
 import json
 import math
-import os
 import pathlib
 import subprocess
 import time
 
 import numpy as np
-from PIL import Image
 import torch
-
+from PIL import Image
 from standardphysics_pipeline.ingest import capture_to_room_from_payload
 from standardphysics_pipeline.splats.deep_gaussian_model import DeepFusionGaussianModel
 from standardphysics_pipeline.textures.camera import PhotoCamera, load_cameras

@@ -10,20 +10,16 @@ Validates:
 
 from __future__ import annotations
 
-import math
 import uuid
+
 import numpy as np
 import pytest
-
 from standardphysics_contracts import Mat4, SceneGraph, SceneNode, Vec3
 from standardphysics_pipeline.coords import capture_to_room
 from standardphysics_pipeline.discovery.detect import Detection
 from standardphysics_pipeline.discovery.surface_attach import (
     attach_detection_to_surface,
     cast_and_intersect,
-    intersect_node_surface,
-    ray_for_pixel,
-    sample_ray_points,
 )
 from standardphysics_pipeline.textures.camera import PhotoCamera
 

@@ -69,6 +69,38 @@ def _read_accessor(document: dict, bin_blob: bytes, index: int) -> np.ndarray:
     return matrix
 
 
+def _image_bytes(document: dict, bin_blob: bytes, image_meta: dict) -> bytes:
+    """An embedded image's bytes, whether it sits in the buffer or in a data URI."""
+    if "bufferView" in image_meta:
+        view = document["bufferViews"][image_meta["bufferView"]]
+        start = view.get("byteOffset", 0)
+        return bin_blob[start:start + view["byteLength"]]
+    return base64.b64decode(image_meta["uri"].split(",", 1)[1])
+
+
+def _base_colour_image(
+    document: dict,
+    bin_blob: bytes,
+    material: dict,
+    textures_info: list,
+    images: list,
+    flip_images: bool,
+) -> "np.ndarray | None":
+    """One material's base colour texture, or None when it has none."""
+    texture_index = material.get("pbrMetallicRoughness", {}).get("baseColorTexture", {}).get("index")
+    if texture_index is None:
+        return None
+    info = textures_info[texture_index]
+    if info.get("source") is None:
+        return None
+    raw = _image_bytes(document, bin_blob, images[info["source"]])
+    image = np.asarray(Image.open(BytesIO(raw)).convert("RGB"), dtype=np.uint8)
+    if flip_images:
+        # legacy exports stored rows bottom-up relative to their TEXCOORDs
+        image = np.ascontiguousarray(image[::-1])
+    return image
+
+
 def parse_scene(glb_path: Path):
     payload = glb_path.read_bytes()
     if payload[:4] != b"glTF":
@@ -87,26 +119,10 @@ def parse_scene(glb_path: Path):
     textures = []
     textures_info = document.get("textures", [])
     images = document.get("images", [])
-    samplers = document.get("samplers", [])
     for material in materials:
-        pbr = material.get("pbrMetallicRoughness", {})
-        texture_index = pbr.get("baseColorTexture", {}).get("index")
-        image = None
-        if texture_index is not None:
-            info = textures_info[texture_index]
-            if info.get("source") is not None:
-                image_meta = images[info["source"]]
-                if "bufferView" in image_meta:
-                    view = document["bufferViews"][image_meta["bufferView"]]
-                    start = view.get("byteOffset", 0)
-                    raw = bin_blob[start:start + view["byteLength"]]
-                else:
-                    raw = base64.b64decode(image_meta["uri"].split(",", 1)[1])
-                image = np.asarray(Image.open(BytesIO(raw)).convert("RGB"), dtype=np.uint8)
-                if flip_images:
-                    # legacy exports stored rows bottom-up relative to their TEXCOORDs
-                    image = np.ascontiguousarray(image[::-1])
-        textures.append(image)
+        textures.append(
+            _base_colour_image(document, bin_blob, material, textures_info, images, flip_images)
+        )
     for mesh in document.get("meshes", []):
         for primitive in mesh.get("primitives", []):
             vertices = _read_accessor(document, bin_blob, primitive["attributes"]["POSITION"]).astype(np.float32)

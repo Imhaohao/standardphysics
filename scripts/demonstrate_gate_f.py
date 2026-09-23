@@ -13,7 +13,6 @@ import uuid
 import zipfile
 from pathlib import Path
 
-import pytest
 from standardphysics_contracts import (
     Mat4,
     ObservationCrop,
@@ -23,6 +22,7 @@ from standardphysics_contracts import (
     SurfaceAttachment,
     Vec3,
 )
+
 from standardphysics_api.architecture_export import build_architecture_zip
 
 
@@ -177,7 +177,6 @@ def run_demonstration():
 
     # 5. Wheelchair Accessibility Assessment Simulation
     # Starting position: Center room origin [0.0, 0.0]
-    chair_pos = [0.0, 0.0]
     
     # Profile 1: Default standard wheelchair profile
     profile_standard = {
@@ -267,7 +266,7 @@ def run_demonstration():
         assert '<circle class="candidate_outlet"' in svg_content
         assert '.outlet{fill:#e69f00' in svg_content
 
-        ledger_content = json.loads(zipped.read("evidence-ledger.json"))
+        json.loads(zipped.read("evidence-ledger.json"))
         outlets_content = json.loads(zipped.read("outlets.json"))
 
     # Verify outlets.json structure & content
@@ -289,7 +288,9 @@ def run_demonstration():
         "scenarios": {
             "scenario_a_observed_outlet": {
                 "node": outlet_a.model_dump(mode="json"),
+                "standard_profile": profile_standard,
                 "standard_profile_assessment": outlet_a_assessment,
+                "limited_profile": profile_limited,
                 "profile_update_assessment": outlet_a_limited_reach,
             },
             "scenario_b_blocked_unknown_outlet": {
@@ -312,7 +313,7 @@ def run_demonstration():
         json.dump(demo_data, f, indent=2)
 
     action_notes_path = pilot_dir / "gate-f-action-notes.txt"
-    action_notes = f"""Standard Physics - Moffett Field Outlets Feature
+    action_notes = """Standard Physics - Moffett Field Outlets Feature
 Synthetic Export Fixture Notes — Unverified / Synthetic Only
 =============================================================
 
@@ -321,7 +322,7 @@ Synthetic Export Fixture Notes — Unverified / Synthetic Only
    It does NOT constitute real browser acceptance, real detector output, or real-room acceptance.
 
 2. Export Serialization Check:
-   - Architecture ZIP export (/api/scans/{{id}}/architecture.zip) contains:
+   - Architecture ZIP export (/api/scans/{id}/architecture.zip) contains:
      * outlets.json: deterministic ledger with local heights, support attachments, uncertainty, and disclaimers.
      * evidence-ledger.json: incorporates SurfaceAttachment and uncertainty facts per node.
      * architecture-plan.svg: renders vector markers (<circle class="outlet">) and legend styles.

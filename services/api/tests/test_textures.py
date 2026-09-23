@@ -2,11 +2,11 @@ import hashlib
 import json
 import shutil
 
-from conftest import FIXTURE_DATA, create_scan, drain, no_blender_stages, put_artifact
 from standardphysics_contracts import Mat4, NodeTextureCoverage, TextureBuild, TextureCoverage
 from standardphysics_fixtures import build_graph
 from standardphysics_pipeline.textures import BakeResult
 
+from conftest import FIXTURE_DATA, create_scan, drain, no_blender_stages, put_artifact
 from standardphysics_api import repository as repo
 
 

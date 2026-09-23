@@ -9,9 +9,10 @@ Every call here is an authenticated HTTP request against the real queue.
 import json
 import uuid
 
-from conftest import create_scan, drain, put_artifact, usdz_fixture
 from standardphysics_contracts import Mat4, SceneNode, SurfaceAttachment, Vec3
 from standardphysics_pipeline.discovery import DiscoveryResult
+
+from conftest import create_scan, drain, put_artifact, usdz_fixture
 
 
 def _identity() -> list[float]:
@@ -127,6 +128,7 @@ def _ready_scan(make_client, discover):
 
 def _jpeg(width: int = 96, height: int = 64) -> bytes:
     import io
+
     from PIL import Image
     buffer = io.BytesIO()
     Image.new("RGB", (width, height), (90, 100, 110)).save(buffer, format="JPEG")

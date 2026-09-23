@@ -7,7 +7,7 @@ next to it.
 
 from __future__ import annotations
 
-from standardphysics_contracts import SceneNode, Vec3, bounds_the_room, to_inches
+from standardphysics_contracts import SceneNode, Vec3, to_inches
 from standardphysics_pipeline import gap_between_nodes
 
 from ..checks.walls import is_room_shell, upright_walls

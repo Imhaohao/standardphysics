@@ -10,16 +10,17 @@ review status.
 from __future__ import annotations
 
 import pytest
-from standardphysics_api.scope_manifest import (
-    PILOT_TARGET_CLASSES,
-    build_evidence_dossier,
-    build_scope_manifest,
-)
 from standardphysics_agents import VerificationLedger, assess, load_ledger, load_pack
 from standardphysics_agents.rules.verification import PREVIEW_REVIEWER
 from standardphysics_fixtures import build_graph, build_scenario
 from standardphysics_fixtures.shop import node_id
 from standardphysics_pipeline import PipelineMeasurements
+
+from standardphysics_api.scope_manifest import (
+    PILOT_TARGET_CLASSES,
+    build_evidence_dossier,
+    build_scope_manifest,
+)
 
 ALLOWED = {"satisfied", "violation", "needs_verification", "not_applicable", "unobserved"}
 
@@ -393,8 +394,9 @@ class TestDossierBeforeAfterProvenance:
 
 class TestDossierItemRooting:
     def test_the_approach_rows_the_counter_not_a_blocking_chair(self, manifest, pack):
-        from standardphysics_api.scope_manifest import _subject_node
         from standardphysics_fixtures.shop import node_id
+
+        from standardphysics_api.scope_manifest import _subject_node
 
         graph = build_graph()
         chair = graph.by_id(node_id("chair_3"))

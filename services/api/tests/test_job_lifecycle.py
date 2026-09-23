@@ -10,9 +10,10 @@ import json
 import threading
 import time
 
-from conftest import create_scan, drain, put_artifact, usdz_fixture
 from fastapi.testclient import TestClient
 from standardphysics_pipeline.discovery import DiscoveryResult
+
+from conftest import create_scan, drain, put_artifact, usdz_fixture
 
 
 def _identity() -> list[float]:

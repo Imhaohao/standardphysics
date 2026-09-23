@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
-import pathlib
-import numpy as np
 import pytest
-import torch
 
-from standardphysics_pipeline.textures.camera import PhotoCamera
+pytest.importorskip("torch", reason="the deep fusion model is torch-only; install packages/pipeline[splats]")
+
+import pathlib
+
+import numpy as np
+import torch
 from standardphysics_pipeline.splats.deep_fusion import InverseAug, LearnableAlign
-from standardphysics_pipeline.splats.feature_extractor import ImageFeatureExtractor, PointFeatureEncoder
 from standardphysics_pipeline.splats.deep_gaussian_model import DeepFusionGaussianModel, GaussianSplatPrediction
+from standardphysics_pipeline.splats.feature_extractor import ImageFeatureExtractor, PointFeatureEncoder
+from standardphysics_pipeline.textures.camera import PhotoCamera
 
 
 def test_inverse_aug_projection():

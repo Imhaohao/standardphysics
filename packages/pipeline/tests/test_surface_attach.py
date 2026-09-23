@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import uuid
+
 import numpy as np
 import pytest
 from standardphysics_contracts import Mat4, SceneGraph, SceneNode, Vec3

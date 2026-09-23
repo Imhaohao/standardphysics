@@ -285,7 +285,9 @@ def _scope_block(scope) -> dict[str, Any]:
     }
 
 
-def _assessment_block(assessment: Assessment | None, current_hash: str, findings: list[dict[str, Any]]) -> dict[str, Any]:
+def _assessment_block(
+    assessment: Assessment | None, current_hash: str, findings: list[dict[str, Any]]
+) -> dict[str, Any]:
     """The assessment that belongs to this graph revision, never an older one.
 
     A stale assessment is named stale and excluded rather than silently attached
@@ -428,6 +430,31 @@ def _path(points: list[tuple[float, float]], project) -> str:
     return " ".join(commands) + " Z"
 
 
+def _opening_masks(
+    nodes: list[Any], opening_cuts: dict[Any, str], width: float, height: float
+) -> list[str]:
+    """One mask per wall that something is cut through.
+
+    The four-pixel mask stroke is display-only. It makes a zero-thickness
+    measured wall and portal read as an opening without changing the geometry
+    the ledger reports.
+    """
+    masks = []
+    for wall in (node for node in nodes if _a_standing_surface(node)):
+        cuts = [opening_cuts[node.id] for node in nodes if node.parent_id == wall.id and node.id in opening_cuts]
+        if not cuts:
+            continue
+        cut_paths = "".join(
+            f'<path d={quoteattr(path)} fill="#000" stroke="#000" stroke-width="4"/>' for path in cuts
+        )
+        masks.append(
+            f'<mask id={quoteattr("cut-" + str(wall.id))} maskUnits="userSpaceOnUse" x="0" y="0" '
+            f'width={quoteattr(_svg_number(width))} height={quoteattr(_svg_number(height))}>'
+            f'<rect width="100%" height="100%" fill="#fff"/>{cut_paths}</mask>'
+        )
+    return masks
+
+
 def architecture_svg(graph: SceneGraph, ledger: dict[str, Any]) -> str:
     """Make a scalable plan whose one SVG unit remains tied to measured metres."""
     display = _display_geometry(graph)
@@ -450,21 +477,7 @@ def architecture_svg(graph: SceneGraph, ledger: dict[str, Any]) -> str:
         node.id: _path([tuple(point) for point in display[node.id].get("wall_opening_cut", [])], project)
         for node in nodes if "wall_opening_cut" in display[node.id]
     }
-    masks = []
-    for wall in (node for node in nodes if _a_standing_surface(node)):
-        cuts = [opening_cuts[node.id] for node in nodes if node.parent_id == wall.id and node.id in opening_cuts]
-        if not cuts:
-            continue
-        # The four-pixel mask stroke is display-only. It makes a zero-thickness
-        # measured wall and portal read as an opening without changing ledger geometry.
-        cut_paths = "".join(
-            f'<path d={quoteattr(path)} fill="#000" stroke="#000" stroke-width="4"/>' for path in cuts
-        )
-        masks.append(
-            f'<mask id={quoteattr("cut-" + str(wall.id))} maskUnits="userSpaceOnUse" x="0" y="0" '
-            f'width={quoteattr(_svg_number(width))} height={quoteattr(_svg_number(height))}>'
-            f'<rect width="100%" height="100%" fill="#fff"/>{cut_paths}</mask>'
-        )
+    masks = _opening_masks(nodes, opening_cuts, width, height)
     wall_paths = []
     other_paths = []
     labels = []

@@ -16,20 +16,23 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
 
 import numpy as np
-import trimesh
 from numba import njit
 from PIL import Image
-
 
 NEUTRAL = np.array([158, 153, 148], dtype=np.uint8)
 
 
+# The one place in this repository that keeps its branches. Numba compiles this
+# whole function to machine code, and every helper split out of it would have to
+# be @njit too, called across a boundary the compiler is no longer free to
+# inline: a per-pixel inner loop is exactly where that costs. Splitting it is a
+# performance change wearing a readability change, and it is not one this
+# checkout can measure, because numba is not installed here.
 @njit(cache=True)
-def raster_frame(vertices, faces, uvs, texture_index, textures, palette,
+def raster_frame(vertices, faces, uvs, texture_index, textures, palette,  # noqa: C901
                  rot, trans, fx, fy, cx, cy, width, height, mode,
                  vcolors=None, color_index=None):
     count = len(vertices)

@@ -8,17 +8,16 @@ any detector or measurement having run.
 
 import pytest
 from pydantic import ValidationError
-
 from standardphysics_contracts import (
     Assessment,
     EvidenceBundle,
     EvidenceStatus,
     ManualMarkRequest,
     ObservationCrop,
+    SceneGraph,
     ScopeItem,
     ScopeManifest,
     ScopeRow,
-    SceneGraph,
     UnlocalizedObservation,
 )
 

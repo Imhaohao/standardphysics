@@ -34,9 +34,9 @@ from standardphysics_contracts import (
 )
 
 from .footprints import footprint, gap_between
-from .occupancy import reads_as_wall
 from .ingest import FIXED_CATEGORIES
 from .mesh_evidence import object_mesh_profiles
+from .occupancy import reads_as_wall
 from .textures.camera import CameraMetadataError, camera_from_pose
 
 logger = logging.getLogger(__name__)

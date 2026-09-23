@@ -1,5 +1,9 @@
 """Source-consistency smoothing tests: visibility-safe relabeling only."""
 
+import pytest
+
+pytest.importorskip("numba", reason="surface_photos compiles with numba; install packages/pipeline[reconstruction]")
+
 import numpy as np
 from standardphysics_pipeline.render_efficiency.photo_mesh_500 import RasterCamera  # noqa: F401
 from standardphysics_pipeline.textures.camera import PhotoCamera

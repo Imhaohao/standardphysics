@@ -9,9 +9,9 @@
 from __future__ import annotations
 
 import uuid
+
 import numpy as np
 import pytest
-
 from standardphysics_contracts import Mat4, SceneGraph, SceneNode, SurfaceAttachment, Vec3
 from standardphysics_pipeline.discovery.detect import Detection
 from standardphysics_pipeline.discovery.semantic_corrections import (

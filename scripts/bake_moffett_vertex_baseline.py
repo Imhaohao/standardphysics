@@ -15,7 +15,6 @@ import time
 from pathlib import Path
 
 import numpy as np
-
 from moffett_image_registration import CAPTURES
 from standardphysics_pipeline.ingest import capture_to_room_from_payload
 from standardphysics_pipeline.textures.camera import load_cameras
@@ -23,7 +22,6 @@ from standardphysics_pipeline.textures.scan_colour import (
     MAX_PHOTO_EDGE,
     colour_the_scan,
     unused_vertices_removed,
-    vertex_normals,
     write_scan_glb,
 )
 

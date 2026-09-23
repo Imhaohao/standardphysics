@@ -377,8 +377,9 @@ def test_revision_pin_regenerates_the_old_export_byte_for_byte(make_client):
 
 
 def _full_journey_stages():
-    from conftest import no_blender_stages
     from standardphysics_pipeline.discovery import DiscoveryResult
+
+    from conftest import no_blender_stages
 
     return no_blender_stages(
         label=lambda graph, **kwargs: graph,

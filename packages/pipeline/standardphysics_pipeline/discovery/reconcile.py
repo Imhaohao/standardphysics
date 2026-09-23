@@ -103,6 +103,83 @@ def are_compatible_observations(
     return _visually_agree(att_a, att_b)
 
 
+def _merged_observations(cluster: Sequence[SceneNode]) -> list:
+    """Every observation in the cluster, one per frame."""
+    seen_frames: set[str] = set()
+    merged = []
+    for node in cluster:
+        if not node.attachment:
+            continue
+        for obs in node.attachment.observations:
+            if obs.frame_id not in seen_frames:
+                merged.append(obs)
+                seen_frames.add(obs.frame_id)
+    return merged
+
+
+def _merged_sockets(cluster: Sequence[SceneNode]) -> list:
+    """Every socket in the cluster, with ones within 3cm treated as the same socket."""
+    merged: list = []
+    for node in cluster:
+        if not node.attachment:
+            continue
+        for socket in node.attachment.sockets:
+            point = np.array([socket.center.x, socket.center.y, socket.center.z], dtype=np.float64)
+            if not any(
+                np.linalg.norm(point - np.array([m.center.x, m.center.y, m.center.z])) < 0.03
+                for m in merged
+            ):
+                merged.append(socket)
+    return merged
+
+
+def _seen_from_independent_views(
+    cameras: dict[str, PhotoCamera] | None, observations: Sequence
+) -> bool:
+    """Whether two of the observing cameras stood far enough apart to corroborate.
+
+    Two frames taken from the same spot are one viewpoint twice, however many
+    of them there are, so the test is distance between cameras rather than a
+    count of observations.
+    """
+    if cameras is None or len(observations) < 2:
+        return False
+    observing = [cameras[obs.frame_id] for obs in observations if obs.frame_id in cameras]
+    return any(
+        np.linalg.norm(observing[i].position - observing[j].position) >= MIN_INDEPENDENT_VIEW_DISTANCE_M
+        for i in range(len(observing))
+        for j in range(i + 1, len(observing))
+    )
+
+
+def _merged_review_status(cluster: Sequence[SceneNode], first_att) -> str:
+    """An owner's decision survives the merge, and a rejection outranks a confirmation."""
+    if any(n.attachment and n.attachment.review_status == "rejected_by_user" for n in cluster):
+        return "rejected_by_user"
+    if any(n.attachment and n.attachment.review_status == "confirmed_by_user" for n in cluster):
+        return "confirmed_by_user"
+    return first_att.review_status
+
+
+def _merged_uncertainty_reasons(cluster: Sequence[SceneNode], independent_views: bool) -> list[str]:
+    """Each node's reasons, minus the single-viewpoint note, which is re-decided here.
+
+    A cluster can be corroborated even when none of its members was, so the old
+    note is dropped and re-added only if the merged evidence still stands on one
+    viewpoint.
+    """
+    reasons: list[str] = []
+    for node in cluster:
+        if not node.attachment:
+            continue
+        for reason in node.attachment.uncertainty_reasons:
+            if "single viewpoint" not in reason and reason not in reasons:
+                reasons.append(reason)
+    if not independent_views:
+        reasons.append("single viewpoint observation; not independently verified from separate angle")
+    return reasons
+
+
 def merge_cluster(cluster: Sequence[SceneNode], cameras: dict[str, PhotoCamera] | None = None) -> SceneNode:
     """Merges a cluster of compatible outlet nodes, consolidating evidence and updating uncertainty."""
     import uuid
@@ -110,68 +187,17 @@ def merge_cluster(cluster: Sequence[SceneNode], cameras: dict[str, PhotoCamera] 
     first_att = cluster[0].attachment
     assert first_att is not None
 
-    # Merge observations without duplicating frames
-    seen_frames: set[str] = set()
-    merged_obs = []
-    for node in cluster:
-        if node.attachment:
-            for obs in node.attachment.observations:
-                if obs.frame_id not in seen_frames:
-                    merged_obs.append(obs)
-                    seen_frames.add(obs.frame_id)
+    merged_obs = _merged_observations(cluster)
+    merged_sockets = _merged_sockets(cluster)
+    independent_views = _seen_from_independent_views(cameras, merged_obs)
+    merged_review_status = _merged_review_status(cluster, first_att)
+    uncertainty_reasons = _merged_uncertainty_reasons(cluster, independent_views)
 
-    # Average 3D position over all nodes in the cluster
     all_pos = [
         np.array([n.transform.m[3], n.transform.m[7], n.transform.m[11]], dtype=np.float64)
         for n in cluster
     ]
     merged_pos = np.mean(all_pos, axis=0)
-
-    # Combine sockets
-    merged_sockets = []
-    for node in cluster:
-        if node.attachment:
-            for s in node.attachment.sockets:
-                s_pt = np.array([s.center.x, s.center.y, s.center.z], dtype=np.float64)
-                if not any(
-                    np.linalg.norm(s_pt - np.array([ms.center.x, ms.center.y, ms.center.z])) < 0.03
-                    for ms in merged_sockets
-                ):
-                    merged_sockets.append(s)
-
-    # Determine viewpoint independence
-    independent_views = False
-    if cameras is not None and len(merged_obs) >= 2:
-        obs_cams = [cameras[obs.frame_id] for obs in merged_obs if obs.frame_id in cameras]
-        if len(obs_cams) >= 2:
-            for i in range(len(obs_cams)):
-                for j in range(i + 1, len(obs_cams)):
-                    cam_dist = np.linalg.norm(obs_cams[i].position - obs_cams[j].position)
-                    if cam_dist >= MIN_INDEPENDENT_VIEW_DISTANCE_M:
-                        independent_views = True
-                        break
-                if independent_views:
-                    break
-
-    # Preserve owner review decisions: rejection overrides detection
-    if any(n.attachment and n.attachment.review_status == "rejected_by_user" for n in cluster):
-        merged_review_status = "rejected_by_user"
-    elif any(n.attachment and n.attachment.review_status == "confirmed_by_user" for n in cluster):
-        merged_review_status = "confirmed_by_user"
-    else:
-        merged_review_status = first_att.review_status
-
-    # Union uncertainty reasons from all observations
-    uncertainty_reasons: list[str] = []
-    for node in cluster:
-        if node.attachment:
-            for r in node.attachment.uncertainty_reasons:
-                if "single viewpoint" not in r and r not in uncertainty_reasons:
-                    uncertainty_reasons.append(r)
-
-    if not independent_views:
-        if not any("single viewpoint" in r for r in uncertainty_reasons):
-            uncertainty_reasons.append("single viewpoint observation; not independently verified from separate angle")
 
     needs_verification = any(
         n.attachment and n.attachment.localization_quality == "needs_verification"

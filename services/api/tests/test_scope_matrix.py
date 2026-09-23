@@ -14,8 +14,9 @@ ALLOWED = {"satisfied", "violation", "needs_verification", "not_applicable", "un
 
 
 def _stages():
-    from conftest import no_blender_stages
     from standardphysics_pipeline.discovery import DiscoveryResult
+
+    from conftest import no_blender_stages
 
     return no_blender_stages(
         label=lambda graph, **kwargs: graph,
