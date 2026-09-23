@@ -165,7 +165,7 @@ Medium. `fixed in 1d6a685`. `fd43203` rewrote `tests/test_turns.py` without chec
 `tests/test_turns.py` asserts only that each width is above zero and that a pivot exists, so A-14 and A-15 shipped with CI green, and `B-to-audit.md` reported A-10 fixed on that basis. Lane C's 105 tests also pass with and without the fix, so nothing downstream caught it either.
 
 ### A-17 A report camera can sit outside the room
-Low. `open`.
+Low. `fixed in 790381d`.
 
 `a4eb74a` sizes the framing from the blocking objects. For a pinch between the south wall and a table 30 in from it, the camera lands at (-3.19, -3.57, 7.04), past the wall at x = -3. It is 7 m up, so the wall may not block the view. `tests/test_render.py` checks only the y coordinate.
 
@@ -205,7 +205,7 @@ High. `fixed in 5d09e4d`. Reported by Lane D in `01582fd`.
 `blocks_floor` compares an object's top with 1/4 in above z = 0, but RoomPlan's origin is wherever the phone started. In Apple's sample exports the floor sits at z = -1.47 m in `apple_bedroom3` and -1.44 m in `apple_livingroom`, so the bed, the table and the chair in the bedroom, and 8 of 13 objects in the living room including both sofas, read as open floor. On a real scan a route would pass straight through furniture. At `5d09e4d` ingest shifts the room so the floor is at z = 0: every object in the bedroom blocks, and the three that do not in the living room hang above 27 in, where ADA 2010 307 treats them as protruding objects.
 
 ### A-26 The fix agent lets furniture overlap a wall by up to 1 cm
-Low. `open`.
+Low. `fixed in a2ed9d2`.
 
 `fix/constraints.py` shrinks both the moved node and the obstacle by `OVERLAP_TOLERANCE` = 5 mm before testing for a collision, so the effective allowance is 10 mm, not the 5 mm its docstring states. Reproduced at `8a161d1`: sliding `case_east` 9 mm into the east wall reports no violation; 11 mm reports a collision. Re-measurement uses the real footprints, so no width passes on this, but the proposed arrangement cannot be built.
 
@@ -312,7 +312,7 @@ Until a person reviews the rule pack every check is off, and `assess` returns an
 `20f54d9` adds `Assessment.rules_checked`, and `scanStatus` says checks start once a person reviews the rules when it is `0`. An assessment stored before `20f54d9` has no `rules_checked`, and `scanStatus` treats only `0` as unchecked, so an older assessment with no findings still reads "Everything we checked passes" until the scan is assessed again. A database created before `20f54d9`, such as a demo machine's, keeps such assessments; treating a missing count as unchecked would cover them. The A-43 test passes as a plain test at `abb3cf6`, with 155 root and 37 API tests passing.
 
 ### A-45 Asking for a fix stalls every drag check for about three seconds
-Low. `open`. Lane D.
+Low. `fixed in 5dd31f6`. Lane D.
 
 `fff9e60`'s `Stages.propose` runs Lane C's fix search inside the same lock as `assess`, which the layout check also takes. Measured at `2b0e2b0` on the sample shop with the preview rules: a layout check alone takes 1.49 s, one proposal takes 3.33 s, and a layout check sent 0.3 s after a proposal starts takes 4.21 s. Queued assessments wait behind a proposal the same way. The lock protects Lane B's measurement cache, so giving the fix search its own `PipelineMeasurements` would likely let a drag check run alongside it.
 
@@ -347,7 +347,7 @@ No policy that needs every surface finished completes either scan. What stops it
 `CoveragePolicy` has since moved to 0.90 observed, three viewpoints, 3 m and 50 degrees, which takes `test1` to 0 of 26 and away from the 70%, two viewpoint, 5 m, 60 degree rule in `LANE_A.md` and `docs/PLAN.md` section 3. Either the documents or the policy is wrong.
 
 ### A-48 A scan manifest claims an artifact kind the contract did not define
-Medium. `open`. Lane A raises it, Lane D owns the contract.
+Medium. `fixed in 6f704a5`. Lane A raises it, Lane D owns the contract.
 
 Both `datasets/phone/*/scan.json` list `"kind": "lidar_mesh"`, and the commit says the checksums match the uploaded artifacts. At `a6e14f7` `ArtifactKind` was `room_usdz`, `room_json`, `room_metadata`, `walkthrough_mp4`, `frames`, `poses`, `coverage`. Validating each listed file against the contract rejects exactly one in both scans:
 
