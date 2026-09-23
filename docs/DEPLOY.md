@@ -81,6 +81,20 @@ curl https://api.standardphysics.app/health
 The first build takes a while: it installs the Python packages and builds the
 workspace on the box.
 
+## When it will not start
+
+```bash
+./doctor.sh
+```
+
+It checks the configuration, the mount and its ownership, swap, the two names
+in DNS, and every container's state, then prints the command to run for each
+thing that is wrong. It changes nothing itself.
+
+The symptom is almost never the cause here. Caddy reporting that its
+dependency failed to start says only that the API exited, and the API usually
+exited because it could not write to `/data`.
+
 ## Updating
 
 ```bash
