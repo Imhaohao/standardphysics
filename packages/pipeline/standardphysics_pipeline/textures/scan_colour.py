@@ -57,6 +57,8 @@ class ColouredScan:
     """Per-vertex source frame ID of the best view (object dtype), None when unseen."""
     inferred: np.ndarray | None = None
     """Whether each vertex was added to patch a hole rather than scanned; None when nothing was."""
+    sheet_patches: np.ndarray | None = None
+    """The added vertices that patch a wall or floor, as opposed to closing a hole in an object."""
 
     @property
     def scanned(self) -> np.ndarray:
@@ -209,6 +211,7 @@ def unused_vertices_removed(scan: ColouredScan) -> ColouredScan:
         seen=scan.seen[used],
         sources=scan.sources[used] if scan.sources is not None else None,
         inferred=scan.inferred[used] if scan.inferred is not None else None,
+        sheet_patches=scan.sheet_patches[used] if scan.sheet_patches is not None else None,
     )
 
 
@@ -260,39 +263,74 @@ def _photo(path: pathlib.Path) -> np.ndarray:
         return np.asarray(image, dtype=np.float32) / 255.0
 
 
+def _display_geometry(
+    vertices: np.ndarray, triangles: np.ndarray, graph: SceneGraph,
+    cameras: list[PhotoCamera], people: dict | None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """The scan as it should be shown: people out, their holes in furniture closed, walls and floor whole.
+
+    Returns the vertices, the triangles, which vertices were added rather than
+    scanned, and which of those patch a wall or floor.
+    """
+    from ..discovery.people import mostly_people
+    from .hole_patches import with_holes_patched
+    from .object_holes import closed_object_holes, without_vertices
+
+    if people:
+        views = [(camera, people.get(camera.frame_id, []), depth_buffer(camera, vertices)) for camera in cameras]
+        is_person = mostly_people(vertices, graph, views)
+        vertices, triangles = without_vertices(vertices, triangles, is_person)
+    capped = closed_object_holes(vertices, triangles, graph)
+    patched = with_holes_patched(capped.vertices, capped.triangles, graph)
+    sheet_patches = patched.inferred
+    inferred = np.concatenate([capped.inferred, sheet_patches[len(capped.vertices):]])
+    return patched.vertices, patched.triangles, inferred, sheet_patches
+
+
 def coloured_scan(
     mesh_path: pathlib.Path,
     poses_path: pathlib.Path,
     frame_paths: dict[str, pathlib.Path],
     capture_to_room,
     patch_holes_from: SceneGraph | None = None,
+    people: dict | None = None,
 ) -> tuple[ColouredScan, list[PhotoCamera]]:
     """The captured surface in the room frame, each vertex coloured by its best photo.
 
-    With `patch_holes_from`, the holes in that graph's walls and floor are patched
-    first, so the patches are coloured by the same photos and hidden by the same
-    scanned surfaces as everything else. Returns the cameras at the stored photos'
-    own resolution too, so a caller can go back to a full-size photo for a vertex
-    its `sources` names.
+    With `patch_holes_from`, the scan is first made fit to show: the people in
+    `people` (detections per frame id) are taken out, the holes they leave in
+    furniture are closed, and the holes in the graph's walls and floor are
+    patched, all before colouring, so added surface is coloured by the same
+    photos and hidden by the same scanned surfaces as everything else. Photo
+    pixels where a person stood never colour anything. Returns the cameras at
+    the stored photos' own resolution too, so a caller can go back to a full-size
+    photo for a vertex its `sources` names.
     """
-    from .hole_patches import hidden_behind_objects, with_holes_patched
+    from .hole_patches import hidden_behind_objects
+    from .object_holes import people_masks
 
-    vertices, triangles = scan_geometry(mesh_path, capture_to_room)
-    inferred, hidden = None, None
-    if patch_holes_from is not None:
-        patched = with_holes_patched(vertices, triangles, patch_holes_from)
-        vertices, triangles, inferred = patched.vertices, patched.triangles, patched.inferred
-        hidden = hidden_behind_objects(patch_holes_from, vertices, inferred)
-    cameras = [
+    all_cameras = [
         camera for camera in load_cameras(poses_path, frame_paths, capture_to_room)
         if frame_paths.get(camera.frame_id, pathlib.Path()).is_file()
     ]
-    cameras = _evenly_spread(cameras, MAX_PHOTOS)
+    cameras = _evenly_spread(all_cameras, MAX_PHOTOS)
     if not cameras:
         raise ValueError("no stored photo has a usable camera pose")
+    vertices, triangles = scan_geometry(mesh_path, capture_to_room)
+    inferred, sheet_patches, hidden = None, None, None
+    if patch_holes_from is not None:
+        vertices, triangles, inferred, sheet_patches = _display_geometry(
+            vertices, triangles, patch_holes_from, all_cameras, people,
+        )
+        hidden = hidden_behind_objects(patch_holes_from, vertices, sheet_patches)
     images = [_photo(frame_paths[camera.frame_id]) for camera in cameras]
     resized = [camera.resized(*image.shape[1::-1]) for camera, image in zip(cameras, images)]
-    scan = replace(colour_the_scan(vertices, triangles, resized, images, hidden=hidden), inferred=inferred)
+    masks = None
+    if people:
+        by_frame = people_masks(people, cameras, {c.frame_id: i.shape[:2] for c, i in zip(cameras, images)})
+        masks = [by_frame[camera.frame_id] for camera in cameras]
+    coloured = colour_the_scan(vertices, triangles, resized, images, masks=masks, hidden=hidden)
+    scan = replace(coloured, inferred=inferred, sheet_patches=sheet_patches)
     return unused_vertices_removed(scan), cameras
 
 
@@ -303,11 +341,14 @@ def paint_the_scan(
     graph: SceneGraph,
     out_path: pathlib.Path,
     materials_dir: pathlib.Path | None = None,
+    people: dict | None = None,
 ) -> ScanPaint:
     """The captured surface, coloured from the photos, as a glTF the viewer can show.
 
-    Holes the LiDAR left in walls and floor are patched with the planes they lie
-    on and coloured from whichever photo saw them. Walls, floors and labelled
+    People found by discovery (`people`, detections per frame id) are taken out
+    and the holes they leave in furniture closed. Holes the LiDAR left in walls
+    and floor are patched with the planes they lie on and coloured from whichever
+    photo saw them. Walls, floors and labelled
     objects no photo reached take their generated material, the room's own when
     `materials_dir` holds one, so the room reads whole rather than as photo
     patches on grey and gaps. Everything else stays the
@@ -320,7 +361,9 @@ def paint_the_scan(
     from .surface_materials import room_materials, unseen_surfaces_filled
 
     started = time.monotonic()
-    scan, cameras = coloured_scan(mesh_path, poses_path, frame_paths, graph.capture_to_room, patch_holes_from=graph)
+    scan, cameras = coloured_scan(
+        mesh_path, poses_path, frame_paths, graph.capture_to_room, patch_holes_from=graph, people=people,
+    )
     filled = unseen_surfaces_filled(scan, graph, room_materials(materials_dir))
     write_scan_glb(filled, out_path)
     return ScanPaint(out_path, scan.painted_fraction, len(cameras), time.monotonic() - started)

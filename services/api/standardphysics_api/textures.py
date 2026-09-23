@@ -14,6 +14,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from pydantic import ValidationError
 from standardphysics_contracts import PhotoManifest, PoseRecord, SceneGraph, TextureBuild, TextureRequest, TextureStatus
+from standardphysics_pipeline.discovery.discover import detections_digest, known_detections
 from standardphysics_pipeline.ingest import capture_to_room_from_payload
 from standardphysics_pipeline.textures import BakeInputs, bake_graph_for, stale_node_ids, texture_build_key
 from standardphysics_pipeline.textures.scan_colour import paint_the_scan
@@ -81,6 +82,11 @@ def room_materials_dir(store, scan_id) -> pathlib.Path:
     return store.scan_dir(scan_id) / "materials"
 
 
+def room_detections_dir(store, scan_id) -> pathlib.Path:
+    """Where discovery keeps what the vision model said about each photo."""
+    return store.scan_dir(scan_id) / "detections"
+
+
 def _built(connection, store, scan_id, poses, frames: dict, shas: dict) -> dict:
     """The bake inputs, keyed by the photos themselves and the room's own materials.
 
@@ -95,6 +101,7 @@ def _built(connection, store, scan_id, poses, frames: dict, shas: dict) -> dict:
         digest.update(shas[frame_id].encode())
     digest.update((lidar.sha256 if lidar else "").encode())
     digest.update(materials_digest(room_materials_dir(store, scan_id)).encode())
+    digest.update(detections_digest(room_detections_dir(store, scan_id)).encode())
     return {
         "poses": poses.id, "frames": frames,
         "lidar": lidar.id if lidar else None, "digest": digest.hexdigest(),
@@ -251,14 +258,18 @@ def _paint_the_scan(store, scan_id, graph, inputs, out_dir) -> bool:
     """
     if not inputs["lidar"]:
         return False
+    frame_paths = {key: store.artifact_path(scan_id, value) for key, value in inputs["frames"].items()}
+    poses_path = store.artifact_path(scan_id, inputs["poses"])
     try:
+        people = known_detections(frame_paths, poses_path, room_detections_dir(store, scan_id))
         painted = paint_the_scan(
             mesh_path=store.artifact_path(scan_id, inputs["lidar"]),
-            poses_path=store.artifact_path(scan_id, inputs["poses"]),
-            frame_paths={key: store.artifact_path(scan_id, value) for key, value in inputs["frames"].items()},
+            poses_path=poses_path,
+            frame_paths=frame_paths,
             graph=graph,
             out_path=out_dir / "scan.glb",
             materials_dir=room_materials_dir(store, scan_id),
+            people=people,
         )
     except (ValueError, OSError, RuntimeError) as error:
         log.warning("no coloured scan for %s: %s", scan_id, error)

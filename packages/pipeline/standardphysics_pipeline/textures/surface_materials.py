@@ -263,7 +263,7 @@ def unseen_surfaces_filled(
     if not materials or scan.seen.all():
         return scan
     normals = vertex_normals(scan.vertices, scan.triangles)
-    owners = room_owners(scan.vertices, normals, graph, patches=scan.inferred)
+    owners = room_owners(scan.vertices, normals, graph, patches=scan.sheet_patches)
     linear = to_linear(scan.colours).astype(np.float32)
     filled = MaterialFill.for_graph(graph, materials).apply(linear, scan.seen, scan.vertices, normals, owners)
     return replace(scan, colours=to_srgb(filled).astype(np.float32))
