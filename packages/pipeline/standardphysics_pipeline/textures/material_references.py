@@ -31,6 +31,7 @@ class ReferenceCrop:
     frame_id: str
     image: Image.Image
     points: int
+    box: tuple[int, int, int, int]
 
 
 def _best_frame(sources: np.ndarray) -> tuple[str, int] | None:
@@ -77,5 +78,5 @@ def reference_crops(
         if box is None:
             continue
         with Image.open(frame_paths[frame_id]) as photo:
-            crops.append(ReferenceCrop(key, frame_id, photo.convert("RGB").crop(box), count))
+            crops.append(ReferenceCrop(key, frame_id, photo.convert("RGB").crop(box), count, box))
     return crops
