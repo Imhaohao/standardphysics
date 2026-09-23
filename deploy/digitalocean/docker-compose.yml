@@ -33,6 +33,10 @@ services:
     build:
       context: ../..
       dockerfile: Dockerfile
+      # Next bakes the /api rewrite into the build, so the web container has to
+      # be built knowing where the API container is.
+      args:
+        SP_API_ORIGIN: http://api:8787
     image: standardphysics:latest
     command: ["api"]
     restart: unless-stopped
@@ -40,6 +44,7 @@ services:
     environment:
       SP_API_PORT: "8787"
       SP_DATA_DIR: /data
+      SP_SECURE_COOKIES: "1"
     volumes:
       - ${SCANS_PATH:?set SCANS_PATH in .env}:/data
     healthcheck:
