@@ -5,7 +5,11 @@ to exactly 36 when one display case moves 5. If these numbers drift, Lane C's
 checks are measuring something other than what they think.
 """
 
+import uuid
+
+import numpy as np
 import pytest
+from scipy import ndimage
 from standardphysics_contracts import Mat4, Scenario, SceneGraph, SceneNode, Stop, Vec3, to_inches, to_meters
 from standardphysics_fixtures import (
     FIX_SHIFT_INCHES,
@@ -23,7 +27,14 @@ from standardphysics_pipeline.footprints import (
     polygon_bounds,
 )
 from standardphysics_pipeline.measure import PipelineMeasurements
-from standardphysics_pipeline.occupancy import BLOCKING_HEIGHT, OUTSIDE_MARGIN, blocks_floor, build_grid
+from standardphysics_pipeline.occupancy import (
+    BLOCKING_HEIGHT,
+    INDOOR_MARGIN,
+    OUTSIDE_MARGIN,
+    Grid,
+    blocks_floor,
+    build_grid,
+)
 from standardphysics_pipeline.routes import clearance_map, widest_path
 
 
@@ -216,6 +227,86 @@ def test_a_stop_outside_still_reaches_the_ground_it_stands_on(shop):
     )
     path = measure.route_clear_width(graph, street, 0).path
     assert any(not contains_point(polygon, (step.x, step.y)) for step in path)
+
+
+def _walls_with_no_thickness(graph):
+    """Flatten every wall to a sheet, the way RoomPlan reports one."""
+    for wall in (node for node in graph.nodes if node.kind == "wall"):
+        if wall.dimensions.x < wall.dimensions.y:
+            wall.dimensions.x = 0.0
+        else:
+            wall.dimensions.y = 0.0
+
+
+def test_a_wall_with_no_thickness_still_closes_the_room(shop):
+    """A sheet with no thickness holds no cell centre, so drawn as it comes
+    every wall of a real capture was missing and the room had no edge."""
+    graph, scenario, _ = shop
+    _walls_with_no_thickness(graph)
+    graph.nodes.remove(graph.by_id(node_id("door_front")))
+    grid = build_grid(graph)
+    regions, _ = ndimage.label(~grid.occupied, structure=np.ones((3, 3)))
+    entrance = scenario.stops[0].position
+    room = regions == regions[grid.to_cell(entrance.x, entrance.y)]
+    assert not (room & ~grid.indoors).any()
+
+
+def test_a_wall_with_no_thickness_is_what_clearance_is_measured_to(shop):
+    """With the wall missing, the nearest obstacle to a point beside it was
+    the display case across the aisle, and a route along the wall looked
+    like the widest way through the room."""
+    graph, _, _ = shop
+    _walls_with_no_thickness(graph)
+    grid = build_grid(graph)
+    beside_the_west_wall = grid.to_cell(-2.7, -1.0)
+    assert clearance_map(grid)[beside_the_west_wall] < 0.35
+
+
+def test_a_trip_the_room_cannot_join_is_blocked_not_walked_round_outside(shop):
+    """With the aisle sealed and a second door at the back, the ground outside
+    joins the two halves of the shop. A trip between two stops inside still
+    has to be made inside, so it is blocked, by the case that seals it."""
+    graph, scenario, measure = shop
+    _seal_the_aisle(graph)
+    back = graph.by_id(node_id("door_front")).model_copy(
+        deep=True, update={"id": uuid.uuid4(), "label": "Back door"}
+    )
+    back.transform.m[3], back.transform.m[7] = 2.4, 4.0
+    graph.nodes.append(back)
+    result = measure.route_clear_width(graph, scenario, 0)
+    assert not result.reachable
+    assert node_id("case_east") in result.blocking_node_ids
+
+
+def test_a_trip_held_indoors_gets_no_room_from_the_ground_outside(shop):
+    """Beside a wall the scan missed, the ground beyond the floor is no more
+    use to a customer than the wall would have been."""
+    graph, scenario, _ = shop
+    _open_a_wall(graph)
+    grid = build_grid(graph)
+    start, goal = (grid.to_cell(stop.position.x, stop.position.y) for stop in scenario.stops[:2])
+    result = widest_path(grid, clearance_map(grid), start, goal)
+    beside_the_missing_wall = grid.to_cell(-2.8, -1.0)
+    assert result.clearance[beside_the_missing_wall] <= 0.2 + INDOOR_MARGIN + grid.cell_size
+
+
+def test_a_stop_inside_furniture_is_reached_from_its_open_side():
+    """The free cell nearest a cabinet's centre can be a pocket between it and
+    the wall, sealed off from the room. The trip still arrives at the cabinet."""
+    occupied = np.zeros((40, 40), dtype=bool)
+    occupied[[0, -1], :] = True
+    occupied[:, [0, -1]] = True
+    occupied[10:21, 1:15] = True
+    pocket = (15, 3)
+    occupied[pocket] = False
+    grid = Grid(0.0, 0.0, 0.1, occupied, np.full(occupied.shape, -1, dtype=np.int32), [])
+
+    result = widest_path(grid, clearance_map(grid), (35, 30), (15, 6))
+
+    assert result.reachable
+    end = result.path[-1]
+    assert end != pocket
+    assert occupied[end[0] - 1 : end[0] + 2, end[1] - 1 : end[1] + 2].any()
 
 
 def test_the_search_does_not_wander_off_into_the_padding(shop):

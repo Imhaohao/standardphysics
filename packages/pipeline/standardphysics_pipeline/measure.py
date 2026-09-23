@@ -121,6 +121,18 @@ class PipelineMeasurements:
         self._paths.move_to_end(key)
         return self._paths[key]
 
+    def _leg(
+        self, graph: SceneGraph, scenario: Scenario, leg_index: int
+    ) -> tuple[Grid, PathResult]:
+        """The route for one leg, and the grid it was found on."""
+        grid, clearance = self._field(graph)
+        start = scenario.stops[leg_index].position
+        goal = scenario.stops[leg_index + 1].position
+        result = self._widest(
+            graph, grid, clearance, grid.to_cell(start.x, start.y), grid.to_cell(goal.x, goal.y)
+        )
+        return grid, result
+
     def route_clear_width(
         self, graph: SceneGraph, scenario: Scenario, leg_index: int
     ) -> WidthResult:
@@ -238,16 +250,11 @@ class PipelineMeasurements:
         threshold from the rule pack so the number a person verified stays the
         only copy.
         """
-        grid, clearance = self._field(graph)
-        start = scenario.stops[leg_index].position
-        goal = scenario.stops[leg_index + 1].position
-        result = self._widest(
-            graph, grid, clearance, grid.to_cell(start.x, start.y), grid.to_cell(goal.x, goal.y)
-        )
+        grid, result = self._leg(graph, scenario, leg_index)
         if not result.reachable:
             return 0.0
         return longest_run_below(
-            grid, clearance, result.path, threshold_inches, exempt=result.exempt
+            grid, result.clearance, result.path, threshold_inches, exempt=result.exempt
         )
 
     def route_path_clearances(
@@ -263,16 +270,11 @@ class PipelineMeasurements:
         wanders and its clearance means nothing. Feed the list straight to
         `Annotation.point_inches`.
         """
-        grid, clearance = self._field(graph)
-        start = scenario.stops[leg_index].position
-        goal = scenario.stops[leg_index + 1].position
-        result = self._widest(
-            graph, grid, clearance, grid.to_cell(start.x, start.y), grid.to_cell(goal.x, goal.y)
-        )
+        grid, result = self._leg(graph, scenario, leg_index)
         if not result.reachable:
             return []
         return path_clearances(
-            grid, clearance, result.path, exempt=result.exempt
+            grid, result.clearance, result.path, exempt=result.exempt
         )
 
     def turn_detail(
@@ -294,12 +296,11 @@ class PipelineMeasurements:
         rather ask the owner about a turn we could not measure than say nothing
         about it.
         """
-        grid, clearance = self._field(graph)
-        route = self.route_clear_width(graph, scenario, leg_index)
-        if not route.reachable or not route.path:
+        grid, result = self._leg(graph, scenario, leg_index)
+        if not result.reachable or not result.path:
             return None
 
-        turn = measure_turn(graph, grid, clearance, route.path)
+        turn = measure_turn(graph, grid, result.clearance, world_path(grid, result.path))
         if turn is None or (require_measured and not turn.fully_measured):
             return None
         return turn
