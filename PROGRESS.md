@@ -322,7 +322,18 @@ Low. `open`. Lane D.
 `2b0e2b0` sets the fixture counter to 47 in and cites Whitaker v. T Rock Inc., N.D. Cal. No. 5:22-cv-00283, complaint paragraph 12. The case exists: CourtListener lists Whitaker v. T Rock Inc., 22-cv-00283-JST, filed January 14, 2022, over the Happy Lemon shop in San Jose. The 47 in figure, the paragraph number and the `5:` division prefix could not be confirmed from public sources, because the complaint is behind PACER. Search results also describe the plaintiff as a serial ADA filer, including a dismissal reported by CBS San Francisco. Before the pitch names a real business and plaintiff, someone should read the complaint and decide whether this is the example to lead with.
 
 ### A-47 The coverage engine never reaches "done" on a real scan
-High. `open`. Lane A.
+High. `open`, partly fixed in `93a720c`. Lane A, and a decision for the people in it.
+
+`93a720c` fixed why walls read zero: the engine replayed only the cameras that had seen a surface's previous shape, so each RoomPlan refinement discarded earlier views. It now replays every camera. Replaying the committed poses against each final room the way the engine does, with nothing else changed:
+
+| Policy | test1 walls | test1 all surfaces | ravida walls | ravida all surfaces |
+|---|---|---|---|---|
+| Code: 90%, 3 views, 3 m, 50° | 2 of 9 | 2 of 26 | 0 of 8 | 0 of 25 |
+| Documents: 70%, 2 views, 5 m, 60° | 9 of 9 | 10 of 26 | 7 of 8 | 8 of 25 |
+| Documents, with faces against a wall or other furniture left out | 9 of 9 | 11 of 26 | 7 of 8 | 8 of 25 |
+| Same, and confidence asked only of walls, floors, doors, windows and openings | 9 of 9 | 15 of 26 | 7 of 8 | 11 of 25 |
+
+No policy that needs every surface finished completes either scan. What stops it, beyond the thresholds: RoomPlan reports every chair at medium confidence, which no amount of walking changes; furniture sides pressed against walls and other furniture cannot be seen; and the floor needs walking over, because from standing height a floor point more than about 2.4 m away is seen at over 60 degrees. The ravida wall that stays at 1% is a 0.38 m stub. Deciding what "Room surfaces covered" should require, for example the walls and openings only, is the call for Lane A; the table is the data for it.
 
 `CoverageSnapshot.isComplete` needs every surface done, and `SurfaceCoverage.isDone` at `a6e14f7` asked for 70% observed area, two viewpoints and high confidence. Replaying the committed `coverage.json` against the confidence in `room.json`:
 
