@@ -30,6 +30,7 @@ import numpy as np
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "services" / "api"))
 
 from standardphysics_contracts import CreateScanRequest, SceneGraph  # noqa: E402
+from standardphysics_pipeline.ingest import parse_room_json  # noqa: E402
 from standardphysics_pipeline.registration import align_points  # noqa: E402
 
 from standardphysics_api import repository  # noqa: E402
@@ -50,11 +51,23 @@ def _graph(connection, scan_id: uuid.UUID, revision: int | None) -> SceneGraph:
     return repository.graph_of(row)
 
 
-def _placement_of(before: SceneGraph, after: SceneGraph, node_ids: list[str]):
-    """The motion the owner gave one walk, read back off its boxes."""
-    start = {str(node.id): node for node in before.nodes}
+def _placement_of(capture: SceneGraph, after: SceneGraph, node_ids: list[str]):
+    """The motion from where a walk was measured to where the owner put it.
+
+    Read from the capture's own frame rather than from the merged scan's first
+    revision, because that revision already carries the offset that spread the
+    walks apart to be dragged. The mesh and the cameras have never seen that
+    offset: they are still where the phone recorded them, so the motion they
+    need is the whole way across, in one step.
+
+    Boxes pair by position in the list, which is the order they were copied in.
+    """
     end = {str(node.id): node for node in after.nodes}
-    pairs = [(start[i], end[i]) for i in node_ids if i in start and i in end]
+    pairs = [
+        (node, end[node_id])
+        for node, node_id in zip(capture.nodes, node_ids)
+        if node_id in end
+    ]
     if len(pairs) < 3:
         raise SystemExit("a walk needs at least three boxes to read its placement from")
     source = [(a.transform.m[3], a.transform.m[7]) for a, _ in pairs]
@@ -116,7 +129,6 @@ def main() -> int:
 
     database = Database(args.db)
     with database.connect() as connection:
-        before = _graph(connection, placed_id, 0)
         after = _graph(connection, placed_id, None)
     if after.revision == 0:
         raise SystemExit("that scan's walks have not been placed yet: align them and save first")
@@ -128,10 +140,10 @@ def main() -> int:
 
     parts, poses, frames = [], [], 0
     for room in manifest["rooms"]:
-        alignment = _placement_of(before, after, room["node_ids"])
         directory = next((d for d in by_name.values() if _capture_name(d) == room["name"]), None)
         if directory is None:
             raise SystemExit(f"no capture folder for the walk called {room['name']}")
+        alignment = _placement_of(_capture_graph(directory), after, room["node_ids"])
         mesh = _moved_mesh(json.loads((directory / "lidar-mesh.json").read_text()), alignment)
         parts.extend(mesh.get("parts", []))
         walk = _moved_poses(json.loads((directory / "poses.json").read_text()), alignment)
@@ -161,6 +173,14 @@ def main() -> int:
     print(f"\n{args.name}: {scan_id}")
     print(f"  {len(parts)} mesh parts, {len(poses)} cameras, {frames} photographs")
     return 0
+
+
+def _capture_graph(directory: pathlib.Path) -> SceneGraph:
+    """The walk as the phone measured it, before anything spread it out."""
+    room = directory / "room.json"
+    if not room.is_file():
+        room = directory / "artifacts" / "room-json"
+    return parse_room_json(json.loads(room.read_text()))
 
 
 def _capture_name(directory: pathlib.Path) -> str:

@@ -14,8 +14,13 @@ export const dynamic = "force-dynamic";
  *
  * Placing four walks against each other means recognising them, and the boxes
  * are white and featureless: every room looks like every other. Each walk was
- * uploaded as a scan of its own and photographed onto its mesh, so the URL of
- * that mesh comes along and the owner drags a room they can see.
+ * uploaded as a scan of its own and photographed, so the model carrying those
+ * photographs comes along and the owner drags a room they can see.
+ *
+ * The photographed model rather than the raw scanned surface. Four captures of
+ * one library floor are about a hundred and twenty megabytes of LiDAR and some
+ * sixteen million faces between them, which no browser draws; the same four
+ * models wearing the same photographs are twelve megabytes and a few thousand.
  */
 async function roomsFor(scanId: string): Promise<RoomGroup[]> {
   const rooms = (await getRooms(scanId))?.rooms ?? [];
@@ -25,7 +30,7 @@ async function roomsFor(scanId: string): Promise<RoomGroup[]> {
 async function withCapturedMesh(room: RoomGroup): Promise<RoomGroup> {
   if (!room.source_scan_id) return room;
   const status = await getTextureStatus(room.source_scan_id, 0);
-  return { ...room, scan_glb_url: status?.build?.scan_glb_url ?? null };
+  return { ...room, scan_glb_url: status?.build?.glb_url ?? null };
 }
 
 /** Whether a GLB exists, and the revision whose layout it was exported from. */

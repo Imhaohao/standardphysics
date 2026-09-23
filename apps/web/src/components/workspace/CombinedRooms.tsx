@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { IDENTITY_PLACEMENT, roomMeshPose, type RoomGroup, type RoomPlacement } from "@/lib/room-groups";
 import { PaintedScan } from "./PaintedScan";
 
@@ -16,6 +16,15 @@ import { PaintedScan } from "./PaintedScan";
  * A walk still on its way, or one never photographed, simply does not draw. Its
  * boxes are underneath and keep it draggable, so a missing mesh costs detail
  * and never the ability to place the room.
+ *
+ * What draws is the photographed model, not the scanned surface itself. Four
+ * captures of one library floor hold some sixteen million measured faces
+ * between them and no browser gets through that; the models wearing the same
+ * photographs are a tenth of the size and a thousandth of the geometry.
+ *
+ * A walk whose model will not load says so in the console rather than leaving
+ * an empty floor and no reason for it, which is how this went unnoticed once
+ * already.
  */
 export function CombinedRooms({
   rooms,
@@ -27,7 +36,9 @@ export function CombinedRooms({
   return (
     <group>
       {rooms.map((room) => {
-        if (!room.scan_glb_url) return null;
+        if (!room.scan_glb_url) {
+          return <MissingMesh key={room.name} name={room.name} />;
+        }
         const { position, yaw } = roomMeshPose(placements[room.name] ?? IDENTITY_PLACEMENT);
         return (
           <group key={room.name} position={position} rotation={[0, -yaw, 0]}>
@@ -39,4 +50,12 @@ export function CombinedRooms({
       })}
     </group>
   );
+}
+
+/** Says which walk has no model, so an empty floor is never a mystery. */
+function MissingMesh({ name }: { name: string }) {
+  useEffect(() => {
+    console.warn(`[combine] no photographed model for the walk "${name}"; its boxes are all there is to drag`);
+  }, [name]);
+  return null;
 }
