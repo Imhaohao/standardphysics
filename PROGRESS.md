@@ -100,7 +100,7 @@ High. `fixed in 77dd362`. Person C still needs to verify the 1/4 in value agains
 Reproduced: a solid 7.9 in tall barrier across leg 0, 1.2 m from the entrance, reports **31.00 in, reachable**.
 
 ### A-6 The endpoint exemption hides obstructions at the entrance
-High. `open`. `Stop.anchor_node_id` landed in `b5306c8`. `0132fb2` made the exemption shrink on short legs but still ignores the anchor. `fd43203` decided against anchor-based exemption after an attempt regressed leg 1, and said the fix belongs in the scenario. Pinned by `tests/test_audit_open_findings.py`.
+High. `fixed in 1084818`. `Stop.anchor_node_id` landed in `b5306c8`. `0132fb2` made the exemption shrink on short legs but still ignores the anchor. `fd43203` decided against anchor-based exemption after an attempt regressed leg 1, and said the fix belongs in the scenario. Pinned by `tests/test_audit_open_findings.py`.
 
 `routes.ENDPOINT_EXEMPTION` ignores every cell within 0.75 m of each stop so a counter does not set its own route's bottleneck. The entrance stop sits 0.3 m inside the front wall, so the doorway itself is exempt, and so is anything placed just inside it. The exemption was disclosed in the first `B-to-C.md` and dropped from the rewrite in `d1cd65a`.
 
@@ -121,7 +121,7 @@ High. `fixed in 77dd362`.
 Reproduced: rotate the counter 90 degrees. Its footprint spans x -0.35 to 0.35 and y 2.00 to 5.20, the approach centre lands at (0.00, 2.87) **inside the counter**, and the check returns **fits=True**.
 
 ### A-9 Door clear width reports the door leaf
-Medium. `open`. `WidthResult.needs_measurement` landed in `b5306c8`; at `01582fd` `door_clear_width` still returns it as false. Lane C's door check in `8a161d1` already turns the flag into a request. Pinned by `tests/test_audit_open_findings.py`.
+Medium. `fixed in 49ce3f7`. `WidthResult.needs_measurement` landed in `b5306c8`; at `01582fd` `door_clear_width` still returns it as false. Lane C's door check in `8a161d1` already turns the flag into a request. Pinned by `tests/test_audit_open_findings.py`.
 
 `door_clear_width` returns the larger dimension of the door node. ADA 2010 404.2.3 measures between the door face and the stop with the door open 90 degrees, which is narrower than the leaf. A door whose leaf is 32 in passes while its clear width fails.
 
@@ -148,19 +148,19 @@ Low. `fixed in 2a5f763`. Callers still have to pass the counter's rotation and `
 `region_locus` draws an axis-aligned rectangle with a camera fixed to look from minus Y. A turning space is a 60 in circle, and a rotated clear floor space draws in the wrong orientation once A-8 is fixed.
 
 ### A-14 Turn widths measure the pivot's corner, not the gap
-High. `open`. Pinned by `tests/test_audit_open_findings.py`.
+High. `fixed in 1d6a685`. Pinned by `tests/test_audit_open_findings.py`.
 
 `28e64c1` measured each 403.5.2 width as grid clearance times two at points on the route. At a turn that is the distance to the pivot's corner rather than to the wall across from it, and the approach zone can start inside an occupied cell.
 
 Reproduced on a room with 42 in lanes and a 48 in turn, which meets the rule: approaching **0.00**, at the turn **41.34**, leaving **41.34**, and `turn_clear_width` returns **0 in**. In `tests/test_turns.py`'s own U-shaped shop the leaving width reads 37.40 in against a real 149.61 in. Still reproduced at `01582fd`: a turn with 43 in lanes and 49 in at the turn reads 0.00, 43.31 and 43.31 in. The audit's fix measured each width as the exact footprint gap from the pivot to the obstacle facing it; it conflicted with `fd43203`'s rewrite of `turns.py` and is described in `docs/handoffs/audit-to-B.md` for Lane B to apply.
 
 ### A-15 The 60 inch exemption never applies
-High. `open`. Pinned by `tests/test_audit_open_findings.py`.
+High. `fixed in 1d6a685`. Pinned by `tests/test_audit_open_findings.py`.
 
 The same undermeasurement reads a 60 in turn as 35.43 in, so 403.5.2's exception cannot trigger. Reproduced on a room with 36 in lanes and a 60 in turn: `in_scope=True`, `passes=False`. At `01582fd`, after `fd43203` removed those properties, a 61 in turn reads 35.43 in.
 
 ### A-16 The turn tests check no measured width
-Medium. `open`. `fd43203` rewrote `tests/test_turns.py` without checking a measured width. Pinned by `tests/test_audit_open_findings.py` until Lane B's own tests do.
+Medium. `fixed in 1d6a685`. `fd43203` rewrote `tests/test_turns.py` without checking a measured width. Pinned by `tests/test_audit_open_findings.py` until Lane B's own tests do.
 
 `tests/test_turns.py` asserts only that each width is above zero and that a pivot exists, so A-14 and A-15 shipped with CI green, and `B-to-audit.md` reported A-10 fixed on that basis. Lane C's 105 tests also pass with and without the fix, so nothing downstream caught it either.
 
@@ -185,7 +185,7 @@ Medium. `fixed in b5306c8`. Reported by Lane D in `9dd969d`.
 Reproduced: Seat sat at (-2.0, -2.4), the centre of table_3, and leg 3 measured 6.89 in from inside the table. It now measures 79.23 in.
 
 ### A-22 A route width is taken from two obstacles the route never passes between
-High. `open`. Pinned by `tests/test_audit_open_findings.py`.
+High. `fixed in e61229b`. Pinned by `tests/test_audit_open_findings.py`.
 
 `measure._exact_width` reports the footprint gap between the two obstacles nearest the pinch whether or not the route passes between them. Leg 1, Counter to Pickup, reports **29.79 in** between the counter's corner and table_1. The counter spans x -1.6 to 1.6 and table_1 spans x -2.3 to -1.7, so the walk from x -0.8 to x 0.8 never goes between them, and the grid width at the pinch is **57.09 in** at `0132fb2` and at `01582fd`. `B-to-D.md` in `0132fb2` calls this a real pinch, and `C-to-B.md` treats it as a second route finding.
 
@@ -253,7 +253,7 @@ Low. `fixed in a10d6da`. Lane D.
 The rest of `2fad000` checked out: the web view loads `/scans/<server scan id>` from the upload response, the `nativeCapture` message and `scanShop` action match `WorkspaceScreen.swift`, `Locus.camera` is required by the contract, and the Z-up to Y-up conversion, wall cut and region outline are correct.
 
 ### A-34 A turn that could not be fully measured disappears without a trace
-Low. `open`. Lane B and Lane C.
+Low. `fixed in eb28c10`. Lane B and Lane C.
 
 Since `d74f0e7`, `turn_detail` returns None for a partly measured turn unless the caller passes `require_measured=False`. Lane C's `586f765` records such a turn as unevaluated, but only when it receives one, so that path no longer runs. Checked at `d74f0e7` on the fixture shop: leg 1's turn exists with `require_measured=False`, the assessment's unevaluated list holds only `exit_path`, and no turn finding is reported. Neither the owner nor the team is told a turn was seen and not checked, so a turn nobody measured reads the same as no turn. Both lanes' handoffs suggest turning it into a question for the owner.
 
@@ -285,12 +285,12 @@ Medium. `fixed in a10d6da`. Lane D.
 `report.py` sets `check.verified_by_human = True` on every rule the ledger verifies, and `preview_ledger` records every rule under the reviewer "unverified preview (development only)". Reproduced at `d201984` with the preview ledger: all 17 rules come back with `verified_by_human: true`. The printed table shows the preview reviewer's name, but the contract field says the opposite, and nothing at the top of the printed report marks it as a preview. Setting the flag from whether the reviewer is the preview reviewer, and marking a preview report at the top, would keep the two from disagreeing.
 
 ### A-40 A sealed route names a display case that is not sealing it
-Medium. `open`. Lane B.
+Medium. `fixed in 1ebff37`. Lane B.
 
 `what_sealed_the_route` in `022004d` asks, for each object, whether removing its cells reconnects the two sides of the route. The occupancy grid records one owner per cell, so where two objects overlap, removing one frees cells the other still covers. Reproduced at `022004d` with the fixture aisle sealed by stretching `case_east` wall to wall: the route names `case_west` and `case_east`, but taking `case_west` away alone leaves the route blocked, and only `case_east` or a wall reopens it. `case_west` keeps all 2,304 of its cells after the stretch, which is why `_would_open` reports it. The fix agent is then pointed at a case that cannot clear the aisle. Pinned in `tests/test_audit_open_findings.py`: every object named must reopen the route when it alone is removed.
 
 ### A-41 CI is red at `022004d` by design: Lane C's labelled case expects the old behaviour
-High. `open`. Lane C label, Lane B change.
+High. `fixed in 94439b3`. Lane C label, Lane B change.
 
 `022004d` makes a blocked route name its obstacles, so the router now picks `FIX` for the `blocked_but_movable` case, whose label still expects `ASK_OWNER`. `test_the_router_picks_the_right_action_every_time` fails with a score of 0.96875, 31 of 32 cases, reproduced locally at `022004d`. The commit and `B-to-C.md` say so and leave the one-line label change to Lane C, which respects path ownership, but `master` stays red until Lane C takes it. CI on `022004d` also carries A-38.
 
@@ -348,7 +348,7 @@ CONTRACT REJECTS lidar-mesh.json -> Input should be 'room_usdz', 'room_json', 'r
 `lidar_mesh` reached the contract twelve commits later in `6f704a5`, a Lane A commit that wrote `packages/contracts/`, `services/api/` and `apps/web/`. Changing anything in `packages/contracts/` is on the protocol's must-not-decide-alone list.
 
 ### A-49 A real uploaded scan never gets a Scenario, so nothing about it is ever checked
-High. `open`. Lane D.
+High. `fixed in e7b331e`. Lane D.
 
 Reproduced by pushing `test1`'s six uploadable artifacts through the real app:
 
