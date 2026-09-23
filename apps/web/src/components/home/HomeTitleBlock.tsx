@@ -1,4 +1,5 @@
 import { DeleteAccountButton } from "@/components/auth/DeleteAccountButton";
+import { DeveloperModeToggle } from "@/components/auth/DeveloperModeToggle";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { SheetField } from "@/components/blueprint/SheetField";
 import { ScanShopButton } from "@/components/ScanShopButton";
@@ -16,6 +17,7 @@ export function HomeTitleBlock({ session, className = "" }: { session: Session; 
         <ScanShopButton />
         <SignOutButton />
         <DeleteAccountButton />
+        <DeveloperModeToggle />
       </div>
     </section>
   );
