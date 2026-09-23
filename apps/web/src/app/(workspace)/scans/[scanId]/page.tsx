@@ -22,8 +22,8 @@ export const dynamic = "force-dynamic";
  * sixteen million faces between them, which no browser draws; the same four
  * models wearing the same photographs are twelve megabytes and a few thousand.
  */
-async function roomsFor(scanId: string): Promise<RoomGroup[]> {
-  const rooms = (await getRooms(scanId))?.rooms ?? [];
+async function roomsFor(scanId: string, revision: number): Promise<RoomGroup[]> {
+  const rooms = (await getRooms(scanId, revision))?.rooms ?? [];
   return Promise.all(rooms.map(withCapturedMesh));
 }
 
@@ -82,7 +82,7 @@ export default async function ShopPage({ params }: PageProps<"/scans/[scanId]">)
   ]);
   const evidence = await getEvidence(scanId);
   const suggestedScenario = scenario ? null : await getScenarioSuggestion(scanId);
-  const rooms = await roomsFor(scanId);
+  const rooms = await roomsFor(scanId, scene.revision);
   return (
     <><RefreshWhile pending={geometry.pending} /><Workspace
       scan={scan}

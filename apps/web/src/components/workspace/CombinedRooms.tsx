@@ -39,9 +39,9 @@ export function CombinedRooms({
         if (!room.scan_glb_url) {
           return <MissingMesh key={room.name} name={room.name} />;
         }
-        const { position, yaw } = roomMeshPose(placements[room.name] ?? IDENTITY_PLACEMENT);
+        const { position, yaw } = roomMeshPose(placements[room.name] ?? IDENTITY_PLACEMENT, room.capture_pose ?? undefined);
         return (
-          <group key={room.name} position={position} rotation={[0, -yaw, 0]}>
+          <group key={room.name} position={position} rotation={[0, yaw, 0]}>
             <Suspense fallback={null}>
               <PaintedScan url={room.scan_glb_url} />
             </Suspense>

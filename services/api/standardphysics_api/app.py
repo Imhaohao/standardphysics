@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import contextlib
 import io
-import json
 import logging
 import pathlib
 import re
@@ -56,7 +55,7 @@ from . import repository as repo
 from .approach import evaluate as evaluate_approach
 from .architecture_export import install_architecture_export_routes
 from .auth import install_auth, owner_of
-from .combine import SaveCombineRequest, save_combine
+from .combine import SaveCombineRequest, rooms_of, save_combine
 from .coverage import parse_coverage
 from .db import Database
 from .errors import ApiProblem
@@ -437,13 +436,10 @@ def _install_workspace_routes(app: FastAPI, database: Database, store: ArtifactS
 
 def _install_combine_routes(app: FastAPI, database: Database, store: ArtifactStore, worker: Worker) -> None:
     @app.get("/api/scans/{scan_id}/rooms")
-    def rooms(scan_id: uuid.UUID) -> dict:
+    def rooms(scan_id: uuid.UUID, revision: int | None = None) -> dict:
         with database.connect() as connection:
             _scan_or_404(connection, scan_id)
-        manifest = store.scan_dir(scan_id) / "rooms.json"
-        if not manifest.exists():
-            return {"rooms": []}
-        return json.loads(manifest.read_text())
+        return rooms_of(database, store, scan_id, revision)
 
     @app.post("/api/scans/{scan_id}/combine", response_model=SceneGraph, status_code=201)
     def combine(scan_id: uuid.UUID, body: SaveCombineRequest) -> SceneGraph:

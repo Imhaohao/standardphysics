@@ -76,14 +76,21 @@ const DPR_SPLATS: [number, number] = [1, 1.5];
 const EMPTY_STALE_SET = new Set<string>();
 const NOTHING_TO_DO = () => {};
 
-function Lights() {
+/**
+ * The light casts only while the renderer draws shadows. Turning the canvas's
+ * shadows off stops the shadow map updating but leaves every material sampling
+ * the last one drawn, so shadows froze in place while rooms moved. A light that
+ * stops casting changes the lighting setup, and three rebuilds the materials
+ * without the shadow lookup.
+ */
+function Lights({ castShadow }: { castShadow: boolean }) {
   return (
     <>
       <hemisphereLight args={HEMI_LIGHT_ARGS} />
       <directionalLight
         position={[6, 22, 10]}
         intensity={1.25}
-        castShadow
+        castShadow={castShadow}
         shadow-mapSize={[2048, 2048]}
         shadow-camera-left={-36}
         shadow-camera-right={36}
@@ -258,7 +265,7 @@ export default function Viewer(viewerProps: ViewerProps) {
       aria-label="3D model of the shop"
     >
       <color attach="background" args={BG_COLOR_ARGS} />
-      <Lights />
+      <Lights castShadow={!lightweight} />
       {!wheelchairMode && <CameraRig pose={pose} locked={dragging} bounds={null} zoom={zoomRange(scene)} />}
       <Wheelchair
         scene={scene}
