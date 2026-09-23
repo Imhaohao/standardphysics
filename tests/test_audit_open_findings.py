@@ -96,7 +96,6 @@ def test_a15_a_turn_over_sixty_inches_measures_over_sixty():
     assert turn.at_turn_inches == pytest.approx(61.0, abs=0.5)
 
 
-@pytest.mark.xfail(strict=True, reason="A-6: everything near a stop is ignored, not only its anchor")
 def test_a6_an_obstruction_just_inside_the_entrance_narrows_the_route():
     graph, scenario = build_graph(), build_scenario()
     entrance = scenario.stops[0].position

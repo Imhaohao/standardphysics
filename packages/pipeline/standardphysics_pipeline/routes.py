@@ -179,8 +179,12 @@ def widest_path(
     goal: tuple[int, int],
     endpoint_exemption: float = ENDPOINT_EXEMPTION,
     extra_exempt: np.ndarray | None = None,
+    anchors: tuple[UUID | None, UUID | None] = (None, None),
 ) -> PathResult:
-    """Bottleneck Dijkstra: maximise the smallest clearance along the route."""
+    """Bottleneck Dijkstra: maximise the smallest clearance along the route.
+
+    `anchors` are the objects the two stops stand at, from `Stop.anchor_node_id`.
+    """
     world = _route_world(grid, start, goal)
     if world.start is None or world.goal is None:
         return PathResult(0.0, None, [], reachable=False)
@@ -188,7 +192,9 @@ def widest_path(
     clearance = _clearance_within(grid, clearance, world.walkable)
     radius = _exemption_radius(grid, world.start, world.goal, endpoint_exemption)
     leaving, arriving = _standing_rooms(grid, world, start, goal, radius)
-    exempt = _exempt_mask(grid, [world.start, world.goal], radius) | leaving | arriving
+    exempt = _stop_exemption(
+        grid, world.walkable, [(world.start, anchors[0]), (world.goal, anchors[1])], radius
+    ) | leaving | arriving
     if extra_exempt is not None:
         exempt |= extra_exempt
     search_field = np.where(exempt, np.inf, clearance)
@@ -213,6 +219,68 @@ def widest_path(
         float(clearance[pinch]), pinch, path, reachable=True, exempt=exempt,
         clearance=clearance,
     )
+
+
+def _stop_exemption(
+    grid: Grid,
+    walkable: np.ndarray,
+    stops: list[tuple[tuple[int, int], UUID | None]],
+    radius: float,
+) -> np.ndarray:
+    """The cells near each stop that say nothing about the route.
+
+    Within `radius` of a stop, two kinds of floor. One is floor whose nearest
+    obstacle is the object the stop stands at, so a counter cannot set the
+    bottleneck of the trip to it. The other is floor no closer to its nearest
+    obstacle than the stop itself stands: a pickup point 2 inches from a
+    display case starts every route out of it 2 inches from the case, and
+    stepping away from something is not squeezing past it. What is left is
+    floor where the route closes in on something the stop was clear of, which
+    is a gap the route has to pass.
+
+    Exempting the whole radius hid whatever else stood near a stop: two signs
+    20 inches apart just inside the front door read as the 31 inch aisle beyond
+    them, because the gap between them was exempt. A stop that names no anchor
+    still gets the whole radius, since nothing then says which of the things
+    around it is the destination and which is in the way.
+    """
+    exempt = np.zeros(grid.shape, dtype=bool)
+    nearest = None
+    for cell, anchor in stops:
+        around = _exempt_mask(grid, [cell], radius)
+        if anchor not in grid.node_ids:
+            exempt |= around
+            continue
+        if nearest is None:
+            nearest = _NearestObstacle.of(walkable)
+        exempt |= around & (
+            (grid.owner[nearest.rows, nearest.cols] == grid.node_ids.index(anchor))
+            | nearest.no_closer_than(cell)
+        )
+    return exempt
+
+
+@dataclass(frozen=True)
+class _NearestObstacle:
+    """For every cell, how far away the nearest cell a trip cannot use is, and
+    which cell that is."""
+
+    distance: np.ndarray
+    rows: np.ndarray
+    cols: np.ndarray
+
+    @classmethod
+    def of(cls, walkable: np.ndarray) -> _NearestObstacle:
+        distance, (rows, cols) = ndimage.distance_transform_edt(
+            walkable, return_indices=True
+        )
+        return cls(distance, rows, cols)
+
+    def no_closer_than(self, stop: tuple[int, int]) -> np.ndarray:
+        """Cells at least as far from their nearest obstacle as `stop` is from
+        that same obstacle."""
+        from_stop = np.hypot(self.rows - stop[0], self.cols - stop[1])
+        return self.distance >= from_stop
 
 
 def _standing_rooms(
