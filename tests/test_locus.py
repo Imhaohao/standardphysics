@@ -100,6 +100,24 @@ def test_a_tiny_subject_does_not_put_the_camera_inside_it():
     assert math.hypot(camera.position.y, camera.position.z) >= 1.0
 
 
+def test_a_camera_framing_a_pinch_by_the_wall_stays_over_the_floor():
+    """A-17. Framing a wide subject pushes the camera back, and a pinch against
+    the wall pushed it out through the wall. It comes in to the floor's edge
+    and rises, keeping its distance to the subject."""
+    room = [(-3.0, -4.0), (3.0, -4.0), (3.0, 4.0), (-3.0, 4.0)]
+    subject = Vec3(x=-2.6, y=-3.5, z=0.0)
+    free = camera_for(subject, 2.4, (-0.6, -0.8))
+    held = camera_for(subject, 2.4, (-0.6, -0.8), room=room)
+
+    def distance(camera):
+        position = camera.position
+        return math.dist((position.x, position.y, position.z), (subject.x, subject.y, subject.z))
+
+    assert free.position.x < -3.0
+    assert -3.0 < held.position.x and -4.0 < held.position.y
+    assert distance(held) == pytest.approx(distance(free))
+
+
 def test_a_region_draws_four_corners():
     result = ClearFloorResult(
         inches_wide=60.0, inches_deep=60.0, center=Vec3(x=1, y=2, z=0), fits=True
