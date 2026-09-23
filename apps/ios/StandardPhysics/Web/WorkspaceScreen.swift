@@ -12,17 +12,18 @@ struct WorkspaceScreen: View {
             Group {
                 if let workspaceURL = AppEnvironment.workspaceBaseURL,
                    let origin = WebOrigin(url: workspaceURL),
-                   origin.allowsLocalDemo,
+                   origin.allowsWorkspace,
                    message == nil {
                     WorkspaceWebView(
                         url: workspaceURL.appendingPathComponent("scans").appendingPathComponent(scanID.uuidString),
                         allowedOrigin: origin,
+                        sessionToken: appModel.session.token,
                         onScanRequested: { appModel.beginCapture() },
                         onFailure: { message = $0 }
                     )
                 } else {
                     VStack(spacing: AppTheme.Spacing.card) {
-                        Text(message ?? "Set the workspace address on the Connection screen, then sign in.")
+                        Text(message ?? "This build has no workspace address set.")
                             .font(AppTheme.Typography.lead)
                         if message != nil {
                             Button("Try again") { message = nil }
@@ -48,6 +49,7 @@ struct WorkspaceScreen: View {
 struct WorkspaceWebView: UIViewRepresentable {
     let url: URL
     let allowedOrigin: WebOrigin
+    let sessionToken: String?
     let onScanRequested: () -> Void
     let onFailure: (String) -> Void
 
@@ -65,7 +67,7 @@ struct WorkspaceWebView: UIViewRepresentable {
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
         context.coordinator.attach(webView)
-        context.coordinator.load(url, in: webView)
+        context.coordinator.signIn(with: sessionToken, then: url, in: webView)
         return webView
     }
 
@@ -98,8 +100,39 @@ struct WorkspaceWebView: UIViewRepresentable {
             self.webView = webView
         }
 
+        /// Hands the phone's session to the web view before the first load.
+        ///
+        /// The workspace authenticates with the `sp_session` cookie and the
+        /// phone holds the very same token, lifted out of the cookie the API
+        /// set when it signed in. Without this the owner reaches their own shop
+        /// and is asked to sign in a second time, inside their own app, to see
+        /// the room they just walked.
+        func signIn(with token: String?, then url: URL, in webView: WKWebView) {
+            guard let token, let cookie = Self.sessionCookie(token: token, for: url) else {
+                load(url, in: webView)
+                return
+            }
+            webView.configuration.websiteDataStore.httpCookieStore.setCookie(cookie) { [weak self] in
+                self?.load(url, in: webView)
+            }
+        }
+
+        private static func sessionCookie(token: String, for url: URL) -> HTTPCookie? {
+            guard let host = url.host else { return nil }
+            var properties: [HTTPCookiePropertyKey: Any] = [
+                .name: "sp_session",
+                .value: token,
+                .domain: host,
+                .path: "/",
+            ]
+            if url.scheme?.lowercased() == "https" {
+                properties[.secure] = "TRUE"
+            }
+            return HTTPCookie(properties: properties)
+        }
+
         func load(_ url: URL, in webView: WKWebView) {
-            guard requestedURL != url, allowedOrigin.allowsLocalDemo, allowedOrigin.contains(url) else { return }
+            guard requestedURL != url, allowedOrigin.allowsWorkspace, allowedOrigin.contains(url) else { return }
             requestedURL = url
             webView.load(URLRequest(url: url))
         }
@@ -114,7 +147,7 @@ struct WorkspaceWebView: UIViewRepresentable {
 
         private func report(_ error: Error) {
             guard (error as NSError).code != NSURLErrorCancelled else { return }
-            onFailure("Couldn’t open your shop. Keep your Mac running and connect to the same Wi-Fi.")
+            onFailure("Couldn’t open your shop. Check your connection and try again.")
         }
 
         func webView(_ webView: WKWebView, decidePolicyFor navigationResponse: WKNavigationResponse)
@@ -125,7 +158,7 @@ struct WorkspaceWebView: UIViewRepresentable {
             }
             guard let response = navigationResponse.response as? HTTPURLResponse else { return .allow }
             if navigationResponse.isForMainFrame && response.statusCode >= 400 {
-                onFailure("The workspace returned an error (\(response.statusCode)). Try again after it is running on your Mac.")
+                onFailure("Your shop could not be loaded (error \(response.statusCode)). Try again in a moment.")
                 return .cancel
             }
             if !navigationResponse.canShowMIMEType {
@@ -139,7 +172,7 @@ struct WorkspaceWebView: UIViewRepresentable {
             decidePolicyFor navigationAction: WKNavigationAction
         ) async -> WKNavigationActionPolicy {
             guard let target = navigationAction.request.url else { return .cancel }
-            guard allowedOrigin.allowsLocalDemo else { return .cancel }
+            guard allowedOrigin.allowsWorkspace else { return .cancel }
             if target.absoluteString == "about:blank" || allowedOrigin.contains(target) {
                 if navigationAction.shouldPerformDownload {
                     return .download
@@ -246,7 +279,7 @@ struct WorkspaceWebView: UIViewRepresentable {
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             guard message.name == "nativeCapture",
-                  allowedOrigin.allowsLocalDemo,
+                  allowedOrigin.allowsWorkspace,
                   message.frameInfo.isMainFrame,
                   let sourceURL = message.frameInfo.request.url,
                   allowedOrigin.contains(sourceURL),
@@ -286,7 +319,15 @@ struct WebOrigin: Equatable, Sendable {
     let host: String
     let port: Int?
 
-    var allowsLocalDemo: Bool { ServiceAddress.isLocalHost(host) }
+    /// Whether a workspace may be opened at this origin.
+    ///
+    /// The same rule `ServiceAddress.parse` applies to an address someone
+    /// types: HTTPS is trusted anywhere, and plain HTTP only on the local
+    /// network, where a developer's laptop lives. This used to require a local
+    /// host outright, from when the viewer was a sign-in-free demo of a Mac on
+    /// the same Wi-Fi, which meant a hosted workspace could never be opened at
+    /// all: the screen fell through to the connection form instead.
+    var allowsWorkspace: Bool { scheme == "https" || ServiceAddress.isLocalHost(host) }
 
     init?(url: URL) {
         guard let scheme = url.scheme?.lowercased(),
