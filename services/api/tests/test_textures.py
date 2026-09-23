@@ -2,7 +2,7 @@ import hashlib
 import json
 import shutil
 
-from standardphysics_contracts import Mat4, NodeTextureCoverage, TextureBuild, TextureCoverage
+from standardphysics_contracts import Mat4, NodeTextureCoverage, SceneGraph, TextureBuild, TextureCoverage
 from standardphysics_fixtures import build_graph
 from standardphysics_pipeline.textures import BakeResult
 
@@ -179,6 +179,18 @@ def test_a_build_made_outside_the_queue_is_served_like_any_other(client):
     status = client.get(f'/api/scans/{scan_id}/textures').json()
     assert status['build']['scan_glb_url'] == f'/api/scans/{scan_id}/textures/{key}/scan.glb'
     assert status['build']['coverage']['textured_fraction'] == 0.43
+
+    renamed = graph.model_copy(update={
+        'revision': graph.revision + 1,
+        'nodes': [graph.nodes[0].model_copy(update={'label': 'Renamed'}), *graph.nodes[1:]],
+    })
+    record_build(client.app.state.database, scan_id, key, renamed, {'rooms': 4, 'labels': 'updated'},
+                 result.model_copy(update={'bake_graph': renamed}))
+    with client.app.state.database.connect() as connection:
+        row = connection.execute('SELECT graph_json, inputs_json FROM texture_builds WHERE scan_id=? AND build_key=?',
+                                 (str(scan_id), key)).fetchone()
+    assert SceneGraph.model_validate_json(row['graph_json']).nodes[0].label == 'Renamed'
+    assert json.loads(row['inputs_json']) == {'rooms': 4, 'labels': 'updated'}
 
 
 def test_furniture_runs_after_a_photo_build_and_publishes_only_accepted_mesh(client, monkeypatch):

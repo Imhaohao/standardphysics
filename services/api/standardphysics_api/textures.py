@@ -322,7 +322,9 @@ def record_build(database, scan_id, build_key: str, graph: SceneGraph, inputs: d
         connection.execute(
             "INSERT INTO texture_builds (scan_id, build_key, graph_json, inputs_json, result_json, created_at)"
             " VALUES (?, ?, ?, ?, ?, ?)"
-            " ON CONFLICT(scan_id, build_key) DO UPDATE SET result_json=excluded.result_json",
+            " ON CONFLICT(scan_id, build_key) DO UPDATE SET"
+            " graph_json=excluded.graph_json, inputs_json=excluded.inputs_json,"
+            " result_json=excluded.result_json",
             (
                 str(scan_id), build_key, graph.model_dump_json(),
                 json.dumps(inputs), result.model_dump_json(), repo.now(),

@@ -95,8 +95,49 @@ def newest_scene_glb(store: ArtifactStore) -> pathlib.Path | None:
     return candidates[0] if candidates else None
 
 
+def _paint_equivalent(previous: SceneGraph, current: SceneGraph) -> bool:
+    old, new = previous.model_dump(mode="json"), current.model_dump(mode="json")
+    for graph in (old, new):
+        graph.pop("revision", None)
+        graph.pop("base_hash", None)
+        for node in graph["nodes"]:
+            node.pop("label", None)
+            node.pop("labeled_by", None)
+    return old == new
+
+
+def _reuse_painted_build(
+    database: Database, store: ArtifactStore, graph: SceneGraph, inputs: dict, key: str,
+) -> TextureBuild | None:
+    destination = build_dir(store, SCAN_ID) / key
+    with database.connect() as connection:
+        row = connection.execute(
+            "SELECT graph_json, inputs_json, result_json FROM texture_builds WHERE scan_id=? AND build_key=?",
+            (str(SCAN_ID), key),
+        ).fetchone()
+    if row is None:
+        if destination.exists():
+            raise RuntimeError(f"unregistered texture build already exists: {destination}")
+        return None
+    if row["result_json"] is None or not (destination / "scan.glb").is_file():
+        raise RuntimeError(f"registered texture build is incomplete: {destination}")
+    previous = SceneGraph.model_validate_json(row["graph_json"])
+    if json.loads(row["inputs_json"]) != inputs or not _paint_equivalent(previous, graph):
+        raise RuntimeError("matching texture key has different paint inputs or geometry")
+    result = TextureBuild.model_validate_json(row["result_json"]).model_copy(update={"bake_graph": graph})
+    record_build(database, SCAN_ID, key, graph, inputs, result)
+    temporary = destination / ".result.json.tmp"
+    temporary.write_text(result.model_dump_json())
+    temporary.replace(destination / "result.json")
+    return result
+
+
 def published(database: Database, store: ArtifactStore, graph: SceneGraph, rooms: list[RoomCapture], inputs: dict) -> str:
     """Paint into a staging directory and move it into place only once it is whole."""
+    key = hashlib.sha256(json.dumps(inputs, sort_keys=True).encode()).hexdigest()
+    reused = _reuse_painted_build(database, store, graph, inputs, key)
+    if reused is not None:
+        return reused.scan_glb_url
     staged = staged_build_dir(store, SCAN_ID)
     try:
         painted = paint_the_rooms(rooms, staged / "scan.glb")
@@ -105,7 +146,6 @@ def published(database: Database, store: ArtifactStore, graph: SceneGraph, rooms
         scene_glb = newest_scene_glb(store)
         if scene_glb is not None:
             shutil.copyfile(scene_glb, staged / "scene.glb")
-        key = hashlib.sha256(json.dumps(inputs, sort_keys=True).encode()).hexdigest()
         prefix = build_prefix(SCAN_ID, key)
         result = TextureBuild(
             build_id=key,
