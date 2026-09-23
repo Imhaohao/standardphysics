@@ -112,10 +112,10 @@ class PipelineMeasurements:
             self._cache = {key: (grid, clearance_map(grid))}
         return self._cache[key]
 
-    def _widest(self, graph, grid, clearance, start, goal) -> PathResult:
-        key = (_signature(graph), start, goal)
+    def _widest(self, graph, grid, clearance, start, goal, anchors) -> PathResult:
+        key = (_signature(graph), start, goal, anchors)
         if key not in self._paths:
-            self._paths[key] = widest_path(grid, clearance, start, goal)
+            self._paths[key] = widest_path(grid, clearance, start, goal, anchors=anchors)
             if len(self._paths) > MAX_CACHED_ROUTE_PATHS:
                 self._paths.popitem(last=False)
         self._paths.move_to_end(key)
@@ -126,26 +126,21 @@ class PipelineMeasurements:
     ) -> tuple[Grid, PathResult]:
         """The route for one leg, and the grid it was found on."""
         grid, clearance = self._field(graph)
-        start = scenario.stops[leg_index].position
-        goal = scenario.stops[leg_index + 1].position
+        start, goal = scenario.stops[leg_index], scenario.stops[leg_index + 1]
         result = self._widest(
-            graph, grid, clearance, grid.to_cell(start.x, start.y), grid.to_cell(goal.x, goal.y)
+            graph, grid, clearance,
+            grid.to_cell(start.position.x, start.position.y),
+            grid.to_cell(goal.position.x, goal.position.y),
+            (start.anchor_node_id, goal.anchor_node_id),
         )
         return grid, result
 
     def route_clear_width(
         self, graph: SceneGraph, scenario: Scenario, leg_index: int
     ) -> WidthResult:
-        grid, clearance = self._field(graph)
+        grid, result = self._leg(graph, scenario, leg_index)
         start = scenario.stops[leg_index].position
         goal = scenario.stops[leg_index + 1].position
-
-        result = self._widest(
-            graph, grid,
-            clearance,
-            grid.to_cell(start.x, start.y),
-            grid.to_cell(goal.x, goal.y),
-        )
         if not result.reachable or result.pinch_cell is None:
             return WidthResult(
                 inches=0.0,

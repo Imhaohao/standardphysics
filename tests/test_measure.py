@@ -483,7 +483,7 @@ def test_exhaustive_customer_route_matrix_stays_in_the_path_cache(shop, monkeypa
     graph, _, _ = shop
     calls = []
 
-    def counted(grid, clearance, start, goal):
+    def counted(grid, clearance, start, goal, anchors=(None, None)):
         calls.append((start, goal))
         return PathResult(1.0, start, [start, goal], reachable=True)
 
