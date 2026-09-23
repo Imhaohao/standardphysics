@@ -111,6 +111,19 @@ exited because it could not write to `/data`.
 
 ## Updating
 
+From your own machine, which is the usual way:
+
+```bash
+scripts/deploy.sh
+```
+
+It pulls master on the Droplet, rebuilds, and runs `doctor.sh`, streaming the
+lot back. It stops if you have commits master does not, because the Droplet
+pulls from GitHub and a deploy that quietly ships the previous commit is worse
+than one that refuses. `SP_DEPLOY_HOST` moves it to another box.
+
+On the Droplet itself it is the two commands the script runs:
+
 ```bash
 git pull
 docker compose up -d --build
