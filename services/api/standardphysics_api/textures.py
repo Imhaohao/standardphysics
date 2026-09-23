@@ -197,9 +197,16 @@ def _status(connection, store, scan_id, revision):
     ).fetchone()
     build = TextureBuild.model_validate_json(ready["result_json"]) if ready else None
     stale = stale_node_ids(shown, build.bake_graph) if build else []
+    published_floor_exact = bool(
+        ready and build and not stale
+        and json.loads(ready["inputs_json"]).get("pipeline") == "patched-library-v1"
+    )
+    if published_floor_exact:
+        state, error = "complete", None
     result = TextureStatus(
         scan_id=scan_id, revision=shown.revision, state=state, build=build,
-        exact=bool(ready and ready["build_key"] == key), stale_node_ids=stale, error=error,
+        exact=bool(ready and ready["build_key"] == key) or published_floor_exact,
+        stale_node_ids=stale, error=error,
         can_retry=bool(inputs and state == "failed"),
     )
     return result, bake, inputs, key
@@ -407,10 +414,12 @@ def read_furniture_status(database, store, scan_id, revision):
     if row is None:
         return {"state": "not_started", "build_id": status.build.build_id, "report": None}
     inputs = json.loads(row["inputs_json"])
-    if not inputs.get("lidar") or not inputs.get("frames") or not status.build.scan_glb_url:
-        return {"state": "not_applicable", "build_id": status.build.build_id, "report": None}
     report_path = build_dir(store, scan_id) / status.build.build_id / "furniture.json"
     report = json.loads(report_path.read_text()) if report_path.is_file() else None
+    if inputs.get("pipeline") == "patched-library-v1" and report is not None:
+        return {"state": "done", "build_id": status.build.build_id, "error": None, "report": report}
+    if not inputs.get("lidar") or not inputs.get("frames") or not status.build.scan_glb_url:
+        return {"state": "not_applicable", "build_id": status.build.build_id, "report": None}
     return {
         "state": row["state"] or "not_started",
         "build_id": status.build.build_id,

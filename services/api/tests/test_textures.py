@@ -193,6 +193,28 @@ def test_a_build_made_outside_the_queue_is_served_like_any_other(client):
     assert json.loads(row['inputs_json']) == {'rooms': 4, 'labels': 'updated'}
 
 
+def test_completed_library_floor_and_furniture_report_are_visible_without_uploaded_bundle(client):
+    from standardphysics_api.textures import build_dir, finish_build, record_build, staged_build_dir
+
+    scan_id, graph = _room(client)
+    key = hashlib.sha256(b'published library floor').hexdigest()
+    staged = staged_build_dir(client.app.state.store, scan_id)
+    shutil.copyfile(FIXTURE_DATA / 'shop.glb', staged / 'scan.glb')
+    shutil.copyfile(FIXTURE_DATA / 'shop.glb', staged / 'scene.glb')
+    result = _scan_build(scan_id, graph, key)
+    destination = build_dir(client.app.state.store, scan_id) / key
+    finish_build(staged, destination, result)
+    (destination / 'furniture.json').write_text(json.dumps({'accepted': 0, 'objects': [{'status': 'rejected'}]}))
+    record_build(client.app.state.database, scan_id, key, graph, {'pipeline': 'patched-library-v1'}, result)
+
+    status = client.get(f'/api/scans/{scan_id}/textures').json()
+    assert status['state'] == 'complete'
+    assert status['exact'] is True
+    furniture = client.get(f'/api/scans/{scan_id}/furniture').json()
+    assert furniture['state'] == 'done'
+    assert furniture['report']['accepted'] == 0
+
+
 def test_furniture_runs_after_a_photo_build_and_publishes_only_accepted_mesh(client, monkeypatch):
     from standardphysics_api import furniture
     from standardphysics_api.textures import build_dir, finish_build, record_build, staged_build_dir
