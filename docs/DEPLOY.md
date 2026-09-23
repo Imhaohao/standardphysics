@@ -10,9 +10,9 @@ a scan bundle can reach the 1 GB ceiling in `Settings.max_artifact_bytes` and
 there is no reason to push that through a Next rewrite.
 
 ```
- iPhone ──── https://api.<your domain> ───┐
+ iPhone ──── https://api.standardphysics.app ───┐
                                           ├── Caddy ──┬── api  + /mnt volume
- Browser ─── https://app.<your domain> ───┘           └── web
+ Browser ─── https://app.standardphysics.app ───┘           └── web
 ```
 
 Everything lives in `deploy/digitalocean/`.
@@ -75,7 +75,7 @@ rooms somewhere else.
 ```bash
 docker compose up -d --build
 docker compose logs -f caddy    # watch the certificate arrive
-curl https://<your api domain>/health
+curl https://api.standardphysics.app/health
 ```
 
 The first build takes a while: it installs the Python packages and builds the
@@ -123,8 +123,8 @@ The iPhone app ships with both addresses compiled in, set in
 `apps/ios/project.yml`:
 
 ```
-CAPTURE_API_BASE_URL: https://api.<your domain>
-CAPTURE_WORKSPACE_BASE_URL: https://app.<your domain>
+CAPTURE_API_BASE_URL: https://api.standardphysics.app
+CAPTURE_WORKSPACE_BASE_URL: https://app.standardphysics.app
 ```
 
 The connection screen stays in the app for development, and an owner never has

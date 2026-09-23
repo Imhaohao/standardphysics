@@ -12,7 +12,7 @@ account, a hosted server and a phone with LiDAR.
 | | Where |
 |---|---|
 | Team, bundle id, deployment target | `apps/ios/project.yml` |
-| Where the server addresses go | `CAPTURE_API_BASE_URL`, `CAPTURE_WORKSPACE_BASE_URL`, empty until there is a domain |
+| Server addresses compiled in | `CAPTURE_API_BASE_URL`, `CAPTURE_WORKSPACE_BASE_URL` |
 | App icon, light, dark and tinted | `apps/ios/scripts/make_app_icon.py` |
 | Export compliance answered | `ITSAppUsesNonExemptEncryption: false` |
 | Devices without ARKit excluded | `UIRequiredDeviceCapabilities` |
@@ -36,7 +36,7 @@ cannot sign in to.
 
 In App Store Connect, create the app record with bundle id
 `com.standardphysics.capture`, and set the privacy policy URL to
-`https://app.<your domain>/privacy`. Make sure the address on that page can
+`https://app.standardphysics.app/privacy`. Make sure the address on that page can
 receive mail before you submit; App Review does write to it.
 
 ## Archive and upload
