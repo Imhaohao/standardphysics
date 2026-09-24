@@ -36,13 +36,16 @@ warn_about_unpushed() {
 
 deploy() {
   say "Deploying master to $HOST"
-  ssh "$HOST" bash -euo pipefail -s <<REMOTE
-cd "$DIR"
+  # The commands go as an argument, not on stdin. A heredoc takes stdin over,
+  # and ssh then has no way to ask for a key passphrase: it gives up and
+  # reports publickey, which reads as a key the server will not accept rather
+  # than a question it could not ask. -t gives the prompt a terminal to use.
+  ssh -t "$HOST" "set -euo pipefail
+cd '$DIR'
 git pull --ff-only
 cd deploy/digitalocean
 docker compose up -d --build
-./doctor.sh
-REMOTE
+./doctor.sh"
 }
 
 main() {
