@@ -18,6 +18,11 @@ targets:
       path: StandardPhysics/Resources/Info.plist
       properties:
         CFBundleDisplayName: Standard Physics
+        # The version people see, and the build number App Store Connect keys
+        # on. It refuses a build number it has already taken, so this goes up
+        # by one before every upload, whether or not the version changed.
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "2"
         NSCameraUsageDescription: Use the camera to measure your shop.
         NSLocalNetworkUsageDescription: Connect to the workspace on your local network to upload your scans.
         API_BASE_URL: $(CAPTURE_API_BASE_URL)
