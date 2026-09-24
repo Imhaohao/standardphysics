@@ -53,6 +53,8 @@ TOP_REACH = 0.25
 """How far a measured top may sit from its box's top: generated box tops miss by up to about twenty centimetres."""
 PLANE_THICKNESS = 0.02
 TOP_SUPPORT = 0.3
+RECESS_DEPTH = 1.0
+"""How far behind a sheet's plane scanned surface still marks where the sheet is open rather than missing."""
 """The share of a solid's footprint its measured top must cover before the rest of that top is patched."""
 
 
@@ -208,7 +210,9 @@ def _room_sheets(graph: SceneGraph) -> list[SceneNode]:
     return [node for node in graph.nodes if bounds_the_room(node) and node.parent_id is None]
 
 
-def patches_for(vertices: np.ndarray, graph: SceneGraph, scanned: cKDTree | None = None) -> tuple[np.ndarray, np.ndarray]:
+def patches_for(
+    vertices: np.ndarray, graph: SceneGraph, scanned: cKDTree | None = None, normals: np.ndarray | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
     """Squares covering every stretch of wall and floor the scan has no surface on."""
     sheets = _room_sheets(graph)
     if not sheets or not len(vertices):
@@ -224,9 +228,50 @@ def patches_for(vertices: np.ndarray, graph: SceneGraph, scanned: cKDTree | None
         hole = _holes_at(scanned, centres)
         hole &= ~_inside_openings(centres, _openings_of(node, graph))
         hole &= ~_outside_the_walls(centres, node, walled)
+        if normals is not None:
+            hole &= ~_seen_through(sheet, local, vertices, normals, scanned)
         if hole.any():
             pieces.append(_squares(sheet, local[hole]))
     return _joined(pieces)
+
+
+def _seen_through(
+    sheet: _Sheet, local: np.ndarray, vertices: np.ndarray, normals: np.ndarray, scanned: cKDTree,
+) -> np.ndarray:
+    """Cells the scan saw past, into a recess behind the sheet's plane, which a patch must not close.
+
+    A RoomPlan wall is a flat box, and a bench set into the wall is not in it.
+    The LiDAR measures the recess, so the cells across its mouth have no scanned
+    surface within HOLE_DISTANCE and read as holes; patching them drew a flat wall
+    over the bench. Surface behind the plane that faces into the room was seen
+    from the room, so the sheet is open there. The far face of a wall between
+    two scanned rooms also lies behind the plane, but it faces away, so it does
+    not count.
+    """
+    reach = float(np.linalg.norm(sheet.half)) + RECESS_DEPTH
+    nearby = np.asarray(scanned.query_ball_point(sheet.centre, reach), dtype=np.int64)
+    if not len(nearby):
+        return np.zeros(len(local), dtype=bool)
+    offset = vertices[nearby] - sheet.centre
+    depth = offset @ sheet.normal
+    behind = (depth < -HOLE_DISTANCE) & (depth > -RECESS_DEPTH) & (normals[nearby] @ sheet.normal > FACING)
+    in_plane = offset[behind] @ sheet.rotation
+    return _cells_hit(sheet, local, in_plane)
+
+
+def _cells_hit(sheet: _Sheet, local: np.ndarray, in_plane: np.ndarray) -> np.ndarray:
+    """Which of the sheet's cells have one of these sheet-frame points over them."""
+    origin = -sheet.half[[sheet.across, sheet.up]]
+    size = np.maximum(np.ceil(2 * sheet.half[[sheet.across, sheet.up]] / CELL).astype(np.int64), 1)
+    def index(points: np.ndarray) -> np.ndarray:
+        steps = np.floor((points[:, [sheet.across, sheet.up]] - origin) / CELL).astype(np.int64)
+        inside = np.all((steps >= 0) & (steps < size), axis=1)
+        return np.where(inside, steps[:, 0] * size[1] + steps[:, 1], -1)
+    hit = np.zeros(int(size.prod()), dtype=bool)
+    marks = index(in_plane)
+    hit[marks[marks >= 0]] = True
+    cells = index(local)
+    return (cells >= 0) & hit[np.maximum(cells, 0)]
 
 
 @dataclass(frozen=True)
@@ -504,7 +549,7 @@ def with_holes_patched(vertices: np.ndarray, triangles: np.ndarray, graph: Scene
     if len(vertices):
         scanned = cKDTree(vertices)
         normals = vertex_normals(vertices, triangles)
-        sheet_pieces = [patches_for(vertices, graph, scanned), lid_patches(vertices, normals, graph, scanned)]
+        sheet_pieces = [patches_for(vertices, graph, scanned, normals), lid_patches(vertices, normals, graph, scanned)]
         top_pieces = [top_patches(vertices, normals, graph, scanned)]
     sheet_vertices, sheet_triangles = _joined(sheet_pieces)
     top_vertices, top_triangles = _joined(top_pieces)

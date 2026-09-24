@@ -99,3 +99,21 @@ def test_a_top_the_scanner_never_saw_gets_no_patches(classroom):
     assert unseen
     for node in unseen:
         assert not in_footprint_near_top(node, top_patches).any()
+
+
+def test_no_wall_patch_hides_surface_the_scan_saw_behind_the_wall_plane(classroom):
+    """Where the real wall sits back from RoomPlan's flat box, the scan's own surface shows, not a patch in front of it."""
+    graph, vertices, triangles, patched = classroom
+    centres, normals, _ = patch_faces(patched)
+    upright = np.abs(normals[:, 2]) < 0.2
+    facing_room = vertex_normals(vertices, triangles)
+    tree = cKDTree(vertices)
+    covered = 0
+    for centre, normal in zip(centres[upright], normals[upright]):
+        behind = [centre - normal * depth for depth in (0.15, 0.3, 0.5)]
+        for point in behind:
+            near = tree.query_ball_point(point, 0.02)
+            if near and (facing_room[near] @ normal > 0.8).any():
+                covered += 1
+                break
+    assert covered == 0
