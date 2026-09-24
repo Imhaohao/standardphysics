@@ -29,6 +29,7 @@ from dataclasses import dataclass
 
 import numpy as np
 from PIL import Image
+from scipy.sparse import csr_matrix
 from scipy.spatial import cKDTree
 from standardphysics_contracts import SceneGraph
 
@@ -63,8 +64,8 @@ ATLAS_JPEG_QUALITY = 90
 CONSENSUS_VIEWS = 5
 """How many of the best views each texel keeps, so the colour most of them agree on can win."""
 FALLBACK_NEIGHBOURS = 8
-FALLBACK_REACH = 0.3
-"""How far a photographed colour may travel to a texel no photo reached, in metres."""
+SPREAD_ROUNDS = 60
+"""How many rings of mesh a photographed colour may spread across to reach corners no photo saw."""
 AGREEMENT_DISTANCE = 0.06
 """How close two linear colours are to count as the same surface seen twice."""
 
@@ -150,7 +151,7 @@ class _Surface:
 
     def __init__(self, mesh: UnwrappedScan, size: int, painted: ColouredScan, graph: SceneGraph):
         texels = rasterize_atlas(mesh.corners, mesh.uv, np.arange(len(mesh.triangles), dtype=np.int32), size)
-        self.size, self.graph = size, graph
+        self.size, self.graph, self.mesh = size, graph, mesh
         self.rows, self.columns, self.faces = texels.rows, texels.columns, texels.owners
         self.positions, self.normals = texels.positions, texels.normals
         distances, nearest = cKDTree(painted.vertices).query(self.positions, k=FALLBACK_NEIGHBOURS)
@@ -274,29 +275,63 @@ def agreed_colours(weights: np.ndarray, colours: np.ndarray) -> np.ndarray:
 
 
 def _face_filled(surface: _Surface, colours: np.ndarray, painted: np.ndarray) -> np.ndarray:
-    """Each texel's colour, with every unpainted texel taking the nearest photographed colour there is.
+    """Each texel's colour, with every unpainted texel taking the photographed colour of the surface around it.
 
-    First its own face's photographed mean: a face a photo mostly reached is one
-    surface the photo saw, so a texel it missed belongs with its painted
-    neighbours. Then the nearest photographed texel within FALLBACK_REACH. Only
-    a texel with no photograph near it at all takes the room's material.
+    A texel no photo reached blends the colours of its face's three corners,
+    and a corner's colour is the photographed faces around it, spread along the
+    mesh to corners with none. That keeps a fill on the surface it belongs to:
+    the nearest photographed texel in space was as often the edge of a chair
+    or the far side of a gap, and every face filled that way was a speck of
+    somebody else's colour. Only where no photograph reaches along the surface
+    does the room's material stand.
     """
-    count = np.bincount(surface.faces[painted], minlength=surface.faces.max() + 1)
-    sums = np.stack([np.bincount(surface.faces[painted], weights=colours[painted, channel], minlength=len(count)) for channel in range(3)], axis=1)
-    face_mean = (sums / np.maximum(count, 1)[:, None]).astype(np.float32)
-    in_painted_face = count[surface.faces] > 0
-    filled = np.where(painted[:, None], colours, np.where(in_painted_face[:, None], face_mean[surface.faces], surface.fallback))
-    return _nearest_photographed(surface, filled, painted, ~painted & ~in_painted_face)
+    field, known = _corner_colours(surface.mesh, surface.faces, colours, painted)
+    corners = surface.mesh.triangles[surface.faces]
+    reached = known[corners].all(axis=1)
+    weights = _barycentric(surface.mesh.vertices[corners], surface.positions)
+    blended = np.einsum("ij,ijk->ik", weights, field[corners]).astype(np.float32)
+    fallback = np.where(reached[:, None], blended, surface.fallback)
+    return np.where(painted[:, None], colours, fallback)
 
 
-def _nearest_photographed(surface: _Surface, filled: np.ndarray, painted: np.ndarray, orphans: np.ndarray) -> np.ndarray:
-    if not orphans.any() or not painted.any():
-        return filled
-    distance, nearest = cKDTree(surface.positions[painted]).query(surface.positions[orphans], distance_upper_bound=FALLBACK_REACH)
-    close = np.isfinite(distance)
-    targets = np.flatnonzero(orphans)[close]
-    filled[targets] = filled[np.flatnonzero(painted)[nearest[close]]]
-    return filled
+def _corner_colours(mesh: UnwrappedScan, faces: np.ndarray, colours: np.ndarray, painted: np.ndarray):
+    """A colour per mesh vertex from the photographed faces around it, spread along the mesh to the rest."""
+    face_count = len(mesh.triangles)
+    count = np.bincount(faces[painted], minlength=face_count).astype(np.float64)
+    sums = np.stack([np.bincount(faces[painted], weights=colours[painted, channel], minlength=face_count) for channel in range(3)], axis=1)
+    face_known = count > 0
+    face_mean = sums / np.maximum(count, 1)[:, None]
+    incidence = csr_matrix(
+        (np.ones(mesh.triangles.size), (mesh.triangles.ravel(), np.repeat(np.arange(face_count), 3))),
+        shape=(len(mesh.vertices), face_count),
+    )
+    weight = incidence @ face_known.astype(np.float64)
+    field = (incidence @ (face_mean * face_known[:, None])) / np.maximum(weight, 1e-12)[:, None]
+    return _spread(incidence @ incidence.T, field, weight > 0)
+
+
+def _spread(adjacency, field: np.ndarray, known: np.ndarray, rounds: int = SPREAD_ROUNDS):
+    """Unknown vertices take the mean of their known neighbours, one ring further out each round."""
+    for _ in range(rounds):
+        reach = adjacency @ known.astype(np.float64)
+        sums = adjacency @ (field * known[:, None])
+        newly = ~known & (reach > 0)
+        if not newly.any():
+            break
+        field[newly] = sums[newly] / reach[newly][:, None]
+        known = known | newly
+    return field, known
+
+
+def _barycentric(corners: np.ndarray, points: np.ndarray) -> np.ndarray:
+    """Each point's weights over its triangle's three corners, clipped into the triangle."""
+    first, second, offset = corners[:, 1] - corners[:, 0], corners[:, 2] - corners[:, 0], points - corners[:, 0]
+    d00, d01, d11 = np.einsum("ij,ij->i", first, first), np.einsum("ij,ij->i", first, second), np.einsum("ij,ij->i", second, second)
+    d20, d21 = np.einsum("ij,ij->i", offset, first), np.einsum("ij,ij->i", offset, second)
+    denominator = np.maximum(d00 * d11 - d01 * d01, 1e-18)
+    v, w = (d11 * d20 - d01 * d21) / denominator, (d00 * d21 - d01 * d20) / denominator
+    weights = np.clip(np.stack([1 - v - w, v, w], axis=1), 0.0, 1.0)
+    return weights / np.maximum(weights.sum(axis=1, keepdims=True), 1e-12)
 
 
 def _atlas_image(surface: _Surface, colours: np.ndarray, painted: np.ndarray) -> Image.Image:

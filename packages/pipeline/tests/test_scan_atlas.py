@@ -86,18 +86,20 @@ def test_a_surface_seen_at_a_slant_is_allowed_the_depth_it_spans_across_a_buffer
     assert _seen_tolerance(camera, 240, depth, facing, slope_aware=False) == SEEN_TOLERANCE
 
 
-def test_a_texel_a_photo_missed_takes_its_face_colour_not_the_fallback():
+def test_a_texel_no_photo_reached_takes_its_surface_colour_and_never_a_neighbours():
     yellow, grey = [0.8, 0.6, 0.1], [0.5, 0.5, 0.5]
+    vertices = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], [5, 0, 0], [6, 0, 0], [5, 1, 0]], dtype=np.float64)
+    mesh = SimpleNamespace(vertices=vertices, triangles=np.array([[0, 1, 2], [0, 2, 3], [4, 5, 6]]))
     surface = SimpleNamespace(
-        faces=np.array([0, 0, 0, 1, 2]),
-        positions=np.array([[0, 0, 0], [0.01, 0, 0], [0.02, 0, 0], [0.1, 0, 0], [5, 0, 0]], dtype=np.float32),
-        fallback=np.array([grey] * 5, dtype=np.float32),
+        mesh=mesh,
+        faces=np.array([0, 0, 1, 2]),
+        positions=np.array([[0.6, 0.2, 0], [0.8, 0.3, 0], [0.2, 0.7, 0], [5.2, 0.2, 0]], dtype=np.float32),
+        fallback=np.array([grey] * 4, dtype=np.float32),
     )
-    colours = np.array([yellow, yellow, [0, 0, 0], [0, 0, 0], [0, 0, 0]], dtype=np.float32)
-    painted = np.array([True, True, False, False, False])
+    colours = np.array([yellow, yellow, [0, 0, 0], [0, 0, 0]], dtype=np.float32)
+    painted = np.array([True, True, False, False])
 
     filled = _face_filled(surface, colours, painted)
 
-    assert filled[2] == pytest.approx(yellow), "a missed texel in a painted face takes that face's colour"
-    assert filled[3] == pytest.approx(yellow), "an unpainted face near a photographed one takes the nearest photographed colour"
-    assert filled[4] == pytest.approx(grey), "with nothing photographed nearby, the room's material stands"
+    assert filled[2] == pytest.approx(yellow), "the face beside a photographed one takes its colour along the surface"
+    assert filled[3] == pytest.approx(grey), "a face no photograph reaches along the surface keeps the room's material"

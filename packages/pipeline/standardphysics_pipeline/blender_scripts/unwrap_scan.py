@@ -40,6 +40,8 @@ def build(vertices: np.ndarray, triangles: np.ndarray):
     return obj
 
 
+FLAT_EDGE_RADIANS = np.radians(10.0)
+"""Two faces meeting at less than this are one flat stretch, where flipping their edge keeps the surface where it was."""
 WELD_DISTANCE = 0.001
 """Vertices this close are one vertex: the shared corners of patch squares, and the seams between LiDAR anchors."""
 
@@ -68,9 +70,20 @@ def thin(obj, max_triangles: int) -> None:
 
 
 def triangulated(obj) -> None:
+    """Triangles, with edges flipped wherever that makes them less thin.
+
+    Thinning collapses a flat stretch, a patched floor most of all, into a fan
+    of needles radiating from one vertex. A needle gets a strip of texture one
+    texel wide, so the photograph smeared along it in streaks. Flipping the
+    shared edge of two thin triangles into the other diagonal turns them into
+    two fat ones over the same surface. Only edges between nearly coplanar
+    faces are flipped, because flipping across a bend changes the shape.
+    """
     mesh = bmesh.new()
     mesh.from_mesh(obj.data)
     bmesh.ops.triangulate(mesh, faces=mesh.faces[:])
+    flat = [edge for edge in mesh.edges if len(edge.link_faces) == 2 and edge.calc_face_angle(np.pi) < FLAT_EDGE_RADIANS]
+    bmesh.ops.beautify_fill(mesh, faces=mesh.faces[:], edges=flat)
     mesh.to_mesh(obj.data)
     mesh.free()
 
