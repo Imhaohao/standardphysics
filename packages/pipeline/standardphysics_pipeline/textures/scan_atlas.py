@@ -65,6 +65,9 @@ CONSENSUS_VIEWS = 5
 """How many of the best views each texel keeps, so the colour most of them agree on can win."""
 FALLBACK_NEIGHBOURS = 8
 SPREAD_ROUNDS = 60
+GAP_REACH = 0.15
+GAP_FACING = 0.7
+GAP_NEIGHBOURS = 8
 """How many rings of mesh a photographed colour may spread across to reach corners no photo saw."""
 AGREEMENT_DISTANCE = 0.06
 """How close two linear colours are to count as the same surface seen twice."""
@@ -146,14 +149,59 @@ def _read(path: pathlib.Path, edge: int) -> np.ndarray:
         return np.asarray(image, dtype=np.float32) / 255.0
 
 
+def _pixel_of(uv: np.ndarray, size: int) -> tuple[np.ndarray, np.ndarray]:
+    """The texel whose centre is nearest a UV point, in the convention `rasterize_atlas` uses."""
+    column = np.rint(uv[:, 0] * size - 0.5).astype(np.int64)
+    row = np.rint((1.0 - uv[:, 1]) * size - 0.5).astype(np.int64)
+    return np.clip(row, 0, size - 1), np.clip(column, 0, size - 1)
+
+
+def _with_every_face_owned(mesh: UnwrappedScan, size: int, rows, columns, faces, positions, normals):
+    """The rasterized texels, plus texels for the faces too small to cover a texel centre of their own.
+
+    Faces are packed one by one at a size in proportion to their area, so the
+    smallest cover no texel centre at all, which was two faces in five among the
+    specks. A face like that is still drawn, from whatever pixels sit under it:
+    the gap fill of some other face's island, a colour from anywhere in the
+    room. Each face now also claims the free texels under its centroid and just
+    inside its corners, at the matching points on its surface, so every face is
+    drawn from pixels baked for it.
+    """
+    corners, uv = mesh.corners, mesh.uv
+    centroid_uv, centroid = uv.mean(axis=1), corners.mean(axis=1)
+    points_uv = [centroid_uv] + [0.6 * uv[:, i] + 0.4 * centroid_uv for i in range(3)]
+    points = [centroid] + [0.6 * corners[:, i] + 0.4 * centroid for i in range(3)]
+    taken = np.zeros(size * size, dtype=bool)
+    taken[rows.astype(np.int64) * size + columns] = True
+    face_normals_ = np.cross(corners[:, 1] - corners[:, 0], corners[:, 2] - corners[:, 0])
+    face_normals_ /= np.maximum(np.linalg.norm(face_normals_, axis=1, keepdims=True), 1e-12)
+    extra = [[], [], [], [], []]
+    for point_uv, point in zip(points_uv, points):
+        row, column = _pixel_of(point_uv, size)
+        flat = row * size + column
+        _, first = np.unique(flat, return_index=True)
+        fresh = np.zeros(len(flat), dtype=bool)
+        fresh[first] = True
+        fresh &= ~taken[flat]
+        taken[flat[fresh]] = True
+        for bucket, values in zip(extra, (row, column, np.arange(len(flat)), point, face_normals_)):
+            bucket.append(values[fresh])
+    return (
+        np.concatenate([rows, *extra[0]]).astype(np.int32), np.concatenate([columns, *extra[1]]).astype(np.int32),
+        np.concatenate([faces, *extra[2]]).astype(np.int32), np.concatenate([positions, *extra[3]]).astype(np.float32),
+        np.concatenate([normals, *extra[4]]).astype(np.float32),
+    )
+
+
 class _Surface:
     """The texels of one atlas and what the photos make of them."""
 
     def __init__(self, mesh: UnwrappedScan, size: int, painted: ColouredScan, graph: SceneGraph):
         texels = rasterize_atlas(mesh.corners, mesh.uv, np.arange(len(mesh.triangles), dtype=np.int32), size)
         self.size, self.graph, self.mesh = size, graph, mesh
-        self.rows, self.columns, self.faces = texels.rows, texels.columns, texels.owners
-        self.positions, self.normals = texels.positions, texels.normals
+        self.rows, self.columns, self.faces, self.positions, self.normals = _with_every_face_owned(
+            mesh, size, texels.rows, texels.columns, texels.owners, texels.positions, texels.normals,
+        )
         distances, nearest = cKDTree(painted.vertices).query(self.positions, k=FALLBACK_NEIGHBOURS)
         self.fallback = _blended(to_linear(painted.colours), distances, nearest)
         patches = painted.sheet_patches if painted.sheet_patches is not None else np.zeros(len(painted.vertices), bool)
@@ -307,7 +355,36 @@ def _corner_colours(mesh: UnwrappedScan, faces: np.ndarray, colours: np.ndarray,
     )
     weight = incidence @ face_known.astype(np.float64)
     field = (incidence @ (face_mean * face_known[:, None])) / np.maximum(weight, 1e-12)[:, None]
-    return _spread(incidence @ incidence.T, field, weight > 0)
+    field, known = _spread(incidence @ incidence.T, field, weight > 0)
+    return _borrowed_across_gaps(mesh, incidence, field, known)
+
+
+def _borrowed_across_gaps(mesh: UnwrappedScan, incidence, field: np.ndarray, known: np.ndarray):
+    """Vertices on a fragment no photograph reaches along the mesh take a close vertex facing the same way.
+
+    A phone's LiDAR arrives in overlapping pieces that share no vertices, so a
+    small piece can sit in the middle of a photographed floor with no mesh path
+    to it. Spreading along the mesh never reaches it, and it showed as specks
+    of unmeasured grey. The nearest known vertex within GAP_REACH that faces
+    within GAP_FACING of the same way is almost always the same surface; a
+    vertex with none keeps the room's material.
+    """
+    if known.all() or not known.any():
+        return field, known
+    corners = mesh.vertices[mesh.triangles]
+    face_normals_ = np.cross(corners[:, 1] - corners[:, 0], corners[:, 2] - corners[:, 0])
+    normals = incidence @ face_normals_
+    normals /= np.maximum(np.linalg.norm(normals, axis=1, keepdims=True), 1e-12)
+    lost, found = np.flatnonzero(~known), np.flatnonzero(known)
+    distance, nearest = cKDTree(mesh.vertices[found]).query(mesh.vertices[lost], k=GAP_NEIGHBOURS, distance_upper_bound=GAP_REACH)
+    candidates = found[np.minimum(nearest, len(found) - 1)]
+    agree = np.isfinite(distance) & (np.einsum("ij,ikj->ik", normals[lost], normals[candidates]) > GAP_FACING)
+    has = agree.any(axis=1)
+    pick = candidates[np.arange(len(lost)), np.argmax(agree, axis=1)]
+    field[lost[has]] = field[pick[has]]
+    known = known.copy()
+    known[lost[has]] = True
+    return field, known
 
 
 def _spread(adjacency, field: np.ndarray, known: np.ndarray, rounds: int = SPREAD_ROUNDS):

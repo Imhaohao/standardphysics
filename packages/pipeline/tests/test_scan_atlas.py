@@ -12,10 +12,11 @@ from standardphysics_pipeline.check_blender import blender_path
 from standardphysics_pipeline.coords import capture_to_room
 from standardphysics_pipeline.ingest import parse_room_json
 from standardphysics_pipeline.textures.hole_patches import with_holes_patched
-from standardphysics_pipeline.textures.project import face_normals
+from standardphysics_pipeline.textures.project import face_normals, rasterize_atlas
 from standardphysics_pipeline.textures.scan_atlas import (
     TEXEL_METRES,
     _face_filled,
+    _with_every_face_owned,
     agreed_colours,
     atlas_size,
     unwrapped,
@@ -103,3 +104,21 @@ def test_a_texel_no_photo_reached_takes_its_surface_colour_and_never_a_neighbour
 
     assert filled[2] == pytest.approx(yellow), "the face beside a photographed one takes its colour along the surface"
     assert filled[3] == pytest.approx(grey), "a face no photograph reaches along the surface keeps the room's material"
+
+
+@pytest.mark.skipif(_blender_missing(), reason="Blender not installed")
+def test_every_face_of_a_real_scan_is_drawn_from_texels_baked_for_it(tmp_path):
+    """A face owning no texel is drawn from whatever sits under it in the atlas, a speck of another surface."""
+    graph = parse_room_json(json.loads((REPO / "datasets/phone/test1/room.json").read_text()))
+    vertices, triangles = scan_geometry(REPO / "datasets/phone/test1/lidar-mesh.json", graph.capture_to_room)
+    patched = with_holes_patched(vertices, triangles, graph)
+    scan = ColouredScan(patched.vertices, patched.triangles, np.zeros((len(patched.vertices), 3)), np.zeros(len(patched.vertices), bool))
+    mesh = unwrapped(scan, tmp_path, max_triangles=len(patched.triangles) // 9)
+    size = atlas_size(mesh) // 2
+    texels = rasterize_atlas(mesh.corners, mesh.uv, np.arange(len(mesh.triangles), dtype=np.int32), size)
+    assert np.bincount(texels.owners, minlength=len(mesh.triangles)).min() == 0, "as crowded as a library walk, some faces cover no texel centre"
+
+    owned = _with_every_face_owned(mesh, size, texels.rows, texels.columns, texels.owners, texels.positions, texels.normals)
+
+    assert np.bincount(owned[2], minlength=len(mesh.triangles)).min() >= 1
+    assert len(np.unique(owned[0].astype(np.int64) * size + owned[1])) == len(owned[0]), "no texel belongs to two faces"
