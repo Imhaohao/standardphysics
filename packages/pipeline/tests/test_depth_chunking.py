@@ -81,3 +81,17 @@ def test_a_mesh_larger_than_any_old_limit_is_not_refused(camera_and_faces):
     repeated = np.concatenate([triangles] * max(1, 2_100_000 // max(1, len(triangles))))
     assert len(repeated) > 2_000_000
     assert np.isfinite(_buffer_with_chunk(camera, repeated, 250_000)).any()
+
+
+def test_drawing_small_faces_together_matches_drawing_them_one_by_one(camera_and_faces):
+    """The fast path for small faces must write the buffer the per-face loop writes, pixel for pixel."""
+    camera, triangles = camera_and_faces
+    fast = project.triangle_depth_buffer(camera, triangles)
+    was = project.SMALL_TRIANGLE_PIXELS
+    project.SMALL_TRIANGLE_PIXELS = 0
+    try:
+        one_by_one = project.triangle_depth_buffer(camera, triangles)
+    finally:
+        project.SMALL_TRIANGLE_PIXELS = was
+    assert np.isfinite(fast).any()
+    assert np.array_equal(fast, one_by_one)
