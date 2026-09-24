@@ -27,6 +27,12 @@ enum AppTheme {
     static let warning = problem
 
     static let scanLine = Color(hex: 0x8FB4DE)
+    /// What is still unscanned, on the capture map.
+    ///
+    /// Warm against the cool blue of what is done, so the two read apart by hue
+    /// and not only by brightness. The dash and the pulse carry the same fact
+    /// again, for anyone who does not see the difference in colour.
+    static let coverageMissing = Color(hex: 0xF0B429)
     static let onDark = Color.white
     static let transparent = Color.clear
 

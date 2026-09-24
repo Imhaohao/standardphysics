@@ -40,6 +40,7 @@
 		812ABC8C0C2FCD7648188442 /* SceneCaptureConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46525BF5D2C5213EB7FED758 /* SceneCaptureConfiguration.swift */; };
 		837EBEDE2B395F2129F29D8A /* DraftingPaper.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFCDE194CA8E81C8F043EE76 /* DraftingPaper.swift */; };
 		850EE6F0C14C7ABDB7A9FB7F /* ScanExportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5281D7312D6F754DBC7B8377 /* ScanExportTests.swift */; };
+		8BA7B9F89E034B879E779614 /* ScanPrimerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F313ADD03C0085CEF9FE8D31 /* ScanPrimerScreen.swift */; };
 		95E15EFB23AEA929A41B1EA4 /* CaptureScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD126A7334930ED9E61ADA9A /* CaptureScreen.swift */; };
 		9BF68FA1A07FE744E37BACA9 /* ResumableUploadStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0748121F1E998BBBC5AA865E /* ResumableUploadStoreTests.swift */; };
 		A175D79C585CF1A4796FFB64 /* ScanObjectLocator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81AACA30446540582EBA1366 /* ScanObjectLocator.swift */; };
@@ -122,6 +123,7 @@
 		E5526B07C28987E15F8C00DE /* Karla-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Karla-Medium.ttf"; sourceTree = "<group>"; };
 		E6F34E396942BEF7BD1CB0CE /* RoomCaptureController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomCaptureController.swift; sourceTree = "<group>"; };
 		E822CFE0693E33CDA2D1BF3B /* LibreFranklin-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "LibreFranklin-Bold.ttf"; sourceTree = "<group>"; };
+		F313ADD03C0085CEF9FE8D31 /* ScanPrimerScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanPrimerScreen.swift; sourceTree = "<group>"; };
 		F33989C0129F58DE12C08EB2 /* CaptureRecovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureRecovery.swift; sourceTree = "<group>"; };
 		F6A8C1D60ECF23C6304B08D1 /* apple_livingroom.room.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = apple_livingroom.room.json; sourceTree = "<group>"; };
 		F9BF4F87DF3836D0AB7F4636 /* LibreFranklin-ExtraBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "LibreFranklin-ExtraBold.ttf"; sourceTree = "<group>"; };
@@ -282,6 +284,7 @@
 				9B07A989AF5FC994A8CD0AAA /* LidarMeshRecorder.swift */,
 				D8F7D787B2D14BBCBCF9F0FA /* PoseRecord.swift */,
 				E6F34E396942BEF7BD1CB0CE /* RoomCaptureController.swift */,
+				F313ADD03C0085CEF9FE8D31 /* ScanPrimerScreen.swift */,
 				46525BF5D2C5213EB7FED758 /* SceneCaptureConfiguration.swift */,
 				026FA7F7DA378297C85FA69C /* WalkthroughVideoRecorder.swift */,
 			);
@@ -419,6 +422,7 @@
 				AD48A914B5EDDEC5DD5AE77C /* RoomCaptureController.swift in Sources */,
 				A2AEB73032DA503D659048CD /* ScanExporter.swift in Sources */,
 				A175D79C585CF1A4796FFB64 /* ScanObjectLocator.swift in Sources */,
+				8BA7B9F89E034B879E779614 /* ScanPrimerScreen.swift in Sources */,
 				CCA06A6F9298BAF322C19D66 /* ScanUploadClient.swift in Sources */,
 				E103411EA09E6A9164777649 /* ScannedRoomView.swift in Sources */,
 				812ABC8C0C2FCD7648188442 /* SceneCaptureConfiguration.swift in Sources */,

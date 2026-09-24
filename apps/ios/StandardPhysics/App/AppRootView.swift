@@ -5,6 +5,7 @@ import SwiftUI
 final class AppModel: ObservableObject {
     enum Screen {
         case start
+        case scanPrimer
         case capture
         case review(CapturedScan)
         case upload(UploadViewModel)
@@ -22,6 +23,15 @@ final class AppModel: ObservableObject {
     @Published private(set) var recoveryDirectories: [URL] = []
     @Published private(set) var recoveryMessage: String?
     private var uploads: [UUID: UploadViewModel] = [:]
+
+    /// What the scan asks of them, before the camera covers the screen.
+    ///
+    /// Owners were standing still and sweeping the phone, which measures a room
+    /// but not the space to walk through it. That is worth thirty seconds of
+    /// reading, and there is nowhere to read it once capture has started.
+    func showScanPrimer() {
+        screen = .scanPrimer
+    }
 
     func beginCapture() {
         captureSessionID = UUID()
@@ -179,6 +189,8 @@ private struct SupportedAppView: View {
         switch model.screen {
         case .start:
             StartView(model: model)
+        case .scanPrimer:
+            ScanPrimerScreen(model: model)
         case .capture:
             CaptureScreen(model: model)
                 .id(model.captureSessionID)
@@ -256,7 +268,7 @@ private struct StartView: View {
     /// build without a compiled address can be in that position.
     private var controls: some View {
         VStack(spacing: AppTheme.Spacing.small) {
-            Button("Start scanning") { model.beginCapture() }
+            Button("Start scanning") { model.showScanPrimer() }
                 .buttonStyle(AppButtonStyle())
             if !AppEnvironment.addressesAreCompiledIn {
                 Button("Change the upload address") { model.screen = .connection }

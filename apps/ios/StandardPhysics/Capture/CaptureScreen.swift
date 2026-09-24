@@ -22,9 +22,14 @@ struct CaptureScreen: View {
                 Spacer()
                 if capture.phase == .scanning && !capture.coverage.isComplete {
                     GuidanceArrow(angle: capture.coverage.unfinishedDirection.radians)
+                    Text("Walk this way. The yellow edges are still unscanned.")
+                        .font(AppTheme.Typography.secondary)
+                        .foregroundStyle(AppTheme.onDark)
+                        .multilineTextAlignment(.center)
                 }
                 CoverageMapView(surfaces: capture.surfaces, coverage: capture.coverage)
                     .frame(height: AppTheme.Size.coverageMapHeight)
+                CoverageTally(coverage: capture.coverage)
                 if capture.hasDetailedGeometry && capture.phase == .scanning {
                     Label("Recording room details", systemImage: "checkmark")
                         .font(AppTheme.Typography.secondary).foregroundStyle(AppTheme.onDark)
@@ -95,6 +100,26 @@ struct CaptureScreen: View {
             Button("Done") { capture.finish() }
                 .buttonStyle(AppButtonStyle(capture.coverage.isComplete ? .primary : .capture))
         }
+    }
+}
+
+/// How many surfaces are done, because the map shows where but not how many.
+private struct CoverageTally: View {
+    let coverage: CoverageSnapshot
+
+    var body: some View {
+        let done = coverage.surfaces.filter(\.isDone).count
+        let total = coverage.surfaces.count
+        Text(total == 0
+            ? "Looking for the walls"
+            : coverage.isComplete
+                ? "Every surface covered"
+                : "\(done) of \(total) surfaces covered")
+            .font(AppTheme.Typography.measurement)
+            .foregroundStyle(AppTheme.onDark)
+            .accessibilityLabel(total == 0
+                ? "Looking for the walls"
+                : "\(done) of \(total) surfaces covered")
     }
 }
 
@@ -172,9 +197,9 @@ private struct CoverageMapView: View {
                 path,
                 with: .color(isObserved
                     ? AppTheme.scanLine
-                    : (pulse ? AppTheme.coveragePendingBright : AppTheme.coveragePendingDim)),
+                    : AppTheme.coverageMissing.opacity(pulse ? 1 : 0.55)),
                 style: StrokeStyle(
-                    lineWidth: isObserved ? 7 : 4,
+                    lineWidth: isObserved ? 8 : 5,
                     lineCap: .round,
                     dash: isObserved ? [] : [7, 7]
                 )
