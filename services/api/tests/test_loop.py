@@ -15,7 +15,7 @@ def _sample(make_client):
     return client, client.get("/api/scans").json()["scans"][0]["id"]
 
 
-def test_the_loop_moves_the_display_cases_and_the_gate_keeps_it(make_client):
+def test_the_loop_clears_the_lowered_counter_and_the_pinch_and_the_gate_keeps_each_move(make_client):
     client, scan_id = _sample(make_client)
     result = client.post(f"/api/scans/{scan_id}/loop", json={"base_revision": 0}).json()
     assert result["decided_by"] == "local_policy"
@@ -24,7 +24,10 @@ def test_the_loop_moves_the_display_cases_and_the_gate_keeps_it(make_client):
     assert first["kept"] is True
     assert first["inches_short_after"] < first["inches_short_before"]
     moved = {move["node_id"] for move in result["moves"]}
-    assert moved and moved <= {str(node_id("case_east")), str(node_id("case_west"))}
+    blocking_the_lowered_counter = {str(node_id("table_1")), str(node_id("chair_1"))}
+    the_pinch = {str(node_id("case_east")), str(node_id("case_west"))}
+    assert moved == blocking_the_lowered_counter | the_pinch
+    assert result["passes"][-1]["problems"] == 1, "only the counter height, which no move can fix, is left"
     assert len(result["passes"]) <= 6
 
 
