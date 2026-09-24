@@ -240,11 +240,14 @@ struct CoverageEngine {
     /// Scores the processed room against the whole walk, including surfaces
     /// RoomPlan only settled on at the end.
     mutating func reconcile(finalSurfaces: [SurfaceSnapshot]) -> CoverageSnapshot {
-        observations = Dictionary(uniqueKeysWithValues: finalSurfaces.map { surface in
-            var replayed = replayedState(on: surface)
-            replayed.geometry = geometryFingerprint(for: surface)
-            return (surface.id, replayed)
-        })
+        observations = Dictionary(
+            finalSurfaces.map { surface in
+                var replayed = replayedState(on: surface)
+                replayed.geometry = geometryFingerprint(for: surface)
+                return (surface.id, replayed)
+            },
+            uniquingKeysWith: { _, newer in newer }
+        )
         snapshot = makeSnapshot(surfaces: finalSurfaces, camera: nil)
         return snapshot
     }
@@ -435,7 +438,12 @@ struct CoverageEngine {
     }
 
     private func guidance(for surfaces: [SurfaceSnapshot], coverage: [SurfaceCoverage], camera: CameraObservation) -> Guidance {
-        let coverageByID = Dictionary(uniqueKeysWithValues: coverage.map { ($0.id, $0) })
+        // RoomPlan can report the same surface identifier twice in one update,
+        // and `uniqueKeysWithValues` traps on that rather than tolerating it.
+        // This runs on the display link for every frame of a scan, so the trap
+        // took the whole capture down mid-walk. The later reading is the newer
+        // one, so it wins.
+        let coverageByID = Dictionary(coverage.map { ($0.id, $0) }, uniquingKeysWith: { _, newer in newer })
         let candidates = surfaces.flatMap { surface -> [GuidanceTarget] in
             guard let surfaceCoverage = coverageByID[surface.id], !surfaceCoverage.isDone else { return [] }
             let state = observations[surface.id, default: ObservationState()]

@@ -91,7 +91,7 @@ struct CaptureScreen: View {
                     Button("Save again") { capture.retrySave() }
                         .buttonStyle(AppButtonStyle(.primary))
                 }
-                Button("Start a new scan") { model.beginCapture() }
+                Button("Start a new scan") { model.showScanPrimer() }
                     .buttonStyle(AppButtonStyle(.capture))
                 Button("Back to saved scans") { model.showStart() }
                     .buttonStyle(AppButtonStyle(.capture))
@@ -146,7 +146,8 @@ private struct CoverageMapView: View {
 
     var body: some View {
         Canvas { context, size in
-            let coverageByID = Dictionary(uniqueKeysWithValues: coverage.surfaces.map { ($0.id, $0) })
+            let coverageByID = Dictionary(
+                coverage.surfaces.map { ($0.id, $0) }, uniquingKeysWith: { _, newer in newer })
             let walls = surfaces.filter(\.isWall)
             let points = walls.flatMap(endpoints)
             guard let bounds = MapBounds(points: points) else { return }
