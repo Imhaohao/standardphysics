@@ -13,6 +13,7 @@
   --color-grid-major: #e0ded6;
   --color-problem: #c8372d;
   --color-pass: #2e7d4f;
+  --color-attention: #9a6200;
 
   --font-sans: var(--font-karla), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-libre-franklin), ui-sans-serif, system-ui, sans-serif;

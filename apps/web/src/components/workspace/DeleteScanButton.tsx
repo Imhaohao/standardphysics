@@ -4,6 +4,7 @@ import { Trash } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { MENU_ITEM } from "@/components/ui/Menu";
 
 /**
  * Removing one shop, from the page that shows it.
@@ -41,16 +42,16 @@ export function DeleteScanButton({ scanId, name }: { scanId: string; name: strin
       <button
         type="button"
         onClick={() => setConfirming(true)}
-        className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-ink-muted hover:bg-problem/10 hover:text-problem"
+        className={`${MENU_ITEM} hover:bg-problem/10 hover:text-problem`}
       >
-        <Trash size={16} weight="bold" aria-hidden />
-        Delete
+        <Trash size={18} aria-hidden />
+        Delete this shop
       </button>
     );
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex max-w-72 flex-col items-start gap-2 p-3">
       <p className="text-sm text-ink-muted">
         Delete {name}? The room, the walkthrough and every finding go with it.
       </p>
