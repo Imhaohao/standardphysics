@@ -447,6 +447,34 @@ def coloured_scan(
     return unused_vertices_removed(scan), cameras
 
 
+def shown_scan(
+    mesh_path: pathlib.Path,
+    poses_path: pathlib.Path,
+    frame_paths: dict[str, pathlib.Path],
+    graph: SceneGraph,
+    people: dict | None = None,
+) -> tuple[ColouredScan, list[PhotoCamera]]:
+    """The scan made fit to show, with no photograph on it yet, and every camera that took a stored photo.
+
+    People out, holes closed and patched, exactly as `coloured_scan` prepares it,
+    without painting its vertices from a sample of the photos: the atlas paints
+    from every photo, and its own photographed texels are the better fallback.
+    """
+    cameras = [
+        camera for camera in load_cameras(poses_path, frame_paths, graph.capture_to_room)
+        if frame_paths.get(camera.frame_id, pathlib.Path()).is_file()
+    ]
+    if not cameras:
+        raise ValueError("no stored photo has a usable camera pose")
+    vertices, triangles = scan_geometry(mesh_path, graph.capture_to_room)
+    shown = _display_geometry(vertices, triangles, graph, cameras, people)
+    blank = ColouredScan(
+        shown.vertices, shown.triangles, np.tile(UNSEEN, (len(shown.vertices), 1)), np.zeros(len(shown.vertices), bool),
+        inferred=shown.inferred, sheet_patches=shown.sheet_patches, mirror_source=shown.mirror_source,
+    )
+    return unused_vertices_removed(blank), cameras
+
+
 def paint_the_scan(
     mesh_path: pathlib.Path,
     poses_path: pathlib.Path,
@@ -458,10 +486,10 @@ def paint_the_scan(
 ) -> ScanPaint:
     """The captured surface, coloured from the photos, as a glTF the viewer can show.
 
-    The vertices are painted first, from an evenly spaced sample of photos, and
-    that painting is what a texel falls back to. The viewer then gets the
-    surface thinned, unwrapped and baked from every photo into an atlas, which
-    is what makes a shelf of books read as books rather than a smear.
+    The surface is thinned, unwrapped and baked from every photo into an atlas,
+    which is what makes a shelf of books read as books rather than a smear. A
+    texel no photo reached takes the nearest photographed colour, and failing
+    that the room's generated material.
 
     People found by discovery (`people`, detections per frame id) are taken out
     and the holes they leave in furniture closed. Holes the LiDAR left in walls
@@ -480,13 +508,7 @@ def paint_the_scan(
     from .surface_materials import room_materials, unseen_surfaces_filled
 
     started = time.monotonic()
-    scan, _ = coloured_scan(
-        mesh_path, poses_path, frame_paths, graph.capture_to_room, patch_holes_from=graph, people=people,
-    )
+    scan, every_photo = shown_scan(mesh_path, poses_path, frame_paths, graph, people=people)
     filled = with_mirrored_colours(unseen_surfaces_filled(scan, graph, room_materials(materials_dir)))
-    every_photo = [
-        camera for camera in load_cameras(poses_path, frame_paths, graph.capture_to_room)
-        if frame_paths.get(camera.frame_id, pathlib.Path()).is_file()
-    ]
     baked = bake_scan_atlas(filled, graph, every_photo, frame_paths, out_path, people=people)
     return ScanPaint(out_path, baked.painted_fraction, baked.photos_used, time.monotonic() - started)

@@ -201,3 +201,23 @@ def test_camera_metadata_rejects_nonfinite_or_nonrigid_transforms():
     for value in (float('nan'), 0.0, 2.0):
         transform=list(camera['transform']); transform[0]=value
         with pytest.raises(ValidationError): PoseRecord.model_validate({**camera,'transform':transform})
+
+
+def test_a_new_scan_painter_keeps_the_boxes_it_already_baked(make_client, monkeypatch):
+    from standardphysics_pipeline.textures import identity
+
+    calls = []
+    def recorded(inputs):
+        calls.append(inputs)
+        return _bake(inputs)
+    with make_client(stages=no_blender_stages(bake_textures=recorded)) as client:
+        scan, _ = _room(client); _photos(client, scan); drain(client)
+        first = client.get(f'/api/scans/{scan}/textures').json()['build']
+        monkeypatch.setattr(identity, 'TEXTURE_PIPELINE_VERSION', identity.BOX_BAKE_VERSION + '.next')
+        assert client.post(f'/api/scans/{scan}/textures', json={'revision': 0}).status_code == 202
+        drain(client)
+        second = client.get(f'/api/scans/{scan}/textures').json()
+        assert second['state'] == 'complete' and second['build']['build_id'] != first['build_id']
+        assert second['build']['box_key'] == first['box_key']
+        assert client.get(second['build']['glb_url']).status_code == 200
+        assert len(calls) == 1

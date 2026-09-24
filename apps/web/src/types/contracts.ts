@@ -1337,6 +1337,7 @@ export interface SimulationStatus {
  */
 export interface TextureBuild {
   bake_graph: SceneGraph;
+  box_key: string | null;
   build_id: string;
   coverage: TextureCoverage;
   coverage_mask_urls: string[];

@@ -20,9 +20,11 @@ of surface, which is itself a photograph or the room's generated material.
 
 from __future__ import annotations
 
+import os
 import pathlib
 import tempfile
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 import numpy as np
@@ -61,6 +63,8 @@ ATLAS_JPEG_QUALITY = 90
 CONSENSUS_VIEWS = 5
 """How many of the best views each texel keeps, so the colour most of them agree on can win."""
 FALLBACK_NEIGHBOURS = 8
+FALLBACK_REACH = 0.3
+"""How far a photographed colour may travel to a texel no photo reached, in metres."""
 AGREEMENT_DISTANCE = 0.06
 """How close two linear colours are to count as the same surface seen twice."""
 
@@ -184,43 +188,62 @@ def _people_mask(camera: PhotoCamera, photo: np.ndarray, detections: dict, buffe
     return _small_static_mask(mask, *buffer.shape)
 
 
+def _in_parallel(work, items):
+    """`work` over every item on all cores, in bounded batches, yielding results in item order.
+
+    The per-photo work is array arithmetic that lets go of the interpreter lock,
+    so threads run it side by side while sharing the texels rather than copying
+    them. Results come back in photo order, so the bake is the same as one run
+    photo by photo.
+    """
+    workers = os.cpu_count() or 4
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        for start in range(0, len(items), 2 * workers):
+            yield from pool.map(work, items[start:start + 2 * workers])
+
+
 def _exposure(surface: _Surface, cameras, frame_paths, detections) -> tuple[np.ndarray, list]:
     """Per-photo gains from an even sample of texels, and each photo's depth buffer for the bake."""
     sample = np.unique(np.linspace(0, len(surface.positions) - 1, MAX_EXPOSURE_POINTS).astype(np.int64))
     in_sample = np.full(len(surface.positions), -1, dtype=np.int64)
     in_sample[sample] = np.arange(len(sample))
-    observations, buffers = [], []
-    for camera in cameras:
+
+    def measure(camera):
         visible = surface.blocks.seen_by(camera)
-        buffer = depth_buffer(camera, surface.positions[visible]) if len(visible) else None
-        buffers.append(buffer)
-        sampled = visible[in_sample[visible] >= 0] if buffer is not None else np.empty(0, np.int64)
+        if not len(visible):
+            return None, (np.empty(0, np.int64), np.empty((0, 3), np.float32))
+        buffer = depth_buffer(camera, surface.positions[visible])
+        sampled = visible[in_sample[visible] >= 0]
         if not len(sampled):
-            observations.append((np.empty(0, np.int64), np.empty((0, 3), np.float32)))
-            continue
+            return buffer, (np.empty(0, np.int64), np.empty((0, 3), np.float32))
         photo = _read(frame_paths[camera.frame_id], EXPOSURE_PHOTO_EDGE)
         weight, columns, rows = surface.weights(camera, photo, detections, sampled, buffer)
         seen = np.flatnonzero(weight > 0)
-        observations.append((in_sample[sampled[seen]], to_linear(bilinear(photo, columns[seen], rows[seen]))))
-    return exposure_gains(observations, len(cameras), len(sample)), buffers
+        return buffer, (in_sample[sampled[seen]], to_linear(bilinear(photo, columns[seen], rows[seen])))
+
+    measured = list(_in_parallel(measure, cameras))
+    buffers = [buffer for buffer, _ in measured]
+    return exposure_gains([seen for _, seen in measured], len(cameras), len(sample)), buffers
 
 
 def _bake(surface: _Surface, cameras, frame_paths, detections, gains, buffers) -> tuple[np.ndarray, np.ndarray]:
     """Linear colour per texel and whether any photo reached it."""
     blend = TopViews(len(surface.positions), CONSENSUS_VIEWS)
     painted = np.zeros(len(surface.positions), dtype=bool)
-    for camera, gain, buffer in zip(cameras, gains, buffers):
-        if buffer is None:
-            continue
+
+    def sample(job):
+        camera, gain, buffer = job
         visible = surface.blocks.seen_by(camera)
         photo = _read(frame_paths[camera.frame_id], PHOTO_EDGE)
         weight, columns, rows = surface.weights(camera, photo, detections, visible, buffer)
         seen = np.flatnonzero(weight > 0)
-        if not len(seen):
-            continue
         colours = np.clip(to_linear(bilinear(photo, columns[seen], rows[seen])) * gain, 0.0, 1.0)
-        blend.add(visible[seen], weight[seen], colours)
-        painted[visible[seen]] = True
+        return visible[seen], weight[seen], colours
+
+    jobs = [(camera, gain, buffer) for camera, gain, buffer in zip(cameras, gains, buffers) if buffer is not None]
+    for indices, weights, colours in _in_parallel(sample, jobs):
+        blend.add(indices, weights, colours)
+        painted[indices] = True
     return _in_chunks(agreed_colours, blend.weights, blend.colors), painted
 
 
@@ -251,18 +274,29 @@ def agreed_colours(weights: np.ndarray, colours: np.ndarray) -> np.ndarray:
 
 
 def _face_filled(surface: _Surface, colours: np.ndarray, painted: np.ndarray) -> np.ndarray:
-    """Each texel's colour, with the unpainted texels of a partly painted face taking that face's photographed mean.
+    """Each texel's colour, with every unpainted texel taking the nearest photographed colour there is.
 
-    A face a photo mostly reached is one surface the photo saw, so a texel it
-    missed belongs with its painted neighbours rather than with the vertex
-    painting, whose colour came from other photos and showed as specks.
+    First its own face's photographed mean: a face a photo mostly reached is one
+    surface the photo saw, so a texel it missed belongs with its painted
+    neighbours. Then the nearest photographed texel within FALLBACK_REACH. Only
+    a texel with no photograph near it at all takes the room's material.
     """
     count = np.bincount(surface.faces[painted], minlength=surface.faces.max() + 1)
     sums = np.stack([np.bincount(surface.faces[painted], weights=colours[painted, channel], minlength=len(count)) for channel in range(3)], axis=1)
     face_mean = (sums / np.maximum(count, 1)[:, None]).astype(np.float32)
     in_painted_face = count[surface.faces] > 0
-    fallback = np.where(in_painted_face[:, None], face_mean[surface.faces], surface.fallback)
-    return np.where(painted[:, None], colours, fallback)
+    filled = np.where(painted[:, None], colours, np.where(in_painted_face[:, None], face_mean[surface.faces], surface.fallback))
+    return _nearest_photographed(surface, filled, painted, ~painted & ~in_painted_face)
+
+
+def _nearest_photographed(surface: _Surface, filled: np.ndarray, painted: np.ndarray, orphans: np.ndarray) -> np.ndarray:
+    if not orphans.any() or not painted.any():
+        return filled
+    distance, nearest = cKDTree(surface.positions[painted]).query(surface.positions[orphans], distance_upper_bound=FALLBACK_REACH)
+    close = np.isfinite(distance)
+    targets = np.flatnonzero(orphans)[close]
+    filled[targets] = filled[np.flatnonzero(painted)[nearest[close]]]
+    return filled
 
 
 def _atlas_image(surface: _Surface, colours: np.ndarray, painted: np.ndarray) -> Image.Image:
