@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import multiprocessing
 import pathlib
 import threading
 import traceback
@@ -198,7 +199,10 @@ class Worker:
             return _JobOutcome(error=f"{type(exc).__name__}: {exc}")
 
     def _texture(self, scan_id, build_id, job=None) -> bool:
-        run_texture(self.database, self.store, self.stages, scan_id, build_id)
+        if self.settings.bake_in_own_process:
+            in_own_process(bake_photos, self.settings, scan_id, build_id)
+        else:
+            run_texture(self.database, self.store, self.stages, scan_id, build_id)
         return False
 
     def _simulate(self, scan_id: uuid.UUID, revision: int, job=None) -> bool:
@@ -378,3 +382,19 @@ class Worker:
             return "room.metadata"
         head = self.store.artifact_path(scan_id, mapping.id).read_bytes()[:8]
         return "room.metadata.plist" if head.startswith(b"bplist") else "room.metadata.json"
+
+
+def in_own_process(function, *args) -> None:
+    """Run a module-level function in a fresh interpreter and wait, raising if it did not finish cleanly."""
+    child = multiprocessing.get_context("spawn").Process(target=function, args=args, daemon=True)
+    child.start()
+    child.join()
+    if child.exitcode != 0:
+        raise RuntimeError(f"{function.__name__} exited with code {child.exitcode}")
+
+
+def bake_photos(settings: Settings, scan_id: uuid.UUID, build_id: int) -> None:
+    """One photo build, run where its arithmetic cannot hold up the API's requests."""
+    logging.basicConfig(level=logging.INFO)
+    store = ArtifactStore(settings.data_dir, settings.max_artifact_bytes)
+    run_texture(Database(settings.database_path), store, Stages(), scan_id, build_id)

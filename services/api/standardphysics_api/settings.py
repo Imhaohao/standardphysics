@@ -72,6 +72,15 @@ class Settings:
     auto_deep_typesafe_call_limit: int = 3000
     auto_deep_astra_rounds: int = 4
     auto_deep_exhaustive_evaluations: int = 1_000_000
+    bake_in_own_process: bool = False
+    """Photo bakes run in a process of their own rather than on the API's thread.
+
+    A bake is minutes of Python arithmetic, and on a worker thread it holds the
+    interpreter lock the whole time, so every page waited behind it: requests
+    that take twenty milliseconds took four seconds, and some never finished.
+    The server turns this on; tests leave it off so their stand-in bakes run
+    where they can see them. SP_BAKE_IN_PROCESS=1 turns it back off.
+    """
     evidence_settle_seconds: float = 30.0
     """Quiet time before late evidence auto-queues exactly one semantic job.
 
@@ -98,6 +107,7 @@ class Settings:
             weave_project=os.environ.get(PROJECT_ENV) or None,
             weave_entity=os.environ.get(ENTITY_ENV) or None,
             auto_deep_simulation=_flag("SP_AUTO_DEEP_SIMULATION"),
+            bake_in_own_process=not _flag("SP_BAKE_IN_PROCESS"),
             evidence_settle_seconds=_bounded_integer(
                 "SP_EVIDENCE_SETTLE_SECONDS", 30, 0, 86_400
             ),
