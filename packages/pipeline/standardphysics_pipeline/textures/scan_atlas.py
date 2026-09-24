@@ -145,9 +145,9 @@ class _Surface:
     """The texels of one atlas and what the photos make of them."""
 
     def __init__(self, mesh: UnwrappedScan, size: int, painted: ColouredScan, graph: SceneGraph):
-        texels = rasterize_atlas(mesh.corners, mesh.uv, np.zeros(len(mesh.triangles), dtype=np.int32), size)
+        texels = rasterize_atlas(mesh.corners, mesh.uv, np.arange(len(mesh.triangles), dtype=np.int32), size)
         self.size, self.graph = size, graph
-        self.rows, self.columns = texels.rows, texels.columns
+        self.rows, self.columns, self.faces = texels.rows, texels.columns, texels.owners
         self.positions, self.normals = texels.positions, texels.normals
         distances, nearest = cKDTree(painted.vertices).query(self.positions, k=FALLBACK_NEIGHBOURS)
         self.fallback = _blended(to_linear(painted.colours), distances, nearest)
@@ -159,7 +159,7 @@ class _Surface:
         """This photo's view weight for each texel in `indices`, and where in the photo to sample it."""
         sized = camera.resized(photo.shape[1], photo.shape[0])
         mask = _people_mask(camera, photo, detections, buffer)
-        weight, columns, rows = _weights_from(sized, self.positions[indices], self.normals[indices], buffer, mask)
+        weight, columns, rows = _weights_from(sized, self.positions[indices], self.normals[indices], buffer, mask, slope_aware=True)
         behind = np.flatnonzero((weight > 0) & self.patch[indices])
         if len(behind):
             hidden = hidden_behind_objects(self.graph, self.positions[indices[behind]], np.ones(len(behind), bool))(camera)
@@ -250,8 +250,23 @@ def agreed_colours(weights: np.ndarray, colours: np.ndarray) -> np.ndarray:
     return ((sharpened[:, :, None] * colours).sum(axis=1) / np.maximum(total, 1e-12)).astype(np.float32)
 
 
+def _face_filled(surface: _Surface, colours: np.ndarray, painted: np.ndarray) -> np.ndarray:
+    """Each texel's colour, with the unpainted texels of a partly painted face taking that face's photographed mean.
+
+    A face a photo mostly reached is one surface the photo saw, so a texel it
+    missed belongs with its painted neighbours rather than with the vertex
+    painting, whose colour came from other photos and showed as specks.
+    """
+    count = np.bincount(surface.faces[painted], minlength=surface.faces.max() + 1)
+    sums = np.stack([np.bincount(surface.faces[painted], weights=colours[painted, channel], minlength=len(count)) for channel in range(3)], axis=1)
+    face_mean = (sums / np.maximum(count, 1)[:, None]).astype(np.float32)
+    in_painted_face = count[surface.faces] > 0
+    fallback = np.where(in_painted_face[:, None], face_mean[surface.faces], surface.fallback)
+    return np.where(painted[:, None], colours, fallback)
+
+
 def _atlas_image(surface: _Surface, colours: np.ndarray, painted: np.ndarray) -> Image.Image:
-    linear = np.where(painted[:, None], colours, surface.fallback)
+    linear = _face_filled(surface, colours, painted)
     image = np.zeros((surface.size, surface.size, 3), dtype=np.float32)
     image[surface.rows, surface.columns] = linear
     filled = np.zeros((surface.size, surface.size), dtype=bool)

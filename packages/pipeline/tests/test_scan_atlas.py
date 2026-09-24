@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -12,8 +13,14 @@ from standardphysics_pipeline.coords import capture_to_room
 from standardphysics_pipeline.ingest import parse_room_json
 from standardphysics_pipeline.textures.hole_patches import with_holes_patched
 from standardphysics_pipeline.textures.project import face_normals
-from standardphysics_pipeline.textures.scan_atlas import TEXEL_METRES, agreed_colours, atlas_size, unwrapped
-from standardphysics_pipeline.textures.scan_colour import ColouredScan, scan_geometry
+from standardphysics_pipeline.textures.scan_atlas import (
+    TEXEL_METRES,
+    _face_filled,
+    agreed_colours,
+    atlas_size,
+    unwrapped,
+)
+from standardphysics_pipeline.textures.scan_colour import SEEN_TOLERANCE, ColouredScan, _seen_tolerance, scan_geometry
 
 REPO = pathlib.Path(__file__).resolve().parents[3]
 
@@ -68,3 +75,24 @@ def test_thinning_a_patched_scan_keeps_its_surface(tmp_path):
     _, after = face_normals(mesh.corners)
 
     assert after.sum() >= 0.97 * before.sum()
+
+
+def test_a_surface_seen_at_a_slant_is_allowed_the_depth_it_spans_across_a_buffer_pixel():
+    camera = SimpleNamespace(width=1600, fx=1100.0)
+    depth, facing = np.array([4.0, 4.0]), np.array([1.0, 0.3])
+    face_on, slanted = _seen_tolerance(camera, 240, depth, facing, slope_aware=True)
+    assert face_on == pytest.approx(SEEN_TOLERANCE)
+    assert slanted > 3 * SEEN_TOLERANCE
+    assert _seen_tolerance(camera, 240, depth, facing, slope_aware=False) == SEEN_TOLERANCE
+
+
+def test_a_texel_a_photo_missed_takes_its_face_colour_not_the_fallback():
+    yellow, grey = [0.8, 0.6, 0.1], [0.5, 0.5, 0.5]
+    surface = SimpleNamespace(faces=np.array([0, 0, 0, 1]), fallback=np.array([grey] * 4, dtype=np.float32))
+    colours = np.array([yellow, yellow, [0, 0, 0], [0, 0, 0]], dtype=np.float32)
+    painted = np.array([True, True, False, False])
+
+    filled = _face_filled(surface, colours, painted)
+
+    assert filled[2] == pytest.approx(yellow)
+    assert filled[3] == pytest.approx(grey)

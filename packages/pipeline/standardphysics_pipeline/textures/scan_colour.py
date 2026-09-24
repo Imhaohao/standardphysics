@@ -101,11 +101,18 @@ def _weights_from(
     normals: np.ndarray,
     buffer: np.ndarray,
     mask: np.ndarray | None = None,
+    slope_aware: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """How good this camera's view of each vertex is, and where to sample it.
 
     ``mask`` must already be resampled to the depth-buffer grid (static
     region = 1); samples outside the static region never paint.
+
+    With ``slope_aware``, the depth a point may sit behind the buffer grows
+    with how steeply the camera sees its surface. One buffer pixel covers a
+    patch of surface whose depth changes by its width times the slope, so on a
+    wall seen at an angle a fixed tolerance hid the far part of every pixel
+    behind its own near part, and the wall came out speckled.
     """
     columns, rows, depth = camera.project(vertices)
     toward = camera.position[None, :] - vertices
@@ -121,7 +128,7 @@ def _weights_from(
         np.clip(np.rint(rows * height / camera.height).astype(np.int64), 0, height - 1),
         np.clip(np.rint(columns * width / camera.width).astype(np.int64), 0, width - 1),
     ]
-    unhidden = ~np.isfinite(nearest) | (depth <= nearest + SEEN_TOLERANCE)
+    unhidden = ~np.isfinite(nearest) | (depth <= nearest + _seen_tolerance(camera, width, depth, facing, slope_aware))
     border = np.clip(
         np.minimum.reduce([columns, rows, camera.width - 1 - columns, camera.height - 1 - rows])
         / BORDER_FALLOFF_PIXELS, 0.0, 1.0,
@@ -134,6 +141,15 @@ def _weights_from(
         ]
         weight = np.where(support >= 0.5, weight, 0.0)
     return weight, columns, rows
+
+
+def _seen_tolerance(camera: PhotoCamera, buffer_width: int, depth: np.ndarray, facing: np.ndarray, slope_aware: bool):
+    """SEEN_TOLERANCE, widened by the depth change across a buffer pixel and a half when the surface is seen at a slant."""
+    if not slope_aware:
+        return SEEN_TOLERANCE
+    footprint = np.maximum(depth, 0.0) * camera.width / (camera.fx * buffer_width)
+    slope = np.sqrt(np.clip(1.0 - facing ** 2, 0.0, 1.0)) / np.maximum(facing, MIN_FACING)
+    return SEEN_TOLERANCE + 1.5 * footprint * slope
 
 
 def _small_static_mask(mask: np.ndarray, height: int, width: int) -> np.ndarray:
