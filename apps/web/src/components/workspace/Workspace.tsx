@@ -1,15 +1,17 @@
 "use client";
 
-import { ArrowLeft, ArrowsLeftRight, Camera, FileText, HandGrabbing, ListChecks, MapPin } from "@phosphor-icons/react";
+import { ArrowLeft, ArrowsLeftRight, Camera, CaretDown, DotsThree, DownloadSimple, FileText, HandGrabbing, ListChecks, MapPin } from "@phosphor-icons/react";
+import { DeleteScanButton } from "@/components/workspace/DeleteScanButton";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { Menu, MENU_ITEM } from "@/components/ui/Menu";
 import { overviewPose, poseAtPoint, poseFromLocus, topDownPose, type ViewerPose } from "@/lib/camera";
 import { nodePosition } from "@/lib/review-targets";
 import { interpolateLayout } from "@/lib/compare";
-import { findingForNode, type Focus, focusOnLocus, groupFindings } from "@/lib/findings";
+import { type FindingGroups, findingForNode, type Focus, focusOnLocus, groupFindings } from "@/lib/findings";
 import { AskBox } from "./AskBox";
 import { type CheckScope, scanStatus } from "@/lib/scan-status";
 import { METERS_PER_INCH } from "@/lib/moves";
@@ -21,7 +23,7 @@ import { type RouteState, useRoute } from "./useRoute";
 import { ArrangePanel } from "./ArrangePanel";
 import { type Comparison, ComparePanel } from "./ComparePanel";
 import { RefreshWhile } from "@/components/RefreshWhile";
-import { FindingsList } from "./FindingsList";
+import { FindingsList, ProblemCount } from "./FindingsList";
 import { FixSuggestion } from "./FixSuggestion";
 import { LoopRun } from "./LoopRun";
 import { PickedObject } from "./PickedObject";
@@ -46,6 +48,7 @@ import { ReviewPanel } from "./ReviewPanel";
 import { EvidencePanel } from "./EvidencePanel";
 import { OutcomeMatrix } from "./OutcomeMatrix";
 import type { LaneView } from "@/lib/evidence";
+import { useDeveloperMode } from "@/lib/developer-mode";
 
 
 
@@ -77,6 +80,12 @@ function isWorking(scan: Scan): boolean {
   return scan.state === "uploading" || scan.state === "measuring" || scan.state === "checking";
 }
 type Task = "findings" | "arrange" | "combine" | "compare" | "route" | "review";
+
+/** The nodes of the walk being placed, so the viewer can pick it out of the four. */
+function activeRoomNodeIds(combine: Combine): string[] | null {
+  if (!combine.activeRoom) return null;
+  return combine.rooms.find((room) => room.name === combine.activeRoom)?.node_ids ?? null;
+}
 
 function poseFor(scene: SceneGraph, selected: Focus | null, mode: ViewMode, focusPoint?: { x: number; y: number; z: number } | null): ViewerPose {
   if (selected?.locus) return poseFromLocus(selected.locus.camera);
@@ -183,58 +192,54 @@ function useCombineHandlers(enabled: boolean, combine: Combine, setDragging: (on
 
 type HeaderProps = { scan: Scan; revision: number; task: Task; canCompare: boolean; canCombine: boolean; onTask: (task: Task) => void };
 
+const TASKS: { task: Task; label: string; icon: typeof ListChecks }[] = [
+  { task: "findings", label: "Problems", icon: ListChecks },
+  { task: "arrange", label: "Move things", icon: HandGrabbing },
+  { task: "combine", label: "Combine", icon: HandGrabbing },
+  { task: "route", label: "Customer path", icon: MapPin },
+  { task: "review", label: "Check photos", icon: Camera },
+  { task: "compare", label: "Before and after", icon: ArrowsLeftRight },
+];
+
+function TaskSwitch({ task, available, onTask }: { task: Task; available: (task: Task) => boolean; onTask: (task: Task) => void }) {
+  return (
+    <div className="flex max-w-full gap-1 overflow-x-auto rounded-xl bg-rule/50 p-1" role="group" aria-label="What to do">
+      {TASKS.filter((entry) => available(entry.task)).map(({ task: entry, label, icon: Icon }) => (
+        <Button key={entry} variant="chip" aria-pressed={task === entry} onClick={() => onTask(entry)}>
+          <Icon size={16} weight="bold" aria-hidden />
+          {label}
+        </Button>
+      ))}
+    </div>
+  );
+}
+
+function ShopMenu({ scan, revision }: { scan: Scan; revision: number }) {
+  return (
+    <Menu label="More" icon={<DotsThree size={18} weight="bold" aria-hidden />}>
+      <Link href={`/scans/${scan.id}/report`} className={MENU_ITEM}>
+        <FileText size={18} aria-hidden />
+        Open the report
+      </Link>
+      <a href={`/api/scans/${scan.id}/architecture.zip?revision=${revision}`} download className={MENU_ITEM}>
+        <DownloadSimple size={18} aria-hidden />
+        Download the floor plan
+      </a>
+      <DeleteScanButton scanId={scan.id} name={scan.name} />
+    </Menu>
+  );
+}
+
 function WorkspaceHeader({ scan, revision, task, canCompare, canCombine, onTask }: HeaderProps) {
+  const available = (entry: Task) => (entry !== "compare" || canCompare) && (entry !== "combine" || canCombine);
   return (
     <header className="flex flex-wrap items-center gap-3 px-3 py-3 lg:col-span-2">
       <Link href="/" className="rounded-lg p-2 text-ink-muted hover:bg-ink/5 hover:text-ink" aria-label="Your shops">
-        <ArrowLeft size={20} weight="bold" />
+        <ArrowLeft size={20} weight="bold" aria-hidden />
       </Link>
-      <h1 className="heading-display min-w-0 flex-1 truncate text-lg">{scan.name}</h1>
-      <a
-        href={`/api/scans/${scan.id}/architecture.zip?revision=${revision}`}
-        download
-        title="Download the saved floor plan and measurement evidence"
-        className="rounded-lg px-3 py-2 text-sm font-medium text-ink-muted hover:bg-ink/5 hover:text-ink"
-      >
-        Floor plan
-      </a>
-      <Link
-        href={`/scans/${scan.id}/report`}
-        className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-ink-muted hover:bg-ink/5 hover:text-ink"
-      >
-        <FileText size={16} weight="bold" aria-hidden />
-        Report
-      </Link>
-      <div className="flex max-w-full gap-1 overflow-x-auto rounded-xl bg-rule/50 p-1" role="group" aria-label="What to do">
-        <Button variant="chip" aria-pressed={task === "findings"} onClick={() => onTask("findings")}>
-          <ListChecks size={16} weight="bold" className="hidden sm:block" aria-hidden />
-          Findings
-        </Button>
-        <Button variant="chip" aria-pressed={task === "arrange"} onClick={() => onTask("arrange")}>
-          <HandGrabbing size={16} weight="bold" className="hidden sm:block" aria-hidden />
-          Move furniture
-        </Button>
-        {canCombine && (
-          <Button variant="chip" aria-pressed={task === "combine"} onClick={() => onTask("combine")}>
-            <HandGrabbing size={16} weight="bold" className="hidden sm:block" aria-hidden />
-            Combine rooms
-          </Button>
-        )}
-        <Button variant="chip" aria-pressed={task === "route"} onClick={() => onTask("route")}>
-          <MapPin size={16} weight="bold" className="hidden sm:block" aria-hidden />
-          Customer route
-        </Button>
-        <Button variant="chip" aria-pressed={task === "review"} onClick={() => onTask("review")}>
-          <Camera size={16} weight="bold" className="hidden sm:block" aria-hidden />
-          Review
-        </Button>
-        {canCompare && (
-          <Button variant="chip" aria-pressed={task === "compare"} onClick={() => onTask("compare")}>
-            <ArrowsLeftRight size={16} weight="bold" className="hidden sm:block" aria-hidden />
-            Before and after
-          </Button>
-        )}
-      </div>
+      <h1 className="heading-display min-w-0 flex-1 truncate text-lg" title={scan.name}>{scan.name}</h1>
+      <ShopMenu scan={scan} revision={revision} />
+      <TaskSwitch task={task} available={available} onTask={onTask} />
     </header>
   );
 }
@@ -260,16 +265,35 @@ type SidePanelProps = {
   selectedNodeId?: string | null;
   onSelectNode?: (nodeId: string | null) => void;
   onReviewPersisted?: (scene: SceneGraph) => void;
+  developer: boolean;
 };
 
 function findingsTaskPanel(props: SidePanelProps): ReactNode {
-  const { scene, scan, findings, selected, onTryLayout, onPreviewLayout, onToggle, onLook, route, onRoute, assessment } = props;
+  const { scene, scan, findings, selected, onTryLayout, onPreviewLayout, onToggle, onLook, route, onRoute, assessment, developer } = props;
   return (
-    <>
-      <AskBox scanId={scan.id} revision={scene.revision} onLook={onLook} onTry={onTryLayout} />
-      <SimulationPanel key={`${scan.id}-${scene.revision}`} scanId={scan.id} scene={scene} onTryLayout={onTryLayout} onPreviewLayout={onPreviewLayout} />
+    <div className="flex flex-col gap-6">
       <FindingsPanel scan={scan} scene={scene} assessment={assessment} findings={findings} selected={selected} onToggle={onToggle} onTryLayout={onTryLayout} route={route} onRoute={onRoute} />
-    </>
+      {developer && (
+        <MoreTools>
+          <AskBox scanId={scan.id} revision={scene.revision} onLook={onLook} onTry={onTryLayout} />
+          <SimulationPanel key={`${scan.id}-${scene.revision}`} scanId={scan.id} scene={scene} onTryLayout={onTryLayout} onPreviewLayout={onPreviewLayout} />
+          {assessment?.scope && <OutcomeMatrix scope={assessment.scope} findings={findings} />}
+        </MoreTools>
+      )}
+    </div>
+  );
+}
+
+/** The team's own tools, in developer mode only and one tap away even then. */
+function MoreTools({ children }: { children: ReactNode }) {
+  return (
+    <details className="group border-t border-rule/60 pt-3">
+      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg px-3 py-2 font-medium text-ink-muted hover:bg-ink/[0.04] [&::-webkit-details-marker]:hidden">
+        <CaretDown size={16} weight="bold" className="-rotate-90 transition-transform group-open:rotate-0" aria-hidden />
+        More tools
+      </summary>
+      <div className="mt-3 flex flex-col gap-6">{children}</div>
+    </details>
   );
 }
 
@@ -323,13 +347,10 @@ type FindingsPanelProps = Pick<SidePanelProps, "scan" | "scene" | "assessment" |
 
 function RoutePrompt({ onRoute }: { onRoute: () => void }) {
   return (
-    <div className="flex flex-col items-start gap-3 px-3">
-      <p className="font-medium">Show us where customers go, and we&apos;ll check every path they take.</p>
-      <Button variant="primary" onClick={onRoute}>
-        <MapPin size={18} weight="bold" aria-hidden />
-        Mark the customer route
-      </Button>
-    </div>
+    <Button variant="primary" onClick={onRoute} className="mx-3 self-start">
+      <MapPin size={18} weight="bold" aria-hidden />
+      Show where customers walk
+    </Button>
   );
 }
 
@@ -343,21 +364,26 @@ function FindingsPanel({ scan, scene, assessment, findings, selected, onToggle, 
   if (assessment === null && isWorking(scan)) {
     return <p className="px-3 font-medium" role="status">Checking this layout</p>;
   }
+  const groups = groupFindings(findings);
   return (
     <div className="flex flex-col gap-5">
+      {findings.length > 0 && <ProblemCount groups={groups} />}
       <NextStep scan={scan} scene={scene} route={route} onRoute={onRoute} onTryLayout={onTryLayout} />
-      {assessment?.scope && <OutcomeMatrix scope={assessment.scope} findings={findings} />}
-      {findings.length === 0 ? (
-        <p className="px-3 text-ink-muted">{scanStatus(scan, assessment, route.confirmed)}</p>
-      ) : (
-        <FindingsList
-          groups={groupFindings(findings)}
-          selectedId={selected?.id ?? null}
-          onSelect={onToggle}
-          extra={(finding) => <FixSuggestion scanId={scan.id} scene={scene} finding={finding} onTry={onTryLayout} />}
-        />
-      )}
+      {findings.length === 0
+        ? <p className="px-3 text-ink-muted">{scanStatus(scan, assessment, route.confirmed)}</p>
+        : <GroupedFindings scan={scan} scene={scene} groups={groups} selected={selected} onToggle={onToggle} onTryLayout={onTryLayout} />}
     </div>
+  );
+}
+
+function GroupedFindings({ scan, scene, groups, selected, onToggle, onTryLayout }: Pick<FindingsPanelProps, "scan" | "scene" | "selected" | "onToggle" | "onTryLayout"> & { groups: FindingGroups }) {
+  return (
+    <FindingsList
+      groups={groups}
+      selectedId={selected?.id ?? null}
+      onSelect={onToggle}
+      extra={(finding) => <FixSuggestion scanId={scan.id} scene={scene} finding={finding} onTry={onTryLayout} />}
+    />
   );
 }
 
@@ -501,6 +527,7 @@ type WorkspaceBodyProps = WorkspaceProps & {
 function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, textureStatus, capturedSplats, evidence, findings, task, selected, focus, mode, picked, dragging, amount, setAmount, showScanEvidence, setShowScanEvidence, visuals, actions }: WorkspaceBodyProps) {
   const router = useRouter();
   const [cutWalls, setCutWalls] = useState(true);
+  const [developer] = useDeveloperMode();
   const [chosenMaterialMode, setChosenMaterialMode] = useState<MaterialMode | null>(null);
   const [wheelchairMode, setWheelchairMode] = useState(false);
   const [wheelchairState, setWheelchairState] = useState<WheelchairState | null>(null);
@@ -582,10 +609,12 @@ function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, te
   return <>
     <RefreshWhile pending={assessment === null && isWorking(scan)} />
     <div className={`grid h-dvh grid-cols-[minmax(0,1fr)] ${wheelchairMode ? "grid-rows-[auto_minmax(0,1fr)]" : "grid-rows-[auto_minmax(16rem,45dvh)_1fr] lg:grid-cols-[minmax(0,1fr)_24rem] lg:grid-rows-[auto_1fr]"}`}>
-      <WorkspaceHeader scan={scan} revision={scene.revision} task={task} canCompare={visuals.comparison !== null} canCombine={visuals.combine.rooms.length > 1} onTask={actions.switchTask} />
+      <WorkspaceHeader scan={scan} revision={scene.revision} task={task} canCompare={developer && visuals.comparison !== null} canCombine={developer && visuals.combine.rooms.length > 1} onTask={actions.switchTask} />
       <section className="relative min-h-0 touch-none overflow-hidden lg:rounded-tr-2xl" aria-label="Shop model">
         <Viewer
           scene={visuals.shown}
+          highlightNodeIds={task === "combine" ? activeRoomNodeIds(visuals.combine) : null}
+          combinedRooms={task === "combine" ? { rooms: visuals.combine.rooms, placements: visuals.combine.placements } : null}
           exported={sourceGraph}
           arrange={wheelchairMode ? null : visuals.handlers}
           dragAllNodes={visuals.dragAllNodes}
@@ -649,7 +678,7 @@ function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, te
       </section>
       <aside hidden={wheelchairMode} className="min-h-0 overflow-y-auto px-3 pb-10 pt-4 lg:pt-0">
         <div className="mb-3 flex flex-col gap-3">
-          {!wheelchairMode && (
+          {developer && !wheelchairMode && (
             <EvidencePanel
               status={evidence ?? null}
               textures={textures.status}
@@ -659,6 +688,7 @@ function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, te
           )}
         </div>
         <SidePanel
+          developer={developer}
           task={task}
           scene={activeScene}
           onTryLayout={actions.tryLayout}

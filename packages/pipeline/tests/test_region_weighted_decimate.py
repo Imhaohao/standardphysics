@@ -1,5 +1,9 @@
 """Region-weighted decimation tests: wall-erasing simplification is prevented."""
 
+import pytest
+
+pytest.importorskip("numba", reason="surface_photos compiles with numba; install packages/pipeline[reconstruction]")
+
 import numpy as np
 import pytest
 from standardphysics_pipeline.textures.surface_photos import region_weighted_decimate

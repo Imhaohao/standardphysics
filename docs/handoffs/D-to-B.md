@@ -283,3 +283,18 @@ ask to `D-to-C.md`. Nothing new for you here until they decide.
 centres its rectangle on the high counter (x = 0.46 m on the sample shop)
 instead of on the lowered section beside it (x = -1.14 m). 904.4.1 places the
 clear floor space "adjacent to the 36 inch (915 mm) minimum length of counter".
+
+## 2026-09-23: changes Lane D made in your files
+
+Pull before you touch `occupancy.py`, `routes.py`, `turns.py`, `measure.py`, `footprints.py` or `locus.py`. Every change has a test, and the fixture shop's four legs still read 31.0, 59.06, 31.0 and 102.89 in.
+
+| Commit | What changed | Why |
+|---|---|---|
+| `b6da05c` | Obstacles are drawn at least two cells across, and walls at least `2 * INDOOR_MARGIN`. A trip between two stops on the floor never gets the outside, and is blocked when the floor cannot join them. `PathResult.clearance` is the field the route was searched in. A stop inside an object is reached anywhere on its standing room. | RoomPlan walls have no thickness, so none reached the grid: routes ran round the room's edge and through doorway cuts. Details in the commit. |
+| `1084818` | `widest_path` takes the stops' anchors. Near an anchored stop only floor nearest the anchor, or no closer to its nearest obstacle than the stop, is exempt. | A-6: a 20 in gap inside the entrance read 31 in. |
+| `1d6a685` | Turn widths are rays from the pivot to the first obstacle beyond it; the width at the turn is cast off the pivot's end; the pivot is the nearest element whose end the apex lies past. | A-14, A-15, A-16. |
+| `9944fbf` | `routes.runs_below` and `measure.route_runs_below` report every narrow stretch; `longest_run_below` is built on it. | 403.5.1's 48 inch separation condition. |
+| `2382bd3` | `PipelineMeasurements.largest_square`. | 403.5.3's space is a square, not a circle. |
+| `790381d` | `camera_for` takes the room outline and keeps the camera over the floor. | A-17. |
+
+Two things are yours to decide. `turning_space` still reports `fits=diameter >= 60.0`, a second copy of the pack's 60 that `environment_physics.py` relies on. And the widest path's tie-break is still the queue's cell order, which is why routes wander after their pinch; the turn detector's thresholds were tuned against those shapes, so changing one means retuning the other.

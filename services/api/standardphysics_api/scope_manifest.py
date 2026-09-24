@@ -29,6 +29,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Mapping
 
+from standardphysics_agents.checks import roles
 from standardphysics_contracts import (
     Assessment,
     Check,
@@ -40,7 +41,6 @@ from standardphysics_contracts import (
     ScopeManifest,
     ScopeRow,
 )
-from standardphysics_agents.checks import roles
 
 PILOT_TARGET_CLASSES = ["outlet", "television", "service_counter", "restroom_entrance"]
 
@@ -62,9 +62,11 @@ APPLICABILITY_QUESTIONS = [
 ]
 
 UNRESOLVED_DEFAULTS = [
-    "No independent human inventory of target classes exists for this scan; absence of detections is not absence of objects.",
+    "No independent human inventory of target classes exists for this scan; "
+    "absence of detections is not absence of objects.",
     "Surveyed and unobserved areas are not declared; area-level coverage questions stay open.",
-    "Restroom fixture, door, maneuvering, surface and operation checks are not implemented yet; until they are, every restroom question stays a question.",
+    "Restroom fixture, door, maneuvering, surface and operation checks are not "
+    "implemented yet; until they are, every restroom question stays a question.",
 ]
 
 _ITEM_KINDS_FOR_NODES = {
@@ -354,7 +356,9 @@ def _unobserved_row(check: Check, waiting_reason: str | None) -> ScopeRow:
             "is a calculation only and never a verified legal conclusion"
         ),
         outcome="unobserved",
-        reason=waiting_reason or "the check produced no finding in this pass; the requirement stays unobserved until it is evaluated",
+        reason=waiting_reason
+        or "the check produced no finding in this pass; the requirement stays "
+        "unobserved until it is evaluated",
         evidence_refs=[],
         source_version=check.citation.edition if check.citation else None,
         legal_review_status="unreviewed_preview",
@@ -572,7 +576,8 @@ def build_evidence_dossier(
         "legal_review": {
             "status": "no human reviews recorded at this revision",
             "per_row_statuses_present": True,
-            "note": "every row carries its own legal_review_status; no row may claim reviewer_supplied unless a review was supplied",
+            "note": "every row carries its own legal_review_status; no row may "
+            "claim reviewer_supplied unless a review was supplied",
         },
         "control_measurements": {
             "independent_field_controls": [],

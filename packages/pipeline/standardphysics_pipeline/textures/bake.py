@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import pathlib
 import tempfile
 import time
@@ -17,6 +18,7 @@ from ..footprints import floor_polygon
 from ..lidar import load_mesh, triangles_in_arkit_world
 from .camera import CameraMetadataError, PhotoCamera, load_cameras
 from .project import (
+    MAX_EXPOSURE_POINTS,
     DepthBuffers,
     TopViews,
     bilinear,
@@ -31,19 +33,37 @@ from .project import (
 )
 from .surface_materials import MaterialFill, material_key, room_materials
 
-MAX_FRAMES = 48
-MAX_FRAME_CANDIDATES = 96
+
+def _budget(name: str, fallback: int) -> int:
+    """A frame budget, overridable for a long walk that deserves more of its own photos."""
+    try:
+        return max(1, int(os.environ[name]))
+    except (KeyError, ValueError):
+        return fallback
+
+
+MAX_FRAMES = _budget("SP_TEXTURE_FRAMES", 192)
+"""How many photos are projected onto the room.
+
+A walk down one library floor stores over nine hundred photos, each with its
+own measured pose, and forty-eight of them left three quarters of the surfaces
+with no colour at all. The cost is one depth buffer per photo, so this trades
+bake time for how much of the room comes back painted rather than blank.
+"""
+
+MAX_FRAME_CANDIDATES = _budget("SP_TEXTURE_FRAME_CANDIDATES", 4 * MAX_FRAMES)
+"""How many photos are scored before the best are kept.
+
+Thinning nine hundred photos to ninety-six before ranking them threw away the
+views that would have reached the surfaces the chosen ones missed, because a
+choice spread evenly through time is not spread evenly through the room.
+"""
 ATLAS_SIZE = 2048
 MAX_ATLASES = 4
 CHUNK_SIZE = 100_000
-# Dropping thin foreground faces is precisely how a chair silhouette leaks
-# onto the floor. Fail clearly rather than silently making a partial scan look
-# like an occlusion authority.
-MAX_LIDAR_TRIANGLES = 2_000_000
 MAX_SOURCE_BYTES = 32 * 1024 * 1024
 MAX_SOURCE_PIXELS = 24_000_000
 MAX_IMAGE_EDGE = 2048
-MAX_EXPOSURE_POINTS = 20_000
 
 
 class TextureBakeError(RuntimeError):
@@ -350,10 +370,6 @@ def _lidar_triangles(path: pathlib.Path | None, capture_to_room: list[float], wo
         return triangles
     matrix = np.asarray(capture_to_room, dtype=np.float32).reshape(4, 4)
     triangles = triangles @ matrix[:3, :3].T + matrix[:3, 3]
-    if len(triangles) > MAX_LIDAR_TRIANGLES:
-        raise TextureBakeError(
-            f"LiDAR mesh has {len(triangles)} faces; maximum supported for exact occlusion is {MAX_LIDAR_TRIANGLES}"
-        )
     return triangles
 
 

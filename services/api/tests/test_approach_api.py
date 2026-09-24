@@ -5,13 +5,10 @@ answer. Nothing passes by default: without a person-provided horizontal reach
 the report says unmeasured and the status stays bounded.
 """
 
-from conftest import drain, put_artifact
 from test_review_safety import (
     OUTLET_ID,
     TABLE_ID,
     _ready_scan,
-    _room_payload,
-    _stages,
     _two_targets,
 )
 

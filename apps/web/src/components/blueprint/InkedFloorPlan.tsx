@@ -68,24 +68,41 @@ export function InkedFloorPlan({ scene, className = "" }: { scene: SceneGraph; c
     if (!frame || !paint || !live || !svg || !annotations) return;
     const palette = readPalette(frame, "--color-paper");
     const brush = new SchematicBrush({ unit: DRAFTING_UNIT_PX, measureText: createTextMeasurer(palette.fontFamily), now: () => performance.now(), speed: PEN_SPEED_MULTIPLIER });
-    const stopLoop = startInkLoop(brush, paint, live, palette);
+    /* The pen draws itself in once. Every later redraw lays the same plan down
+       at full speed, because a plan that animates again every time the layout
+       settles reads as a loop rather than as a drawing being made. */
+    const alreadyDrawn = { current: false };
+    const stopLoop = startInkLoop(brush, paint, live, palette, alreadyDrawn);
     let redrawTimer: number | undefined;
     let disposed = false;
+
+    let drawnAt = "";
 
     const redraw = () => {
       const toFrame = planToFrame(svg, frame);
       if (disposed || !toFrame) return;
+      alreadyDrawn.current = drawnAt !== "";
+      drawnAt = `${frame.clientWidth}x${frame.clientHeight}`;
       brush.clear();
       clearCanvas(paint);
       clearCanvas(live);
       fitCanvases(frame, paint, live);
       draftPlan(brush, annotations, toFrame, frame.clientWidth);
     };
+
+    /* A redraw starts the pen over from the first line, so it has to be reserved
+       for the case it exists for: a frame that is now a different size and whose
+       plan would be drawn at the wrong scale. Observing an element delivers one
+       callback immediately with the size it already has, and every settling of
+       the layout around it delivers another, so redrawing on the callback alone
+       had the drawing restart from nothing again and again. */
     const observer = new ResizeObserver(() => {
+      if (`${frame.clientWidth}x${frame.clientHeight}` === drawnAt) return;
       window.clearTimeout(redrawTimer);
       redrawTimer = window.setTimeout(redraw, REDRAW_DELAY_MS);
     });
     document.fonts.ready.then(() => {
+      if (disposed) return;
       redraw();
       observer.observe(frame);
     });

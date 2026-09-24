@@ -10,10 +10,10 @@ Validates:
 from __future__ import annotations
 
 import io
-import pathlib
-import pytest
+
 from PIL import Image
-from conftest import create_scan, sign_out, sign_up
+
+from conftest import create_scan, sign_up
 
 
 def test_crop_01_owner_serves_crop_and_missing_is_404(client):
@@ -65,7 +65,7 @@ def test_auth_01_crop_authorization_and_traversal_denial(make_client):
     client_anon = make_client(sign_in_as_owner=False)
     resp_anon = client_anon.get(f"/api/scans/{scan_id}/crops/secret-crop.jpg")
     assert resp_anon.status_code == 401
-    assert "sign in to continue" in resp_anon.text
+    assert "sign in" in resp_anon.text.lower()
 
     # 2. Second user guessing crop ID gets 404 (scan not found for them, no existence leakage)
     client2 = make_client(sign_in_as_owner=False)

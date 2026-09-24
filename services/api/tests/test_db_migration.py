@@ -96,8 +96,9 @@ def _legacy_database(path: pathlib.Path) -> None:
 
 
 def test_legacy_database_opens_additively_and_keeps_old_rows(make_client, tmp_path):
-    from conftest import no_blender_stages
     from standardphysics_pipeline.discovery import DiscoveryResult
+
+    from conftest import no_blender_stages
 
     closing = no_blender_stages(
         label=lambda graph, **kwargs: graph,

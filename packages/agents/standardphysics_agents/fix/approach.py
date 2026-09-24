@@ -446,6 +446,129 @@ def _turning_blockers(
     return blocked, available_inches
 
 
+def _route_findings(
+    graph: SceneGraph, route, occupants: tuple[OccupantProfile, ...]
+) -> tuple[list[str], tuple[Vec3, ...] | None, float | None]:
+    """What the measured route says, and the path and width it measured.
+
+    An unreachable route names the things in the way where they can be
+    identified, because "no cleared path" alone tells an owner nothing they can
+    act on.
+    """
+    if not route.reachable:
+        by_id = {node.id: node for node in graph.nodes}
+        blockers = sorted(
+            {by_id[node_id].label for node_id in route.blocking_node_ids if node_id in by_id}
+        )
+        reasons = ["no cleared path from the confirmed start to the target"]
+        if blockers:
+            reasons.append("blocked by: " + ", ".join(blockers))
+        return reasons, None, None
+
+    too_narrow = [
+        f"aisle too narrow for {profile.title} "
+        f"({route.inches:.1f} in < {profile.travel_width_inches:.1f} in body width)"
+        for profile in occupants
+        if route.inches < profile.travel_width_inches
+    ]
+    return too_narrow, tuple(route.path), route.inches
+
+
+def _mesh_sweep(
+    mesh: MeshCollisionIndex | None,
+    path: tuple[Vec3, ...] | None,
+    occupants: tuple[OccupantProfile, ...],
+) -> tuple[bool, bool, list[str]]:
+    """Sweep each occupant's body along the path against raw capture.
+
+    A touch downgrades to unverified rather than blocking: the swept disc is
+    wider than an oriented body, so it proves a question, not a collision.
+    """
+    if mesh is None or not path:
+        return False, False, []
+    for profile in occupants:
+        radius = to_meters(profile.travel_width_inches / 2)
+        sampled = ensure_spacing(list(path), radius)
+        if mesh.collides(sampled, profile.travel_width_inches / 2):
+            return True, True, [
+                f"raw capture touches the swept disc envelope along the "
+                f"path ({profile.title}); an oriented-body collision is "
+                "not proven, verify in person"
+            ]
+    return True, False, []
+
+
+def _extent_note(target: SceneNode) -> list[str]:
+    if _extents_trusted(target):
+        return []
+    localization = target.attachment.localization_quality if target.attachment else None
+    separate = (
+        f"; support localization is separate evidence ({localization})"
+        if localization == "verified_support"
+        else ""
+    )
+    return [
+        "the target's extents are unverified proxy geometry "
+        f"(quality={target.quality}); height and distance stay unmeasured" + separate
+    ]
+
+
+def _vertical_notes(record) -> tuple[list[str], list[str]]:
+    if record.vertical_status == "unmeasured":
+        return [], [
+            "target height or "
+            f"{record.occupant_title} vertical personal reach is unmeasured"
+        ]
+    if record.vertical_status == "beyond_vertical_reach":
+        return [
+            f"target above the vertical personal reach for "
+            f"{record.occupant_title} ({record.target_height_inches:.1f} in > "
+            f"{record.personal_reach_inches:.1f} in assumed grasp ceiling)"
+        ], []
+    return [], []
+
+
+def _horizontal_notes(record) -> tuple[list[str], list[str]]:
+    if record.horizontal_status == "exceeded_horizontal_reach":
+        return [
+            f"the target is {record.horizontal_distance_inches:.1f} in away; "
+            f"beyond the {record.occupant_title} horizontal reach of "
+            f"{record.horizontal_reach_inches:.1f} in "
+            f"({record.horizontal_reach_provenance})"
+        ], []
+    if record.horizontal_status != "unmeasured":
+        return [], []
+    standing = (
+        f" (standing {record.horizontal_distance_inches:.1f} in away)"
+        if record.horizontal_distance_inches is not None
+        else ""
+    )
+    return [], [
+        "horizontal reach to the target is unmeasured for "
+        f"{record.occupant_title}" + standing
+    ]
+
+
+def _reach_and_extent_notes(
+    target: SceneNode, floor_ok: bool, reaches: tuple
+) -> tuple[list[str], list[str]]:
+    """What the target's own geometry and each occupant's reach have to say.
+
+    A missing measurement lands in `unverified` and a measured shortfall lands
+    in `blocked`, which is what keeps an unmeasured shop from reading as a
+    passing one.
+    """
+    blocked: list[str] = []
+    unverified: list[str] = _extent_note(target)
+    if not floor_ok:
+        unverified.append("the floor is unobserved; no support under the route")
+    for record in reaches:
+        for part in (_vertical_notes(record), _horizontal_notes(record)):
+            blocked.extend(part[0])
+            unverified.extend(part[1])
+    return blocked, unverified
+
+
 def evaluate_approach(
     graph: SceneGraph,
     target: SceneNode,
@@ -505,42 +628,16 @@ def evaluate_approach(
             ],
         )
         route = measure.route_clear_width(graph, scenario, 0)
-        if not route.reachable:
-            blocked.append("no cleared path from the confirmed start to the target")
-            by_id = {node.id: node for node in graph.nodes}
-            blockers = sorted(
-                {by_id[node_id].label for node_id in route.blocking_node_ids if node_id in by_id}
-            )
-            if blockers:
-                blocked.append("blocked by: " + ", ".join(blockers))
-        else:
-            path = tuple(route.path)
-            width_inches = route.inches
-            for profile in occupants:
-                if route.inches < profile.travel_width_inches:
-                    blocked.append(
-                        f"aisle too narrow for {profile.title} "
-                        f"({route.inches:.1f} in < {profile.travel_width_inches:.1f} in body width)"
-                    )
+        route_blocked, path, width_inches = _route_findings(graph, route, occupants)
+        blocked.extend(route_blocked)
 
         turning_blocked, turning = _turning_blockers(
             graph, measure, stop, list(path) if path else [], occupants
         )
         blocked.extend(turning_blocked)
 
-        if mesh is not None and path:
-            mesh_checked = True
-            for profile in occupants:
-                radius = to_meters(profile.travel_width_inches / 2)
-                sampled = ensure_spacing(list(path), radius)
-                if mesh.collides(sampled, profile.travel_width_inches / 2):
-                    mesh_collision = True
-                    unverified.append(
-                        f"raw capture touches the swept disc envelope along the "
-                        f"path ({profile.title}); an oriented-body collision is "
-                        "not proven, verify in person"
-                    )
-                    break
+        mesh_checked, mesh_collision, mesh_notes = _mesh_sweep(mesh, path, occupants)
+        unverified.extend(mesh_notes)
 
         obstructions = _line_obstructions(graph, target, stop, support)
         if obstructions:
@@ -549,46 +646,9 @@ def evaluate_approach(
                 + ", ".join(obstructions)
             )
 
-    if not _extents_trusted(target):
-        localization = target.attachment.localization_quality if target.attachment else None
-        unverified.append(
-            "the target's extents are unverified proxy geometry "
-            f"(quality={target.quality}); height and distance stay unmeasured"
-            + (f"; support localization is separate evidence ({localization})" if localization == "verified_support" else "")
-        )
-    if not floor_ok:
-        unverified.append("the floor is unobserved; no support under the route")
-    for record in reaches:
-        if record.vertical_status == "unmeasured":
-            unverified.append(
-                "target height or "
-                f"{record.occupant_title} vertical personal reach is unmeasured"
-            )
-        elif record.vertical_status == "beyond_vertical_reach":
-            blocked.append(
-                f"target above the vertical personal reach for "
-                f"{record.occupant_title} ({record.target_height_inches:.1f} in > "
-                f"{record.personal_reach_inches:.1f} in assumed grasp ceiling)"
-            )
-        if record.horizontal_status == "exceeded_horizontal_reach":
-            blocked.append(
-                f"the target is {record.horizontal_distance_inches:.1f} in away; "
-                f"beyond the {record.occupant_title} horizontal reach of "
-                f"{record.horizontal_reach_inches:.1f} in "
-                f"({record.horizontal_reach_provenance})"
-            )
-        elif record.horizontal_status == "unmeasured":
-            if record.horizontal_distance_inches is not None:
-                unverified.append(
-                    f"horizontal reach to the target is unmeasured for "
-                    f"{record.occupant_title} (standing "
-                    f"{record.horizontal_distance_inches:.1f} in away)"
-                )
-            else:
-                unverified.append(
-                    f"horizontal reach to the target is unmeasured for "
-                    f"{record.occupant_title}"
-                )
+    reach_blocked, reach_unverified = _reach_and_extent_notes(target, floor_ok, reaches)
+    blocked.extend(reach_blocked)
+    unverified.extend(reach_unverified)
 
     if blocked:
         status: ApproachStatus = "blocked"

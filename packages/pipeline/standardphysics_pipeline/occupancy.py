@@ -64,6 +64,29 @@ whose underside is below it is, however high its top reaches.
 Person C should confirm this against the source with the other thresholds.
 """
 
+THINNEST_BARRIER_CELLS = 2
+"""The fewest cells an obstacle is drawn across, on either axis.
+
+RoomPlan reports a wall as a surface with no thickness. A box with no
+thickness contains no cell centre, so every wall of a capture was missing from
+the grid: the room had no edge, the ground beyond it counted as clearance, and
+the widest route ran around the room's perimeter and out through its doorways.
+
+A band two cells wide is 4-connected at any angle, which is what stops a route
+stepping diagonally between two of its cells. Only the grid is thickened. The
+reported width comes from `footprints`, which measures to the surface itself.
+"""
+
+THINNEST_WALL = 2 * INDOOR_MARGIN
+"""The fewest metres a wall is drawn across.
+
+`INDOOR_MARGIN` counts cells just past the floor's edge as indoors, and a wall
+drawn on that edge has to cover the slack on both sides of its line. A thinner
+one leaves a sliver of indoor floor running round the outside of the room, and
+the sliver joins every doorway to every other, so a trip held indoors could
+still leave through one door and come back in through another.
+"""
+
 DOORWAY_BITE = 0.12
 """Metres the cleared opening extends past the door on its thin axis.
 
@@ -194,7 +217,7 @@ def build_grid(graph: SceneGraph, cell_size: float = CELL_SIZE) -> Grid:
         if not blocks_floor(node):
             continue
         node_ids.append(node.id)
-        _mark(occupied, owner, len(node_ids) - 1, node, world_x, world_y)
+        _mark(occupied, owner, len(node_ids) - 1, node, world_x, world_y, cell_size)
 
     for node in graph.nodes:
         if node.kind in CUTS_THROUGH_WALLS:
@@ -242,11 +265,25 @@ def _mark(
     node: SceneNode,
     world_x: np.ndarray,
     world_y: np.ndarray,
+    cell_size: float,
 ) -> None:
     """Occupy every cell whose centre lies inside this node's oriented box."""
-    inside = _inside_box(node, world_x, world_y)
+    inside = _solid_cells(node, world_x, world_y, cell_size)
     owner[inside & ~occupied] = index
     occupied |= inside
+
+
+def _solid_cells(
+    node: SceneNode, world_x: np.ndarray, world_y: np.ndarray, cell_size: float
+) -> np.ndarray:
+    """The cells an obstacle fills, never thinner than `THINNEST_BARRIER_CELLS`
+    and, for a wall, never thinner than `THINNEST_WALL`."""
+    thinnest = THINNEST_BARRIER_CELLS * cell_size
+    if reads_as_wall(node):
+        thinnest = max(thinnest, THINNEST_WALL)
+    grow_x = max(thinnest - node.dimensions.x, 0.0) / 2
+    grow_y = max(thinnest - node.dimensions.y, 0.0) / 2
+    return _inside_box(node, world_x, world_y, grow_x, grow_y)
 
 
 def _inside_box(
@@ -256,13 +293,33 @@ def _inside_box(
     grow_x: float = 0.0,
     grow_y: float = 0.0,
 ) -> np.ndarray:
+    """Cells whose centre lies in the node's oriented box, grown by (grow_x, grow_y).
+
+    Only the cells under the box's axis-aligned extent are tested. A floor the
+    size of a library is over a million cells, and testing each of a hundred and
+    seventy boxes against all of them took seconds on every page that asked.
+    """
     p = node.transform.position
     cos_t, sin_t = _rotation_2d(node)
-    dx, dy = world_x - p.x, world_y - p.y
-    local_x = dx * cos_t + dy * sin_t
-    local_y = -dx * sin_t + dy * cos_t
-    return (np.abs(local_x) <= node.dimensions.x / 2 + grow_x) & (
-        np.abs(local_y) <= node.dimensions.y / 2 + grow_y
+    half_x, half_y = node.dimensions.x / 2 + grow_x, node.dimensions.y / 2 + grow_y
+    rows, cols = _window(
+        world_x, world_y, p.x, p.y,
+        abs(cos_t) * half_x + abs(sin_t) * half_y, abs(sin_t) * half_x + abs(cos_t) * half_y,
+    )
+    dx, dy = world_x[rows, cols] - p.x, world_y[rows, cols] - p.y
+    inside = np.zeros(world_x.shape, dtype=bool)
+    inside[rows, cols] = (np.abs(dx * cos_t + dy * sin_t) <= half_x) & (np.abs(-dx * sin_t + dy * cos_t) <= half_y)
+    return inside
+
+
+def _window(
+    world_x: np.ndarray, world_y: np.ndarray, x: float, y: float, reach_x: float, reach_y: float
+) -> tuple[slice, slice]:
+    """The rows and columns of a regular grid of cell centres within reach of (x, y)."""
+    columns, rows = world_x[0], world_y[:, 0]
+    return (
+        slice(np.searchsorted(rows, y - reach_y, "left"), np.searchsorted(rows, y + reach_y, "right")),
+        slice(np.searchsorted(columns, x - reach_x, "left"), np.searchsorted(columns, x + reach_x, "right")),
     )
 
 
@@ -351,7 +408,7 @@ def occupancy_excluding(graph: SceneGraph, grid: Grid, node_id) -> np.ndarray:
     for node in graph.nodes:
         if node.id == node_id or not blocks_floor(node):
             continue
-        occupied |= _inside_box(node, world_x, world_y)
+        occupied |= _solid_cells(node, world_x, world_y, grid.cell_size)
 
     for node in graph.nodes:
         if node.id != node_id and node.kind in CUTS_THROUGH_WALLS:

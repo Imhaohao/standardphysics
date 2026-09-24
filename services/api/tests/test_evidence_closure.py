@@ -5,10 +5,12 @@ with only the provider-side discovery labelled. B owns hardening these into its
 lifecycle proofs; Q re-evaluates them independently.
 """
 
+import hashlib
 import json
 
-from conftest import create_scan, drain, put_artifact, usdz_fixture
 from standardphysics_pipeline.discovery import DiscoveryResult
+
+from conftest import create_scan, drain, put_artifact, usdz_fixture
 
 
 def _closing_stages():
@@ -176,9 +178,6 @@ def test_duplicate_upload_of_same_semantic_bytes_adds_no_bundle(make_client):
         drain(client)
         assert _process_jobs(client, scan_id) == [("done", 1)]
         assert client.get(f"/api/scans/{scan_id}/evidence").json()["bundle_version"] == 1
-
-
-import hashlib
 
 
 def _frame_bytes() -> bytes:

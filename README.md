@@ -37,6 +37,81 @@ To start with a shop already in it, run `SP_SEED_SAMPLE_SHOP=1 ./start.sh`. That
 
 To load the phone scans in `datasets/phone`, run `.venv/bin/python scripts/import_scan.py datasets/phone/*` while it's running.
 
+## Running the app on a phone
+
+The server is hosted, so nothing has to be running on your Mac. A fresh clone
+builds an app that already knows where to go.
+
+```bash
+open apps/ios/StandardPhysics.xcodeproj
+```
+
+Pick a phone with LiDAR (an iPhone 12 Pro or later Pro model, or a 2020 or
+later iPad Pro), and run. There is no address to enter: `api.standardphysics.app`
+and `standardphysics.app` are built in. Sign in with an account you make at
+[standardphysics.app](https://standardphysics.app), walk a room, and the scan
+uploads to the same server the workspace reads.
+
+Running on a device needs you on the signing team in `apps/ios/project.yml`. The
+simulator builds and signs without one, but it has no LiDAR and cannot scan;
+`SIMULATOR_CAPTURE_DEMO=1` in the scheme's environment gets you past the
+unsupported-device screen to look at everything else.
+
+## Seeing a change
+
+Most of what an owner looks at is the web workspace, including inside the app:
+`WorkspaceScreen` opens `standardphysics.app/scans/<id>` in a web view. A web
+change therefore reaches a phone already holding a TestFlight build as soon as
+someone deploys, with no new build and no review.
+
+| You changed | Look at it |
+|---|---|
+| The workspace, the report, sign-in | `npm run dev`, then `http://localhost:3000` |
+| The same, on a phone | the same server at your Mac's address |
+| Capture, upload, the native shell | Xcode, run on a device with LiDAR |
+| A build you are about to hand someone | TestFlight |
+
+TestFlight is for proving a build works and for giving it to people. Archive,
+upload and processing is twenty minutes, which is no way to look at a change.
+
+### On a phone, without deploying
+
+`next dev` listens on every interface, so a phone on the same Wi-Fi can open
+the workspace running on your Mac:
+
+```bash
+cd apps/web && npm run dev
+ipconfig getifaddr en0     # the address to type on the phone
+```
+
+Then `http://<that address>:3000` in Safari. For the whole thing, API included,
+`start.sh` says how at the top of the file.
+
+### Deploying
+
+```bash
+scripts/deploy.sh
+```
+
+From this repository on your own machine. It pulls master on the Droplet,
+rebuilds and reports; [`docs/DEPLOY.md`](docs/DEPLOY.md) has the rest.
+
+### Pointing the app at your own machine
+
+An address built into the app beats a saved one, so the connection screen no
+longer overrides it, and a release build does not offer that screen at all. To
+work against a server you are running yourself, set both addresses in the
+scheme's environment, which beats the built-in pair:
+
+    Product > Scheme > Edit Scheme > Run > Arguments > Environment Variables
+
+        API_BASE_URL        http://<your Mac's network address>:8787
+        WORKSPACE_BASE_URL  http://<your Mac's network address>:3000
+
+Use the Mac's address on the network rather than `localhost`, which on a phone
+means the phone. Plain HTTP is accepted only for a local address; anything else
+has to be HTTPS.
+
 Findings come only from rules whose threshold has been checked against the text it cites. `scripts/verify_rulepack.py` does that check and writes the ledger, which is committed, so a clean clone reports findings without any flag. Two rules are left off it and the script says why for each. A person who has read a section adds their name with `.venv/bin/standardphysics-agents rules second-check <rule> --by "<name>"`. `SP_PREVIEW_UNVERIFIED_RULES=1` runs every rule including the two, for development only, and stamps the report as unreviewed.
 
 To run the tests and the linter:

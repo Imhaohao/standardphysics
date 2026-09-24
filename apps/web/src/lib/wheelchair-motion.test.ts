@@ -444,7 +444,7 @@ describe("wheelchair motion geometry", () => {
       // Missing support normal
       const noNormalOutlet: SceneNode = {
         ...outlet,
-        attachment: { ...outlet.attachment!, normal: undefined as any },
+        attachment: { ...outlet.attachment!, normal: undefined as never },
       };
       const resNoNormal = assessOutletAccessibility({ x: 0, z: 0 }, noNormalOutlet, wheelchairMotionGeometry([floor, wall, noNormalOutlet]), validProfile);
       expect(resNoNormal.reachStatus).toBe("needs_verification");
@@ -654,4 +654,3 @@ describe("wheelchair motion geometry", () => {
     });
   });
 });
-

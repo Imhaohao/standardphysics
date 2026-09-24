@@ -589,12 +589,12 @@ def _tier_2_and_3_cases() -> list[Case]:
         _case(
             "door_clearance_blocked",
             "A chair left in the doorway, so there is not enough floor in "
-            "front to open the door from a wheelchair at all.",
+            "front to open the door from a wheelchair at all, and the way in "
+            "squeezes past it. Moving the chair clears both.",
             v.add(clean, v.box("blocker", "Chair", (0.0, -3.3, 0.45), (0.45, 0.45, 0.9))),
-            expected_problems=frozenset({"door_maneuvering_clearance"}),
-            forbidden_problems=frozenset({ROUTE}),
+            expected_problems=frozenset({"door_maneuvering_clearance", ROUTE}),
             expected_questions=SCAN_CANNOT_SEE | {"reach_range"},
-            expected_action="ASK_OWNER",
+            expected_action="FIX",
             max_tier=3,
         ),
         _case(

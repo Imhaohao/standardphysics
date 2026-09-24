@@ -18,6 +18,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from standardphysics_pipeline.textures.camera import PhotoCamera
+
 from .deep_fusion import LearnableAlign
 from .feature_extractor import ImageFeatureExtractor, PointFeatureEncoder
 
@@ -161,7 +162,6 @@ class DeepFusionGaussianModel(nn.Module):
             Dict containing predicted positions, log_scales, quats, inv_opacities, and sh0.
         """
         device = points.device
-        N = points.shape[0]
 
         # 1. Encode LiDAR points
         if normals is None:

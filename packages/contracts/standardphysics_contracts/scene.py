@@ -308,6 +308,28 @@ def stands_upright(node: SceneNode) -> bool:
     return bounds_the_room(node) and _upright_extent(node) > SHEET_THICKNESS
 
 
+def is_fixed_to_a_surface(node: SceneNode) -> bool:
+    """Whether the thing is mounted on something rather than standing on the floor.
+
+    An outlet, a switch, a thermostat, a whiteboard and a fire alarm have nothing
+    in common as words, and everything in common as measurements: each was found
+    on a face the scan measured, and each records which face and where on it.
+    Asking that is asking the thing the name was standing in for, and it holds
+    for a fitting nobody here has a word for.
+    """
+    return node.attachment is not None
+
+
+def can_host_a_fitting(node: SceneNode) -> bool:
+    """Whether the region presents a face something could be mounted on.
+
+    Walls, counters, tables and desks were listed by name; what they share is a
+    measured surface broad enough to carry a faceplate. A region that bounds the
+    room has one, and so does anything solid with a face turned up or out.
+    """
+    return bounds_the_room(node) or measured_as(node).x * measured_as(node).y >= SHEET_AREA
+
+
 def _upright_extent(node: SceneNode) -> float:
     return measured_as(node).z
 

@@ -37,9 +37,7 @@ export function inspectionCategory(node: SceneNode): InspectionCategory {
   if (node.kind === "candidate_outlet") return "candidate_outlet";
   const category = `${node.raw_category} ${node.label}`.toLowerCase();
 
-  if (category.includes("outlet") || category.includes("receptacle") || category.includes("power strip")) {
-    return node.kind === "candidate_outlet" ? "candidate_outlet" : "outlet";
-  }
+  if (/outlet|receptacle|power strip/.test(category)) return "outlet";
   if (category.includes("counter")) {
     if (/(service|sales|checkout|cashier|ordering)/.test(category)) {
       return "service_or_sales_counter";

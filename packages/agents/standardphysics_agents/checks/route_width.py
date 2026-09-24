@@ -9,6 +9,7 @@ evaluated would be worse than one that reports a problem to look at.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from standardphysics_contracts import WidthResult
@@ -28,27 +29,45 @@ class WidthVerdict:
     reason: str
 
 
+Run = tuple[float, float]
+"""Where a stretch below the minimum starts and ends, in inches along a leg."""
+
+
 def route_width_verdict(
-    inches: float, reduced_run_inches: float | None, rule: RuleSpec
+    inches: float, reduced_runs: Sequence[Run] | None, rule: RuleSpec
 ) -> WidthVerdict:
-    """403.5.1 and its exception, with no geometry in the way."""
+    """403.5.1 and its exception, with no geometry in the way.
+
+    The exception has two conditions: each reduced stretch is 24 inches long
+    at most, and reduced stretches are separated by 48 inches of route at full
+    width. Two 24 inch pinches 10 inches apart meet the first and not the
+    second.
+    """
     if rule.satisfied_by(inches):
         return WidthVerdict(True, "meets_minimum")
     if inches < rule.parameter("reduced_min_inches"):
         return WidthVerdict(False, "below_minimum")
-    if reduced_run_inches is None:
+    if reduced_runs is None:
         return WidthVerdict(False, "reduction_length_unknown")
-    if reduced_run_inches <= rule.parameter("reduced_max_run_inches"):
-        return WidthVerdict(True, "reduction_permitted")
-    return WidthVerdict(False, "reduction_too_long")
+    if any(end - start > rule.parameter("reduced_max_run_inches") for start, end in reduced_runs):
+        return WidthVerdict(False, "reduction_too_long")
+    if any(
+        following[0] - previous[1] < rule.parameter("separating_segment_min_length_inches")
+        for previous, following in zip(reduced_runs, reduced_runs[1:])
+    ):
+        return WidthVerdict(False, "reductions_too_close")
+    return WidthVerdict(True, "reduction_permitted")
 
 
-def reduced_run_inches(ctx: CheckContext, rule: RuleSpec, leg_index: int) -> float | None:
-    """How far this leg runs below the section's minimum, in inches."""
-    measure_run = getattr(ctx.measure, "route_run_below", None)
-    if measure_run is None:
+def reduced_runs(ctx: CheckContext, rule: RuleSpec, leg_index: int) -> list[Run] | None:
+    """Every stretch of this leg below the section's minimum, in order."""
+    measure_runs = getattr(ctx.measure, "route_runs_below", None)
+    if measure_runs is None:
         return None
-    return float(measure_run(ctx.graph, ctx.scenario, leg_index, rule.threshold))
+    return [
+        (float(start), float(end))
+        for start, end in measure_runs(ctx.graph, ctx.scenario, leg_index, rule.threshold)
+    ]
 
 
 def dedupe_key(result: WidthResult) -> tuple:
@@ -83,7 +102,7 @@ def _leg(ctx: CheckContext, rule: RuleSpec, index: int) -> Observation:
         return _blocked(rule, result, facts)
 
     verdict = route_width_verdict(
-        result.inches, reduced_run_inches(ctx, rule, index), rule
+        result.inches, reduced_runs(ctx, rule, index), rule
     )
     return Observation(
         rule_id=RULE_ID,

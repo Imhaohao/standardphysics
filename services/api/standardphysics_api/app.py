@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import contextlib
 import io
-import json
 import logging
 import pathlib
 import re
@@ -56,7 +55,7 @@ from . import repository as repo
 from .approach import evaluate as evaluate_approach
 from .architecture_export import install_architecture_export_routes
 from .auth import install_auth, owner_of
-from .combine import SaveCombineRequest, save_combine
+from .combine import SaveCombineRequest, rooms_of, save_combine
 from .coverage import parse_coverage
 from .db import Database
 from .errors import ApiProblem
@@ -286,7 +285,51 @@ def _validate_staged(store: ArtifactStore, staged, kind: str) -> None:
         raise ApiProblem(400, message) from None
 
 
-def _install_upload_routes(app: FastAPI, database: Database, store: ArtifactStore, worker: Worker, settings: Settings) -> None:
+async def _stage_upload(store: ArtifactStore, scan_id: uuid.UUID, artifact_id: str, request: Request):
+    """Stage the uploaded bytes, turning the store's refusals into problems."""
+    try:
+        store.artifact_path(scan_id, artifact_id)
+        return await store.stage(scan_id, request.stream())
+    except InvalidArtifactId:
+        raise ApiProblem(400, "invalid artifact id") from None
+    except ArtifactTooLarge:
+        raise ApiProblem(413, "artifact too large") from None
+
+
+def _queue_for_arrival(
+    database: Database,
+    store: ArtifactStore,
+    worker: Worker,
+    scan_id: uuid.UUID,
+    kind: str,
+    settle_seconds: float,
+) -> bool:
+    """Queue whatever this artifact's arrival has made ready.
+
+    True when a semantic job was queued, which is the caller's cue to wake the
+    worker. A scan still uploading is left alone: the bundle is not whole yet,
+    and queueing per arriving frame would run a provider job on a partial one.
+    """
+    if kind in ("photo_manifest", "frames", "poses", "lidar_mesh"):
+        maybe_queue_texture(database, store, worker, scan_id)
+    if kind not in repo.SEMANTIC_INPUT_KINDS:
+        return False
+    with database.transaction() as connection:
+        scan = _scan_or_404(connection, scan_id)
+        if scan.state == "uploading":
+            return False
+        record_closure(connection, scan)
+        queued = maybe_queue_semantic(connection, scan, PROCESS, settle_seconds=settle_seconds)
+    return queued == "queued"
+
+
+def _install_upload_routes(
+    app: FastAPI,
+    database: Database,
+    store: ArtifactStore,
+    worker: Worker,
+    settings: Settings,
+) -> None:
     @app.put("/api/scans/{scan_id}/artifacts/{artifact_id}", response_model=Artifact, status_code=201)
     async def upload_artifact(
         scan_id: uuid.UUID,
@@ -297,30 +340,14 @@ def _install_upload_routes(app: FastAPI, database: Database, store: ArtifactStor
     ):
         with database.connect() as connection:
             _scan_or_404(connection, scan_id)
-        try:
-            store.artifact_path(scan_id, artifact_id)
-            staged = await store.stage(scan_id, request.stream())
-        except InvalidArtifactId:
-            raise ApiProblem(400, "invalid artifact id") from None
-        except ArtifactTooLarge:
-            raise ApiProblem(413, "artifact too large") from None
+        staged = await _stage_upload(store, scan_id, artifact_id, request)
         _validate_staged(store, staged, x_artifact_kind)
         status, artifact = _accept_staged(
             database, store, scan_id, artifact_id, x_artifact_kind, x_checksum_sha256, staged
         )
-        queued_semantic = False
-        if x_artifact_kind in ("photo_manifest", "frames", "poses", "lidar_mesh"):
-            maybe_queue_texture(database, store, worker, scan_id)
-        if x_artifact_kind in repo.SEMANTIC_INPUT_KINDS:
-            with database.transaction() as connection:
-                scan = _scan_or_404(connection, scan_id)
-                if scan.state != "uploading":
-                    record_closure(connection, scan)
-                    queued_semantic = maybe_queue_semantic(
-                        connection, scan, PROCESS,
-                        settle_seconds=settings.evidence_settle_seconds,
-                    ) == "queued"
-        if queued_semantic:
+        if _queue_for_arrival(
+            database, store, worker, scan_id, x_artifact_kind, settings.evidence_settle_seconds
+        ):
             worker.wake()
         return JSONResponse(artifact.model_dump(mode="json"), status_code=status)
 
@@ -409,13 +436,10 @@ def _install_workspace_routes(app: FastAPI, database: Database, store: ArtifactS
 
 def _install_combine_routes(app: FastAPI, database: Database, store: ArtifactStore, worker: Worker) -> None:
     @app.get("/api/scans/{scan_id}/rooms")
-    def rooms(scan_id: uuid.UUID) -> dict:
+    def rooms(scan_id: uuid.UUID, revision: int | None = None) -> dict:
         with database.connect() as connection:
             _scan_or_404(connection, scan_id)
-        manifest = store.scan_dir(scan_id) / "rooms.json"
-        if not manifest.exists():
-            return {"rooms": []}
-        return json.loads(manifest.read_text())
+        return rooms_of(database, store, scan_id, revision)
 
     @app.post("/api/scans/{scan_id}/combine", response_model=SceneGraph, status_code=201)
     def combine(scan_id: uuid.UUID, body: SaveCombineRequest) -> SceneGraph:
@@ -517,19 +541,65 @@ def _install_route_routes(app: FastAPI, database: Database, stages: Stages, work
         return evaluate_approach(database, stages, scan_id, base_revision, body)
 
 
+def _scene_glb_response(database: Database, scan_id: uuid.UUID, revision: int | None) -> Response:
+    """The exported geometry, and whether a newer export is still being made.
+
+    The pending header goes out either way: a viewer that gets a 404 still
+    needs to know the difference between nothing to show and not yet.
+    """
+    with database.connect() as connection:
+        _scan_or_404(connection, scan_id)
+        found = repo.display_geometry(connection, scan_id, revision)
+        pending = repo.display_pending(connection, scan_id)
+    response = _file_or_404(found[0], "model/gltf-binary") if found else Response(status_code=404)
+    if found:
+        response.headers["X-Exported-Revision"] = str(found[1])
+    response.headers["X-Display-Pending"] = str(pending).lower()
+    return response
+
+
+def _crop_file(store: ArtifactStore, scan_id: uuid.UUID, crop_id: str) -> tuple[pathlib.Path, str]:
+    """The stored crop named by this id, and what it is.
+
+    The id is a caller's string, so it is checked twice: once for the obvious
+    traversal spellings, and again by resolving the result and requiring it to
+    still sit under the scan's own crops directory. A symlink cannot carry it
+    out of there either, because the comparison happens after resolution.
+    """
+    if "/" in crop_id or "\\" in crop_id or ".." in crop_id:
+        raise ApiProblem(400, "invalid crop id")
+    filename = crop_id if crop_id.endswith((".jpg", ".png")) else f"{crop_id}.jpg"
+    crops_dir = (store.scan_dir(scan_id) / "crops").resolve()
+    crop_path = (crops_dir / filename).resolve()
+    if not str(crop_path).startswith(str(crops_dir)):
+        raise ApiProblem(400, "invalid crop path")
+    if not crop_path.is_file():
+        raise ApiProblem(404, "crop not found")
+    return crop_path, "image/png" if filename.endswith(".png") else "image/jpeg"
+
+
+def _frame_listing(store: ArtifactStore, scan_id: uuid.UUID, stored: list[Artifact]) -> FrameListing:
+    """Split the stored frames into the ones that open and the ones that do not.
+
+    An artifact whose bytes will not read as an image is reported by id rather
+    than failing the listing, so one bad frame does not hide the rest.
+    """
+    entries: list[FrameEntry] = []
+    unreadable: list[str] = []
+    for artifact in stored:
+        entry = _frame_entry(store, scan_id, artifact)
+        if entry is None:
+            unreadable.append(artifact.id)
+        else:
+            entries.append(entry)
+    return FrameListing(frames=entries, unreadable=unreadable)
+
+
 def _install_file_routes(app: FastAPI, database: Database, store: ArtifactStore) -> None:
     @app.head("/api/scans/{scan_id}/scene.glb")
     @app.get("/api/scans/{scan_id}/scene.glb")
     def scene_glb(scan_id: uuid.UUID, revision: int | None = None) -> Response:
-        with database.connect() as connection:
-            _scan_or_404(connection, scan_id)
-            found = repo.display_geometry(connection, scan_id, revision)
-            pending = repo.display_pending(connection, scan_id)
-        response = _file_or_404(found[0], "model/gltf-binary") if found else Response(status_code=404)
-        if found:
-            response.headers["X-Exported-Revision"] = str(found[1])
-        response.headers["X-Display-Pending"] = str(pending).lower()
-        return response
+        return _scene_glb_response(database, scan_id, revision)
 
     @app.get("/api/scans/{scan_id}/lidar-mesh")
     def lidar_mesh(scan_id: uuid.UUID) -> FileResponse:
@@ -553,16 +623,7 @@ def _install_file_routes(app: FastAPI, database: Database, store: ArtifactStore)
     def get_crop(scan_id: uuid.UUID, crop_id: str) -> FileResponse:
         with database.connect() as connection:
             _scan_or_404(connection, scan_id)
-        if "/" in crop_id or "\\" in crop_id or ".." in crop_id:
-            raise ApiProblem(400, "invalid crop id")
-        filename = crop_id if (crop_id.endswith(".jpg") or crop_id.endswith(".png")) else f"{crop_id}.jpg"
-        crops_dir = (store.scan_dir(scan_id) / "crops").resolve()
-        crop_path = (crops_dir / filename).resolve()
-        if not str(crop_path).startswith(str(crops_dir)):
-            raise ApiProblem(400, "invalid crop path")
-        if not crop_path.is_file():
-            raise ApiProblem(404, "crop not found")
-        media_type = "image/png" if filename.endswith(".png") else "image/jpeg"
+        crop_path, media_type = _crop_file(store, scan_id, crop_id)
         return FileResponse(crop_path, media_type=media_type)
 
     @app.get("/api/scans/{scan_id}/frames", response_model=FrameListing)
@@ -578,15 +639,7 @@ def _install_file_routes(app: FastAPI, database: Database, store: ArtifactStore)
         with database.connect() as connection:
             _scan_or_404(connection, scan_id)
             stored = repo.artifacts_of_kind(connection, scan_id, "frames")
-        entries: list[FrameEntry] = []
-        unreadable: list[str] = []
-        for artifact in stored:
-            entry = _frame_entry(store, scan_id, artifact)
-            if entry is None:
-                unreadable.append(artifact.id)
-            else:
-                entries.append(entry)
-        return FrameListing(frames=entries, unreadable=unreadable)
+        return _frame_listing(store, scan_id, stored)
 
     @app.get("/api/scans/{scan_id}/frames/{frame_id}")
     def frame_bytes(scan_id: uuid.UUID, frame_id: str) -> Response:

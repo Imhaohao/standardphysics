@@ -11,13 +11,12 @@ Validates:
 from __future__ import annotations
 
 import json
-import math
 import pathlib
 import uuid
+
 import numpy as np
 import pytest
 from PIL import Image
-
 from standardphysics_contracts import (
     LidarMesh,
     LidarMeshPart,
@@ -30,7 +29,6 @@ from standardphysics_contracts import (
 from standardphysics_pipeline.coords import capture_to_room
 from standardphysics_pipeline.discovery.discover import (
     DiscoveryInputs,
-    DiscoveryResult,
     discover_objects,
 )
 

@@ -34,6 +34,7 @@ TOP_VIEWS = 3
 OUTLIER_DISTANCE = 0.12
 KEPT_WEIGHT_SHARE = 0.5
 EXPOSURE_ITERATIONS = 8
+MAX_EXPOSURE_POINTS = 20_000
 MAX_LOG_GAIN = 0.7
 GUTTER_PASSES = 8
 
@@ -169,6 +170,18 @@ def depth_buffer(camera: PhotoCamera, points: np.ndarray) -> np.ndarray:
     return _erode(buffer.reshape(small.height, small.width))
 
 
+DEPTH_TRIANGLE_CHUNK = 250_000
+"""How many faces are transformed into a camera's frame at once.
+
+The whole mesh at once is what set a ceiling on how long a walk could be: a
+four million face capture needs about half a gigabyte of temporaries per
+camera, and the bake refused rather than allocate it. The buffer keeps the
+nearest of whatever it is shown, and taking a minimum does not care what order
+it sees things in, so a chunked pass writes the same buffer the whole mesh
+would have, face for face, while holding memory flat.
+"""
+
+
 def triangle_depth_buffer(camera: PhotoCamera, triangles: np.ndarray) -> np.ndarray:
     """Conservative, perspective-correct nearest-face depth at bounded resolution.
 
@@ -180,23 +193,90 @@ def triangle_depth_buffer(camera: PhotoCamera, triangles: np.ndarray) -> np.ndar
     scale = min(1.0 / DEPTH_BUFFER_DIVISOR, MAX_DEPTH_BUFFER_SIDE / max(camera.width, camera.height))
     small = camera.resized(max(1, round(camera.width * scale)), max(1, round(camera.height * scale)))
     buffer = np.full((small.height, small.width), np.inf, dtype=np.float32)
+    for start in range(0, len(triangles), DEPTH_TRIANGLE_CHUNK):
+        _draw_depth(buffer, small, triangles[start:start + DEPTH_TRIANGLE_CHUNK])
+    return _erode(buffer)
+
+
+def _draw_depth(buffer: np.ndarray, small: PhotoCamera, triangles: np.ndarray) -> None:
+    """Rasterize these faces into the buffer, keeping whichever is nearest."""
     if not len(triangles):
-        return buffer
+        return
     local = triangles @ small.room_to_camera[:3, :3].T + small.room_to_camera[:3, 3]
     depth = local[..., 2]
-    valid = np.all(depth > NEAR_LIMIT, axis=1)
-    local, depth = local[valid], depth[valid]
+    in_front = np.all(depth > NEAR_LIMIT, axis=1)
+    local, depth = local[in_front], depth[in_front]
     if not len(local):
-        return buffer
+        return
     u = small.fx * local[..., 0] / depth + small.cx
     v = small.fy * local[..., 1] / depth + small.cy
     visible = (
         (u.max(axis=1) >= -1) & (u.min(axis=1) <= small.width)
         & (v.max(axis=1) >= -1) & (v.min(axis=1) <= small.height)
     )
-    for corners_u, corners_v, corners_depth in zip(u[visible], v[visible], depth[visible]):
+    u, v, depth = u[visible], v[visible], depth[visible]
+    few_pixels = _pixel_spans(buffer, u, v).max(axis=0) <= SMALL_TRIANGLE_PIXELS
+    _rasterize_small_triangles(buffer, u[few_pixels], v[few_pixels], depth[few_pixels])
+    for corners_u, corners_v, corners_depth in zip(u[~few_pixels], v[~few_pixels], depth[~few_pixels]):
         _rasterize_depth_triangle(buffer, corners_u, corners_v, corners_depth)
-    return _erode(buffer)
+
+
+SMALL_TRIANGLE_PIXELS = 8
+"""Faces whose pixel box, margin included, is at most this wide and tall are drawn all at once.
+
+A LiDAR face is a centimetre or two, and the buffer is a few hundred pixels
+across, so nearly every face covers a pixel or two, which the one-pixel margin
+drawn around every face makes a box of four or five. Drawing them one at a time
+in Python took most of a photo bake: millions of faces for each of up to 192
+photos. Drawn together they give the same buffer, pixel for pixel, because each
+pixel is tested and filled exactly as the loop tests and fills it.
+"""
+
+
+def _pixel_box(buffer: np.ndarray, u: np.ndarray, v: np.ndarray) -> tuple[np.ndarray, ...]:
+    """Each face's pixel box, grown one pixel all round and clipped to the buffer, as the loop draws it."""
+    left = np.maximum(0, np.floor(u.min(axis=1)).astype(np.int64) - 1)
+    right = np.minimum(buffer.shape[1] - 1, np.ceil(u.max(axis=1)).astype(np.int64) + 1)
+    top = np.maximum(0, np.floor(v.min(axis=1)).astype(np.int64) - 1)
+    bottom = np.minimum(buffer.shape[0] - 1, np.ceil(v.max(axis=1)).astype(np.int64) + 1)
+    return left, right, top, bottom
+
+
+def _pixel_spans(buffer: np.ndarray, u: np.ndarray, v: np.ndarray) -> np.ndarray:
+    left, right, top, bottom = _pixel_box(buffer, u, v)
+    return np.stack([right - left + 1, bottom - top + 1])
+
+
+SMALL_TRIANGLE_BATCH = 40_000
+"""Faces drawn together per step, so the per-pixel arrays stay near a hundred megabytes."""
+
+
+def _rasterize_small_triangles(buffer: np.ndarray, u: np.ndarray, v: np.ndarray, depth: np.ndarray) -> None:
+    """`_rasterize_depth_triangle` for many small faces at once, a batch at a time."""
+    for start in range(0, len(u), SMALL_TRIANGLE_BATCH):
+        stop = start + SMALL_TRIANGLE_BATCH
+        _rasterize_small_batch(buffer, u[start:stop], v[start:stop], depth[start:stop])
+
+
+def _rasterize_small_batch(buffer: np.ndarray, u: np.ndarray, v: np.ndarray, depth: np.ndarray) -> None:
+    """Every candidate pixel of every face tested and filled as the per-face loop would."""
+    if not len(u):
+        return
+    left, right, top, bottom = _pixel_box(buffer, u, v)
+    determinant = (v[:, 1] - v[:, 2]) * (u[:, 0] - u[:, 2]) + (u[:, 2] - u[:, 1]) * (v[:, 0] - v[:, 2])
+    offsets = np.arange(SMALL_TRIANGLE_PIXELS)
+    columns = (left[:, None] + offsets[None, :])[:, None, :]
+    rows = (top[:, None] + offsets[None, :])[:, :, None]
+    wanted = (columns <= right[:, None, None]) & (rows <= bottom[:, None, None]) & (np.abs(determinant) >= 1e-9)[:, None, None]
+    safe = np.where(np.abs(determinant) < 1e-9, 1.0, determinant)[:, None, None]
+    du, dv = columns - u[:, 2, None, None], rows - v[:, 2, None, None]
+    first = ((v[:, 1] - v[:, 2])[:, None, None] * du + (u[:, 2] - u[:, 1])[:, None, None] * dv) / safe
+    second = ((v[:, 2] - v[:, 0])[:, None, None] * du + (u[:, 0] - u[:, 2])[:, None, None] * dv) / safe
+    third = 1.0 - first - second
+    inverse_depth = first / depth[:, 0, None, None] + second / depth[:, 1, None, None] + third / depth[:, 2, None, None]
+    inside = wanted & (first >= -0.03) & (second >= -0.03) & (third >= -0.03) & (inverse_depth > 0)
+    pixels = np.broadcast_to(rows * buffer.shape[1] + columns, inside.shape)[inside]
+    np.minimum.at(buffer.reshape(-1), pixels, (1.0 / inverse_depth[inside]).astype(buffer.dtype))
 
 
 def _rasterize_depth_triangle(buffer: np.ndarray, u: np.ndarray, v: np.ndarray, depth: np.ndarray) -> None:
@@ -304,9 +384,9 @@ def to_srgb(linear: np.ndarray) -> np.ndarray:
 class TopViews:
     """The strongest few views per texel, with their colors, plus how often the scan contradicted the model."""
 
-    def __init__(self, count: int):
-        self.weights = np.zeros((count, TOP_VIEWS), dtype=np.float32)
-        self.colors = np.zeros((count, TOP_VIEWS, 3), dtype=np.float32)
+    def __init__(self, count: int, slots: int = TOP_VIEWS):
+        self.weights = np.zeros((count, slots), dtype=np.float32)
+        self.colors = np.zeros((count, slots, 3), dtype=np.float32)
         self.accepted = np.zeros(count, dtype=np.int16)
         self.disagreed = np.zeros(count, dtype=np.int16)
 

@@ -13,8 +13,8 @@ pytest.importorskip("trimesh", reason="offline raster requires reconstruction ex
 from standardphysics_pipeline.render_efficiency.photo_mesh_500 import (
     RasterCamera,
     camera_from_room,
-    room_to_scene_rotation,
 )
+
 try:
     from render_photo_mesh_raster import raster_frame
 except ModuleNotFoundError as error:  # pragma: no cover
@@ -26,14 +26,13 @@ def test_scene_conversion_matches_bake_mapping():
     room_to_camera[:3, :3] = np.array([[0.0, 0.0, -1.0], [1.0, 0.0, 0.0], [0.0, -1.0, 0.0]])
     converted = camera_from_room("x", room_to_camera, 800.0, 800.0, 320.0, 320.0, 640, 640)
     # a room point must land where the original room-frame projection puts it
-    room_point = np.array([0.0, 1.0, 0.0])
     camera_coords = converted.scene_to_camera[:3, :3] @ np.array([0.0, 0.0, -1.0]) + converted.scene_to_camera[:3, 3]
     np.testing.assert_allclose(camera_coords, [0.0, 0.0, -1.0], atol=1e-9)
 
 
 def test_captured_crop_shifts_principal_point_only():
-    from standardphysics_pipeline.textures.camera import PhotoCamera
     from standardphysics_pipeline.render_efficiency.photo_mesh_500 import build_captured_view
+    from standardphysics_pipeline.textures.camera import PhotoCamera
 
     camera = PhotoCamera("frame-0000", np.eye(4), 1333.9, 1333.9, 960.7, 725.1, 1920, 1440, 0)
     cropped = build_captured_view("frame-0000", camera)

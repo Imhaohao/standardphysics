@@ -59,8 +59,8 @@ export const getSimulationReplay = (scanId: string, revision: number) =>
 export const getTextureStatus = (scanId: string, revision: number) =>
   getOptional<TextureStatus>(`/api/scans/${scanId}/textures?revision=${revision}`);
 
-export const getRooms = (scanId: string) =>
-  getOptional<{ rooms: RoomGroup[] }>(`/api/scans/${scanId}/rooms`);
+export const getRooms = (scanId: string, revision: number) =>
+  getOptional<{ rooms: RoomGroup[] }>(`/api/scans/${scanId}/rooms?revision=${revision}`);
 
 export const getCapturedSplats = (scanId: string, revision: number) =>
   getOptional<CapturedSplats>(`/api/scans/${scanId}/splats?revision=${revision}`);

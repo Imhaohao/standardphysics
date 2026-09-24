@@ -22,9 +22,16 @@ from dataclasses import dataclass
 from uuid import UUID
 
 import numpy as np
-from standardphysics_contracts import SceneGraph, Vec3, to_inches, to_meters
+from standardphysics_contracts import SceneGraph, SceneNode, Vec3, to_inches, to_meters
 
-from .footprints import footprint, gap_between
+from .footprints import (
+    closest_point,
+    contains_point,
+    footprint,
+    gap_between,
+    ray_distance,
+    rotation_about_z,
+)
 from .occupancy import Grid, blocks_floor
 
 TURN_THRESHOLD_DEGREES = 120.0
@@ -198,24 +205,182 @@ def _span_end(points: list[Vec3], anchor: int, length: float, forward: bool):
     return None
 
 
-def _zone_width(
-    grid: Grid, clearance: np.ndarray, points: list[Vec3]
-) -> float | None:
-    """Narrowest point in a zone, or None when the zone has nothing in it.
+MAX_ACROSS = 10.0
+"""Metres a width is measured out to before the room is called open."""
 
-    A zone runs off the end of a short route and ends up empty. Reporting that
-    as 0.0 inches turns "we could not measure this" into "this is impossibly
-    tight", which is the worst way to be wrong: it reads as the most severe
-    finding in the report.
+
+@dataclass(frozen=True)
+class _Across:
+    """Widths across the route at a turn, measured out from the pivot.
+
+    403.5.2's widths are the gaps the route runs through: between the pivot and
+    the wall facing it along each leg, and between the pivot's end and whatever
+    faces that at the turn. Twice the distance to the nearest obstacle is not
+    that. Beside the pivot's end the nearest obstacle is the pivot's own corner,
+    so a turn with 43 inch lanes and 49 inches at the turn read 0, 43 and 43,
+    and a 61 inch turn read 35 and could never claim the 60 inch exception.
+
+    So each width is a ray from the nearest point on the pivot, out through the
+    route, to the first obstacle beyond it. The grid finds what the ray meets,
+    which keeps a doorway cut through a wall open, and the obstacle's footprint
+    gives the exact distance.
     """
-    if not points:
+
+    graph: SceneGraph
+    grid: Grid
+    clearance: np.ndarray
+    pivot: SceneNode | None
+
+    def narrowest(self, points: list[Vec3]) -> float | None:
+        """Narrowest point in a zone, or None when the zone has nothing in it.
+
+        A zone runs off the end of a short route and ends up empty. Reporting
+        that as 0.0 inches turns "we could not measure this" into "this is
+        impossibly tight", which is the worst way to be wrong: it reads as the
+        most severe finding in the report.
+        """
+        widths = [
+            width for point in points if (width := self.width_at(point)) is not None
+        ]
+        return to_inches(min(widths)) if widths else None
+
+    def off_the_end(self, end: _PivotEnd, apex: Vec3) -> float | None:
+        """The width at the turn, straight off the end of the pivot.
+
+        Measured along the pivot's axis that points at the turn, from the
+        pivot's nearest point to it. A ray through the apex instead runs
+        diagonally off the pivot's corner whenever the route swings wide.
+        """
+        origin = closest_point(footprint(self.pivot), (apex.x, apex.y))
+        metres = self._across_from(origin, end.axis)
+        return None if metres is None else to_inches(metres)
+
+    def width_at(self, point: Vec3) -> float | None:
+        if self.pivot is None:
+            return self._twice_the_clearance(point)
+        origin = closest_point(footprint(self.pivot), (point.x, point.y))
+        direction = _unit(point.x - origin[0], point.y - origin[1])
+        if direction is None:
+            return self._twice_the_clearance(point)
+        return self._across_from(origin, direction)
+
+    def _across_from(self, origin, direction) -> float | None:
+        """Metres along a ray from the pivot to the first obstacle beyond it."""
+        hit = self._first_hit(origin, direction)
+        if hit is None:
+            return None
+        cell, travelled = hit
+        owner = self.grid.owner_at(*cell)
+        if owner is None:
+            return travelled
+        exact = ray_distance(origin, direction, footprint(self.graph.by_id(owner)))
+        return travelled if exact is None else exact
+
+    def _first_hit(self, origin, direction):
+        """The first occupied cell along the ray that is not the pivot, and
+        how far along the ray it lies."""
+        outline = footprint(self.pivot)
+        step = self.grid.cell_size / 2
+        travelled = 0.0
+        while travelled < MAX_ACROSS:
+            travelled += step
+            point = (origin[0] + direction[0] * travelled, origin[1] + direction[1] * travelled)
+            cell = self.grid.to_cell(*point)
+            if not self.grid.contains(*cell):
+                return None
+            if self.grid.occupied[cell] and not self._is_pivot(cell, point, outline):
+                return cell, travelled
         return None
-    widths = []
-    for point in points:
-        row, col = grid.to_cell(point.x, point.y)
-        if grid.contains(row, col):
-            widths.append(float(clearance[row, col]) * 2)
-    return to_inches(min(widths)) if widths else None
+
+    def _is_pivot(self, cell, point, outline) -> bool:
+        return self.grid.owner_at(*cell) == self.pivot.id or contains_point(
+            outline, point, self.grid.cell_size
+        )
+
+    def _twice_the_clearance(self, point: Vec3) -> float | None:
+        row, col = self.grid.to_cell(point.x, point.y)
+        if not self.grid.contains(row, col):
+            return None
+        return float(self.clearance[row, col]) * 2
+
+
+@dataclass(frozen=True)
+class _PivotEnd:
+    """The end of the pivot the route turns around.
+
+    `axis` runs along the pivot's length toward the turn, and `reach` is how
+    far along it the pivot extends. Route beyond `reach` is the turn; route
+    short of it runs beside the pivot, which is where approaching and leaving
+    are measured.
+    """
+
+    axis: tuple[float, float]
+    reach: float
+
+    @classmethod
+    def facing(cls, pivot: SceneNode, apex: Vec3) -> _PivotEnd | None:
+        """The end the apex lies beyond, or None when it lies beside the pivot.
+
+        403.5.2's turn goes along one side of an element, round its end and
+        back along the other, so the end is across the element's width and the
+        apex lies past it along its length. A route that doubles back beside
+        the long side of a display case has not gone round anything, however
+        much its direction reverses: the widest path does that when it wanders
+        north of an aisle and comes back.
+        """
+        centre = pivot.transform.position
+        cos_t, sin_t = rotation_about_z(pivot)
+        offset = (apex.x - centre.x, apex.y - centre.y)
+        lengthwise = [
+            (axis, half)
+            for axis, half, across in (
+                ((cos_t, sin_t), pivot.dimensions.x / 2, pivot.dimensions.y / 2),
+                ((-sin_t, cos_t), pivot.dimensions.y / 2, pivot.dimensions.x / 2),
+            )
+            if half >= across
+        ]
+        beyond = [
+            (abs(projected) - half, (axis[0] * math.copysign(1, projected), axis[1] * math.copysign(1, projected)))
+            for axis, half in lengthwise
+            if abs(projected := axis[0] * offset[0] + axis[1] * offset[1]) > half
+        ]
+        if not beyond:
+            return None
+        _, axis = max(beyond)
+        reach = max(axis[0] * x + axis[1] * y for x, y in footprint(pivot))
+        return cls(axis, reach)
+
+    def beside(self, point: Vec3) -> bool:
+        return self.axis[0] * point.x + self.axis[1] * point.y <= self.reach
+
+
+def _zone_beside(points: list[Vec3], apex_index: int, forward: bool, end: _PivotEnd):
+    """`ZONE_LENGTH` of route alongside the pivot, from where the route comes
+    back beside it after rounding the end.
+
+    The turn detector's span is the stretch whose direction reverses, and on a
+    long partition it can start at the route's first point, which left nothing
+    before it to call the approach.
+    """
+    step = 1 if forward else -1
+    index = apex_index
+    collected: list[Vec3] = []
+    travelled = 0.0
+    while 0 <= index + step < len(points) and travelled < ZONE_LENGTH:
+        nxt = index + step
+        if end.beside(points[nxt]):
+            if collected:
+                travelled += math.dist((points[index].x, points[index].y), (points[nxt].x, points[nxt].y))
+            collected.append(points[nxt])
+        elif collected:
+            break
+        index = nxt
+    return collected
+
+
+def _unit(dx: float, dy: float) -> tuple[float, float] | None:
+    length = math.hypot(dx, dy)
+    return None if length < 1e-9 else (dx / length, dy / length)
 
 
 def _slice_by_length(points: list[Vec3], anchor: int, length: float, forward: bool):
@@ -233,23 +398,33 @@ def _slice_by_length(points: list[Vec3], anchor: int, length: float, forward: bo
     return collected
 
 
-def _pivot(graph: SceneGraph, apex: Vec3, search: float = 1.5):
-    """The element the route bends around: whatever solid sits nearest the apex."""
+def _solids_near(graph: SceneGraph, apex: Vec3, search: float = 1.5) -> list[SceneNode]:
+    """Every solid within `search` metres of the apex, nearest first."""
     probe = [
         (apex.x - 0.01, apex.y - 0.01), (apex.x + 0.01, apex.y - 0.01),
         (apex.x + 0.01, apex.y + 0.01), (apex.x - 0.01, apex.y + 0.01),
     ]
-    nearest, best = None, search
-    for node in graph.nodes:
-        if not blocks_floor(node):
-            continue
-        distance = gap_between(footprint(node), probe)
-        if distance < best:
-            nearest, best = node, distance
-    if nearest is None:
-        return None, None
-    width = to_inches(min(nearest.dimensions.x, nearest.dimensions.y))
-    return nearest.id, width
+    near = [
+        (distance, index, node)
+        for index, node in enumerate(graph.nodes)
+        if blocks_floor(node) and (distance := gap_between(footprint(node), probe)) < search
+    ]
+    return [node for _, _, node in sorted(near, key=lambda each: each[:2])]
+
+
+def _pivot(nearby: list[SceneNode], apex: Vec3) -> tuple[SceneNode, _PivotEnd] | None:
+    """The element the route turns around: the nearest one whose end the apex
+    lies beyond.
+
+    Nearest alone is not it. Coming round the end of a shelf, the route runs
+    between the shelf and a display case, and the case can sit nearer the
+    apex than the shelf does.
+    """
+    for node in nearby:
+        end = _PivotEnd.facing(node, apex)
+        if end is not None:
+            return node, end
+    return None
 
 
 def trim_endpoints(path: list[Vec3], radius: float) -> list[Vec3]:
@@ -291,19 +466,38 @@ def measure_turn(
         return None
 
     start, end = span
-    apex = points[(start + end) // 2]
-    turn_points = points[start : end + 1]
+    apex_index = (start + end) // 2
+    apex = points[apex_index]
+    nearby = _solids_near(graph, apex)
+    if not nearby:
+        across = _Across(graph, grid, clearance, None)
+        return Turn(
+            pivot_id=None,
+            pivot_width_inches=None,
+            approach_inches=across.narrowest(
+                _slice_by_length(points, start, ZONE_LENGTH, forward=False)
+            ),
+            at_turn_inches=across.narrowest(points[start : end + 1]),
+            leaving_inches=across.narrowest(
+                _slice_by_length(points, end, ZONE_LENGTH, forward=True)
+            ),
+            apex=apex,
+        )
 
-    pivot_id, pivot_width = _pivot(graph, apex)
+    found = _pivot(nearby, apex)
+    if found is None:
+        return None
+    pivot, pivot_end = found
+    across = _Across(graph, grid, clearance, pivot)
     return Turn(
-        pivot_id=pivot_id,
-        pivot_width_inches=pivot_width,
-        approach_inches=_zone_width(
-            grid, clearance, _slice_by_length(points, start, ZONE_LENGTH, forward=False)
+        pivot_id=pivot.id,
+        pivot_width_inches=to_inches(min(pivot.dimensions.x, pivot.dimensions.y)),
+        approach_inches=across.narrowest(
+            _zone_beside(points, apex_index, forward=False, end=pivot_end)
         ),
-        at_turn_inches=_zone_width(grid, clearance, turn_points),
-        leaving_inches=_zone_width(
-            grid, clearance, _slice_by_length(points, end, ZONE_LENGTH, forward=True)
+        at_turn_inches=across.off_the_end(pivot_end, apex),
+        leaving_inches=across.narrowest(
+            _zone_beside(points, apex_index, forward=True, end=pivot_end)
         ),
         apex=apex,
     )

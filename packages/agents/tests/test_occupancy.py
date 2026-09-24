@@ -15,7 +15,6 @@ import pytest
 from standardphysics_agents.fix.occupancy import (
     DEFAULT_OCCUPANTS,
     MANUAL_WHEELCHAIR,
-    OCCUPANTS,
     HorizontalReach,
     OccupantProfile,
     ensure_spacing,

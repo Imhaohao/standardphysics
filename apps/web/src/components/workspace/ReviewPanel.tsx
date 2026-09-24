@@ -248,8 +248,6 @@ function SelectedDetails({ scanId, scene, entry, onPersisted }: {
         <MarkButton scanId={scanId} scene={scene} targetClass={targetClass} currentNodeId={node.id} onPersisted={onPersisted} />
       </div>
       <ApproachCheck
-        scanId={scanId}
-        revision={scene.revision}
         nodeId={node.id}
         run={(body) =>
           evaluateApproach(scanId, scene.revision, {

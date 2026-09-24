@@ -44,6 +44,18 @@ def wall(z_centre=1.0, half=0.4, at_y=2.0):
     return vertices, np.array([[0, 1, 2], [0, 2, 3]], dtype=np.int64)
 
 
+def tiled_wall(steps=9, half=0.8, at_y=2.0, z_centre=1.0):
+    """A finer square of wall, so different vertices can prefer different cameras."""
+    xs, zs = np.meshgrid(np.linspace(-half, half, steps), np.linspace(z_centre - half, z_centre + half, steps))
+    vertices = np.stack([xs.ravel(), np.full(xs.size, at_y), zs.ravel()], axis=1)
+    corner = (np.arange(steps - 1)[:, None] * steps + np.arange(steps - 1)[None, :]).ravel()
+    triangles = np.concatenate([
+        np.stack([corner, corner + 1, corner + steps + 1], axis=1),
+        np.stack([corner, corner + steps + 1, corner + steps], axis=1),
+    ])
+    return vertices, triangles
+
+
 def flat_photo(colour, width=64, height=48):
     return np.tile(np.asarray(colour, dtype=np.float32), (height, width, 1))
 
@@ -95,6 +107,43 @@ class TestColouring:
             [flat_photo((0.2, 0.6, 0.9)), flat_photo((0.0, 0.0, 0.0))],
         )
         assert scan.colours == pytest.approx(np.tile((0.2, 0.6, 0.9), (4, 1)), abs=0.02)
+
+
+class TestExposure:
+    """Each camera wins the half of the wall nearer it; one was shot a stop darker."""
+
+    @staticmethod
+    def two_exposures():
+        vertices, triangles = tiled_wall()
+        left = camera_at((-0.8, 0.0, 1.0), (0.0, 2.0, 1.0), width=640, height=480, focal=500.0)
+        right = camera_at((0.8, 0.0, 1.0), (0.0, 2.0, 1.0), width=640, height=480, focal=500.0)
+        right = PhotoCamera(**{**right.__dict__, "frame_id": "frame-0002"})
+        photos = [flat_photo((0.35, 0.35, 0.35), 640, 480), flat_photo((0.7, 0.7, 0.7), 640, 480)]
+        return vertices, colour_the_scan(vertices, triangles, [left, right], photos)
+
+    def test_a_darker_photo_does_not_leave_a_darker_block_on_the_wall(self):
+        _, scan = self.two_exposures()
+        assert scan.seen.all()
+        assert scan.colours.std(axis=0).max() < 0.01
+
+    def test_each_vertex_still_names_the_photo_that_saw_it_best(self):
+        vertices, scan = self.two_exposures()
+        assert set(scan.sources[vertices[:, 0] < -0.1]) == {"frame-0001"}
+        assert set(scan.sources[vertices[:, 0] > 0.1]) == {"frame-0002"}
+
+    def test_hidden_photo_does_not_change_exposure_or_source(self):
+        vertices, triangles = tiled_wall()
+        first = camera_at((-0.8, 0.0, 1.0), (0.0, 2.0, 1.0), width=640, height=480, focal=500.0)
+        second = camera_at((0.8, 0.0, 1.0), (0.0, 2.0, 1.0), width=640, height=480, focal=500.0)
+        second = PhotoCamera(**{**second.__dict__, "frame_id": "frame-0002"})
+        scan = colour_the_scan(
+            vertices, triangles, [first, second],
+            [flat_photo((0.35, 0.35, 0.35), 640, 480), flat_photo((0.7, 0.7, 0.7), 640, 480)],
+            hidden=lambda camera: np.full(len(vertices), camera.frame_id == "frame-0002"),
+        )
+        assert scan.seen.all()
+        assert scan.colours == pytest.approx(np.full((len(vertices), 3), 0.35), abs=0.02)
+        assert set(scan.sources) == {"frame-0001"}
 
 
 class TestTidyingUp:

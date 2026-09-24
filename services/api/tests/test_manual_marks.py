@@ -12,8 +12,9 @@ from conftest import create_scan, drain, put_artifact, usdz_fixture
 
 
 def _stages():
-    from conftest import no_blender_stages
     from standardphysics_pipeline.discovery import DiscoveryResult
+
+    from conftest import no_blender_stages
 
     return no_blender_stages(
         label=lambda graph, **kwargs: graph,
@@ -51,6 +52,7 @@ def _mesh_bytes() -> bytes:
 
 def _jpeg(width: int = 64, height: int = 48) -> bytes:
     import io
+
     from PIL import Image
     buffer = io.BytesIO()
     Image.new("RGB", (width, height), (120, 130, 140)).save(buffer, format="JPEG")

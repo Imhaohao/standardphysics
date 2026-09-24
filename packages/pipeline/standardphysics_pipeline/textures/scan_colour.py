@@ -30,17 +30,28 @@ from standardphysics_contracts import SceneGraph
 
 from ..lidar import load_mesh
 from .camera import PhotoCamera, load_cameras
-from .project import bilinear, depth_buffer, to_linear, to_srgb
+from .project import (
+    MAX_EXPOSURE_POINTS,
+    TopViews,
+    bilinear,
+    depth_buffer,
+    exposure_gains,
+    to_linear,
+    to_srgb,
+)
 
 MAX_PHOTOS = 60
-"""Photos read for colour. Every vertex keeps only its best view, so more
-photos raise coverage and never blend; this is where the gain flattens."""
+"""Photos read for colour. More photos raise coverage; this is where the gain flattens."""
 MAX_PHOTO_EDGE = 1600
 
 SEEN_TOLERANCE = 0.05
 """How close to the nearest scanned surface a vertex must be to count as seen."""
 MIN_FACING = 0.20
 BORDER_FALLOFF_PIXELS = 24.0
+BLEND_SHARPNESS = 4.0
+"""Power applied to view weights before blending. A view twice as good as the
+next contributes sixteen times as much, so detail stays from the best photo and
+only near-ties, which is where the best photo changes, mix."""
 UNSEEN = np.array([0.62, 0.60, 0.58], dtype=np.float32)
 """What a vertex no photo reached is left as: the scan's own neutral grey."""
 
@@ -90,11 +101,18 @@ def _weights_from(
     normals: np.ndarray,
     buffer: np.ndarray,
     mask: np.ndarray | None = None,
+    slope_aware: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """How good this camera's view of each vertex is, and where to sample it.
 
     ``mask`` must already be resampled to the depth-buffer grid (static
     region = 1); samples outside the static region never paint.
+
+    With ``slope_aware``, the depth a point may sit behind the buffer grows
+    with how steeply the camera sees its surface. One buffer pixel covers a
+    patch of surface whose depth changes by its width times the slope, so on a
+    wall seen at an angle a fixed tolerance hid the far part of every pixel
+    behind its own near part, and the wall came out speckled.
     """
     columns, rows, depth = camera.project(vertices)
     toward = camera.position[None, :] - vertices
@@ -110,7 +128,7 @@ def _weights_from(
         np.clip(np.rint(rows * height / camera.height).astype(np.int64), 0, height - 1),
         np.clip(np.rint(columns * width / camera.width).astype(np.int64), 0, width - 1),
     ]
-    unhidden = ~np.isfinite(nearest) | (depth <= nearest + SEEN_TOLERANCE)
+    unhidden = ~np.isfinite(nearest) | (depth <= nearest + _seen_tolerance(camera, width, depth, facing, slope_aware))
     border = np.clip(
         np.minimum.reduce([columns, rows, camera.width - 1 - columns, camera.height - 1 - rows])
         / BORDER_FALLOFF_PIXELS, 0.0, 1.0,
@@ -123,6 +141,15 @@ def _weights_from(
         ]
         weight = np.where(support >= 0.5, weight, 0.0)
     return weight, columns, rows
+
+
+def _seen_tolerance(camera: PhotoCamera, buffer_width: int, depth: np.ndarray, facing: np.ndarray, slope_aware: bool):
+    """SEEN_TOLERANCE, widened by the depth change across a buffer pixel and a half when the surface is seen at a slant."""
+    if not slope_aware:
+        return SEEN_TOLERANCE
+    footprint = np.maximum(depth, 0.0) * camera.width / (camera.fx * buffer_width)
+    slope = np.sqrt(np.clip(1.0 - facing ** 2, 0.0, 1.0)) / np.maximum(facing, MIN_FACING)
+    return SEEN_TOLERANCE + 1.5 * footprint * slope
 
 
 def _small_static_mask(mask: np.ndarray, height: int, width: int) -> np.ndarray:
@@ -143,7 +170,13 @@ def colour_the_scan(
     masks: list[np.ndarray] | None = None,
     hidden: Callable[[PhotoCamera], np.ndarray] | None = None,
 ) -> ColouredScan:
-    """Every vertex given the colour of the photo that saw it best.
+    """Every vertex coloured from the photos that saw it best, evened out for exposure.
+
+    Photos disagree about brightness, so each gets a per-channel gain solved
+    from the vertices several of them saw, the same correction the atlas bake
+    applies. The top few views are then blended with weights sharpened so the
+    best view dominates wherever one clearly wins, and neighbours sourced from
+    different photos meet in a soft blend rather than a hard edge.
 
     ``masks``, when provided, are static-region masks (one per photo,
     full resolution); they are resampled to the depth-buffer grid and samples
@@ -156,32 +189,69 @@ def colour_the_scan(
     if masks is not None and len(masks) != len(images):
         raise ValueError("masks must have one entry per image")
     normals = vertex_normals(vertices, triangles)
+    views = [_ScanView(camera, photo, *_occlusion(camera, vertices, masks, index))
+             for index, (camera, photo) in enumerate(zip(cameras, images))]
+    hidden_masks = [hidden(view.camera) for view in views] if hidden is not None else None
+    gains = _exposure_gains(views, vertices, normals, hidden_masks)
+    blend = TopViews(len(vertices))
     best = np.zeros(len(vertices), dtype=np.float32)
-    colours = np.tile(UNSEEN, (len(vertices), 1))
-    source_ids = [None] * len(vertices)
-    for index, (camera, photo) in enumerate(zip(cameras, images)):
-        buffer = depth_buffer(camera, vertices)
-        image_mask = None
-        if masks is not None:
-            image_mask = _small_static_mask(masks[index], *buffer.shape)
-        weight, columns, rows = _weights_from(camera, vertices, normals, buffer, image_mask)
-        if hidden is not None:
-            weight = np.where(hidden(camera), 0.0, weight)
-        better = np.flatnonzero(weight > best)
-        if not len(better):
+    best_view = np.full(len(vertices), -1, dtype=np.int64)
+    for index, (view, gain) in enumerate(zip(views, gains)):
+        weight, columns, rows = view.weights(vertices, normals)
+        if hidden_masks is not None:
+            weight = np.where(hidden_masks[index], 0.0, weight)
+        seen = np.flatnonzero(weight > 0)
+        if not len(seen):
             continue
-        sampled = bilinear(photo, columns[better], rows[better])
-        colours[better] = to_srgb(to_linear(sampled.astype(np.float32)))
+        colours = np.clip(view.linear(columns[seen], rows[seen]) * gain, 0.0, 1.0)
+        blend.add(seen, weight[seen] ** BLEND_SHARPNESS, colours)
+        better = seen[weight[seen] > best[seen]]
         best[better] = weight[better]
-        for vertex in better:
-            source_ids[vertex] = camera.frame_id
-    return ColouredScan(
-        vertices,
-        triangles,
-        np.clip(colours, 0.0, 1.0),
-        best > 0,
-        sources=np.asarray(source_ids, dtype=object),
-    )
+        best_view[better] = index
+    painted = best > 0
+    colours = np.tile(UNSEEN, (len(vertices), 1))
+    colours[painted] = to_srgb(blend.resolve()[0][painted])
+    frame_ids = np.asarray([camera.frame_id for camera in cameras] + [None], dtype=object)
+    return ColouredScan(vertices, triangles, np.clip(colours, 0.0, 1.0), painted, sources=frame_ids[best_view])
+
+
+@dataclass(frozen=True)
+class _ScanView:
+    camera: PhotoCamera
+    photo: np.ndarray
+    buffer: np.ndarray
+    mask: np.ndarray | None
+
+    def weights(self, vertices: np.ndarray, normals: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        return _weights_from(self.camera, vertices, normals, self.buffer, self.mask)
+
+    def linear(self, columns: np.ndarray, rows: np.ndarray) -> np.ndarray:
+        return to_linear(bilinear(self.photo, columns, rows).astype(np.float32))
+
+
+def _occlusion(camera, vertices, masks, index) -> tuple[np.ndarray, np.ndarray | None]:
+    buffer = depth_buffer(camera, vertices)
+    if masks is None:
+        return buffer, None
+    return buffer, _small_static_mask(masks[index], *buffer.shape)
+
+
+def _exposure_gains(
+    views: list[_ScanView],
+    vertices: np.ndarray,
+    normals: np.ndarray,
+    hidden_masks: list[np.ndarray] | None = None,
+) -> np.ndarray:
+    """Per-photo linear gains from an even sample of the vertices several photos saw."""
+    picked = np.unique(np.linspace(0, len(vertices) - 1, min(len(vertices), MAX_EXPOSURE_POINTS)).astype(np.int64))
+    observations = []
+    for index, view in enumerate(views):
+        weight, columns, rows = view.weights(vertices[picked], normals[picked])
+        if hidden_masks is not None:
+            weight = np.where(hidden_masks[index][picked], 0.0, weight)
+        seen = np.flatnonzero(weight > 0)
+        observations.append((seen, view.linear(columns[seen], rows[seen])))
+    return exposure_gains(observations, len(views), len(picked))
 
 
 def scan_geometry(mesh_path: pathlib.Path, capture_to_room) -> tuple[np.ndarray, np.ndarray]:
@@ -223,7 +293,13 @@ def unused_vertices_removed(scan: ColouredScan) -> ColouredScan:
 
 
 def write_scan_glb(scan: ColouredScan, out_path: pathlib.Path, max_triangles: int | None = None) -> pathlib.Path:
-    """Hand the coloured scan to Blender, which writes the glTF the viewer reads."""
+    """Hand the coloured scan to Blender, which writes the glTF the viewer reads.
+
+    glTF vertex colours are linear, and the viewer encodes them for the screen.
+    The scan's colours are the photographs' own sRGB values, so they are made
+    linear on the way out; stored as they were, every colour was brightened a
+    second time and the whole room looked washed out.
+    """
     import tempfile
 
     from ..blender import _run
@@ -235,7 +311,7 @@ def write_scan_glb(scan: ColouredScan, out_path: pathlib.Path, max_triangles: in
             archive,
             vertices=scan.vertices.astype(np.float32),
             triangles=scan.triangles.astype(np.int32),
-            colours=scan.colours.astype(np.float32),
+            colours=to_linear(scan.colours).astype(np.float32),
         )
         command = ["--scan", str(archive), "--out", str(out_path)]
         if max_triangles is not None:
@@ -309,7 +385,7 @@ def _display_geometry(
         vertices=patched.vertices,
         triangles=patched.triangles,
         inferred=np.concatenate([added_so_far, np.ones(extra, dtype=bool)]),
-        sheet_patches=patched.inferred,
+        sheet_patches=patched.sheet_patches,
         mirror_source=np.concatenate([completed.source, np.full(extra, -1, dtype=np.int64)]),
     )
 
@@ -372,6 +448,34 @@ def coloured_scan(
     return unused_vertices_removed(scan), cameras
 
 
+def shown_scan(
+    mesh_path: pathlib.Path,
+    poses_path: pathlib.Path,
+    frame_paths: dict[str, pathlib.Path],
+    graph: SceneGraph,
+    people: dict | None = None,
+) -> tuple[ColouredScan, list[PhotoCamera]]:
+    """The scan made fit to show, with no photograph on it yet, and every camera that took a stored photo.
+
+    People out, holes closed and patched, exactly as `coloured_scan` prepares it,
+    without painting its vertices from a sample of the photos: the atlas paints
+    from every photo, and its own photographed texels are the better fallback.
+    """
+    cameras = [
+        camera for camera in load_cameras(poses_path, frame_paths, graph.capture_to_room)
+        if frame_paths.get(camera.frame_id, pathlib.Path()).is_file()
+    ]
+    if not cameras:
+        raise ValueError("no stored photo has a usable camera pose")
+    vertices, triangles = scan_geometry(mesh_path, graph.capture_to_room)
+    shown = _display_geometry(vertices, triangles, graph, cameras, people)
+    blank = ColouredScan(
+        shown.vertices, shown.triangles, np.tile(UNSEEN, (len(shown.vertices), 1)), np.zeros(len(shown.vertices), bool),
+        inferred=shown.inferred, sheet_patches=shown.sheet_patches, mirror_source=shown.mirror_source,
+    )
+    return unused_vertices_removed(blank), cameras
+
+
 def paint_the_scan(
     mesh_path: pathlib.Path,
     poses_path: pathlib.Path,
@@ -382,6 +486,11 @@ def paint_the_scan(
     people: dict | None = None,
 ) -> ScanPaint:
     """The captured surface, coloured from the photos, as a glTF the viewer can show.
+
+    The surface is thinned, unwrapped and baked from every photo into an atlas,
+    which is what makes a shelf of books read as books rather than a smear. A
+    texel no photo reached takes the nearest photographed colour, and failing
+    that the room's generated material.
 
     People found by discovery (`people`, detections per frame id) are taken out
     and the holes they leave in furniture closed. Holes the LiDAR left in walls
@@ -396,12 +505,11 @@ def paint_the_scan(
     """
     import time
 
+    from .scan_atlas import bake_scan_atlas
     from .surface_materials import room_materials, unseen_surfaces_filled
 
     started = time.monotonic()
-    scan, cameras = coloured_scan(
-        mesh_path, poses_path, frame_paths, graph.capture_to_room, patch_holes_from=graph, people=people,
-    )
+    scan, every_photo = shown_scan(mesh_path, poses_path, frame_paths, graph, people=people)
     filled = with_mirrored_colours(unseen_surfaces_filled(scan, graph, room_materials(materials_dir)))
-    write_scan_glb(filled, out_path)
-    return ScanPaint(out_path, scan.painted_fraction, len(cameras), time.monotonic() - started)
+    baked = bake_scan_atlas(filled, graph, every_photo, frame_paths, out_path, people=people)
+    return ScanPaint(out_path, baked.painted_fraction, baked.photos_used, time.monotonic() - started)

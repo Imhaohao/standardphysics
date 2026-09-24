@@ -17,24 +17,20 @@ import io
 import json
 import math
 import pathlib
+
 import pytest
 from PIL import Image
-
-from standardphysics_pipeline.discovery.cache import DetectionCache, CACHE_VERSION
+from standardphysics_pipeline.discovery.cache import DetectionCache
 from standardphysics_pipeline.discovery.detect import (
     Detection,
     DetectionAuthError,
-    DetectionError,
     DetectionSchemaError,
-    DetectionTransientError,
     EncodedFrame,
+    _detections_from,
     detect_objects,
     extract_padded_crop,
     generate_tiles,
     map_crop_box_to_sensor,
-    map_crop_point_to_sensor,
-    _objects_in,
-    _detections_from,
 )
 
 

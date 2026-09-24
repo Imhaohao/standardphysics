@@ -7,12 +7,11 @@ uses, and the mark's image_url names that crop.
 """
 
 import io
-import json
 
 from PIL import Image
+from test_manual_marks import _mesh_bytes, _ready_scan, _room_payload, _stages
 
 from conftest import create_scan, drain, put_artifact, usdz_fixture
-from test_manual_marks import _mesh_bytes, _ready_scan, _stages, _room_payload
 
 
 def _ready_without_frames(make_client):

@@ -25,6 +25,8 @@ from standardphysics_contracts import (
     SceneNode,
     bounds_the_room,
     graph_hash,
+    is_fixed_to_a_surface,
+    lies_flat,
     stands_upright,
 )
 
@@ -285,7 +287,9 @@ def _scope_block(scope) -> dict[str, Any]:
     }
 
 
-def _assessment_block(assessment: Assessment | None, current_hash: str, findings: list[dict[str, Any]]) -> dict[str, Any]:
+def _assessment_block(
+    assessment: Assessment | None, current_hash: str, findings: list[dict[str, Any]]
+) -> dict[str, Any]:
     """The assessment that belongs to this graph revision, never an older one.
 
     A stale assessment is named stale and excluded rather than silently attached
@@ -347,7 +351,7 @@ def evidence_ledger(
             entry["display_reconstruction"] = reconstruction
         if node.attachment is not None:
             entry["attachment"] = node.attachment.model_dump(mode="json")
-        if node.kind in ("outlet", "candidate_outlet") or node.attachment is not None:
+        if is_fixed_to_a_surface(node):
             entry["uncertainty"] = {
                 "power_state": "unknown",
                 "socket_condition": "unknown",
@@ -428,6 +432,31 @@ def _path(points: list[tuple[float, float]], project) -> str:
     return " ".join(commands) + " Z"
 
 
+def _opening_masks(
+    nodes: list[Any], opening_cuts: dict[Any, str], width: float, height: float
+) -> list[str]:
+    """One mask per wall that something is cut through.
+
+    The four-pixel mask stroke is display-only. It makes a zero-thickness
+    measured wall and portal read as an opening without changing the geometry
+    the ledger reports.
+    """
+    masks = []
+    for wall in (node for node in nodes if _a_standing_surface(node)):
+        cuts = [opening_cuts[node.id] for node in nodes if node.parent_id == wall.id and node.id in opening_cuts]
+        if not cuts:
+            continue
+        cut_paths = "".join(
+            f'<path d={quoteattr(path)} fill="#000" stroke="#000" stroke-width="4"/>' for path in cuts
+        )
+        masks.append(
+            f'<mask id={quoteattr("cut-" + str(wall.id))} maskUnits="userSpaceOnUse" x="0" y="0" '
+            f'width={quoteattr(_svg_number(width))} height={quoteattr(_svg_number(height))}>'
+            f'<rect width="100%" height="100%" fill="#fff"/>{cut_paths}</mask>'
+        )
+    return masks
+
+
 def architecture_svg(graph: SceneGraph, ledger: dict[str, Any]) -> str:
     """Make a scalable plan whose one SVG unit remains tied to measured metres."""
     display = _display_geometry(graph)
@@ -450,21 +479,7 @@ def architecture_svg(graph: SceneGraph, ledger: dict[str, Any]) -> str:
         node.id: _path([tuple(point) for point in display[node.id].get("wall_opening_cut", [])], project)
         for node in nodes if "wall_opening_cut" in display[node.id]
     }
-    masks = []
-    for wall in (node for node in nodes if _a_standing_surface(node)):
-        cuts = [opening_cuts[node.id] for node in nodes if node.parent_id == wall.id and node.id in opening_cuts]
-        if not cuts:
-            continue
-        # The four-pixel mask stroke is display-only. It makes a zero-thickness
-        # measured wall and portal read as an opening without changing ledger geometry.
-        cut_paths = "".join(
-            f'<path d={quoteattr(path)} fill="#000" stroke="#000" stroke-width="4"/>' for path in cuts
-        )
-        masks.append(
-            f'<mask id={quoteattr("cut-" + str(wall.id))} maskUnits="userSpaceOnUse" x="0" y="0" '
-            f'width={quoteattr(_svg_number(width))} height={quoteattr(_svg_number(height))}>'
-            f'<rect width="100%" height="100%" fill="#fff"/>{cut_paths}</mask>'
-        )
+    masks = _opening_masks(nodes, opening_cuts, width, height)
     wall_paths = []
     other_paths = []
     labels = []
@@ -485,7 +500,7 @@ def architecture_svg(graph: SceneGraph, ledger: dict[str, Any]) -> str:
                 f'<path class="opening" data-node-id={quoteattr(str(node.id))} '
                 f'd={quoteattr(paths[node.id])}/>'
             )
-        elif node.kind in ("outlet", "candidate_outlet"):
+        elif is_fixed_to_a_surface(node):
             center = node.transform.position
             x, y = project((center.x, center.y))
             other_paths.append(
@@ -535,21 +550,24 @@ def architecture_svg(graph: SceneGraph, ledger: dict[str, Any]) -> str:
     )
 
 
-def _local_floor_height(node: SceneNode, floors: list[SceneNode]) -> float:
-    if not floors:
-        return round(node.transform.m[11], 4)
-    ox, oy, oz = node.transform.m[3], node.transform.m[7], node.transform.m[11]
-    best_floor = None
-    min_dist_sq = float("inf")
-    for floor in floors:
-        fx, fy = floor.transform.m[3], floor.transform.m[7]
-        dist_sq = (ox - fx) ** 2 + (oy - fy) ** 2
-        if dist_sq < min_dist_sq:
-            min_dist_sq = dist_sq
-            best_floor = floor
-    if best_floor is not None:
-        return round(max(0.0, oz - best_floor.transform.m[11]), 4)
-    return round(oz, 4)
+def _local_floor_height(node: SceneNode, flat_sheets: list[SceneNode]) -> float:
+    """How far a fitting sits above the floor under it.
+
+    A floor is a flat sheet below the thing being measured. Asking that rather
+    than asking for the region named "floor" keeps a ceiling from being chosen
+    as the reference and reporting a wall outlet as sitting two metres down.
+    """
+    height = node.transform.m[11]
+    below = [sheet for sheet in flat_sheets if sheet.transform.m[11] <= height]
+    if not below:
+        return round(height, 4)
+    def across(sheet: SceneNode) -> float:
+        return (node.transform.m[3] - sheet.transform.m[3]) ** 2 + (
+            node.transform.m[7] - sheet.transform.m[7]
+        ) ** 2
+
+    underfoot = min(below, key=across)
+    return round(max(0.0, height - underfoot.transform.m[11]), 4)
 
 
 def build_architecture_zip(
@@ -581,10 +599,10 @@ def build_architecture_zip(
             json.dumps(ledger, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
         ).encode("utf-8"),
     }
-    floors = [n for n in graph.nodes if n.kind == "floor"]
+    flat_sheets = [node for node in graph.nodes if lies_flat(node)]
     outlets = [
         node for node in sorted(graph.nodes, key=lambda n: str(n.id))
-        if node.kind in ("outlet", "candidate_outlet") or node.attachment is not None
+        if is_fixed_to_a_surface(node)
     ]
     if outlets:
         current_hash = graph_hash(graph)
@@ -599,7 +617,7 @@ def build_architecture_zip(
                     "id": str(node.id),
                     "label": node.label,
                     "kind": node.kind,
-                    "local_height_m": _local_floor_height(node, floors),
+                    "local_height_m": _local_floor_height(node, flat_sheets),
                     "review_status": node.attachment.review_status if node.attachment else "detected",
                     "crop_reference": (
                         node.attachment.observations[0].image_url

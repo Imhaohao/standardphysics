@@ -38,6 +38,7 @@ from .routes import (
     clearance_map,
     longest_run_below,
     path_clearances,
+    runs_below,
     straddling_blockers,
     what_sealed_the_route,
     widest_path,
@@ -50,6 +51,33 @@ COUNTER_CLEAR_DEPTH = to_meters(30.0)
 """ADA 2010 305.3 clear floor space, laid out for a parallel approach with the
 48 in side running along the counter."""
 MAX_CACHED_ROUTE_PATHS = 5_000
+
+MAX_SQUARE = 3.0
+"""Metres of side past which a clear square stops being measured."""
+
+SQUARE_SEARCH_STEPS = 12
+"""Halvings of `MAX_SQUARE`, which leaves under a millimetre of uncertainty,
+well inside the grid's own 25 mm."""
+
+
+def _square_is_clear(grid: Grid, at: Vec3, heading: tuple[float, float], side: float) -> bool:
+    """Whether a `side` metre square centred on `at` and turned to `heading`
+    covers no occupied cell, and stays on the grid."""
+    half = side / 2
+    reach = half * 2**0.5 + grid.cell_size
+    row0, col0 = grid.to_cell(at.x - reach, at.y - reach)
+    row1, col1 = grid.to_cell(at.x + reach, at.y + reach)
+    if not (grid.contains(row0, col0) and grid.contains(row1, col1)):
+        return False
+    rows = np.arange(row0, row1 + 1)
+    cols = np.arange(col0, col1 + 1)
+    xs = grid.origin_x + (cols + 0.5) * grid.cell_size - at.x
+    ys = grid.origin_y + (rows + 0.5) * grid.cell_size - at.y
+    world_x, world_y = np.meshgrid(xs, ys)
+    along = world_x * heading[0] + world_y * heading[1]
+    across = -world_x * heading[1] + world_y * heading[0]
+    inside = (np.abs(along) <= half) & (np.abs(across) <= half)
+    return not grid.occupied[row0 : row1 + 1, col0 : col1 + 1][inside].any()
 
 
 def _signature(graph: SceneGraph) -> tuple:
@@ -112,28 +140,35 @@ class PipelineMeasurements:
             self._cache = {key: (grid, clearance_map(grid))}
         return self._cache[key]
 
-    def _widest(self, graph, grid, clearance, start, goal) -> PathResult:
-        key = (_signature(graph), start, goal)
+    def _widest(self, graph, grid, clearance, start, goal, anchors) -> PathResult:
+        key = (_signature(graph), start, goal, anchors)
         if key not in self._paths:
-            self._paths[key] = widest_path(grid, clearance, start, goal)
+            self._paths[key] = widest_path(grid, clearance, start, goal, anchors=anchors)
             if len(self._paths) > MAX_CACHED_ROUTE_PATHS:
                 self._paths.popitem(last=False)
         self._paths.move_to_end(key)
         return self._paths[key]
 
+    def _leg(
+        self, graph: SceneGraph, scenario: Scenario, leg_index: int
+    ) -> tuple[Grid, PathResult]:
+        """The route for one leg, and the grid it was found on."""
+        grid, clearance = self._field(graph)
+        start, goal = scenario.stops[leg_index], scenario.stops[leg_index + 1]
+        result = self._widest(
+            graph, grid, clearance,
+            grid.to_cell(start.position.x, start.position.y),
+            grid.to_cell(goal.position.x, goal.position.y),
+            (start.anchor_node_id, goal.anchor_node_id),
+        )
+        return grid, result
+
     def route_clear_width(
         self, graph: SceneGraph, scenario: Scenario, leg_index: int
     ) -> WidthResult:
-        grid, clearance = self._field(graph)
+        grid, result = self._leg(graph, scenario, leg_index)
         start = scenario.stops[leg_index].position
         goal = scenario.stops[leg_index + 1].position
-
-        result = self._widest(
-            graph, grid,
-            clearance,
-            grid.to_cell(start.x, start.y),
-            grid.to_cell(goal.x, goal.y),
-        )
         if not result.reachable or result.pinch_cell is None:
             return WidthResult(
                 inches=0.0,
@@ -238,16 +273,31 @@ class PipelineMeasurements:
         threshold from the rule pack so the number a person verified stays the
         only copy.
         """
-        grid, clearance = self._field(graph)
-        start = scenario.stops[leg_index].position
-        goal = scenario.stops[leg_index + 1].position
-        result = self._widest(
-            graph, grid, clearance, grid.to_cell(start.x, start.y), grid.to_cell(goal.x, goal.y)
-        )
+        grid, result = self._leg(graph, scenario, leg_index)
         if not result.reachable:
             return 0.0
         return longest_run_below(
-            grid, clearance, result.path, threshold_inches, exempt=result.exempt
+            grid, result.clearance, result.path, threshold_inches, exempt=result.exempt
+        )
+
+    def route_runs_below(
+        self,
+        graph: SceneGraph,
+        scenario: Scenario,
+        leg_index: int,
+        threshold_inches: float,
+    ) -> list[tuple[float, float]]:
+        """Every stretch of this leg narrower than the threshold, as inches
+        along the leg where each starts and ends.
+
+        403.5.1's exception also asks that narrow stretches be separated by
+        48 inches of full width route, which the longest run cannot answer.
+        """
+        grid, result = self._leg(graph, scenario, leg_index)
+        if not result.reachable:
+            return []
+        return runs_below(
+            grid, result.clearance, result.path, threshold_inches, exempt=result.exempt
         )
 
     def route_path_clearances(
@@ -263,16 +313,11 @@ class PipelineMeasurements:
         wanders and its clearance means nothing. Feed the list straight to
         `Annotation.point_inches`.
         """
-        grid, clearance = self._field(graph)
-        start = scenario.stops[leg_index].position
-        goal = scenario.stops[leg_index + 1].position
-        result = self._widest(
-            graph, grid, clearance, grid.to_cell(start.x, start.y), grid.to_cell(goal.x, goal.y)
-        )
+        grid, result = self._leg(graph, scenario, leg_index)
         if not result.reachable:
             return []
         return path_clearances(
-            grid, clearance, result.path, exempt=result.exempt
+            grid, result.clearance, result.path, exempt=result.exempt
         )
 
     def turn_detail(
@@ -294,12 +339,11 @@ class PipelineMeasurements:
         rather ask the owner about a turn we could not measure than say nothing
         about it.
         """
-        grid, clearance = self._field(graph)
-        route = self.route_clear_width(graph, scenario, leg_index)
-        if not route.reachable or not route.path:
+        grid, result = self._leg(graph, scenario, leg_index)
+        if not result.reachable or not result.path:
             return None
 
-        turn = measure_turn(graph, grid, clearance, route.path)
+        turn = measure_turn(graph, grid, result.clearance, world_path(grid, result.path))
         if turn is None or (require_measured and not turn.fully_measured):
             return None
         return turn
@@ -319,6 +363,35 @@ class PipelineMeasurements:
             center=at,
             fits=diameter >= 60.0,
         )
+
+    def largest_square(
+        self, graph: SceneGraph, at: Vec3, heading: tuple[float, float]
+    ) -> ClearFloorResult:
+        """The largest clear square centred on `at`, two of its sides along
+        `heading`.
+
+        403.5.3's passing space is a 60 by 60 inch square, and the widest clear
+        circle at a point is not that question. A 60 inch circle cannot hold the
+        square, whose corners sit 42 inches from its centre, and a 60 inch wide
+        aisle that holds the square has only a 60 inch circle in it. Aligning
+        the square with the route is how a passing space sits in an aisle.
+
+        Saturates at `MAX_SQUARE`, past which the answer describes the room
+        rather than the space. `fits` says the reported square is clear, so the
+        size is compared against the rule pack's number by the caller.
+        """
+        grid, _ = self._field(graph)
+        if not grid.contains(*grid.to_cell(at.x, at.y)):
+            return ClearFloorResult(inches_wide=0.0, inches_deep=0.0, center=at, fits=False)
+        low, high = 0.0, MAX_SQUARE
+        for _ in range(SQUARE_SEARCH_STEPS):
+            middle = (low + high) / 2
+            if _square_is_clear(grid, at, heading, middle):
+                low = middle
+            else:
+                high = middle
+        side = to_inches(low)
+        return ClearFloorResult(inches_wide=side, inches_deep=side, center=at, fits=low > 0)
 
     def door_clear_width(self, graph: SceneGraph, door_id: UUID) -> WidthResult:
         """The doorway's opening, flagged as something a scan cannot settle.

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Prepares a fresh Ubuntu Droplet to run Standard Physics. Run it as root:
 #
-#   VOLUME_NAME=standardphysics_scans ./setup.sh
+#   VOLUME_NAME=standardphysics-scans ./setup.sh
 #
 # It installs Docker, mounts the Block Storage volume, gives the box swap so a
 # 4 GB Droplet can build the workspace, and closes every port but SSH and the
@@ -12,7 +12,9 @@
 # thing standing between the two.
 set -euo pipefail
 
-VOLUME_NAME="${VOLUME_NAME:-standardphysics_scans}"
+# DigitalOcean accepts lowercase letters, numbers and hyphens in a volume
+# name, and no underscores. The name goes into the device path verbatim.
+VOLUME_NAME="${VOLUME_NAME:-standardphysics-scans}"
 DEVICE="/dev/disk/by-id/scsi-0DO_Volume_${VOLUME_NAME}"
 MOUNT_POINT="/mnt/${VOLUME_NAME}"
 SWAPFILE="/swapfile"

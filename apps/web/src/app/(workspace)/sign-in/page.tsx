@@ -3,7 +3,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { SheetFrame } from "@/components/blueprint/SheetFrame";
-import { SHEET_GRID_CLASS, SheetField } from "@/components/blueprint/SheetField";
 import { currentSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -27,10 +26,6 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
               Walk your shop with an iPhone. We measure every aisle, doorway and counter against the accessibility rules
               that apply to it, and show you what to move when something is too tight.
             </p>
-            <dl className={`${SHEET_GRID_CLASS} max-w-lg grid-cols-1 border border-ink *:bg-sheet sm:grid-cols-2`}>
-              <SheetField label="Measured against">ADA 2010 Standards</SheetField>
-              <SheetField label="You need">An iPhone with LiDAR</SheetField>
-            </dl>
             <p className="text-sm text-ink-muted">
               <Link href="/privacy" className="underline decoration-rule underline-offset-2">
                 What a scan of your shop contains, and how to delete it

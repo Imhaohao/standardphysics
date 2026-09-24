@@ -26,6 +26,21 @@ def _entrance_nodes(graph: SceneGraph) -> list[SceneNode]:
     return [door] if door else []
 
 
+def _inside_door_nodes(graph: SceneGraph) -> list[SceneNode]:
+    """Doors other than the one customers come in through.
+
+    404.2.9 limits the push needed to open interior hinged doors and sliding
+    or folding doors. It sets no limit for exterior hinged doors, because the
+    force that keeps one shut against wind usually exceeds 5 pounds, so the
+    front door is the one door this question must not name. When the scan
+    cannot say which door is the front one, it names none of them.
+    """
+    entrance = roles.entrance(graph)
+    if entrance is None:
+        return []
+    return [door for door in roles.doors(graph) if door.id != entrance.id]
+
+
 def _floor_nodes(graph: SceneGraph) -> list[SceneNode]:
     return roles.floors(graph)[:1]
 
@@ -37,7 +52,7 @@ def _no_nodes(graph: SceneGraph) -> list[SceneNode]:
 ASK_ABOUT: tuple[tuple[str, NodeFinder], ...] = (
     ("entrance_threshold", _entrance_nodes),
     ("door_hardware", _entrance_nodes),
-    ("door_opening_force", _entrance_nodes),
+    ("door_opening_force", _inside_door_nodes),
     ("floor_surface", _floor_nodes),
     ("restroom_turning_space", _no_nodes),
     ("reach_range", _no_nodes),

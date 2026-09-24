@@ -15,6 +15,99 @@ import pathlib
 import sys
 from typing import Any
 
+PROVISIONAL_GATES = ["G0", "G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G10"]
+
+
+def _check_case(case: dict, receipts: dict, required_receipt_fields: list) -> tuple[str, list[str]]:
+    """One case's standing, and everything wrong with its receipt."""
+    case_id = case["id"]
+    if case_id not in receipts:
+        return "missing", [
+            f"Case {case_id} (Gate {case['gate']}) has no receipt in "
+            "PROGRESS_MOFFETT_OUTLET_REPAIR.json"
+        ]
+
+    receipt = receipts[case_id]
+    errors = [
+        f"Case {case_id} receipt is missing required field: {field}"
+        for field in required_receipt_fields
+        if field not in receipt
+    ]
+
+    status = receipt.get("exit_status_or_assertion_status")
+    if status in ("skipped", "SKIP"):
+        return "skipped", [*errors, f"Case {case_id} was skipped"]
+    if status not in (0, "passed", "PASS", "ok", True):
+        return "failed", [*errors, f"Case {case_id} failed with status: {status}"]
+
+    evidence = receipt.get("evidence_kind")
+    if case["kind"] == "real_capture" and evidence != "real_capture":
+        return "invalid_evidence", [
+            *errors,
+            f"Case {case_id} requires real_capture evidence, but got {evidence}",
+        ]
+    return "passed", errors
+
+
+def _check_cases(cases: list, receipts: dict, required_receipt_fields: list):
+    case_status: dict[str, str] = {}
+    errors: list[str] = []
+    for case in cases:
+        status, case_errors = _check_case(case, receipts, required_receipt_fields)
+        case_status[case["id"]] = status
+        errors.extend(case_errors)
+    return case_status, errors
+
+
+def _check_mutations(mutations: list, mutation_receipts: dict):
+    """A mutation that survives is a test that was not watching."""
+    mutation_status: dict[str, str] = {}
+    errors: list[str] = []
+    for mutation in mutations:
+        mutation_id = mutation["id"]
+        receipt = mutation_receipts.get(mutation_id)
+        if receipt is None:
+            mutation_status[mutation_id] = "missing"
+            errors.append(f"Mutation {mutation_id} has no receipt")
+        elif receipt.get("assertion_failed", False) or receipt.get("status") == "killed":
+            mutation_status[mutation_id] = "killed"
+        else:
+            mutation_status[mutation_id] = "survived"
+            errors.append(
+                f"Mutation {mutation_id} survived! (did not trigger expected behavioral failure)"
+            )
+    return mutation_status, errors
+
+
+def _gate_results(required_gate_ids: list, cases: list, case_status: dict,
+                  mutations: list, mutation_status: dict) -> dict[str, str]:
+    """A gate passes when it owns cases and every one of them passed.
+
+    G8 additionally requires every mutation to have been killed, because the
+    gate is about the tests noticing, not about them running.
+    """
+    results: dict[str, str] = {}
+    for gate_id in required_gate_ids:
+        gate_cases = [case for case in cases if case["gate"] == gate_id]
+        passed = bool(gate_cases) and all(
+            case_status.get(case["id"]) == "passed" for case in gate_cases
+        )
+        if gate_id == "G8":
+            passed = passed and all(
+                mutation_status.get(mutation["id"]) == "killed" for mutation in mutations
+            )
+        results[gate_id] = "passed" if passed else "open"
+    return results
+
+
+def _terminal_status(gate_results: dict[str, str], required_gate_ids: list) -> str:
+    if all(gate_results.get(gate) == "passed" for gate in required_gate_ids):
+        return "verified_web_feature"
+    provisional = all(gate_results.get(gate) == "passed" for gate in PROVISIONAL_GATES)
+    if provisional and gate_results.get("G9") != "passed":
+        return "implementation_ready_real_acceptance_blocked"
+    return "incomplete"
+
 
 def verify_acceptance(root_dir: pathlib.Path) -> dict[str, Any]:
     contract_path = root_dir / "docs/outlet-repair-acceptance.json"
@@ -31,103 +124,29 @@ def verify_acceptance(root_dir: pathlib.Path) -> dict[str, Any]:
         progress = json.load(f)
 
     required_gate_ids = contract["required_gate_ids"]
-    required_receipt_fields = contract["required_receipt_fields"]
     cases = contract["cases"]
     mutations = contract["mutations"]
 
-    receipts = progress.get("receipts", {})
-    mutation_receipts = progress.get("mutation_receipts", {})
+    case_status, case_errors = _check_cases(
+        cases, progress.get("receipts", {}), contract["required_receipt_fields"]
+    )
+    mutation_status, mutation_errors = _check_mutations(
+        mutations, progress.get("mutation_receipts", {})
+    )
+    errors = [*case_errors, *mutation_errors]
 
-    errors: list[str] = []
-    case_status: dict[str, str] = {}
-
-    # 1. Validate each case
-    for case in cases:
-        case_id = case["id"]
-        gate_id = case["gate"]
-        kind = case["kind"]
-
-        if case_id not in receipts:
-            case_status[case_id] = "missing"
-            errors.append(f"Case {case_id} (Gate {gate_id}) has no receipt in PROGRESS_MOFFETT_OUTLET_REPAIR.json")
-            continue
-
-        receipt = receipts[case_id]
-
-        # Check required fields
-        for field in required_receipt_fields:
-            if field not in receipt:
-                errors.append(f"Case {case_id} receipt is missing required field: {field}")
-
-        # Check exit status / assertion status
-        status = receipt.get("exit_status_or_assertion_status")
-        if status in ("skipped", "SKIP"):
-            errors.append(f"Case {case_id} was skipped")
-            case_status[case_id] = "skipped"
-            continue
-        if status not in (0, "passed", "PASS", "ok", True):
-            errors.append(f"Case {case_id} failed with status: {status}")
-            case_status[case_id] = "failed"
-            continue
-
-        # Check synthetic vs real_capture constraint
-        if kind == "real_capture":
-            if receipt.get("evidence_kind") != "real_capture":
-                errors.append(f"Case {case_id} requires real_capture evidence, but got {receipt.get('evidence_kind')}")
-                case_status[case_id] = "invalid_evidence"
-                continue
-
-        case_status[case_id] = "passed"
-
-    # 2. Validate mutations
-    mutation_status: dict[str, str] = {}
-    for m in mutations:
-        m_id = m["id"]
-        if m_id not in mutation_receipts:
-            mutation_status[m_id] = "missing"
-            errors.append(f"Mutation {m_id} has no receipt")
-            continue
-        m_rec = mutation_receipts[m_id]
-        if not (m_rec.get("assertion_failed", False) or m_rec.get("status") == "killed"):
-            errors.append(f"Mutation {m_id} survived! (did not trigger expected behavioral failure)")
-            mutation_status[m_id] = "survived"
-            continue
-        mutation_status[m_id] = "killed"
-
-    # 3. Evaluate gates
-    passed_gates: list[str] = []
-    gate_results: dict[str, str] = {}
-    for gate_id in required_gate_ids:
-        gate_cases = [c for c in cases if c["gate"] == gate_id]
-        all_passed = all(case_status.get(c["id"]) == "passed" for c in gate_cases)
-        if gate_id == "G8":
-            all_mutations_killed = all(mutation_status.get(m["id"]) == "killed" for m in mutations)
-            all_passed = all_passed and all_mutations_killed
-
-        if all_passed and gate_cases:
-            passed_gates.append(gate_id)
-            gate_results[gate_id] = "passed"
-        else:
-            gate_results[gate_id] = "open"
-
-    total_gates = len(required_gate_ids)
-    progress_pct = 100.0 * len(passed_gates) / total_gates
-
-    # Determine terminal status
-    if len(passed_gates) == total_gates:
-        terminal_status = "verified_web_feature"
-    elif all(gate_results.get(g) == "passed" for g in ["G0", "G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G10"]) and gate_results.get("G9") != "passed":
-        terminal_status = "implementation_ready_real_acceptance_blocked"
-    else:
-        terminal_status = "incomplete"
+    gate_results = _gate_results(
+        required_gate_ids, cases, case_status, mutations, mutation_status
+    )
+    passed_gates = [gate for gate in required_gate_ids if gate_results[gate] == "passed"]
 
     return {
         "ok": len(errors) == 0,
         "errors": errors,
-        "progress_pct": progress_pct,
+        "progress_pct": 100.0 * len(passed_gates) / len(required_gate_ids),
         "passed_gates": passed_gates,
         "gate_results": gate_results,
-        "terminal_status": terminal_status,
+        "terminal_status": _terminal_status(gate_results, required_gate_ids),
         "case_status": case_status,
         "mutation_status": mutation_status,
     }

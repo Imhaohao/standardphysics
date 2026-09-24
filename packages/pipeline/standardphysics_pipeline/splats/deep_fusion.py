@@ -11,7 +11,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from standardphysics_pipeline.textures.camera import PhotoCamera
-from .feature_extractor import ImageFeatureExtractor, PointFeatureEncoder
+
+from .feature_extractor import ImageFeatureExtractor
 
 
 class InverseAug:

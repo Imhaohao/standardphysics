@@ -142,7 +142,6 @@ struct CoverageEngine {
     private struct ObservationState {
         var observedSamples: Set<Int> = []
         var viewpoints: [SIMD3<Float>] = []
-        var cameras: [CameraObservation] = []
         var geometry: GeometryFingerprint?
     }
 
@@ -205,6 +204,17 @@ struct CoverageEngine {
 
     private let gridSize: Int
     private var observations: [UUID: ObservationState] = [:]
+    /// Every camera the capture has fed in, so a surface is always scored
+    /// against the whole walk.
+    ///
+    /// RoomPlan keeps refining a wall while the owner walks, and each
+    /// refinement is new geometry. Replaying only the cameras that happened to
+    /// see the old geometry threw away every earlier view that did not, so a
+    /// wall RoomPlan reconstructed at high confidence from a four minute walk
+    /// could come back with nothing observed. The capture feeds one camera
+    /// every half second, a few hundred in a whole scan, so all of them are
+    /// kept.
+    private var cameras: [CameraObservation] = []
     private(set) var snapshot = CoverageSnapshot()
 
     init(gridSize: Int = 10) {
@@ -214,10 +224,12 @@ struct CoverageEngine {
 
     mutating func reset() {
         observations.removeAll()
+        cameras.removeAll()
         snapshot = CoverageSnapshot()
     }
 
     mutating func update(surfaces: [SurfaceSnapshot], camera: CameraObservation) {
+        cameras.append(camera)
         let preparedCamera = PreparedCamera(camera)
         for surface in surfaces {
             observe(surface: surface, from: camera, preparedCamera: preparedCamera)
@@ -225,15 +237,14 @@ struct CoverageEngine {
         snapshot = makeSnapshot(surfaces: surfaces, camera: camera)
     }
 
+    /// Scores the processed room against the whole walk, including surfaces
+    /// RoomPlan only settled on at the end.
     mutating func reconcile(finalSurfaces: [SurfaceSnapshot]) -> CoverageSnapshot {
-        let finalIDs = Set(finalSurfaces.map(\.id))
-        observations = observations.filter { finalIDs.contains($0.key) }
-        for surface in finalSurfaces {
-            guard let state = observations[surface.id] else { continue }
-            var replayed = replayedState(from: state, on: surface)
+        observations = Dictionary(uniqueKeysWithValues: finalSurfaces.map { surface in
+            var replayed = replayedState(on: surface)
             replayed.geometry = geometryFingerprint(for: surface)
-            observations[surface.id] = replayed
-        }
+            return (surface.id, replayed)
+        })
         snapshot = makeSnapshot(surfaces: finalSurfaces, camera: nil)
         return snapshot
     }
@@ -243,19 +254,20 @@ struct CoverageEngine {
         from camera: CameraObservation,
         preparedCamera: PreparedCamera
     ) {
-        var state = observations[surface.id, default: ObservationState()]
         let geometry = geometryFingerprint(for: surface)
-        if state.geometry != geometry {
-            state = replayedState(from: state, on: surface)
-            state.geometry = geometry
+        guard observations[surface.id]?.geometry == geometry else {
+            var replayed = replayedState(on: surface)
+            replayed.geometry = geometry
+            observations[surface.id] = replayed
+            return
         }
+        var state = observations[surface.id, default: ObservationState()]
         let visibleSamples = visibleSamples(on: surface, from: preparedCamera)
         guard !visibleSamples.isEmpty else {
             observations[surface.id] = state
             return
         }
         state.observedSamples.formUnion(visibleSamples.map(\.index))
-        state.cameras.append(camera)
         if state.viewpoints.allSatisfy({ simd_distance($0, camera.position) >= 1 }) { state.viewpoints.append(camera.position) }
         observations[surface.id] = state
     }
@@ -278,14 +290,13 @@ struct CoverageEngine {
         return GeometryFingerprint(transform: values, shape: shape, restsOnFloor: surface.restsOnFloor)
     }
 
-    private func replayedState(from state: ObservationState, on surface: SurfaceSnapshot) -> ObservationState {
+    private func replayedState(on surface: SurfaceSnapshot) -> ObservationState {
         var replayed = ObservationState()
         let surfaceSamples = preparedSamples(on: surface)
-        for camera in state.cameras {
+        for camera in cameras {
             let visibleSamples = visibleSamples(in: surfaceSamples, from: PreparedCamera(camera))
             guard !visibleSamples.isEmpty else { continue }
             replayed.observedSamples.formUnion(visibleSamples.map(\.index))
-            replayed.cameras.append(camera)
             if replayed.viewpoints.allSatisfy({ simd_distance($0, camera.position) >= 1 }) {
                 replayed.viewpoints.append(camera.position)
             }

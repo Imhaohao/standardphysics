@@ -194,7 +194,14 @@ def _one_above_the_other(a: SceneNode, b: SceneNode) -> bool:
 
 
 def _overlapping(a: SceneNode, b: SceneNode) -> bool:
-    return gap_between(collision_shape(a), collision_shape(b)) == 0.0 and not _one_above_the_other(a, b)
+    # Each shape gives up half the tolerance, so together the two may
+    # interpenetrate by OVERLAP_TOLERANCE and no more. Pulling both in by the
+    # whole of it allowed twice that: a case slid 9 mm into a wall passed.
+    half = OVERLAP_TOLERANCE / 2
+    return (
+        gap_between(collision_shape(a, half), collision_shape(b, half)) == 0.0
+        and not _one_above_the_other(a, b)
+    )
 
 
 def _in_swing(node: SceneNode, keep_clear: Polygon, floor_z: float) -> bool:

@@ -49,29 +49,19 @@ from .primitives import (
 )
 from .rules import Authority, Check, Citation, RulePack, Tier
 from .scan import (
+    GEOMETRY_REQUIRED_ARTIFACT_KINDS,
+    SEMANTIC_REQUIRED_ARTIFACT_KINDS,
     Artifact,
     ArtifactKind,
     CompleteRequest,
     EvidenceBundle,
     EvidenceState,
     EvidenceStatus,
-    GEOMETRY_REQUIRED_ARTIFACT_KINDS,
     GeometryState,
     Scan,
     ScanState,
     SemanticState,
-    SEMANTIC_REQUIRED_ARTIFACT_KINDS,
     SurfaceCoverage,
-)
-from .scope import (
-    Applicability,
-    LegalReviewStatus,
-    MeasurementRef,
-    OutcomeState,
-    PointRef,
-    ScopeItem,
-    ScopeManifest,
-    ScopeRow,
 )
 from .scene import (
     DisplayAppearance,
@@ -93,9 +83,21 @@ from .scene import (
     TargetClass,
     UnlocalizedObservation,
     bounds_the_room,
+    can_host_a_fitting,
+    is_fixed_to_a_surface,
     lies_flat,
     measured_as,
     stands_upright,
+)
+from .scope import (
+    Applicability,
+    LegalReviewStatus,
+    MeasurementRef,
+    OutcomeState,
+    PointRef,
+    ScopeItem,
+    ScopeManifest,
+    ScopeRow,
 )
 from .simulation import (
     AdaptiveRoundResult,
@@ -124,6 +126,8 @@ from .textures import (
 
 __all__ = [
     "bounds_the_room",
+    "can_host_a_fitting",
+    "is_fixed_to_a_surface",
     "measured_as",
     "lies_flat",
     "stands_upright",

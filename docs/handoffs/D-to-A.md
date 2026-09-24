@@ -34,3 +34,9 @@ your origin allowlist needs no second entry.
   and keep uploading the video and frames after that. The real API accepts
   artifacts after `complete`, so the model is ready while the walkthrough is
   still uploading.
+
+## 2026-09-23: the coverage history, and the gate is yours to redraw (A-47)
+
+`93a720c` changed `CoverageEngine`: it keeps every camera the capture feeds it and replays all of them when a surface's geometry changes and at reconciliation. Before, each RoomPlan refinement dropped the views that had missed the surface's previous shape, which is how high-confidence walls came back at zero. `testFinalReconciliationPreservesOnlyMatchingIDsAndStartsUnknownIDsAtZero` became `testFinalReconciliationScoresEverySurfaceAgainstTheWholeWalk`, and `testARefinedWallKeepsTheViewsOfWhereItEndsUp` is new. All 86 iOS tests pass on the iPhone 17 Pro simulator.
+
+The thresholds are untouched. `PROGRESS.md` under A-47 has a table of what each policy finishes on test1 and ravida: no policy that needs every surface finished completes either scan, because every chair is at medium confidence and furniture sides against walls cannot be seen. Deciding what "Room surfaces covered" asks for is your call; the table is the data for it.

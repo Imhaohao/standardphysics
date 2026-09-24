@@ -177,7 +177,8 @@ def room_owners(
 def _wrapped_bilinear(tile: np.ndarray, u: np.ndarray, v: np.ndarray) -> np.ndarray:
     height, width = tile.shape[:2]
     x, y = np.mod(u, width), np.mod(v, height)
-    x0, y0 = np.floor(x).astype(np.int64), np.floor(y).astype(np.int64)
+    # A hair below zero wraps to exactly `width` in float32, so the pixel index wraps too.
+    x0, y0 = np.floor(x).astype(np.int64) % width, np.floor(y).astype(np.int64) % height
     x1, y1 = (x0 + 1) % width, (y0 + 1) % height
     fx, fy = (x - x0)[:, None], (y - y0)[:, None]
     top = tile[y0, x0] * (1 - fx) + tile[y0, x1] * fx

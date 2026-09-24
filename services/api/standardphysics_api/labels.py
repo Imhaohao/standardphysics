@@ -21,6 +21,7 @@ from standardphysics_contracts import (
     SurfaceAttachment,
     UnlocalizedObservation,
     bounds_the_room,
+    is_fixed_to_a_surface,
 )
 from standardphysics_contracts.textures import FRAME_ID_PATTERN
 from standardphysics_pipeline.discovery.crops import save_crop
@@ -57,7 +58,7 @@ def review_outlet(
     except KeyError:
         raise ApiProblem(404, "no such outlet") from None
 
-    if target.kind not in ("outlet", "candidate_outlet") and target.attachment is None:
+    if not is_fixed_to_a_surface(target):
         raise ApiProblem(400, "only outlets can be reviewed")
 
     def _update(node: SceneNode) -> SceneNode:

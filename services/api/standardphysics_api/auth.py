@@ -73,7 +73,7 @@ class AttemptLimiter:
         recent = [at for at in self.attempts.get(key, []) if now - at < self.window]
         self.attempts[key] = recent
         if len(recent) >= self.limit:
-            raise ApiProblem(429, "too many sign-in attempts, wait a few minutes")
+            raise ApiProblem(429, "Too many sign-in attempts. Wait a few minutes and try again.")
 
     def record(self, key: str) -> None:
         self.attempts.setdefault(key, []).append(time.monotonic())
@@ -94,7 +94,7 @@ def owner_of(request: Request) -> Owner:
     """The signed-in owner. Only call this from a route the middleware guards."""
     owner = getattr(request.state, "owner", None)
     if owner is None:
-        raise ApiProblem(401, "sign in to continue")
+        raise ApiProblem(401, "Sign in to continue.")
     return owner
 
 
@@ -134,7 +134,7 @@ def install_auth(app: FastAPI, database: Database, store: ArtifactStore, secure_
                 return await call_next(request)
             owner = _resolve_owner(database, request)
             if owner is None:
-                return _problem(401, "sign in to continue")
+                return _problem(401, "Sign in to continue.")
             scan_id = _scan_id_in(request.url.path)
             if scan_id is not None and not _owns_scan(database, scan_id, owner):
                 return _problem(404, "no scan")
@@ -175,9 +175,9 @@ def _register(database: Database, body: SignUpRequest) -> Owner:
         try:
             return accounts.register(connection, body.email, body.password, body.shop_name)
         except EmailAlreadyRegistered:
-            raise ApiProblem(409, "that email already has an account") from None
+            raise ApiProblem(409, "That email already has an account. Sign in instead.") from None
         except WeakPassword:
-            raise ApiProblem(400, f"use at least {accounts.MIN_PASSWORD_LENGTH} characters") from None
+            raise ApiProblem(400, f"Use at least {accounts.MIN_PASSWORD_LENGTH} characters.") from None
 
 
 def _authenticate(database: Database, body: SignInRequest, limiter: AttemptLimiter) -> Owner:
@@ -187,7 +187,7 @@ def _authenticate(database: Database, body: SignInRequest, limiter: AttemptLimit
         owner = accounts.authenticate(connection, body.email, body.password)
     if owner is None:
         limiter.record(key)
-        raise ApiProblem(401, "that email and password do not match")
+        raise ApiProblem(401, "That email and password do not match. If you have not made an account yet, create one.")
     limiter.forget(key)
     return owner
 
@@ -249,7 +249,7 @@ def _install_auth_routes(
         """
         owner = _resolve_owner(database, request)
         if owner is None:
-            raise ApiProblem(401, "sign in to continue")
+            raise ApiProblem(401, "Sign in to continue.")
         for scan_id in _erase_owner(database, owner):
             store.remove_scan(scan_id)
         response = Response(status_code=204)
@@ -260,5 +260,5 @@ def _install_auth_routes(
     def current_session(request: Request) -> Session:
         owner = _resolve_owner(database, request)
         if owner is None:
-            raise ApiProblem(401, "sign in to continue")
+            raise ApiProblem(401, "Sign in to continue.")
         return _session_of(owner)
