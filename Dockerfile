@@ -31,6 +31,31 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends python3 python3-venv libgl1 libglib2.0-0 \
  && rm -rf /var/lib/apt/lists/*
 
+# Blender bakes the textures and renders the picture beside each finding. It
+# runs as a subprocess, so the binary has to be here or every texture build
+# fails and every report comes out with no pictures in it.
+#
+# Pinned, and not from Debian: check_blender.py proves the only reliable test
+# is a USDZ round-trip, and 4.0.2 fails it while still advertising *.usd. This
+# is the version a developer's Mac runs, so the server behaves the same way.
+#
+# blender.org publishes no arm64 Linux build of it. That is what holds this
+# image on x86_64, and it is the thing to check before moving to an ARM host.
+ARG BLENDER_SERIES=5.2
+ARG BLENDER_VERSION=5.2.1
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      curl ca-certificates xz-utils \
+      libx11-6 libxi6 libxxf86vm1 libxfixes3 libxrender1 libxkbcommon0 \
+      libsm6 libice6 libxcb1 libglu1-mesa libegl1 libgomp1 \
+ && curl -fsSL "https://download.blender.org/release/Blender${BLENDER_SERIES}/blender-${BLENDER_VERSION}-linux-x64.tar.xz" \
+      | tar -xJ -C /opt \
+ && mv "/opt/blender-${BLENDER_VERSION}-linux-x64" /opt/blender \
+ && rm -rf /var/lib/apt/lists/*
+
+# blender_path() reads this before it looks on PATH or in a macOS app bundle.
+ENV BLENDER=/opt/blender/blender
+
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \

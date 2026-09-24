@@ -81,6 +81,20 @@ curl https://api.standardphysics.app/health
 The first build takes a while: it installs the Python packages and builds the
 workspace on the box.
 
+## Blender
+
+The image carries Blender 5.2.1, pinned, because the texture bake and the
+picture beside each finding are rendered by it. Debian's package is no use:
+`check_blender.py` shows 4.0.2 still advertises `*.usd` and cannot import a
+USDZ, so the binary comes from blender.org.
+
+Only `render_finding` and the texture bake need it, and only the bake has no
+fallback, so a server without Blender looks like scans that work and reports
+with no pictures in them. `doctor.sh` asks the container for its version.
+
+It adds about 366 MB to the image, and blender.org publishes no arm64 Linux
+build of this version, which is what keeps the Droplet on x86_64.
+
 ## When it will not start
 
 ```bash
@@ -96,6 +110,19 @@ dependency failed to start says only that the API exited, and the API usually
 exited because it could not write to `/data`.
 
 ## Updating
+
+From your own machine, which is the usual way:
+
+```bash
+scripts/deploy.sh
+```
+
+It pulls master on the Droplet, rebuilds, and runs `doctor.sh`, streaming the
+lot back. It stops if you have commits master does not, because the Droplet
+pulls from GitHub and a deploy that quietly ships the previous commit is worse
+than one that refuses. `SP_DEPLOY_HOST` moves it to another box.
+
+On the Droplet itself it is the two commands the script runs:
 
 ```bash
 git pull

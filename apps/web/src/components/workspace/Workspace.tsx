@@ -47,6 +47,7 @@ import { ReviewPanel } from "./ReviewPanel";
 import { EvidencePanel } from "./EvidencePanel";
 import { OutcomeMatrix } from "./OutcomeMatrix";
 import type { LaneView } from "@/lib/evidence";
+import { useDeveloperMode } from "@/lib/developer-mode";
 
 
 
@@ -263,24 +264,26 @@ type SidePanelProps = {
   selectedNodeId?: string | null;
   onSelectNode?: (nodeId: string | null) => void;
   onReviewPersisted?: (scene: SceneGraph) => void;
+  developer: boolean;
 };
 
 function findingsTaskPanel(props: SidePanelProps): ReactNode {
-  const { scene, scan, findings, selected, onTryLayout, onPreviewLayout, onToggle, onLook, route, onRoute, assessment } = props;
+  const { scene, scan, findings, selected, onTryLayout, onPreviewLayout, onToggle, onLook, route, onRoute, assessment, developer } = props;
   return (
     <div className="flex flex-col gap-6">
       <FindingsPanel scan={scan} scene={scene} assessment={assessment} findings={findings} selected={selected} onToggle={onToggle} onTryLayout={onTryLayout} route={route} onRoute={onRoute} />
-      <AskBox scanId={scan.id} revision={scene.revision} onLook={onLook} onTry={onTryLayout} />
-      <MoreTools>
-        {route.confirmed && <LoopRun key={scene.revision} scanId={scan.id} revision={scene.revision} onTry={onTryLayout} />}
-        <SimulationPanel key={`${scan.id}-${scene.revision}`} scanId={scan.id} scene={scene} onTryLayout={onTryLayout} onPreviewLayout={onPreviewLayout} />
-        {assessment?.scope && <OutcomeMatrix scope={assessment.scope} findings={findings} />}
-      </MoreTools>
+      {developer && (
+        <MoreTools>
+          <AskBox scanId={scan.id} revision={scene.revision} onLook={onLook} onTry={onTryLayout} />
+          <SimulationPanel key={`${scan.id}-${scene.revision}`} scanId={scan.id} scene={scene} onTryLayout={onTryLayout} onPreviewLayout={onPreviewLayout} />
+          {assessment?.scope && <OutcomeMatrix scope={assessment.scope} findings={findings} />}
+        </MoreTools>
+      )}
     </div>
   );
 }
 
-/** The specialist tools, one tap away, so the panel's first screen is only what the owner has to act on. */
+/** The team's own tools, in developer mode only and one tap away even then. */
 function MoreTools({ children }: { children: ReactNode }) {
   return (
     <details className="group border-t border-rule/60 pt-3">
@@ -350,6 +353,12 @@ function RoutePrompt({ onRoute }: { onRoute: () => void }) {
   );
 }
 
+/** Above the findings: confirm the route first, then the improvement loop can start whenever you like. */
+function NextStep({ scan, scene, route, onRoute, onTryLayout }: Omit<FindingsPanelProps, "assessment" | "selected" | "onToggle" | "findings">) {
+  if (!route.confirmed) return scan.state === "ready" ? <RoutePrompt onRoute={onRoute} /> : null;
+  return <LoopRun key={scene.revision} scanId={scan.id} revision={scene.revision} onTry={onTryLayout} />;
+}
+
 function FindingsPanel({ scan, scene, assessment, findings, selected, onToggle, onTryLayout, route, onRoute }: FindingsPanelProps) {
   if (assessment === null && isWorking(scan)) {
     return <p className="px-3 font-medium" role="status">Checking this layout</p>;
@@ -358,7 +367,7 @@ function FindingsPanel({ scan, scene, assessment, findings, selected, onToggle, 
   return (
     <div className="flex flex-col gap-5">
       {findings.length > 0 && <ProblemCount groups={groups} />}
-      {!route.confirmed && scan.state === "ready" && <RoutePrompt onRoute={onRoute} />}
+      <NextStep scan={scan} scene={scene} route={route} onRoute={onRoute} onTryLayout={onTryLayout} />
       {findings.length === 0
         ? <p className="px-3 text-ink-muted">{scanStatus(scan, assessment, route.confirmed)}</p>
         : <GroupedFindings scan={scan} scene={scene} groups={groups} selected={selected} onToggle={onToggle} onTryLayout={onTryLayout} />}
@@ -515,6 +524,7 @@ type WorkspaceBodyProps = WorkspaceProps & {
 function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, textureStatus, capturedSplats, evidence, findings, task, selected, focus, mode, picked, dragging, amount, setAmount, showScanEvidence, setShowScanEvidence, visuals, actions }: WorkspaceBodyProps) {
   const router = useRouter();
   const [cutWalls, setCutWalls] = useState(true);
+  const [developer] = useDeveloperMode();
   const [chosenMaterialMode, setChosenMaterialMode] = useState<MaterialMode | null>(null);
   const [wheelchairMode, setWheelchairMode] = useState(false);
   const [wheelchairState, setWheelchairState] = useState<WheelchairState | null>(null);
@@ -596,7 +606,7 @@ function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, te
   return <>
     <RefreshWhile pending={assessment === null && isWorking(scan)} />
     <div className={`grid h-dvh grid-cols-[minmax(0,1fr)] ${wheelchairMode ? "grid-rows-[auto_minmax(0,1fr)]" : "grid-rows-[auto_minmax(16rem,45dvh)_1fr] lg:grid-cols-[minmax(0,1fr)_24rem] lg:grid-rows-[auto_1fr]"}`}>
-      <WorkspaceHeader scan={scan} revision={scene.revision} task={task} canCompare={visuals.comparison !== null} canCombine={visuals.combine.rooms.length > 1} onTask={actions.switchTask} />
+      <WorkspaceHeader scan={scan} revision={scene.revision} task={task} canCompare={developer && visuals.comparison !== null} canCombine={developer && visuals.combine.rooms.length > 1} onTask={actions.switchTask} />
       <section className="relative min-h-0 touch-none overflow-hidden lg:rounded-tr-2xl" aria-label="Shop model">
         <Viewer
           scene={visuals.shown}
@@ -665,7 +675,7 @@ function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, te
       </section>
       <aside hidden={wheelchairMode} className="min-h-0 overflow-y-auto px-3 pb-10 pt-4 lg:pt-0">
         <div className="mb-3 flex flex-col gap-3">
-          {!wheelchairMode && (
+          {developer && !wheelchairMode && (
             <EvidencePanel
               status={evidence ?? null}
               textures={textures.status}
@@ -675,6 +685,7 @@ function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, te
           )}
         </div>
         <SidePanel
+          developer={developer}
           task={task}
           scene={activeScene}
           onTryLayout={actions.tryLayout}

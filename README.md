@@ -57,6 +57,45 @@ simulator builds and signs without one, but it has no LiDAR and cannot scan;
 `SIMULATOR_CAPTURE_DEMO=1` in the scheme's environment gets you past the
 unsupported-device screen to look at everything else.
 
+## Seeing a change
+
+Most of what an owner looks at is the web workspace, including inside the app:
+`WorkspaceScreen` opens `standardphysics.app/scans/<id>` in a web view. A web
+change therefore reaches a phone already holding a TestFlight build as soon as
+someone deploys, with no new build and no review.
+
+| You changed | Look at it |
+|---|---|
+| The workspace, the report, sign-in | `npm run dev`, then `http://localhost:3000` |
+| The same, on a phone | the same server at your Mac's address |
+| Capture, upload, the native shell | Xcode, run on a device with LiDAR |
+| A build you are about to hand someone | TestFlight |
+
+TestFlight is for proving a build works and for giving it to people. Archive,
+upload and processing is twenty minutes, which is no way to look at a change.
+
+### On a phone, without deploying
+
+`next dev` listens on every interface, so a phone on the same Wi-Fi can open
+the workspace running on your Mac:
+
+```bash
+cd apps/web && npm run dev
+ipconfig getifaddr en0     # the address to type on the phone
+```
+
+Then `http://<that address>:3000` in Safari. For the whole thing, API included,
+`start.sh` says how at the top of the file.
+
+### Deploying
+
+```bash
+scripts/deploy.sh
+```
+
+From this repository on your own machine. It pulls master on the Droplet,
+rebuilds and reports; [`docs/DEPLOY.md`](docs/DEPLOY.md) has the rest.
+
 ### Pointing the app at your own machine
 
 An address built into the app beats a saved one, so the connection screen no
