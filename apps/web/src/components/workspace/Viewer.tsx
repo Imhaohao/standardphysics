@@ -7,7 +7,7 @@ import type { Focus } from "@/lib/findings";
 import type { NodeTextureCoverage, SceneGraph, SceneNode } from "@/types/contracts";
 import { FindingAnnotation } from "./Annotation";
 import { CameraRig } from "./CameraRig";
-import { MODEL, outcomeColor } from "./palette";
+import { MODEL, outcomeColor, SCAN_CUT_HEIGHT } from "./palette";
 import { type ArrangeHandlers, BoxShopModel, GlbShopModel } from "./ShopModel";
 import { LidarShopModel } from "./LidarShopModel";
 import { CombinedRooms } from "./CombinedRooms";
@@ -116,7 +116,7 @@ function capturedRoom(props: ShopSurfacesProps, boxes: ReactNode, picking: React
   if (splatsOnScreen && splatAssets) {
     return <SplatRoom key={JSON.stringify(splatAssets)} assets={splatAssets} fallback={boxes} picking={picking} onError={props.onSplatError} />;
   }
-  if (materialMode === "scan" && scanGlbUrl) return <ScannedRoom url={scanGlbUrl} whileLoading={boxes} />;
+  if (materialMode === "scan" && scanGlbUrl) return <ScannedRoom url={scanGlbUrl} whileLoading={boxes} cutAbove={props.cutWalls ? SCAN_CUT_HEIGHT : null} />;
   return null;
 }
 
@@ -191,11 +191,11 @@ function SplatRoom({ assets, fallback, picking, onError }: { assets: CapturedSpl
  * miss the real surfaces by inches, so drawing both at once gives a room that
  * flickers. The boxes stand in only while the scan is on its way.
  */
-function ScannedRoom({ url, whileLoading }: { url: string; whileLoading: ReactNode }) {
+function ScannedRoom({ url, whileLoading, cutAbove }: { url: string; whileLoading: ReactNode; cutAbove: number | null }) {
   return (
     <group>
       <GlbFallback key={url} fallback={whileLoading}>
-        <Suspense fallback={whileLoading}><PaintedScan url={url} /></Suspense>
+        <Suspense fallback={whileLoading}><PaintedScan url={url} cutAbove={cutAbove} /></Suspense>
       </GlbFallback>
     </group>
   );

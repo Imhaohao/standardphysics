@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect } from "react";
 import { IDENTITY_PLACEMENT, roomMeshPose, type RoomGroup, type RoomPlacement } from "@/lib/room-groups";
+import { SCAN_CUT_HEIGHT } from "./palette";
 import { PaintedScan } from "./PaintedScan";
 
 /**
@@ -43,7 +44,7 @@ export function CombinedRooms({
         return (
           <group key={room.name} position={position} rotation={[0, yaw, 0]}>
             <Suspense fallback={null}>
-              <PaintedScan url={room.scan_glb_url} />
+              <PaintedScan url={room.scan_glb_url} cutAbove={SCAN_CUT_HEIGHT} />
             </Suspense>
           </group>
         );

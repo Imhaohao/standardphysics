@@ -2,7 +2,7 @@
 
 import { useGLTF } from "@react-three/drei";
 import { useEffect, useMemo } from "react";
-import { BackSide, LinearFilter, Mesh, MeshBasicMaterial, type Color, type Material, type Texture } from "three";
+import { BackSide, LinearFilter, Mesh, MeshBasicMaterial, Plane, Vector3, type Color, type Material, type Object3D, type Texture } from "three";
 
 /** The colour of a surface seen from the side the phone never stood on. */
 const UNMEASURED = "#8d8880";
@@ -115,7 +115,7 @@ function asOne(material: Material | Material[]): Material {
  * are in the photographs. Nothing here can be picked or dragged, because the
  * scan is one piece of geometry and the graph is what owns objects.
  */
-export function PaintedScan({ url }: { url: string }) {
+export function PaintedScan({ url, cutAbove = null }: { url: string; cutAbove?: number | null }) {
   const { scene } = useGLTF(url);
   const painted = useMemo(() => {
     const copy = scene.clone(true);
@@ -127,12 +127,22 @@ export function PaintedScan({ url }: { url: string }) {
       shells.push({ parent: object, shell: backfaceShell(object) });
     });
     for (const { parent, shell } of shells) parent.add(shell);
+    cutAt(copy, cutAbove);
     return copy;
-  }, [scene]);
+  }, [scene, cutAbove]);
   useEffect(() => () => {
     painted.traverse((object) => {
       if (object instanceof Mesh) disposePaintedMaterials(object.material);
     });
   }, [painted]);
   return <primitive object={painted} />;
+}
+
+/** Everything above `height` left out, so a view from above looks into the rooms rather than onto a ceiling. */
+function cutAt(root: Object3D, height: number | null) {
+  const planes = height === null ? null : [new Plane(new Vector3(0, -1, 0), height)];
+  root.traverse((object) => {
+    if (!(object instanceof Mesh)) return;
+    for (const material of Array.isArray(object.material) ? object.material : [object.material]) material.clippingPlanes = planes;
+  });
 }
