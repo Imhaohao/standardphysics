@@ -2,7 +2,7 @@
 
 import { useGLTF } from "@react-three/drei";
 import { useEffect, useMemo } from "react";
-import { BackSide, Mesh, MeshBasicMaterial, type Color, type Material, type Texture } from "three";
+import { BackSide, LinearFilter, Mesh, MeshBasicMaterial, type Color, type Material, type Texture } from "three";
 
 /** The colour of a surface seen from the side the phone never stood on. */
 const UNMEASURED = "#8d8880";
@@ -13,6 +13,25 @@ type PhotographSourceMaterial = Material & {
   emissiveMap?: Texture | null;
   map?: Texture | null;
 };
+
+/**
+ * The photograph with no smaller copies of itself to fall back on.
+ *
+ * The scan's atlas packs every face as its own small island, so the half- and
+ * quarter-size copies a GPU samples from a distance blend each island into its
+ * neighbours, and a floor seen from across the room was crossed with light
+ * lines. Sampling the full-size photograph keeps each face's own pixels. The
+ * copy shares the image, so the GLTF's texture is left as it was.
+ */
+export function withoutMipmaps(texture: Texture | null): Texture | null {
+  if (!texture) return null;
+  const copy = texture.clone();
+  copy.minFilter = LinearFilter;
+  copy.generateMipmaps = false;
+  copy.needsUpdate = true;
+  copy.userData = { ...copy.userData, ownedByPaintedScan: true };
+  return copy;
+}
 
 /** Creates an unlit display material without changing the GLTF-owned source material or textures. */
 export function paintedMaterial(source: Material, vertexColors: boolean): MeshBasicMaterial {
@@ -25,7 +44,7 @@ export function paintedMaterial(source: Material, vertexColors: boolean): MeshBa
     color: usesEmissiveMap ? "#ffffff" : photographic.color?.clone() ?? "#ffffff",
     depthTest: source.depthTest,
     depthWrite: source.depthWrite,
-    map: photographic.map ?? photographic.emissiveMap ?? null,
+    map: withoutMipmaps(photographic.map ?? photographic.emissiveMap ?? null),
     opacity: source.opacity,
     side: source.side,
     transparent: source.transparent,
@@ -42,9 +61,15 @@ export function hasVertexColors(mesh: Mesh): boolean {
   return color !== undefined && color.itemSize >= 3;
 }
 
+function disposePaintedMaterial(material: Material) {
+  const map = (material as MeshBasicMaterial).map;
+  if (map?.userData.ownedByPaintedScan) map.dispose();
+  material.dispose();
+}
+
 function disposePaintedMaterials(material: Material | Material[]) {
-  if (Array.isArray(material)) material.forEach((item) => item.dispose());
-  else material.dispose();
+  if (Array.isArray(material)) material.forEach(disposePaintedMaterial);
+  else disposePaintedMaterial(material);
 }
 
 /**

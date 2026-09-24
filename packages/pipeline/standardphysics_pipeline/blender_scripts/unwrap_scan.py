@@ -40,6 +40,24 @@ def build(vertices: np.ndarray, triangles: np.ndarray):
     return obj
 
 
+WELD_DISTANCE = 0.001
+"""Vertices this close are one vertex: the shared corners of patch squares, and the seams between LiDAR anchors."""
+
+
+def welded(obj) -> None:
+    """Join coincident vertices, so the mesh thins as one surface rather than as loose pieces.
+
+    Hole patches arrive as separate squares and the LiDAR as separate anchors.
+    Thinned apart, each square collapsed on its own and a patched floor came out
+    as a lattice with gaps; on one Moffitt walk that was 15 per cent of the surface.
+    """
+    mesh = bmesh.new()
+    mesh.from_mesh(obj.data)
+    bmesh.ops.remove_doubles(mesh, verts=mesh.verts[:], dist=WELD_DISTANCE)
+    mesh.to_mesh(obj.data)
+    mesh.free()
+
+
 def thin(obj, max_triangles: int) -> None:
     count = len(obj.data.polygons)
     if count <= max_triangles:
@@ -87,6 +105,7 @@ def main() -> None:
     bpy.ops.wm.read_factory_settings(use_empty=True)
     archive = np.load(args.scan)
     obj = build(archive["vertices"], archive["triangles"])
+    welded(obj)
     thin(obj, args.max_triangles)
     triangulated(obj)
     unwrap(obj)

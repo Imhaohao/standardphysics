@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import json
 import pathlib
 
 import numpy as np
 import pytest
 from standardphysics_pipeline.check_blender import blender_path
 from standardphysics_pipeline.coords import capture_to_room
+from standardphysics_pipeline.ingest import parse_room_json
+from standardphysics_pipeline.textures.hole_patches import with_holes_patched
 from standardphysics_pipeline.textures.project import face_normals
 from standardphysics_pipeline.textures.scan_atlas import TEXEL_METRES, agreed_colours, atlas_size, unwrapped
 from standardphysics_pipeline.textures.scan_colour import ColouredScan, scan_geometry
@@ -50,3 +53,18 @@ def test_where_every_view_agrees_the_best_view_dominates():
     colours = np.array([[[0.50, 0.50, 0.50], [0.54, 0.54, 0.54], [0, 0, 0], [0, 0, 0], [0, 0, 0]]], dtype=np.float32)
 
     assert agreed_colours(weights, colours)[0] == pytest.approx([0.50, 0.50, 0.50], abs=0.005)
+
+
+@pytest.mark.skipif(_blender_missing(), reason="Blender not installed")
+def test_thinning_a_patched_scan_keeps_its_surface(tmp_path):
+    """Hole patches arrive as separate squares; thinned unwelded, they broke into a lattice with gaps."""
+    graph = parse_room_json(json.loads((REPO / "datasets/phone/test1/room.json").read_text()))
+    vertices, triangles = scan_geometry(REPO / "datasets/phone/test1/lidar-mesh.json", graph.capture_to_room)
+    patched = with_holes_patched(vertices, triangles, graph)
+    scan = ColouredScan(patched.vertices, patched.triangles, np.zeros((len(patched.vertices), 3)), np.zeros(len(patched.vertices), bool))
+    _, before = face_normals(patched.vertices[patched.triangles])
+
+    mesh = unwrapped(scan, tmp_path, max_triangles=len(patched.triangles) // 9)
+    _, after = face_normals(mesh.corners)
+
+    assert after.sum() >= 0.97 * before.sum()
