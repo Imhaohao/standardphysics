@@ -162,6 +162,18 @@ def sample_surface(world: np.ndarray, spacing: float, seed: int = 0) -> tuple[np
     return points.astype(np.float32), normals[owner].astype(np.float32)
 
 
+def evenly_spread(cameras: list[PhotoCamera], limit: int) -> list[PhotoCamera]:
+    """At most `limit` cameras spread evenly through the walk, keeping the first and the last.
+
+    Neighbouring video frames are nearly the same view, so thinning a long walk
+    this way loses little while every per-photo step gets cheaper in proportion.
+    """
+    if len(cameras) <= limit:
+        return cameras
+    picks = np.linspace(0, len(cameras) - 1, limit).round().astype(int)
+    return [cameras[index] for index in dict.fromkeys(picks.tolist())]
+
+
 def in_parallel(work, items):
     """`work` over every item on all cores, in bounded batches, yielding results in item order.
 

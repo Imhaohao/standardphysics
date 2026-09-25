@@ -36,6 +36,7 @@ from .project import (
     TopViews,
     bilinear,
     depth_buffer,
+    evenly_spread,
     exposure_gains,
     in_parallel,
     to_linear,
@@ -46,6 +47,14 @@ from .stages import timed
 MAX_PHOTOS = 60
 """Photos read for colour. More photos raise coverage; this is where the gain flattens."""
 MAX_PHOTO_EDGE = 1600
+MAX_GEOMETRY_PHOTOS = 400
+"""Photos asked which vertices are people and which are seen through, before anything is coloured.
+
+Both are votes over the photos that frame a point, and a walk's neighbouring
+video frames are nearly the same view: a merged floor's 3,524 photos took a
+small server over twelve minutes for these two steps alone. Four hundred spread
+evenly through the walk still give every surface several distinct views.
+"""
 
 SEEN_TOLERANCE = 0.05
 """How close to the nearest scanned surface a vertex must be to count as seen."""
@@ -333,12 +342,6 @@ class ScanPaint:
     seconds: float
 
 
-def _evenly_spread(cameras: list[PhotoCamera], limit: int) -> list[PhotoCamera]:
-    if len(cameras) <= limit:
-        return cameras
-    picks = np.linspace(0, len(cameras) - 1, limit).round().astype(int)
-    return [cameras[index] for index in dict.fromkeys(picks.tolist())]
-
 
 def _photo(path: pathlib.Path) -> np.ndarray:
     from PIL import Image
@@ -365,15 +368,16 @@ def _people_on(vertices: np.ndarray, graph: SceneGraph, cameras: list[PhotoCamer
     """The vertices that are mostly people.
 
     Each photo is asked only about the part of the scan inside its frame, and
-    its depth buffer is made as the vote reaches it and let go after. A merged
-    floor has thousands of photos: projecting the whole floor through each one
-    took minutes, and holding every buffer at once was over half a gigabyte.
+    its depth buffer is made inside the vote, one photo per core at a time, and
+    let go after. A merged floor has thousands of photos: projecting the whole
+    floor through each one took minutes, and holding every buffer at once was
+    over half a gigabyte.
     """
     from ..discovery.people import mostly_people
 
     blocks = PointBlocks(vertices)
-    views = ((camera, people.get(camera.frame_id, []), depth_buffer(camera, vertices[blocks.seen_by(camera)])) for camera in cameras)
-    return mostly_people(vertices, graph, views, visible_to=blocks.seen_by)
+    views = [(camera, people.get(camera.frame_id, []), None) for camera in cameras]
+    return mostly_people(vertices, graph, views, visible_to=blocks.seen_by, depth_buffer_of=depth_buffer)
 
 
 def _depth_buffers(vertices: np.ndarray, cameras: list[PhotoCamera]) -> list[np.ndarray]:
@@ -395,13 +399,14 @@ def _display_geometry(
     from .object_holes import closed_object_holes, without_vertices
     from .symmetry import mirrored_completion, seen_through_by
 
+    voters = evenly_spread(cameras, MAX_GEOMETRY_PHOTOS)
     if people:
         with timed("people removal"):
-            vertices, triangles = without_vertices(vertices, triangles, _people_on(vertices, graph, cameras, people))
+            vertices, triangles = without_vertices(vertices, triangles, _people_on(vertices, graph, voters, people))
     with timed("object holes"):
         capped = closed_object_holes(vertices, triangles, graph)
     with timed("seen-through buffers"):
-        seen_through = seen_through_by(cameras, _depth_buffers(capped.vertices, cameras))
+        seen_through = seen_through_by(voters, _depth_buffers(capped.vertices, voters))
     with timed("mirrored completion"):
         completed = mirrored_completion(capped.vertices, capped.triangles, graph, seen_through)
     added_so_far = np.concatenate([capped.inferred, completed.added[len(capped.vertices):]])
@@ -453,7 +458,7 @@ def coloured_scan(
         camera for camera in load_cameras(poses_path, frame_paths, capture_to_room)
         if frame_paths.get(camera.frame_id, pathlib.Path()).is_file()
     ]
-    cameras = _evenly_spread(all_cameras, MAX_PHOTOS)
+    cameras = evenly_spread(all_cameras, MAX_PHOTOS)
     if not cameras:
         raise ValueError("no stored photo has a usable camera pose")
     vertices, triangles = scan_geometry(mesh_path, capture_to_room)

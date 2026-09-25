@@ -52,13 +52,7 @@ def _rims(triangles: np.ndarray) -> list[list[int]]:
     with no triangle running the other way is on a rim, and the triangle that
     closes the hole must run it backwards, so the walk follows reversed edges.
     """
-    directed = triangles[:, [0, 1, 1, 2, 2, 0]].reshape(-1, 2)
-    owned = {(int(a), int(b)) for a, b in directed}
-    following: dict[int, int] = {}
-    for a, b in directed:
-        a, b = int(a), int(b)
-        if (b, a) not in owned and b not in following:
-            following[b] = a
+    following = _rim_steps(triangles)
     rims, visited = [], set()
     for start in following:
         if start in visited:
@@ -71,6 +65,29 @@ def _rims(triangles: np.ndarray) -> list[list[int]]:
         if current == start and len(rim) >= 3:
             rims.append(rim)
     return rims
+
+
+def _rim_steps(triangles: np.ndarray) -> dict[int, int]:
+    """For each vertex on a rim, the vertex the walk goes to next, in the order the rim edges first appear.
+
+    A floor's mesh has millions of edges and only a few thousand on rims, so
+    the edges are matched with their reverses as whole arrays: each directed
+    edge becomes one integer, and an edge is on a rim when its reverse's
+    integer is absent. Where a vertex starts more than one rim edge, the first
+    in edge order is kept.
+    """
+    if not len(triangles):
+        return {}
+    directed = triangles[:, [0, 1, 1, 2, 2, 0]].reshape(-1, 2).astype(np.int64)
+    count = int(directed.max()) + 1
+    owned = np.unique(directed[:, 0] * count + directed[:, 1])
+    reverse = directed[:, 1] * count + directed[:, 0]
+    found = np.searchsorted(owned, reverse)
+    unmatched = owned[np.minimum(found, len(owned) - 1)] != reverse
+    rim_edges = directed[unmatched]
+    _, first = np.unique(rim_edges[:, 1], return_index=True)
+    kept = rim_edges[np.sort(first)]
+    return dict(zip(kept[:, 1].tolist(), kept[:, 0].tolist()))
 
 
 def _perimeter(points: np.ndarray) -> float:

@@ -25,9 +25,11 @@ import tempfile
 import time
 from dataclasses import dataclass
 
+import fast_simplification
 import numpy as np
 from PIL import Image
 from scipy.sparse import csr_matrix
+from scipy.sparse.csgraph import connected_components
 from scipy.spatial import cKDTree
 from standardphysics_contracts import SceneGraph
 
@@ -40,6 +42,7 @@ from .project import (
     TopViews,
     bilinear,
     depth_buffer,
+    evenly_spread,
     exposure_gains,
     face_normals,
     in_parallel,
@@ -94,17 +97,74 @@ class AtlasPaint:
     seconds: float
 
 
+WELD_METRES = 0.001
+"""Vertices this close are one vertex: the shared corners of patch squares, and the seams between LiDAR anchors."""
+BLENDER_FACE_FACTOR = 6
+"""How many times the viewer's face count Blender is handed to thin the rest of the way.
+
+Blender's thinning keeps more of the surface than the quadric pass does, so it
+is left a share of the work: at four times, a scanned room kept 96.5 per cent
+of its area against 97.1 at six. Blender needs about 0.6 GB per million faces
+over a 0.7 GB base, so six times the viewer's 260,000 faces is under two
+gigabytes, where a library floor's four million had needed three."""
+
+
 def unwrapped(scan: ColouredScan, work: pathlib.Path, max_triangles: int) -> UnwrappedScan:
-    """The scan thinned for the viewer and unwrapped by Blender."""
+    """The scan thinned for the viewer and unwrapped by Blender.
+
+    Blender used to be handed the whole scan. A library floor of four million
+    faces ran it out of memory on a two-core server with four gigabytes, and the
+    painted scan was lost. It now receives a mesh already thinned to a few times
+    the viewer's size, so what it holds is bounded however large the capture.
+    """
     from ..blender import _run
 
+    vertices, triangles = thinned_for_blender(scan.vertices, scan.triangles, BLENDER_FACE_FACTOR * max_triangles)
     source, result = work / "scan.npz", work / "unwrapped.npz"
-    np.savez(source, vertices=scan.vertices.astype(np.float32), triangles=scan.triangles.astype(np.int32))
+    np.savez(source, vertices=vertices.astype(np.float32), triangles=triangles.astype(np.int32))
     output = _run("unwrap_scan.py", ["--scan", str(source), "--out", str(result), "--max-triangles", str(max_triangles)])
     if "SCAN_UNWRAPPED" not in output:
         raise RuntimeError(f"Blender did not unwrap the scan:\n{output[-1500:]}")
     archive = np.load(result)
     return UnwrappedScan(archive["vertices"], archive["triangles"], archive["uv"])
+
+
+def thinned_for_blender(vertices: np.ndarray, triangles: np.ndarray, max_faces: int) -> tuple[np.ndarray, np.ndarray]:
+    """The mesh welded into one surface and, when larger than `max_faces`, thinned toward it with its open edges held.
+
+    Welding comes first: hole patches arrive as separate squares and the LiDAR
+    as separate anchors, and thinned apart each piece collapses on its own, so a
+    patched floor came out as a lattice with gaps.
+
+    Quadric thinning here keeps the surface within a centimetre, but it drags
+    the rim of every hole inward, and about one vertex in seven of a scanned
+    room lies on a rim. So it thins only the interior and leaves the rims to
+    Blender's decimation, which keeps them in place.
+    """
+    points, faces = welded(vertices, triangles)
+    if len(faces) <= max_faces:
+        return points, faces
+    return fast_simplification.simplify(
+        points.astype(np.float64), faces.astype(np.int64), target_count=max_faces, preserve_border=True,
+    )
+
+
+def welded(vertices: np.ndarray, triangles: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Vertices within WELD_METRES of each other joined, and the faces this collapses or repeats dropped."""
+    pairs = cKDTree(vertices).query_pairs(WELD_METRES, output_type="ndarray")
+    if len(pairs):
+        links = csr_matrix((np.ones(len(pairs), dtype=bool), (pairs[:, 0], pairs[:, 1])), shape=(len(vertices),) * 2)
+        _, group = connected_components(links, directed=False)
+    else:
+        group = np.arange(len(vertices))
+    first = np.full(group.max() + 1, len(vertices), dtype=np.int64)
+    np.minimum.at(first, group, np.arange(len(vertices)))
+    faces = group[triangles]
+    faces = faces[(faces[:, 0] != faces[:, 1]) & (faces[:, 1] != faces[:, 2]) & (faces[:, 0] != faces[:, 2])]
+    _, unique = np.unique(np.sort(faces, axis=1), axis=0, return_index=True)
+    faces = faces[np.sort(unique)]
+    used, compact = np.unique(faces, return_inverse=True)
+    return vertices[first[used]], compact.reshape(-1, 3)
 
 
 def atlas_size(mesh: UnwrappedScan) -> int:
@@ -400,13 +460,6 @@ def _write_glb(mesh_path: pathlib.Path, atlas_path: pathlib.Path, out_path: path
         raise RuntimeError(f"Blender did not write the textured scan:\n{output[-1500:]}")
 
 
-def _evenly_spread(cameras: list[PhotoCamera], limit: int) -> list[PhotoCamera]:
-    if len(cameras) <= limit:
-        return cameras
-    picks = np.linspace(0, len(cameras) - 1, limit).round().astype(int)
-    return [cameras[index] for index in dict.fromkeys(picks.tolist())]
-
-
 def bake_scan_atlas(
     painted: ColouredScan,
     graph: SceneGraph,
@@ -418,7 +471,7 @@ def bake_scan_atlas(
 ) -> AtlasPaint:
     """The vertex-painted scan, thinned, unwrapped and baked from every photo into one textured glTF."""
     started = time.monotonic()
-    chosen = _evenly_spread(cameras, MAX_ATLAS_PHOTOS)
+    chosen = evenly_spread(cameras, MAX_ATLAS_PHOTOS)
     detections = people or {}
     with tempfile.TemporaryDirectory(prefix="standardphysics-atlas-") as temporary:
         work = pathlib.Path(temporary)
