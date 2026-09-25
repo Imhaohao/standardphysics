@@ -87,8 +87,12 @@ upload() {
   ipa="$(find "$EXPORT_DIR" -name '*.ipa' | head -1)"
   [ -n "$ipa" ] || { echo "No .ipa came out of the export" >&2; exit 1; }
   say "Uploading $(basename "$ipa")"
-  xcrun altool --upload-app -f "$ipa" -t ios \
-    --apiKey "$SP_ASC_KEY_ID" --apiIssuer "$SP_ASC_ISSUER_ID"
+  # altool ignores a path and only looks in a handful of conventional
+  # directories, so it is told which one to look in rather than given the file.
+  # xcodebuild, two steps earlier, takes the path and not the directory.
+  API_PRIVATE_KEYS_DIR="$(dirname "$KEY_PATH")" \
+    xcrun altool --upload-app -f "$ipa" -t ios \
+      --apiKey "$SP_ASC_KEY_ID" --apiIssuer "$SP_ASC_ISSUER_ID"
 }
 
 main() {
