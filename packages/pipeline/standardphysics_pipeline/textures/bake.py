@@ -7,6 +7,7 @@ import os
 import pathlib
 import tempfile
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 import numpy as np
@@ -260,23 +261,48 @@ def _sharpness(image: np.ndarray) -> float:
     return float(np.var(laplacian))
 
 
+class _Photos(Sequence):
+    """The chosen photos, each read from disk when a pass uses it rather than all held at once.
+
+    A bake holds up to 192 photos, and as linear floats at full size they came
+    to over six gigabytes, which is more memory than a small server has; the
+    bake of a library floor was killed for it. Decoding is deterministic, so a
+    photo read twice is the same pixels both times and the bake is unchanged.
+    """
+
+    def __init__(self, cameras: list[PhotoCamera], paths: dict[str, pathlib.Path]):
+        self.cameras, self.paths = cameras, paths
+
+    def __len__(self) -> int:
+        return len(self.cameras)
+
+    def __getitem__(self, index: int) -> np.ndarray:
+        return _decoded(self.cameras[index], self.paths[self.cameras[index].frame_id])
+
+
+def _decoded(camera: PhotoCamera, path: pathlib.Path) -> np.ndarray:
+    try:
+        with Image.open(path) as image:
+            _validate_image(camera, path, image)
+            image.thumbnail((MAX_IMAGE_EDGE, MAX_IMAGE_EDGE), Image.Resampling.LANCZOS)
+            rgb = np.asarray(image.convert("RGB"), dtype=np.float32) / 255.0
+    except (OSError, KeyError, ValueError) as error:
+        raise TextureBakeError(f"unreadable photo {camera.frame_id}: {error}") from error
+    return to_linear(rgb).astype(np.float32)
+
+
 def _load_images(
     cameras: list[PhotoCamera], paths: dict[str, pathlib.Path]
-) -> tuple[list[np.ndarray], list[PhotoCamera]]:
-    images, usable = [], []
+) -> tuple[_Photos, list[PhotoCamera]]:
+    """Every usable photo checked and measured once, and a list that reads each again when it is needed."""
+    usable = []
     for camera in cameras:
-        try:
-            with Image.open(paths[camera.frame_id]) as image:
-                _validate_image(camera, paths[camera.frame_id], image)
-                image.thumbnail((MAX_IMAGE_EDGE, MAX_IMAGE_EDGE), Image.Resampling.LANCZOS)
-                rgb = np.asarray(image.convert("RGB"), dtype=np.float32) / 255.0
-        except (OSError, KeyError, ValueError) as error:
-            raise TextureBakeError(f"unreadable photo {camera.frame_id}: {error}") from error
-        if rgb.shape[0] < 2 or rgb.shape[1] < 2:
+        height, width = _decoded(camera, paths[camera.frame_id]).shape[:2]
+        if height < 2 or width < 2:
             continue
-        images.append(to_linear(rgb).astype(np.float32))
-        usable.append(camera.resized(rgb.shape[1], rgb.shape[0]))
-    return images, usable
+        usable.append(camera.resized(width, height))
+    originals = {camera.frame_id: camera for camera in cameras}
+    return _Photos([originals[camera.frame_id] for camera in usable], paths), usable
 
 
 def _validate_image(camera: PhotoCamera, path: pathlib.Path, image: Image.Image) -> None:
