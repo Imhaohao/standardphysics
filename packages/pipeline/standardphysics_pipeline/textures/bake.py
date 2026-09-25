@@ -22,8 +22,10 @@ from .project import (
     MAX_EXPOSURE_POINTS,
     DepthBuffers,
     TopViews,
+    TriangleBlocks,
     bilinear,
     exposure_gains,
+    in_parallel,
     pad_gutters,
     rasterize_atlas,
     sample_surface,
@@ -142,8 +144,8 @@ def bake_textures(inputs: BakeInputs) -> BakeResult:
         if atlas_count > MAX_ATLASES:
             raise TextureBakeError(f"layout requires {atlas_count} atlases (maximum is {MAX_ATLASES})")
         lidar = _lidar_triangles(inputs.lidar_mesh_path, graph.capture_to_room.m, work)
-        clean_buffers = [triangle_depth_buffer(camera, world) for camera in cameras]
-        lidar_buffers = [triangle_depth_buffer(camera, lidar) for camera in cameras] if len(lidar) else [None] * len(cameras)
+        clean_buffers = _depth_buffers(cameras, world)
+        lidar_buffers = _depth_buffers(cameras, lidar) if len(lidar) else [None] * len(cameras)
         gains = _exposure_gains(world, cameras, images, clean_buffers, lidar_buffers)
 
         node_meta = meta["nodes"]
@@ -217,34 +219,48 @@ def _rank_cameras(
     cameras: list[PhotoCamera], paths: dict[str, pathlib.Path]
 ) -> tuple[list[PhotoCamera], list[float]]:
     """Choose sharp, usable and spatially varied views without retaining full images."""
-    scored = []
-    for camera in cameras:
-        thumbnail = _thumbnail(camera, paths[camera.frame_id])
-        sharpness = _sharpness(thumbnail)
-        brightness = float(thumbnail.mean())
-        exposure = max(0.05, 1.0 - abs(brightness - 0.55) / 0.55)
-        # Even a deliberately plain wall photo still carries valid colour;
-        # sharpness ranks views but cannot reduce a usable view to zero weight.
-        scored.append((camera, (0.05 + sharpness) * exposure))
-    if len(scored) <= MAX_FRAMES:
-        return [camera for camera, _ in scored], [score for _, score in scored]
-    chosen: list[tuple[PhotoCamera, float]] = []
-    remaining = scored.copy()
-    while remaining and len(chosen) < MAX_FRAMES:
-        def value(candidate):
-            camera, score = candidate
-            if not chosen:
-                return score
-            positions = [np.linalg.norm(camera.position - prior.position) for prior, _ in chosen]
-            directions = [1.0 - float(np.dot(camera.forward, prior.forward)) for prior, _ in chosen]
-            novelty = min(max(position / 1.0, direction) for position, direction in zip(positions, directions))
-            return score * (0.35 + min(novelty, 1.0))
+    scores = list(in_parallel(lambda camera: _view_score(camera, paths[camera.frame_id]), cameras))
+    if len(cameras) <= MAX_FRAMES:
+        return list(cameras), scores
+    chosen = sorted(_most_novel(cameras, scores, MAX_FRAMES), key=lambda index: cameras[index].timestamp)
+    return [cameras[index] for index in chosen], [scores[index] for index in chosen]
 
-        best = max(remaining, key=value)
+
+def _view_score(camera: PhotoCamera, path: pathlib.Path) -> float:
+    thumbnail = _thumbnail(camera, path)
+    sharpness = _sharpness(thumbnail)
+    brightness = float(thumbnail.mean())
+    exposure = max(0.05, 1.0 - abs(brightness - 0.55) / 0.55)
+    # Even a deliberately plain wall photo still carries valid colour;
+    # sharpness ranks views but cannot reduce a usable view to zero weight.
+    return (0.05 + sharpness) * exposure
+
+
+def _most_novel(cameras: list[PhotoCamera], scores: list[float], limit: int) -> list[int]:
+    """Indices of the views picked one at a time by score times how unlike every earlier pick each is.
+
+    A view's novelty is its smallest difference from any pick so far, so it
+    only changes when a new pick lands near it. Keeping that running minimum
+    and folding in each new pick once is the same choice as comparing every
+    candidate with every pick each round, which on a library floor was
+    hundreds of thousands of comparisons per pick.
+    """
+    positions = [camera.position for camera in cameras]
+    forwards = [camera.forward for camera in cameras]
+    score = np.asarray(scores, dtype=np.float64)
+    novelty = np.full(len(cameras), np.inf)
+    available = np.ones(len(cameras), dtype=bool)
+    chosen: list[int] = []
+    while available.any() and len(chosen) < limit:
+        value = score if not chosen else score * (0.35 + np.minimum(novelty, 1.0))
+        best = int(np.argmax(np.where(available, value, -np.inf)))
         chosen.append(best)
-        remaining.remove(best)
-    chosen.sort(key=lambda item: item[0].timestamp)
-    return [camera for camera, _ in chosen], [score for _, score in chosen]
+        available[best] = False
+        for index in np.flatnonzero(available):
+            position = float(np.linalg.norm(positions[index] - positions[best]))
+            direction = 1.0 - float(np.dot(forwards[index], forwards[best]))
+            novelty[index] = min(novelty[index], max(position / 1.0, direction))
+    return chosen
 
 
 def _thumbnail(camera: PhotoCamera, path: pathlib.Path) -> np.ndarray:
@@ -297,12 +313,28 @@ def _load_images(
     """Every usable photo checked and measured once, and a list that reads each again when it is needed."""
     usable = []
     for camera in cameras:
-        height, width = _decoded(camera, paths[camera.frame_id]).shape[:2]
+        width, height = _decoded_size(camera, paths[camera.frame_id])
         if height < 2 or width < 2:
             continue
         usable.append(camera.resized(width, height))
     originals = {camera.frame_id: camera for camera in cameras}
     return _Photos([originals[camera.frame_id] for camera in usable], paths), usable
+
+
+def _decoded_size(camera: PhotoCamera, path: pathlib.Path) -> tuple[int, int]:
+    """The width and height `_decoded` gives this photo, read from its header rather than by decoding it.
+
+    PIL sizes a thumbnail from the source dimensions alone, so a blank image of
+    the same size shrinks to the same size as the photo would.
+    """
+    try:
+        with Image.open(path) as image:
+            _validate_image(camera, path, image)
+            stand_in = Image.new("L", image.size)
+    except (OSError, KeyError, ValueError) as error:
+        raise TextureBakeError(f"unreadable photo {camera.frame_id}: {error}") from error
+    stand_in.thumbnail((MAX_IMAGE_EDGE, MAX_IMAGE_EDGE), Image.Resampling.LANCZOS)
+    return stand_in.size
 
 
 def _validate_image(camera: PhotoCamera, path: pathlib.Path, image: Image.Image) -> None:
@@ -315,6 +347,12 @@ def _validate_image(camera: PhotoCamera, path: pathlib.Path, image: Image.Image)
             f"photo {camera.frame_id} is {image.width}x{image.height}, "
             f"but pose metadata says {camera.width}x{camera.height}"
         )
+
+
+def _depth_buffers(cameras: list[PhotoCamera], triangles: np.ndarray) -> list[np.ndarray]:
+    """Each photo's depth buffer, drawn from only the faces in cubes its frame reaches, on every core."""
+    blocks = TriangleBlocks(triangles)
+    return list(in_parallel(lambda camera: triangle_depth_buffer(camera, triangles[blocks.seen_by(camera)]), cameras))
 
 
 def _exposure_gains(world, cameras, images, clean_buffers, lidar_buffers) -> np.ndarray:

@@ -182,14 +182,14 @@ FRAME_MARGIN_PIXELS = 16.0
 """How far past the frame's edge a sphere still counts as in it, so rounding to a buffer's coarse pixels never drops a point."""
 
 
-def spheres_in_frame(camera: PhotoCamera, centres: np.ndarray, radius: float) -> np.ndarray:
+def spheres_in_frame(camera: PhotoCamera, centres: np.ndarray, radius: float | np.ndarray) -> np.ndarray:
     """Which spheres reach into the camera's frame, counting any the camera stands inside."""
     local = centres @ camera.room_to_camera[:3, :3].T + camera.room_to_camera[:3, 3]
     lens = np.asarray([camera.fx, camera.fy, camera.cx, camera.cy, camera.width, camera.height], dtype=np.float64)
     return _in_frustum(local, lens, radius)
 
 
-def _in_frustum(local: np.ndarray, lens: np.ndarray, radius: float) -> np.ndarray:
+def _in_frustum(local: np.ndarray, lens: np.ndarray, radius: float | np.ndarray) -> np.ndarray:
     """Whether spheres at camera-frame centres cross all four side planes of the view and are not wholly behind it.
 
     Each side of the frame is a plane through the camera; a sphere reaches the
@@ -245,6 +245,24 @@ class PointBlocks:
         first, count = self.starts[chosen], self.starts[chosen + 1] - self.starts[chosen]
         offsets = np.arange(count.sum()) - np.repeat(np.cumsum(count) - count, count)
         return self.order[np.repeat(first, count) + offsets]
+
+
+class TriangleBlocks(PointBlocks):
+    """Faces grouped by the cube their centre lies in, so each photo rasterizes only the cubes inside its frame.
+
+    A face can reach outside the cube its centre falls in, so each cube's
+    sphere is grown to hold every corner of every face assigned to it. A face
+    outside every frame plane by more than the margin draws no pixel, so the
+    buffer is the one the whole mesh would have drawn.
+    """
+
+    def __init__(self, triangles: np.ndarray):
+        super().__init__(triangles.mean(axis=1))
+        block_of = np.empty(len(triangles), dtype=np.int64)
+        block_of[self.order] = np.repeat(np.arange(len(self.centres)), np.diff(self.starts))
+        corners_reach = np.linalg.norm(triangles - self.centres[block_of][:, None, :], axis=2).max(axis=1)
+        self.radius = np.zeros(len(self.centres))
+        np.maximum.at(self.radius, block_of, corners_reach)
 
 
 def depth_buffer(camera: PhotoCamera, points: np.ndarray) -> np.ndarray:
