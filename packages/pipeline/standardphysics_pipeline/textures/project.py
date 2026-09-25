@@ -21,6 +21,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from .camera import PhotoCamera
+from .stages import advanced
 
 NEAR_LIMIT = 0.15
 OCCLUDER_TOLERANCE = 0.025
@@ -185,9 +186,13 @@ def in_parallel(work, items):
     to spare.
     """
     workers = os.cpu_count() or 4
+    finished = 0
     with ThreadPoolExecutor(max_workers=workers) as pool:
         for start in range(0, len(items), workers):
-            yield from pool.map(work, items[start:start + workers])
+            for result in pool.map(work, items[start:start + workers]):
+                finished += 1
+                advanced(finished, len(items))
+                yield result
 
 
 FRAME_MARGIN_PIXELS = 16.0

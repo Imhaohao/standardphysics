@@ -27,6 +27,7 @@ from standardphysics_contracts import SceneGraph, SceneNode, bounds_the_room
 
 from .project import CameraArray
 from .regions import TrianglesByCorner, VertexIndex
+from .stages import advanced
 
 OBJECT_REACH = 0.03
 """How far outside its box a scanned vertex may sit and still belong to the object."""
@@ -247,6 +248,7 @@ def mirrored_completion(
     next_index = len(vertices)
     scan = _IndexedScan.of(vertices, triangles)
     for index, node in enumerate(graph.nodes):
+        advanced(index + 1, len(graph.nodes))
         if bounds_the_room(node):
             continue
         for plane in symmetry_planes(index, node, scan, seen_through):

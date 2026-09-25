@@ -1356,6 +1356,19 @@ export interface TextureCoverage {
   textured_fraction: number;
 }
 /**
+ * The step a running build is on and, when it works through a known number of items, how far it has got.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "TextureProgress".
+ */
+export interface TextureProgress {
+  done: number | null;
+  reported_at: string;
+  step: string;
+  step_started_at: string;
+  total: number | null;
+}
+/**
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
  * via the `definition` "TextureRequest".
  */
@@ -1371,6 +1384,7 @@ export interface TextureStatus {
   can_retry: boolean;
   error: string | null;
   exact: boolean;
+  progress: TextureProgress | null;
   revision: number;
   scan_id: string;
   stale_node_ids: string[];

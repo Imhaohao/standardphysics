@@ -19,6 +19,8 @@ from dataclasses import dataclass
 import numpy as np
 from standardphysics_contracts import SceneGraph, SceneNode, bounds_the_room
 
+from .stages import advanced
+
 MAX_RIM_METRES = 2.5
 """The longest rim closed: a seat or a backrest, not the open side of a room."""
 MAX_RIM_VERTICES = 600
@@ -137,7 +139,9 @@ def closed_object_holes(vertices: np.ndarray, triangles: np.ndarray, graph: Scen
     objects = [node for node in graph.nodes if not bounds_the_room(node)]
     added_vertices, added_faces, closed = [], [], 0
     next_index = len(vertices)
-    for rim in _rims(triangles) if objects else []:
+    rims = _rims(triangles) if objects else []
+    for number, rim in enumerate(rims, start=1):
+        advanced(number, len(rims))
         points = vertices[rim]
         if _perimeter(points) > MAX_RIM_METRES or not _inside_an_object(points.mean(axis=0), objects):
             continue
