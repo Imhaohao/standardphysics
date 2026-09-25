@@ -6,6 +6,10 @@ struct CaptureScreen: View {
     @StateObject private var capture = CaptureSessionStore()
     @Environment(\.scenePhase) private var scenePhase
 
+    /// The room paints itself in, so the arrow, the map and the tally all go:
+    /// an unpainted wall says where to walk and how much is left at once.
+    private var painting: Bool { model.developerMode }
+
     var body: some View {
         ZStack {
             RoomCaptureContainer(store: capture).ignoresSafeArea()
@@ -17,19 +21,28 @@ struct CaptureScreen: View {
             .ignoresSafeArea()
             .allowsHitTesting(false)
 
+            if painting {
+                PaintedCoverageView(session: capture.controller?.arSession, paint: capture.paint)
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+
             VStack(spacing: AppTheme.Spacing.control) {
                 captureHeader
                 Spacer()
-                if capture.phase == .scanning && !capture.coverage.isComplete {
+                if !painting && capture.phase == .scanning && !capture.coverage.isComplete {
                     GuidanceArrow(angle: capture.coverage.unfinishedDirection.radians)
                     Text("Walk this way. The yellow edges are still unscanned.")
                         .font(AppTheme.Typography.secondary)
                         .foregroundStyle(AppTheme.onDark)
                         .multilineTextAlignment(.center)
                 }
-                CoverageMapView(surfaces: capture.surfaces, coverage: capture.coverage)
-                    .frame(height: AppTheme.Size.coverageMapHeight)
-                CoverageTally(coverage: capture.coverage)
+                if !painting {
+                    CoverageMapView(surfaces: capture.surfaces, coverage: capture.coverage)
+                        .frame(height: AppTheme.Size.coverageMapHeight)
+                    CoverageTally(coverage: capture.coverage)
+                }
                 if capture.hasDetailedGeometry && capture.phase == .scanning {
                     Label("Recording room details", systemImage: "checkmark")
                         .font(AppTheme.Typography.secondary).foregroundStyle(AppTheme.onDark)

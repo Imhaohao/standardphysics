@@ -80,6 +80,13 @@ struct CameraObservation: Sendable {
     }
 }
 
+/// One cell of a surface, in world space, and whether the walk has covered it.
+struct PaintedSample: Sendable, Equatable {
+    let worldPoint: SIMD3<Float>
+    let worldNormal: SIMD3<Float>
+    let isObserved: Bool
+}
+
 struct SurfaceCoverage: Identifiable, Codable, Equatable, Sendable {
     let id: UUID
     let observedFraction: Double
@@ -356,6 +363,25 @@ struct CoverageEngine {
             let transformed = normalTransform * SIMD4(sample.localNormal, 0)
             let worldNormal = simd_normalize(SIMD3(transformed.x, transformed.y, transformed.z))
             return simd_dot(worldNormal, worldUp) > CoveragePolicy.supportFaceMaximumUpDot
+        }
+    }
+
+    /// Where the paint goes, and whether it is down yet.
+    ///
+    /// Drawn from the same samples that decide completion, so a wall that looks
+    /// painted is a wall the app will accept. A prettier overlay that disagreed
+    /// with the rule would leave an owner staring at a finished room the app
+    /// says is unfinished.
+    func paint(on surfaces: [SurfaceSnapshot]) -> [PaintedSample] {
+        surfaces.flatMap { surface -> [PaintedSample] in
+            let observed = observations[surface.id]?.observedSamples ?? []
+            return preparedSamples(on: surface).map { prepared in
+                PaintedSample(
+                    worldPoint: prepared.worldPoint,
+                    worldNormal: prepared.worldNormal,
+                    isObserved: observed.contains(prepared.sample.index)
+                )
+            }
         }
     }
 
