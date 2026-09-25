@@ -91,3 +91,43 @@ def test_a_mesh_already_small_enough_is_only_welded(patched_scan):
 
     assert np.array_equal(faces, welded(vertices, triangles)[1])
     assert len(points) == len(np.unique(faces))
+
+
+def _floor_of_rooms(vertices: np.ndarray, triangles: np.ndarray, rooms: int) -> tuple[np.ndarray, np.ndarray]:
+    """The scanned room laid out side by side, as many times as a library floor has rooms' worth of faces."""
+    width = float(np.ptp(vertices[:, 0])) + 5.0
+    placed = [vertices + np.array([width * room, 0.0, 0.0]) for room in range(rooms)]
+    offsets = [triangles + len(vertices) * room for room in range(rooms)]
+    return np.concatenate(placed), np.concatenate(offsets)
+
+
+def test_a_floor_keeps_as_many_faces_as_its_rooms_would_while_a_room_keeps_its_own(patched_scan):
+    from standardphysics_pipeline.textures.scan_atlas import MAX_VIEWER_FACES, MIN_VIEWER_FACES, viewer_faces
+    from standardphysics_pipeline.textures.scan_colour import ColouredScan
+
+    vertices, triangles = patched_scan
+    def budget(faces):
+        return viewer_faces(ColouredScan(vertices, faces, np.zeros((len(vertices), 3)), np.zeros(len(vertices), bool)))
+
+    room = budget(triangles)
+    floor = budget(_floor_of_rooms(vertices, triangles, 4)[1])
+    assert MIN_VIEWER_FACES <= room < floor <= MAX_VIEWER_FACES
+    assert floor >= min(MAX_VIEWER_FACES, 4 * room) * 0.99
+
+
+def test_blender_is_never_handed_more_than_its_cap_however_large_the_floor(patched_scan, tmp_path, monkeypatch):
+    from standardphysics_pipeline import blender
+    from standardphysics_pipeline.textures import scan_atlas
+    from standardphysics_pipeline.textures.scan_colour import ColouredScan
+
+    vertices, triangles = _floor_of_rooms(*patched_scan, 4)
+    handed = []
+    def instead_of_blender(script, args):
+        handed.append(len(np.load(args[args.index("--scan") + 1])["triangles"]))
+        return ""
+    monkeypatch.setattr(blender, "_run", instead_of_blender)
+    scan = ColouredScan(vertices, triangles, np.zeros((len(vertices), 3)), np.zeros(len(vertices), bool))
+    with pytest.raises(RuntimeError, match="did not unwrap"):
+        scan_atlas.unwrapped(scan, tmp_path, max_triangles=scan_atlas.MAX_VIEWER_FACES)
+    assert len(triangles) > scan_atlas.MAX_BLENDER_FACES
+    assert 0 < handed[0] <= scan_atlas.MAX_BLENDER_FACES

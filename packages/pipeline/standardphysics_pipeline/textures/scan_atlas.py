@@ -107,6 +107,24 @@ is left a share of the work: at four times, a scanned room kept 96.5 per cent
 of its area against 97.1 at six. Blender needs about 0.6 GB per million faces
 over a 0.7 GB base, so six times the viewer's 260,000 faces is under two
 gigabytes, where a library floor's four million had needed three."""
+MAX_BLENDER_FACES = 1_560_000
+"""The most faces Blender is ever handed, which holds it under two gigabytes however large the viewer's budget."""
+VIEWER_SHARE = 4
+"""The viewer keeps about one face in this many of the scan, the thinning a single walk has always had."""
+MIN_VIEWER_FACES = 260_000
+MAX_VIEWER_FACES = 1_000_000
+"""The most faces the viewer is given, which is what four walks of a library floor came to when each was painted alone."""
+
+
+def viewer_faces(scan: ColouredScan) -> int:
+    """How many faces the painted scan keeps, in proportion to how much was scanned.
+
+    One budget for every capture thinned a whole library floor as hard as one
+    room: four million faces cut to 260,000 broke the floor into shards with
+    gaps between them. A floor now keeps as many faces as its walks had when
+    each was painted alone.
+    """
+    return int(np.clip(len(scan.triangles) // VIEWER_SHARE, MIN_VIEWER_FACES, MAX_VIEWER_FACES))
 
 
 def unwrapped(scan: ColouredScan, work: pathlib.Path, max_triangles: int) -> UnwrappedScan:
@@ -119,7 +137,8 @@ def unwrapped(scan: ColouredScan, work: pathlib.Path, max_triangles: int) -> Unw
     """
     from ..blender import _run
 
-    vertices, triangles = thinned_for_blender(scan.vertices, scan.triangles, BLENDER_FACE_FACTOR * max_triangles)
+    handed = min(BLENDER_FACE_FACTOR * max_triangles, MAX_BLENDER_FACES)
+    vertices, triangles = thinned_for_blender(scan.vertices, scan.triangles, handed)
     source, result = work / "scan.npz", work / "unwrapped.npz"
     np.savez(source, vertices=vertices.astype(np.float32), triangles=triangles.astype(np.int32))
     output = _run("unwrap_scan.py", ["--scan", str(source), "--out", str(result), "--max-triangles", str(max_triangles)])
@@ -467,16 +486,19 @@ def bake_scan_atlas(
     frame_paths: dict[str, pathlib.Path],
     out_path: pathlib.Path,
     people: dict | None = None,
-    max_triangles: int = 260_000,
+    max_triangles: int | None = None,
 ) -> AtlasPaint:
-    """The vertex-painted scan, thinned, unwrapped and baked from every photo into one textured glTF."""
+    """The vertex-painted scan, thinned, unwrapped and baked from every photo into one textured glTF.
+
+    `max_triangles` is the viewer's face budget, `viewer_faces` of the scan unless given.
+    """
     started = time.monotonic()
     chosen = evenly_spread(cameras, MAX_ATLAS_PHOTOS)
     detections = people or {}
     with tempfile.TemporaryDirectory(prefix="standardphysics-atlas-") as temporary:
         work = pathlib.Path(temporary)
         with timed("unwrap"):
-            mesh = unwrapped(painted, work, max_triangles)
+            mesh = unwrapped(painted, work, max_triangles or viewer_faces(painted))
         size = atlas_size(mesh)
         with timed("texels"):
             surface = _Surface(mesh, size, painted, graph)
