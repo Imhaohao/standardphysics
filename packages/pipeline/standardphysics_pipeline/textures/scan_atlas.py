@@ -20,6 +20,7 @@ of surface, which is itself a photograph or the room's generated material.
 
 from __future__ import annotations
 
+import ctypes
 import pathlib
 import tempfile
 import time
@@ -290,6 +291,7 @@ class _Surface:
         self.rows, self.columns, self.faces, self.positions, self.normals = _with_every_face_owned(
             mesh, size, texels.rows, texels.columns, texels.owners, texels.positions, texels.normals,
         )
+        self.normals = self.normals.astype(np.float16)
         self.fallback, self.patch = _fallback_and_patch(painted, self.positions)
         self.blocks = PointBlocks(self.positions)
 
@@ -318,7 +320,7 @@ def _fallback_and_patch(painted: ColouredScan, positions: np.ndarray) -> tuple[n
     tree = cKDTree(painted.vertices)
     colours = to_linear(painted.colours)
     patches = painted.sheet_patches if painted.sheet_patches is not None else np.zeros(len(painted.vertices), bool)
-    fallback = np.empty((len(positions), 3), dtype=np.float32)
+    fallback = np.empty((len(positions), 3), dtype=np.float16)
     patch = np.empty(len(positions), dtype=bool)
     for start in range(0, len(positions), FALLBACK_CHUNK):
         distances, nearest = tree.query(positions[start:start + FALLBACK_CHUNK], k=FALLBACK_NEIGHBOURS, workers=-1)
@@ -401,7 +403,7 @@ def _bake(surface: _Surface, cameras, frame_paths, detections, gains, framed) ->
 
 def _in_chunks(resolve, weights: np.ndarray, colours: np.ndarray, size: int = 250_000) -> np.ndarray:
     """The resolution run a slice at a time, since comparing every pair of views is five-by-five per texel."""
-    return np.concatenate([resolve(weights[start:start + size], colours[start:start + size].astype(np.float32))
+    return np.concatenate([resolve(weights[start:start + size].astype(np.float32), colours[start:start + size].astype(np.float32))
                            for start in range(0, len(weights), size)] or [np.empty((0, 3), np.float32)])
 
 
@@ -532,6 +534,19 @@ def _write_glb(mesh_path: pathlib.Path, atlas_paths: list[pathlib.Path], out_pat
         raise RuntimeError(f"Blender did not write the textured scan:\n{output[-1500:]}")
 
 
+def _return_freed_memory() -> None:
+    """Give the pages an atlas freed back to the system before the next atlas starts.
+
+    The allocator keeps freed memory for reuse, and on the droplet each atlas
+    began a little higher than the last until the fourth was killed at 3.1 GB.
+    Only glibc has the call; elsewhere the memory is left where it is.
+    """
+    try:
+        ctypes.CDLL("libc.so.6").malloc_trim(0)
+    except (OSError, AttributeError):
+        pass
+
+
 def _baked_atlas(mesh: UnwrappedScan, painted: ColouredScan, graph: SceneGraph, cameras, frame_paths, detections, path) -> _Atlas:
     """One atlas's faces baked from the photos into an image at `path`."""
     size = atlas_size(mesh)
@@ -569,10 +584,10 @@ def bake_scan_atlas(
         work = pathlib.Path(temporary)
         with timed("unwrap"):
             mesh = unwrapped(painted, work, budget, atlas_count(budget))
-        atlases = [
-            _baked_atlas(mesh.atlas(index), painted, graph, chosen, frame_paths, detections, work / f"atlas-{index}.jpg")
-            for index in range(mesh.atlas_count)
-        ]
+        atlases = []
+        for index in range(mesh.atlas_count):
+            atlases.append(_baked_atlas(mesh.atlas(index), painted, graph, chosen, frame_paths, detections, work / f"atlas-{index}.jpg"))
+            _return_freed_memory()
         mesh_path = work / "mesh.npz"
         np.savez(mesh_path, vertices=mesh.vertices, triangles=mesh.triangles, uv=mesh.uv, atlases=mesh.atlases)
         out_path.parent.mkdir(parents=True, exist_ok=True)

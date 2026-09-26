@@ -319,7 +319,7 @@ class PointBlocks:
         span = keys.max(axis=0) - low + 1 if len(keys) else np.ones(3, dtype=np.int64)
         shifted = keys - low
         flat = (shifted[:, 0] * span[1] + shifted[:, 1]) * span[2] + shifted[:, 2]
-        self.order = np.argsort(flat, kind="stable")
+        self.order = np.argsort(flat, kind="stable").astype(np.int32 if len(flat) < 2**31 else np.int64)
         ordered = flat[self.order]
         edges = [np.flatnonzero(np.diff(ordered)) + 1, [len(flat)]] if len(flat) else []
         self.starts = np.concatenate([[0], *edges]).astype(np.int64)
