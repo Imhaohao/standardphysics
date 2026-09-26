@@ -251,7 +251,7 @@ def evenly_spread(cameras: list[PhotoCamera], limit: int) -> list[PhotoCamera]:
     return [cameras[index] for index in dict.fromkeys(picks.tolist())]
 
 
-def in_parallel(work, items):
+def in_parallel(work, items, counted: bool = True):
     """`work` over every item on all cores, in bounded batches, yielding results in item order.
 
     The per-photo work is array arithmetic that lets go of the interpreter lock,
@@ -267,7 +267,8 @@ def in_parallel(work, items):
         for start in range(0, len(items), workers):
             for result in pool.map(work, items[start:start + workers]):
                 finished += 1
-                advanced(finished, len(items))
+                if counted:
+                    advanced(finished, len(items))
                 yield result
 
 

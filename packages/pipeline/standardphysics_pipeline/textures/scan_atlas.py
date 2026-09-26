@@ -459,9 +459,11 @@ def _bake(surface: _Surface, cameras, frame_paths, detections, gains, framed, oc
 
 
 def _in_chunks(resolve, weights: np.ndarray, colours: np.ndarray, size: int = 250_000) -> np.ndarray:
-    """The resolution run a slice at a time, since comparing every pair of views is five-by-five per texel."""
-    return np.concatenate([resolve(weights[start:start + size].astype(np.float32), colours[start:start + size].astype(np.float32))
-                           for start in range(0, len(weights), size)] or [np.empty((0, 3), np.float32)])
+    """The resolution run a slice at a time on every core, since comparing every pair of views is five-by-five per texel."""
+    def slice_of(start: int) -> np.ndarray:
+        return resolve(weights[start:start + size].astype(np.float32), colours[start:start + size].astype(np.float32))
+
+    return np.concatenate(list(in_parallel(slice_of, range(0, len(weights), size), counted=False)) or [np.empty((0, 3), np.float32)])
 
 
 def agreed_colours(weights: np.ndarray, colours: np.ndarray) -> np.ndarray:
