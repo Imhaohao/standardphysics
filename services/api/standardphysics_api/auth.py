@@ -15,6 +15,7 @@ import re
 import time
 import uuid
 from dataclasses import dataclass, field
+from typing import Literal
 
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
@@ -48,12 +49,16 @@ class SignInRequest(BaseModel):
     password: str = Field(min_length=1, max_length=1024)
 
 
+Role = Literal["owner", "team"]
+
+
 class Session(BaseModel):
     """What the browser is told about the signed-in owner. Never the token."""
 
     owner_id: uuid.UUID
     email: str
     shop_name: str
+    role: Role = "owner"
 
 
 @dataclass
@@ -125,7 +130,13 @@ def _owns_scan(database: Database, scan_id: uuid.UUID, owner: Owner) -> bool:
         return not repo.scan_exists(connection, scan_id)
 
 
-def install_auth(app: FastAPI, database: Database, store: ArtifactStore) -> None:
+def role_of(owner: Owner, team_emails: frozenset[str]) -> Role:
+    return "team" if owner.email.casefold() in team_emails else "owner"
+
+
+def install_auth(
+    app: FastAPI, database: Database, store: ArtifactStore, team_emails: frozenset[str] = frozenset()
+) -> None:
     limiter = AttemptLimiter()
 
     class RequireOwner(BaseHTTPMiddleware):
@@ -142,15 +153,15 @@ def install_auth(app: FastAPI, database: Database, store: ArtifactStore) -> None
             return await call_next(request)
 
     app.add_middleware(RequireOwner)
-    _install_auth_routes(app, database, store, limiter)
+    _install_auth_routes(app, database, store, limiter, team_emails)
 
 
 def _problem(status: int, message: str) -> JSONResponse:
     return JSONResponse(ApiProblem(status, message).body.model_dump(exclude_none=True), status_code=status)
 
 
-def _session_of(owner: Owner) -> Session:
-    return Session(owner_id=owner.id, email=owner.email, shop_name=owner.shop_name)
+def _session_of(owner: Owner, team_emails: frozenset[str]) -> Session:
+    return Session(owner_id=owner.id, email=owner.email, shop_name=owner.shop_name, role=role_of(owner, team_emails))
 
 
 def _set_cookie(response: Response, request: Request, token: str) -> None:
@@ -214,19 +225,19 @@ def _erase_owner(database: Database, owner: Owner) -> list[uuid.UUID]:
 
 
 def _install_auth_routes(
-    app: FastAPI, database: Database, store: ArtifactStore, limiter: AttemptLimiter
+    app: FastAPI, database: Database, store: ArtifactStore, limiter: AttemptLimiter, team_emails: frozenset[str]
 ) -> None:
     @app.post("/api/auth/sign-up", status_code=201, response_model=Session)
     def sign_up(body: SignUpRequest, request: Request, response: Response) -> Session:
         owner, token = _open(database, _register(database, body))
         _set_cookie(response, request, token)
-        return _session_of(owner)
+        return _session_of(owner, team_emails)
 
     @app.post("/api/auth/sign-in", response_model=Session)
     def sign_in(body: SignInRequest, request: Request, response: Response) -> Session:
         owner, token = _open(database, _authenticate(database, body, limiter))
         _set_cookie(response, request, token)
-        return _session_of(owner)
+        return _session_of(owner, team_emails)
 
     @app.post("/api/auth/sign-out", status_code=204)
     def sign_out(request: Request) -> Response:
@@ -261,4 +272,4 @@ def _install_auth_routes(
         owner = _resolve_owner(database, request)
         if owner is None:
             raise ApiProblem(401, "Sign in to continue.")
-        return _session_of(owner)
+        return _session_of(owner, team_emails)

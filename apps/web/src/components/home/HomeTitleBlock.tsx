@@ -3,7 +3,7 @@ import { DeveloperModeToggle } from "@/components/auth/DeveloperModeToggle";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { SheetField } from "@/components/blueprint/SheetField";
 import { ScanShopButton } from "@/components/ScanShopButton";
-import type { Session } from "@/lib/session";
+import { isTeam, type Session } from "@/lib/session";
 
 export function HomeTitleBlock({ session, className = "" }: { session: Session; className?: string }) {
   return (
@@ -17,7 +17,7 @@ export function HomeTitleBlock({ session, className = "" }: { session: Session; 
         <ScanShopButton />
         <SignOutButton />
         <DeleteAccountButton />
-        <DeveloperModeToggle />
+        {isTeam(session) && <DeveloperModeToggle />}
       </div>
     </section>
   );

@@ -33,6 +33,10 @@ def _flag(name: str) -> bool:
     return os.environ.get(name, "").lower() in {"1", "true", "yes"}
 
 
+def _email_set(name: str) -> frozenset[str]:
+    return frozenset(part.strip().casefold() for part in os.environ.get(name, "").split(",") if part.strip())
+
+
 def _bounded_integer(name: str, default: int, low: int, high: int) -> int:
     raw = os.environ.get(name)
     value = default if raw is None else int(raw)
@@ -81,6 +85,12 @@ class Settings:
     The server turns this on; tests leave it off so their stand-in bakes run
     where they can see them. SP_BAKE_IN_PROCESS=1 turns it back off.
     """
+    team_emails: frozenset[str] = frozenset()
+    """Accounts that see the team's tools, from SP_TEAM_EMAILS (comma separated).
+
+    Owners never see developer mode, the improvement loop, scoped checks or the
+    other builder tools. Everyone signed in with one of these emails does.
+    """
     evidence_settle_seconds: float = 30.0
     """Quiet time before late evidence auto-queues exactly one semantic job.
 
@@ -108,6 +118,7 @@ class Settings:
             weave_entity=os.environ.get(ENTITY_ENV) or None,
             auto_deep_simulation=_flag("SP_AUTO_DEEP_SIMULATION"),
             bake_in_own_process=not _flag("SP_BAKE_IN_PROCESS"),
+            team_emails=_email_set("SP_TEAM_EMAILS"),
             evidence_settle_seconds=_bounded_integer(
                 "SP_EVIDENCE_SETTLE_SECONDS", 30, 0, 86_400
             ),

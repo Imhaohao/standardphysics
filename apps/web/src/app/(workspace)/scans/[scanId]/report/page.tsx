@@ -8,7 +8,7 @@ import { getReport } from "@/lib/api";
 import { formatInches, groupFindings } from "@/lib/findings";
 import { scopedSummary } from "@/lib/outcomes";
 import type { Assessment, Finding, ReviewedRule, Scenario } from "@/types/contracts";
-import { requireSession } from "@/lib/session";
+import { isTeam, requireSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -202,7 +202,7 @@ function ScopedOrNothing({ assessment }: { assessment: Assessment | null }) {
 }
 
 export default async function ReportPage({ params }: PageProps<"/scans/[scanId]/report">) {
-  await requireSession();
+  const session = await requireSession();
   const { scanId } = await params;
   const report = await getReport(scanId);
   if (!report) notFound();
@@ -238,7 +238,7 @@ export default async function ReportPage({ params }: PageProps<"/scans/[scanId]/
 
       <ProblemsSection problems={groups.problems} />
 
-      <ScopedOrNothing assessment={assessment} />
+      {isTeam(session) && <ScopedOrNothing assessment={assessment} />}
 
       <NextStepsSection questions={groups.questions} />
 

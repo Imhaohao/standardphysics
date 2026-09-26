@@ -9,17 +9,16 @@ const VARIANTS: Record<Variant, string> = {
   chip: "bg-sheet/95 text-ink shadow-float hover:bg-sheet shrink-0 whitespace-nowrap px-3 py-2 text-sm aria-pressed:bg-ink aria-pressed:text-paper",
 };
 
+/** The button look on its own, for a link that should read as a button. */
+export function buttonClassName(variant: Variant = "quiet", squared = false): string {
+  return `inline-flex items-center gap-2 ${squared ? "rounded-none" : "rounded-lg"} font-medium transition-colors duration-150 ${VARIANTS[variant]}`;
+}
+
 export function Button({
   variant = "quiet",
   squared = false,
   className = "",
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; squared?: boolean }) {
-  return (
-    <button
-      type="button"
-      className={`inline-flex items-center gap-2 ${squared ? "rounded-none" : "rounded-lg"} font-medium transition-colors duration-150 ${VARIANTS[variant]} ${className}`}
-      {...props}
-    />
-  );
+  return <button type="button" className={`${buttonClassName(variant, squared)} ${className}`} {...props} />;
 }

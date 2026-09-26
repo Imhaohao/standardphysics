@@ -175,3 +175,12 @@ def test_two_owners_with_the_same_password_do_not_share_a_hash(client):
 def test_a_damaged_hash_verifies_nothing(client):
     assert not accounts.verify_password("anything", "not-a-hash")
     assert not accounts.verify_password("anything", "scrypt$bad$8$1$aa$bb")
+
+
+def test_an_owner_is_not_on_the_team(client):
+    assert client.get("/api/auth/session").json()["role"] == "owner"
+
+
+def test_a_team_email_signs_in_as_the_team(make_client):
+    with make_client(team_emails=frozenset({"owner@example.com"})) as test_client:
+        assert test_client.get("/api/auth/session").json()["role"] == "team"
