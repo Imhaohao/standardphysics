@@ -162,6 +162,21 @@ CREATE TABLE IF NOT EXISTS devices (
     last_seen_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS devices_by_owner ON devices(owner_id);
+CREATE TABLE IF NOT EXISTS share_links (
+    token_hash TEXT PRIMARY KEY,
+    scan_id TEXT NOT NULL REFERENCES scans(id),
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS layout_plans (
+    id TEXT PRIMARY KEY,
+    scan_id TEXT NOT NULL REFERENCES scans(id),
+    base_revision INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    moves_json TEXT NOT NULL,
+    findings_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS checklist_items (
     scan_id TEXT NOT NULL REFERENCES scans(id),
     finding_id TEXT NOT NULL,

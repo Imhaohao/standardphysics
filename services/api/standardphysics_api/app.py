@@ -68,13 +68,16 @@ from .loop_run import stream as stream_loop_on
 from .notifications import notifier_from
 from .owner_accounts import install_account_routes
 from .owner_routes import answered, install_owner_routes
+from .plans import install_plan_routes
 from .proposals import propose
 from .questions import answer_question
 from .replays import install_replay_routes
 from .report import build_report
 from .route import confirm, suggestion
+from .scenario import DESTINATIONS
 from .seed import seed_sample_shop
 from .settings import Settings
+from .sharing import install_share_routes
 from .simulations import queue_simulation, simulation_status
 from .splats import install_splat_routes
 from .stages import Stages, preview_ledger
@@ -82,6 +85,8 @@ from .store import ArtifactStore, ArtifactTooLarge, InvalidArtifactId
 from .textures import install_texture_routes, maybe_queue_texture, validate_manifest
 from .usdz_validation import InvalidUsdz, validate_room_usdz
 from .worker import ASSESS, PROCESS, Worker
+
+PLACES = {*DESTINATIONS, "pickup"}
 
 log = logging.getLogger(__name__)
 
@@ -170,6 +175,12 @@ def create_app(settings: Settings | None = None, stages: Stages | None = None, r
     _install_label_routes(app, database, store, worker)
 
     _install_report_route(app, database, stages)
+    install_plan_routes(app, database, stages)
+    install_share_routes(
+        app, database, lambda scan_id: answered_report(database, stages, scan_id),
+        lambda scan_id: _scene_glb_response(database, scan_id, None),
+        lambda scan_id, finding_id: _render_response(store, database, scan_id, finding_id),
+    )
 
     @app.get("/health")
     def health() -> dict[str, str]:
@@ -185,14 +196,19 @@ def create_app(settings: Settings | None = None, stages: Stages | None = None, r
     return app
 
 
+def answered_report(database: Database, stages: Stages, scan_id: uuid.UUID) -> Report:
+    """The report with the owner's answers laid over its findings."""
+    built = build_report(database, stages.ledger_factory(), scan_id)
+    if built.assessment is None:
+        return built
+    with database.connect() as connection:
+        return built.model_copy(update={"assessment": answered(connection, stages, scan_id, built.assessment)})
+
+
 def _install_report_route(app: FastAPI, database: Database, stages: Stages) -> None:
     @app.get("/api/scans/{scan_id}/report", response_model=Report)
     def report(scan_id: uuid.UUID) -> Report:
-        built = build_report(database, stages.ledger_factory(), scan_id)
-        if built.assessment is None:
-            return built
-        with database.connect() as connection:
-            return built.model_copy(update={"assessment": answered(connection, stages, scan_id, built.assessment)})
+        return answered_report(database, stages, scan_id)
 
 
 def _scan_or_404(connection, scan_id: uuid.UUID) -> Scan:
@@ -536,10 +552,21 @@ def _install_label_routes(app: FastAPI, database: Database, store: ArtifactStore
         )
 
 
+def _destinations(raw: str | None) -> list[str] | None:
+    if raw is None:
+        return None
+    named = [part.strip() for part in raw.split(",") if part.strip()]
+    unknown = [part for part in named if part not in PLACES]
+    if unknown:
+        raise ApiProblem(400, "unknown destination", need=unknown)
+    return named
+
+
 def _install_route_routes(app: FastAPI, database: Database, stages: Stages, worker: Worker) -> None:
     @app.get("/api/scans/{scan_id}/scenario/suggestion", response_model=Scenario)
-    def scenario_suggestion(scan_id: uuid.UUID) -> Scenario:
-        return suggestion(database, scan_id)
+    def scenario_suggestion(scan_id: uuid.UUID, destinations: str | None = None) -> Scenario:
+        """The café template with no `destinations`, or a path through the places named, comma separated."""
+        return suggestion(database, scan_id, _destinations(destinations))
 
     @app.put("/api/scans/{scan_id}/scenario", response_model=Scenario)
     def confirm_scenario(scan_id: uuid.UUID, body: Scenario) -> Scenario:
@@ -610,6 +637,18 @@ def _frame_listing(store: ArtifactStore, scan_id: uuid.UUID, stored: list[Artifa
     return FrameListing(frames=entries, unreadable=unreadable)
 
 
+def _render_response(
+    store: ArtifactStore, database: Database, scan_id: uuid.UUID, finding_id: uuid.UUID
+) -> FileResponse:
+    with database.connect() as connection:
+        revision = repo.get_revision(connection, scan_id)
+    if revision is None:
+        raise ApiProblem(404, "not ready")
+    directory = store.scan_dir(scan_id) / "revisions"
+    matches = sorted(directory.glob(f"*/renders/{finding_id}.png"), key=lambda path: int(path.parent.parent.name))
+    return _file_or_404(matches[-1] if matches else None, "image/png")
+
+
 def _install_file_routes(app: FastAPI, database: Database, store: ArtifactStore) -> None:
     @app.head("/api/scans/{scan_id}/scene.glb")
     @app.get("/api/scans/{scan_id}/scene.glb")
@@ -626,13 +665,7 @@ def _install_file_routes(app: FastAPI, database: Database, store: ArtifactStore)
 
     @app.get("/api/scans/{scan_id}/renders/{finding_id}.png")
     def render(scan_id: uuid.UUID, finding_id: uuid.UUID) -> FileResponse:
-        with database.connect() as connection:
-            revision = repo.get_revision(connection, scan_id)
-        if revision is None:
-            raise ApiProblem(404, "not ready")
-        directory = store.scan_dir(scan_id) / "revisions"
-        matches = sorted(directory.glob(f"*/renders/{finding_id}.png"), key=lambda path: int(path.parent.parent.name))
-        return _file_or_404(matches[-1] if matches else None, "image/png")
+        return _render_response(store, database, scan_id, finding_id)
 
     @app.get("/api/scans/{scan_id}/crops/{crop_id}")
     def get_crop(scan_id: uuid.UUID, crop_id: str) -> FileResponse:
