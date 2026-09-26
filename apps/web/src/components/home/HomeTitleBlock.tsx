@@ -1,9 +1,24 @@
+import { Images } from "@phosphor-icons/react/dist/ssr";
+import Link from "next/link";
 import { DeleteAccountButton } from "@/components/auth/DeleteAccountButton";
 import { DeveloperModeToggle } from "@/components/auth/DeveloperModeToggle";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { SheetField } from "@/components/blueprint/SheetField";
 import { ScanShopButton } from "@/components/ScanShopButton";
+import { buttonClassName } from "@/components/ui/Button";
 import { isTeam, type Session } from "@/lib/session";
+
+function TeamTools() {
+  return (
+    <div className="flex flex-col items-start gap-3 border-t border-ink p-4">
+      <Link href="/team/reviews" className={buttonClassName("quiet", true)}>
+        <Images size={18} aria-hidden />
+        Check owners&apos; photos
+      </Link>
+      <DeveloperModeToggle />
+    </div>
+  );
+}
 
 export function HomeTitleBlock({ session, className = "" }: { session: Session; className?: string }) {
   return (
@@ -17,8 +32,8 @@ export function HomeTitleBlock({ session, className = "" }: { session: Session; 
         <ScanShopButton />
         <SignOutButton />
         <DeleteAccountButton />
-        {isTeam(session) && <DeveloperModeToggle />}
       </div>
+      {isTeam(session) && <TeamTools />}
     </section>
   );
 }
