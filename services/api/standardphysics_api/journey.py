@@ -30,6 +30,8 @@ class ShopState:
     requests: list[OwnerRequest]
     assessment: Assessment | None
     """With the owner's answers laid over it."""
+    measured: bool
+    """Whether the shop's model exists yet. The counter and the path need the model, not the results."""
     counter_marked: bool
     path_confirmed: bool
     checklist: Checklist
@@ -73,8 +75,14 @@ def _in_shop(state: ShopState) -> Step | None:
 
 
 def _measuring(state: ShopState) -> Step | None:
-    if state.assessment is None:
+    if not state.measured:
         return "fill_in_the_gaps", NextStep(kind="measuring", title="We're measuring your shop")
+    return None
+
+
+def _checking(state: ShopState) -> Step | None:
+    if state.assessment is None:
+        return "fill_in_the_gaps", NextStep(kind="measuring", title="We're checking your shop")
     return None
 
 
@@ -114,7 +122,9 @@ def _fixing(state: ShopState) -> Step:
     return "tools", NextStep(kind="done", title="Everything on your list is done")
 
 
-STEPS: tuple[Callable[[ShopState], Step | None], ...] = (_walk, _in_shop, _measuring, _two_checks, _follow_ups)
+STEPS: tuple[Callable[[ShopState], Step | None], ...] = (
+    _walk, _in_shop, _measuring, _two_checks, _checking, _follow_ups,
+)
 
 
 def journey(state: ShopState) -> Journey:

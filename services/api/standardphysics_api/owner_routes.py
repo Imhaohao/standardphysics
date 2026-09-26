@@ -86,6 +86,7 @@ def journey_of(connection: sqlite3.Connection, stages: Stages, scan_id: uuid.UUI
         shop_name=shop.scan.name,
         requests=shop.requests,
         assessment=shop.assessment,
+        measured=repo.get_revision(connection, scan_id) is not None,
         counter_marked=_counter_marked(connection, scan_id),
         path_confirmed=repo.get_scenario(connection, scan_id) is not None,
         checklist=checklists.checklist(connection, scan_id, shop.assessment),

@@ -1,6 +1,12 @@
 """Where each shop is in the owner's journey, and the checklist behind it."""
 
+import uuid
+from datetime import UTC, datetime
+
+from standardphysics_contracts import Checklist, Scan
+
 from conftest import create_scan, drain
+from standardphysics_api.journey import ShopState, journey
 
 
 def _sample(make_client):
@@ -92,3 +98,22 @@ def test_the_home_card_lists_every_shop_on_the_account(client, stranger):
 def test_the_journey_list_needs_a_sign_in(make_client):
     with make_client(sign_in_as_owner=False) as anonymous:
         assert anonymous.get("/api/journeys").status_code == 401
+
+
+def _state(**changes):
+
+
+
+    scan = Scan(id=uuid.uuid4(), name="Corner cafe", created_at=datetime.now(UTC), device_model="iPhone",
+                duration_seconds=60, state="checking", artifacts=[], coverage=[], content_hash=None)
+    base = dict(scan=scan, shop_name="Corner cafe", requests=[], assessment=None, measured=True,
+                counter_marked=False, path_confirmed=False, checklist=Checklist(items=[], done=0, total=0))
+    return ShopState(**(base | changes))
+
+
+def test_the_path_comes_straight_after_the_counter_while_the_checks_rerun():
+    assert journey(_state()).next_step.kind == "counter"
+    assert journey(_state(counter_marked=True)).next_step.kind == "path"
+    waiting = journey(_state(counter_marked=True, path_confirmed=True)).next_step
+    assert (waiting.kind, waiting.title) == ("measuring", "We're checking your shop")
+    assert journey(_state(measured=False)).next_step.title == "We're measuring your shop"
