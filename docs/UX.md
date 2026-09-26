@@ -86,12 +86,14 @@ The wire shapes live in `packages/contracts/standardphysics_contracts/owner.py`,
 
 | Route | What it does |
 | --- | --- |
-| `POST /api/auth/guest` | Makes a guest account and signs it in. The phone calls it on first launch, so the walk can upload with no sign-in. Answers `Session` and sets the cookie. |
+| `POST /api/auth/guest` | Makes a guest account and signs it in. The phone calls it on first launch, so the walk can upload with no sign-in. Answers `Session` and sets the cookie. One network can make 20 an hour. |
 | `POST /api/auth/save` | `{email, password}`. Turns the signed-in guest into a saved account. 409 when the email already has an account, and then the phone signs in instead. |
 | `POST /api/auth/apple` | `{identity_token, full_name?}`. Signs in with Apple. A guest who signs in keeps their shops: they move into the Apple account, or the guest becomes it. |
 | `POST /api/auth/sign-in` | As today. When the caller is a guest, the guest's shops move into the account they sign in to. |
 | `GET /api/auth/session` | `Session`, now with `guest`, `role` and `deletes_at`. |
 | `PUT /api/devices/{apns_token}` | `{environment}`. Registers the phone for notifications. `DELETE` removes it. |
+
+A new walk of a shop, to add a room or to walk it again, is `POST /api/scans` with `replaces` set to the shop's scan. The new scan starts with the owner's in-shop answers and photos, and the old one leaves the shop list once the new one is ready. Each walk is its own scan because each capture has its own coordinates.
 
 A guest's shops are deleted 30 days after any of them was last opened. The reminder goes 3 days before, as a push, and `Session.deletes_at` lets the app and the web show it as a banner.
 
@@ -113,7 +115,21 @@ A guest's shops are deleted 30 days after any of them was last opened. The remin
 | `GET /api/shared/{token}` | The report behind a link, with no sign-in. |
 | `POST /api/scans/{id}/plans` | Saves a planned layout and checks it. The shop as scanned doesn't change. `GET` lists the plans and `DELETE /plans/{plan_id}` removes one. |
 
-Answers change findings as soon as they arrive. A doorway width or a door's push force is checked against the rule straight away. A photo becomes a result when a person on the team marks it passes or problem through `GET /api/team/reviews` and `PUT /api/team/reviews/{scan_id}/{request_id}`, which only team accounts can reach.
+Answers change findings as soon as they arrive. A photo that's been sent and not yet checked stays a question with `asks: "review"`. A doorway width or a door's push force is checked against the rule straight away. A photo becomes a result when a person on the team marks it passes or problem through `GET /api/team/reviews` and `PUT /api/team/reviews/{scan_id}/{request_id}`, which only team accounts can reach.
+
+### On the web
+
+| Route | Who | What it is |
+| --- | --- | --- |
+| `/shops/{id}` | Owners | The owner view: one step at a time, then the results and checklist as one list, sharing and the shop tools |
+| `/example` | Anyone | The sample shop in the owner view, read-only |
+| `/r/{token}` | Anyone with the link | A shared report, printable to PDF |
+| `/` | Everyone signed in | The shops, each with its next step. Owners go to `/shops/{id}`, the team to the workspace |
+| `/scans/{id}` | The team | The builders' workspace |
+| `/team/reviews` | The team | Photos waiting to be checked |
+| `/team/funnel` | The team | How many shops reach each step, from the walk to the first fix |
+
+The team is whoever `SP_TEAM_EMAILS` names. Once it names anyone, the ask box, the improvement loop, simulations, rebuilds and combining rooms answer only to the team.
 
 ### The bridge
 
