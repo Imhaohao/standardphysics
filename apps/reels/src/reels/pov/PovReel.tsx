@@ -6,11 +6,12 @@ import { Footage } from "../../components/Footage";
 import { LidarRoom } from "../../components/LidarRoom";
 import { Grain, Paper, Vignette } from "../../components/Paper";
 import { PaperWipe } from "../../components/PaperWipe";
-import { TapeLabel } from "../../components/Type";
-import { drawn, progress, sweep } from "../../lib/ease";
+import { progress, sweep } from "../../lib/ease";
 import { REEL } from "../../lib/timing";
-import { InkFreeze, type Annotation } from "./InkFreeze";
-import { Punch, Shot } from "./Shot";
+import { InkFreeze, type Annotation } from "../../components/InkFreeze";
+import { BehindType } from "../../components/BehindType";
+import { TapeStack as Caption } from "../../components/TapeStack";
+import { Punch, Shot } from "../../components/Shot";
 
 const CUTS = { studiers: 75, ceiling: 170, dinner: 240, phone: 335, model: 415, caught: 500, end: 560, length: 632 } as const;
 const FREEZE_AT = 26;
@@ -24,36 +25,6 @@ const dinnerNotes: Annotation[] = [
   { kind: "leader", target: [236, 936], shelf: [420, 470], text: "still measuring" },
   { kind: "leader", target: [360, 1250], shelf: [560, 1500], text: "dinner" },
 ];
-
-function Caption({ lines, at = 6 }: { lines: string[]; at?: number }) {
-  return (
-    <div className="absolute inset-x-safe-side top-safe-top flex flex-col items-start gap-4">
-      {lines.map((line, index) => (
-        <TapeLabel key={line} at={at + index * 5} tilt={index % 2 === 0 ? -2 : 1.5} className="reel-caption text-caption">
-          {line}
-        </TapeLabel>
-      ))}
-    </div>
-  );
-}
-
-function BehindType({ lines, top, at = 0 }: { lines: string[]; top: number; at?: number }) {
-  const frame = useCurrentFrame();
-  return (
-    <div className="absolute inset-x-0 text-center" style={{ top }}>
-      {lines.map((line, index) => {
-        const rise = progress(frame, at + index * 4, 16, drawn);
-        return (
-          <div key={line} className="overflow-hidden">
-            <div className="reel-copy text-poster text-paper-raised" style={{ transform: `translateY(${(1 - rise) * 105}%)`, textShadow: "0 12px 60px rgba(13,13,12,0.35)" }}>
-              {line}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 function Opener() {
   return (
@@ -83,7 +54,7 @@ function Ceiling() {
   return (
     <Punch push={0.0015}>
       <Footage clip="zihao-ceiling" startFrom={10} />
-      <BehindType lines={["the", "ceiling?"]} top={1130} at={6} />
+      <BehindType lines={["the", "ceiling?"]} top={1130} at={6} tone="ink" />
       <Cutout clip="zihao-ceiling" frameCount={135} startFrom={10} />
       <Caption lines={["they did the ceiling too"]} at={20} />
     </Punch>

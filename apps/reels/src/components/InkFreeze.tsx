@@ -1,20 +1,20 @@
 import { useMemo } from "react";
 import { Img, staticFile, useCurrentFrame } from "remotion";
-import { leaderNoteAt, dimensionLeft } from "../../../../web/src/lib/schematic-brush/annotations";
-import type { DraftRecorder } from "../../../../web/src/lib/schematic-brush/recorder";
-import { InkLayer } from "../../components/InkLayer";
-import { Paper } from "../../components/Paper";
-import { ScanBar } from "../../components/ScanBar";
-import { composeInk, type Point } from "../../lib/ink";
-import { progress, sweep } from "../../lib/ease";
-import { REEL, toMs } from "../../lib/timing";
+import { leaderNoteAt, dimensionLeft } from "../../../web/src/lib/schematic-brush/annotations";
+import type { DraftRecorder } from "../../../web/src/lib/schematic-brush/recorder";
+import { InkLayer } from "./InkLayer";
+import { Paper } from "./Paper";
+import { ScanBar } from "./ScanBar";
+import { composeInk, type Point } from "../lib/ink";
+import { progress, sweep } from "../lib/ease";
+import { REEL, toMs } from "../lib/timing";
 
 export type Annotation =
   | { kind: "leader"; target: Point; shelf: Point; text: string }
   | { kind: "height"; top: Point; bottom: Point; lineX: number; text: string };
 
 const SWEEP_FRAMES = 12;
-const INK_ZOOM = 2;
+const INK_ZOOM = 2.6;
 
 function atInkScale(note: Annotation): Annotation {
   const half = ([x, y]: Point): Point => [x / INK_ZOOM, y / INK_ZOOM];

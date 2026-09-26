@@ -28,12 +28,15 @@
   --text-headline--line-height: 0.92;
   --text-title: 88px;
   --text-title--line-height: 0.98;
-  --text-caption: 60px;
+  --text-caption: 64px;
   --text-caption--line-height: 1.08;
-  --text-label: 40px;
+  --text-label: 46px;
   --text-label--line-height: 1.15;
-  --text-fineprint: 28px;
+  --text-fineprint: 36px;
   --text-fineprint--line-height: 1.3;
+
+  --text-shout: 180px;
+  --text-shout--line-height: 0.9;
 
   --spacing-safe-top: 250px;
   --spacing-safe-bottom: 420px;

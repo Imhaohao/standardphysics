@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useCurrentFrame } from "remotion";
-import { Footage } from "../../components/Footage";
-import { drawn, progress } from "../../lib/ease";
+import { Footage } from "./Footage";
+import { drawn, progress } from "../lib/ease";
 
 /** Every cut lands with a punch: the frame starts a little close and a white flash burns off. */
 export function Punch({ children, push = 0.0008 }: { children: ReactNode; push?: number }) {

@@ -9,7 +9,7 @@ const out = (name) => path.join(root, "out", name);
 const reels = process.argv.slice(2).length ? process.argv.slice(2) : ["Inches", "Pov", "OneLine"];
 
 function render(id) {
-  execFileSync("npx", ["remotion", "render", "src/index.ts", id, out(`${id}.raw.mp4`), "--codec=h264", "--crf=16", "--audio-bitrate=320k", "--gl=angle"], { cwd: root, stdio: "inherit" });
+  execFileSync("npx", ["remotion", "render", "src/index.ts", id, out(`${id}.raw.mp4`), "--codec=h264", "--crf=16", "--audio-bitrate=320k", "--gl=angle", `--concurrency=${process.env.CONCURRENCY ?? 3}`], { cwd: root, stdio: "inherit" });
 }
 
 export function level(id) {
