@@ -1,3 +1,4 @@
+import { AI_REPLACE_LENGTH, AiReplaceUs } from "./batch-a/AiReplaceUs";
 import { DOLL_LENGTH, DollMeme } from "./batch-a/DollMeme";
 import { FLOP_LENGTH, FlopCore } from "./batch-a/FlopCore";
 import { LIBRARY_POV_LENGTH, LibraryPov } from "./batch-a/LibraryPov";
@@ -9,4 +10,5 @@ export const batchA: ReelSpec[] = [
   { id: "TherapyMeme", component: TherapyMeme, durationInFrames: THERAPY_LENGTH },
   { id: "DollMeme", component: DollMeme, durationInFrames: DOLL_LENGTH },
   { id: "FlopCore", component: FlopCore, durationInFrames: FLOP_LENGTH },
+  { id: "AiReplaceUs", component: AiReplaceUs, durationInFrames: AI_REPLACE_LENGTH },
 ];
