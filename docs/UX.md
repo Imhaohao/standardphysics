@@ -77,3 +77,55 @@ The web owner view runs inside the app's web view on a phone and in a browser on
 - Never-saved guest shops are deleted 30 days after the scan was last opened. The owner gets a reminder 3 days before, as a push or as a banner in the app.
 - A layout the owner plans is saved as a plan. The report keeps describing the shop as scanned.
 - Re-scanning a single spot and finding a pro are on the wish list, not planned.
+
+## How it's built
+
+The wire shapes live in `packages/contracts/standardphysics_contracts/owner.py`, and the web's types are generated from them. Every route below answers with those shapes. The phone sends its token as a bearer header and the web view sends the same token as the `sp_session` cookie, as today.
+
+### Accounts
+
+| Route | What it does |
+| --- | --- |
+| `POST /api/auth/guest` | Makes a guest account and signs it in. The phone calls it on first launch, so the walk can upload with no sign-in. Answers `Session` and sets the cookie. |
+| `POST /api/auth/save` | `{email, password}`. Turns the signed-in guest into a saved account. 409 when the email already has an account, and then the phone signs in instead. |
+| `POST /api/auth/apple` | `{identity_token, full_name?}`. Signs in with Apple. A guest who signs in keeps their shops: they move into the Apple account, or the guest becomes it. |
+| `POST /api/auth/sign-in` | As today. When the caller is a guest, the guest's shops move into the account they sign in to. |
+| `GET /api/auth/session` | `Session`, now with `guest`, `role` and `deletes_at`. |
+| `PUT /api/devices/{apns_token}` | `{environment}`. Registers the phone for notifications. `DELETE` removes it. |
+
+A guest's shops are deleted 30 days after any of them was last opened. The reminder goes 3 days before, as a push, and `Session.deletes_at` lets the app and the web show it as a banner.
+
+### A shop's journey
+
+| Route | What it does |
+| --- | --- |
+| `GET /api/journeys` | Every shop the account has, each with its stage and next step. The app's home card reads this. |
+| `GET /api/scans/{id}/journey` | One shop's `Journey`. |
+| `GET /api/scans/{id}/requests` | Every request for the shop, in the order to ask them. The in-shop ones exist as soon as the scan does. |
+| `PUT /api/scans/{id}/requests/{request_id}/answer` | `{yes}` or `{number}`. A "no" to the restroom or inside-door question closes the requests that depend on it as not applicable. |
+| `PUT /api/scans/{id}/requests/{request_id}/photo` | A JPEG or PNG body, at most 15 MB. The photo waits for a person on the team to check it. |
+| `POST /api/scans/{id}/requests/{request_id}/skip` | Stops asking. The request stays open in the report. |
+| `GET /api/scans/{id}/requests/{request_id}/photo` | The photo that was sent. |
+| `GET /api/scans/{id}/checklist` | One item per thing to fix, with its status. |
+| `PUT /api/scans/{id}/checklist/{finding_id}` | `{status}`: `to_do`, `done`, `not_doing` or `needs_pro`. |
+| `GET /api/scans/{id}/scenario/suggestion?destinations=seating,restroom` | A customer path for any business: in the front door, to the counter, to each place the owner picked, and out. |
+| `POST /api/scans/{id}/shares` | Makes a read-only report link that expires in 30 days. |
+| `GET /api/shared/{token}` | The report behind a link, with no sign-in. |
+| `POST /api/scans/{id}/plans` | Saves a planned layout and checks it. The shop as scanned doesn't change. `GET` lists the plans and `DELETE /plans/{plan_id}` removes one. |
+
+Answers change findings as soon as they arrive. A doorway width or a door's push force is checked against the rule straight away. A photo becomes a result when a person on the team marks it passes or problem through `GET /api/team/reviews` and `PUT /api/team/reviews/{scan_id}/{request_id}`, which only team accounts can reach.
+
+### The bridge
+
+The app adds one message handler, `standardPhysics`, and keeps `nativeCapture` for the old home page. Each message is a JSON object with a `type`:
+
+| `type` | Other fields | What the app does |
+| --- | --- | --- |
+| `takePhoto` | `requestId` | Opens the camera for that request, uploads the photo, then calls `window.standardPhysics.photoSent(requestId)` |
+| `addRoom` | `scanId` | Starts a walk that joins the same shop |
+| `saveReport` | none | Opens Sign in with Apple, then reloads the page |
+| `share` | `url`, `title` | Opens the share sheet for the link, with a PDF of the page beside it |
+| `openLink` | `url` | Opens the link in Safari |
+| `stageChanged` | `scanId`, `stage` | Refreshes the home card |
+
+The app's web view adds `StandardPhysicsApp/<build>` to its user agent. The web reads it to render the owner view without the site's own chrome, so the page never flashes the laptop layout first.
