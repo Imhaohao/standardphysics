@@ -1,4 +1,4 @@
-import type { Checklist, ChecklistItem, Finding, Journey, OwnerRequest } from "@/types/contracts";
+import type { Checklist, ChecklistItem, Finding, Journey, OwnerRequest, Scenario } from "@/types/contracts";
 
 export type ChecklistStatus = ChecklistItem["status"];
 
@@ -80,4 +80,18 @@ export function thingsToFix(count: number): string {
 export function comparisonBars(measured: number, required: number): { measured: number; required: number } {
   const longest = Math.max(measured, required, 1);
   return { measured: measured / longest, required: required / longest };
+}
+
+/**
+ * The walk-through starts at the front door, facing the next stop on the path.
+ * Positions are in the viewer's frame (x, height, -y), where rolling forward at
+ * heading h moves along (-sin h, -cos h).
+ */
+export function wheelchairStartFrom(scenario: Scenario | null): { position: [number, number, number]; yaw: number } | null {
+  const [door, next] = scenario?.stops ?? [];
+  if (!door || !next) return null;
+  const x = door.position.x;
+  const z = -door.position.y;
+  const yaw = Math.atan2(-(next.position.x - x), -(-next.position.y - z));
+  return { position: [x, 0, z], yaw };
 }

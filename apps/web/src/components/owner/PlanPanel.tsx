@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowCounterClockwise, CheckCircle } from "@phosphor-icons/react";
+import { ArrowClockwise, ArrowCounterClockwise, CheckCircle } from "@phosphor-icons/react";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import type { Arrangement } from "@/components/workspace/useArrangement";
@@ -15,6 +15,7 @@ export function PlanPanel({ arrangement, before, onDone }: { arrangement: Arrang
     <div className="flex min-h-full flex-col gap-6">
       <StepHeading title="Plan a layout">Drag a piece of furniture on the model. We check the new layout each time you let go.</StepHeading>
       <PlanScore before={before} left={left} checking={arrangement.checking} moved={arrangement.hasMoves} />
+      {arrangement.activeId && <TurnControls onTurn={(degrees) => arrangement.nudge(0, 0, degrees)} />}
       {arrangement.problem && <p role="alert" className="text-problem">{arrangement.problem}</p>}
       {saved && (
         <p role="status" className="flex items-center gap-2 font-medium text-pass">
@@ -45,5 +46,23 @@ function PlanScore({ before, left, checking, moved }: { before: number; left: nu
       <span className={`text-4xl font-semibold tabular-nums ${better ? "text-pass" : ""}`}>{checking ? "…" : left}</span>
       <span className="text-lg">{checking ? "Checking the layout" : `${left === 1 ? "thing" : "things"} to fix with this layout`}</span>
     </p>
+  );
+}
+
+const TURN_STEP_DEGREES = 15;
+
+/** Turning a piece on a phone, where there's no keyboard: a step either way, checked like a drag. */
+function TurnControls({ onTurn }: { onTurn: (degrees: number) => void }) {
+  return (
+    <div className="grid grid-cols-2 gap-2" role="group" aria-label="Turn the piece you moved">
+      <Button variant="choice" className="justify-center" onClick={() => onTurn(TURN_STEP_DEGREES)}>
+        <ArrowCounterClockwise size={18} weight="bold" aria-hidden />
+        Turn left
+      </Button>
+      <Button variant="choice" className="justify-center" onClick={() => onTurn(-TURN_STEP_DEGREES)}>
+        <ArrowClockwise size={18} weight="bold" aria-hidden />
+        Turn right
+      </Button>
+    </div>
   );
 }

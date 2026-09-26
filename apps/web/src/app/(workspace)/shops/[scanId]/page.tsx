@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { OwnerView } from "@/components/owner/OwnerView";
 import { RefreshWhile } from "@/components/RefreshWhile";
-import { getAssessment, getChecklist, getJourney, getPathSuggestion, getRequests, getScan, getScene, readyGlbUrl } from "@/lib/api";
+import { getAssessment, getChecklist, getJourney, getPathSuggestion, getRequests, getScan, getScenario, getScene, readyGlbUrl } from "@/lib/api";
 import { isAppUserAgent } from "@/lib/native-bridge";
 import { defaultPlaces, isWaiting } from "@/lib/owner-journey";
 import { requireSession } from "@/lib/session";
@@ -17,8 +17,8 @@ export default async function OwnerShopPage({ params }: PageProps<"/shops/[scanI
   const { scanId } = await params;
   const [scan, journey] = await Promise.all([getScan(scanId), getJourney(scanId)]);
   if (!scan || !journey) notFound();
-  const [requests, scene, assessment, checklist] = await Promise.all([
-    getRequests(scanId), getScene(scanId), getAssessment(scanId), getChecklist(scanId),
+  const [requests, scene, assessment, checklist, scenario] = await Promise.all([
+    getRequests(scanId), getScene(scanId), getAssessment(scanId), getChecklist(scanId), getScenario(scanId),
   ]);
   const places = defaultPlaces(requests);
   const [glbUrl, suggestedPath] = await Promise.all([
@@ -38,6 +38,7 @@ export default async function OwnerShopPage({ params }: PageProps<"/shops/[scanI
         assessment={assessment}
         checklist={checklist ?? NO_CHECKLIST}
         suggestedPath={suggestedPath}
+        scenario={scenario}
         defaultPlaces={places}
         guest={session.guest}
         embedded={embedded}

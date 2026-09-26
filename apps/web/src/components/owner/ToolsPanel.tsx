@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowsOutCardinal, Plus } from "@phosphor-icons/react";
+import { ArrowsOutCardinal, Plus, Wheelchair } from "@phosphor-icons/react";
 import type { ComponentType, ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { tellApp } from "@/lib/native-bridge";
@@ -9,7 +9,7 @@ import { useSeenOnce } from "@/lib/seen-once";
 type IconType = ComponentType<{ size?: number; weight?: "regular" | "bold" | "fill"; "aria-hidden"?: boolean }>;
 
 /** The shop tools, unlocked once the results first appear. Each opens straight into one task. */
-export function ToolsPanel({ scanId, inApp, onPlan }: { scanId: string; inApp: boolean; onPlan: () => void }) {
+export function ToolsPanel({ scanId, inApp, onPlan, onWheelchair }: { scanId: string; inApp: boolean; onPlan: () => void; onWheelchair: () => void }) {
   const [seen, markSeen] = useSeenOnce("sp_tools_unlocked");
   const addRoom = () => tellApp({ type: "addRoom", scanId });
   return (
@@ -23,6 +23,9 @@ export function ToolsPanel({ scanId, inApp, onPlan }: { scanId: string; inApp: b
       <h2 id="tools-heading" className="text-lg font-semibold">Shop tools</h2>
       <Tool Icon={ArrowsOutCardinal} title="Plan a layout" detail="Drag furniture to a new spot and see which problems it fixes. Your scan stays as it is.">
         <Button onClick={onPlan}>Start planning</Button>
+      </Tool>
+      <Tool Icon={Wheelchair} title="Wheelchair walk-through" detail="Roll through your shop at the height of someone in a wheelchair, and feel where it gets tight.">
+        <Button onClick={onWheelchair}>Start the walk-through</Button>
       </Tool>
       <Tool Icon={Plus} title="Add another room" detail="Walk another room and it joins this shop.">
         {inApp ? <Button onClick={addRoom}>Walk another room</Button> : <p className="text-sm text-ink-muted">Open Standard Physics on your iPhone to walk it.</p>}

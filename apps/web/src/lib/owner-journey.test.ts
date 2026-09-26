@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Checklist, Finding, Journey, OwnerRequest } from "@/types/contracts";
-import { checklistRows, comparisonBars, followUps, isFixing, isWaiting, openInShop, panelFor, requestsForStep, thingsToFix } from "./owner-journey";
+import { checklistRows, comparisonBars, followUps, isFixing, isWaiting, openInShop, panelFor, requestsForStep, thingsToFix, wheelchairStartFrom } from "./owner-journey";
 
 const journey = (kind: Journey["next_step"]["kind"]): Journey => ({
   scan_id: "s", shop_name: "Corner cafe", stage: "fill_in_the_gaps", tools_unlocked: false,
@@ -57,5 +57,17 @@ describe("the in-shop step", () => {
     expect(requestsForStep(journey("answers"), all).map((r) => r.id)).toEqual(["restroom"]);
     expect(requestsForStep(journey("photos"), all).map((r) => r.id)).toEqual(["door_hardware"]);
     expect(requestsForStep(journey("answers"), all.slice(1)).map((r) => r.id)).toEqual(["door_opening_force"]);
+  });
+});
+
+describe("the wheelchair walk-through", () => {
+  it("starts at the front door facing the counter", () => {
+    const stop = (name: string, x: number, y: number) => ({ name, position: { x, y, z: 0 }, anchor_node_id: null });
+    const start = wheelchairStartFrom({ name: "Customer path", stops: [stop("Entrance", 0, 0), stop("Counter", 0, 4)] });
+    expect(start?.position).toEqual([0, 0, -0]);
+    const facing = [-Math.sin(start!.yaw), -Math.cos(start!.yaw)];
+    expect(facing[0]).toBeCloseTo(0);
+    expect(facing[1]).toBeCloseTo(-1);
+    expect(wheelchairStartFrom(null)).toBeNull();
   });
 });

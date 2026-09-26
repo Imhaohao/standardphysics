@@ -39,6 +39,7 @@ export default async function ExamplePage() {
       assessment={report.assessment}
       checklist={NO_CHECKLIST}
       suggestedPath={null}
+      scenario={report.scenario}
       defaultPlaces={[]}
       guest={false}
       embedded={embedded}

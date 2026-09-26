@@ -6,8 +6,8 @@ import type { RouteHandles } from "@/components/workspace/StopMarkers";
 import type { Arrangement } from "@/components/workspace/useArrangement";
 import { overviewPose, poseFromLocus, topDownPose } from "@/lib/camera";
 import { canBeCounter } from "@/lib/counter";
-import type { Panel } from "@/lib/owner-journey";
-import type { Finding, SceneGraph } from "@/types/contracts";
+import { type Panel, wheelchairStartFrom } from "@/lib/owner-journey";
+import type { Finding, Scenario, SceneGraph } from "@/types/contracts";
 import type { ModelSetup } from "./OwnerModel";
 import type { PathEditor } from "./usePathEditor";
 
@@ -36,7 +36,10 @@ function useArrangeHandlers(arrangement: Arrangement | null, setDragging: (on: b
   }), [arrangement, setDragging]);
 }
 
-type Mode = { panel: Panel; scene: SceneGraph; selected: Finding | null; counter: string | null; path: PathEditor | null; arrangement: Arrangement | null };
+type Mode = {
+  panel: Panel; scene: SceneGraph; selected: Finding | null; counter: string | null; path: PathEditor | null;
+  arrangement: Arrangement | null; wheelchair: boolean; scenario: Scenario | null;
+};
 
 /** Where the camera sits and what the model lets the owner touch, for whichever step is on screen. */
 export function useOwnerModel(mode: Mode, onPickNode: (nodeId: string) => void, onClear: () => void): ModelSetup {
@@ -48,12 +51,15 @@ export function useOwnerModel(mode: Mode, onPickNode: (nodeId: string) => void, 
   const camera = mode.selected?.locus?.camera;
   const pose = useMemo(() => (camera ? poseFromLocus(camera) : overview), [camera, overview]);
   const pick = useCallback((nodeId: string) => onPickNode(nodeId), [onPickNode]);
+  const wheelchairStart = useMemo(() => wheelchairStartFrom(mode.scenario), [mode.scenario]);
   return {
     shown: mode.arrangement?.shown ?? mode.scene,
     pose,
     selected: mode.selected,
     highlight: mode.panel === "counter" && mode.counter ? [mode.counter] : null,
     picking: mode.panel === "counter",
+    wheelchair: mode.wheelchair,
+    wheelchairStart,
     route,
     arrange,
     dragging,

@@ -54,7 +54,11 @@ type ViewerProps = {
   onClearWheelchairDock?: () => void;
   onWheelchairSelectNode?: (node: SceneNode) => void;
   onWheelchairExit?: () => void;
+  /** Where the walk-through starts and which way it faces. Left out, it starts in a corner facing -z. */
+  wheelchairStart?: WheelchairStart | null;
 };
+
+export type WheelchairStart = { position: [number, number, number]; yaw: number };
 
 
 class GlbFallback extends Component<{ fallback: ReactNode; children: ReactNode }, { failed: boolean }> {
@@ -213,9 +217,13 @@ function canvasTuning(lightweight: boolean | undefined, splatAssets: CapturedSpl
   };
 }
 
-type WheelchairProps = Pick<ViewerProps, "scene" | "wheelchairMode" | "wheelchairProfile" | "onWheelchairStateChange" | "wheelchairDockTarget" | "wheelchairDockDestination" | "onClearWheelchairDock" | "onWheelchairSelectNode" | "onWheelchairExit">;
+type WheelchairProps = Pick<ViewerProps, "scene" | "wheelchairMode" | "wheelchairProfile" | "onWheelchairStateChange" | "wheelchairDockTarget" | "wheelchairDockDestination" | "onClearWheelchairDock" | "onWheelchairSelectNode" | "onWheelchairExit" | "wheelchairStart">;
 
-function Wheelchair({ scene, wheelchairMode, wheelchairProfile, onWheelchairStateChange, wheelchairDockTarget, wheelchairDockDestination, onClearWheelchairDock, onWheelchairSelectNode, onWheelchairExit }: WheelchairProps) {
+function startProps(start: WheelchairStart | null | undefined) {
+  return start ? { initialPosition: start.position, initialYaw: start.yaw } : {};
+}
+
+function Wheelchair({ scene, wheelchairMode, wheelchairProfile, onWheelchairStateChange, wheelchairDockTarget, wheelchairDockDestination, onClearWheelchairDock, onWheelchairSelectNode, onWheelchairExit, wheelchairStart }: WheelchairProps) {
   if (!wheelchairMode || !wheelchairProfile || !onWheelchairStateChange) return null;
   return (
     <WheelchairController
@@ -228,6 +236,7 @@ function Wheelchair({ scene, wheelchairMode, wheelchairProfile, onWheelchairStat
       onClearDock={onClearWheelchairDock ?? NOTHING_TO_DO}
       onSelectNode={onWheelchairSelectNode ?? NOTHING_TO_DO}
       onExit={onWheelchairExit}
+      {...startProps(wheelchairStart)}
     />
   );
 }
@@ -280,6 +289,7 @@ export default function Viewer(viewerProps: ViewerProps) {
         onClearWheelchairDock={onClearWheelchairDock}
         onWheelchairSelectNode={onWheelchairSelectNode}
         onWheelchairExit={onWheelchairExit}
+        wheelchairStart={viewerProps.wheelchairStart}
       />
       <mesh rotation-x={-Math.PI / 2} position-y={-0.002} receiveShadow>
         <planeGeometry args={GROUND_PLANE_ARGS} />
