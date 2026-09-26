@@ -177,3 +177,25 @@ def test_a_cube_found_wholly_behind_the_depth_buffer_holds_only_points_that_weig
         assert not (weight[~kept] > 0).any(), camera.frame_id
         skipped_somewhere += int((~kept).sum())
     assert skipped_somewhere
+
+
+def test_asking_each_object_about_every_rim_at_once_finds_the_rims_asking_one_by_one_found(scanned, room_graph):
+    from standardphysics_contracts import bounds_the_room
+    from standardphysics_pipeline.textures import object_holes
+
+    vertices, triangles, _ = scanned
+    objects = [node for node in room_graph.nodes if not bounds_the_room(node)]
+    rims = [rim for rim in object_holes._rims(triangles) if object_holes._perimeter(vertices[rim]) <= object_holes.MAX_RIM_METRES]
+    centres = np.array([vertices[rim].mean(axis=0) for rim in rims])
+
+    def one_by_one(point):
+        for node in objects:
+            matrix = np.asarray(node.transform.m, dtype=np.float64).reshape(4, 4)
+            half = np.array([node.dimensions.x, node.dimensions.y, node.dimensions.z]) / 2
+            if np.all(np.abs((point - matrix[:3, 3]) @ matrix[:3, :3]) <= half + object_holes.OBJECT_REACH):
+                return True
+        return False
+
+    expected = np.array([one_by_one(centre) for centre in centres])
+    assert expected.any()
+    assert np.array_equal(object_holes._inside_objects(centres, objects), expected)

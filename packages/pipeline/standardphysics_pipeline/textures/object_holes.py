@@ -96,13 +96,19 @@ def _perimeter(points: np.ndarray) -> float:
     return float(np.linalg.norm(points - np.roll(points, -1, axis=0), axis=1).sum())
 
 
-def _inside_an_object(point: np.ndarray, objects: list[SceneNode]) -> bool:
+def _inside_objects(points: np.ndarray, objects: list[SceneNode]) -> np.ndarray:
+    """Whether each point lies within reach of some object's box.
+
+    A library floor has thousands of small rims and hundreds of objects, and
+    asking object by object for each rim was two million little array calls.
+    Each object is asked about every point at once instead.
+    """
+    inside = np.zeros(len(points), dtype=bool)
     for node in objects:
         matrix = np.asarray(node.transform.m, dtype=np.float64).reshape(4, 4)
         half = np.array([node.dimensions.x, node.dimensions.y, node.dimensions.z]) / 2
-        if np.all(np.abs((point - matrix[:3, 3]) @ matrix[:3, :3]) <= half + OBJECT_REACH):
-            return True
-    return False
+        inside |= np.all(np.abs((points - matrix[:3, 3]) @ matrix[:3, :3]) <= half + OBJECT_REACH, axis=1)
+    return inside
 
 
 def _cap(rim: list[int], points: np.ndarray, first_new: int) -> tuple[np.ndarray, list[list[int]]]:
@@ -140,11 +146,13 @@ def closed_object_holes(vertices: np.ndarray, triangles: np.ndarray, graph: Scen
     added_vertices, added_faces, closed = [], [], 0
     next_index = len(vertices)
     rims = _rims(triangles) if objects else []
-    for number, rim in enumerate(rims, start=1):
-        advanced(number, len(rims))
-        points = vertices[rim]
-        if _perimeter(points) > MAX_RIM_METRES or not _inside_an_object(points.mean(axis=0), objects):
+    small = [rim for rim in rims if _perimeter(vertices[rim]) <= MAX_RIM_METRES]
+    inside = _inside_objects(np.array([vertices[rim].mean(axis=0) for rim in small]).reshape(-1, 3), objects)
+    for number, (rim, capped) in enumerate(zip(small, inside), start=1):
+        advanced(number, len(small))
+        if not capped:
             continue
+        points = vertices[rim]
         cap_vertices, cap_faces = _cap(rim, points, next_index)
         added_vertices.append(cap_vertices)
         added_faces.extend(cap_faces)
