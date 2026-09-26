@@ -7,6 +7,7 @@ import { RevealLines } from "../../components/Type";
 import { between, drawn, progress, sweep } from "../../lib/ease";
 import { REEL } from "../../lib/timing";
 import { LawsuitField, lawsuitFieldCenter } from "./LawsuitField";
+import { measureDotY } from "./MeasureScene";
 
 const lawsuits = facts.adaLawsuitsFiled2025.value;
 const counted = new Intl.NumberFormat("en-US");
@@ -28,8 +29,8 @@ export function FieldScene() {
   const rotation = frame * 0.004 + progress(frame, 0, FIELD.fillEnd, drawn) * 1.2;
   return (
     <div className="absolute inset-0">
-      <LawsuitField count={lawsuits} state={{ shown, rotation, collapse, opacity: fieldFade }} />
-      <GlowDot x={lawsuitFieldCenter.x} y={lawsuitFieldCenter.y} size={34 * (1 - collapse)} />
+      <LawsuitField count={lawsuits} state={{ shown, rotation, collapse, opacity: fieldFade }} centerY={measureDotY} />
+      <GlowDot x={lawsuitFieldCenter.x} y={measureDotY} size={34 * (1 - collapse)} />
       <div className="absolute inset-x-safe-side top-safe-top" style={{ opacity: 1 - copyGone, transform: `translateY(${-copyGone * 60}px)` }}>
         <p className="reel-copy figures text-poster">{counted.format(Math.round(shown))}</p>
         <RevealLines lines={["ADA lawsuits were filed", "against businesses in 2025."]} at={FIELD.fillStart + 10} className="reel-caption mt-6 block text-caption" />
@@ -39,7 +40,7 @@ export function FieldScene() {
           {facts.adaLawsuitsFiled2025.source}
         </FinePrint>
       </div>
-      {bar > 0 && <ScanBar at={lawsuitFieldCenter.y / REEL.height} intensity={bar} trail={0} />}
+      {bar > 0 && <ScanBar at={measureDotY / REEL.height} intensity={bar} trail={0} />}
     </div>
   );
 }

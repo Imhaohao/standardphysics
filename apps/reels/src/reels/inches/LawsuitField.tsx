@@ -32,23 +32,23 @@ function popScale(index: number, shown: number) {
   return 1 + 1.6 * Math.sin(t * Math.PI) * (1 - t);
 }
 
-function placeSeed(seed: Seed, { rotation, collapse }: FieldState) {
+function placeSeed(seed: Seed, { rotation, collapse }: FieldState, center: { x: number; y: number }) {
   const cos = Math.cos(rotation);
   const sin = Math.sin(rotation);
   const x = seed.x * cos - seed.y * sin;
   const y = seed.x * sin + seed.y * cos;
   const fall = Math.min(1, Math.max(0, collapse * 1.6 - Math.abs(y) / 900));
   const eased = fall * fall * (3 - 2 * fall);
-  return { x: FIELD_CENTER.x + x * (1 + eased * 0.25), y: FIELD_CENTER.y + y * (1 - eased) };
+  return { x: center.x + x * (1 + eased * 0.25), y: center.y + y * (1 - eased) };
 }
 
-function drawField(context: CanvasRenderingContext2D, seeds: Seed[], state: FieldState) {
+function drawField(context: CanvasRenderingContext2D, seeds: Seed[], state: FieldState, center: { x: number; y: number }) {
   context.clearRect(0, 0, REEL.width, REEL.height);
   context.globalAlpha = state.opacity;
   context.fillStyle = "#0d0d0c";
   const visible = Math.min(seeds.length, Math.floor(state.shown));
   for (let index = 1; index < visible; index++) {
-    const { x, y } = placeSeed(seeds[index], state);
+    const { x, y } = placeSeed(seeds[index], state, center);
     context.beginPath();
     context.arc(x, y, DOT_RADIUS * popScale(index, state.shown), 0, Math.PI * 2);
     context.fill();
@@ -56,13 +56,13 @@ function drawField(context: CanvasRenderingContext2D, seeds: Seed[], state: Fiel
 }
 
 /** Every ADA lawsuit filed against a business in 2025, one dot each, laid out as a sunflower from the first one outward. */
-export function LawsuitField({ count, state }: { count: number; state: FieldState }) {
+export function LawsuitField({ count, state, centerY = FIELD_CENTER.y }: { count: number; state: FieldState; centerY?: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const seeds = useMemo(() => sunflower(count, 500), [count]);
   useLayoutEffect(() => {
     const context = canvasRef.current?.getContext("2d");
-    if (context) drawField(context, seeds, state);
-  }, [seeds, state]);
+    if (context) drawField(context, seeds, state, { x: FIELD_CENTER.x, y: centerY });
+  }, [seeds, state, centerY]);
   return <canvas ref={canvasRef} width={REEL.width} height={REEL.height} className="absolute inset-0" />;
 }
 

@@ -15,7 +15,7 @@ import { composeSheet, INK_ZOOM } from "./sheetInk";
 import { TitleBlock } from "./TitleBlock";
 import { TurningCircle } from "./TurningCircle";
 
-const SHEET = { left: 80, top: 480, size: 920 } as const;
+const SHEET = { left: 110, top: 440, size: 860 } as const;
 const SCAN = { name: "test1", minutes: 4 } as const;
 
 export const ONE_LINE = {

@@ -5,17 +5,19 @@ import { ScanBar } from "../../components/ScanBar";
 import { TapeLabel } from "../../components/Type";
 import { progress, sweep } from "../../lib/ease";
 import { REEL } from "../../lib/timing";
+import { measureDotY } from "./MeasureScene";
 
 export const PHONE = { open: 14, firstTape: 12, secondTape: 44, sweepStart: 78, sweepEnd: 120 } as const;
 
+const SLIT_ORIGIN = measureDotY / REEL.height;
+
 function OpeningSlit({ frame }: { frame: number }) {
   const open = progress(frame, 0, PHONE.open, sweep);
-  const edge = 0.5 * (1 - open);
   if (open >= 1) return null;
   return (
     <>
-      <ScanBar at={edge} trail={0} />
-      <ScanBar at={1 - edge} trail={0} />
+      <ScanBar at={SLIT_ORIGIN * (1 - open)} trail={0} />
+      <ScanBar at={SLIT_ORIGIN + (1 - SLIT_ORIGIN) * open} trail={0} />
     </>
   );
 }
@@ -23,8 +25,9 @@ function OpeningSlit({ frame }: { frame: number }) {
 function footageClip(frame: number) {
   const open = progress(frame, 0, PHONE.open, sweep);
   const sweepAt = progress(frame, PHONE.sweepStart, PHONE.sweepEnd - PHONE.sweepStart, sweep);
-  const halfHidden = 50 * (1 - open);
-  return `inset(calc(${halfHidden}% + ${sweepAt * 100}%) 0 ${halfHidden}% 0)`;
+  const top = SLIT_ORIGIN * 100 * (1 - open);
+  const bottom = (1 - SLIT_ORIGIN) * 100 * (1 - open);
+  return `inset(calc(${top}% + ${sweepAt * 100}%) 0 ${bottom}% 0)`;
 }
 
 export function PhoneScene() {
