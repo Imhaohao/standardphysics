@@ -38,6 +38,7 @@ from standardphysics_contracts import (
     ProposalResult,
     RebuildRequest,
     Report,
+    RouteLegs,
     SaveLayoutRequest,
     Scan,
     ScanList,
@@ -74,7 +75,7 @@ from .proposals import propose
 from .questions import answer_question
 from .replays import install_replay_routes
 from .report import build_report
-from .route import confirm, suggestion
+from .route import confirm, legs, suggestion
 from .scenario import DESTINATIONS
 from .seed import seed_sample_shop
 from .settings import Settings
@@ -573,6 +574,10 @@ def _install_route_routes(app: FastAPI, database: Database, stages: Stages, work
     def scenario_suggestion(scan_id: uuid.UUID, destinations: str | None = None) -> Scenario:
         """The café template with no `destinations`, or a path through the places named, comma separated."""
         return suggestion(database, scan_id, _destinations(destinations))
+
+    @app.post("/api/scans/{scan_id}/scenario/legs", response_model=RouteLegs)
+    def scenario_legs(scan_id: uuid.UUID, body: Scenario) -> RouteLegs:
+        return legs(database, stages, scan_id, body)
 
     @app.put("/api/scans/{scan_id}/scenario", response_model=Scenario)
     def confirm_scenario(scan_id: uuid.UUID, body: Scenario) -> Scenario:

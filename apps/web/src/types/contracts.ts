@@ -1378,6 +1378,25 @@ export interface ReviewQueue {
   reviews: PendingReview[];
 }
 /**
+ * How a customer walks from one stop to the next, around what's in the way.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "RouteLeg".
+ */
+export interface RouteLeg {
+  from_stop: string;
+  path: Vec3[];
+  reachable: boolean;
+  to_stop: string;
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "RouteLegs".
+ */
+export interface RouteLegs {
+  legs: RouteLeg[];
+}
+/**
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
  * via the `definition` "RulePack".
  */

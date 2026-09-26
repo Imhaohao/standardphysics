@@ -102,7 +102,7 @@ def test_a_path_goes_through_the_places_the_owner_picked(make_client):
     client, scan_id = _sample(make_client)
     path = client.get(f"/api/scans/{scan_id}/scenario/suggestion", params={"destinations": "seating,restroom"}).json()
     assert path["name"] == "Customer path"
-    assert [stop["name"] for stop in path["stops"]] == ["Entrance", "Counter", "Seat", "Restroom", "Exit"]
+    assert [stop["name"] for stop in path["stops"]] == ["Entrance", "Counter", "Seats", "Restroom", "Exit"]
     cafe = client.get(f"/api/scans/{scan_id}/scenario/suggestion").json()
     assert cafe["name"] == "Order a drink"
     assert client.get(f"/api/scans/{scan_id}/scenario/suggestion", params={"destinations": "moon"}).status_code == 400
@@ -112,3 +112,11 @@ def test_a_path_with_no_extra_places_goes_in_to_the_counter_and_out(make_client)
     client, scan_id = _sample(make_client)
     path = client.get(f"/api/scans/{scan_id}/scenario/suggestion", params={"destinations": ""}).json()
     assert [stop["name"] for stop in path["stops"]] == ["Entrance", "Counter", "Exit"]
+
+
+def test_the_path_is_drawn_the_way_a_customer_walks_it(make_client):
+    client, scan_id = _sample(make_client)
+    path = client.get(f"/api/scans/{scan_id}/scenario/suggestion", params={"destinations": "seating"}).json()
+    legs = client.post(f"/api/scans/{scan_id}/scenario/legs", json=path).json()["legs"]
+    assert [(leg["from_stop"], leg["to_stop"]) for leg in legs] == [("Entrance", "Counter"), ("Counter", "Seats"), ("Seats", "Exit")]
+    assert all(leg["reachable"] and len(leg["path"]) > 2 for leg in legs)

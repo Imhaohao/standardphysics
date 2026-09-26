@@ -16,6 +16,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, model_validator
 
 from .findings import Finding
+from .geometry import Vec3
 from .loop import NodeMove
 
 Role = Literal["owner", "team"]
@@ -216,3 +217,16 @@ class Funnel(BaseModel):
     """From the start of the walk to results ready, over shops that got there."""
     median_hours_to_first_fix: float | None
     """From results ready to the first item marked done, over shops that got there."""
+
+
+class RouteLeg(BaseModel):
+    """How a customer walks from one stop to the next, around what's in the way."""
+
+    from_stop: str
+    to_stop: str
+    path: list[Vec3]
+    reachable: bool
+
+
+class RouteLegs(BaseModel):
+    legs: list[RouteLeg]

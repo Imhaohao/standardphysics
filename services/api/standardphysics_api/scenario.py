@@ -182,7 +182,7 @@ def suggest_scenario(graph: SceneGraph) -> Scenario:
 
 
 DESTINATIONS: dict[str, tuple[str, tuple[str, ...], tuple[str, ...]]] = {
-    "seating": ("Seat", ("seat", "chair", "bench"), ("table", "sofa", "chair")),
+    "seating": ("Seats", ("seat", "chair", "bench"), ("table", "sofa", "chair")),
     "restroom": ("Restroom", ("restroom", "bathroom", "toilet", "washroom"), ("toilet",)),
     "fitting_room": ("Fitting room", ("fitting",), ()),
     "shelves": ("Shelves", ("shelf", "shelves", "rack"), ("storage",)),
