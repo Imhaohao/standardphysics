@@ -41,8 +41,8 @@ from .project import (
     MAX_EXPOSURE_POINTS,
     PointBlocks,
     TopViews,
+    TriangleBlocks,
     bilinear,
-    depth_buffer,
     evenly_spread,
     exposure_gains,
     face_normals,
@@ -51,6 +51,7 @@ from .project import (
     rasterize_atlas,
     to_linear,
     to_srgb,
+    triangle_depth_buffer,
 )
 from .scan_colour import BLEND_SHARPNESS, ColouredScan, _small_static_mask, _weights_from
 from .stages import timed
@@ -346,7 +347,26 @@ def _people_mask(camera: PhotoCamera, photo: np.ndarray, detections: dict, buffe
     return _small_static_mask(mask, *buffer.shape)
 
 
-def _exposure(surface: _Surface, cameras, frame_paths, detections) -> tuple[np.ndarray, list]:
+class _Occluders:
+    """Each photo's depth buffer of the whole thinned surface, drawn once and read by every atlas.
+
+    An atlas holds one stretch of a floor. A buffer drawn from its own texels
+    missed a shelf standing in the next stretch, so the floor behind it could
+    take the shelf's colour, and the same buffers were drawn again for every
+    atlas and for exposure. Faces also cover the gaps between texels.
+    """
+
+    def __init__(self, mesh: UnwrappedScan, cameras: list[PhotoCamera]):
+        corners = mesh.corners.astype(np.float32)
+        blocks = TriangleBlocks(corners)
+        buffers = in_parallel(lambda camera: triangle_depth_buffer(camera, corners[blocks.seen_by(camera)]), cameras)
+        self.buffers = {camera.frame_id: buffer for camera, buffer in zip(cameras, buffers)}
+
+    def of(self, camera: PhotoCamera) -> np.ndarray:
+        return self.buffers[camera.frame_id]
+
+
+def _exposure(surface: _Surface, cameras, frame_paths, detections, occluders: _Occluders) -> tuple[np.ndarray, list]:
     """Per-photo gains from an even sample of texels, and each photo's depth buffer for the bake."""
     sample = np.unique(np.linspace(0, len(surface.positions) - 1, MAX_EXPOSURE_POINTS).astype(np.int64))
     in_sample = np.full(len(surface.positions), -1, dtype=np.int64)
@@ -361,7 +381,7 @@ def _exposure(surface: _Surface, cameras, frame_paths, detections) -> tuple[np.n
         sampled = visible[in_sample[visible] >= 0]
         if not len(sampled):
             return True, nothing
-        buffer = depth_buffer(camera, surface.positions[visible])
+        buffer = occluders.of(camera)
         photo = _read(frame_paths[camera.frame_id], EXPOSURE_PHOTO_EDGE)
         weight, columns, rows = surface.weights(camera, photo, detections, sampled, buffer)
         seen = np.flatnonzero(weight > 0)
@@ -372,12 +392,9 @@ def _exposure(surface: _Surface, cameras, frame_paths, detections) -> tuple[np.n
     return exposure_gains([seen for _, seen in measured], len(cameras), len(sample)), framed
 
 
-def _bake(surface: _Surface, cameras, frame_paths, detections, gains, framed) -> tuple[np.ndarray, np.ndarray]:
+def _bake(surface: _Surface, cameras, frame_paths, detections, gains, framed, occluders: _Occluders) -> tuple[np.ndarray, np.ndarray]:
     """Linear colour per texel and whether any photo reached it.
 
-    Each photo's depth buffer is built again here rather than kept from the
-    exposure pass: thousands of them held at once were more memory than a
-    small server has, and one is quick to make from the texels in its frame.
     The best views keep their colours at half precision, which is still eight
     times finer than the atlas stores and halves the largest array of the bake.
     """
@@ -387,7 +404,7 @@ def _bake(surface: _Surface, cameras, frame_paths, detections, gains, framed) ->
     def sample(job):
         camera, gain = job
         visible = surface.blocks.seen_by(camera)
-        buffer = depth_buffer(camera, surface.positions[visible])
+        buffer = occluders.of(camera)
         photo = _read(frame_paths[camera.frame_id], PHOTO_EDGE)
         weight, columns, rows = surface.weights(camera, photo, detections, visible, buffer)
         seen = np.flatnonzero(weight > 0)
@@ -547,15 +564,15 @@ def _return_freed_memory() -> None:
         pass
 
 
-def _baked_atlas(mesh: UnwrappedScan, painted: ColouredScan, graph: SceneGraph, cameras, frame_paths, detections, path) -> _Atlas:
+def _baked_atlas(mesh: UnwrappedScan, painted: ColouredScan, graph: SceneGraph, cameras, frame_paths, detections, path, occluders) -> _Atlas:
     """One atlas's faces baked from the photos into an image at `path`."""
     size = atlas_size(mesh)
     with timed("texels"):
         surface = _Surface(mesh, size, painted, graph)
     with timed("exposure"):
-        gains, framed = _exposure(surface, cameras, frame_paths, detections)
+        gains, framed = _exposure(surface, cameras, frame_paths, detections, occluders)
     with timed("photo bake"):
-        colours, reached = _bake(surface, cameras, frame_paths, detections, gains, framed)
+        colours, reached = _bake(surface, cameras, frame_paths, detections, gains, framed, occluders)
     with timed("atlas image"):
         _atlas_image(surface, colours, reached).save(path, quality=ATLAS_JPEG_QUALITY)
     return _Atlas(path, size, len(reached), int(reached.sum()))
@@ -584,9 +601,13 @@ def bake_scan_atlas(
         work = pathlib.Path(temporary)
         with timed("unwrap"):
             mesh = unwrapped(painted, work, budget, atlas_count(budget))
+        with timed("occlusion"):
+            occluders = _Occluders(mesh, chosen)
         atlases = []
         for index in range(mesh.atlas_count):
-            atlases.append(_baked_atlas(mesh.atlas(index), painted, graph, chosen, frame_paths, detections, work / f"atlas-{index}.jpg"))
+            atlases.append(_baked_atlas(
+                mesh.atlas(index), painted, graph, chosen, frame_paths, detections, work / f"atlas-{index}.jpg", occluders,
+            ))
             _return_freed_memory()
         mesh_path = work / "mesh.npz"
         np.savez(mesh_path, vertices=mesh.vertices, triangles=mesh.triangles, uv=mesh.uv, atlases=mesh.atlases)

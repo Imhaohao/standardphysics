@@ -139,24 +139,42 @@ def _framed_weights(camera, vertices, normals, columns, rows, depth, buffer, mas
     """The view weight of points already inside the frame and in front of the camera.
 
     Only these are worth the arithmetic: a photo's cubes reach well past its
-    frame, and every point outside it weighs nothing whatever its angle.
+    frame, and every point outside it weighs nothing whatever its angle. Of
+    those in frame, most on a library floor sit behind a shelf or a wall, so
+    the depth buffer is asked first with the widest tolerance any point could
+    have, and the exact weight is worked out only for the points it lets through.
     """
-    toward = camera.position[None, :] - vertices
-    distance = np.linalg.norm(toward, axis=1)
-    facing = np.einsum("ij,ij->i", normals, toward) / np.maximum(distance, 1e-9)
     height, width = buffer.shape
     pixel_rows = np.clip(np.rint(rows * height / camera.height).astype(np.int64), 0, height - 1)
     pixel_columns = np.clip(np.rint(columns * width / camera.width).astype(np.int64), 0, width - 1)
     nearest = buffer[pixel_rows, pixel_columns]
-    unhidden = ~np.isfinite(nearest) | (depth <= nearest + _seen_tolerance(camera, width, depth, facing, slope_aware))
+    weight = np.zeros(len(vertices), dtype=np.float64)
+    near = np.flatnonzero(~np.isfinite(nearest) | (depth <= nearest + _widest_tolerance(camera, width, depth, slope_aware)))
+    toward = camera.position[None, :] - vertices[near]
+    distance = np.linalg.norm(toward, axis=1)
+    facing = np.einsum("ij,ij->i", normals[near], toward) / np.maximum(distance, 1e-9)
+    tolerance = _seen_tolerance(camera, width, depth[near], facing, slope_aware)
+    unhidden = ~np.isfinite(nearest[near]) | (depth[near] <= nearest[near] + tolerance)
     border = np.clip(
-        np.minimum.reduce([columns, rows, camera.width - 1 - columns, camera.height - 1 - rows])
+        np.minimum.reduce([columns[near], rows[near], camera.width - 1 - columns[near], camera.height - 1 - rows[near]])
         / BORDER_FALLOFF_PIXELS, 0.0, 1.0,
     )
-    weight = np.where((facing > MIN_FACING) & unhidden, facing ** 2 / np.maximum(distance, 0.5) * border, 0.0)
+    weight[near] = np.where((facing > MIN_FACING) & unhidden, facing ** 2 / np.maximum(distance, 0.5) * border, 0.0)
     if mask is not None:
         weight = np.where(mask[pixel_rows, pixel_columns] >= 0.5, weight, 0.0)
     return weight
+
+
+def _widest_tolerance(camera: PhotoCamera, buffer_width: int, depth: np.ndarray, slope_aware: bool):
+    """The most `_seen_tolerance` allows any point at this depth that faces the camera at least MIN_FACING.
+
+    A steeper view widens the tolerance, and MIN_FACING is the steepest a
+    point may be seen and still weigh anything, so this bounds them all; the
+    micrometre keeps rounding from ever making the bound the narrower one.
+    """
+    if not slope_aware:
+        return SEEN_TOLERANCE
+    return _seen_tolerance(camera, buffer_width, depth, np.full(len(depth), MIN_FACING), True) + 1e-6
 
 
 def _seen_tolerance(camera: PhotoCamera, buffer_width: int, depth: np.ndarray, facing: np.ndarray, slope_aware: bool):
