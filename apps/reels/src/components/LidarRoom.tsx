@@ -1,6 +1,7 @@
 import { useThree } from "@react-three/fiber";
 import { ThreeCanvas } from "@remotion/three";
-import { useMemo } from "react";
+import { useLayoutEffect, useMemo, useState } from "react";
+import { continueRender, delayRender } from "remotion";
 import { Color, DoubleSide, ShaderMaterial, Vector2, Vector3, type BufferGeometry, type PerspectiveCamera } from "three";
 import { useScanGeometry } from "../lib/scan";
 
@@ -123,8 +124,19 @@ function CameraRig({ position, target, fov }: { position: Vector3; target: Vecto
 
 type RoomProps = { geometry: BufferGeometry; camera: OrbitCamera; reveal: number; cutaway: number; wire: number; radius: number };
 
+/** Draws the scene synchronously after every update, so a frame is never captured before WebGL has painted it. */
+function usePaintEveryUpdate() {
+  const { gl, scene, camera } = useThree();
+  const [firstPaint] = useState(() => delayRender("First LiDAR paint"));
+  useLayoutEffect(() => {
+    gl.render(scene, camera);
+    continueRender(firstPaint);
+  });
+}
+
 function Room({ geometry, camera, reveal, cutaway, wire, radius }: RoomProps) {
   const material = useRoomMaterial();
+  usePaintEveryUpdate();
   const [near, far] = sweepRange(geometry);
   const floor = geometry.boundingBox!.min.y;
   material.uniforms.uSweep.value = near + (far - near) * reveal;

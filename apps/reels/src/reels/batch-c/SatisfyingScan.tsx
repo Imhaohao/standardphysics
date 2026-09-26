@@ -1,13 +1,16 @@
 import { useCurrentFrame } from "remotion";
 import { Soundtrack, cue } from "../../components/Cues";
 import { Grain, Paper, Vignette } from "../../components/Paper";
-import { progress, sweep } from "../../lib/ease";
+import { drawn, progress } from "../../lib/ease";
+
+/** The erasing ring speeds up into the loop point, and the next reveal leaves it at speed, so the room is never gone for long. */
+const easeIntoLoop = (t: number) => t * t;
 import { REEL } from "../../lib/timing";
 import { OneShots, shot } from "./Sounds";
 import { SonarRoom } from "./SonarRoom";
 
 /** Nine seconds, which is exactly twelve beats of the scan bed, so picture and sound loop together. */
-export const SATISFYING_SCAN = { revealEnd: 120, eraseStart: 150, eraseEnd: 262, length: 270 } as const;
+export const SATISFYING_SCAN = { revealEnd: 110, eraseStart: 150, eraseEnd: 270, length: 270 } as const;
 
 const TRIANGLES_IN_SCAN = 988_079;
 const RING_REACH_METRES = 6.5;
@@ -20,8 +23,8 @@ const cues = [cue(onScreen(0), "scan", 0.7), cue(onScreen(SATISFYING_SCAN.eraseS
 const shots = [shot(onScreen(SATISFYING_SCAN.revealEnd - 6), "c-chime", 0.5)];
 
 function Counter({ frame }: { frame: number }) {
-  const measured = progress(frame, 0, SATISFYING_SCAN.revealEnd, sweep);
-  const erased = progress(frame, SATISFYING_SCAN.eraseStart, SATISFYING_SCAN.eraseEnd - SATISFYING_SCAN.eraseStart, sweep);
+  const measured = progress(frame, 0, SATISFYING_SCAN.revealEnd, drawn);
+  const erased = progress(frame, SATISFYING_SCAN.eraseStart, SATISFYING_SCAN.eraseEnd - SATISFYING_SCAN.eraseStart, easeIntoLoop);
   const shown = measured * (1 - erased);
   return (
     <div className="absolute inset-x-safe-side top-safe-top text-paper-raised">
@@ -36,13 +39,13 @@ function Counter({ frame }: { frame: number }) {
 
 export function SatisfyingScan() {
   const frame = (useCurrentFrame() + OPENING_OFFSET) % SATISFYING_SCAN.length;
-  const front = progress(frame, 0, SATISFYING_SCAN.revealEnd, sweep) * RING_REACH_METRES;
-  const trailing = progress(frame, SATISFYING_SCAN.eraseStart, SATISFYING_SCAN.eraseEnd - SATISFYING_SCAN.eraseStart, sweep) * RING_REACH_METRES;
+  const front = progress(frame, 0, SATISFYING_SCAN.revealEnd, drawn) * RING_REACH_METRES;
+  const trailing = progress(frame, SATISFYING_SCAN.eraseStart, SATISFYING_SCAN.eraseEnd - SATISFYING_SCAN.eraseStart, easeIntoLoop) * RING_REACH_METRES;
   const azimuth = 0.4 + (frame / SATISFYING_SCAN.length) * Math.PI * 2;
   return (
     <Paper tone="night">
       <div className="absolute inset-x-0 top-[380px] h-[1540px]">
-        <SonarRoom scan="test1" width={REEL.width} height={1540} camera={{ azimuth, elevation: 0.95, distance: 38 }} front={front} trailing={trailing} cutaway={2.3} radius={6.4} />
+        <SonarRoom scan="test1" width={REEL.width} height={1540} camera={{ azimuth, elevation: 0.95, distance: 27 }} front={front} trailing={trailing} cutaway={2.3} radius={6.4} />
       </div>
       <Counter frame={frame} />
       <Soundtrack bed="c-bed-scan" bedVolume={0.55} cues={cues} loops />
