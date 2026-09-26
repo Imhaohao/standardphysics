@@ -81,10 +81,31 @@ class UnwrappedScan:
     triangles: np.ndarray
     uv: np.ndarray
     """A UV pair for each corner of each triangle, shape (triangles, 3, 2)."""
+    atlases: np.ndarray | None = None
+    """Which atlas each triangle's UVs are packed into; all in one when absent."""
 
     @property
     def corners(self) -> np.ndarray:
         return self.vertices[self.triangles]
+
+    @property
+    def atlas_count(self) -> int:
+        return int(self.atlases.max()) + 1 if self.atlases is not None and len(self.atlases) else 1
+
+    def atlas(self, index: int) -> UnwrappedScan:
+        """The triangles packed into one atlas, over the same vertices."""
+        if self.atlases is None:
+            return self
+        chosen = self.atlases == index
+        return UnwrappedScan(self.vertices, self.triangles[chosen], self.uv[chosen], self.atlases[chosen])
+
+
+@dataclass(frozen=True)
+class _Atlas:
+    path: pathlib.Path
+    size: int
+    texels: int
+    reached: int
 
 
 @dataclass(frozen=True)
@@ -114,6 +135,13 @@ VIEWER_SHARE = 4
 MIN_VIEWER_FACES = 260_000
 MAX_VIEWER_FACES = 1_000_000
 """The most faces the viewer is given, which is what four walks of a library floor came to when each was painted alone."""
+ATLAS_FACES = MIN_VIEWER_FACES
+"""The faces one atlas holds, so every face gets the texels a single room's faces get."""
+
+
+def atlas_count(faces: int) -> int:
+    """How many atlases the viewer's faces are packed into, one per ATLAS_FACES."""
+    return max(1, -(-faces // ATLAS_FACES))
 
 
 def viewer_faces(scan: ColouredScan) -> int:
@@ -127,7 +155,7 @@ def viewer_faces(scan: ColouredScan) -> int:
     return int(np.clip(len(scan.triangles) // VIEWER_SHARE, MIN_VIEWER_FACES, MAX_VIEWER_FACES))
 
 
-def unwrapped(scan: ColouredScan, work: pathlib.Path, max_triangles: int) -> UnwrappedScan:
+def unwrapped(scan: ColouredScan, work: pathlib.Path, max_triangles: int, atlases: int = 1) -> UnwrappedScan:
     """The scan thinned for the viewer and unwrapped by Blender.
 
     Blender used to be handed the whole scan. A library floor of four million
@@ -141,11 +169,13 @@ def unwrapped(scan: ColouredScan, work: pathlib.Path, max_triangles: int) -> Unw
     vertices, triangles = thinned_for_blender(scan.vertices, scan.triangles, handed)
     source, result = work / "scan.npz", work / "unwrapped.npz"
     np.savez(source, vertices=vertices.astype(np.float32), triangles=triangles.astype(np.int32))
-    output = _run("unwrap_scan.py", ["--scan", str(source), "--out", str(result), "--max-triangles", str(max_triangles)])
+    output = _run("unwrap_scan.py", [
+        "--scan", str(source), "--out", str(result), "--max-triangles", str(max_triangles), "--atlases", str(atlases),
+    ])
     if "SCAN_UNWRAPPED" not in output:
         raise RuntimeError(f"Blender did not unwrap the scan:\n{output[-1500:]}")
     archive = np.load(result)
-    return UnwrappedScan(archive["vertices"], archive["triangles"], archive["uv"])
+    return UnwrappedScan(archive["vertices"], archive["triangles"], archive["uv"], archive["atlases"])
 
 
 def thinned_for_blender(vertices: np.ndarray, triangles: np.ndarray, max_faces: int) -> tuple[np.ndarray, np.ndarray]:
@@ -471,12 +501,27 @@ def _atlas_image(surface: _Surface, colours: np.ndarray, painted: np.ndarray) ->
     return Image.fromarray(np.rint(to_srgb(pad_gutters(image, filled)) * 255).astype(np.uint8), "RGB")
 
 
-def _write_glb(mesh_path: pathlib.Path, atlas_path: pathlib.Path, out_path: pathlib.Path) -> None:
+def _write_glb(mesh_path: pathlib.Path, atlas_paths: list[pathlib.Path], out_path: pathlib.Path) -> None:
     from ..blender import _run
 
-    output = _run("texture_scan.py", ["--mesh", str(mesh_path), "--atlas", str(atlas_path), "--out", str(out_path)])
+    atlases = [argument for path in atlas_paths for argument in ("--atlas", str(path))]
+    output = _run("texture_scan.py", ["--mesh", str(mesh_path), *atlases, "--out", str(out_path)])
     if "SCAN_GLB_WRITTEN" not in output:
         raise RuntimeError(f"Blender did not write the textured scan:\n{output[-1500:]}")
+
+
+def _baked_atlas(mesh: UnwrappedScan, painted: ColouredScan, graph: SceneGraph, cameras, frame_paths, detections, path) -> _Atlas:
+    """One atlas's faces baked from the photos into an image at `path`."""
+    size = atlas_size(mesh)
+    with timed("texels"):
+        surface = _Surface(mesh, size, painted, graph)
+    with timed("exposure"):
+        gains, framed = _exposure(surface, cameras, frame_paths, detections)
+    with timed("photo bake"):
+        colours, reached = _bake(surface, cameras, frame_paths, detections, gains, framed)
+    with timed("atlas image"):
+        _atlas_image(surface, colours, reached).save(path, quality=ATLAS_JPEG_QUALITY)
+    return _Atlas(path, size, len(reached), int(reached.sum()))
 
 
 def bake_scan_atlas(
@@ -491,25 +536,26 @@ def bake_scan_atlas(
     """The vertex-painted scan, thinned, unwrapped and baked from every photo into one textured glTF.
 
     `max_triangles` is the viewer's face budget, `viewer_faces` of the scan unless given.
+    A budget larger than one atlas holds is packed into several, baked one after
+    another so only one atlas's texels are in memory at a time.
     """
     started = time.monotonic()
     chosen = evenly_spread(cameras, MAX_ATLAS_PHOTOS)
     detections = people or {}
+    budget = max_triangles or viewer_faces(painted)
     with tempfile.TemporaryDirectory(prefix="standardphysics-atlas-") as temporary:
         work = pathlib.Path(temporary)
         with timed("unwrap"):
-            mesh = unwrapped(painted, work, max_triangles or viewer_faces(painted))
-        size = atlas_size(mesh)
-        with timed("texels"):
-            surface = _Surface(mesh, size, painted, graph)
-        with timed("exposure"):
-            gains, framed = _exposure(surface, chosen, frame_paths, detections)
-        with timed("photo bake"):
-            colours, reached = _bake(surface, chosen, frame_paths, detections, gains, framed)
-        atlas_path, mesh_path = work / "atlas.jpg", work / "mesh.npz"
-        with timed("atlas image"):
-            _atlas_image(surface, colours, reached).save(atlas_path, quality=ATLAS_JPEG_QUALITY)
-        np.savez(mesh_path, vertices=mesh.vertices, triangles=mesh.triangles, uv=mesh.uv)
+            mesh = unwrapped(painted, work, budget, atlas_count(budget))
+        atlases = [
+            _baked_atlas(mesh.atlas(index), painted, graph, chosen, frame_paths, detections, work / f"atlas-{index}.jpg")
+            for index in range(mesh.atlas_count)
+        ]
+        mesh_path = work / "mesh.npz"
+        np.savez(mesh_path, vertices=mesh.vertices, triangles=mesh.triangles, uv=mesh.uv, atlases=mesh.atlases)
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        _write_glb(mesh_path, atlas_path, out_path)
-    return AtlasPaint(out_path, float(reached.mean()) if len(reached) else 0.0, len(chosen), size, time.monotonic() - started)
+        _write_glb(mesh_path, [atlas.path for atlas in atlases], out_path)
+    texels = sum(atlas.texels for atlas in atlases)
+    painted_fraction = sum(atlas.reached for atlas in atlases) / texels if texels else 0.0
+    size = max(atlas.size for atlas in atlases)
+    return AtlasPaint(out_path, painted_fraction, len(chosen), size, time.monotonic() - started)

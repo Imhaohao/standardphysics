@@ -122,3 +122,30 @@ def test_every_face_of_a_real_scan_is_drawn_from_texels_baked_for_it(tmp_path):
 
     assert np.bincount(owned[2], minlength=len(mesh.triangles)).min() >= 1
     assert len(np.unique(owned[0].astype(np.int64) * size + owned[1])) == len(owned[0]), "no texel belongs to two faces"
+
+
+def _uv_area(mesh) -> np.ndarray:
+    first, second = mesh.uv[:, 1] - mesh.uv[:, 0], mesh.uv[:, 2] - mesh.uv[:, 0]
+    return np.abs(first[:, 0] * second[:, 1] - first[:, 1] * second[:, 0]) / 2
+
+
+@pytest.mark.skipif(_blender_missing(), reason="Blender not installed")
+def test_a_budget_packed_into_two_atlases_gives_every_face_at_least_twice_the_texture(tmp_path):
+    """A library floor in one atlas left each face a texel or two, and it rendered as flat-coloured shards."""
+    vertices, triangles = scan_geometry(REPO / "datasets/phone/test1/lidar-mesh.json", capture_to_room(0.0))
+    scan = ColouredScan(vertices, triangles, np.zeros((len(vertices), 3)), np.zeros(len(vertices), bool))
+    budget = len(triangles) // 4
+
+    (tmp_path / "one").mkdir()
+    (tmp_path / "two").mkdir()
+    one = unwrapped(scan, tmp_path / "one", max_triangles=budget, atlases=1)
+    two = unwrapped(scan, tmp_path / "two", max_triangles=budget, atlases=2)
+
+    assert one.atlas_count == 1 and two.atlas_count == 2
+    assert sorted(np.bincount(two.atlases).tolist()) == pytest.approx([len(two.triangles) / 2] * 2, rel=0.01)
+    for index in range(2):
+        packed = two.atlas(index)
+        assert packed.uv.min() >= 0.0 and packed.uv.max() <= 1.0
+    per_face_one = _uv_area(one).sum() / len(one.triangles)
+    per_face_two = sum(_uv_area(two.atlas(index)).sum() for index in range(2)) / len(two.triangles)
+    assert per_face_two >= 1.8 * per_face_one
