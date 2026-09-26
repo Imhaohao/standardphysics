@@ -91,6 +91,9 @@ class Settings:
     Owners never see developer mode, the improvement loop, scoped checks or the
     other builder tools. Everyone signed in with one of these emails does.
     """
+    apple_audiences: frozenset[str] = frozenset({"com.standardphysics.capture"})
+    """The app ids a Sign in with Apple token may be issued for, from SP_APPLE_AUDIENCES.
+    The iPhone app's bundle id, plus a Services ID if the web ever signs in with Apple."""
     evidence_settle_seconds: float = 30.0
     """Quiet time before late evidence auto-queues exactly one semantic job.
 
@@ -119,6 +122,7 @@ class Settings:
             auto_deep_simulation=_flag("SP_AUTO_DEEP_SIMULATION"),
             bake_in_own_process=not _flag("SP_BAKE_IN_PROCESS"),
             team_emails=_email_set("SP_TEAM_EMAILS"),
+            apple_audiences=_email_set("SP_APPLE_AUDIENCES") or frozenset({"com.standardphysics.capture"}),
             evidence_settle_seconds=_bounded_integer(
                 "SP_EVIDENCE_SETTLE_SECONDS", 30, 0, 86_400
             ),

@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS scans (
     state TEXT NOT NULL,
     content_hash TEXT,
     coverage_json TEXT NOT NULL DEFAULT '[]',
-    owner_id TEXT REFERENCES owners(id)
+    owner_id TEXT REFERENCES owners(id),
+    last_opened_at TEXT
 );
 CREATE TABLE IF NOT EXISTS artifacts (
     scan_id TEXT NOT NULL REFERENCES scans(id),
@@ -91,8 +92,12 @@ CREATE TABLE IF NOT EXISTS owners (
     email TEXT NOT NULL UNIQUE,
     shop_name TEXT NOT NULL,
     password_hash TEXT NOT NULL,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    guest INTEGER NOT NULL DEFAULT 0,
+    apple_sub TEXT,
+    reminded_at TEXT
 );
+CREATE UNIQUE INDEX IF NOT EXISTS owners_by_apple ON owners(apple_sub) WHERE apple_sub IS NOT NULL;
 CREATE TABLE IF NOT EXISTS sessions (
     token_hash TEXT PRIMARY KEY,
     owner_id TEXT NOT NULL REFERENCES owners(id),
@@ -163,7 +168,8 @@ ADDED_COLUMNS = {
         ("cycle", "INTEGER NOT NULL DEFAULT 0"),
         ("candidate_graph_json", "TEXT"),
     ),
-    "scans": (("owner_id", "TEXT REFERENCES owners(id)"),),
+    "scans": (("owner_id", "TEXT REFERENCES owners(id)"), ("last_opened_at", "TEXT")),
+    "owners": (("guest", "INTEGER NOT NULL DEFAULT 0"), ("apple_sub", "TEXT"), ("reminded_at", "TEXT")),
     "jobs": (
         ("input_hash", "TEXT"),
         ("note", "TEXT"),

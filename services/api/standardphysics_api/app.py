@@ -65,6 +65,7 @@ from .layout import check_layout, save_layout
 from .lidar_mesh import InvalidLidarMesh, validate_lidar_mesh
 from .loop_run import run as run_loop_on
 from .loop_run import stream as stream_loop_on
+from .owner_accounts import install_account_routes
 from .owner_routes import answered, install_owner_routes
 from .proposals import propose
 from .questions import answer_question
@@ -149,6 +150,7 @@ def create_app(settings: Settings | None = None, stages: Stages | None = None, r
     app.state.database, app.state.store, app.state.worker = database, store, worker
     _install_error_handlers(app)
     install_auth(app, database, store, settings.team_emails)
+    install_account_routes(app, database, settings.team_emails, settings.apple_audiences)
     install_architecture_export_routes(app, database)
     _install_scan_routes(app, database, store)
     _install_upload_routes(app, database, store, worker, settings)
