@@ -34,16 +34,22 @@ def _smallest_scan():
 
 
 @pytest.fixture(scope="module")
-def vertices_and_cameras():
+def vertices_and_cameras(scanned):
+    vertices, _, cameras = scanned
+    return vertices, cameras
+
+
+@pytest.fixture(scope="module")
+def scanned():
     artifacts = _smallest_scan()
     if artifacts is None:
         pytest.skip("no scanned room with photos on this machine")
     graph = parse_room_json(json.loads((artifacts / "room-json").read_text()))
-    vertices, _ = scan_geometry(artifacts / "lidar-mesh", graph.capture_to_room)
+    vertices, triangles = scan_geometry(artifacts / "lidar-mesh", graph.capture_to_room)
     frames = [path.name for path in sorted(artifacts.glob("frame-*"))]
     cameras = load_cameras(artifacts / "poses", frames, graph.capture_to_room)
     step = max(1, len(cameras) // CAMERAS_COMPARED)
-    return vertices, cameras[::step]
+    return vertices, triangles, cameras[::step]
 
 
 def test_a_depth_buffer_from_the_framed_cubes_is_the_whole_scans_buffer(vertices_and_cameras):
@@ -93,3 +99,35 @@ def test_keeping_the_nearest_depth_per_pixel_matches_writing_every_point_far_to_
     vertices, cameras = vertices_and_cameras
     for camera in cameras:
         assert np.array_equal(depth_buffer(camera, vertices), _sorted_depth_buffer(camera, vertices)), camera.frame_id
+
+
+def _weights_of_every_point(camera, vertices, normals, buffer, slope_aware):
+    """View weights as they were computed before: every point through every step, framed or not."""
+    from standardphysics_pipeline.textures import scan_colour as sc
+
+    columns, rows, depth = camera.project(vertices)
+    toward = camera.position[None, :] - vertices
+    distance = np.linalg.norm(toward, axis=1)
+    facing = np.einsum("ij,ij->i", normals, toward) / np.maximum(distance, 1e-9)
+    inside = (depth > 0.2) & (facing > sc.MIN_FACING) & (columns >= 0) & (columns <= camera.width - 1) & (rows >= 0) & (rows <= camera.height - 1)
+    height, width = buffer.shape
+    nearest = buffer[np.clip(np.rint(rows * height / camera.height).astype(np.int64), 0, height - 1),
+                     np.clip(np.rint(columns * width / camera.width).astype(np.int64), 0, width - 1)]
+    unhidden = ~np.isfinite(nearest) | (depth <= nearest + sc._seen_tolerance(camera, width, depth, facing, slope_aware))
+    border = np.clip(np.minimum.reduce([columns, rows, camera.width - 1 - columns, camera.height - 1 - rows]) / sc.BORDER_FALLOFF_PIXELS, 0.0, 1.0)
+    return np.where(inside & unhidden, facing ** 2 / np.maximum(distance, 0.5) * border, 0.0)
+
+
+def test_weighing_only_the_framed_points_gives_every_point_the_weight_it_had(scanned):
+    from standardphysics_pipeline.textures.scan_colour import _weights_from
+    from standardphysics_pipeline.textures.surface_materials import vertex_normals
+
+    vertices, triangles, cameras = scanned
+    normals = vertex_normals(vertices, triangles)
+    for camera in cameras:
+        buffer = depth_buffer(camera, vertices)
+        for slope_aware in (False, True):
+            weight, _, _ = _weights_from(camera, vertices, normals, buffer, slope_aware=slope_aware)
+            reference = _weights_of_every_point(camera, vertices, normals, buffer, slope_aware)
+            assert (weight > 0).any() or not (reference > 0).any()
+            assert np.array_equal(weight, reference), camera.frame_id

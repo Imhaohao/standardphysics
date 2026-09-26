@@ -127,32 +127,36 @@ def _weights_from(
     behind its own near part, and the wall came out speckled.
     """
     columns, rows, depth = camera.project(vertices)
+    framed = np.flatnonzero(
+        (depth > 0.2) & (columns >= 0) & (columns <= camera.width - 1) & (rows >= 0) & (rows <= camera.height - 1)
+    )
+    weight = np.zeros(len(vertices), dtype=np.float64)
+    weight[framed] = _framed_weights(camera, vertices[framed], normals[framed], columns[framed], rows[framed], depth[framed], buffer, mask, slope_aware)
+    return weight, columns, rows
+
+
+def _framed_weights(camera, vertices, normals, columns, rows, depth, buffer, mask, slope_aware) -> np.ndarray:
+    """The view weight of points already inside the frame and in front of the camera.
+
+    Only these are worth the arithmetic: a photo's cubes reach well past its
+    frame, and every point outside it weighs nothing whatever its angle.
+    """
     toward = camera.position[None, :] - vertices
     distance = np.linalg.norm(toward, axis=1)
     facing = np.einsum("ij,ij->i", normals, toward) / np.maximum(distance, 1e-9)
-    inside = (
-        (depth > 0.2) & (facing > MIN_FACING)
-        & (columns >= 0) & (columns <= camera.width - 1)
-        & (rows >= 0) & (rows <= camera.height - 1)
-    )
     height, width = buffer.shape
-    nearest = buffer[
-        np.clip(np.rint(rows * height / camera.height).astype(np.int64), 0, height - 1),
-        np.clip(np.rint(columns * width / camera.width).astype(np.int64), 0, width - 1),
-    ]
+    pixel_rows = np.clip(np.rint(rows * height / camera.height).astype(np.int64), 0, height - 1)
+    pixel_columns = np.clip(np.rint(columns * width / camera.width).astype(np.int64), 0, width - 1)
+    nearest = buffer[pixel_rows, pixel_columns]
     unhidden = ~np.isfinite(nearest) | (depth <= nearest + _seen_tolerance(camera, width, depth, facing, slope_aware))
     border = np.clip(
         np.minimum.reduce([columns, rows, camera.width - 1 - columns, camera.height - 1 - rows])
         / BORDER_FALLOFF_PIXELS, 0.0, 1.0,
     )
-    weight = np.where(inside & unhidden, facing ** 2 / np.maximum(distance, 0.5) * border, 0.0)
+    weight = np.where((facing > MIN_FACING) & unhidden, facing ** 2 / np.maximum(distance, 0.5) * border, 0.0)
     if mask is not None:
-        support = mask[
-            np.clip(np.rint(rows * height / camera.height).astype(np.int64), 0, height - 1),
-            np.clip(np.rint(columns * width / camera.width).astype(np.int64), 0, width - 1),
-        ]
-        weight = np.where(support >= 0.5, weight, 0.0)
-    return weight, columns, rows
+        weight = np.where(mask[pixel_rows, pixel_columns] >= 0.5, weight, 0.0)
+    return weight
 
 
 def _seen_tolerance(camera: PhotoCamera, buffer_width: int, depth: np.ndarray, facing: np.ndarray, slope_aware: bool):
