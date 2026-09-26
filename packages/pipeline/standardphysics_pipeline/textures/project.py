@@ -410,7 +410,7 @@ def _draw_depth(buffer: np.ndarray, small: PhotoCamera, triangles: np.ndarray) -
         & (v.max(axis=1) >= -1) & (v.min(axis=1) <= small.height)
     )
     u, v, depth = u[visible], v[visible], depth[visible]
-    few_pixels = _pixel_spans(buffer, u, v).max(axis=0) <= SMALL_TRIANGLE_PIXELS
+    few_pixels = _pixel_spans(buffer, u, v).max(axis=0) <= SMALL_TRIANGLE_SIDES[-1]
     _rasterize_small_triangles(buffer, u[few_pixels], v[few_pixels], depth[few_pixels])
     for corners_u, corners_v, corners_depth in zip(u[~few_pixels], v[~few_pixels], depth[~few_pixels]):
         _rasterize_depth_triangle(buffer, corners_u, corners_v, corners_depth)
@@ -446,8 +446,15 @@ SMALL_TRIANGLE_BATCH = 40_000
 """Faces drawn together per step, so the per-pixel arrays stay near a hundred megabytes."""
 
 
-SMALL_TRIANGLE_SIDES = (3, 5, SMALL_TRIANGLE_PIXELS)
-"""The candidate squares small faces are sorted into, so a face two pixels wide is not tested against sixty-four."""
+SMALL_TRIANGLE_SIDES = (3, 5, SMALL_TRIANGLE_PIXELS, 16, 32, 64)
+"""The candidate squares faces are sorted into, so a face two pixels wide is not tested against sixty-four.
+
+A thinned floor's faces are ten or twenty centimetres across and cover dozens
+of pixels near the camera; drawn one by one in Python they were two thirds of
+a depth buffer. Only faces wider than the largest square are still drawn alone.
+"""
+BATCH_CANDIDATES = 2_500_000
+"""Candidate pixels tested in one step, so a batch of large faces holds as much as one of small faces."""
 
 
 def _rasterize_small_triangles(buffer: np.ndarray, u: np.ndarray, v: np.ndarray, depth: np.ndarray) -> None:
@@ -457,8 +464,9 @@ def _rasterize_small_triangles(buffer: np.ndarray, u: np.ndarray, v: np.ndarray,
     for side in SMALL_TRIANGLE_SIDES:
         faces = np.flatnonzero((spans > smaller) & (spans <= side))
         smaller = side
-        for start in range(0, len(faces), SMALL_TRIANGLE_BATCH):
-            chosen = faces[start:start + SMALL_TRIANGLE_BATCH]
+        batch = max(1, min(SMALL_TRIANGLE_BATCH, BATCH_CANDIDATES // max(side, 1) ** 2))
+        for start in range(0, len(faces), batch):
+            chosen = faces[start:start + batch]
             _rasterize_small_batch(buffer, u[chosen], v[chosen], depth[chosen], side)
 
 

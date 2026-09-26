@@ -84,14 +84,14 @@ def test_a_mesh_larger_than_any_old_limit_is_not_refused(camera_and_faces):
 
 
 def test_drawing_small_faces_together_matches_drawing_them_one_by_one(camera_and_faces):
-    """The fast path for small faces must write the buffer the per-face loop writes, pixel for pixel."""
+    """The batched path must write the buffer the per-face loop writes, pixel for pixel, for faces of every size."""
     camera, triangles = camera_and_faces
     fast = project.triangle_depth_buffer(camera, triangles)
-    was = project.SMALL_TRIANGLE_PIXELS
-    project.SMALL_TRIANGLE_PIXELS = 0
+    was = project.SMALL_TRIANGLE_SIDES
+    project.SMALL_TRIANGLE_SIDES = (0,)
     try:
         one_by_one = project.triangle_depth_buffer(camera, triangles)
     finally:
-        project.SMALL_TRIANGLE_PIXELS = was
+        project.SMALL_TRIANGLE_SIDES = was
     assert np.isfinite(fast).any()
     assert np.array_equal(fast, one_by_one)
