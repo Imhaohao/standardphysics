@@ -171,3 +171,13 @@ def test_a_saved_account_is_never_scheduled_for_deletion(client):
     session = client.get("/api/auth/session").json()
     assert session["guest"] is False
     assert session["deletes_at"] is None
+
+
+def test_one_network_cannot_make_endless_guests(make_client):
+    with make_client(sign_in_as_owner=False) as phone:
+        codes = []
+        for _ in range(21):
+            phone.cookies.clear()
+            codes.append(phone.post("/api/auth/guest").status_code)
+    assert codes[:20] == [201] * 20
+    assert codes[20] == 429

@@ -35,6 +35,9 @@ COOKIE_NAME = "sp_session"
 GUARDED_PREFIX = "/api/scans"
 BEARER = re.compile(r"^Bearer\s+(?P<token>[A-Za-z0-9_\-]+)$")
 SCAN_IN_PATH = re.compile(r"^/api/scans/(?P<scan_id>[0-9a-fA-F-]{36})(?:/|$)")
+TEAM_ONLY = re.compile(r"^/api/scans/[0-9a-fA-F-]{36}/(ask|loop|loop/stream|simulations|rebuild|combine)$")
+"""The builders' tools: the ask box, the improvement loop, simulations, rebuilds and combining rooms.
+Owners don't see them (docs/UX.md, owner tools and team tools)."""
 
 SIGN_IN_ATTEMPTS = 10
 SIGN_IN_WINDOW_SECONDS = 300
@@ -61,6 +64,7 @@ class AttemptLimiter:
 
     limit: int = SIGN_IN_ATTEMPTS
     window: int = SIGN_IN_WINDOW_SECONDS
+    message: str = "Too many sign-in attempts. Wait a few minutes and try again."
     attempts: dict[str, list[float]] = field(default_factory=dict)
 
     def check(self, key: str) -> None:
@@ -68,7 +72,7 @@ class AttemptLimiter:
         recent = [at for at in self.attempts.get(key, []) if now - at < self.window]
         self.attempts[key] = recent
         if len(recent) >= self.limit:
-            raise ApiProblem(429, "Too many sign-in attempts. Wait a few minutes and try again.")
+            raise ApiProblem(429, self.message)
 
     def record(self, key: str) -> None:
         self.attempts.setdefault(key, []).append(time.monotonic())
@@ -154,6 +158,8 @@ def install_auth(
             scan_id = _scan_id_in(request.url.path)
             if scan_id is not None and not _owns_scan(database, scan_id, owner):
                 return _problem(404, "no scan")
+            if _team_only(request, owner, team_emails):
+                return _problem(403, "This is for the Standard Physics team.")
             if scan_id is not None and request.method == "GET":
                 _mark_opened(database, scan_id)
             request.state.owner = owner
@@ -161,6 +167,13 @@ def install_auth(
 
     app.add_middleware(RequireOwner)
     _install_auth_routes(app, database, store, limiter, team_emails)
+
+
+def _team_only(request: Request, owner: Owner, team_emails: frozenset[str]) -> bool:
+    """A team tool asked for by someone off the team. A server with no team named keeps them open."""
+    if not team_emails or not TEAM_ONLY.match(request.url.path):
+        return False
+    return role_of(owner, team_emails) != "team"
 
 
 OPENED_RESOLUTION = timedelta(hours=1)

@@ -19,11 +19,13 @@ from standardphysics_contracts import DeviceRegistration, Session
 from . import accounts, notifications
 from .accounts import Owner
 from .apple_identity import AppleIdentity, NotFromApple, verify
-from .auth import resolve_owner, save_guest, session_of, set_session_cookie, signed_in
+from .auth import AttemptLimiter, resolve_owner, save_guest, session_of, set_session_cookie, signed_in
 from .db import Database
 from .errors import ApiProblem
 
 DEVICE_TOKEN = re.compile(r"^[0-9a-fA-F]{32,200}$")
+GUESTS_PER_ADDRESS = 20
+GUEST_WINDOW_SECONDS = 3600
 
 
 class SaveRequest(BaseModel):
@@ -62,12 +64,18 @@ def _apple_owner(connection: sqlite3.Connection, identity: AppleIdentity, curren
 def install_account_routes(
     app: FastAPI, database: Database, team_emails: frozenset[str], apple_audiences: frozenset[str]
 ) -> None:
+    guests = AttemptLimiter(limit=GUESTS_PER_ADDRESS, window=GUEST_WINDOW_SECONDS,
+                            message="Too many new accounts from this network. Try again in an hour.")
+
     @app.post("/api/auth/guest", status_code=201, response_model=Session)
     def guest(request: Request, response: Response) -> Session:
-        """A new guest, or whoever is already signed in on this phone."""
+        """A new guest, or whoever is already signed in on this phone. A handful an hour per network."""
         current = resolve_owner(database, request)
         if current is not None:
             return session_of(database, current, team_emails)
+        address = request.client.host if request.client else "unknown"
+        guests.check(address)
+        guests.record(address)
         with database.transaction() as connection:
             owner = accounts.create_guest(connection)
             token = accounts.open_session(connection, owner.id, accounts.GUEST_SESSION_LIFETIME)
