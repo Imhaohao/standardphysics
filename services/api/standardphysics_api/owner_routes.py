@@ -192,7 +192,7 @@ def _install_progress_routes(app: FastAPI, database: Database, stages: Stages) -
     def journeys(request: Request) -> JourneyList:
         owner = signed_in(database, request)
         with database.connect() as connection:
-            scans = repo.list_scans(connection, owner.id)
+            scans = repo.list_shops(connection, owner.id)
             return JourneyList(journeys=[journey_of(connection, stages, scan.id) for scan in scans])
 
 

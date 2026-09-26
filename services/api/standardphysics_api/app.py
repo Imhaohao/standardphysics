@@ -67,6 +67,7 @@ from .loop_run import run as run_loop_on
 from .loop_run import stream as stream_loop_on
 from .notifications import notifier_from
 from .owner_accounts import install_account_routes
+from .owner_requests import carry_answers
 from .owner_routes import answered, install_owner_routes
 from .plans import install_plan_routes
 from .proposals import propose
@@ -221,14 +222,19 @@ def _scan_or_404(connection, scan_id: uuid.UUID) -> Scan:
 def _install_scan_routes(app: FastAPI, database: Database, store: ArtifactStore) -> None:
     @app.post("/api/scans", status_code=201, response_model=Scan)
     def create_scan(body: CreateScanRequest, request: Request) -> Scan:
+        owner = owner_of(request)
         with database.transaction() as connection:
-            scan_id = repo.insert_scan(connection, body, owner_of(request).id)
+            if body.replaces is not None and repo.scan_owner(connection, body.replaces) != owner.id:
+                raise ApiProblem(404, "no scan")
+            scan_id = repo.insert_scan(connection, body, owner.id)
+            if body.replaces is not None:
+                carry_answers(connection, store, body.replaces, scan_id)
             return repo.get_scan(connection, scan_id)
 
     @app.get("/api/scans", response_model=ScanList)
     def list_scans(request: Request) -> ScanList:
         with database.connect() as connection:
-            return ScanList(scans=repo.list_scans(connection, owner_of(request).id))
+            return ScanList(scans=repo.list_shops(connection, owner_of(request).id))
 
     @app.get("/api/scans/{scan_id}", response_model=Scan)
     def get_scan(scan_id: uuid.UUID) -> Scan:

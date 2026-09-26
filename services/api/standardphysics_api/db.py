@@ -24,7 +24,8 @@ CREATE TABLE IF NOT EXISTS scans (
     coverage_json TEXT NOT NULL DEFAULT '[]',
     owner_id TEXT REFERENCES owners(id),
     last_opened_at TEXT,
-    results_told_at TEXT
+    results_told_at TEXT,
+    replaces_scan_id TEXT
 );
 CREATE TABLE IF NOT EXISTS artifacts (
     scan_id TEXT NOT NULL REFERENCES scans(id),
@@ -192,7 +193,12 @@ ADDED_COLUMNS = {
         ("cycle", "INTEGER NOT NULL DEFAULT 0"),
         ("candidate_graph_json", "TEXT"),
     ),
-    "scans": (("owner_id", "TEXT REFERENCES owners(id)"), ("last_opened_at", "TEXT"), ("results_told_at", "TEXT")),
+    "scans": (
+        ("owner_id", "TEXT REFERENCES owners(id)"),
+        ("last_opened_at", "TEXT"),
+        ("results_told_at", "TEXT"),
+        ("replaces_scan_id", "TEXT"),
+    ),
     "owners": (("guest", "INTEGER NOT NULL DEFAULT 0"), ("apple_sub", "TEXT"), ("reminded_at", "TEXT")),
     "jobs": (
         ("input_hash", "TEXT"),

@@ -281,3 +281,33 @@ def pending_reviews(connection: sqlite3.Connection) -> list[tuple[uuid.UUID, str
         " ORDER BY answered_at"
     ).fetchall()
     return [(uuid.UUID(row["scan_id"]), row["request_id"]) for row in rows]
+
+
+def carry_answers(connection: sqlite3.Connection, store, source: uuid.UUID, destination: uuid.UUID) -> None:
+    """A new walk of the same shop keeps what the owner said and sent in it.
+
+    Only the in-shop requests carry over: they're about the shop, not about one
+    walk of it. Follow-ups belong to the findings of the walk that raised them.
+    """
+    in_shop = [ask.id for ask in IN_SHOP]
+    rows = connection.execute(
+        f"SELECT * FROM owner_requests WHERE scan_id = ? AND request_id IN ({', '.join('?' * len(in_shop))})",
+        (str(source), *in_shop),
+    ).fetchall()
+    for row in rows:
+        values = dict(row) | {"scan_id": str(destination)}
+        columns = ", ".join(values)
+        connection.execute(
+            f"INSERT INTO owner_requests ({columns}) VALUES ({', '.join('?' * len(values))})", tuple(values.values())
+        )
+        _copy_photo(store, source, destination, row["photo_name"])
+
+
+def _copy_photo(store, source: uuid.UUID, destination: uuid.UUID, name: str | None) -> None:
+    if not name:
+        return
+    original = store.scan_dir(source) / "requests" / name
+    if original.exists():
+        target = store.scan_dir(destination) / "requests" / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(original.read_bytes())

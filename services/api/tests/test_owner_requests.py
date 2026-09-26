@@ -81,7 +81,8 @@ def test_a_photo_waits_for_the_team_then_becomes_a_result(make_client):
     assert sent.status_code == 200
     assert sent.json()["status"] == "answered"
     assert client.get(sent.json()["answer"]["photo_url"]).headers["content-type"] == "image/jpeg"
-    assert _finding(client, scan_id, "door_hardware")["title"] == "We have your photo"
+    waiting = _finding(client, scan_id, "door_hardware")
+    assert (waiting["title"], waiting["asks"]) == ("We have your photo", "review")
 
     queue = client.get("/api/team/reviews").json()["reviews"]
     assert [(review["scan_id"], review["request"]["id"]) for review in queue] == [(scan_id, "door_hardware")]
@@ -130,3 +131,29 @@ def test_a_shop_with_answers_can_still_be_deleted(client):
     client.put(f"/api/scans/{scan_id}/requests/restroom/answer", json={"yes": True})
     client.put(f"/api/scans/{scan_id}/requests/door_hardware/photo", content=_jpeg())
     assert client.delete(f"/api/scans/{scan_id}").status_code == 204
+
+
+def test_a_new_walk_of_the_shop_keeps_the_answers_and_replaces_the_old_scan(client):
+    first = create_scan(client)
+    client.put(f"/api/scans/{first}/requests/restroom/answer", json={"yes": False})
+    client.put(f"/api/scans/{first}/requests/door_hardware/photo", content=_jpeg())
+    made = client.post("/api/scans", json={"name": "Corner cafe", "device_model": "iPhone17,1", "duration_seconds": 90,
+                                           "replaces": first})
+    assert made.status_code == 201
+    second = made.json()["id"]
+    carried = _requests(client, second)
+    assert carried["restroom"]["answer"]["yes"] is False
+    assert carried["restroom_turning_space"]["status"] == "not_applicable"
+    assert carried["door_hardware"]["status"] == "answered"
+    assert client.get(carried["door_hardware"]["answer"]["photo_url"]).status_code == 200
+    listed = [scan["id"] for scan in client.get("/api/scans").json()["scans"]]
+    assert listed == [second, first]
+    with client.app.state.database.connect() as connection:
+        connection.execute("UPDATE scans SET state = 'ready' WHERE id = ?", (second,))
+    assert [scan["id"] for scan in client.get("/api/scans").json()["scans"]] == [second]
+
+
+def test_a_walk_cannot_replace_someone_else_s_shop(client, stranger):
+    theirs = create_scan(client)
+    refused = stranger.post("/api/scans", json={"name": "Mine", "device_model": "iPhone", "duration_seconds": 1, "replaces": theirs})
+    assert refused.status_code == 404
