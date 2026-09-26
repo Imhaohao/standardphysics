@@ -3,9 +3,9 @@
 import uuid
 from datetime import UTC, datetime
 
-from standardphysics_contracts import Checklist, Scan
+from standardphysics_contracts import Assessment, Checklist, Citation, Finding, Scan
 
-from conftest import create_scan, drain
+from conftest import REPO, create_scan, drain, put_artifact
 from standardphysics_api.journey import ShopState, journey
 
 
@@ -117,3 +117,29 @@ def test_the_path_comes_straight_after_the_counter_while_the_checks_rerun():
     waiting = journey(_state(counter_marked=True, path_confirmed=True)).next_step
     assert (waiting.kind, waiting.title) == ("measuring", "We're checking your shop")
     assert journey(_state(measured=False)).next_step.title == "We're measuring your shop"
+
+
+def test_two_scans_of_the_same_room_keep_their_own_results(client):
+    phone = REPO / "datasets/phone/ravida"
+    scans = []
+    for _ in range(2):
+        scan_id = create_scan(client)
+        put_artifact(client, scan_id, "room-json", (phone / "room.json").read_bytes(), "room_json")
+        put_artifact(client, scan_id, "room-usdz", (phone / "room.usdz").read_bytes(), "room_usdz")
+        client.post(f"/api/scans/{scan_id}/complete")
+        scans.append(scan_id)
+    drain(client)
+    first, second = (client.get(f"/api/scans/{scan_id}/assessment").json() for scan_id in scans)
+    assert (first["scan_id"], second["scan_id"]) == tuple(scans)
+    assert first["id"] != second["id"]
+
+
+def test_no_problems_is_not_an_all_clear_while_checks_are_waiting():
+    question = Finding(id=uuid.uuid4(), check_id="route_clear_width", outcome="question", title="Point the phone at the table again",
+                       detail="", citation=Citation(authority="ADA_2010", edition="2010 ADA Standards", section="403.5.1"))
+    assessment = Assessment(id=uuid.uuid4(), scan_id=uuid.uuid4(), graph_revision=0, graph_hash="h", rulepack_version="1",
+                            pass_number=1, created_at=datetime.now(UTC), findings=[question])
+    waiting = journey(_state(assessment=assessment, counter_marked=True, path_confirmed=True)).next_step
+    assert waiting.title == "Nothing to fix so far. 1 spot still needs checking"
+    clear = journey(_state(assessment=assessment.model_copy(update={"findings": []}), counter_marked=True, path_confirmed=True))
+    assert clear.next_step.title == "There's nothing on your list to fix"

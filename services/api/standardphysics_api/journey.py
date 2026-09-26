@@ -109,10 +109,25 @@ def _next_fix(state: ShopState) -> str:
     return words[:1].lower() + words[1:]
 
 
+def _still_to_check(state: ShopState) -> int:
+    findings = state.assessment.findings if state.assessment else []
+    return sum(1 for finding in findings if finding.outcome == "question")
+
+
+def _nothing_to_fix(state: ShopState) -> Step:
+    """No problems is only an all-clear once nothing is still waiting to be checked."""
+    waiting = _still_to_check(state)
+    if waiting == 0:
+        return "tools", NextStep(kind="done", title="There's nothing on your list to fix")
+    title = _count(waiting, "Nothing to fix so far. 1 spot still needs checking",
+                   "Nothing to fix so far. {count} spots still need checking")
+    return "tools", NextStep(kind="done", title=title, count=waiting)
+
+
 def _fixing(state: ShopState) -> Step:
     done, total = state.checklist.done, state.checklist.total
     if total == 0:
-        return "tools", NextStep(kind="done", title="There's nothing on your list to fix")
+        return _nothing_to_fix(state)
     if done == 0:
         title = _count(total, "Your results are ready. 1 thing to fix", "Your results are ready. {count} things to fix")
         return "results", NextStep(kind="results", title=title, count=total)
