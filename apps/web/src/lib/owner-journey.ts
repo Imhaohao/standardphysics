@@ -1,4 +1,4 @@
-import type { Checklist, ChecklistItem, Finding, Journey, OwnerRequest, Scenario } from "@/types/contracts";
+import type { Checklist, ChecklistItem, Finding, Journey, OwnerRequest, Scenario, SceneGraph, SceneNode } from "@/types/contracts";
 
 export type ChecklistStatus = ChecklistItem["status"];
 
@@ -94,4 +94,20 @@ export function wheelchairStartFrom(scenario: Scenario | null): { position: [num
   const z = -door.position.y;
   const yaw = Math.atan2(-(next.position.x - x), -(-next.position.y - z));
   return { position: [x, 0, z], yaw };
+}
+
+/** Checks a layout change can clear, because they're about where things stand. */
+export const MOVABLE_CHECKS = new Set([
+  "route_clear_width", "passing_space", "turning_space", "turn_clear_width", "exit_path",
+  "service_counter_approach", "door_maneuvering_clearance",
+]);
+
+/** The first piece worth dragging: one that stands in a spot a problem is about, and can move. */
+export function pieceToTry(problems: Finding[], scene: SceneGraph): SceneNode | null {
+  const byId = new Map(scene.nodes.map((node) => [node.id, node]));
+  for (const finding of problems.filter((problem) => MOVABLE_CHECKS.has(problem.check_id))) {
+    const piece = finding.locus?.node_ids.map((id) => byId.get(id)).find((node) => node?.movable);
+    if (piece) return piece;
+  }
+  return null;
 }

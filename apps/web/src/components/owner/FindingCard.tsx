@@ -3,11 +3,10 @@
 import { ArrowsOutCardinal } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/Button";
 import { formatInches } from "@/lib/findings";
-import { type ChecklistStatus, comparisonBars } from "@/lib/owner-journey";
+import { type ChecklistStatus, comparisonBars, MOVABLE_CHECKS } from "@/lib/owner-journey";
 import type { Finding } from "@/types/contracts";
 import { StatusControl } from "./StatusControl";
 
-const MOVABLE = new Set(["route_clear_width", "passing_space", "turning_space", "turn_clear_width", "exit_path", "service_counter_approach", "door_maneuvering_clearance"]);
 
 export type CardActions = {
   onShow: (finding: Finding) => void;
@@ -36,7 +35,7 @@ export function FindingCard({ finding, selected, status, fixing, saving, actions
       </button>
       <Comparison finding={finding} />
       {finding.fix && <p className="border-l-2 border-accent pl-3 font-medium text-pretty">{finding.fix}</p>}
-      {MOVABLE.has(finding.check_id) && (
+      {MOVABLE_CHECKS.has(finding.check_id) && (
         <Button className="self-start" onClick={() => actions.onPlan(finding)}>
           <ArrowsOutCardinal size={18} weight="bold" aria-hidden />
           See a layout that fixes this

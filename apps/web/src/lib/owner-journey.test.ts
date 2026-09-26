@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { Checklist, Finding, Journey, OwnerRequest } from "@/types/contracts";
-import { checklistRows, comparisonBars, followUps, isFixing, isWaiting, openInShop, panelFor, requestsForStep, thingsToFix, wheelchairStartFrom } from "./owner-journey";
+import type { Checklist, Finding, Journey, OwnerRequest, SceneGraph, SceneNode } from "@/types/contracts";
+import { checklistRows, comparisonBars, followUps, isFixing, isWaiting, openInShop, panelFor, pieceToTry, requestsForStep, thingsToFix, wheelchairStartFrom } from "./owner-journey";
 
 const journey = (kind: Journey["next_step"]["kind"]): Journey => ({
   scan_id: "s", shop_name: "Corner cafe", stage: "fill_in_the_gaps", tools_unlocked: false,
@@ -69,5 +69,15 @@ describe("the wheelchair walk-through", () => {
     expect(facing[0]).toBeCloseTo(0);
     expect(facing[1]).toBeCloseTo(-1);
     expect(wheelchairStartFrom(null)).toBeNull();
+  });
+});
+
+describe("the first thing to try in Plan a layout", () => {
+  it("is a piece that can move, standing where a layout problem is", () => {
+    const node = (id: string, movable: boolean) => ({ id, movable, label: id }) as unknown as SceneNode;
+    const scene = { nodes: [node("counter", false), node("display case", true)] } as unknown as SceneGraph;
+    const finding = (check_id: string, ids: string[]) => ({ check_id, locus: { node_ids: ids } }) as unknown as Finding;
+    expect(pieceToTry([finding("service_counter_height", ["counter"]), finding("route_clear_width", ["counter", "display case"])], scene)?.label).toBe("display case");
+    expect(pieceToTry([finding("service_counter_height", ["display case"])], scene)).toBeNull();
   });
 });

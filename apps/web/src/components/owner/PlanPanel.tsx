@@ -7,13 +7,17 @@ import type { Arrangement } from "@/components/workspace/useArrangement";
 import { ActionBar, StepHeading } from "./StepHeading";
 
 /** Plan a layout: drag pieces on the model, see what's left to fix, and keep the plan without changing the scan. */
-export function PlanPanel({ arrangement, before, onDone }: { arrangement: Arrangement; before: number; onDone: () => void }) {
+export function PlanPanel({ arrangement, before, pieceName, onDone }: { arrangement: Arrangement; before: number; pieceName: string | null; onDone: () => void }) {
   const [saved, setSaved] = useState(false);
   const left = arrangement.check ? arrangement.check.findings.filter((finding) => finding.outcome === "problem").length : before;
   const save = async () => setSaved(await arrangement.save());
   return (
     <div className="flex min-h-full flex-col gap-6">
-      <StepHeading title="Plan a layout">Drag a piece of furniture on the model. We check the new layout each time you let go.</StepHeading>
+      <StepHeading title="Plan a layout">
+        {pieceName
+          ? `Try dragging the ${pieceName.toLowerCase()}, outlined on the model, and watch the number below change.`
+          : "Drag a piece of furniture on the model. We check the new layout each time you let go."}
+      </StepHeading>
       <PlanScore before={before} left={left} checking={arrangement.checking} moved={arrangement.hasMoves} />
       {arrangement.activeId && <TurnControls onTurn={(degrees) => arrangement.nudge(0, 0, degrees)} />}
       {arrangement.problem && <p role="alert" className="text-problem">{arrangement.problem}</p>}

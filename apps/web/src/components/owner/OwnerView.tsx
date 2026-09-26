@@ -10,7 +10,7 @@ import { groupFindings } from "@/lib/findings";
 import { proposeFix } from "@/lib/layout-client";
 import { inApp, listenToApp, tellApp } from "@/lib/native-bridge";
 import { markStatus, savePlan } from "@/lib/owner-client";
-import { type ChecklistStatus, checklistRows, type Destination, followUps, isFixing, type Panel, panelFor, requestsForStep } from "@/lib/owner-journey";
+import { type ChecklistStatus, checklistRows, type Destination, followUps, isFixing, type Panel, panelFor, pieceToTry, requestsForStep } from "@/lib/owner-journey";
 import type { Assessment, Checklist, Finding, Journey, OwnerRequest, Scan, Scenario, SceneGraph } from "@/types/contracts";
 import { CounterStep } from "./CounterStep";
 import { ModelCaption, OwnerModel } from "./OwnerModel";
@@ -182,6 +182,12 @@ function OwnerShop(props: ShopProps) {
     () => setSelected(null),
   );
 
+  const tryPiece = useMemo(() => pieceToTry(problems, scene), [problems, scene]);
+  const startPlanning = () => {
+    setTool("plan");
+    if (tryPiece) arrangement.setActiveId(tryPiece.id);
+  };
+
   const planFor = async (finding: Finding) => {
     setTool("plan");
     setSelected(null);
@@ -196,7 +202,7 @@ function OwnerShop(props: ShopProps) {
     counter: () => <CounterStep scanId={scan.id} scene={scene} picked={counter} onSkip={() => setCounterSkipped(true)} />,
     path: () => <PathStep path={path} />,
     follow_ups: () => <FollowUpPanel scanId={scan.id} journey={journey} requests={props.requests} />,
-    plan: () => <PlanPanel arrangement={arrangement} before={problems.length} onDone={() => { arrangement.reset(); setTool(null); }} />,
+    plan: () => <PlanPanel arrangement={arrangement} before={problems.length} pieceName={arrangement.hasMoves ? null : tryPiece?.label ?? null} onDone={() => { arrangement.reset(); setTool(null); }} />,
     wheelchair: () => <WheelchairPanel onDone={() => setTool(null)} />,
     results: () => (
       <ResultsPanel
@@ -212,7 +218,7 @@ function OwnerShop(props: ShopProps) {
         actions={{ onShow: (finding) => setSelected(finding.id === selected?.id ? null : finding), onStatus: statuses.set, onPlan: planFor }}
       >
         {!readOnly && <SharePanel scanId={scan.id} shopName={scan.name} onShared={save.ask} />}
-        {!readOnly && journey.tools_unlocked && <ToolsPanel scanId={scan.id} inApp={inApp()} onPlan={() => setTool("plan")} onWheelchair={() => setTool("wheelchair")} />}
+        {!readOnly && journey.tools_unlocked && <ToolsPanel scanId={scan.id} inApp={inApp()} onPlan={startPlanning} onWheelchair={() => setTool("wheelchair")} />}
       </ResultsPanel>
     ),
   };
