@@ -6,6 +6,7 @@ never appear in a response, a log line or the web build.
 
 from __future__ import annotations
 
+import logging
 import os
 import pathlib
 import secrets
@@ -14,6 +15,7 @@ from dataclasses import dataclass
 from standardphysics_agents.tracing import ENTITY_ENV, PROJECT_ENV
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[3]
+log = logging.getLogger(__name__)
 DEFAULT_DATA_DIR = pathlib.Path(__file__).resolve().parents[1] / "var"
 
 
@@ -34,11 +36,21 @@ def _flag(name: str) -> bool:
 
 
 def _secret(name: str, path_name: str) -> str | None:
-    """A secret given inline, or the contents of the file another variable names."""
+    """A secret given inline, or the contents of the file another variable names.
+
+    A file that can't be read is logged and treated as unset, so a wrong path
+    turns off what the secret is for instead of stopping the whole server.
+    """
     if os.environ.get(name):
         return os.environ[name].replace("\\n", "\n")
     path = os.environ.get(path_name)
-    return pathlib.Path(path).read_text() if path else None
+    if not path:
+        return None
+    try:
+        return pathlib.Path(path).read_text()
+    except OSError as error:
+        log.warning("%s=%s can't be read (%s), so it is ignored", path_name, path, error.strerror)
+        return None
 
 
 def _email_set(name: str) -> frozenset[str]:

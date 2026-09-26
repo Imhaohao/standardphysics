@@ -14,7 +14,8 @@ from PIL import Image
 
 from conftest import OWNER_EMAIL, OWNER_PASSWORD, create_scan, drain
 from standardphysics_api import guest_sweep
-from standardphysics_api.notifications import ApnsNotifier, Push
+from standardphysics_api.notifications import ApnsNotifier, LoggedNotifier, Push, notifier_from
+from standardphysics_api.settings import Settings
 
 DEVICE = "ab" * 32
 
@@ -31,6 +32,18 @@ def _jpeg() -> bytes:
     buffer = io.BytesIO()
     Image.new("RGB", (8, 8), "white").save(buffer, format="JPEG")
     return buffer.getvalue()
+
+
+def test_a_key_path_the_server_cannot_read_only_turns_pushes_off(monkeypatch, tmp_path):
+    monkeypatch.setenv("SP_APNS_KEY", "")
+    monkeypatch.setenv("SP_APNS_KEY_PATH", str(tmp_path / "AuthKey_MISSING.p8"))
+    monkeypatch.setenv("SP_APNS_KEY_ID", "ABC123DEFG")
+    monkeypatch.setenv("SP_APNS_TEAM_ID", "K4Z2L5279D")
+
+    settings = Settings.from_environment()
+
+    assert settings.apns_key is None
+    assert isinstance(notifier_from(settings), LoggedNotifier)
 
 
 def test_a_phone_registers_for_pushes(client):
