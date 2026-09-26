@@ -669,16 +669,29 @@ def pad_gutters(image: np.ndarray, filled: np.ndarray, passes: int = GUTTER_PASS
     held base colour, so a photographed table came out flecked with brown. A
     few passes fill those specks from their neighbours. It changes only what is
     displayed: the coverage mask still records where photos genuinely landed.
+
+    Each pass fills the unfilled pixels beside a filled one with the mean of
+    their filled neighbours, wrapping at the image edge. Only that frontier is
+    worked on: redoing the whole 4096-pixel image each pass was most of an
+    atlas's image step on the droplet.
     """
     image, filled = image.copy(), filled.copy()
+    height, width = filled.shape
+    pixels = image.reshape(height * width, -1)
     for _ in range(passes):
-        total = np.zeros_like(image)
-        count = np.zeros(filled.shape, dtype=np.float32)
-        for axis, step in ((0, 1), (0, -1), (1, 1), (1, -1)):
-            shifted_filled = np.roll(filled, step, axis=axis)
-            total += np.roll(image, step, axis=axis) * shifted_filled[..., None]
-            count += shifted_filled
-        grow = ~filled & (count > 0)
-        image[grow] = total[grow] / count[grow][:, None]
-        filled |= grow
+        beside = np.roll(filled, 1, axis=0) | np.roll(filled, -1, axis=0) | np.roll(filled, 1, axis=1) | np.roll(filled, -1, axis=1)
+        rows, columns = np.nonzero(beside & ~filled)
+        if not len(rows):
+            break
+        total = np.zeros((len(rows), pixels.shape[1]), dtype=image.dtype)
+        count = np.zeros(len(rows), dtype=np.float32)
+        for neighbour_rows, neighbour_columns in (
+            ((rows - 1) % height, columns), ((rows + 1) % height, columns),
+            (rows, (columns - 1) % width), (rows, (columns + 1) % width),
+        ):
+            neighbour_filled = filled[neighbour_rows, neighbour_columns]
+            total += pixels[neighbour_rows * width + neighbour_columns] * neighbour_filled[:, None]
+            count += neighbour_filled
+        pixels[rows * width + columns] = total / count[:, None]
+        filled[rows, columns] = True
     return image

@@ -178,3 +178,36 @@ def test_drawing_small_faces_together_matches_drawing_every_face_alone(tmp_path)
     assert len(together.rows) > 100_000
     for batched, reference in zip((together.rows, together.columns, together.positions, together.normals, together.owners), alone):
         assert np.array_equal(batched, reference)
+
+
+def _padded_whole_image(image, filled, passes):
+    """Gutter padding as it was: every pass over the whole image."""
+    image, filled = image.copy(), filled.copy()
+    for _ in range(passes):
+        total = np.zeros_like(image)
+        count = np.zeros(filled.shape, dtype=np.float32)
+        for axis, step in ((0, 1), (0, -1), (1, 1), (1, -1)):
+            shifted_filled = np.roll(filled, step, axis=axis)
+            total += np.roll(image, step, axis=axis) * shifted_filled[..., None]
+            count += shifted_filled
+        grow = ~filled & (count > 0)
+        image[grow] = total[grow] / count[grow][:, None]
+        filled |= grow
+    return image
+
+
+@pytest.mark.skipif(_blender_missing(), reason="Blender not installed")
+def test_padding_only_the_frontier_matches_padding_the_whole_image(tmp_path):
+    from standardphysics_pipeline.textures.project import GUTTER_PASSES, pad_gutters
+
+    vertices, triangles = scan_geometry(REPO / "datasets/phone/test1/lidar-mesh.json", capture_to_room(0.0))
+    scan = ColouredScan(vertices, triangles, np.zeros((len(vertices), 3)), np.zeros(len(vertices), bool))
+    mesh = unwrapped(scan, tmp_path, max_triangles=260_000)
+    size = atlas_size(mesh)
+    texels = rasterize_atlas(mesh.corners, mesh.uv, np.arange(len(mesh.triangles), dtype=np.int32), size)
+    image = np.zeros((size, size, 3), dtype=np.float32)
+    image[texels.rows, texels.columns] = np.abs(texels.positions) % 1.0
+    filled = np.zeros((size, size), dtype=bool)
+    filled[texels.rows, texels.columns] = True
+
+    assert np.array_equal(pad_gutters(image, filled), _padded_whole_image(image, filled, GUTTER_PASSES))
