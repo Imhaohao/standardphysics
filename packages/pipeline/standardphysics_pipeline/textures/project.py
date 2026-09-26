@@ -88,7 +88,8 @@ def face_normals(world: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 
 ATLAS_BATCH_SIDE = 12
 """Faces whose texel box is at most this many texels a side are rasterized together; the rest one at a time."""
-ATLAS_BATCH_FACES = 40_000
+ATLAS_BATCH_FACES = 10_000
+"""Faces drawn in one batch: twelve by twelve candidate texels each, in doubles, is about a hundred megabytes."""
 
 
 def rasterize_atlas(
@@ -117,19 +118,24 @@ def rasterize_atlas(
     pieces = [_small_texels(x, y, first_column, first_row, width, height, faces, size)
               for faces in np.array_split(np.flatnonzero(small), max(1, -(-int(small.sum()) // ATLAS_BATCH_FACES)))]
     pieces += [_large_texels(world, uv, index, size) for index in np.flatnonzero(drawn & ~small)]
-    pieces = [piece for piece in pieces if piece is not None and len(piece[0])]
+    pieces = [_placed(world, *piece) for piece in pieces if piece is not None and len(piece[0])]
     if not pieces:
         empty = np.empty((0, 3), dtype=np.float32)
         return Texels(np.empty(0, np.int32), np.empty(0, np.int32), empty, empty, np.empty(0, np.int32), empty)
-    faces, rows, columns, weights = (np.concatenate(parts) for parts in zip(*pieces))
+    faces, rows, columns, positions = (np.concatenate(parts) for parts in zip(*pieces))
     keep = _last_face_per_texel(faces, rows.astype(np.int64) * size + columns)
-    faces, weights = faces[keep], weights[keep]
-    corners = world[faces]
-    positions = (weights[:, 0, None] * corners[:, 0] + weights[:, 1, None] * corners[:, 1] + weights[:, 2, None] * corners[:, 2]).astype(np.float32)
+    faces = faces[keep]
     return Texels(
-        rows[keep].astype(np.int32), columns[keep].astype(np.int32), positions,
+        rows[keep], columns[keep], positions[keep],
         normals[faces].astype(np.float32), owners[faces].astype(np.int32), np.asarray(base_colours, dtype=np.float32)[faces],
     )
+
+
+def _placed(world, faces, rows, columns, weights):
+    """A batch's texels with their surface points, kept compact: the weights are dropped once the points are made."""
+    corners = world[faces]
+    positions = (weights[:, 0, None] * corners[:, 0] + weights[:, 1, None] * corners[:, 1] + weights[:, 2, None] * corners[:, 2]).astype(np.float32)
+    return faces.astype(np.int32), rows.astype(np.int32), columns.astype(np.int32), positions
 
 
 def _last_face_per_texel(faces: np.ndarray, keys: np.ndarray) -> np.ndarray:

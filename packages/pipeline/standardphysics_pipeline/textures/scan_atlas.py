@@ -290,10 +290,7 @@ class _Surface:
         self.rows, self.columns, self.faces, self.positions, self.normals = _with_every_face_owned(
             mesh, size, texels.rows, texels.columns, texels.owners, texels.positions, texels.normals,
         )
-        distances, nearest = cKDTree(painted.vertices).query(self.positions, k=FALLBACK_NEIGHBOURS, workers=-1)
-        self.fallback = _blended(to_linear(painted.colours), distances, nearest)
-        patches = painted.sheet_patches if painted.sheet_patches is not None else np.zeros(len(painted.vertices), bool)
-        self.patch = patches[nearest[:, 0]]
+        self.fallback, self.patch = _fallback_and_patch(painted, self.positions)
         self.blocks = PointBlocks(self.positions)
 
     def weights(self, camera: PhotoCamera, photo: np.ndarray, detections: dict, indices: np.ndarray, buffer: np.ndarray):
@@ -306,6 +303,28 @@ class _Surface:
             hidden = hidden_behind_objects(self.graph, self.positions[indices[behind]], np.ones(len(behind), bool))(camera)
             weight[behind[hidden]] = 0.0
         return weight, columns, rows
+
+
+FALLBACK_CHUNK = 1_000_000
+"""Texels whose nearest painted vertices are looked up at once.
+
+The lookup returns eight distances and eight indices per texel in doubles, so
+a whole atlas of sixteen million texels at once was two gigabytes, and a
+floor's third atlas was killed for it."""
+
+
+def _fallback_and_patch(painted: ColouredScan, positions: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Each texel's fallback colour, and whether it lies on a wall or floor patch, a chunk of texels at a time."""
+    tree = cKDTree(painted.vertices)
+    colours = to_linear(painted.colours)
+    patches = painted.sheet_patches if painted.sheet_patches is not None else np.zeros(len(painted.vertices), bool)
+    fallback = np.empty((len(positions), 3), dtype=np.float32)
+    patch = np.empty(len(positions), dtype=bool)
+    for start in range(0, len(positions), FALLBACK_CHUNK):
+        distances, nearest = tree.query(positions[start:start + FALLBACK_CHUNK], k=FALLBACK_NEIGHBOURS, workers=-1)
+        fallback[start:start + FALLBACK_CHUNK] = _blended(colours, distances, nearest)
+        patch[start:start + FALLBACK_CHUNK] = patches[nearest[:, 0]]
+    return fallback, patch
 
 
 def _blended(colours: np.ndarray, distances: np.ndarray, nearest: np.ndarray) -> np.ndarray:
