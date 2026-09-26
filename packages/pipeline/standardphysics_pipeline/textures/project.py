@@ -86,10 +86,10 @@ def face_normals(world: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return cross / np.maximum(length, 1e-12)[:, None], length / 2
 
 
-ATLAS_BATCH_SIDE = 12
-"""Faces whose texel box is at most this many texels a side are rasterized together; the rest one at a time."""
-ATLAS_BATCH_FACES = 10_000
-"""Faces drawn in one batch: twelve by twelve candidate texels each, in doubles, is about a hundred megabytes."""
+ATLAS_BATCH_SIDES = (4, 8, 12, 24, 48)
+"""The candidate squares faces are sorted into and rasterized together in; faces wider than the last are drawn one at a time."""
+ATLAS_BATCH_CANDIDATES = 1_500_000
+"""Candidate texels tested in one step, in doubles about a hundred megabytes."""
 
 
 def rasterize_atlas(
@@ -114,10 +114,10 @@ def rasterize_atlas(
     width = np.minimum(size - 1, np.ceil(x.max(axis=1))) - first_column + 1
     height = np.minimum(size - 1, np.ceil(y.max(axis=1))) - first_row + 1
     drawn = (areas > 1e-10) & (width > 0) & (height > 0)
-    small = drawn & (np.maximum(width, height) <= ATLAS_BATCH_SIDE)
-    pieces = [_small_texels(x, y, first_column, first_row, width, height, faces, size)
-              for faces in np.array_split(np.flatnonzero(small), max(1, -(-int(small.sum()) // ATLAS_BATCH_FACES)))]
-    pieces += [_large_texels(world, uv, index, size) for index in np.flatnonzero(drawn & ~small)]
+    side = np.maximum(width, height)
+    pieces = [_small_texels(x, y, first_column, first_row, width, height, faces, size, square)
+              for faces, square in _batches(np.flatnonzero(drawn), side)]
+    pieces += [_large_texels(world, uv, index, size) for index in np.flatnonzero(drawn & (side > ATLAS_BATCH_SIDES[-1]))]
     pieces = [_placed(world, *piece) for piece in pieces if piece is not None and len(piece[0])]
     if not pieces:
         empty = np.empty((0, 3), dtype=np.float32)
@@ -145,9 +145,20 @@ def _last_face_per_texel(faces: np.ndarray, keys: np.ndarray) -> np.ndarray:
     return order[last]
 
 
-def _small_texels(x, y, first_column, first_row, width, height, faces, size):
+def _batches(faces: np.ndarray, side: np.ndarray):
+    """The faces in groups of one candidate square each, a square's worth of candidates at a time."""
+    smaller = 0
+    for square in ATLAS_BATCH_SIDES:
+        chosen = faces[(side[faces] > smaller) & (side[faces] <= square)]
+        smaller = square
+        batch = max(1, ATLAS_BATCH_CANDIDATES // square ** 2)
+        for start in range(0, len(chosen), batch):
+            yield chosen[start:start + batch], square
+
+
+def _small_texels(x, y, first_column, first_row, width, height, faces, size, square):
     """Texel centres inside many small faces at once, as (faces, rows, columns, barycentric weights)."""
-    offsets = np.arange(ATLAS_BATCH_SIDE)
+    offsets = np.arange(square)
     down, across = np.meshgrid(offsets, offsets, indexing="ij")
     down, across = down.ravel(), across.ravel()
     x, y = x[faces], y[faces]

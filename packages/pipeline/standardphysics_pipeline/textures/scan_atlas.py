@@ -293,7 +293,8 @@ class _Surface:
             mesh, size, texels.rows, texels.columns, texels.owners, texels.positions, texels.normals,
         )
         self.normals = self.normals.astype(np.float16)
-        self.fallback, self.patch = _fallback_and_patch(painted, self.positions)
+        self.corner_weights = _corner_weights(mesh, self.faces, self.positions)
+        self.fallback, self.patch = _fallback_and_patch(painted, mesh, self.faces, self.corner_weights)
         self.blocks = PointBlocks(self.positions)
 
     def weights(self, camera: PhotoCamera, photo: np.ndarray, detections: dict, indices: np.ndarray, buffer: np.ndarray):
@@ -309,25 +310,40 @@ class _Surface:
         return weight, columns, rows
 
 
-FALLBACK_CHUNK = 1_000_000
-"""Texels whose nearest painted vertices are looked up at once.
-
-The lookup returns eight distances and eight indices per texel in doubles, so
-a whole atlas of sixteen million texels at once was two gigabytes, and a
-floor's third atlas was killed for it."""
+TEXEL_CHUNK = 1_000_000
+"""Texels worked on at once where each needs its face's three corners, so the gathered corners stay near a hundred megabytes."""
 
 
-def _fallback_and_patch(painted: ColouredScan, positions: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Each texel's fallback colour, and whether it lies on a wall or floor patch, a chunk of texels at a time."""
-    tree = cKDTree(painted.vertices)
-    colours = to_linear(painted.colours)
+def _corner_weights(mesh: UnwrappedScan, faces: np.ndarray, positions: np.ndarray) -> np.ndarray:
+    """Each texel's barycentric weights over its face's corners, kept for the fallback and the fill."""
+    weights = np.empty((len(positions), 3), dtype=np.float32)
+    for start in range(0, len(positions), TEXEL_CHUNK):
+        corners = mesh.vertices[mesh.triangles[faces[start:start + TEXEL_CHUNK]]]
+        weights[start:start + TEXEL_CHUNK] = _barycentric(corners, positions[start:start + TEXEL_CHUNK])
+    return weights
+
+
+def _fallback_and_patch(painted: ColouredScan, mesh: UnwrappedScan, faces: np.ndarray, weights: np.ndarray):
+    """Each texel's fallback colour, and whether it lies on a wall or floor patch, from its face's corners.
+
+    The fallback is the inverse-distance blend of the nearest painted vertices,
+    worked out at each corner of the atlas's faces and blended across the face.
+    Asking for the neighbours of every texel instead was sixteen million
+    lookups an atlas, over half its texel step on the droplet.
+    """
+    corners = mesh.triangles[faces]
+    used = np.unique(corners)
+    distances, nearest = cKDTree(painted.vertices).query(mesh.vertices[used], k=FALLBACK_NEIGHBOURS, workers=-1)
+    at_corner = np.zeros((len(mesh.vertices), 3), dtype=np.float32)
+    at_corner[used] = _blended(to_linear(painted.colours), distances, nearest)
     patches = painted.sheet_patches if painted.sheet_patches is not None else np.zeros(len(painted.vertices), bool)
-    fallback = np.empty((len(positions), 3), dtype=np.float16)
-    patch = np.empty(len(positions), dtype=bool)
-    for start in range(0, len(positions), FALLBACK_CHUNK):
-        distances, nearest = tree.query(positions[start:start + FALLBACK_CHUNK], k=FALLBACK_NEIGHBOURS, workers=-1)
-        fallback[start:start + FALLBACK_CHUNK] = _blended(colours, distances, nearest)
-        patch[start:start + FALLBACK_CHUNK] = patches[nearest[:, 0]]
+    on_patch = np.zeros(len(mesh.vertices), dtype=bool)
+    on_patch[used] = patches[nearest[:, 0]]
+    fallback = np.empty((len(faces), 3), dtype=np.float16)
+    for start in range(0, len(faces), TEXEL_CHUNK):
+        chunk = slice(start, start + TEXEL_CHUNK)
+        fallback[chunk] = np.einsum("ij,ijk->ik", weights[chunk], at_corner[corners[chunk]])
+    patch = on_patch[corners[np.arange(len(faces)), weights.argmax(axis=1)]]
     return fallback, patch
 
 
@@ -459,8 +475,7 @@ def _face_filled(surface: _Surface, colours: np.ndarray, painted: np.ndarray) ->
     field, known = _corner_colours(surface.mesh, surface.faces, colours, painted)
     corners = surface.mesh.triangles[surface.faces]
     reached = known[corners].all(axis=1)
-    weights = _barycentric(surface.mesh.vertices[corners], surface.positions)
-    blended = np.einsum("ij,ijk->ik", weights, field[corners]).astype(np.float32)
+    blended = np.einsum("ij,ijk->ik", surface.corner_weights, field[corners]).astype(np.float32)
     fallback = np.where(reached[:, None], blended, surface.fallback)
     return np.where(painted[:, None], colours, fallback)
 

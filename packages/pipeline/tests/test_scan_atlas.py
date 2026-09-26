@@ -15,6 +15,7 @@ from standardphysics_pipeline.textures.hole_patches import with_holes_patched
 from standardphysics_pipeline.textures.project import face_normals, rasterize_atlas
 from standardphysics_pipeline.textures.scan_atlas import (
     TEXEL_METRES,
+    _corner_weights,
     _face_filled,
     _with_every_face_owned,
     agreed_colours,
@@ -97,6 +98,7 @@ def test_a_texel_no_photo_reached_takes_its_surface_colour_and_never_a_neighbour
         positions=np.array([[0.6, 0.2, 0], [0.8, 0.3, 0], [0.2, 0.7, 0], [5.2, 0.2, 0]], dtype=np.float32),
         fallback=np.array([grey] * 4, dtype=np.float32),
     )
+    surface.corner_weights = _corner_weights(mesh, surface.faces, surface.positions)
     colours = np.array([yellow, yellow, [0, 0, 0], [0, 0, 0]], dtype=np.float32)
     painted = np.array([True, True, False, False])
 
