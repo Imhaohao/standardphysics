@@ -9,18 +9,21 @@ into it.
 
 from __future__ import annotations
 
+import re
 import sqlite3
 
 from fastapi import FastAPI, Request, Response
 from pydantic import BaseModel, EmailStr, Field
-from standardphysics_contracts import Session
+from standardphysics_contracts import DeviceRegistration, Session
 
-from . import accounts
+from . import accounts, notifications
 from .accounts import Owner
 from .apple_identity import AppleIdentity, NotFromApple, verify
 from .auth import resolve_owner, save_guest, session_of, set_session_cookie, signed_in
 from .db import Database
 from .errors import ApiProblem
+
+DEVICE_TOKEN = re.compile(r"^[0-9a-fA-F]{32,200}$")
 
 
 class SaveRequest(BaseModel):
@@ -76,6 +79,8 @@ def install_account_routes(
         owner = save_guest(database, signed_in(database, request), body.email, body.password, body.shop_name)
         return session_of(database, owner, team_emails)
 
+    _install_device_routes(app, database)
+
     @app.post("/api/auth/apple", response_model=Session)
     def apple(body: AppleSignIn, request: Request, response: Response) -> Session:
         try:
@@ -88,3 +93,22 @@ def install_account_routes(
             token = accounts.open_session(connection, owner.id)
         set_session_cookie(response, request, token)
         return session_of(database, owner, team_emails)
+
+
+def _install_device_routes(app: FastAPI, database: Database) -> None:
+    @app.put("/api/devices/{token}", status_code=204)
+    def add_device(token: str, body: DeviceRegistration, request: Request) -> Response:
+        """The phone's push token, so results and reminders reach it."""
+        owner = signed_in(database, request)
+        if not DEVICE_TOKEN.fullmatch(token):
+            raise ApiProblem(400, "That isn't a device token.")
+        with database.transaction() as connection:
+            notifications.register(connection, owner.id, token, body.environment)
+        return Response(status_code=204)
+
+    @app.delete("/api/devices/{token}", status_code=204)
+    def remove_device(token: str, request: Request) -> Response:
+        owner = signed_in(database, request)
+        with database.transaction() as connection:
+            notifications.forget(connection, token, owner.id)
+        return Response(status_code=204)

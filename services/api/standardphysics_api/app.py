@@ -65,6 +65,7 @@ from .layout import check_layout, save_layout
 from .lidar_mesh import InvalidLidarMesh, validate_lidar_mesh
 from .loop_run import run as run_loop_on
 from .loop_run import stream as stream_loop_on
+from .notifications import notifier_from
 from .owner_accounts import install_account_routes
 from .owner_routes import answered, install_owner_routes
 from .proposals import propose
@@ -127,6 +128,7 @@ def create_app(settings: Settings | None = None, stages: Stages | None = None, r
     database = Database(settings.database_path)
     store = ArtifactStore(settings.data_dir, settings.max_artifact_bytes)
     worker = Worker(database, store, stages, settings)
+    worker.notifier = notifier_from(settings)
 
     @contextlib.asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -148,6 +150,7 @@ def create_app(settings: Settings | None = None, stages: Stages | None = None, r
 
     app = FastAPI(title="Standard Physics API", version="0.1.0", lifespan=lifespan)
     app.state.database, app.state.store, app.state.worker = database, store, worker
+    app.state.notifier = worker.notifier
     _install_error_handlers(app)
     install_auth(app, database, store, settings.team_emails)
     install_account_routes(app, database, settings.team_emails, settings.apple_audiences)

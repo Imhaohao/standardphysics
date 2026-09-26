@@ -33,6 +33,14 @@ def _flag(name: str) -> bool:
     return os.environ.get(name, "").lower() in {"1", "true", "yes"}
 
 
+def _secret(name: str, path_name: str) -> str | None:
+    """A secret given inline, or the contents of the file another variable names."""
+    if os.environ.get(name):
+        return os.environ[name].replace("\\n", "\n")
+    path = os.environ.get(path_name)
+    return pathlib.Path(path).read_text() if path else None
+
+
 def _email_set(name: str) -> frozenset[str]:
     return frozenset(part.strip().casefold() for part in os.environ.get(name, "").split(",") if part.strip())
 
@@ -94,6 +102,11 @@ class Settings:
     apple_audiences: frozenset[str] = frozenset({"com.standardphysics.capture"})
     """The app ids a Sign in with Apple token may be issued for, from SP_APPLE_AUDIENCES.
     The iPhone app's bundle id, plus a Services ID if the web ever signs in with Apple."""
+    apns_key: str | None = None
+    """The team's APNs .p8 key, from SP_APNS_KEY or the file at SP_APNS_KEY_PATH. No key, no pushes."""
+    apns_key_id: str | None = None
+    apns_team_id: str | None = None
+    apns_topic: str = "com.standardphysics.capture"
     evidence_settle_seconds: float = 30.0
     """Quiet time before late evidence auto-queues exactly one semantic job.
 
@@ -122,6 +135,10 @@ class Settings:
             auto_deep_simulation=_flag("SP_AUTO_DEEP_SIMULATION"),
             bake_in_own_process=not _flag("SP_BAKE_IN_PROCESS"),
             team_emails=_email_set("SP_TEAM_EMAILS"),
+            apns_key=_secret("SP_APNS_KEY", "SP_APNS_KEY_PATH"),
+            apns_key_id=os.environ.get("SP_APNS_KEY_ID") or None,
+            apns_team_id=os.environ.get("SP_APNS_TEAM_ID") or None,
+            apns_topic=os.environ.get("SP_APNS_TOPIC") or "com.standardphysics.capture",
             apple_audiences=_email_set("SP_APPLE_AUDIENCES") or frozenset({"com.standardphysics.capture"}),
             evidence_settle_seconds=_bounded_integer(
                 "SP_EVIDENCE_SETTLE_SECONDS", 30, 0, 86_400

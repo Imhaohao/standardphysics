@@ -38,6 +38,7 @@ from .auth import signed_in, team_member
 from .db import Database
 from .errors import ApiProblem
 from .journey import ShopState, journey
+from .notifications import Push
 from .stages import Stages
 from .store import ArtifactStore
 
@@ -202,6 +203,18 @@ def _team_view(scan_id: uuid.UUID, request: OwnerRequest) -> OwnerRequest:
     return request.model_copy(update={"answer": request.answer.model_copy(update={"photo_url": url})})
 
 
+def _tell_owner(app: FastAPI, database: Database, stages: Stages, scan_id: uuid.UUID, request: OwnerRequest) -> None:
+    """A push with what the photo showed, in the words the checklist uses."""
+    with database.connect() as connection:
+        owner_id = repo.scan_owner(connection, scan_id)
+        shop = load_shop(connection, stages, scan_id)
+    findings = shop.assessment.findings if shop.assessment else []
+    result = next((finding for finding in findings if finding.id == request.finding_id), None)
+    if owner_id is None or result is None:
+        return
+    app.state.notifier.send(database, owner_id, Push(title="We checked your photo", body=result.title, scan_id=scan_id))
+
+
 def _install_review_routes(
     app: FastAPI, database: Database, store: ArtifactStore, stages: Stages, team_emails: frozenset[str]
 ) -> None:
@@ -233,6 +246,7 @@ def _install_review_routes(
         with database.transaction() as connection:
             found = asks.find(load_shop(connection, stages, scan_id).requests, request_id)
             asks.record_review(connection, scan_id, found, body.outcome, reviewer.email)
+        _tell_owner(app, database, stages, scan_id, found)
         return _team_view(scan_id, reviewable(scan_id, request_id))
 
 

@@ -109,6 +109,10 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
+def owner_from_row(row: sqlite3.Row) -> Owner:
+    return _owner(row)
+
+
 def _owner(row: sqlite3.Row) -> Owner:
     return Owner(id=uuid.UUID(row["id"]), email=row["email"], shop_name=row["shop_name"], guest=bool(row["guest"]))
 
@@ -175,6 +179,7 @@ def create_apple_owner(connection: sqlite3.Connection, subject: str, email: str 
 def move_shops(connection: sqlite3.Connection, source: Owner, destination: Owner) -> None:
     """Hand every shop from one account to another, then close the old account."""
     connection.execute("UPDATE scans SET owner_id = ? WHERE owner_id = ?", (str(destination.id), str(source.id)))
+    connection.execute("UPDATE devices SET owner_id = ? WHERE owner_id = ?", (str(destination.id), str(source.id)))
     delete_owner(connection, source.id)
 
 
@@ -259,6 +264,7 @@ def delete_owner(connection: sqlite3.Connection, owner_id: uuid.UUID) -> None:
     even for the moment between the two statements.
     """
     connection.execute("DELETE FROM sessions WHERE owner_id = ?", (str(owner_id),))
+    connection.execute("DELETE FROM devices WHERE owner_id = ?", (str(owner_id),))
     connection.execute("DELETE FROM owners WHERE id = ?", (str(owner_id),))
 
 
