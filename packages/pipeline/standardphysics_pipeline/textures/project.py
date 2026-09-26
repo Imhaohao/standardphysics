@@ -341,10 +341,87 @@ class PointBlocks:
 
     def seen_by(self, camera: PhotoCamera) -> np.ndarray:
         """Indices of every point in a cube that reaches into the camera's frame."""
-        chosen = np.flatnonzero(spheres_in_frame(camera, self.centres, self.radius))
-        first, count = self.starts[chosen], self.starts[chosen + 1] - self.starts[chosen]
+        return self.members(self.cubes_seen_by(camera))
+
+    def cubes_seen_by(self, camera: PhotoCamera) -> np.ndarray:
+        return np.flatnonzero(spheres_in_frame(camera, self.centres, self.radius))
+
+    def members(self, cubes: np.ndarray) -> np.ndarray:
+        """Indices of every point in these cubes."""
+        first, count = self.starts[cubes], self.starts[cubes + 1] - self.starts[cubes]
         offsets = np.arange(count.sum()) - np.repeat(np.cumsum(count) - count, count)
         return self.order[np.repeat(first, count) + offsets]
+
+    def radii(self, cubes: np.ndarray) -> np.ndarray:
+        return np.broadcast_to(self.radius, (len(self.centres),))[cubes]
+
+
+class DepthPyramid:
+    """A depth buffer's farthest recorded depth over aligned squares of 1, 2, 4 and more pixels.
+
+    A cube whose nearest point lies beyond the farthest depth over every pixel
+    it covers is hidden entirely. The pyramid answers that for a whole cube
+    with four lookups, at the level where the cube's rectangle spans at most
+    two squares each way.
+    """
+
+    def __init__(self, buffer: np.ndarray):
+        self.levels = [buffer]
+        while max(self.levels[-1].shape) > 1:
+            level = self.levels[-1]
+            padded = np.pad(level, ((0, level.shape[0] % 2), (0, level.shape[1] % 2)), constant_values=np.inf)
+            self.levels.append(padded.reshape(padded.shape[0] // 2, 2, padded.shape[1] // 2, 2).max(axis=(1, 3)))
+
+    def farthest(self, left: np.ndarray, right: np.ndarray, top: np.ndarray, bottom: np.ndarray) -> np.ndarray:
+        """The farthest depth over each inclusive pixel rectangle, clipped to the buffer beforehand."""
+        span = np.maximum(right - left, bottom - top) + 1
+        level = np.clip(np.ceil(np.log2(np.maximum(span, 1))).astype(np.int64), 0, len(self.levels) - 1)
+        result = np.full(len(left), np.inf, dtype=np.float64)
+        for k in np.unique(level):
+            chosen = np.flatnonzero(level == k)
+            grid = self.levels[k]
+            first_row, last_row = np.minimum(top[chosen] >> k, grid.shape[0] - 1), np.minimum(bottom[chosen] >> k, grid.shape[0] - 1)
+            first_column, last_column = np.minimum(left[chosen] >> k, grid.shape[1] - 1), np.minimum(right[chosen] >> k, grid.shape[1] - 1)
+            result[chosen] = np.maximum.reduce([
+                grid[first_row, first_column], grid[first_row, last_column], grid[last_row, first_column], grid[last_row, last_column],
+            ])
+        return result
+
+
+@dataclass(frozen=True)
+class SphereFootprints:
+    """Where spheres land in a low-resolution camera: nearest depth and the pixel rectangle each covers."""
+
+    usable: np.ndarray
+    """Whether the sphere stays in front of the near plane, so its footprint can be trusted."""
+    nearest: np.ndarray
+    left: np.ndarray
+    right: np.ndarray
+    top: np.ndarray
+    bottom: np.ndarray
+
+
+def sphere_footprints(small: PhotoCamera, centres: np.ndarray, radii: np.ndarray, margin: int) -> SphereFootprints:
+    """Each sphere's nearest depth, and the rectangle its bounding box projects to, grown by `margin` pixels and clipped.
+
+    The box's eight corners bound the sphere's projection whenever all of them
+    are in front of the camera; a sphere reaching the near plane is marked unusable.
+    """
+    signs = np.array([[x, y, z] for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)], dtype=np.float64)
+    corners = centres[:, None, :] + signs[None] * radii[:, None, None]
+    local = small.to_camera(corners.reshape(-1, 3).astype(np.float64)).reshape(-1, 8, 3)
+    depth = local[..., 2]
+    usable = (depth > NEAR_LIMIT).all(axis=1)
+    safe = np.where(depth > NEAR_LIMIT, depth, NEAR_LIMIT)
+    u, v = small.fx * local[..., 0] / safe + small.cx, small.fy * local[..., 1] / safe + small.cy
+    nearest = small.to_camera(centres.astype(np.float64))[:, 2] - radii
+    return SphereFootprints(
+        usable, nearest,
+        np.clip(np.floor(u.min(axis=1)) - margin, 0, small.width - 1).astype(np.int64),
+        np.clip(np.ceil(u.max(axis=1)) + margin, 0, small.width - 1).astype(np.int64),
+        np.clip(np.floor(v.min(axis=1)) - margin, 0, small.height - 1).astype(np.int64),
+        np.clip(np.ceil(v.max(axis=1)) + margin, 0, small.height - 1).astype(np.int64),
+    )
 
 
 class TriangleBlocks(PointBlocks):
@@ -386,6 +463,39 @@ nearest of whatever it is shown, and taking a minimum does not care what order
 it sees things in, so a chunked pass writes the same buffer the whole mesh
 would have, face for face, while holding memory flat.
 """
+
+
+DEPTH_EXTRAPOLATION = 1.07
+"""How much nearer than its nearest corner a face may draw: the rasterizer lets barycentrics reach -0.03, which extrapolates inverse depth by up to six per cent."""
+FIRST_ROUND_CUBES = 32
+
+
+def occluder_depth_buffer(camera: PhotoCamera, triangles: np.ndarray, blocks: TriangleBlocks) -> np.ndarray:
+    """`triangle_depth_buffer` of the cubes in frame, drawn nearest first, skipping cubes wholly behind what is already drawn.
+
+    On a library floor a photo's frame holds dozens of layers of shelving and
+    floor, and drawing every layer was the costliest step left in a build. A
+    skipped cube could only have drawn depths beyond what the buffer already
+    holds over its footprint, and the buffer keeps the nearest, so the result
+    is the buffer drawing everything would have made.
+    """
+    scale = min(1.0 / DEPTH_BUFFER_DIVISOR, MAX_DEPTH_BUFFER_SIDE / max(camera.width, camera.height))
+    small = camera.resized(max(1, round(camera.width * scale)), max(1, round(camera.height * scale)))
+    buffer = np.full((small.height, small.width), np.inf, dtype=np.float32)
+    cubes = blocks.cubes_seen_by(camera)
+    footprints = sphere_footprints(small, blocks.centres[cubes], blocks.radii(cubes), margin=1)
+    order = np.argsort(footprints.nearest, kind="stable")
+    start, size = 0, FIRST_ROUND_CUBES
+    while start < len(order):
+        batch = order[start:start + size]
+        if start:
+            farthest = DepthPyramid(buffer).farthest(footprints.left[batch], footprints.right[batch], footprints.top[batch], footprints.bottom[batch])
+            batch = batch[~(footprints.usable[batch] & (footprints.nearest[batch] / DEPTH_EXTRAPOLATION > farthest))]
+        chosen = blocks.members(cubes[batch])
+        for first in range(0, len(chosen), DEPTH_TRIANGLE_CHUNK):
+            _draw_depth(buffer, small, triangles[chosen[first:first + DEPTH_TRIANGLE_CHUNK]])
+        start, size = start + size, size * 2
+    return _erode(buffer)
 
 
 def triangle_depth_buffer(camera: PhotoCamera, triangles: np.ndarray) -> np.ndarray:

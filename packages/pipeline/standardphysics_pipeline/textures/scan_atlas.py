@@ -39,6 +39,7 @@ from .hole_patches import hidden_behind_objects
 from .object_holes import people_masks
 from .project import (
     MAX_EXPOSURE_POINTS,
+    DepthPyramid,
     PointBlocks,
     TopViews,
     TriangleBlocks,
@@ -47,13 +48,14 @@ from .project import (
     exposure_gains,
     face_normals,
     in_parallel,
+    occluder_depth_buffer,
     pad_gutters,
     rasterize_atlas,
+    sphere_footprints,
     to_linear,
     to_srgb,
-    triangle_depth_buffer,
 )
-from .scan_colour import BLEND_SHARPNESS, ColouredScan, PickedRows, _small_static_mask, _weights_from
+from .scan_colour import BLEND_SHARPNESS, ColouredScan, PickedRows, _small_static_mask, _weights_from, _widest_tolerance
 from .stages import timed
 
 TEXEL_METRES = 0.02
@@ -297,6 +299,9 @@ class _Surface:
         self.fallback, self.patch = _fallback_and_patch(painted, mesh, self.faces, self.corner_weights)
         self.blocks = PointBlocks(self.positions)
 
+    def visible_to(self, camera: PhotoCamera, buffer: np.ndarray) -> np.ndarray:
+        return unhidden_members(self.blocks, camera, buffer)
+
     def weights(self, camera: PhotoCamera, photo: np.ndarray, detections: dict, indices: np.ndarray, buffer: np.ndarray):
         """This photo's view weight for each texel in `indices`, and where in the photo to sample it."""
         sized = camera.resized(photo.shape[1], photo.shape[0])
@@ -347,6 +352,24 @@ def _fallback_and_patch(painted: ColouredScan, mesh: UnwrappedScan, faces: np.nd
     return fallback, patch
 
 
+def unhidden_members(blocks: PointBlocks, camera: PhotoCamera, buffer: np.ndarray) -> np.ndarray:
+    """Indices of the points in cubes that reach the frame and are not wholly behind the depth buffer.
+
+    A photo across a library floor frames a million texels and paints about one
+    in a hundred; most sit behind shelves and walls. A cube whose nearest point
+    lies beyond the farthest recorded depth over its footprint, by more than the
+    widest tolerance any of its points could get, holds only points the depth
+    test would reject one by one.
+    """
+    cubes = blocks.cubes_seen_by(camera)
+    radii = blocks.radii(cubes)
+    footprints = sphere_footprints(camera.resized(buffer.shape[1], buffer.shape[0]), blocks.centres[cubes], radii, margin=1)
+    farthest = DepthPyramid(buffer).farthest(footprints.left, footprints.right, footprints.top, footprints.bottom)
+    tolerance = _widest_tolerance(camera, buffer.shape[1], footprints.nearest + 2 * radii, slope_aware=True)
+    hidden = footprints.usable & (footprints.nearest > farthest + tolerance)
+    return blocks.members(cubes[~hidden])
+
+
 def _blended(colours: np.ndarray, distances: np.ndarray, nearest: np.ndarray) -> np.ndarray:
     """Each texel's fallback as the inverse-distance mean of the nearest painted vertices.
 
@@ -376,7 +399,7 @@ class _Occluders:
     def __init__(self, mesh: UnwrappedScan, cameras: list[PhotoCamera]):
         corners = mesh.corners.astype(np.float32)
         blocks = TriangleBlocks(corners)
-        buffers = in_parallel(lambda camera: triangle_depth_buffer(camera, corners[blocks.seen_by(camera)]), cameras)
+        buffers = in_parallel(lambda camera: occluder_depth_buffer(camera, corners, blocks), cameras)
         self.buffers = {camera.frame_id: buffer for camera, buffer in zip(cameras, buffers)}
 
     def of(self, camera: PhotoCamera) -> np.ndarray:
@@ -392,13 +415,13 @@ def _exposure(surface: _Surface, cameras, frame_paths, detections, occluders: _O
     nothing = (np.empty(0, np.int64), np.empty((0, 3), np.float32))
 
     def measure(camera):
-        visible = surface.blocks.seen_by(camera)
+        buffer = occluders.of(camera)
+        visible = surface.visible_to(camera, buffer)
         if not len(visible):
             return False, nothing
         sampled = visible[in_sample[visible] >= 0]
         if not len(sampled):
             return True, nothing
-        buffer = occluders.of(camera)
         photo = _read(frame_paths[camera.frame_id], EXPOSURE_PHOTO_EDGE)
         weight, columns, rows = surface.weights(camera, photo, detections, sampled, buffer)
         seen = np.flatnonzero(weight > 0)
@@ -420,8 +443,8 @@ def _bake(surface: _Surface, cameras, frame_paths, detections, gains, framed, oc
 
     def sample(job):
         camera, gain = job
-        visible = surface.blocks.seen_by(camera)
         buffer = occluders.of(camera)
+        visible = surface.visible_to(camera, buffer)
         photo = _read(frame_paths[camera.frame_id], PHOTO_EDGE)
         weight, columns, rows = surface.weights(camera, photo, detections, visible, buffer)
         seen = np.flatnonzero(weight > 0)

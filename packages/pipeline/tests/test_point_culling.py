@@ -156,3 +156,24 @@ def test_testing_only_the_boxes_near_the_sight_lines_blocks_what_testing_every_b
         assert np.array_equal(boxes.blocking(camera.position, vertices), every_box), camera.frame_id
         blocked_somewhere += int(every_box.any())
     assert blocked_somewhere
+
+
+def test_a_cube_found_wholly_behind_the_depth_buffer_holds_only_points_that_weigh_nothing(scanned):
+    """Skipping hidden cubes must never skip a point a photo would have painted."""
+    from standardphysics_pipeline.textures.project import PointBlocks
+    from standardphysics_pipeline.textures.scan_atlas import unhidden_members
+    from standardphysics_pipeline.textures.scan_colour import _weights_from
+    from standardphysics_pipeline.textures.surface_materials import vertex_normals
+
+    vertices, triangles, cameras = scanned
+    normals = vertex_normals(vertices, triangles)
+    blocks = PointBlocks(vertices)
+    skipped_somewhere = 0
+    for camera in cameras:
+        buffer = depth_buffer(camera, vertices[blocks.seen_by(camera)])
+        kept = np.zeros(len(vertices), dtype=bool)
+        kept[unhidden_members(blocks, camera, buffer)] = True
+        weight, _, _ = _weights_from(camera, vertices, normals, buffer, slope_aware=True)
+        assert not (weight[~kept] > 0).any(), camera.frame_id
+        skipped_somewhere += int((~kept).sum())
+    assert skipped_somewhere
