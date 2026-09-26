@@ -43,6 +43,8 @@ export const markCounter = (scanId: string, baseRevision: number, nodeId: string
 
 export const shareReport = (scanId: string) => send<ShareLink>(`/api/scans/${scanId}/shares`, json("POST"));
 
+export const stopSharing = (scanId: string) => send<void>(`/api/scans/${scanId}/shares`, { method: "DELETE" });
+
 export const savePlan = (scanId: string, baseRevision: number, moves: NodeMove[]) =>
   send<LayoutPlan>(`/api/scans/${scanId}/plans`, json("POST", { base_revision: baseRevision, moves }));
 

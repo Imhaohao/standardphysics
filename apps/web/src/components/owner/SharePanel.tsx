@@ -4,7 +4,7 @@ import { Copy, FilePdf, ShareNetwork } from "@phosphor-icons/react";
 import { useState } from "react";
 import { Button, buttonClassName } from "@/components/ui/Button";
 import { tellApp } from "@/lib/native-bridge";
-import { shareReport } from "@/lib/owner-client";
+import { shareReport, stopSharing } from "@/lib/owner-client";
 
 /** A link a contractor, landlord or inspector can open, or the same report as a PDF. */
 export function SharePanel({ scanId, shopName, onShared }: { scanId: string; shopName: string; onShared: () => void }) {
@@ -25,6 +25,17 @@ export function SharePanel({ scanId, shopName, onShared }: { scanId: string; sho
       setNote("We couldn't make a link. Try again.");
     } finally {
       setWorking(false);
+    }
+  };
+
+  const stop = async () => {
+    setNote(null);
+    try {
+      await stopSharing(scanId);
+      setLink(null);
+      setNote("Every link to this report has stopped working.");
+    } catch {
+      setNote("We couldn't stop the links. Try again.");
     }
   };
 
@@ -52,6 +63,7 @@ export function SharePanel({ scanId, shopName, onShared }: { scanId: string; sho
         </Button>
       )}
       <p role="status" className="text-sm text-ink-muted">{note}</p>
+      <Button variant="danger" className="self-start" onClick={stop}>Stop every link to this report</Button>
     </section>
   );
 }
