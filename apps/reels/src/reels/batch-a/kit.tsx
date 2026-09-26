@@ -82,3 +82,14 @@ export function SideType({ lines, top, at = 0 }: { lines: readonly string[]; top
     </div>
   );
 }
+
+/** One torn strip holding a whole sentence that wraps inside it, for hooks too long to split into tidy one-line tapes. */
+export function TapeNote({ children, at = 0, top = 250 }: { children: ReactNode; at?: number; top?: number }) {
+  return (
+    <div className="absolute inset-x-safe-side" style={{ top }}>
+      <TapeLabel at={at} className="reel-copy text-title" style={{ textWrap: "balance" }}>
+        {children}
+      </TapeLabel>
+    </div>
+  );
+}
