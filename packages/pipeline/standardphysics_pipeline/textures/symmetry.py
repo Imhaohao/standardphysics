@@ -69,6 +69,7 @@ def seen_through_by(
     photos, nearly all of them pointed somewhere else.
     """
     rig = CameraArray(cameras)
+    stacked = _stacked(depth_buffers)
 
     def seen_through(points: np.ndarray) -> np.ndarray:
         views = np.zeros(len(points), dtype=np.int32)
@@ -76,11 +77,54 @@ def seen_through_by(
             return views >= min_views
         centre = (points.min(axis=0) + points.max(axis=0)) / 2
         radius = float(np.linalg.norm(points - centre, axis=1).max())
-        for index in rig.reaching(centre, radius):
+        reaching = rig.reaching(centre, radius)
+        if stacked is not None and len(reaching):
+            step = max(1, CAMERA_POINT_PAIRS // len(points))
+            for start in range(0, len(reaching), step):
+                views += _views_beyond(points, rig, stacked, reaching[start:start + step])
+            return views >= min_views
+        for index in reaching:
             views += _seen_beyond(points, cameras[index], depth_buffers[index])
         return views >= min_views
 
     return seen_through
+
+
+CAMERA_POINT_PAIRS = 2_000_000
+"""Camera and point pairs worked on at once, so a large object seen by hundreds of photos stays near a hundred megabytes."""
+
+
+def _stacked(depth_buffers: list[np.ndarray]) -> np.ndarray | None:
+    """The buffers as one array when they share a size, as every photo of one phone's walk does."""
+    shapes = {buffer.shape for buffer in depth_buffers}
+    return np.stack(depth_buffers) if len(shapes) == 1 else None
+
+
+def _views_beyond(points: np.ndarray, rig: CameraArray, stacked: np.ndarray, reaching: np.ndarray) -> np.ndarray:
+    """How many of the reaching cameras saw beyond each point, all cameras at once.
+
+    Mirroring asks this for every candidate plane of every object, a few
+    hundred points at a time; one camera at a time it was two hundred thousand
+    small calls on a library floor.
+    """
+    rotation, translation = rig.rotations[reaching], rig.translations[reaching]
+
+    def along(axis: int) -> np.ndarray:
+        return (rotation[:, axis, 0, None] * points[:, 0] + rotation[:, axis, 1, None] * points[:, 1]
+                + rotation[:, axis, 2, None] * points[:, 2] + translation[:, axis, None])
+
+    across, down, depth = along(0), along(1), along(2)
+    safe = np.where(np.abs(depth) < 1e-9, 1e-9, depth)
+    fx, fy, cx, cy, width, height = (column[:, None] for column in rig.lens[reaching].T)
+    columns, rows = fx * across / safe + cx, fy * down / safe + cy
+    in_view = (depth > 0.2) & (columns >= 0) & (columns < width) & (rows >= 0) & (rows < height)
+    buffer_height, buffer_width = stacked.shape[1:]
+    recorded = stacked[
+        reaching[:, None],
+        np.clip((rows * buffer_height / height).astype(np.int64), 0, buffer_height - 1),
+        np.clip((columns * buffer_width / width).astype(np.int64), 0, buffer_width - 1),
+    ]
+    return (in_view & np.isfinite(recorded) & (recorded > depth + SEEN_THROUGH_MARGIN)).sum(axis=0)
 
 
 def _seen_beyond(points: np.ndarray, camera, buffer: np.ndarray) -> np.ndarray:
