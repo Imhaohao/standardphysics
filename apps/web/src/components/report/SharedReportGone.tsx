@@ -1,10 +1,7 @@
 import { LinkBreak } from "@phosphor-icons/react/dist/ssr";
 import { SheetFrame } from "@/components/blueprint/SheetFrame";
 import { headlineAndRest } from "./sharedReport";
-
-export function Wordmark() {
-  return <p className="heading-display text-xl">Standard Physics</p>;
-}
+import { Wordmark } from "./Wordmark";
 
 /** A report link that no longer opens anything, in the API's own words. */
 export function SharedReportGone({ message }: { message: string }) {

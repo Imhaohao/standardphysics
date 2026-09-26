@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { Finding } from "@/types/contracts";
-import { isBeingChecked, PHOTO_BEING_CHECKED_TITLE, splitQuestions } from "./reportCounts";
+import type { Finding, ReviewedRule } from "@/types/contracts";
+import { beingCheckedNames, isBeingChecked, PHOTO_BEING_CHECKED_TITLE, splitQuestions } from "./reportCounts";
 
 const citation = { authority: "ADA_2010", edition: "2010 ADA Standards", section: "404.2.7", url: null } as const;
 
@@ -33,5 +33,17 @@ describe("isBeingChecked", () => {
   it("only marks a question, never a result that happens to share the title", () => {
     const result = { ...question("a", PHOTO_BEING_CHECKED_TITLE), outcome: "passes" as const };
     expect(isBeingChecked(result)).toBe(false);
+  });
+});
+
+describe("beingCheckedNames", () => {
+  it("names each photo by its rule, so the reader can tell which ones are in", () => {
+    const rules = [{ check: { id: "door_hardware", title: "The front door handle" } }, { check: { id: "floor_surface", title: "The floor and the mats" } }] as ReviewedRule[];
+    const sent = [question("door_hardware", PHOTO_BEING_CHECKED_TITLE), question("floor_surface", PHOTO_BEING_CHECKED_TITLE)];
+    expect(beingCheckedNames(sent, rules)).toEqual(["The front door handle", "The floor and the mats"]);
+  });
+
+  it("falls back to the rule's section when the rule isn't listed", () => {
+    expect(beingCheckedNames([question("door_hardware", PHOTO_BEING_CHECKED_TITLE)], [])).toEqual(["404.2.7"]);
   });
 });

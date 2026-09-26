@@ -1,3 +1,4 @@
+import { HourglassMedium } from "@phosphor-icons/react/dist/ssr";
 import type { ReactNode } from "react";
 import { FloorPlan } from "@/components/FloorPlan";
 import { OutcomeMatrix } from "@/components/workspace/OutcomeMatrix";
@@ -5,9 +6,10 @@ import { formatInches, groupFindings } from "@/lib/findings";
 import { scopedSummary } from "@/lib/outcomes";
 import type { Assessment, Finding, Report } from "@/types/contracts";
 import { type Fact, FactList } from "./FactList";
-import { splitQuestions } from "./reportCounts";
+import { beingCheckedNames, splitQuestions } from "./reportCounts";
 import { longDate } from "./reportDates";
 import { WhatWeChecked } from "./WhatWeChecked";
+import { Wordmark } from "./Wordmark";
 
 function citation(finding: Finding) {
   const text = `${finding.citation.edition} ${finding.citation.section}`;
@@ -17,12 +19,10 @@ function citation(finding: Finding) {
 function ProblemBlock({ finding }: { finding: Finding }) {
   const render = finding.locus?.render_url;
   return (
-    <article className="grid gap-5 break-inside-avoid border-t border-rule py-8 sm:grid-cols-[minmax(0,15rem)_1fr]">
-      {render ? (
+    <article className={`grid gap-5 break-inside-avoid border-t border-rule py-8 ${render ? "sm:grid-cols-[minmax(0,15rem)_1fr]" : ""}`}>
+      {render && (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={render} alt={`The spot where ${finding.title.toLowerCase()}`} className="aspect-[3/2] w-full rounded-lg bg-rule/40 object-cover" />
-      ) : (
-        <div className="hidden sm:block" />
       )}
       <div>
         <div className="flex items-baseline justify-between gap-4">
@@ -33,7 +33,7 @@ function ProblemBlock({ finding }: { finding: Finding }) {
         </div>
         <p className="mt-2 text-ink-muted">{finding.detail}</p>
         {finding.fix && <p className="mt-4 border-l-2 border-accent pl-3 font-medium">{finding.fix}</p>}
-        <p className="mt-3 text-sm text-ink-faint">{citation(finding)}</p>
+        <p className="mt-3 text-sm text-ink-muted">{citation(finding)}</p>
       </div>
     </article>
   );
@@ -53,19 +53,44 @@ function ProblemsSection({ problems }: { problems: Finding[] }) {
   );
 }
 
-function NextStepsSection({ questions }: { questions: Finding[] }) {
-  if (questions.length === 0) return null;
+function StepsToSend({ toSend }: { toSend: Finding[] }) {
+  if (toSend.length === 0) return null;
   return (
-    <section className="mt-12 break-inside-avoid">
-      <h2 className="heading-display text-2xl">Next steps</h2>
-      <ol className="mt-4 flex list-decimal flex-col gap-4 pl-5">
-        {questions.map((finding) => (
-          <li key={finding.id}>
-            <p className="font-semibold">{finding.title}</p>
-            <p className="text-ink-muted">{finding.detail}</p>
+    <ol className="mt-4 flex list-decimal flex-col gap-4 pl-5">
+      {toSend.map((finding) => (
+        <li key={finding.id} className="break-inside-avoid">
+          <p className="font-semibold">{finding.title}</p>
+          <p className="text-ink-muted">{finding.detail}</p>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function PhotosBeingChecked({ names }: { names: string[] }) {
+  if (names.length === 0) return null;
+  return (
+    <div className="mt-8 break-inside-avoid">
+      <h3 className="font-semibold">Photos being checked</h3>
+      <ul className="mt-2 flex flex-col gap-1.5">
+        {names.map((name, index) => (
+          <li key={`${index}-${name}`} className="flex items-start gap-2">
+            <HourglassMedium size={20} className="mt-0.5 shrink-0 text-attention" aria-hidden />
+            {name}
           </li>
         ))}
-      </ol>
+      </ul>
+    </div>
+  );
+}
+
+function NextStepsSection({ toSend, beingChecked }: { toSend: Finding[]; beingChecked: string[] }) {
+  if (toSend.length + beingChecked.length === 0) return null;
+  return (
+    <section className="mt-12">
+      <h2 className="heading-display break-after-avoid text-2xl">Next steps</h2>
+      <StepsToSend toSend={toSend} />
+      <PhotosBeingChecked names={beingChecked} />
     </section>
   );
 }
@@ -92,8 +117,9 @@ function WhatThisIsNot() {
 function PreviewNotice({ preview }: { preview: boolean }) {
   if (!preview) return null;
   return (
-    <p className="mb-8 rounded-lg bg-ink px-4 py-3 font-semibold text-paper">
-      Preview report. The rules in it are waiting for a person to review them.
+    <p className="mb-8 flex items-start gap-3 border-l-4 border-attention bg-attention/10 px-4 py-3">
+      <HourglassMedium size={20} className="mt-0.5 shrink-0 text-attention" aria-hidden />
+      This is a preview report. The rules in it are waiting for a person to review them.
     </p>
   );
 }
@@ -140,6 +166,7 @@ export function ReportDocument({ report, showScope, toolbar }: ReportDocumentPro
   return (
     <main className="mx-auto max-w-3xl px-5 py-10 print:max-w-none print:p-0">
       <div className="mb-10 flex flex-wrap items-center justify-between gap-x-2 gap-y-3 print:hidden">{toolbar}</div>
+      <Wordmark className="mb-6 hidden print:block" />
 
       <PreviewNotice preview={report.preview} />
       <header className="grid items-end gap-6 sm:grid-cols-[1fr_9rem]">
@@ -152,8 +179,8 @@ export function ReportDocument({ report, showScope, toolbar }: ReportDocumentPro
 
       <ProblemsSection problems={groups.problems} />
       {showScope && <ScopedSection assessment={assessment} />}
-      <NextStepsSection questions={toSend} />
-      <WhatWeChecked scenario={scenario} passes={groups.passes} rules={rules} />
+      <NextStepsSection toSend={toSend} beingChecked={beingCheckedNames(beingChecked, rules)} />
+      <WhatWeChecked scenario={scenario} passes={groups.passes} rules={rules} preview={report.preview} />
       <WhatThisIsNot />
     </main>
   );

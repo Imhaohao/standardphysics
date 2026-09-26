@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import { cache } from "react";
 import { PrintButton } from "@/components/PrintButton";
 import { ReportDocument } from "@/components/report/ReportDocument";
-import { SharedReportGone, Wordmark } from "@/components/report/SharedReportGone";
+import { SharedReportGone } from "@/components/report/SharedReportGone";
 import { readSharedReport } from "@/components/report/sharedReport";
+import { Wordmark } from "@/components/report/Wordmark";
 import { API_ORIGIN } from "@/lib/api-origin";
 
 export const dynamic = "force-dynamic";
