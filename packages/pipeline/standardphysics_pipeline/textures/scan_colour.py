@@ -131,8 +131,24 @@ def _weights_from(
         (depth > 0.2) & (columns >= 0) & (columns <= camera.width - 1) & (rows >= 0) & (rows <= camera.height - 1)
     )
     weight = np.zeros(len(vertices), dtype=np.float64)
-    weight[framed] = _framed_weights(camera, vertices[framed], normals[framed], columns[framed], rows[framed], depth[framed], buffer, mask, slope_aware)
+    weight[framed] = _framed_weights(
+        camera, vertices[framed], PickedRows(normals, framed), columns[framed], rows[framed], depth[framed], buffer, mask, slope_aware,
+    )
     return weight, columns, rows
+
+
+class PickedRows:
+    """The rows of an array chosen through an index, gathered only for the rows asked for.
+
+    A photo reaches a million texels and paints about one in a hundred, so
+    gathering every normal up front copied a million rows to use ten thousand.
+    """
+
+    def __init__(self, rows, index: np.ndarray):
+        self.rows, self.index = rows, index
+
+    def __getitem__(self, chosen):
+        return self.rows[self.index[chosen]]
 
 
 def _framed_weights(camera, vertices, normals, columns, rows, depth, buffer, mask, slope_aware) -> np.ndarray:
@@ -174,7 +190,9 @@ def _widest_tolerance(camera: PhotoCamera, buffer_width: int, depth: np.ndarray,
     """
     if not slope_aware:
         return SEEN_TOLERANCE
-    return _seen_tolerance(camera, buffer_width, depth, np.full(len(depth), MIN_FACING), True) + 1e-6
+    steepest = np.sqrt(np.clip(1.0 - MIN_FACING ** 2, 0.0, 1.0)) / MIN_FACING
+    per_metre = 1.5 * camera.width / (camera.fx * buffer_width) * steepest
+    return SEEN_TOLERANCE + 1e-6 + per_metre * np.maximum(depth, 0.0)
 
 
 def _seen_tolerance(camera: PhotoCamera, buffer_width: int, depth: np.ndarray, facing: np.ndarray, slope_aware: bool):

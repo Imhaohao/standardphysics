@@ -53,7 +53,7 @@ from .project import (
     to_srgb,
     triangle_depth_buffer,
 )
-from .scan_colour import BLEND_SHARPNESS, ColouredScan, _small_static_mask, _weights_from
+from .scan_colour import BLEND_SHARPNESS, ColouredScan, PickedRows, _small_static_mask, _weights_from
 from .stages import timed
 
 TEXEL_METRES = 0.02
@@ -300,8 +300,9 @@ class _Surface:
         """This photo's view weight for each texel in `indices`, and where in the photo to sample it."""
         sized = camera.resized(photo.shape[1], photo.shape[0])
         mask = _people_mask(camera, photo, detections, buffer)
-        weight, columns, rows = _weights_from(sized, self.positions[indices], self.normals[indices], buffer, mask, slope_aware=True)
-        behind = np.flatnonzero((weight > 0) & self.patch[indices])
+        weight, columns, rows = _weights_from(sized, self.positions[indices], PickedRows(self.normals, indices), buffer, mask, slope_aware=True)
+        positive = np.flatnonzero(weight > 0)
+        behind = positive[self.patch[indices[positive]]]
         if len(behind):
             hidden = hidden_behind_objects(self.graph, self.positions[indices[behind]], np.ones(len(behind), bool))(camera)
             weight[behind[hidden]] = 0.0
