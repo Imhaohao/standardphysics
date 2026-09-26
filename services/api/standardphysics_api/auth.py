@@ -95,6 +95,21 @@ def token_from(request: Request) -> str | None:
     return request.cookies.get(COOKIE_NAME)
 
 
+def signed_in(database: Database, request: Request) -> Owner:
+    """The signed-in owner, for a route outside /api/scans that the middleware doesn't guard."""
+    owner = _resolve_owner(database, request)
+    if owner is None:
+        raise ApiProblem(401, "Sign in to continue.")
+    return owner
+
+
+def team_member(database: Database, team_emails: frozenset[str], request: Request) -> Owner:
+    owner = signed_in(database, request)
+    if role_of(owner, team_emails) != "team":
+        raise ApiProblem(403, "This is for the Standard Physics team.")
+    return owner
+
+
 def owner_of(request: Request) -> Owner:
     """The signed-in owner. Only call this from a route the middleware guards."""
     owner = getattr(request.state, "owner", None)

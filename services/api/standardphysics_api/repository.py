@@ -100,6 +100,7 @@ def scan_exists(connection: sqlite3.Connection, scan_id: uuid.UUID) -> bool:
 
 
 CHILD_TABLES = (
+    "owner_requests", "checklist_items",
     "texture_builds", "simulations", "assessments", "evidence_bundles", "scenarios", "revisions",
     "job_attempts", "jobs", "artifacts",
 )

@@ -122,6 +122,9 @@ SCAN_ROUTES = [
     ("get", "/scene.glb"),
     ("get", "/simulations"),
     ("get", "/textures"),
+    ("get", "/requests"),
+    ("get", "/checklist"),
+    ("get", "/journey"),
 ]
 
 

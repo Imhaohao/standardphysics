@@ -65,6 +65,7 @@ from .layout import check_layout, save_layout
 from .lidar_mesh import InvalidLidarMesh, validate_lidar_mesh
 from .loop_run import run as run_loop_on
 from .loop_run import stream as stream_loop_on
+from .owner_routes import answered, install_owner_routes
 from .proposals import propose
 from .questions import answer_question
 from .replays import install_replay_routes
@@ -151,7 +152,8 @@ def create_app(settings: Settings | None = None, stages: Stages | None = None, r
     install_architecture_export_routes(app, database)
     _install_scan_routes(app, database, store)
     _install_upload_routes(app, database, store, worker, settings)
-    _install_workspace_routes(app, database, store)
+    _install_workspace_routes(app, database, store, stages)
+    install_owner_routes(app, database, store, stages, settings.team_emails)
     _install_combine_routes(app, database, store, worker)
     _install_file_routes(app, database, store)
     _install_layout_routes(app, database, stages, worker)
@@ -162,9 +164,7 @@ def create_app(settings: Settings | None = None, stages: Stages | None = None, r
     install_splat_routes(app, database, store)
     _install_label_routes(app, database, store, worker)
 
-    @app.get("/api/scans/{scan_id}/report", response_model=Report)
-    def report(scan_id: uuid.UUID) -> Report:
-        return build_report(database, stages.ledger_factory(), scan_id)
+    _install_report_route(app, database, stages)
 
     @app.get("/health")
     def health() -> dict[str, str]:
@@ -178,6 +178,16 @@ def create_app(settings: Settings | None = None, stages: Stages | None = None, r
         return {"status": "ok"}
 
     return app
+
+
+def _install_report_route(app: FastAPI, database: Database, stages: Stages) -> None:
+    @app.get("/api/scans/{scan_id}/report", response_model=Report)
+    def report(scan_id: uuid.UUID) -> Report:
+        built = build_report(database, stages.ledger_factory(), scan_id)
+        if built.assessment is None:
+            return built
+        with database.connect() as connection:
+            return built.model_copy(update={"assessment": answered(connection, stages, scan_id, built.assessment)})
 
 
 def _scan_or_404(connection, scan_id: uuid.UUID) -> Scan:
@@ -401,7 +411,7 @@ def _frame_entry(store: ArtifactStore, scan_id: uuid.UUID, artifact: Artifact) -
     )
 
 
-def _install_workspace_routes(app: FastAPI, database: Database, store: ArtifactStore) -> None:
+def _install_workspace_routes(app: FastAPI, database: Database, store: ArtifactStore, stages: Stages) -> None:
     @app.get("/api/scans/{scan_id}/scene", response_model=SceneGraph)
     def scene(scan_id: uuid.UUID, revision: int | None = None) -> SceneGraph:
         with database.connect() as connection:
@@ -429,9 +439,9 @@ def _install_workspace_routes(app: FastAPI, database: Database, store: ArtifactS
                 if revision is None
                 else repo.assessment_for_revision(connection, scan_id, revision)
             )
-        if found is None:
-            raise ApiProblem(404, "not ready")
-        return found
+            if found is None:
+                raise ApiProblem(404, "not ready")
+            return answered(connection, stages, scan_id, found)
 
 
 def _install_combine_routes(app: FastAPI, database: Database, store: ArtifactStore, worker: Worker) -> None:

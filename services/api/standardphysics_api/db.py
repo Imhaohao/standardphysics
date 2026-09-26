@@ -134,6 +134,27 @@ CREATE TABLE IF NOT EXISTS job_attempts (
     recorded_at TEXT NOT NULL,
     PRIMARY KEY (job_id, attempt)
 );
+CREATE TABLE IF NOT EXISTS owner_requests (
+    scan_id TEXT NOT NULL REFERENCES scans(id),
+    request_id TEXT NOT NULL,
+    status TEXT NOT NULL,
+    answer_yes INTEGER,
+    answer_number REAL,
+    photo_name TEXT,
+    answered_at TEXT,
+    review TEXT,
+    reviewed_by TEXT,
+    reviewed_at TEXT,
+    PRIMARY KEY (scan_id, request_id)
+);
+CREATE INDEX IF NOT EXISTS owner_requests_waiting ON owner_requests(status, answered_at);
+CREATE TABLE IF NOT EXISTS checklist_items (
+    scan_id TEXT NOT NULL REFERENCES scans(id),
+    finding_id TEXT NOT NULL,
+    status TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (scan_id, finding_id)
+);
 """
 
 
