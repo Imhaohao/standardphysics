@@ -19,7 +19,7 @@ export default async function TeamReviewsPage() {
   return (
     <main className="mx-auto max-w-5xl px-5 py-10">
       <div className="mb-10">
-        <Link href="/" className={buttonClassName("quiet")}>
+        <Link href="/" className={`-ms-3 ${buttonClassName("quiet")}`}>
           <ArrowLeft size={18} weight="bold" aria-hidden />
           Back to your shops
         </Link>

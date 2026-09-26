@@ -11,7 +11,7 @@ import { isTeam, type Session } from "@/lib/session";
 function TeamTools() {
   return (
     <div className="flex flex-col items-start gap-3 border-t border-ink p-4">
-      <Link href="/team/reviews" className={buttonClassName("quiet", true)}>
+      <Link href="/team/reviews" className={`-ms-3 ${buttonClassName("quiet", true)}`}>
         <Images size={18} aria-hidden />
         Check owners&apos; photos
       </Link>

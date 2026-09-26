@@ -33,7 +33,7 @@ function Photo({ url, shopName }: { url: string; shopName: string }) {
     <div className="flex flex-col items-start gap-2 md:col-start-1 md:row-span-2 md:row-start-1">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={url} alt={`The photo ${shopName} sent`} className="max-h-160 w-full rounded-lg bg-ink/5 object-contain" />
-      <a href={url} target="_blank" rel="noreferrer" className={buttonClassName("quiet")}>
+      <a href={url} target="_blank" rel="noreferrer" className={`-ms-3 ${buttonClassName("quiet")}`}>
         <ArrowSquareOut size={18} aria-hidden />
         Open full size
       </a>
@@ -98,8 +98,9 @@ export function ReviewCard({ review, onDecided }: { review: PendingReview; onDec
       <div className="flex flex-col items-start gap-3 md:col-start-2 md:row-start-2">
         <Choices saving={saving} onChoose={choose} />
         {failed && (
-          <p role="alert" className="text-sm text-problem">
-            Unable to save. Check your connection and try again.
+          <p role="alert" className="flex items-start gap-2 text-problem">
+            <WarningCircle size={20} weight="fill" className="mt-0.5 shrink-0" aria-hidden />
+            Unable to save your answer for this photo. Check your connection and try again.
           </p>
         )}
       </div>

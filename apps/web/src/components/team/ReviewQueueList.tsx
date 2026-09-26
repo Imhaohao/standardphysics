@@ -1,17 +1,24 @@
 "use client";
 
-import { CheckCircle } from "@phosphor-icons/react";
+import { CheckCircle, WarningCircle } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import type { PendingReview } from "@/types/contracts";
 import { ReviewCard } from "./ReviewCard";
 import { decisionMessage, photosToCheckHeading, reviewKey, stillWaiting, type ReviewOutcome } from "./reviewQueue";
 
-function LastDecision({ message }: { message: string }) {
+type Decision = { message: string; outcome: ReviewOutcome };
+
+const OUTCOME_MARK = {
+  passes: <CheckCircle size={20} weight="fill" className="shrink-0 text-pass" aria-hidden />,
+  problem: <WarningCircle size={20} weight="fill" className="shrink-0 text-problem" aria-hidden />,
+} satisfies Record<ReviewOutcome, ReactNode>;
+
+function LastDecision({ decision }: { decision: Decision | null }) {
   return (
     <p role="status" className="mt-3 flex items-center gap-2 text-ink empty:mt-0">
-      {message && <CheckCircle size={20} weight="fill" className="shrink-0 text-pass" aria-hidden />}
-      {message}
+      {decision && OUTCOME_MARK[decision.outcome]}
+      {decision?.message}
     </p>
   );
 }
@@ -25,12 +32,12 @@ export function ReviewQueueList({ reviews }: { reviews: PendingReview[] }) {
   const router = useRouter();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const [decided, setDecided] = useState<ReadonlySet<string>>(new Set());
-  const [lastDecision, setLastDecision] = useState("");
+  const [lastDecision, setLastDecision] = useState<Decision | null>(null);
   const waiting = stillWaiting(reviews, decided);
 
   function recordDecision(review: PendingReview, outcome: ReviewOutcome) {
     setDecided((before) => new Set(before).add(reviewKey(review)));
-    setLastDecision(decisionMessage(review, outcome));
+    setLastDecision({ message: decisionMessage(review, outcome), outcome });
     headingRef.current?.focus();
     router.refresh();
   }
@@ -40,7 +47,7 @@ export function ReviewQueueList({ reviews }: { reviews: PendingReview[] }) {
       <h1 ref={headingRef} tabIndex={-1} className="heading-display text-4xl focus-visible:outline-none sm:text-5xl">
         {photosToCheckHeading(waiting.length)}
       </h1>
-      <LastDecision message={lastDecision} />
+      <LastDecision decision={lastDecision} />
       {waiting.length === 0 ? (
         <EmptyQueue />
       ) : (
