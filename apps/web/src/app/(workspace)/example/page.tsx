@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { ExampleInvite } from "@/components/owner/ExampleInvite";
 import { OwnerView } from "@/components/owner/OwnerView";
-import { getSharedReport, readySharedGlbUrl } from "@/lib/api";
+import { getSharedReport } from "@/lib/api";
 import { isAppUserAgent } from "@/lib/native-bridge";
 import type { Journey, Scan } from "@/types/contracts";
 
@@ -27,7 +27,7 @@ function exampleJourney(scan: Scan): Journey {
 export default async function ExamplePage() {
   const report = await getSharedReport("example");
   if (!report?.scene) notFound();
-  const [glbUrl, requestHeaders] = await Promise.all([readySharedGlbUrl("example"), headers()]);
+  const requestHeaders = await headers();
   const embedded = isAppUserAgent(requestHeaders.get("user-agent"));
   return (
     <OwnerView
@@ -35,7 +35,7 @@ export default async function ExamplePage() {
       journey={exampleJourney(report.scan)}
       requests={[]}
       scene={report.scene}
-      glbUrl={glbUrl}
+      glbUrl={null}
       assessment={report.assessment}
       checklist={NO_CHECKLIST}
       suggestedPath={null}

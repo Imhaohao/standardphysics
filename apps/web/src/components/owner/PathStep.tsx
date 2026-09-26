@@ -21,7 +21,7 @@ const PLACES: { place: Destination; name: string; Icon: IconType }[] = [
 export function PathStep({ path }: { path: PathEditor }) {
   return (
     <div className="flex min-h-full flex-col gap-6">
-      <StepHeading title="Where else do customers go?">Everyone comes in the front door and goes to the counter. Pick every other place they go.</StepHeading>
+      <StepHeading title="Where else do customers go?">Pick every place customers go after the counter. The dashed line is how they walk. Drag a stop on the drawing if it&rsquo;s in the wrong spot.</StepHeading>
       <div className="flex flex-wrap gap-2" role="group" aria-label="Places customers go">
         {PLACES.map(({ place, name, Icon }) => (
           <PlaceChip key={place} name={name} Icon={Icon} on={path.destinations.includes(place)} onToggle={() => path.toggle(place)} />

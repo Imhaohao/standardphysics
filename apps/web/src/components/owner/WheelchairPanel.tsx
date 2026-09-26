@@ -11,7 +11,7 @@ export function WheelchairPanel({ onDone }: { onDone: () => void }) {
   return (
     <div className="flex min-h-full flex-col gap-6">
       <StepHeading title="Wheelchair walk-through">
-        You&rsquo;re seated at the height of someone in a wheelchair. Hold an arrow to roll, and try the path from the front door to the counter.
+        You&rsquo;re at the front door, seated at the height of someone in a wheelchair. Hold an arrow to roll along the dashed line to each stop.
       </StepHeading>
       <ActionBar>
         <Button variant="primary" className="justify-center" onClick={onDone}>Done</Button>

@@ -76,13 +76,6 @@ export const getPathSuggestion = (scanId: string, places: string[]) =>
 /** A report behind a share link, or the example shop behind the token "example". No sign-in needed. */
 export const getSharedReport = (token: string) => getOptional<Report>(`/api/shared/${encodeURIComponent(token)}`);
 
-/** The shared model's address, once the server has one to send. */
-export async function readySharedGlbUrl(token: string): Promise<string | null> {
-  const path = `/api/shared/${encodeURIComponent(token)}/scene.glb`;
-  const response = await fetch(`${API_ORIGIN}${path}`, { method: "HEAD", cache: "no-store" });
-  return response.ok ? path : null;
-}
-
 export const getChecklist = (scanId: string) => getOptional<Checklist>(`/api/scans/${scanId}/checklist`);
 
 /** The exported model's address, once the server has one to send. */

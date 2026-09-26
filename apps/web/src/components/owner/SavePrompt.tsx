@@ -23,9 +23,9 @@ export function SavePrompt({ open, inApp, onClose }: { open: boolean; inApp: boo
 
   return (
     <dialog ref={dialog} onClose={onClose} aria-labelledby="save-heading"
-      className="m-auto w-[min(100%-2rem,28rem)] rounded-2xl bg-sheet p-5 text-ink shadow-float backdrop:bg-ink/40 max-sm:mb-0 max-sm:w-full max-sm:rounded-b-none max-sm:pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+      className="m-auto w-[min(100%-2rem,28rem)] rounded-2xl bg-sheet p-5 text-ink shadow-float backdrop:bg-ink/40 max-sm:mx-0 max-sm:mb-0 max-sm:mt-auto max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none max-sm:pb-[max(1.25rem,env(safe-area-inset-bottom))]">
       <h2 id="save-heading" className="heading-display text-2xl">Save your shop</h2>
-      <p className="mt-2 text-pretty text-ink-muted">Add your email so your shop and your list are here next time, on any device.</p>
+      <p className="mt-2 text-pretty text-ink-muted">Add your email so your shop and your checklist are here next time, on any device.</p>
       {inApp && (
         <Button variant="primary" className="mt-5 w-full justify-center" onClick={() => { tellApp({ type: "saveReport" }); onClose(); }}>
           <AppleLogo size={20} weight="fill" aria-hidden />

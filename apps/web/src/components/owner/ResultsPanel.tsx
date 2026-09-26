@@ -1,23 +1,25 @@
 "use client";
 
-import { Check, Hourglass } from "@phosphor-icons/react";
-import type { ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
 import { Button } from "@/components/ui/Button";
-import { type ChecklistStatus, thingsToFix } from "@/lib/owner-journey";
+import type { ChecklistStatus } from "@/lib/owner-journey";
 import { useSeenOnce } from "@/lib/seen-once";
-import type { Finding } from "@/types/contracts";
+import type { Finding, SceneGraph } from "@/types/contracts";
 import { type CardActions, FindingCard } from "./FindingCard";
 import { ActionBar } from "./StepHeading";
 
 export type Row = { finding: Finding; status: ChecklistStatus };
+
+const RESULTS_TIP = "sp_results_tip";
 
 /**
  * The results and the checklist are one list. Before the owner starts fixing,
  * it counts what to fix; after, each card carries its status and the header
  * counts what's done.
  */
-export function ResultsPanel({ rows, selectedId, fixing, saving, actions, onStartFixing, readOnly, footer, stillToCheck, pending, children }: {
+export function ResultsPanel({ rows, scene, selectedId, fixing, saving, actions, onStartFixing, readOnly, footer, stillToCheck, pending, children }: {
   rows: Row[];
+  scene: SceneGraph | null;
   selectedId: string | null;
   fixing: boolean;
   saving: boolean;
@@ -31,14 +33,21 @@ export function ResultsPanel({ rows, selectedId, fixing, saving, actions, onStar
   pending: number;
   children?: ReactNode;
 }) {
+  const [tipSeen, markTipSeen] = useSeenOnce(RESULTS_TIP);
+  const cardActions = useMemo<CardActions>(() => ({
+    ...actions,
+    onShow: (finding) => { markTipSeen(); actions.onShow(finding); },
+    onStatus: (finding, status) => { markTipSeen(); actions.onStatus(finding, status); },
+  }), [actions, markTipSeen]);
   return (
     <div className="flex min-h-full flex-col gap-6">
       {fixing ? <Progress rows={rows} /> : <Count count={rows.length} pending={pending} />}
-      {rows.length > 0 && <FirstResultsTip />}
+      {rows.length > 0 && !tipSeen && <FirstResultsTip onDismiss={markTipSeen} />}
       <ul className="flex flex-col gap-4">
         {rows.map(({ finding, status }) => (
           <li key={finding.id}>
-            <FindingCard finding={finding} selected={finding.id === selectedId} status={status} fixing={fixing && !readOnly} saving={saving} actions={actions} />
+            <FindingCard finding={finding} scene={scene} selected={finding.id === selectedId} status={status}
+              fixing={fixing && !readOnly} saving={saving} readOnly={readOnly} actions={cardActions} />
           </li>
         ))}
       </ul>
@@ -54,24 +63,15 @@ export function ResultsPanel({ rows, selectedId, fixing, saving, actions, onStar
   );
 }
 
-/** The count sits in the mark, so the words beside it don't repeat the number. */
+/** One heading that says what it counts. The number carries the red, and nothing else does. */
 function Count({ count, pending }: { count: number; pending: number }) {
   if (count === 0) {
-    const clear = pending === 0;
-    return (
-      <header className="flex items-center gap-4">
-        <span className={`grid size-14 shrink-0 place-items-center rounded-full ${clear ? "bg-pass/15 text-pass" : "bg-ink/[0.06] text-ink-muted"}`} aria-hidden>
-          {clear ? <Check size={28} weight="bold" /> : <Hourglass size={26} weight="bold" />}
-        </span>
-        <h1 className="heading-display text-3xl">{clear ? thingsToFix(0) : "Nothing to fix so far"}</h1>
-      </header>
-    );
+    return <h1 className="heading-display text-3xl">{pending === 0 ? "Nothing to fix" : "Nothing to fix so far"}</h1>;
   }
   return (
-    <header className="flex items-center gap-4">
-      <span className="grid size-14 shrink-0 place-items-center rounded-full bg-problem/10 text-2xl font-semibold tabular-nums text-problem" aria-hidden>{count}</span>
-      <h1 className="heading-display text-3xl"><span className="sr-only">{count} </span>{count === 1 ? "thing to fix" : "things to fix"}</h1>
-    </header>
+    <h1 className="heading-display text-3xl">
+      <span className="text-problem">{count}</span> {count === 1 ? "thing to fix" : "things to fix"}
+    </h1>
   );
 }
 
@@ -90,13 +90,11 @@ function Progress({ rows }: { rows: Row[] }) {
   );
 }
 
-function FirstResultsTip() {
-  const [seen, markSeen] = useSeenOnce("sp_results_tip");
-  if (seen) return null;
+function FirstResultsTip({ onDismiss }: { onDismiss: () => void }) {
   return (
     <aside className="flex items-start gap-3 rounded-2xl bg-ink p-4 text-paper">
-      <p className="flex-1 text-pretty">Red means it misses the ADA number. Tap one to see where it is.</p>
-      <Button variant="inverse" className="shrink-0" onClick={markSeen}>Got it</Button>
+      <p className="flex-1 text-pretty">A red bar is how far a spot misses the ADA number. Tap a card to see where it is.</p>
+      <Button variant="inverse" className="shrink-0" onClick={onDismiss}>Got it</Button>
     </aside>
   );
 }

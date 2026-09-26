@@ -16,8 +16,8 @@ export type RouteHandles = {
   onGrab: () => void;
   onDrag: (marker: StopMarker, dx: number, dy: number) => void;
   onDrop: () => void;
-  /** The stops in walking order, drawn as the path through them. Left out, only the markers show. */
-  path?: { x: number; y: number }[];
+  /** The route a customer walks between stops, one line per leg, around what's in the way. */
+  legs?: { x: number; y: number }[][];
 };
 
 function useMarkerDrag(marker: StopMarker, route: RouteHandles) {
@@ -77,7 +77,7 @@ function Marker({ marker, route }: { marker: StopMarker; route: RouteHandles }) 
   );
 }
 
-function WalkingPath({ path }: { path: { x: number; y: number }[] }) {
+function WalkingLeg({ path }: { path: { x: number; y: number }[] }) {
   if (path.length < 2) return null;
   const points = path.map(({ x, y }) => [x, 0.03, -y] as [number, number, number]);
   return <Line points={points} color={MODEL.accent} lineWidth={3} dashed dashSize={0.25} gapSize={0.18} depthTest={false} renderOrder={2} />;
@@ -86,7 +86,7 @@ function WalkingPath({ path }: { path: { x: number; y: number }[] }) {
 export function StopMarkers({ route }: { route: RouteHandles }) {
   return (
     <group>
-      {route.path && <WalkingPath path={route.path} />}
+      {route.legs?.map((leg, index) => <WalkingLeg key={index} path={leg} />)}
       {route.markers.map((marker) => (
         <Marker key={marker.key} marker={marker} route={route} />
       ))}

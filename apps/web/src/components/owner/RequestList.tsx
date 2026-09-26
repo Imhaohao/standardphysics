@@ -127,9 +127,9 @@ function PhotoAnswer({ request, action }: { request: OwnerRequest; action: Actio
 }
 
 function SkipButton({ request, action }: { request: OwnerRequest; action: Action }) {
-  if (request.status === "skipped") return <p className="text-sm text-ink-muted">Skipped for now. It stays on your report until you send it.</p>;
+  if (request.status === "skipped") return <p className="text-sm text-ink-muted">You skipped this. It stays on your report until you send it.</p>;
   return (
-    <Button className="self-start" disabled={action.working} onClick={() => action.run(() => skipRequest(action.scanId, request.id))}>
+    <Button className="-ms-3 self-start" disabled={action.working} onClick={() => action.run(() => skipRequest(action.scanId, request.id))}>
       Skip for now
     </Button>
   );

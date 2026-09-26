@@ -20,7 +20,7 @@ export function WaitingPanel({ journey }: { journey: Journey }) {
 
 function DrawingLine() {
   return (
-    <svg viewBox="0 0 240 8" className="h-2 w-full text-accent" aria-hidden>
+    <svg viewBox="0 0 240 8" preserveAspectRatio="none" className="h-2 w-full text-accent" aria-hidden>
       <line x1="0" y1="4" x2="240" y2="4" className="stroke-rule" strokeWidth="2" />
       <line x1="0" y1="4" x2="240" y2="4" stroke="currentColor" strokeWidth="2" strokeDasharray="60 180" className="motion-safe:animate-drafting-line" />
     </svg>

@@ -9,11 +9,11 @@ import { canBeCounter } from "@/lib/counter";
 import { groupFindings } from "@/lib/findings";
 import { proposeFix } from "@/lib/layout-client";
 import { inApp, listenToApp, tellApp } from "@/lib/native-bridge";
-import { markStatus, savePlan } from "@/lib/owner-client";
+import { markStatus, savePlan, walkingRoute } from "@/lib/owner-client";
 import { type ChecklistStatus, checklistRows, type Destination, followUps, isFixing, type Panel, panelFor, pieceToTry, requestsForStep } from "@/lib/owner-journey";
-import type { Assessment, Checklist, Finding, Journey, OwnerRequest, Scan, Scenario, SceneGraph } from "@/types/contracts";
+import type { Assessment, Checklist, Finding, Journey, OwnerRequest, Scan, Scenario, SceneGraph, Vec3 } from "@/types/contracts";
 import { CounterStep } from "./CounterStep";
-import { ModelCaption, OwnerModel } from "./OwnerModel";
+import { OwnerModel } from "./OwnerModel";
 import { PathStep } from "./PathStep";
 import { PlanPanel } from "./PlanPanel";
 import { RequestList } from "./RequestList";
@@ -66,11 +66,16 @@ export function OwnerView(props: OwnerViewProps) {
   return <OwnerShop {...props} scene={props.scene} />;
 }
 
+const STEP_WHY: Record<string, string> = {
+  answers: "Your answers tell us which doors and rooms to check.",
+  photos: "We check each photo and add what we find to your results.",
+};
+
 /** The questions the app asks in the shop, and the measuring wait before the shop has a model. */
-function EarlyPanel({ scan, journey, requests, scene }: OwnerViewProps) {
+function EarlyPanel({ scan, journey, requests }: OwnerViewProps) {
   const asked = requestsForStep(journey, requests);
   if (panelFor(journey) !== "answers" || asked.length === 0) return <WaitingPanel journey={journey} />;
-  const why = scene ? "These are the parts of your shop a scan can't see." : "While your shop is measured, answer these for the parts a scan can't see.";
+  const why = STEP_WHY[journey.next_step.kind] ?? STEP_WHY.answers;
   return (
     <div className="flex flex-col gap-6">
       <StepHeading title={journey.next_step.title}>{why}</StepHeading>
@@ -79,11 +84,20 @@ function EarlyPanel({ scan, journey, requests, scene }: OwnerViewProps) {
   );
 }
 
-function Frame({ shopName, embedded, model, tall = false, step = "", children }: { shopName: string; embedded: boolean; model: ReactNode; tall?: boolean; step?: string; children: ReactNode }) {
+const MODEL_HEIGHT: Record<ModelSize, string> = { small: "h-[30dvh] min-h-52", medium: "h-[42dvh] min-h-64", large: "h-[62dvh] min-h-64" };
+type ModelSize = "small" | "medium" | "large";
+
+/** How much of a phone the model takes: most while driving, some while tapping on it, least while reading a list. */
+function modelSize(panel: string): ModelSize {
+  if (panel === "wheelchair") return "large";
+  return panel === "counter" || panel === "path" || panel === "plan" ? "medium" : "small";
+}
+
+function Frame({ shopName, embedded, model, size = "medium", step = "", children }: { shopName: string; embedded: boolean; model: ReactNode; size?: ModelSize; step?: string; children: ReactNode }) {
   return (
     <div className={`grid h-dvh grid-cols-[minmax(0,1fr)] overflow-hidden ${model ? "grid-rows-[auto_auto_minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_28rem] lg:grid-rows-[auto_minmax(0,1fr)]" : "grid-rows-[auto_minmax(0,1fr)]"}`}>
       {embedded ? <span /> : <Header shopName={shopName} wide={model !== null} />}
-      {model && <section aria-label="Your shop in 3D" className={`relative ${tall ? "h-[62dvh]" : "h-[40dvh]"} min-h-64 touch-none overflow-hidden lg:h-auto lg:rounded-tr-2xl`}>{model}</section>}
+      {model && <section aria-label="Your shop in 3D" className={`relative ${MODEL_HEIGHT[size]} touch-none overflow-hidden lg:h-auto lg:rounded-tr-2xl`}>{model}</section>}
       <main key={step} className="min-h-0 overflow-y-auto overscroll-contain px-4 pt-6 lg:px-6 lg:pt-8">
         <div className="mx-auto flex min-h-full max-w-xl flex-col gap-8 pb-6">{children}</div>
       </main>
@@ -104,11 +118,6 @@ function Header({ shopName, wide }: { shopName: string; wide: boolean }) {
 
 type ShopProps = OwnerViewProps & { scene: SceneGraph };
 
-const CAPTIONS: Partial<Record<Panel | "plan" | "wheelchair", string>> = {
-  counter: "Tap the counter on this drawing of your shop",
-  path: "Drag a stop if it’s wrong",
-  plan: "Drag a piece to move it",
-};
 
 /** The checklist statuses as the owner sets them, shown at once and saved behind the scenes. */
 function useStatuses(scanId: string, guest: boolean, onFirstGuestMark: () => void) {
@@ -142,6 +151,10 @@ function useSaveAsk(guest: boolean) {
 
 type Tool = "plan" | "wheelchair";
 
+function pieceLabel(scene: SceneGraph, nodeId: string | null): string | null {
+  return scene.nodes.find((node) => node.id === nodeId)?.label ?? null;
+}
+
 function currentPanel(journey: Journey, counterSkipped: boolean, tool: Tool | null, readOnly: boolean): Panel | Tool {
   if (readOnly) return "results";
   if (tool) return tool;
@@ -155,6 +168,7 @@ function OwnerShop(props: ShopProps) {
   const [counter, setCounter] = useState<string | null>(() => guessCounter(scene));
   const [counterSkipped, setCounterSkipped] = useState(false);
   const [tool, setTool] = useState<Tool | null>(null);
+  const [walkedLegs, setWalkedLegs] = useState<Vec3[][]>([]);
   const [fixingHere, setFixingHere] = useState(false);
   const save = useSaveAsk(guest);
   const statuses = useStatuses(scan.id, guest, save.ask);
@@ -176,13 +190,19 @@ function OwnerShop(props: ShopProps) {
     {
       panel: panel === "plan" || panel === "wheelchair" ? "results" : panel, scene, selected, counter,
       path: panel === "path" ? path : null, arrangement: panel === "plan" ? arrangement : null, wheelchair: panel === "wheelchair",
-      scenario: props.scenario,
+      scenario: props.scenario, walkedLegs,
     },
     pickNode,
     () => setSelected(null),
   );
 
   const tryPiece = useMemo(() => pieceToTry(problems, scene), [problems, scene]);
+  const startWheelchair = () => {
+    setTool("wheelchair");
+    if (props.scenario) {
+      walkingRoute(scan.id, props.scenario).then((walked) => setWalkedLegs(walked.legs.map((leg) => leg.path))).catch(() => setWalkedLegs([]));
+    }
+  };
   const startPlanning = () => {
     setTool("plan");
     if (tryPiece) arrangement.setActiveId(tryPiece.id);
@@ -202,11 +222,12 @@ function OwnerShop(props: ShopProps) {
     counter: () => <CounterStep scanId={scan.id} scene={scene} picked={counter} onSkip={() => setCounterSkipped(true)} />,
     path: () => <PathStep path={path} />,
     follow_ups: () => <FollowUpPanel scanId={scan.id} journey={journey} requests={props.requests} />,
-    plan: () => <PlanPanel arrangement={arrangement} before={problems.length} pieceName={arrangement.hasMoves ? null : tryPiece?.label ?? null} onDone={() => { arrangement.reset(); setTool(null); }} />,
+    plan: () => <PlanPanel arrangement={arrangement} before={problems.length} pieceName={pieceLabel(scene, arrangement.activeId) ?? tryPiece?.label ?? null} onDone={() => { arrangement.reset(); setTool(null); }} />,
     wheelchair: () => <WheelchairPanel onDone={() => setTool(null)} />,
     results: () => (
       <ResultsPanel
         rows={rows}
+        scene={scene}
         selectedId={selected?.id ?? null}
         fixing={isFixing(checklist, fixingHere) && !readOnly}
         saving={statuses.saving}
@@ -218,13 +239,13 @@ function OwnerShop(props: ShopProps) {
         actions={{ onShow: (finding) => setSelected(finding.id === selected?.id ? null : finding), onStatus: statuses.set, onPlan: planFor }}
       >
         {!readOnly && <SharePanel scanId={scan.id} shopName={scan.name} onShared={save.ask} />}
-        {!readOnly && journey.tools_unlocked && <ToolsPanel scanId={scan.id} inApp={inApp()} onPlan={startPlanning} onWheelchair={() => setTool("wheelchair")} />}
+        {!readOnly && journey.tools_unlocked && <ToolsPanel scanId={scan.id} inApp={inApp()} onPlan={startPlanning} onWheelchair={startWheelchair} />}
       </ResultsPanel>
     ),
   };
 
   return (
-    <Frame shopName={scan.name} embedded={props.embedded} model={<><OwnerModel scene={scene} glbUrl={props.glbUrl} setup={setup} lightweight={props.embedded} />{CAPTIONS[panel] && <ModelCaption>{CAPTIONS[panel]}</ModelCaption>}{panel === "wheelchair" && <DrivingPad />}</>} tall={panel === "wheelchair"} step={panel}>
+    <Frame shopName={scan.name} embedded={props.embedded} model={<><OwnerModel scene={scene} glbUrl={props.glbUrl} setup={setup} lightweight={props.embedded} />{panel === "wheelchair" && <DrivingPad />}</>} size={modelSize(panel)} step={panel}>
       {content[panel]()}
       <SavePrompt open={save.open} inApp={props.embedded} onClose={save.close} />
     </Frame>

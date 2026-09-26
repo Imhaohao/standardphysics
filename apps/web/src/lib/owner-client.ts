@@ -1,7 +1,7 @@
 import { ApiRefusal } from "@/lib/layout-client";
 import type { ChecklistStatus } from "@/lib/owner-journey";
 import type {
-  ChecklistItem, LayoutPlan, NodeMove, OwnerRequest, Scenario, SceneGraph, Session, ShareLink,
+  ChecklistItem, LayoutPlan, NodeMove, OwnerRequest, RouteLegs, Scenario, SceneGraph, Session, ShareLink,
 } from "@/types/contracts";
 
 async function send<T>(url: string, init: RequestInit): Promise<T> {
@@ -37,6 +37,9 @@ export const markStatus = (scanId: string, findingId: string, status: ChecklistS
 
 export const suggestPath = (scanId: string, destinations: string[]) =>
   send<Scenario>(`/api/scans/${scanId}/scenario/suggestion?destinations=${encodeURIComponent(destinations.join(","))}`, { method: "GET" });
+
+export const walkingRoute = (scanId: string, scenario: Scenario) =>
+  send<RouteLegs>(`/api/scans/${scanId}/scenario/legs`, json("POST", scenario));
 
 export const markCounter = (scanId: string, baseRevision: number, nodeId: string) =>
   send<SceneGraph>(`/api/scans/${scanId}/revisions/${baseRevision}/counters/${nodeId}`, json("PUT"));

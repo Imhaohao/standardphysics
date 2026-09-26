@@ -1,12 +1,13 @@
 "use client";
 
-import { ArrowsOutCardinal } from "@phosphor-icons/react";
+import { ArrowsOutCardinal, CheckCircle, MinusCircle, Wrench } from "@phosphor-icons/react";
+import type { ComponentType } from "react";
 import { Button } from "@/components/ui/Button";
 import { formatInches } from "@/lib/findings";
 import { type ChecklistStatus, comparisonBars, MOVABLE_CHECKS } from "@/lib/owner-journey";
-import type { Finding } from "@/types/contracts";
+import type { Finding, SceneGraph } from "@/types/contracts";
+import { SpotPlan } from "./SpotPlan";
 import { StatusControl } from "./StatusControl";
-
 
 export type CardActions = {
   onShow: (finding: Finding) => void;
@@ -14,44 +15,65 @@ export type CardActions = {
   onPlan: (finding: Finding) => void;
 };
 
+type IconType = ComponentType<{ size?: number; weight?: "regular" | "bold" | "fill"; className?: string; "aria-hidden"?: boolean }>;
+
+/** How a settled item reads once the owner has said what they did about it. */
+const SETTLED: Record<Exclude<ChecklistStatus, "to_do">, { Icon: IconType; tone: string; words: string }> = {
+  done: { Icon: CheckCircle, tone: "text-pass", words: "Done" },
+  not_doing: { Icon: MinusCircle, tone: "text-ink-muted", words: "Not doing" },
+  needs_pro: { Icon: Wrench, tone: "text-attention", words: "Needs a pro" },
+};
+
 /**
- * One thing to fix. The picture shows the spot, the two bars show how far off
+ * One thing to fix. The drawing shows the spot, the two bars show how far off
  * it is, and the line under them says what to do. Once the owner starts fixing,
- * the card also carries its status.
+ * the card carries its status, and a settled card folds down to its title.
  */
-export function FindingCard({ finding, selected, status, fixing, saving, actions }: {
+export function FindingCard({ finding, scene, selected, status, fixing, saving, readOnly, actions }: {
   finding: Finding;
+  scene: SceneGraph | null;
   selected: boolean;
   status: ChecklistStatus;
   fixing: boolean;
   saving: boolean;
+  readOnly: boolean;
   actions: CardActions;
 }) {
+  const settled = status !== "to_do";
   return (
-    <article className={`flex flex-col gap-4 rounded-2xl bg-sheet p-4 shadow-float transition-shadow duration-150 ${selected ? "ring-2 ring-accent" : ""} ${status !== "to_do" ? "opacity-75" : ""}`}>
+    <article className={`flex flex-col gap-4 rounded-2xl p-4 transition-shadow duration-150 ${settled ? "bg-ink/[0.04]" : "bg-sheet shadow-float"} ${selected ? "ring-2 ring-accent" : ""}`}>
       <button type="button" onClick={() => actions.onShow(finding)} aria-pressed={selected} className="flex flex-col gap-3 text-left">
-        <Picture finding={finding} />
-        <h2 className="text-lg font-semibold leading-snug text-pretty">{finding.title}</h2>
+        {!settled && scene && <SpotPlan scene={scene} finding={finding} />}
+        <h2 className={`text-lg font-semibold leading-snug text-pretty ${settled ? "text-ink-muted" : ""}`}>{finding.title}</h2>
       </button>
-      <Comparison finding={finding} />
-      {finding.fix && <p className="border-l-2 border-accent pl-3 font-medium text-pretty">{finding.fix}</p>}
-      {MOVABLE_CHECKS.has(finding.check_id) && (
-        <Button className="self-start" onClick={() => actions.onPlan(finding)}>
-          <ArrowsOutCardinal size={18} weight="bold" aria-hidden />
-          See a layout that fixes this
-        </Button>
-      )}
+      {settled ? <SettledMark status={status} /> : <Details finding={finding} readOnly={readOnly} onPlan={() => actions.onPlan(finding)} />}
       {fixing && <StatusControl name={`status-${finding.id}`} status={status} disabled={saving} onChange={(next) => actions.onStatus(finding, next)} />}
     </article>
   );
 }
 
-function Picture({ finding }: { finding: Finding }) {
-  const render = finding.locus?.render_url;
-  if (!render) return null;
+function SettledMark({ status }: { status: Exclude<ChecklistStatus, "to_do"> }) {
+  const { Icon, tone, words } = SETTLED[status];
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={render} alt="" className="aspect-video w-full rounded-xl bg-rule/40 object-cover outline outline-1 -outline-offset-1 outline-black/10" />
+    <p className={`-mt-2 flex items-center gap-2 font-medium ${tone}`}>
+      <Icon size={20} weight="fill" aria-hidden />
+      {words}
+    </p>
+  );
+}
+
+function Details({ finding, readOnly, onPlan }: { finding: Finding; readOnly: boolean; onPlan: () => void }) {
+  return (
+    <>
+      <Comparison finding={finding} />
+      {finding.fix && <p className="border-l-2 border-accent pl-3 font-medium text-pretty">{finding.fix}</p>}
+      {!readOnly && MOVABLE_CHECKS.has(finding.check_id) && (
+        <Button variant="choice" className="self-start" onClick={onPlan}>
+          <ArrowsOutCardinal size={18} weight="bold" aria-hidden />
+          See a layout that fixes this
+        </Button>
+      )}
+    </>
   );
 }
 

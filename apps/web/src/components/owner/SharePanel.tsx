@@ -28,7 +28,10 @@ export function SharePanel({ scanId, shopName, onShared }: { scanId: string; sho
     }
   };
 
+  const [confirmingStop, setConfirmingStop] = useState(false);
+
   const stop = async () => {
+    setConfirmingStop(false);
     setNote(null);
     try {
       await stopSharing(scanId);
@@ -52,8 +55,8 @@ export function SharePanel({ scanId, shopName, onShared }: { scanId: string; sho
         <div className="flex flex-col gap-2">
           <p className="measurement break-all rounded-lg bg-ink/[0.05] px-3 py-2 text-sm">{link}</p>
           <div className="flex flex-wrap gap-2">
-            <Button onClick={copy}><Copy size={18} weight="bold" aria-hidden />Copy the link</Button>
-            <a href={link} target="_blank" rel="noreferrer" className={buttonClassName("quiet")}><FilePdf size={18} weight="bold" aria-hidden />Open it to save a PDF</a>
+            <Button variant="choice" onClick={copy}><Copy size={18} weight="bold" aria-hidden />Copy the link</Button>
+            <a href={link} target="_blank" rel="noreferrer" className={buttonClassName("choice")}><FilePdf size={18} weight="bold" aria-hidden />Open it to save a PDF</a>
           </div>
         </div>
       ) : (
@@ -63,7 +66,15 @@ export function SharePanel({ scanId, shopName, onShared }: { scanId: string; sho
         </Button>
       )}
       <p role="status" className="text-sm text-ink-muted">{note}</p>
-      <Button variant="danger" className="self-start" onClick={stop}>Stop every link to this report</Button>
+      {confirmingStop ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="w-full text-sm">Anyone you sent a link to won&rsquo;t be able to open it. You can share again after.</p>
+          <Button variant="danger" className="-ms-3" onClick={stop}>Stop every link</Button>
+          <Button onClick={() => setConfirmingStop(false)}>Keep them</Button>
+        </div>
+      ) : (
+        <Button variant="danger" className="-ms-3 self-start" onClick={() => setConfirmingStop(true)}>Stop every link to this report</Button>
+      )}
     </section>
   );
 }

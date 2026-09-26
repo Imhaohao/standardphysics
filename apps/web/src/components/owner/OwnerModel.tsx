@@ -35,15 +35,6 @@ export type ModelSetup = {
   onClear: () => void;
 };
 
-/** What to do with the model right now, said on the model itself. */
-export function ModelCaption({ children }: { children: string }) {
-  return (
-    <p className="pointer-events-none absolute inset-x-4 top-4 w-fit max-w-[calc(100%-2rem)] rounded-xl bg-sheet/95 px-3 py-2 text-sm font-medium shadow-float">
-      {children}
-    </p>
-  );
-}
-
 export function OwnerModel({ scene, glbUrl, setup, lightweight }: { scene: SceneGraph; glbUrl: string | null; setup: ModelSetup; lightweight: boolean }) {
   return (
     <Viewer

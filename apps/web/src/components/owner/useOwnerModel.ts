@@ -7,7 +7,8 @@ import type { Arrangement } from "@/components/workspace/useArrangement";
 import { overviewPose, poseFromLocus, topDownPose } from "@/lib/camera";
 import { canBeCounter } from "@/lib/counter";
 import { type Panel, wheelchairStartFrom } from "@/lib/owner-journey";
-import type { Finding, Scenario, SceneGraph } from "@/types/contracts";
+import { stopMarkers } from "@/lib/route";
+import type { Finding, Scenario, SceneGraph, Vec3 } from "@/types/contracts";
 import type { ModelSetup } from "./OwnerModel";
 import type { PathEditor } from "./usePathEditor";
 
@@ -20,9 +21,8 @@ export function guessCounter(scene: SceneGraph | null): string | null {
 
 function useRouteHandles(path: PathEditor | null, setDragging: (on: boolean) => void): RouteHandles | null {
   return useMemo(() => (path === null ? null : {
-    markers: path.markers, editable: true,
-    onGrab: () => setDragging(true), onDrag: path.drag, onDrop: () => setDragging(false),
-    path: path.scenario?.stops.map((stop) => stop.position),
+    markers: path.markers, editable: true, legs: path.legs,
+    onGrab: () => setDragging(true), onDrag: path.drag, onDrop: () => { setDragging(false); path.settle(); },
   }), [path, setDragging]);
 }
 
@@ -39,12 +39,31 @@ function useArrangeHandlers(arrangement: Arrangement | null, setDragging: (on: b
 type Mode = {
   panel: Panel; scene: SceneGraph; selected: Finding | null; counter: string | null; path: PathEditor | null;
   arrangement: Arrangement | null; wheelchair: boolean; scenario: Scenario | null;
+  /** The confirmed path's walking route, shown while driving the walk-through. */
+  walkedLegs: Vec3[][];
 };
+
+const STAY_PUT = () => {};
+
+/** The confirmed path, shown and not draggable, so the walk-through has somewhere to go. */
+function useConfirmedRoute(scenario: Scenario | null, legs: Vec3[][], shown: boolean): RouteHandles | null {
+  return useMemo(() => (!shown || !scenario ? null : {
+    markers: stopMarkers(scenario), editable: false, legs, onGrab: STAY_PUT, onDrag: STAY_PUT, onDrop: STAY_PUT,
+  }), [scenario, legs, shown]);
+}
+
+/** While choosing the counter, every piece stays tappable and the chosen one is outlined. */
+function counterPicking(mode: Mode): { highlight: string[] | null; picking: boolean } {
+  if (mode.panel !== "counter") return { highlight: null, picking: false };
+  return { highlight: mode.counter ? [mode.counter] : null, picking: true };
+}
 
 /** Where the camera sits and what the model lets the owner touch, for whichever step is on screen. */
 export function useOwnerModel(mode: Mode, onPickNode: (nodeId: string) => void, onClear: () => void): ModelSetup {
   const [dragging, setDragging] = useState(false);
-  const route = useRouteHandles(mode.path, setDragging);
+  const editing = useRouteHandles(mode.path, setDragging);
+  const confirmed = useConfirmedRoute(mode.scenario, mode.walkedLegs, mode.wheelchair);
+  const route = editing ?? confirmed;
   const arrange = useArrangeHandlers(mode.arrangement, setDragging);
   const fromAbove = mode.panel === "counter" || mode.panel === "path";
   const overview = useMemo(() => (fromAbove ? topDownPose(mode.scene) : overviewPose(mode.scene)), [fromAbove, mode.scene]);
@@ -56,8 +75,7 @@ export function useOwnerModel(mode: Mode, onPickNode: (nodeId: string) => void, 
     shown: mode.arrangement?.shown ?? mode.scene,
     pose,
     selected: mode.selected,
-    highlight: mode.panel === "counter" && mode.counter ? [mode.counter] : null,
-    picking: mode.panel === "counter",
+    ...counterPicking(mode),
     wheelchair: mode.wheelchair,
     wheelchairStart,
     route,

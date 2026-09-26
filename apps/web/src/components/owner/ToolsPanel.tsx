@@ -21,14 +21,14 @@ export function ToolsPanel({ scanId, inApp, onPlan, onWheelchair }: { scanId: st
         </aside>
       )}
       <h2 id="tools-heading" className="text-lg font-semibold">Shop tools</h2>
-      <Tool Icon={ArrowsOutCardinal} title="Plan a layout" detail="Drag furniture to a new spot and see which problems it fixes. Your scan stays as it is.">
-        <Button onClick={onPlan}>Start planning</Button>
+      <Tool Icon={ArrowsOutCardinal} title="Plan a layout" detail="Drag furniture to a new spot and see which problems it fixes.">
+        <Button variant="choice" onClick={onPlan}>Start planning</Button>
       </Tool>
-      <Tool Icon={Wheelchair} title="Wheelchair walk-through" detail="Roll through your shop at the height of someone in a wheelchair, and feel where it gets tight.">
-        <Button onClick={onWheelchair}>Start the walk-through</Button>
+      <Tool Icon={Wheelchair} title="Wheelchair walk-through" detail="Roll along your customer path at the height of someone in a wheelchair, and see where it gets tight.">
+        <Button variant="choice" onClick={onWheelchair}>Start the walk-through</Button>
       </Tool>
       <Tool Icon={Plus} title="Add another room" detail="Walk another room and it joins this shop.">
-        {inApp ? <Button onClick={addRoom}>Walk another room</Button> : <p className="text-sm text-ink-muted">Open Standard Physics on your iPhone to walk it.</p>}
+        {inApp ? <Button variant="choice" onClick={addRoom}>Walk another room</Button> : <p className="text-sm text-ink-muted">Open Standard Physics on your iPhone to walk it.</p>}
       </Tool>
     </section>
   );
