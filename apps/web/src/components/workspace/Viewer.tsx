@@ -23,6 +23,8 @@ import { WheelchairController, type WheelchairState } from "./WheelchairControll
 type ViewerProps = {
   scene: SceneGraph;
   highlightNodeIds?: string[] | null;
+  /** Every piece stays visible and tappable while one is outlined, for choosing a piece. */
+  picking?: boolean;
   /** The walks of a combined scan and where they have been dragged, drawn as captured surface. */
   combinedRooms?: { rooms: RoomGroup[]; placements: Record<string, RoomPlacement> } | null;
   exported: SceneGraph;
@@ -102,7 +104,7 @@ function Lights({ castShadow }: { castShadow: boolean }) {
   );
 }
 
-type ShopSurfacesProps = Pick<ViewerProps, "scene" | "exported" | "arrange" | "dragAllNodes" | "lightweight" | "glbUrl" | "scanGlbUrl" | "splatAssets" | "onSplatError" | "lidarUrl" | "selected" | "onSelectNode" | "cutWalls" | "materialMode" | "staleNodeIds" | "coverage" | "highlightNodeIds" | "combinedRooms">;
+type ShopSurfacesProps = Pick<ViewerProps, "scene" | "exported" | "arrange" | "dragAllNodes" | "lightweight" | "glbUrl" | "scanGlbUrl" | "splatAssets" | "onSplatError" | "lidarUrl" | "selected" | "onSelectNode" | "cutWalls" | "materialMode" | "staleNodeIds" | "coverage" | "highlightNodeIds" | "combinedRooms" | "picking">;
 
 /** The boxes have no captured surface to show, so the captured modes fall back to plain material on them. */
 function boxMaterialMode(mode: ViewerProps["materialMode"]) {
@@ -121,7 +123,7 @@ function capturedRoom(props: ShopSurfacesProps, boxes: ReactNode, picking: React
 }
 
 function ShopSurfaces(props: ShopSurfacesProps) {
-  const { exported, glbUrl, lidarUrl, materialMode, selected, staleNodeIds, coverage, scene, arrange, dragAllNodes, lightweight, onSelectNode, cutWalls, highlightNodeIds } = props;
+  const { exported, glbUrl, lidarUrl, materialMode, selected, staleNodeIds, coverage, scene, arrange, dragAllNodes, lightweight, onSelectNode, cutWalls, highlightNodeIds, picking: choosing } = props;
 
   /* Picking a walk in the Combine panel has to show which one it is, or four
      grey floor plans look alike and the one being dragged is anybody's guess.
@@ -146,7 +148,8 @@ function ShopSurfaces(props: ShopSurfacesProps) {
     materialMode: boxMaterialMode(materialMode),
     staleNodeIds: staleSet,
     coverage: coverageMap,
-  }), [scene, focus, selected, highlightNodeIds, onSelectNode, arrange, dragAllNodes, lightweight, cutWalls, materialMode, staleSet, coverageMap]);
+    picking: choosing,
+  }), [scene, focus, selected, highlightNodeIds, onSelectNode, arrange, dragAllNodes, lightweight, cutWalls, materialMode, staleSet, coverageMap, choosing]);
 
   const boxes = <BoxShopModel {...modelProps} />;
   const picking = <BoxShopModel {...modelProps} pickOnly />;
