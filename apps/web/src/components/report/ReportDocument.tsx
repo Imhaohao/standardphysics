@@ -139,7 +139,7 @@ export function ReportDocument({ report, showScope, toolbar }: ReportDocumentPro
 
   return (
     <main className="mx-auto max-w-3xl px-5 py-10 print:max-w-none print:p-0">
-      <div className="mb-10 flex items-center justify-between gap-4 print:hidden">{toolbar}</div>
+      <div className="mb-10 flex flex-wrap items-center justify-between gap-x-2 gap-y-3 print:hidden">{toolbar}</div>
 
       <PreviewNotice preview={report.preview} />
       <header className="grid items-end gap-6 sm:grid-cols-[1fr_9rem]">

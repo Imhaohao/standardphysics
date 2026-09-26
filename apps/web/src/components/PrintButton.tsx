@@ -14,7 +14,7 @@ const PURPOSE = {
 export function PrintButton({ purpose = "print" }: { purpose?: PrintPurpose }) {
   const { label, Icon } = PURPOSE[purpose];
   return (
-    <Button variant="primary" onClick={() => window.print()}>
+    <Button variant="primary" onClick={() => window.print()} className="shrink-0 whitespace-nowrap">
       <Icon size={18} weight="bold" aria-hidden />
       {label}
     </Button>
