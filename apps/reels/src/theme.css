@@ -72,3 +72,8 @@
 @utility tape-glow {
   text-shadow: 0 0 24px color-mix(in srgb, var(--color-tape) 70%, transparent), 0 0 80px color-mix(in srgb, var(--color-tape) 45%, transparent);
 }
+
+@theme {
+  --text-c-hook: 104px;
+  --text-c-hook--line-height: 0.94;
+}
