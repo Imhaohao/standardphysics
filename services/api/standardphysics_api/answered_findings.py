@@ -114,7 +114,9 @@ def _numbered(finding: Finding, request: OwnerRequest) -> Finding:
 
 def _photographed(finding: Finding, request: OwnerRequest) -> Finding:
     if request.status == "answered":
-        return finding.model_copy(update={"title": WAITING_FOR_REVIEW.title, "detail": WAITING_FOR_REVIEW.detail})
+        return finding.model_copy(update={
+            "title": WAITING_FOR_REVIEW.title, "detail": WAITING_FOR_REVIEW.detail, "asks": "review",
+        })
     results = PHOTO_RESULTS.get(finding.check_id)
     if request.review is None or results is None:
         return finding

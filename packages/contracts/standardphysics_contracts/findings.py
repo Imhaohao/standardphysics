@@ -12,9 +12,11 @@ AnnotationKind = Literal["dimension_line", "region", "path"]
 
 Outcome = Literal["passes", "problem", "question"]
 
-Asks = Literal["photo", "owner_report", "document", "measurement", "swing", "another_look"]
+Asks = Literal["photo", "owner_report", "document", "measurement", "swing", "another_look", "review"]
 """What answers a question: a photo, the owner's word, a document, a number
-they measure, which way a door swings, or another walk past the spot."""
+they measure, which way a door swings, or another walk past the spot.
+`review` means the owner has sent what was asked and a person on the team is
+checking it, so nothing more is needed from the owner."""
 
 
 class Annotation(BaseModel):

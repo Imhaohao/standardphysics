@@ -157,7 +157,7 @@ export interface AskAnswer {
  * via the `definition` "Finding".
  */
 export interface Finding {
-  asks: ("photo" | "owner_report" | "document" | "measurement" | "swing" | "another_look") | null;
+  asks: ("photo" | "owner_report" | "document" | "measurement" | "swing" | "another_look" | "review") | null;
   check_id: string;
   citation: Citation;
   detail: string;
@@ -421,6 +421,7 @@ export interface CreateScanRequest {
   device_model: string;
   duration_seconds: number;
   name: string;
+  replaces: string | null;
 }
 /**
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema

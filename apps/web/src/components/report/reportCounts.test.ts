@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { Finding, ReviewedRule } from "@/types/contracts";
-import { beingCheckedNames, isBeingChecked, PHOTO_BEING_CHECKED_TITLE, splitQuestions } from "./reportCounts";
+import { beingCheckedNames, isBeingChecked, splitQuestions } from "./reportCounts";
+
+const SENT = "We have your photo";
 
 const citation = { authority: "ADA_2010", edition: "2010 ADA Standards", section: "404.2.7", url: null } as const;
 
@@ -13,7 +15,7 @@ function question(id: string, title: string, asks: Finding["asks"] = "photo"): F
 
 describe("splitQuestions", () => {
   it("leaves a photo the owner already sent out of what is still to send", () => {
-    const handle = question("door_hardware", PHOTO_BEING_CHECKED_TITLE);
+    const handle = question("door_hardware", SENT, "review");
     const doorway = question("door_clear_width", "Measure the front doorway and send us the number", "measurement");
     const floor = question("floor_surface", "Send a photo of the floor just inside the front door");
 
@@ -31,7 +33,7 @@ describe("splitQuestions", () => {
 
 describe("isBeingChecked", () => {
   it("only marks a question, never a result that happens to share the title", () => {
-    const result = { ...question("a", PHOTO_BEING_CHECKED_TITLE), outcome: "passes" as const };
+    const result = { ...question("a", SENT, "review"), outcome: "passes" as const };
     expect(isBeingChecked(result)).toBe(false);
   });
 });
@@ -39,11 +41,11 @@ describe("isBeingChecked", () => {
 describe("beingCheckedNames", () => {
   it("names each photo by its rule, so the reader can tell which ones are in", () => {
     const rules = [{ check: { id: "door_hardware", title: "The front door handle" } }, { check: { id: "floor_surface", title: "The floor and the mats" } }] as ReviewedRule[];
-    const sent = [question("door_hardware", PHOTO_BEING_CHECKED_TITLE), question("floor_surface", PHOTO_BEING_CHECKED_TITLE)];
+    const sent = [question("door_hardware", SENT, "review"), question("floor_surface", SENT, "review")];
     expect(beingCheckedNames(sent, rules)).toEqual(["The front door handle", "The floor and the mats"]);
   });
 
   it("falls back to the rule's section when the rule isn't listed", () => {
-    expect(beingCheckedNames([question("door_hardware", PHOTO_BEING_CHECKED_TITLE)], [])).toEqual(["404.2.7"]);
+    expect(beingCheckedNames([question("door_hardware", SENT, "review")], [])).toEqual(["404.2.7"]);
   });
 });
