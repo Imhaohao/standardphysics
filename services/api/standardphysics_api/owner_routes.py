@@ -20,6 +20,7 @@ from standardphysics_contracts import (
     Checklist,
     ChecklistItem,
     ChecklistUpdate,
+    Funnel,
     Journey,
     JourneyList,
     OwnerRequest,
@@ -37,6 +38,7 @@ from .answered_findings import apply_answers
 from .auth import signed_in, team_member
 from .db import Database
 from .errors import ApiProblem
+from .funnel import funnel
 from .journey import ShopState, journey
 from .notifications import Push
 from .stages import Stages
@@ -240,6 +242,12 @@ def _install_review_routes(
     def review_photo(scan_id: uuid.UUID, request_id: str, request: Request) -> FileResponse:
         team_member(database, team_emails, request)
         return _photo_response(store, scan_id, reviewable(scan_id, request_id))
+
+    @app.get("/api/team/funnel", response_model=Funnel)
+    def owner_funnel(request: Request) -> Funnel:
+        team_member(database, team_emails, request)
+        with database.connect() as connection:
+            return funnel(connection)
 
     @app.put("/api/team/reviews/{scan_id}/{request_id}", response_model=OwnerRequest)
     def review(scan_id: uuid.UUID, request_id: str, body: ReviewAnswer, request: Request) -> OwnerRequest:

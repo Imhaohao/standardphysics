@@ -199,3 +199,20 @@ class PlanList(BaseModel):
 
 class DeviceRegistration(BaseModel):
     environment: Literal["production", "sandbox"] = "production"
+
+
+class FunnelStep(BaseModel):
+    key: str
+    label: str
+    """What the owner did, in the team's words: "Finished the upload"."""
+    shops: int
+
+
+class Funnel(BaseModel):
+    """How far owners get, from the first walk to the first fix. Team only."""
+
+    steps: list[FunnelStep]
+    median_minutes_to_results: float | None
+    """From the start of the walk to results ready, over shops that got there."""
+    median_hours_to_first_fix: float | None
+    """From results ready to the first item marked done, over shops that got there."""

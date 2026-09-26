@@ -615,6 +615,26 @@ export interface FrameListing {
   unreadable: string[];
 }
 /**
+ * How far owners get, from the first walk to the first fix. Team only.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "Funnel".
+ */
+export interface Funnel {
+  median_hours_to_first_fix: number | null;
+  median_minutes_to_results: number | null;
+  steps: FunnelStep[];
+}
+/**
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "FunnelStep".
+ */
+export interface FunnelStep {
+  key: string;
+  label: string;
+  shops: number;
+}
+/**
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
  * via the `definition` "HeightResult".
  */

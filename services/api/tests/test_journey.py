@@ -143,3 +143,21 @@ def test_no_problems_is_not_an_all_clear_while_checks_are_waiting():
     assert waiting.title == "Nothing to fix so far. 1 spot still needs checking"
     clear = journey(_state(assessment=assessment.model_copy(update={"findings": []}), counter_marked=True, path_confirmed=True))
     assert clear.next_step.title == "There's nothing on your list to fix"
+
+
+def test_the_team_sees_how_far_owners_get(make_client):
+    client = make_client(seed=True, team_emails=frozenset({"demo@standardphysics.app"})).__enter__()
+    drain(client)
+    scan_id = client.get("/api/scans").json()["scans"][0]["id"]
+    item = client.get(f"/api/scans/{scan_id}/checklist").json()["items"][0]["finding_id"]
+    client.put(f"/api/scans/{scan_id}/checklist/{item}", json={"status": "done"})
+    funnel = client.get("/api/team/funnel").json()
+    counts = {step["key"]: step["shops"] for step in funnel["steps"]}
+    assert counts["walked"] == counts["results"] == counts["path"] == counts["fixed"] == 1
+    assert counts["shared"] == 0
+    assert funnel["median_minutes_to_results"] is not None
+    assert funnel["median_hours_to_first_fix"] is not None
+
+
+def test_owners_cannot_read_the_funnel(client):
+    assert client.get("/api/team/funnel").status_code == 403
