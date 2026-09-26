@@ -59,7 +59,8 @@ MIN_ATLAS_SIZE = 512
 MAX_ATLAS_SIZE = 4096
 MAX_ATLAS_PHOTOS = 800
 """Photos read per walk. Neighbouring video frames are nearly the same view, so past this they add time and little else."""
-PHOTO_EDGE = 1600
+PHOTO_EDGE = 2048
+"""Photos up to this size are sampled as the camera stored them: a phone's 1920 frames are sharper whole, and shrinking them cost more than the rest of a photo's work."""
 EXPOSURE_PHOTO_EDGE = 400
 """Exposure is a per-photo brightness, so it can be read off a thumbnail."""
 ATLAS_JPEG_QUALITY = 90
@@ -228,7 +229,9 @@ def atlas_size(mesh: UnwrappedScan) -> int:
 
 
 def _read(path: pathlib.Path, edge: int) -> np.ndarray:
+    """The photo as linear-ready floats, no larger than `edge`; a JPEG is decoded straight at the nearest smaller scale."""
     with Image.open(path) as opened:
+        opened.draft("RGB", (edge, edge))
         image = opened.convert("RGB")
         image.thumbnail((edge, edge), Image.Resampling.LANCZOS)
         return np.asarray(image, dtype=np.float32) / 255.0
@@ -287,7 +290,7 @@ class _Surface:
         self.rows, self.columns, self.faces, self.positions, self.normals = _with_every_face_owned(
             mesh, size, texels.rows, texels.columns, texels.owners, texels.positions, texels.normals,
         )
-        distances, nearest = cKDTree(painted.vertices).query(self.positions, k=FALLBACK_NEIGHBOURS)
+        distances, nearest = cKDTree(painted.vertices).query(self.positions, k=FALLBACK_NEIGHBOURS, workers=-1)
         self.fallback = _blended(to_linear(painted.colours), distances, nearest)
         patches = painted.sheet_patches if painted.sheet_patches is not None else np.zeros(len(painted.vertices), bool)
         self.patch = patches[nearest[:, 0]]

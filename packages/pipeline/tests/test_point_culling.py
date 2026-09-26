@@ -72,3 +72,24 @@ def test_seen_through_asks_only_the_cameras_that_frame_the_points_and_agrees(ver
         region = vertices[start:start + 400]
         every_camera = sum(symmetry._seen_beyond(region, camera, buffer) for camera, buffer in zip(cameras, buffers))
         assert np.array_equal(culled(region), every_camera >= 1)
+
+
+def _sorted_depth_buffer(camera, points):
+    """The depth buffer as it was built before: every point written in far-to-near order, so the nearest lands last."""
+    from standardphysics_pipeline.textures import project
+
+    small = camera.resized(max(1, camera.width // project.DEPTH_BUFFER_DIVISOR), max(1, camera.height // project.DEPTH_BUFFER_DIVISOR))
+    u, v, depth = small.project(points)
+    columns, rows = np.rint(u).astype(np.int64), np.rint(v).astype(np.int64)
+    valid = (depth > project.NEAR_LIMIT) & (columns >= 0) & (columns < small.width) & (rows >= 0) & (rows < small.height)
+    buffer = np.full(small.width * small.height, np.inf, dtype=np.float32)
+    order = np.argsort(-depth[valid])
+    buffer[(rows[valid] * small.width + columns[valid])[order]] = depth[valid][order]
+    return project._erode(buffer.reshape(small.height, small.width))
+
+
+def test_keeping_the_nearest_depth_per_pixel_matches_writing_every_point_far_to_near(vertices_and_cameras):
+    """Sorting a photo's millions of texels by depth was a quarter of a second per photo, eight hundred photos a pass."""
+    vertices, cameras = vertices_and_cameras
+    for camera in cameras:
+        assert np.array_equal(depth_buffer(camera, vertices), _sorted_depth_buffer(camera, vertices)), camera.frame_id

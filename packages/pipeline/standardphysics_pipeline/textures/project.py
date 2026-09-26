@@ -86,6 +86,11 @@ def face_normals(world: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return cross / np.maximum(length, 1e-12)[:, None], length / 2
 
 
+ATLAS_BATCH_SIDE = 12
+"""Faces whose texel box is at most this many texels a side are rasterized together; the rest one at a time."""
+ATLAS_BATCH_FACES = 40_000
+
+
 def rasterize_atlas(
     world: np.ndarray, uv: np.ndarray, owners: np.ndarray, size: int,
     base_colours: np.ndarray | None = None,
@@ -93,23 +98,77 @@ def rasterize_atlas(
     """Every texel centre inside a triangle, with the surface point and owner it lands on.
 
     UV v runs up and image rows run down, so row = (1 - v) * size, with texel
-    centres at integer coordinates.
+    centres at integer coordinates. Where faces overlap, the later face owns the texel.
+
+    Packed faces are a few texels across, and drawing them one by one was most
+    of a floor's texel step: a Python call per face, a quarter of a million per
+    atlas. Small faces are drawn together with the same arithmetic.
     """
     normals, areas = face_normals(world)
     if base_colours is None:
         base_colours = np.full((len(world), 3), 0.65, dtype=np.float32)
-    pieces = [
-        _triangle_texels(world[index], uv[index], normals[index], owners[index], base_colours[index], size)
-        for index in np.flatnonzero(areas > 1e-10)
-    ]
-    pieces = [piece for piece in pieces if piece is not None]
+    x = uv[:, :, 0] * size - 0.5
+    y = (1.0 - uv[:, :, 1]) * size - 0.5
+    first_column, first_row = np.maximum(0, np.floor(x.min(axis=1))), np.maximum(0, np.floor(y.min(axis=1)))
+    width = np.minimum(size - 1, np.ceil(x.max(axis=1))) - first_column + 1
+    height = np.minimum(size - 1, np.ceil(y.max(axis=1))) - first_row + 1
+    drawn = (areas > 1e-10) & (width > 0) & (height > 0)
+    small = drawn & (np.maximum(width, height) <= ATLAS_BATCH_SIDE)
+    pieces = [_small_texels(x, y, first_column, first_row, width, height, faces, size)
+              for faces in np.array_split(np.flatnonzero(small), max(1, -(-int(small.sum()) // ATLAS_BATCH_FACES)))]
+    pieces += [_large_texels(world, uv, index, size) for index in np.flatnonzero(drawn & ~small)]
+    pieces = [piece for piece in pieces if piece is not None and len(piece[0])]
     if not pieces:
         empty = np.empty((0, 3), dtype=np.float32)
         return Texels(np.empty(0, np.int32), np.empty(0, np.int32), empty, empty, np.empty(0, np.int32), empty)
-    rows, columns, positions, normals_out, owners_out, colours_out = (np.concatenate(parts) for parts in zip(*pieces))
-    _, last = np.unique((rows.astype(np.int64) * size + columns)[::-1], return_index=True)
-    keep = len(rows) - 1 - last
-    return Texels(rows[keep], columns[keep], positions[keep], normals_out[keep], owners_out[keep], colours_out[keep])
+    faces, rows, columns, weights = (np.concatenate(parts) for parts in zip(*pieces))
+    keep = _last_face_per_texel(faces, rows.astype(np.int64) * size + columns)
+    faces, weights = faces[keep], weights[keep]
+    corners = world[faces]
+    positions = (weights[:, 0, None] * corners[:, 0] + weights[:, 1, None] * corners[:, 1] + weights[:, 2, None] * corners[:, 2]).astype(np.float32)
+    return Texels(
+        rows[keep].astype(np.int32), columns[keep].astype(np.int32), positions,
+        normals[faces].astype(np.float32), owners[faces].astype(np.int32), np.asarray(base_colours, dtype=np.float32)[faces],
+    )
+
+
+def _last_face_per_texel(faces: np.ndarray, keys: np.ndarray) -> np.ndarray:
+    """For each texel, sorted by texel, the entry of the latest face that covers it."""
+    order = np.lexsort((faces, keys))
+    last = np.append(keys[order][1:] != keys[order][:-1], True)
+    return order[last]
+
+
+def _small_texels(x, y, first_column, first_row, width, height, faces, size):
+    """Texel centres inside many small faces at once, as (faces, rows, columns, barycentric weights)."""
+    offsets = np.arange(ATLAS_BATCH_SIDE)
+    down, across = np.meshgrid(offsets, offsets, indexing="ij")
+    down, across = down.ravel(), across.ravel()
+    x, y = x[faces], y[faces]
+    within = (across[None] < width[faces, None]) & (down[None] < height[faces, None])
+    determinant = (y[:, 1] - y[:, 2]) * (x[:, 0] - x[:, 2]) + (x[:, 2] - x[:, 1]) * (y[:, 0] - y[:, 2])
+    within &= (np.abs(determinant) >= 1e-12)[:, None]
+    face, slot = np.nonzero(within)
+    px = first_column[faces][face] + across[slot]
+    py = first_row[faces][face] + down[slot]
+    x, y, determinant = x[face], y[face], determinant[face]
+    first = ((y[:, 1] - y[:, 2]) * (px - x[:, 2]) + (x[:, 2] - x[:, 1]) * (py - y[:, 2])) / determinant
+    second = ((y[:, 2] - y[:, 0]) * (px - x[:, 2]) + (x[:, 0] - x[:, 2]) * (py - y[:, 2])) / determinant
+    weights = np.stack([first, second, 1.0 - first - second], axis=1)
+    inside = np.all(weights >= -1e-9, axis=1)
+    return faces[face[inside]], py[inside].astype(np.int64), px[inside].astype(np.int64), weights[inside]
+
+
+def _large_texels(world, uv, index, size):
+    """A face too large to batch, drawn on its own with the same arithmetic."""
+    texels = _triangle_texels(world[index], uv[index], np.zeros(3), 0, np.zeros(3), size)
+    if texels is None:
+        return None
+    rows, columns = texels[0].astype(np.int64), texels[1].astype(np.int64)
+    x = uv[index, :, 0] * size - 0.5
+    y = (1.0 - uv[index, :, 1]) * size - 0.5
+    weights = _barycentric(x, y, columns.astype(np.float64), rows.astype(np.float64)).T
+    return np.full(len(rows), index), rows, columns, weights
 
 
 def _triangle_texels(world, uv, normal, owner, colour, size):
@@ -249,10 +308,17 @@ class PointBlocks:
     """
 
     def __init__(self, points: np.ndarray):
-        keys = np.floor(points / BLOCK_METRES).astype(np.int64)
-        unique, inverse = np.unique(keys, axis=0, return_inverse=True)
-        self.order = np.argsort(inverse.ravel(), kind="stable")
-        self.starts = np.searchsorted(inverse.ravel()[self.order], np.arange(len(unique) + 1))
+        keys = np.floor(points / BLOCK_METRES).astype(np.int64).reshape(-1, 3)
+        low = keys.min(axis=0) if len(keys) else np.zeros(3, dtype=np.int64)
+        span = keys.max(axis=0) - low + 1 if len(keys) else np.ones(3, dtype=np.int64)
+        shifted = keys - low
+        flat = (shifted[:, 0] * span[1] + shifted[:, 1]) * span[2] + shifted[:, 2]
+        self.order = np.argsort(flat, kind="stable")
+        ordered = flat[self.order]
+        edges = [np.flatnonzero(np.diff(ordered)) + 1, [len(flat)]] if len(flat) else []
+        self.starts = np.concatenate([[0], *edges]).astype(np.int64)
+        cubes = ordered[self.starts[:-1]]
+        unique = np.stack([cubes // (span[1] * span[2]), cubes // span[2] % span[1], cubes % span[2]], axis=1) + low
         self.centres = (unique + 0.5) * BLOCK_METRES
         self.radius = BLOCK_METRES * np.sqrt(3) / 2
 
@@ -289,8 +355,7 @@ def depth_buffer(camera: PhotoCamera, points: np.ndarray) -> np.ndarray:
     columns, rows = np.rint(u).astype(np.int64), np.rint(v).astype(np.int64)
     valid = (depth > NEAR_LIMIT) & (columns >= 0) & (columns < small.width) & (rows >= 0) & (rows < small.height)
     buffer = np.full(small.width * small.height, np.inf, dtype=np.float32)
-    order = np.argsort(-depth[valid])
-    buffer[(rows[valid] * small.width + columns[valid])[order]] = depth[valid][order]
+    np.minimum.at(buffer, rows[valid] * small.width + columns[valid], depth[valid].astype(np.float32))
     return _erode(buffer.reshape(small.height, small.width))
 
 

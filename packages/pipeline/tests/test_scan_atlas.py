@@ -149,3 +149,32 @@ def test_a_budget_packed_into_two_atlases_gives_every_face_at_least_twice_the_te
     per_face_one = _uv_area(one).sum() / len(one.triangles)
     per_face_two = sum(_uv_area(two.atlas(index)).sum() for index in range(2)) / len(two.triangles)
     assert per_face_two >= 1.8 * per_face_one
+
+
+def _rasterized_face_by_face(world, uv, owners, size):
+    """The atlas rasterizer as it was: one call per face, the later face winning each texel."""
+    from standardphysics_pipeline.textures.project import _triangle_texels
+
+    normals, areas = face_normals(world)
+    colours = np.full((len(world), 3), 0.65, dtype=np.float32)
+    pieces = [_triangle_texels(world[i], uv[i], normals[i], owners[i], colours[i], size) for i in np.flatnonzero(areas > 1e-10)]
+    rows, columns, positions, normals_out, owners_out, _ = (np.concatenate(parts) for parts in zip(*[p for p in pieces if p is not None]))
+    _, last = np.unique((rows.astype(np.int64) * size + columns)[::-1], return_index=True)
+    keep = len(rows) - 1 - last
+    return rows[keep], columns[keep], positions[keep], normals_out[keep], owners_out[keep]
+
+
+@pytest.mark.skipif(_blender_missing(), reason="Blender not installed")
+def test_drawing_small_faces_together_matches_drawing_every_face_alone(tmp_path):
+    vertices, triangles = scan_geometry(REPO / "datasets/phone/test1/lidar-mesh.json", capture_to_room(0.0))
+    scan = ColouredScan(vertices, triangles, np.zeros((len(vertices), 3)), np.zeros(len(vertices), bool))
+    mesh = unwrapped(scan, tmp_path, max_triangles=260_000)
+    size = atlas_size(mesh)
+    owners = np.arange(len(mesh.triangles), dtype=np.int32)
+
+    together = rasterize_atlas(mesh.corners, mesh.uv, owners, size)
+    alone = _rasterized_face_by_face(mesh.corners, mesh.uv, owners, size)
+
+    assert len(together.rows) > 100_000
+    for batched, reference in zip((together.rows, together.columns, together.positions, together.normals, together.owners), alone):
+        assert np.array_equal(batched, reference)
