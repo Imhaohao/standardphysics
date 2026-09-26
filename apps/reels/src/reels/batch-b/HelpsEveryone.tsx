@@ -11,8 +11,8 @@ type Rule = { name: string; lines: string[]; source: string; clips: string[] };
 const rules: Rule[] = [
   {
     name: "curb cuts",
-    lines: ["9 in 10 people with", "nothing to push", "still use them"],
-    source: "2010 ADA Standards §406; Stanford Social Innovation Review, The Curb-Cut Effect, 2017",
+    lines: ["strollers and suitcases", "roll right up them too"],
+    source: "2010 ADA Standards §406",
     clips: ["b-stroller", "b-suitcase", "b-dolly"],
   },
   { name: "lever handles", lines: ["open it with your", "elbow, hands full"], source: "2010 ADA Standards §309.4 and §404.2.7", clips: ["b-lever"] },
