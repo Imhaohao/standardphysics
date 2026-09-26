@@ -446,20 +446,29 @@ SMALL_TRIANGLE_BATCH = 40_000
 """Faces drawn together per step, so the per-pixel arrays stay near a hundred megabytes."""
 
 
+SMALL_TRIANGLE_SIDES = (3, 5, SMALL_TRIANGLE_PIXELS)
+"""The candidate squares small faces are sorted into, so a face two pixels wide is not tested against sixty-four."""
+
+
 def _rasterize_small_triangles(buffer: np.ndarray, u: np.ndarray, v: np.ndarray, depth: np.ndarray) -> None:
-    """`_rasterize_depth_triangle` for many small faces at once, a batch at a time."""
-    for start in range(0, len(u), SMALL_TRIANGLE_BATCH):
-        stop = start + SMALL_TRIANGLE_BATCH
-        _rasterize_small_batch(buffer, u[start:stop], v[start:stop], depth[start:stop])
+    """`_rasterize_depth_triangle` for many small faces at once, a batch at a time, each size with its own square."""
+    spans = _pixel_spans(buffer, u, v).max(axis=0)
+    smaller = 0
+    for side in SMALL_TRIANGLE_SIDES:
+        faces = np.flatnonzero((spans > smaller) & (spans <= side))
+        smaller = side
+        for start in range(0, len(faces), SMALL_TRIANGLE_BATCH):
+            chosen = faces[start:start + SMALL_TRIANGLE_BATCH]
+            _rasterize_small_batch(buffer, u[chosen], v[chosen], depth[chosen], side)
 
 
-def _rasterize_small_batch(buffer: np.ndarray, u: np.ndarray, v: np.ndarray, depth: np.ndarray) -> None:
+def _rasterize_small_batch(buffer: np.ndarray, u: np.ndarray, v: np.ndarray, depth: np.ndarray, side: int = SMALL_TRIANGLE_PIXELS) -> None:
     """Every candidate pixel of every face tested and filled as the per-face loop would."""
     if not len(u):
         return
     left, right, top, bottom = _pixel_box(buffer, u, v)
     determinant = (v[:, 1] - v[:, 2]) * (u[:, 0] - u[:, 2]) + (u[:, 2] - u[:, 1]) * (v[:, 0] - v[:, 2])
-    offsets = np.arange(SMALL_TRIANGLE_PIXELS)
+    offsets = np.arange(side)
     columns = (left[:, None] + offsets[None, :])[:, None, :]
     rows = (top[:, None] + offsets[None, :])[:, :, None]
     wanted = (columns <= right[:, None, None]) & (rows <= bottom[:, None, None]) & (np.abs(determinant) >= 1e-9)[:, None, None]

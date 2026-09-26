@@ -131,3 +131,28 @@ def test_weighing_only_the_framed_points_gives_every_point_the_weight_it_had(sca
             reference = _weights_of_every_point(camera, vertices, normals, buffer, slope_aware)
             assert (weight > 0).any() or not (reference > 0).any()
             assert np.array_equal(weight, reference), camera.frame_id
+
+
+@pytest.fixture(scope="module")
+def room_graph():
+    artifacts = _smallest_scan()
+    if artifacts is None:
+        pytest.skip("no scanned room with photos on this machine")
+    return parse_room_json(json.loads((artifacts / "room-json").read_text()))
+
+
+def test_testing_only_the_boxes_near_the_sight_lines_blocks_what_testing_every_box_blocks(scanned, room_graph):
+    """Hundreds of object boxes on a library floor, each tested against every sight line, were a third of a photo bake."""
+    from standardphysics_pipeline.textures.hole_patches import ObjectBoxes, _segments_enter_box
+
+    vertices, _, cameras = scanned
+    boxes = ObjectBoxes(room_graph)
+    assert boxes.nodes
+    blocked_somewhere = 0
+    for camera in cameras:
+        every_box = np.zeros(len(vertices), dtype=bool)
+        for node in boxes.nodes:
+            every_box |= _segments_enter_box(camera.position, vertices, node)
+        assert np.array_equal(boxes.blocking(camera.position, vertices), every_box), camera.frame_id
+        blocked_somewhere += int(every_box.any())
+    assert blocked_somewhere
