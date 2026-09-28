@@ -6,7 +6,7 @@
 
 Standard Physics turns an iPhone LiDAR walk into a room model, checks measured features against selected accessibility rules, and shows where the evidence is incomplete. It can suggest furniture moves and re-check a proposed layout. It is an accessibility screening and planning tool; it does not certify a building or establish that a site complies with the ADA.
 
-The product is live at [standardphysics.app](https://standardphysics.app), with an iPhone app on TestFlight. The screenshots below show the shipped sample shop, not a customer capture.
+The product is live at [standardphysics.app](https://standardphysics.app), with an iPhone app on TestFlight. Follow [Standard Physics on Instagram](https://www.instagram.com/standardphysics/). The screenshots below show the shipped sample shop, not a customer capture.
 
 | Room model and checks | Findings report |
 |---|---|
