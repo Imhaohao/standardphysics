@@ -1,13 +1,20 @@
 import { HourglassMedium } from "@phosphor-icons/react/dist/ssr";
 import type { ReactNode } from "react";
-import { FloorPlan } from "@/components/FloorPlan";
 import { OutcomeMatrix } from "@/components/workspace/OutcomeMatrix";
 import { formatInches, groupFindings } from "@/lib/findings";
+import { applyMoves } from "@/lib/moves";
 import { scopedSummary } from "@/lib/outcomes";
-import type { Assessment, Finding, Report } from "@/types/contracts";
-import { type Fact, FactList } from "./FactList";
+import type { Assessment, Finding, LayoutPlan, Report, SceneGraph } from "@/types/contracts";
+import { BeforeAfter } from "./BeforeAfter";
+import { CodeBasis } from "./CodeBasis";
+import { ExecutiveSummary } from "./ExecutiveSummary";
+import { ModelSection } from "./ModelSection";
+import { MoneyAtStake } from "./MoneyAtStake";
+import { MoveSchedule } from "./MoveSchedule";
+import { choosePlan, compareClauses, moveSchedule, type ClauseRow } from "./redesign";
 import { beingCheckedNames, splitQuestions } from "./reportCounts";
-import { longDate } from "./reportDates";
+import { ReportCover } from "./ReportCover";
+import { TimeSaved } from "./TimeSaved";
 import { WhatWeChecked } from "./WhatWeChecked";
 import { Wordmark } from "./Wordmark";
 
@@ -16,17 +23,20 @@ function citation(finding: Finding) {
   return finding.citation.url ? <a href={finding.citation.url} className="underline decoration-rule underline-offset-2">{text}</a> : text;
 }
 
-function ProblemBlock({ finding }: { finding: Finding }) {
+function ProblemBlock({ finding, number }: { finding: Finding; number: number }) {
   const render = finding.locus?.render_url;
   return (
-    <article className={`grid gap-5 break-inside-avoid border-t border-rule py-8 ${render ? "sm:grid-cols-[minmax(0,15rem)_1fr]" : ""}`}>
+    <article className={`grid gap-5 break-inside-avoid border-t border-rule py-8 ${render ? "sm:grid-cols-[minmax(0,18rem)_1fr]" : ""}`}>
       {render && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={render} alt={`The spot where ${finding.title.toLowerCase()}`} className="aspect-[3/2] w-full rounded-lg bg-rule/40 object-cover" />
+        <img src={render} alt={`The spot where ${finding.title.toLowerCase()}`} className="aspect-[3/2] w-full bg-rule/40 object-cover" />
       )}
       <div>
         <div className="flex items-baseline justify-between gap-4">
-          <h3 className="text-xl font-semibold leading-snug">{finding.title}</h3>
+          <h3 className="text-xl font-semibold leading-snug">
+            <span className="me-2 tabular-nums text-problem">{number}</span>
+            {finding.title}
+          </h3>
           {finding.measured_inches !== null && (
             <span className="measurement shrink-0 text-lg">{formatInches(finding.measured_inches)}</span>
           )}
@@ -39,14 +49,15 @@ function ProblemBlock({ finding }: { finding: Finding }) {
   );
 }
 
-function ProblemsSection({ problems }: { problems: Finding[] }) {
-  if (problems.length === 0) return null;
+function ProblemsSection({ rows }: { rows: ClauseRow[] }) {
+  const failing = rows.filter((row) => row.change !== "new_problem" && row.before);
+  if (failing.length === 0) return null;
   return (
-    <section className="mt-12">
-      <h2 className="heading-display text-2xl">What to fix</h2>
+    <section className="mt-16 print:mt-0 print:break-before-page">
+      <h2 className="heading-display text-3xl">Each failing spot, as scanned</h2>
       <div className="mt-4">
-        {problems.map((finding) => (
-          <ProblemBlock key={finding.id} finding={finding} />
+        {failing.map((row) => (
+          <ProblemBlock key={row.number} finding={row.before!} number={row.number} />
         ))}
       </div>
     </section>
@@ -87,29 +98,10 @@ function PhotosBeingChecked({ names }: { names: string[] }) {
 function NextStepsSection({ toSend, beingChecked }: { toSend: Finding[]; beingChecked: string[] }) {
   if (toSend.length + beingChecked.length === 0) return null;
   return (
-    <section className="mt-12">
-      <h2 className="heading-display break-after-avoid text-2xl">Next steps</h2>
+    <section className="mt-16">
+      <h2 className="heading-display break-after-avoid text-3xl">Next steps</h2>
       <StepsToSend toSend={toSend} />
       <PhotosBeingChecked names={beingChecked} />
-    </section>
-  );
-}
-
-function WhatThisIsNot() {
-  return (
-    <section className="mt-12 break-inside-avoid border-t border-rule pt-8">
-      <h2 className="heading-display text-2xl">What this report is not</h2>
-      <div className="mt-3 flex flex-col gap-3 text-ink-muted">
-        <p>
-          Standard Physics measures what the scan could see and compares it against the 2010 ADA
-          Standards for Accessible Design.
-        </p>
-        <p>
-          This is not an inspection and it is not legal advice. Only a Certified Access Specialist
-          can inspect your shop in person, and only their report carries legal weight. Fixing what
-          is listed here first makes that inspection shorter and cheaper.
-        </p>
-      </div>
     </section>
   );
 }
@@ -117,7 +109,7 @@ function WhatThisIsNot() {
 function PreviewNotice({ preview }: { preview: boolean }) {
   if (!preview) return null;
   return (
-    <p className="mb-8 flex items-start gap-3 border-l-4 border-attention bg-attention/10 px-4 py-3">
+    <p className="mb-6 flex items-start gap-3 border-l-4 border-attention bg-attention/10 px-4 py-3">
       <HourglassMedium size={20} className="mt-0.5 shrink-0 text-attention" aria-hidden />
       This is a preview report. The rules in it are waiting for a person to review them.
     </p>
@@ -129,8 +121,8 @@ function ScopedSection({ assessment }: { assessment: Assessment | null }) {
   if (scope === null) return null;
   const summary = scopedSummary(scope);
   return (
-    <section className="mt-12 break-inside-avoid" aria-label="Scoped check outcomes">
-      <h2 className="heading-display text-2xl">Scoped check outcomes</h2>
+    <section className="mt-16 break-inside-avoid" aria-label="Scoped check outcomes">
+      <h2 className="heading-display text-3xl">Scoped check outcomes</h2>
       {summary && <p className="mt-2 text-ink-muted">{summary}</p>}
       <div className="mt-4 border-t border-rule">
         <OutcomeMatrix scope={scope} findings={assessment?.findings ?? []} />
@@ -139,13 +131,8 @@ function ScopedSection({ assessment }: { assessment: Assessment | null }) {
   );
 }
 
-function reportFacts(checkedOn: Date, problems: number, toSend: number, beingChecked: number): Fact[] {
-  const facts: Fact[] = [
-    { label: "Checked", value: longDate.format(checkedOn) },
-    { label: "To fix", value: problems },
-    { label: "To send", value: toSend },
-  ];
-  return beingChecked > 0 ? [...facts, { label: "Photos being checked", value: beingChecked }] : facts;
+function slug(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "shop";
 }
 
 interface ReportDocumentProps {
@@ -154,34 +141,68 @@ interface ReportDocumentProps {
   showScope: boolean;
   /** Controls above the report, left out when it is printed. */
   toolbar: ReactNode;
+  /** The layout the reader picked; without one, the layout that clears the most is shown. */
+  planId?: string;
+  /** This page's own address, which the layout picker adds `?plan=` to. */
+  pagePath: string;
+  /** Where this reader downloads the room as STL. */
+  modelBase: string;
 }
 
-/** The report an owner reads, prints and shares, the same wherever it opens. */
-export function ReportDocument({ report, showScope, toolbar }: ReportDocumentProps) {
+function planned(scene: SceneGraph, plan: LayoutPlan | null): SceneGraph {
+  return plan ? applyMoves(scene, Object.fromEntries(plan.moves.map((move) => [move.node_id, move]))) : scene;
+}
+
+function redesignOf(report: Report, planId: string | undefined) {
+  const scene = report.scene;
+  const plan = scene ? choosePlan(report.plans, planId) : null;
+  const rows = compareClauses(report.assessment?.findings ?? [], plan?.findings ?? null);
+  if (!scene || !plan) return { plan: null, planName: null, rows, schedule: [], shown: scene };
+  return { plan, planName: plan.name, rows, schedule: moveSchedule(scene, plan, rows), shown: planned(scene, plan) };
+}
+
+function Drawings({ report, redesign, hrefFor, modelBase }: {
+  report: Report;
+  redesign: ReturnType<typeof redesignOf>;
+  hrefFor: (planId: string) => string;
+  modelBase: string;
+}) {
+  const { scene, scan } = report;
+  if (!scene) return null;
+  const { plan, rows } = redesign;
+  return (
+    <>
+      {plan && <BeforeAfter scene={scene} plans={report.plans} plan={plan} rows={rows} hrefFor={hrefFor} />}
+      <CodeBasis rows={rows} planName={redesign.planName} />
+      {plan && <MoveSchedule schedule={redesign.schedule} planName={plan.name} />}
+      <MoneyAtStake rows={rows} schedule={redesign.schedule} planName={redesign.planName} />
+      <TimeSaved scan={scan} assessment={report.assessment} />
+      <ModelSection scene={scene} plan={plan} modelBase={modelBase} fileStem={slug(scan.name)} />
+    </>
+  );
+}
+
+/** The report an owner reads, prints and hands to an architect, the same wherever it opens. */
+export function ReportDocument({ report, showScope, toolbar, planId, pagePath, modelBase }: ReportDocumentProps) {
   const { scan, scene, scenario, assessment, rules } = report;
   const groups = groupFindings(assessment?.findings ?? []);
   const { toSend, beingChecked } = splitQuestions(groups.questions);
-  const checkedOn = new Date(assessment?.created_at ?? scan.created_at);
+  const redesign = redesignOf(report, planId);
+  const hrefFor = (id: string) => `${pagePath}?plan=${encodeURIComponent(id)}`;
 
   return (
-    <main className="mx-auto max-w-3xl px-5 py-10 print:max-w-none print:p-0">
-      <div className="mb-10 flex flex-wrap items-center justify-between gap-x-2 gap-y-3 print:hidden">{toolbar}</div>
+    <main className="mx-auto max-w-6xl px-5 py-10 print:max-w-none print:p-0">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-x-2 gap-y-3 print:hidden">{toolbar}</div>
       <Wordmark className="mb-6 hidden print:block" />
 
       <PreviewNotice preview={report.preview} />
-      <header className="grid items-end gap-6 sm:grid-cols-[1fr_9rem]">
-        <div>
-          <h1 className="heading-display text-4xl">{scan.name}</h1>
-          <FactList className="mt-4" facts={reportFacts(checkedOn, groups.problems.length, toSend.length, beingChecked.length)} />
-        </div>
-        {scene && <FloorPlan scene={scene} className="hidden aspect-square w-full sm:block" />}
-      </header>
-
-      <ProblemsSection problems={groups.problems} />
+      <ReportCover scan={scan} scene={scene} shown={redesign.shown} plan={redesign.plan} assessment={assessment} />
+      <ExecutiveSummary rows={redesign.rows} plan={redesign.plan} schedule={redesign.schedule} openQuestions={groups.questions.length} />
+      <Drawings report={report} redesign={redesign} hrefFor={hrefFor} modelBase={modelBase} />
+      <ProblemsSection rows={redesign.rows} />
       {showScope && <ScopedSection assessment={assessment} />}
       <NextStepsSection toSend={toSend} beingChecked={beingCheckedNames(beingChecked, rules)} />
       <WhatWeChecked scenario={scenario} passes={groups.passes} rules={rules} preview={report.preview} />
-      <WhatThisIsNot />
     </main>
   );
 }

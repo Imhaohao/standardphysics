@@ -10,7 +10,8 @@ from standardphysics_contracts import Report, ReviewedRule
 from . import repository as repo
 from .db import Database
 from .errors import ApiProblem
-from .stages import PREVIEW_REVIEWER
+from .plans import current_plans
+from .stages import PREVIEW_REVIEWER, Stages
 
 
 def reviewed_rules(ledger: VerificationLedger) -> list[ReviewedRule]:
@@ -27,7 +28,8 @@ def reviewed_rules(ledger: VerificationLedger) -> list[ReviewedRule]:
     return reviewed
 
 
-def build_report(database: Database, ledger: VerificationLedger, scan_id: uuid.UUID) -> Report:
+def build_report(database: Database, stages: Stages, scan_id: uuid.UUID) -> Report:
+    ledger = stages.ledger_factory()
     with database.connect() as connection:
         scan = repo.get_scan(connection, scan_id)
         if scan is None:
@@ -41,5 +43,6 @@ def build_report(database: Database, ledger: VerificationLedger, scan_id: uuid.U
         scenario=scenario,
         assessment=assessment,
         rules=reviewed_rules(ledger),
+        plans=current_plans(database, stages, scan_id, revision["revision"]) if revision else [],
         preview=any(entry.verified_by == PREVIEW_REVIEWER for entry in ledger.entries),
     )

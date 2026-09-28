@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { SceneGraph, SceneNode } from "@/types/contracts";
 
 type DrawnKind = "floor" | "wall" | "object";
@@ -43,21 +44,53 @@ export function planBounds(nodes: SceneNode[]): PlanBounds {
   return { minX, minY, width: maxX - minX, height: maxY - minY };
 }
 
-/** The shop from above, drawn from measured footprints. North is up. */
-export function FloorPlan({ scene, className = "" }: { scene: SceneGraph; className?: string }) {
+/** The drawing's own extent padded on every side, for a plan drawn alone. */
+export function paddedFrame(box: PlanBounds, share = 0.04): PlanBounds {
+  const pad = Math.max(box.width, box.height) * share;
+  return { minX: box.minX - pad, minY: box.minY - pad, width: box.width + 2 * pad, height: box.height + 2 * pad };
+}
+
+/** A scene point in the drawing's coordinates, where y grows downward. */
+export function toDrawing(x: number, y: number): [number, number] {
+  return [x, -y];
+}
+
+interface FloorPlanProps {
+  scene: SceneGraph;
+  className?: string;
+  /** The window onto the plan, so two layouts of one room line up at one scale. */
+  frame?: PlanBounds;
+  /** Pieces drawn in the accent, such as the ones a plan moves. */
+  emphasized?: ReadonlySet<string>;
+  /** What the drawing shows, for a reader who cannot see it. Left unset, the drawing is decoration. */
+  label?: string;
+  /** Marks drawn over the plan, in drawing coordinates from `toDrawing`. */
+  children?: ReactNode;
+}
+
+function nodeFill(node: SceneNode & { kind: DrawnKind }, emphasized: boolean, hatchId: string): string {
+  if (emphasized) return "var(--color-accent)";
+  const fill = STYLE[node.kind].fill;
+  return fill === "hatch" ? `url(#${hatchId})` : fill;
+}
+
+/** The shop from above, drawn from measured footprints, with the scan's own axes. */
+export function FloorPlan({ scene, className = "", frame, emphasized, label, children }: FloorPlanProps) {
   const drawn = drawnNodes(scene);
   if (drawn.length === 0) return null;
   const box = planBounds(drawn);
-  const pad = Math.max(box.width, box.height) * 0.04;
+  const view = frame ?? paddedFrame(box);
   const layered = [...drawn].sort((a, b) => DRAWN_KINDS.indexOf(a.kind) - DRAWN_KINDS.indexOf(b.kind));
   const hatchSpacing = Math.max(box.width, box.height) / 90;
   const hatchId = `floor-plan-hatch-${scene.scan_id}-${scene.revision}`;
 
   return (
     <svg
-      viewBox={`${box.minX - pad} ${-(box.minY + box.height) - pad} ${box.width + 2 * pad} ${box.height + 2 * pad}`}
+      viewBox={`${view.minX} ${-(view.minY + view.height)} ${view.width} ${view.height}`}
       className={className}
-      aria-hidden
+      role={label ? "img" : undefined}
+      aria-label={label}
+      aria-hidden={label ? undefined : true}
       data-floor-plan
     >
       <defs>
@@ -68,7 +101,7 @@ export function FloorPlan({ scene, className = "" }: { scene: SceneGraph; classN
       </defs>
       {layered.map((node) => {
         const { x, y, width, depth, degrees } = footprint(node);
-        const style = STYLE[node.kind];
+        const isEmphasized = emphasized?.has(node.id) ?? false;
         return (
           <rect
             key={node.id}
@@ -76,14 +109,15 @@ export function FloorPlan({ scene, className = "" }: { scene: SceneGraph; classN
             y={-depth / 2}
             width={width}
             height={depth}
-            fill={style.fill === "hatch" ? `url(#${hatchId})` : style.fill}
-            stroke={style.stroke}
-            strokeWidth={style.strokeWidth}
+            fill={nodeFill(node, isEmphasized, hatchId)}
+            stroke={isEmphasized ? "var(--color-accent)" : STYLE[node.kind].stroke}
+            strokeWidth={STYLE[node.kind].strokeWidth}
             vectorEffect="non-scaling-stroke"
             transform={`translate(${x.toFixed(4)} ${(-y).toFixed(4)}) rotate(${(-degrees).toFixed(3)})`}
           />
         );
       })}
+      {children}
     </svg>
   );
 }

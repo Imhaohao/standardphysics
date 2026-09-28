@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field, RootModel
 from .findings import Finding, Locus
 from .geometry import Vec3
 from .loop import Assessment, NodeMove, Proposal, RouterAction
+from .owner import LayoutPlan
 from .precedents import SpaceTypology
 from .rules import Check
 from .scan import Scan
@@ -168,6 +169,9 @@ class Report(BaseModel):
     scenario: Scenario | None
     assessment: Assessment | None
     rules: list[ReviewedRule]
+    plans: list[LayoutPlan]
+    """Layouts the owner planned on this revision, oldest first, each re-checked
+    against the current path so its findings compare with the assessment's."""
     preview: bool = False
     """Built from rules no person has reviewed, for development only."""
 

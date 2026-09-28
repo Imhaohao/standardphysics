@@ -22,6 +22,7 @@ from standardphysics_fixtures import build_lawsuit_graph
 
 from . import repository as repo
 from .accounts import token_digest
+from .architecture_export import stl_response
 from .db import Database
 from .errors import ApiProblem
 
@@ -105,6 +106,10 @@ def install_share_routes(
     @app.get("/api/shared/{token}/scene.glb")
     def shared_glb(token: str) -> Response:
         return glb_of(scan_behind(token))
+
+    @app.get("/api/shared/{token}/architecture.stl")
+    def shared_model(token: str, plan: uuid.UUID | None = None) -> Response:
+        return stl_response(database, scan_behind(token), plan)
 
     @app.get("/api/shared/{token}/renders/{finding_id}.png")
     def shared_render(token: str, finding_id: uuid.UUID) -> FileResponse:

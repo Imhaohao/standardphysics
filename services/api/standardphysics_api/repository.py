@@ -62,6 +62,7 @@ def _scan(connection: sqlite3.Connection, row: sqlite3.Row, with_photos: bool = 
         content_hash=row["content_hash"],
         space_typology=row["space_typology"],
         owner_wishes=_wishes_from(row["owner_wishes_json"]),
+        results_ready_at=row["results_told_at"],
     )
 
 

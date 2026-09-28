@@ -39,6 +39,33 @@ def plans_of(connection: sqlite3.Connection, scan_id: uuid.UUID) -> list[LayoutP
     return [_plan(row) for row in rows]
 
 
+def plan_of(connection: sqlite3.Connection, scan_id: uuid.UUID, plan_id: uuid.UUID) -> LayoutPlan:
+    row = connection.execute(
+        "SELECT * FROM layout_plans WHERE scan_id = ? AND id = ?", (str(scan_id), str(plan_id))
+    ).fetchone()
+    if row is None:
+        raise ApiProblem(404, "no such layout")
+    return _plan(row)
+
+
+def current_plans(database: Database, stages: Stages, scan_id: uuid.UUID, revision: int) -> list[LayoutPlan]:
+    """The plans drawn on this revision, each checked again against today's path.
+
+    A plan keeps the findings it was saved with, and the owner may have moved a
+    stop since. Checking again is what lets the report put a plan's findings
+    beside the assessment's. A plan drawn on an older revision describes a room
+    that has since changed, so it stays out.
+    """
+    with database.connect() as connection:
+        drawn = [plan for plan in plans_of(connection, scan_id) if plan.base_revision == revision]
+    return [
+        plan.model_copy(update={"findings": check_layout(database, stages, scan_id, LayoutCheckRequest(
+            base_revision=plan.base_revision, sequence=0, moves=plan.moves,
+        )).findings})
+        for plan in drawn
+    ]
+
+
 def save_plan(database: Database, stages: Stages, scan_id: uuid.UUID, body: SavePlanRequest) -> LayoutPlan:
     check = check_layout(database, stages, scan_id, LayoutCheckRequest(
         base_revision=body.base_revision, sequence=0, moves=body.moves,
