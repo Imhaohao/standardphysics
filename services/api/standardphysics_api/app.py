@@ -315,7 +315,7 @@ def _install_health_routes(app: FastAPI, database: Database, worker: Worker, com
 
 def answered_report(database: Database, stages: Stages, scan_id: uuid.UUID) -> Report:
     """The report with the owner's answers laid over its findings."""
-    built = build_report(database, stages.ledger_factory(), scan_id)
+    built = build_report(database, stages, scan_id)
     if built.assessment is None:
         return built
     with database.connect() as connection:

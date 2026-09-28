@@ -72,6 +72,12 @@ def _is_fixture(node: SceneNode) -> bool:
     return not node.movable and not bounds_the_room(node)
 
 
+def planned_graph(database: Database, scan_id: uuid.UUID, base_revision: int, moves: list[NodeMove]) -> SceneGraph:
+    """The room as a saved plan lays it out, the same candidate its findings were measured on."""
+    base, _, _ = _base(database, scan_id, base_revision)
+    return plan_candidate(base, moves, construction=True)[0]
+
+
 def check_layout(database: Database, stages: Stages, scan_id: uuid.UUID, body: LayoutCheckRequest) -> LayoutCheckResult:
     base, _, scenario = _base(database, scan_id, body.base_revision)
     candidate, blocked = plan_candidate(base, body.moves, construction=True)

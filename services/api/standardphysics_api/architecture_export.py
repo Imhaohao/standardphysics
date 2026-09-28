@@ -11,6 +11,8 @@ from __future__ import annotations
 import io
 import json
 import math
+import re
+import struct
 import uuid
 import zipfile
 from collections.abc import Iterable
@@ -33,6 +35,8 @@ from standardphysics_contracts import (
 from . import repository as repo
 from .db import Database
 from .errors import ApiProblem
+from .layout import planned_graph
+from .plans import plan_of
 
 _PORTALS = frozenset({"door", "window", "opening"})
 _DRAWING_SCALE_PX_PER_METER = 100.0
@@ -656,6 +660,78 @@ def build_architecture_zip(
     return output.getvalue()
 
 
+_MILLIMETRES_PER_METRE = 1000.0
+# Each box face as its four corners, wound counter-clockwise seen from outside.
+# A corner is numbered by its signs along x, y, z: bit 2 is +x, bit 1 +y, bit 0 +z.
+_BOX_FACES = (
+    (0, 1, 3, 2), (4, 6, 7, 5),
+    (0, 4, 5, 1), (2, 3, 7, 6),
+    (0, 2, 6, 4), (1, 5, 7, 3),
+)
+# A face spanning a dimension the scan measured as zero, such as a wall's
+# thickness, has no area. It is left out rather than given an invented depth.
+_FLAT = 1e-6
+
+
+def _face_normal(a, b, c) -> tuple[float, float, float]:
+    u = (b[0] - a[0], b[1] - a[1], b[2] - a[2])
+    v = (c[0] - a[0], c[1] - a[1], c[2] - a[2])
+    return (u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0])
+
+
+def _box_triangles(node: SceneNode):
+    corners = [tuple(axis * _MILLIMETRES_PER_METRE for axis in corner) for corner in _corners(node)]
+    for a, b, c, d in _BOX_FACES:
+        normal = _face_normal(corners[a], corners[b], corners[c])
+        length = math.sqrt(sum(axis * axis for axis in normal))
+        if length < _FLAT * _MILLIMETRES_PER_METRE ** 2:
+            continue
+        unit = tuple(axis / length for axis in normal)
+        yield unit, (corners[a], corners[b], corners[c])
+        yield unit, (corners[a], corners[c], corners[d])
+
+
+def architecture_stl(title: str, graph: SceneGraph) -> bytes:
+    """Every measured region as the box the scan measured, in millimetres with Z up.
+
+    Binary STL carries no units, so the header states them. Nothing is dropped
+    or added by what a region is called: a wall the scan saw as a sheet stays a
+    sheet, drawn from both sides.
+    """
+    triangles = [
+        triangle for node in sorted(graph.nodes, key=lambda n: str(n.id)) for triangle in _box_triangles(node)
+    ]
+    header = f"{title}, millimetres, Z up".encode("ascii", "replace")[-80:].ljust(80, b" ")
+    body = b"".join(
+        struct.pack("<12fH", *normal, *points[0], *points[1], *points[2], 0) for normal, points in triangles
+    )
+    return header + struct.pack("<I", len(triangles)) + body
+
+
+def _slug(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-") or "shop"
+
+
+def stl_response(database: Database, scan_id: uuid.UUID, plan_id: uuid.UUID | None) -> Response:
+    """The room as scanned, or as one of its saved plans lays it out."""
+    with database.connect() as connection:
+        scan = repo.get_scan(connection, scan_id)
+        if scan is None:
+            raise ApiProblem(404, "no scan")
+        plan = plan_of(connection, scan_id, plan_id) if plan_id else None
+        row = repo.get_revision(connection, scan_id, plan.base_revision if plan else None)
+    if row is None:
+        raise ApiProblem(404, "not ready")
+    graph = planned_graph(database, scan_id, plan.base_revision, plan.moves) if plan else repo.graph_of(row)
+    layout = plan.name if plan else f"as scanned r{graph.revision}"
+    filename = f"{_slug(scan.name)}-{_slug(plan.name) if plan else 'as-scanned'}-mm.stl"
+    return Response(
+        content=architecture_stl(f"{scan.name} {layout}", graph),
+        media_type="model/stl",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 def install_architecture_export_routes(app: FastAPI, database: Database) -> None:
     """Install the protected ZIP endpoint; scan ownership is enforced by auth middleware."""
     @app.get("/api/scans/{scan_id}/architecture.zip")
@@ -692,3 +768,7 @@ def install_architecture_export_routes(app: FastAPI, database: Database) -> None
             media_type="application/zip",
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
+
+    @app.get("/api/scans/{scan_id}/architecture.stl")
+    def download_model(scan_id: uuid.UUID, plan: uuid.UUID | None = None) -> Response:
+        return stl_response(database, scan_id, plan)

@@ -110,8 +110,8 @@ interface WhatWeCheckedProps {
 
 export function WhatWeChecked({ scenario, passes, rules, preview }: WhatWeCheckedProps) {
   return (
-    <section className="mt-12">
-      <h2 className="heading-display break-after-avoid text-2xl">What we checked</h2>
+    <section className="mt-16">
+      <h2 className="heading-display break-after-avoid text-3xl">What we checked</h2>
       <PathsMeasured scenario={scenario} />
       <WhatPasses passes={passes} />
       <RulesReviewed rules={rules} preview={preview} />

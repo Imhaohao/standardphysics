@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import struct
 import uuid
 import xml.etree.ElementTree as ET
 import zipfile
@@ -31,7 +32,7 @@ from standardphysics_contracts import (
 )
 
 from conftest import drain
-from standardphysics_api.architecture_export import build_architecture_zip
+from standardphysics_api.architecture_export import architecture_stl, build_architecture_zip
 
 
 def _node(identifier: str, kind: str, dimensions: tuple[float, float, float], transform: list[float], **extra):
@@ -483,3 +484,15 @@ def test_export_unboxes_clean_of_secrets_and_filesystem_paths(make_client):
                 text = zipped.read(name).decode("utf-8", errors="replace")
                 for fragment in forbidden:
                     assert fragment not in text, f"{name} leaked {fragment!r}"
+
+
+def test_stl_keeps_a_sheet_the_scan_measured_flat_instead_of_inventing_thickness():
+    graph = _rotated_plan()
+    body = architecture_stl("Measured shop", graph)
+    triangles = struct.unpack("<I", body[80:84])[0]
+    # Two walls and an opening measured with no depth are two-sided sheets of
+    # four triangles each; the table is a closed box of twelve.
+    assert triangles == 3 * 4 + 12
+    assert body[:80].rstrip().endswith(b"Measured shop, millimetres, Z up")
+    normals = [struct.unpack("<3f", body[84 + 50 * i: 96 + 50 * i]) for i in range(triangles)]
+    assert all(abs(sum(axis * axis for axis in normal) - 1) < 1e-5 for normal in normals)

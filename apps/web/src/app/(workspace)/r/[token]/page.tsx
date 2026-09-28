@@ -23,14 +23,19 @@ export async function generateMetadata({ params }: PageProps<"/r/[token]">): Pro
   return { ...PRIVATE_LINK, title };
 }
 
-export default async function SharedReportPage({ params }: PageProps<"/r/[token]">) {
-  const shared = await loadSharedReport((await params).token);
+export default async function SharedReportPage({ params, searchParams }: PageProps<"/r/[token]">) {
+  const { token } = await params;
+  const { plan } = await searchParams;
+  const shared = await loadSharedReport(token);
   if (shared.kind === "gone") return <SharedReportGone message={shared.message} />;
 
   return (
     <ReportDocument
       report={shared.report}
       showScope={false}
+      planId={typeof plan === "string" ? plan : undefined}
+      pagePath={`/r/${encodeURIComponent(token)}`}
+      modelBase={`/api/shared/${encodeURIComponent(token)}/architecture.stl`}
       toolbar={
         <>
           <Wordmark />

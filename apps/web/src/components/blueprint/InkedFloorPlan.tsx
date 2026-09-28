@@ -56,7 +56,14 @@ function draftPlan(brush: SchematicBrush, annotations: PlanAnnotations, toFrame:
   });
 }
 
-export function InkedFloorPlan({ scene, className = "" }: { scene: SceneGraph; className?: string }) {
+interface InkedFloorPlanProps {
+  scene: SceneGraph;
+  className?: string;
+  /** Pieces drawn in the accent, such as the ones a plan moves. */
+  emphasized?: ReadonlySet<string>;
+}
+
+export function InkedFloorPlan({ scene, className = "", emphasized }: InkedFloorPlanProps) {
   const frameRef = useRef<HTMLDivElement>(null);
   const paintRef = useRef<HTMLCanvasElement>(null);
   const liveRef = useRef<HTMLCanvasElement>(null);
@@ -118,7 +125,7 @@ export function InkedFloorPlan({ scene, className = "" }: { scene: SceneGraph; c
   return (
     <div ref={frameRef} className={`relative ${className}`}>
       <div className="absolute top-14 right-6 bottom-6 left-14 sm:right-64 sm:left-20">
-        <FloorPlan scene={scene} className="size-full" />
+        <FloorPlan scene={scene} emphasized={emphasized} className="size-full" />
       </div>
       <canvas ref={paintRef} aria-hidden className="pointer-events-none absolute inset-0 size-full" />
       <canvas ref={liveRef} aria-hidden className="pointer-events-none absolute inset-0 size-full" />

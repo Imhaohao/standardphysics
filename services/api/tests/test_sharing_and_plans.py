@@ -1,5 +1,6 @@
 """Report links, the example shop, planned layouts and paths for any business."""
 
+import struct
 from datetime import UTC, datetime, timedelta
 
 from standardphysics_contracts import to_meters
@@ -129,3 +130,79 @@ def test_the_path_is_drawn_the_way_a_customer_walks_it(make_client):
     legs = client.post(f"/api/scans/{scan_id}/scenario/legs", json=path).json()["legs"]
     assert [(leg["from_stop"], leg["to_stop"]) for leg in legs] == [("Entrance", "Counter"), ("Counter", "Seats"), ("Seats", "Exit")]
     assert all(leg["reachable"] and len(leg["path"]) > 2 for leg in legs)
+
+
+def _stl_extent_mm(body: bytes) -> tuple[int, list[float]]:
+    count = struct.unpack("<I", body[80:84])[0]
+    assert len(body) == 84 + 50 * count
+    xs = [struct.unpack("<3f", body[84 + 50 * i + 12 + 12 * corner: 84 + 50 * i + 24 + 12 * corner])[0]
+          for i in range(count) for corner in range(3)]
+    return count, [min(xs), max(xs)]
+
+
+def test_the_report_carries_each_plan_checked_against_the_path_as_it_is_now(make_client):
+    client, scan_id = _sample(make_client)
+    fix = _move(CASE_EAST, to_meters(FIX_SHIFT_INCHES))
+    plan = client.post(f"/api/scans/{scan_id}/plans", json={"base_revision": 0, "moves": [fix]}).json()
+    assert any("pickup" in f["title"].lower() for f in plan["findings"])
+    path = client.get(f"/api/scans/{scan_id}/scenario").json()
+    path["stops"] = [stop for stop in path["stops"] if stop["name"] != "Pickup"]
+    assert client.put(f"/api/scans/{scan_id}/scenario", json=path).status_code == 200
+    drain(client)
+
+    report = client.get(f"/api/scans/{scan_id}/report").json()
+
+    assert [p["id"] for p in report["plans"]] == [plan["id"]]
+    rechecked = report["plans"][0]["findings"]
+    assert not any("pickup" in f["title"].lower() for f in rechecked)
+    route = [f for f in rechecked if f["check_id"] == "route_clear_width" and f["measured_inches"]
+             and round(f["measured_inches"]) == 36]
+    assert route and route[0]["outcome"] == "passes"
+
+
+def test_the_room_downloads_as_millimetre_stl_as_scanned_and_as_planned(make_client):
+    client, scan_id = _sample(make_client)
+    scanned = client.get(f"/api/scans/{scan_id}/architecture.stl")
+    assert scanned.status_code == 200
+    assert scanned.headers["content-type"] == "model/stl"
+    assert scanned.headers["content-disposition"].endswith('as-scanned-mm.stl"')
+    count, (low, high) = _stl_extent_mm(scanned.content)
+    assert count > 0
+    assert 5900 < high - low < 6200
+
+    shift = to_meters(FIX_SHIFT_INCHES)
+    plan = client.post(f"/api/scans/{scan_id}/plans", json={"base_revision": 0, "moves": [_move(CASE_EAST, shift)]})
+    planned = client.get(f"/api/scans/{scan_id}/architecture.stl", params={"plan": plan.json()["id"]})
+    assert planned.status_code == 200
+    assert planned.headers["content-disposition"].endswith('layout-1-mm.stl"')
+    assert planned.content[84:] != scanned.content[84:]
+    assert _stl_extent_mm(planned.content)[0] == count
+
+
+def test_a_shared_link_downloads_the_model_but_not_another_shops_plan(make_client):
+    client, scan_id = _sample(make_client)
+    plan = client.post(f"/api/scans/{scan_id}/plans", json={"base_revision": 0, "moves": [_move(CASE_EAST, 0.1)]})
+    token = client.post(f"/api/scans/{scan_id}/shares").json()["path"].removeprefix("/r/")
+    with make_client(sign_in_as_owner=False) as contractor:
+        assert contractor.get(f"/api/shared/{token}/architecture.stl").status_code == 200
+        assert contractor.get(f"/api/shared/{token}/architecture.stl",
+                              params={"plan": plan.json()["id"]}).status_code == 200
+        assert contractor.get(f"/api/shared/{token}/architecture.stl",
+                              params={"plan": "00000000-0000-0000-0000-000000000001"}).status_code == 404
+        assert contractor.get(f"/api/scans/{scan_id}/architecture.stl").status_code in {401, 403, 404}
+
+
+def test_the_report_keeps_when_results_first_arrived_through_a_recheck(make_client):
+    client, scan_id = _sample(make_client)
+    first = client.get(f"/api/scans/{scan_id}/report").json()
+    ready = first["scan"]["results_ready_at"]
+    assert ready is not None
+    assert ready >= first["scan"]["created_at"]
+
+    path = client.get(f"/api/scans/{scan_id}/scenario").json()
+    path["stops"] = [stop for stop in path["stops"] if stop["name"] != "Pickup"]
+    client.put(f"/api/scans/{scan_id}/scenario", json=path)
+    drain(client)
+    again = client.get(f"/api/scans/{scan_id}/report").json()
+
+    assert again["scan"]["results_ready_at"] == ready

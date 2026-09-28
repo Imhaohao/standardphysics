@@ -14,6 +14,16 @@ export const facts = {
     source: "California Civil Code § 52(a) and § 55.56(f)",
     url: "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CIV&sectionNum=52",
   },
+  damagesCountedPerVisit: {
+    source: "California Civil Code § 55.56(f)",
+    url: "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CIV&sectionNum=55.56",
+  },
+  inspectionTurnaround: {
+    onSiteDays: 1,
+    reportBusinessDays: { fewest: 3, most: 5 },
+    source: "Proactive Access, a California Certified Access Specialist firm, CASp inspection services",
+    url: "https://www.proactiveaccess.com/casp-inspection",
+  },
   casesWithMoneyPercent: {
     value: 96,
     caseReports: 3611,

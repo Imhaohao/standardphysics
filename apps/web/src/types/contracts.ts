@@ -1547,6 +1547,7 @@ export interface ReplayChapter {
  */
 export interface Report {
   assessment: Assessment | null;
+  plans: LayoutPlan[];
   preview: boolean;
   rules: ReviewedRule[];
   scan: Scan;
@@ -1579,6 +1580,7 @@ export interface Scan {
   id: string;
   name: string;
   owner_wishes: OwnerWish[];
+  results_ready_at: string | null;
   space_typology: SpaceTypology | null;
   state: "uploading" | "measuring" | "checking" | "ready" | "failed";
 }

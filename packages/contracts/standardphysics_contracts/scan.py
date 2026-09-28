@@ -124,3 +124,5 @@ class Scan(BaseModel):
     """What kind of space this is, as the owner said. None until they say; no ADA layout directive applies without it."""
     owner_wishes: list[OwnerWish] = []
     """What the owner asked to keep; every proposal is held to these."""
+    results_ready_at: datetime | None = None
+    """When checked results were first ready. Set once; a later re-check does not move it."""
