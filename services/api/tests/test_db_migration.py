@@ -195,18 +195,21 @@ def _column_names(path: pathlib.Path, table: str) -> set[str]:
 
 
 def _shape(path: pathlib.Path) -> dict[str, object]:
-    """Every table's columns and every index, ignoring the order columns were added in."""
+    """Every table's columns and every index, ignoring the order columns were added in and how the SQL was spaced."""
     tables = [
         name
         for (name,) in _read(path, "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
         if name != "schema_migrations"
     ]
     columns = {table: sorted(row[1:] for row in _read(path, f"PRAGMA table_info({table})")) for table in tables}
-    indexes = _read(
-        path,
-        "SELECT name, tbl_name, sql FROM sqlite_master "
-        "WHERE type = 'index' AND tbl_name != 'schema_migrations' ORDER BY name",
-    )
+    indexes = [
+        (name, table, " ".join(sql.split()) if sql else sql)
+        for name, table, sql in _read(
+            path,
+            "SELECT name, tbl_name, sql FROM sqlite_master "
+            "WHERE type = 'index' AND tbl_name != 'schema_migrations' ORDER BY name",
+        )
+    ]
     return {"columns": columns, "indexes": indexes}
 
 
@@ -315,6 +318,71 @@ def test_an_older_database_runs_only_the_migrations_it_is_missing(tmp_path):
     assert {"add_scans_owner_id", "add_jobs_input_hash", "create_evidence_bundles", "add_owners_team"} <= ran
     assert [version for version, _, _ in _recorded(path)] == _every_version()
     assert _read(path, "SELECT name FROM scans") == [("legacy scan",)]
+
+
+UNIFIED_ERA_SCHEMA = """
+CREATE TABLE rearrangements (
+    scan_id TEXT NOT NULL REFERENCES scans(id),
+    revision INTEGER NOT NULL,
+    phase TEXT NOT NULL DEFAULT 'waiting',
+    phase_reason TEXT,
+    result_json TEXT,
+    PRIMARY KEY (scan_id, revision)
+);
+CREATE TABLE rearrangement_teacher_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    suggestion_id TEXT NOT NULL,
+    scan_id TEXT NOT NULL REFERENCES scans(id),
+    revision INTEGER NOT NULL,
+    kind TEXT NOT NULL,
+    payload_json TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX one_rearrangement_outcome
+    ON rearrangement_teacher_events(suggestion_id) WHERE kind IN ('saved', 'put_back');
+CREATE TABLE rearrange_deployments (
+    name TEXT PRIMARY KEY,
+    may_run INTEGER NOT NULL DEFAULT 0,
+    scale_down_after REAL
+);
+CREATE TABLE beta_waitlist (
+    email TEXT PRIMARY KEY,
+    role TEXT NOT NULL CHECK (role IN ('student', 'shop_owner')),
+    created_at TEXT NOT NULL
+);
+ALTER TABLE assessments ADD COLUMN checks_version TEXT;
+"""
+"""What a database the unified branch opened before these tables had migrations already holds."""
+
+UNIFIED_ERA_MIGRATIONS = {
+    "create_rearrangements",
+    "add_rearrangements_phase_reason",
+    "create_rearrangement_teacher_events",
+    "create_rearrange_deployments",
+    "create_beta_waitlist",
+    "add_assessments_checks_version",
+}
+
+
+def test_a_unified_era_database_detects_its_rearranger_and_waitlist_tables(tmp_path):
+    from previous_release_db import open_as_previous_release
+
+    from standardphysics_api.db import Database
+
+    path = tmp_path / "standardphysics.sqlite3"
+    fresh = tmp_path / "fresh.sqlite3"
+    open_as_previous_release(path)
+    connection = sqlite3.connect(path)
+    connection.executescript(UNIFIED_ERA_SCHEMA)
+    connection.close()
+
+    Database(path)
+    Database(fresh)
+
+    detected = {name for _, name, was_detected in _recorded(path) if was_detected}
+    assert UNIFIED_ERA_MIGRATIONS <= detected
+    assert [version for version, _, _ in _recorded(path)] == _every_version()
+    assert _shape(path) == _shape(fresh)
 
 
 def test_opening_twice_changes_nothing_the_second_time(tmp_path):
