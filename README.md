@@ -4,58 +4,112 @@
 [![Web and contracts](https://github.com/Imhaohao/standardphysics/actions/workflows/web.yml/badge.svg)](https://github.com/Imhaohao/standardphysics/actions/workflows/web.yml)
 [![iOS app](https://github.com/Imhaohao/standardphysics/actions/workflows/ios.yml/badge.svg)](https://github.com/Imhaohao/standardphysics/actions/workflows/ios.yml)
 
-A shop owner walks their store with an iPhone. Standard Physics turns the LiDAR scan into a measured 3D model, checks every aisle, doorway and counter against the ADA standards, and shows each problem on the model with the measurement and the rule it breaks. When the fix is moving furniture, it proposes a layout that works with what the shop already owns.
+Standard Physics turns an iPhone LiDAR walk into a room model, checks measured features against selected accessibility rules, and shows where the evidence is incomplete. It can suggest furniture moves and re-check a proposed layout. It is an accessibility screening and planning tool; it does not certify a building or establish that a site complies with the ADA.
 
-| | |
+The product is live at [standardphysics.app](https://standardphysics.app), with an iPhone app on TestFlight. The screenshots below show the shipped sample shop, not a customer capture.
+
+| Room model and checks | Findings report |
 |---|---|
-| Live app | [standardphysics.app](https://standardphysics.app), with the iPhone app on TestFlight |
-| W&B Weave traces | [imhaohao-university-of-california-berkeley/physics](https://wandb.ai/imhaohao-university-of-california-berkeley/physics/weave) |
-| Production | One DigitalOcean droplet (2 vCPU, 4 GB) running the compose stack in [`deploy/digitalocean`](deploy/digitalocean) |
+| ![3D sample-shop model in the Standard Physics workspace, with findings and layout controls beside it](apps/web/public/deck/app-model.jpg) | ![Sample-shop findings report with measured values and cited ADA sections](apps/web/public/deck/app-report.jpg) |
+
+The model view keeps measured geometry selectable while the side panel lists findings and review questions. The report connects a measured value to a cited section and a proposed next step. The sample shop makes these screens reproducible without publishing private field imagery.
+
+## How the product grew
+
+The project began as a hackathon-scale traced loop: scan a room, measure it, check the constraints, propose a change, then check the result again. [`tools/loopforge`](tools/loopforge) preserves the small agent-loop starter. The early plan called for an iPhone LiDAR capture, a Blender-backed scene pipeline, and a reviewable result by the end of the weekend ([original build plan](docs/PLAN.md)).
+
+That first loop exposed the important split in the product. Room dimensions must come from geometry, while a model can help interpret a request or rank a layout proposal. The system therefore keeps the measurement pipeline, cited checks, and model proposal path separate. Proposals are measured again under the same hard constraints before they can be accepted.
+
+### Rendering and 3D reconstruction
+
+The first room representation was a scene graph of measured walls, openings, and furniture. Blender became the bridge from that graph to a model a person could inspect: it exports the 3D scene and renders each finding from a useful viewpoint. The web workspace now lets a reviewer move between the model, findings, a floor view, and furniture planning.
+
+The public sample-shop fixture includes downloadable [GLB](packages/fixtures/standardphysics_fixtures/data/shop.glb) and [USDZ](packages/fixtures/standardphysics_fixtures/data/shop.usdz) models. They let a reviewer inspect demo geometry without access to private captures.
+
+The reconstruction work grew beyond the demo shop. A Moffitt Library capture was assembled from four regions into a published revision with 284 nodes; its reconstruction report records 164 display reconstructions and checks on the saved graph ([report](runs/moffett/a102-aligned-proposal/report.json)). This establishes that a larger multi-region capture can pass through reconstruction and publication. It is not an independent measurement study.
+
+We also tested photo-supported surface rendering on held-out Moffitt views. A completed candidate was rejected: mean masked SSIM was 0.025 versus 0.329 for the Brush control, with a 5.42 dB versus 11.90 dB mean masked PSNR. The renderer checkpoint records failed quality gates ([experiment record](runs/moffett/render-efficiency/r003/checkpoint.json)). The experiment matters because it prevents a visually plausible render from being called an improvement without passing a held-out comparison. The current product keeps the measured room model useful while this photo-mesh path remains experimental.
+
+![Live marimo notebook sweeping aisle, counter, and doorway dimensions through the same evaluation checks](apps/web/public/deck/scenario-sweep-notebook.png)
+
+The [marimo notebook](notebooks/scenario_sweep.py) makes the checks inspectable. Sliders change a shop's aisle, counter, door, and seating; the same evaluator used by the service recalculates findings and draws the settings where outcomes change. A second section reviews real RoomPlan captures with their confidence and unanswered questions visible. Those captures are not scored for accuracy because they do not have independent hand-measured labels ([notebook notes](docs/marimo.md)).
+
+### Post-training experiments
+
+We tried supervised fine-tuning (SFT) followed by reinforcement learning (RL) for furniture rearrangement. The comparison below uses the same 65 held-out layout variants and four attempts per checkpoint. Each checkpoint therefore has 260 attempts. Hard-rule pass rate counts proposals that obey the geometric constraints; gate acceptance asks whether a proposal meets the stricter acceptance gate; complete-clear rate counts attempts that cleared every fixable finding.
+
+![Grouped bars compare hard-rule pass, gate acceptance, and per-attempt complete-clear rates for the base, run 1 RL, run 2 SFT, and run 2 RL checkpoints](apps/web/public/deck/post-training-outcomes.svg)
+
+Training raised the hard-rule pass rate from 42.3% for the base model to 69.2% for run 1 RL, then to 71.9% for run 2 SFT. Gate acceptance peaked at 31.5% in run 1 RL and fell to 29.2% after run 2 SFT and 28.1% after run 2 RL. The share of attempts clearing every fixable finding also fell across those trained checkpoints. Better constraint-following did not produce more accepted or fully clear layouts in these runs ([aggregated run notes](runs/finetune/synthetic/STATUS.txt)).
+
+Solver capacity is a separate measurement from model training. A bounded search found an accepted fix for 36 of 65 held-out variants and fully cleared all fixable findings for 27 of 65. The other 29 are unresolved under that search budget; this is a lower bound, not proof that no possible layout exists. These solver results do not show a fine-tuned model improved.
+
+### Field testing
+
+We have run the capture and assessment workflow on actual spaces, including Share Tea, Moffitt Library, and several smaller rooms captured on iPhone. These runs test whether the pipeline can ingest and represent real rooms. They do not establish broad ADA accuracy or independent physical measurement accuracy.
+
+| Physical space | Evidence in the current product record | What it establishes |
+|---|---|---|
+| Share Tea | One unique shop capture with an assessment and saved layout proposals. The reviewed assessments still contain open questions. | A real shop can be captured, assessed, and used for layout review. The questions remain unresolved evidence requests; a saved proposal is not proof that furniture moved or that the shop passed. |
+| Moffitt Library | Four capture regions were reconstructed into one 284-node published model revision. | Multi-region reconstruction and publication work on a real library capture. The assessment currently carries an “Order a drink” scenario label, so its route findings are not valid library-specific test results yet. |
+| Smaller phone scans | Several additional real room captures have been processed through the same import, model, and review steps. | The workflow has been exercised beyond the sample shop. These captures lack a matched set of independent control measurements and are not a statistical accuracy benchmark. |
+
+We have not established an independently tape-measured field accuracy result or a whole-site ADA pass. A LiDAR estimate, a model-rendered dimension, an accepted software proposal, and a physically verified change are different kinds of evidence. The product keeps missing views and uncertain checks open as questions instead of counting them as passes.
+
+## The product today
+
+The owner can capture a room with the iPhone app, upload its scan, review a 3D workspace and cited findings, answer or defer evidence questions, and explore a furniture layout. The web product is live, scan processing runs on the production service, and job state and scene revisions persist across worker restarts. The live app is at [standardphysics.app](https://standardphysics.app); W&B traces and evaluation runs are available in the [project](https://wandb.ai/imhaohao-university-of-california-berkeley/physics/weave).
+
+The product still has important limits. The current rule set is partial, photo reconstruction is experimental, a textured scan takes about ten minutes per walk on the production droplet, and a real field accuracy study with independent controls remains to be done. Screenshots show the sample shop because private field captures are not included in this public README.
 
 ## How it's built
 
 ```mermaid
 flowchart LR
-  phone["iPhone app<br/>apps/ios"] -- "resumable upload<br/>checksummed artifacts" --> api
-  web["Web workspace<br/>apps/web (Next.js)"] -- "/api" --> api
-  subgraph server["API process (services/api)"]
+  phone["iPhone capture app<br/>apps/ios"] -- "resumable, checksummed upload" --> api
+  web["Web workspace<br/>apps/web"] -- "/api" --> api
+  subgraph server["API and worker (services/api)"]
     api["FastAPI routes<br/>auth, uploads, reports"] --> db[("SQLite WAL<br/>scans, jobs, revisions")]
     worker["Job worker<br/>process, assess, display, texture"] --> db
-    api --> store[("Artifact store<br/>on a block volume")]
+    api --> store["Artifact store"]
     worker --> store
   end
-  worker --> pipeline["Geometry and textures<br/>packages/pipeline, Blender"]
-  worker --> agents["Checks and reasoning<br/>packages/agents"]
-  agents -- "traces and evaluations" --> weave["W&B Weave"]
+  worker --> pipeline["Geometry and render pipeline<br/>packages/pipeline, Blender"]
+  worker --> agents["Rules, layout proposals, evaluation<br/>packages/agents"]
+  agents -- "traces and evaluation runs" --> weave["W&B Weave"]
 ```
 
-An upload lands in the artifact store and queues a `process` job. The worker turns the RoomPlan export and the LiDAR mesh into a scene graph, `assess` runs the ADA checks over it, `display` renders the picture beside each finding, and `texture` paints the scan from the photos. The scene graph is versioned: an owner's edit, a rebuild or a re-run of discovery saves a new revision on top of the one it started from, so nothing overwrites what came before.
+An upload queues a `process` job. The worker builds a scene graph from the RoomPlan export and LiDAR mesh, runs the selected assessments, renders each locatable finding, and can bake surface textures from photos. Edits and re-assessments create new graph revisions rather than overwriting the starting scene.
 
-| Path | What it is | Test functions |
-|---|---|---|
-| [`packages/contracts`](packages/contracts) | Pydantic models every other part shares, and the TypeScript generated from them | 14 |
-| [`packages/pipeline`](packages/pipeline) | Scan ingest, measurement, object discovery, texture baking | 281 |
-| [`packages/agents`](packages/agents) | The ADA checks, the layout fixer, the evaluation suite, Weave tracing | 155 |
-| [`services/api`](services/api) | FastAPI service: accounts, uploads, the job queue and worker | 332 |
-| [`apps/web`](apps/web) | Next.js workspace and the owner's report | 45 files |
-| [`apps/ios`](apps/ios) | SwiftUI capture app with resumable uploads | 117 |
-| [`deploy/digitalocean`](deploy/digitalocean) | Production compose stack: Caddy, API, web | |
-| [`tests`](tests), [`scripts`](scripts) | Cross-package regressions, the layering check, deploy and backup scripts | 299 |
-| [`tools/loopforge`](tools/loopforge) | The traced agent-loop starter the project began from, kept as a standalone CLI | 2 |
+| Path | Responsibility |
+|---|---|
+| [`packages/contracts`](packages/contracts) | Shared Pydantic models and generated TypeScript contracts |
+| [`packages/pipeline`](packages/pipeline) | Scan ingest, measured geometry, object discovery, exports, and textures |
+| [`packages/agents`](packages/agents) | Cited rule checks, constrained layout proposals, evaluation, and Weave tracing |
+| [`services/api`](services/api) | Accounts, resumable uploads, durable jobs, and worker |
+| [`apps/web`](apps/web) | Model workspace and findings report |
+| [`apps/ios`](apps/ios) | Room capture and resumable uploads |
+| [`deploy/digitalocean`](deploy/digitalocean) | Production compose stack |
 
-Dependencies point one way: `contracts` at the bottom, `pipeline` and `agents` above it, `services/api` above those, and the two apps talk to the API over HTTP only. [`tests/test_layering.py`](tests/test_layering.py) fails the build if a package imports upward or imports a sibling its `pyproject.toml` does not declare.
+Dependencies point one way: contracts are shared below the pipeline and agents, the API sits above them, and the apps talk to the API over HTTP. [`tests/test_layering.py`](tests/test_layering.py) checks those boundaries.
+
+## Evaluation
+
+The regular held-out rule-check suite contains 39 labelled cases built from the sample shop and synthetic variants that change walls, fixtures, and doors. In the latest recorded evaluation, the measured pipeline with fixes on scored 0.986 finding precision, 0.924 recall, 1.000 fix-resolves-finding, and 0.0008 in mean measurement error. Replacing measured geometry with simplified stand-in boxes reduced precision to 0.384 while recall stayed at 0.924. This is a synthetic geometry benchmark; it does not measure accuracy on field scans. Per-case runs are in the [W&B Evals tab](https://wandb.ai/imhaohao-university-of-california-berkeley/physics/weave/evaluations).
+
+Model proposals and rule-check results answer different questions, so the README reports them separately. The training chart above is based on held-out layout variants; the 39-case suite evaluates the measured pipeline and checks. Neither is a physical-site certification.
 
 ## Running it
 
 You need Python 3.11+ and Node 20.9+.
 
 ```bash
-./start.sh                          # installs into .venv and apps/web, runs the API on :8787 and the web on :3000
-SP_SEED_SAMPLE_SHOP=1 ./start.sh    # same, with a sample shop and a demo account printed to the log
-docker compose up --build           # the production image, API and web as two containers
+./start.sh                          # installs into .venv and apps/web, runs API on :8787 and web on :3000
+SP_SEED_SAMPLE_SHOP=1 ./start.sh    # also seeds a sample shop and prints a demo account to the log
+docker compose up --build           # production image, API, and web containers
 ```
 
-The checks CI runs:
+The main checks are:
 
 ```bash
 .venv/bin/python -m ruff check .
@@ -63,49 +117,16 @@ The checks CI runs:
 cd apps/web && npm run lint && npm run typecheck && npm run test
 ```
 
-## Evaluation
+## Production operations
 
-The held-out suite is 39 labelled cases: the sample shop as shipped, and variants that move its walls, fixtures and doors so that the right answer changes. `standardphysics-agents weave-eval` scores each configuration of the system against them as a Weave Evaluation, and the [Evals tab](https://wandb.ai/imhaohao-university-of-california-berkeley/physics/weave/evaluations) holds every run with its per-case table. The latest run:
+The production stack runs on one DigitalOcean droplet with 2 vCPU and 4 GB of memory. SQLite WAL transactions make job claims atomic; jobs left running at restart are re-queued, bounded retries settle transient failures, and per-job deadlines stop hung work. Uploads are resumable, checksummed, and written atomically. Scan ownership is checked on each route, sign-in attempts are throttled, and backups have a verified restore path. See the [deployment runbook](docs/DEPLOY.md).
 
-| Configuration | Finding precision | Finding recall | Fix resolves finding | Mean measurement error |
-|---|---|---|---|---|
-| Measured pipeline, fixes on | 0.986 | 0.924 | 1.000 | 0.0008 in |
-| Simplified stand-in measurements | 0.384 | 0.924 | 0.800 | 8.57 in |
-| Measured pipeline, fixes off | 0.986 | 0.924 | not scored | 0.0008 in |
-
-The stand-in row is the control. Swapping the measured geometry for merged boxes keeps recall but loses most of the precision, so nearly all of the score comes from measuring the room correctly.
-
-These cases are synthetic variants of one modelled shop, generated so that the correct answer is known exactly. They test that the checks and the fixer reason correctly about geometry. They do not measure accuracy on real scans.
-
-## Production readiness
-
-**Jobs survive crashes.** The queue lives in SQLite with WAL and `BEGIN IMMEDIATE` transactions, and a job is claimed atomically ([`repository.py`](services/api/standardphysics_api/repository.py)). At startup every job left running is queued again, except a simulation, which is marked failed so a restart never spends a second budget of paid model calls; its owner starts a new run. An exclusive lock beside the database keeps a second process from running the same jobs ([`worker_lock.py`](services/api/standardphysics_api/worker_lock.py)). A claimed job always ends settled or back in the queue, whatever fails after the claim. Every kind of job has a deadline, errors that clear on their own are retried a bounded number of times, and a photo bake that runs past its limit is killed ([`worker.py`](services/api/standardphysics_api/worker.py)). The failure-injection tests are in [`test_worker_resilience.py`](services/api/tests/test_worker_resilience.py) and [`test_job_lifecycle.py`](services/api/tests/test_job_lifecycle.py).
-
-**Uploads are resumable and verified.** The phone keeps its upload progress on disk ([`ResumableUploadStore.swift`](apps/ios/StandardPhysics/Upload/ResumableUploadStore.swift)), every artifact carries a SHA-256 the server checks, files are written atomically, and a repeated upload is idempotent ([`store.py`](services/api/standardphysics_api/store.py)).
-
-**Inputs are bounded.** Each scan has a cap on artifact count and total bytes, each account on scans and stored bytes, and the queue on waiting jobs. New uploads are refused with a 507 before the data volume runs out of space, and every upload's size is checked before it is read. A `room.usdz` is opened from disk and refused if it expands too far or holds too many entries ([`usdz_validation.py`](services/api/standardphysics_api/usdz_validation.py)).
-
-**Sign-in is throttled before any password work.** Each server process allows 10 sign-in attempts per email and 30 per client address in five minutes, 10 sign-ups per address an hour and 20 guest accounts per address an hour ([`attempt_limiter.py`](services/api/standardphysics_api/attempt_limiter.py)). An unknown email costs the same single scrypt call as a wrong password, so timing does not reveal which accounts exist.
-
-**Access is explicit.** Passwords use scrypt and session tokens are stored hashed ([`accounts.py`](services/api/standardphysics_api/accounts.py)). Every scan route checks ownership, and team tools require a granted role that nobody gets by signing up ([`team.py`](services/api/standardphysics_api/team.py)).
-
-**Health means working.** `/health` reads the database and fails if a worker loop has died, and stays green through a legitimate long bake. `/health/ready` reports a stalled loop or an overdue job as degraded. `/health/details` adds the deployed commit, each loop's heartbeat, the age of the oldest queued job and whether traces are reaching Weave. The compose stacks gate on these healthchecks, and in the one-container role the workspace waits for the API before it serves anyone.
-
-**Releases can be rolled back and data can be restored.** Every image is tagged with the commit it was built from, so rolling back is a checkout and a restart with no rebuild. [`deploy.sh`](scripts/deploy.sh) refuses to deploy over running jobs. [`backup.sh`](deploy/digitalocean/backup.sh) snapshots the database through SQLite's online backup and the artifacts as incremental rsync snapshots, and [`restore.sh`](deploy/digitalocean/restore.sh) checks a restored copy's integrity. The procedures are in [`docs/DEPLOY.md`](docs/DEPLOY.md). The containers carry memory and CPU limits sized for the 4 GB droplet.
-
-**Every change is checked.** Every push runs ruff, mypy on the contracts and the API service, and every Python suite; the web app's lint, types, tests and a check that the generated TypeScript contracts match the Python ones; a build of the production image followed by a smoke test that signs up and signs in through it; and, for iOS changes, the app's build and tests on a simulator. Python dependencies are pinned in [`requirements.lock`](requirements.lock), which CI, the image and `start.sh` all install. Ruff enforces a cyclomatic complexity ceiling in Python, and ESLint does the same in TypeScript.
-
-**The reasoning is traced.** The checks and the model calls behind them are traced to W&B Weave when `WANDB_API_KEY` and `WANDB_PROJECT` are set ([`tracing.py`](packages/agents/standardphysics_agents/tracing.py)), and the held-out evaluation runs as a Weave Evaluation ([`weave_eval.py`](packages/agents/standardphysics_agents/evaluation/weave_eval.py)).
-
-## Known limitations
-
-- The API is one process with one SQLite database by design. Scaling out means moving the queue to Postgres, which the repository layer isolates but nobody has done yet.
-- A texture bake takes about ten minutes per walk on the production droplet, so a new scan shows its measured boxes first and its painted scan when the bake finishes.
-- Floor that the phone's LiDAR never reached is patched flat and shown in a plain colour, because no photo can be trusted to show it.
+Every CI push runs Python lint and tests, API and contracts type checks, web lint/types/tests, and a production-image smoke test. The reasoning and model calls can be traced to W&B Weave when the deployment has its project credentials configured.
 
 ## More
 
-- [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md): running each part, the phone build, deploying, and the development lanes
-- [`docs/DEPLOY.md`](docs/DEPLOY.md): the production runbook
-- [`docs/MISSION.md`](docs/MISSION.md) and [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): what the reasoning layer is for and how it is designed
-- [`docs/UX.md`](docs/UX.md): the owner's experience, screen by screen
+- [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md): local development and phone build
+- [`docs/DEPLOY.md`](docs/DEPLOY.md): production deployment, backup, and restore
+- [`docs/MISSION.md`](docs/MISSION.md) and [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): product requirements and system design
+- [`docs/UX.md`](docs/UX.md): owner experience
+- [`docs/marimo.md`](docs/marimo.md): interactive notebook and capture review
