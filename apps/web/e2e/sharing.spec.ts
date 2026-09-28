@@ -12,7 +12,9 @@ async function makeShareLink(owner: Page): Promise<string> {
 async function stopEveryLink(owner: Page) {
   await owner.getByRole("button", { name: "Stop every link to this report" }).click();
   await owner.getByRole("button", { name: "Stop every link", exact: true }).click();
-  await expect(owner.getByRole("status").filter({ hasText: "Every link to this report has stopped working." })).toBeVisible();
+  await expect(owner.getByRole("region", { name: "Share your report" }).getByRole("status")).toHaveText(
+    "Every link to this report has stopped working.",
+  );
 }
 
 async function expectReadOnlyReport(reader: Page) {

@@ -250,7 +250,7 @@ def _reattached(node: SceneNode, as_it_was: SceneNode | None) -> SceneNode:
 def _parent_kept_if_present(node: SceneNode, graph: SceneGraph) -> SceneNode:
     if node.parent_id is None or any(other.id == node.parent_id for other in graph.nodes):
         return node
-    return _detached_from(node, node.parent_id)
+    return node.model_copy(update={"parent_id": None, "relation": None})
 
 
 def _revised(base: SceneGraph, base_revision: int, nodes: list[SceneNode]) -> SceneGraph:
