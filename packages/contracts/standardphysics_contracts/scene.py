@@ -263,27 +263,30 @@ SHEET_THICKNESS = 0.05
 SHEET_AREA = 1.0
 """And how broad, in square metres, so that a shelf board is not a wall."""
 
+WALL_FRAGMENT_HEIGHT = 2.5
+"""A full-height wall segment may be too narrow to meet the sheet area threshold."""
+
 
 def bounds_the_room(node: SceneNode) -> bool:
     """Whether the region encloses the space rather than standing in it.
 
     A room is made of sheets and filled with solids. A wall, a floor, a ceiling,
-    a door and a window are all broad and almost without thickness; a chair, a
-    table and a bookcase are none of them thin. The difference is in the extents
-    themselves, so it holds in a room with a four metre void over it as well as
-    one with an ordinary ceiling, where asking whether a region covers most of
-    the floor-to-ceiling span does not.
+    a door and a window are almost without thickness; a chair, a table and a
+    bookcase are not. Most sheets have broad area. A narrow fragment of a wall
+    can still enclose the room when it reaches full height. These differences
+    come from the extents, not the scanner's category label.
 
     It needs only the region, so anywhere that used to ask what kind of thing it
     was holding can ask this instead, whether or not it has the whole room.
 
-    Where it is wrong: a rug and a wall poster are broad and thin and are not the
-    room, so this reads them as part of it. Nothing in the scans on hand has one,
-    so it has not been worth a second rule yet, and a scan that turns one up will
-    show as a thing that cannot be counted or moved.
+    Where it is wrong: a broad rug or a tall poster can be thin without bounding
+    the room. A scan that turns one up may read it as a sheet until other
+    evidence distinguishes it.
     """
     spans = sorted(node.dimensions.as_tuple())
-    return spans[0] <= SHEET_THICKNESS and spans[1] * spans[2] >= SHEET_AREA
+    if spans[0] > SHEET_THICKNESS:
+        return False
+    return spans[1] * spans[2] >= SHEET_AREA or _upright_extent(node) >= WALL_FRAGMENT_HEIGHT
 
 
 def measured_as(node: SceneNode) -> Vec3:
