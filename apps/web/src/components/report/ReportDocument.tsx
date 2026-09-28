@@ -106,6 +106,18 @@ function NextStepsSection({ toSend, beingChecked }: { toSend: Finding[]; beingCh
   );
 }
 
+function Disclaimer() {
+  return (
+    <footer className="mt-16 break-inside-avoid border-t border-rule pt-6">
+      <p className="max-w-prose text-sm text-ink-muted">
+        Standard Physics measures what the scan could see and compares it against the 2010 ADA Standards. This report
+        is not an inspection and not legal advice. Only a Certified Access Specialist can inspect the shop in person,
+        and only their report carries legal weight.
+      </p>
+    </footer>
+  );
+}
+
 function PreviewNotice({ preview }: { preview: boolean }) {
   if (!preview) return null;
   return (
@@ -203,6 +215,7 @@ export function ReportDocument({ report, showScope, toolbar, planId, pagePath, m
       {showScope && <ScopedSection assessment={assessment} />}
       <NextStepsSection toSend={toSend} beingChecked={beingCheckedNames(beingChecked, rules)} />
       <WhatWeChecked scenario={scenario} passes={groups.passes} rules={rules} preview={report.preview} />
+      <Disclaimer />
     </main>
   );
 }
