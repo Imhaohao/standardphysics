@@ -1,4 +1,5 @@
 import { HourglassMedium } from "@phosphor-icons/react/dist/ssr";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { OutcomeMatrix } from "@/components/workspace/OutcomeMatrix";
 import { formatInches, groupFindings } from "@/lib/findings";
@@ -108,12 +109,17 @@ function NextStepsSection({ toSend, beingChecked }: { toSend: Finding[]; beingCh
 
 function Disclaimer() {
   return (
-    <footer className="mt-16 break-inside-avoid border-t border-rule pt-6">
-      <p className="max-w-prose text-sm text-ink-muted">
+    <footer className="mt-16 break-inside-avoid border-t border-rule pt-6 text-sm text-ink-muted">
+      <p className="max-w-prose">
         Standard Physics measures what the scan could see and compares it against the 2010 ADA Standards. This report
         is not an inspection and not legal advice. Only a Certified Access Specialist can inspect the shop in person,
         and only their report carries legal weight.
       </p>
+      <nav aria-label="Terms and privacy" className="mt-4 flex flex-wrap gap-x-6 gap-y-2">
+        <Link href="/terms" className="underline decoration-rule underline-offset-2 hover:text-ink">Terms of use</Link>
+        <Link href="/privacy" className="underline decoration-rule underline-offset-2 hover:text-ink">Privacy policy</Link>
+      </nav>
+      <p className="mt-2 hidden print:block">standardphysics.app/terms and standardphysics.app/privacy</p>
     </footer>
   );
 }
