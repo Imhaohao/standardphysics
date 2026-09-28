@@ -26,9 +26,12 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
               Walk your shop with an iPhone. We measure every aisle, doorway and counter against the accessibility rules
               that apply to it, and show you what to move when something is too tight.
             </p>
-            <p className="text-sm text-ink-muted">
+            <p className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-ink-muted">
               <Link href="/privacy" className="underline decoration-rule underline-offset-2">
                 What a scan of your shop contains, and how to delete it
+              </Link>
+              <Link href="/terms" className="underline decoration-rule underline-offset-2">
+                Terms of use
               </Link>
             </p>
             <Link href="/waitlist" className="w-fit bg-ink px-5 py-3 text-base font-medium text-paper transition-colors hover:bg-ink/85">

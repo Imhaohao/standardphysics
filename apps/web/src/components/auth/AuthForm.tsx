@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
@@ -13,6 +14,16 @@ const COPY: Record<Mode, { choose: string; submit: string; working: string }> = 
   "sign-in": { choose: "I have an account", submit: "Sign in", working: "Signing you in" },
   "sign-up": { choose: "I'm new here", submit: "Create the account", working: "Creating your account" },
 };
+
+function AgreementNote() {
+  return (
+    <p className="text-sm text-ink-muted">
+      Creating an account means you agree to the{" "}
+      <Link href="/terms" className="underline decoration-rule underline-offset-2">terms of use</Link> and the{" "}
+      <Link href="/privacy" className="underline decoration-rule underline-offset-2">privacy policy</Link>.
+    </p>
+  );
+}
 
 async function submitCredentials(mode: Mode, form: FormData): Promise<string | null> {
   const body =
@@ -108,6 +119,7 @@ export function AuthForm({ initialMode }: { initialMode: Mode }) {
         <Button type="submit" variant="primary" squared disabled={working} className="justify-center">
           {working ? COPY[mode].working : COPY[mode].submit}
         </Button>
+        {mode === "sign-up" && <AgreementNote />}
       </form>
     </div>
   );
