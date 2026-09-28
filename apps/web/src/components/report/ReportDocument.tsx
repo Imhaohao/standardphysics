@@ -55,7 +55,7 @@ function ProblemsSection({ rows }: { rows: ClauseRow[] }) {
   if (failing.length === 0) return null;
   return (
     <section className="mt-16 print:mt-0 print:break-before-page">
-      <h2 className="heading-display text-3xl">Each failing spot, as scanned</h2>
+      <h2 className="heading-display text-3xl">What to fix</h2>
       <div className="mt-4">
         {failing.map((row) => (
           <ProblemBlock key={row.number} finding={row.before!} number={row.number} />
