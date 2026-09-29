@@ -26,11 +26,15 @@ async function refusal(response: Response) {
   return new ApiRefusal(response.status, `${String(detail.error ?? "")}${fields}`);
 }
 
-async function sendJson<T>(url: string, body: unknown, method = "POST"): Promise<T> {
+/** A layout check that has not answered by now has stalled, and the screen says so instead of waiting forever. */
+export const LAYOUT_CHECK_DEADLINE_MS = 120_000;
+
+async function sendJson<T>(url: string, body: unknown, method = "POST", deadlineMs?: number): Promise<T> {
   const response = await fetch(url, {
     method,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    signal: deadlineMs === undefined ? undefined : AbortSignal.timeout(deadlineMs),
   });
   if (!response.ok) throw await refusal(response);
   return (await response.json()) as T;
@@ -59,7 +63,7 @@ export function checkLayout(scanId: string, baseRevision: number, sequence: numb
     base_revision: baseRevision,
     sequence,
     moves,
-  });
+  }, "POST", LAYOUT_CHECK_DEADLINE_MS);
 }
 
 export function saveLayout(scanId: string, baseRevision: number, moves: NodeMove[], suggestionId?: string) {
