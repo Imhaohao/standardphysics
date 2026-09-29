@@ -3,7 +3,7 @@ import { keepChoices, withoutWish, withWishes } from "./owner-wishes";
 import type { OwnerWish, ProposalResult, SceneGraph } from "@/types/contracts";
 
 const scene = { nodes: [{ id: "chair", label: "Chair" }, { id: "table", label: "Cafe table" }] } as unknown as SceneGraph;
-const nearTable: OwnerWish = { kind: "stays_near", node_id: "chair", anchor_id: "table", inches: 30, text: "Keep the chair at the cafe table" };
+const nearTable: OwnerWish = { kind: "stays_near", node_id: "chair", anchor_id: "table", at: null, inches: 30, text: "Keep the chair at the cafe table" };
 const move = { node_id: "chair", delta_translation: { x: 0.5, y: 0, z: 0 }, delta_rotation_z_degrees: 0 };
 
 function result(bent: ProposalResult["explanation"]): ProposalResult {

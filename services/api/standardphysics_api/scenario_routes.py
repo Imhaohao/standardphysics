@@ -14,6 +14,7 @@ from standardphysics_contracts import (
     Scan,
     Scenario,
     SpaceTypologyRequest,
+    TurnDownRequest,
 )
 
 from . import repository as repo
@@ -23,6 +24,7 @@ from .errors import ApiProblem
 from .route import confirm, legs, suggestion
 from .scan_routes import scan_or_404
 from .stages import Stages
+from .turn_downs import turn_down
 from .worker import Worker
 
 PLACES = {*DESTINATIONS, "pickup"}
@@ -55,6 +57,11 @@ def install_scenario_routes(app: FastAPI, database: Database, stages: Stages, wo
             scan_or_404(connection, scan_id)
             repo.set_owner_wishes(connection, scan_id, body.wishes)
             return scan_or_404(connection, scan_id)
+
+    @app.post("/api/scans/{scan_id}/turn-downs", response_model=Scan)
+    def turn_down_placements(scan_id: uuid.UUID, body: TurnDownRequest) -> Scan:
+        """Pieces the owner doesn't want where a suggestion put them; no later suggestion puts them there again."""
+        return turn_down(database, scan_id, body)
 
     @app.put("/api/scans/{scan_id}/space-type", response_model=Scan)
     def set_space_type(scan_id: uuid.UUID, body: SpaceTypologyRequest) -> Scan:

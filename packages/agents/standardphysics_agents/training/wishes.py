@@ -12,7 +12,8 @@ its table, a piece that stands against a wall stays against one, and the view
 from the counter stays clear. The relations are the ones `quality.py` already
 scores, turned into yes-or-no checks with a stated tolerance.
 
-Stated wishes come from the owner (`stays_put`, `stays_near`). They are hard:
+Stated wishes come from the owner (`stays_put`, `stays_near`, and `not_there`
+for a spot they turned down). They are hard:
 an option that breaks one is never offered. Inferred wishes are soft, because
 they are a guess about what the owner meant.
 """
@@ -40,7 +41,7 @@ from .quality import (
     wall_segments,
 )
 
-WishKind = Literal["with_table", "against_wall", "clear_view", "stays_put", "stays_near"]
+WishKind = Literal["with_table", "against_wall", "clear_view", "stays_put", "stays_near", "not_there"]
 
 TABLE_STRETCH_METERS = to_meters(12.0)
 """A seat that ends up a foot further from (or closer to) its table has left it."""
@@ -61,7 +62,9 @@ class Wish:
     text: str
     source: Literal["inferred", "stated"] = "inferred"
     meters: float = 0.0
-    """How near `stays_near` keeps its subject to its anchor."""
+    """How near `stays_near` keeps its subject to its anchor, or how far `not_there` keeps it from `spot`."""
+    spot: tuple[float, float] | None = None
+    """For `not_there`, the floor spot the owner turned down, in the scan's coordinates."""
 
     @property
     def hard(self) -> bool:
@@ -117,6 +120,11 @@ def stays_near(node: SceneNode, anchor: SceneNode, meters: float) -> Wish:
                 source="stated", meters=meters)
 
 
+def not_there(node: SceneNode, spot: tuple[float, float], meters: float) -> Wish:
+    return Wish("not_there", (node.id,), f"{_name(node)} stays out of the spot the owner turned down",
+                source="stated", meters=meters, spot=spot)
+
+
 @dataclass(frozen=True)
 class _Rooms:
     """The layout a wish was read from, and the one being judged."""
@@ -168,8 +176,15 @@ def _stays_near(wish: Wish, rooms: _Rooms) -> bool:
     return node is None or anchor is None or math.dist(_xy(node), _xy(anchor)) <= wish.meters
 
 
+def _not_there(wish: Wish, rooms: _Rooms) -> bool:
+    """Kept while the piece stays where the reference had it, or ends up clear of the turned-down spot."""
+    assert wish.spot is not None
+    now = rooms.node(rooms.after, wish.subjects[0])
+    return now is None or _stays_put(wish, rooms) or math.dist(_xy(now), wish.spot) > wish.meters
+
+
 KEPT = {"with_table": _with_table, "against_wall": _against_wall, "clear_view": _clear_view,
-        "stays_put": _stays_put, "stays_near": _stays_near}
+        "stays_put": _stays_put, "stays_near": _stays_near, "not_there": _not_there}
 
 
 def kept(wish: Wish, reference: SceneGraph, after: SceneGraph, measure: MeasurementProvider) -> bool:

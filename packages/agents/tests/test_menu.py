@@ -149,6 +149,24 @@ def test_each_turn_is_stateless_and_carries_the_last_result(room, checker, menu)
     assert {problem["label"] for problem in content["problems"]} == set(menu.problems.values())
 
 
+def test_no_option_puts_a_piece_back_in_a_spot_the_owner_turned_down(room, checker, menu):
+    from standardphysics_agents.training.owner import WishBook
+    from standardphysics_agents.training.wishes import not_there
+
+    graph = room[0]
+    turned_down = next(option for option in menu.options if option.edits.moves)
+    move = turned_down.edits.moves[0]
+    piece = graph.by_id(move.node_id)
+    spot = (piece.transform.position.x + move.dx, piece.transform.position.y + move.dy)
+    book = WishBook()
+    book.add(not_there(piece, spot, 18 * 0.0254), graph)
+    rebuilt = build_menu(graph, checker, stated=book)
+    for option in rebuilt.options:
+        placed = apply_edits(graph, option.edits).by_id(piece.id).transform.position
+        assert placed == piece.transform.position or math.dist((placed.x, placed.y), spot) > 18 * 0.0254
+    assert turned_down.wording not in {option.wording for option in rebuilt.options}
+
+
 def test_no_option_moves_a_piece_the_owner_said_to_keep_where_it_is(room, checker, menu):
     from standardphysics_agents.training.owner import WishBook
     from standardphysics_agents.training.wishes import stays_put

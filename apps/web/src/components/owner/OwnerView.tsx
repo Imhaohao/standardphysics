@@ -17,6 +17,7 @@ import { OwnerModel } from "./OwnerModel";
 import { PathStep } from "./PathStep";
 import { PlanPanel } from "./PlanPanel";
 import { PlanReview } from "./PlanReview";
+import { TurnDownPieces } from "./TurnDownPieces";
 import { RequestList } from "./RequestList";
 import { ResultsPanel, type ResultsSection, type Row } from "./ResultsPanel";
 import { SavePrompt } from "./SavePrompt";
@@ -303,6 +304,12 @@ function OwnerShop(props: ShopProps) {
     arrangement.setActiveId(null);
     proposed.show(moves, proposedIds);
   };
+  /** Pieces the owner turned down go back where they were, and stop being outlined as the suggestion's. */
+  const turnedDown = (nodeIds: string[]) => {
+    const gone = new Set(nodeIds);
+    showFixedLayout(Object.values(arrangement.moves).filter((move) => !gone.has(move.node_id)),
+      [...proposed.ids].filter((id) => !gone.has(id)));
+  };
   const openFixedLayout = (moves: NodeMove[], proposedIds: string[]) => {
     tools.setTool("plan");
     setSelected(null);
@@ -342,7 +349,14 @@ function OwnerShop(props: ShopProps) {
       <PlanPanel arrangement={arrangement} scanned={scanned} fixedNote={trial.fixedNote}
         pieceName={pieceLabel(scene, arrangement.activeId) ?? tryPiece?.label ?? null}
         builtIn={isBuiltIn(scene, arrangement.activeId)}
-        review={<PlanReview review={review} scene={scene} finding={planFinding} onRelook={showProposal} onPreview={arrangement.setActiveId} />}
+        review={(
+          <>
+            <PlanReview review={review} scene={scene} finding={planFinding} onRelook={showProposal} onPreview={arrangement.setActiveId} />
+            <TurnDownPieces review={review} scene={scene} revision={scene.revision} moves={Object.values(arrangement.moves)}
+              proposed={proposed.ids} model={modelLabel ?? ""} showSaved={!planFinding} onTurnedDown={turnedDown}
+              onPreview={arrangement.setActiveId} />
+          </>
+        )}
         fixPlan={fixPlanCard(modelLabel, { scanId: scan.id, revision: scene.revision, onOpen: showFixedLayout, plan: Object.values(arrangement.moves) })}
         onReset={putEverythingBack} onDone={leavePlan} />
     ),

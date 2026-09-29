@@ -21,10 +21,10 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 
-from standardphysics_contracts import MeasurementProvider, OwnerWish, SceneGraph
+from standardphysics_contracts import MeasurementProvider, OwnerWish, SceneGraph, SceneNode
 
 from ..fix import CandidateRejection
-from .wishes import Wish, infer_wishes, kept, stays_near, stays_put
+from .wishes import Wish, infer_wishes, kept, not_there, stays_near, stays_put
 
 INCH = 0.0254
 
@@ -169,15 +169,28 @@ def _node(graph: SceneGraph, node_id):
     return next((node for node in graph.nodes if node.id == node_id), None)
 
 
-def _as_wish(saved: OwnerWish, graph: SceneGraph) -> Wish | None:
-    node = _node(graph, saved.node_id)
-    if node is None:
-        return None
-    if saved.kind == "stays_put":
-        return stays_put(node)
+def _kept_where_it_is(saved: OwnerWish, node: SceneNode, _graph: SceneGraph) -> Wish:
+    return stays_put(node)
+
+
+def _kept_near(saved: OwnerWish, node: SceneNode, graph: SceneGraph) -> Wish | None:
     assert saved.inches is not None
     anchor = _node(graph, saved.anchor_id)
     return None if anchor is None else stays_near(node, anchor, saved.inches * INCH)
+
+
+def _kept_out_of(saved: OwnerWish, node: SceneNode, _graph: SceneGraph) -> Wish:
+    assert saved.at is not None and saved.inches is not None
+    return not_there(node, (saved.at.x, saved.at.y), saved.inches * INCH)
+
+
+FROM_SAVED: dict[str, Callable[[OwnerWish, SceneNode, SceneGraph], Wish | None]] = {
+    "stays_put": _kept_where_it_is, "stays_near": _kept_near, "not_there": _kept_out_of}
+
+
+def _as_wish(saved: OwnerWish, graph: SceneGraph) -> Wish | None:
+    node = _node(graph, saved.node_id)
+    return None if node is None else FROM_SAVED[saved.kind](saved, node, graph)
 
 
 def stated_book(graph: SceneGraph, saved: list[OwnerWish]) -> WishBook:

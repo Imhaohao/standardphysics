@@ -107,3 +107,26 @@ def test_a_bent_wish_offers_the_saved_wish_that_would_keep_it(room, measure):
         assert saved is not None and saved.text.startswith("Keep the ")
         kept_again = stated_book(room, [saved]).wishes[0]
         assert kept_again.hard and kept(kept_again, room, room, measure)
+
+
+def test_a_turned_down_spot_keeps_the_piece_out_of_it_but_lets_it_go_elsewhere(room, measure):
+    from standardphysics_agents.training.owner import stated_book
+    from standardphysics_contracts import OwnerWish
+
+    chair = next(node for node in room.nodes if node.label == "Chair")
+    here = chair.transform.position
+    spot = Vec3(x=here.x + 0.5, y=here.y, z=here.z)
+    book = stated_book(room, [OwnerWish(kind="not_there", node_id=chair.id, at=spot, inches=18)])
+    veto = book.rejection(measure)
+    assert veto(room, room) is None, "a piece left where it stands keeps the wish"
+    assert veto(room, _slide(room, chair.id, 0.5)).startswith("owner_wish:")
+    assert veto(room, _slide(room, chair.id, 0.3)).startswith("owner_wish:"), "12 in off the spot is still there"
+    assert veto(room, _slide(room, chair.id, -0.5)) is None, "the other way is somewhere new"
+
+
+def test_a_not_there_wish_needs_a_spot_and_a_distance():
+    from pydantic import ValidationError
+    from standardphysics_contracts import OwnerWish
+
+    with pytest.raises(ValidationError):
+        OwnerWish(kind="not_there", node_id="00000000-0000-0000-0000-000000000009", inches=18)

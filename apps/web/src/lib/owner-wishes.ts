@@ -2,13 +2,15 @@ import type { OwnerWish, ProposalResult, SceneGraph } from "@/types/contracts";
 
 export type KeepChoice = { key: string; wish: OwnerWish; label: string; bent: boolean };
 
+/** Two turned-down spots for one piece are two wishes, so the spot is part of the key. */
 export function wishKey(wish: OwnerWish): string {
-  return `${wish.kind}:${wish.node_id}:${wish.anchor_id ?? ""}`;
+  const spot = wish.at ? `${wish.at.x.toFixed(2)},${wish.at.y.toFixed(2)}` : "";
+  return `${wish.kind}:${wish.node_id}:${wish.anchor_id ?? ""}:${spot}`;
 }
 
 function stayPut(scene: SceneGraph, nodeId: string): OwnerWish {
   const label = scene.nodes.find((node) => node.id === nodeId)?.label.toLowerCase() ?? "piece";
-  return { kind: "stays_put", node_id: nodeId, anchor_id: null, inches: null, text: `Keep the ${label} where it is` };
+  return { kind: "stays_put", node_id: nodeId, anchor_id: null, at: null, inches: null, text: `Keep the ${label} where it is` };
 }
 
 /** Twin labels numbered "(1 of 2)", so two choices about two display cases never read the same. */

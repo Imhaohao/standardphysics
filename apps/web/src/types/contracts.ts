@@ -370,8 +370,9 @@ export interface BentWish {
  */
 export interface OwnerWish {
   anchor_id: string | null;
+  at: Vec3 | null;
   inches: number | null;
-  kind: "stays_put" | "stays_near";
+  kind: "stays_put" | "stays_near" | "not_there";
   node_id: string;
   text: string;
 }
@@ -2050,6 +2051,29 @@ export interface TextureStatus {
   scan_id: string;
   stale_node_ids: string[];
   state: "needs_photos" | "waiting_for_photos" | "not_started" | "queued" | "running" | "complete" | "failed";
+}
+/**
+ * Pieces the owner doesn't want where a suggestion put them.
+ *
+ * Each becomes a `not_there` wish every later proposal and loop is held to,
+ * and the whole suggestion is kept as a training record of what was turned down.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "TurnDownRequest".
+ */
+export interface TurnDownRequest {
+  base_revision: number;
+  model: string;
+  source: "fix_room" | "proposal";
+  /**
+   * @maxItems 128
+   */
+  suggestion: NodeMove[];
+  /**
+   * @minItems 1
+   * @maxItems 64
+   */
+  turned_down: [NodeMove, ...NodeMove[]];
 }
 /**
  * The bottleneck of a route leg, and where it is.

@@ -170,7 +170,7 @@ from .textures import (
     TextureState,
     TextureStatus,
 )
-from .wishes import BentWish, OwnerWish, OwnerWishesRequest, ProposalExplanation
+from .wishes import BentWish, OwnerWish, OwnerWishesRequest, ProposalExplanation, TurnDownRequest
 
 __all__ = [
     "Asks",
@@ -310,6 +310,7 @@ __all__ = [
     "ModelLoopInfo",
     "ModelLoopRequest",
     "OwnerWishesRequest",
+    "TurnDownRequest",
     "BentWish",
     "ProposalExplanation",
     "ScanState",

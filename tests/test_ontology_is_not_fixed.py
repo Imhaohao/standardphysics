@@ -24,7 +24,7 @@ ONTOLOGY_LITERAL = re.compile(
     r'^(?:NodeKind|Relation|QueryKind|Dimension|LabelSource)\s*(?::\s*\w+\s*)?=\s*Literal\[', re.M
 )
 
-BRANCHES_BASELINE = 47
+BRANCHES_BASELINE = 45
 """Places that ask what kind of thing something is. Target: nothing above the
 interpretation layer asks, because a name is for showing a person.
 
@@ -102,6 +102,12 @@ reads_as_wall, and roles.is_seating keeps reading the label and scan category
 alone; the two left ask whether a node is a piece of furniture:
 pipeline/ingest.py sleeping_places (a bed is an object) and layout_repair.py
 (only objects are carried along).
+
+Audit 2026-09-29, feat/menu-free-response: 47 fell to 45. Saved owner wishes
+now become wishes through a table keyed by kind (training/owner.py FROM_SAVED)
+and the contract names the fields each kind needs (contracts/wishes.py NEEDS),
+so neither asks which kind a wish is. The new `not_there` wish is told apart
+by the spot it carries, not by its kind.
 """
 
 LITERALS_BASELINE = 0

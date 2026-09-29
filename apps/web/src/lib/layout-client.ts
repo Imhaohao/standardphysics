@@ -12,6 +12,7 @@ import type {
   Scan,
   Scenario,
   SceneGraph,
+  TurnDownRequest,
 } from "@/types/contracts";
 
 export class ApiRefusal extends Error {
@@ -92,6 +93,11 @@ export function proposeFix(scanId: string, baseRevision: number, findingIds: str
 /** Saves everything the owner wants kept in this shop; every later proposal is held to it. */
 export function saveOwnerWishes(scanId: string, wishes: OwnerWish[]) {
   return sendJson<Scan>(`/api/scans/${scanId}/owner-wishes`, { wishes }, "PUT");
+}
+
+/** Pieces the owner doesn't want where a suggestion put them: no later suggestion puts them there again. */
+export function turnDownPlacements(scanId: string, request: TurnDownRequest) {
+  return sendJson<Scan>(`/api/scans/${scanId}/turn-downs`, request);
 }
 
 /** Runs the loop and hands over each event as the server sends it; resolves when the stream closes. */

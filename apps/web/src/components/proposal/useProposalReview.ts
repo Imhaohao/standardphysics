@@ -2,8 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { proposeFix, saveOwnerWishes } from "@/lib/layout-client";
-import type { OwnerWish, ProposalResult } from "@/types/contracts";
+import { proposeFix, saveOwnerWishes, turnDownPlacements } from "@/lib/layout-client";
+import type { OwnerWish, ProposalResult, TurnDownRequest } from "@/types/contracts";
 
 /** One finding's proposal and the owner's saved wishes: ask for a layout, and keep things before asking again. */
 export function useProposalReview(scanId: string, revision: number, saved: OwnerWish[]) {
@@ -44,7 +44,15 @@ export function useProposalReview(scanId: string, revision: number, saved: Owner
       then?.(found);
     });
 
-  return { wishes, result, looking: state === "looking", failed: state === "failed", propose, keep, clear: () => setResult(null) };
+  /** Saves each turned-down piece as a spot to keep it out of, then hands over, so the plan can put it back. */
+  const turnDown = (request: TurnDownRequest, then: () => void) =>
+    run(async () => {
+      setWishes((await turnDownPlacements(scanId, request)).owner_wishes);
+      router.refresh();
+      then();
+    });
+
+  return { wishes, result, looking: state === "looking", failed: state === "failed", propose, keep, turnDown, clear: () => setResult(null) };
 }
 
 export type ProposalReviewState = ReturnType<typeof useProposalReview>;
