@@ -197,6 +197,47 @@ class TestStrictSystemOneClient:
                 },
             )
 
+    @staticmethod
+    def _five_option_choice(top: float) -> tuple[SystemOneClient, dict]:
+        options = ["a", "b", "c", "d", "e"]
+        probabilities = dict(zip(options, [top, 0.03, 0.01, 0.01, 0.01]))
+        body = json.dumps(
+            {
+                "model": "jev-1.13.0",
+                "answers": {
+                    "q": {
+                        "type": "choice",
+                        "choice": "a",
+                        "probabilities": probabilities,
+                        "confidence": 0.9,
+                    }
+                },
+                "usage": {"input_tokens": 1, "output_tokens": 1},
+            }
+        ).encode()
+        client = SystemOneClient(
+            api_key="key",
+            base_url="https://typesafe.example",
+            transport=ScriptedTransport(body),
+        )
+        question = ChoiceQuestion(
+            instructions="Pick", criteria=dict.fromkeys(options)
+        )
+        return client, {"q": question}
+
+    def test_two_decimal_probabilities_that_round_short_of_one_are_accepted(self):
+        client, questions = self._five_option_choice(top=0.93)
+        result = client.evaluate("state", questions)
+        assert result.answers["q"].choice == "a"
+        assert sum(result.answers["q"].probabilities.values()) == pytest.approx(0.99)
+
+    def test_a_distribution_beyond_rounding_error_still_fails_closed(self):
+        client, questions = self._five_option_choice(top=0.84)
+        with pytest.raises(
+            SystemOneError, match="response_probabilities_do_not_sum_to_one"
+        ):
+            client.evaluate("state", questions)
+
     def test_an_inconsistent_weighted_score_fails_closed(self):
         body = json.dumps(
             {

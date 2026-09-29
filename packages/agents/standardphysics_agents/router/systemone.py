@@ -31,6 +31,7 @@ from .typesafe import (
 
 PROBABILITY_SUM_TOLERANCE = 1e-4
 PROVIDER_DECIMAL_PRECISION = 2
+PROVIDER_ROUNDING_ERROR = 0.5 * 10 ** (-PROVIDER_DECIMAL_PRECISION)
 
 
 class ChoiceQuestion(BaseModel):
@@ -248,8 +249,7 @@ def _validate_score(answer: ScoreAnswer, question: ScoreQuestion) -> None:
     # decimals independently. A score is computed before the probabilities are
     # rounded, so reconstructing it from the displayed distribution can differ
     # by the combined rounding error of every weighted level.
-    rounding_unit = 0.5 * 10 ** (-PROVIDER_DECIMAL_PRECISION)
-    rounding_tolerance = rounding_unit * (
+    rounding_tolerance = PROVIDER_ROUNDING_ERROR * (
         1 + sum(range(len(question.criteria)))
     )
     if not math.isclose(
@@ -263,11 +263,13 @@ def _validate_distribution(probabilities: dict[str, float], expected: set[str]) 
         raise SystemOneError("response_probability_keys_mismatch")
     if any(not math.isfinite(value) or not 0.0 <= value <= 1.0 for value in probabilities.values()):
         raise SystemOneError("response_probability_invalid")
+    # Each probability is rounded independently, so the displayed sum can
+    # drift from 1.0 by up to half a rounding unit per value.
+    sum_tolerance = max(
+        PROBABILITY_SUM_TOLERANCE, len(expected) * PROVIDER_ROUNDING_ERROR
+    )
     if not math.isclose(
-        sum(probabilities.values()),
-        1.0,
-        rel_tol=0.0,
-        abs_tol=PROBABILITY_SUM_TOLERANCE,
+        sum(probabilities.values()), 1.0, rel_tol=0.0, abs_tol=sum_tolerance
     ):
         raise SystemOneError("response_probabilities_do_not_sum_to_one")
 
