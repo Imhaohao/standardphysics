@@ -60,6 +60,11 @@ def _shortfall(finding: Finding) -> float:
     return abs(finding.required_inches - finding.measured_inches)
 
 
+def improved(before: Finding, after: Finding) -> bool:
+    """Whether one problem got measurably closer to passing: its shortfall shrank by more than the noise."""
+    return _shortfall(after) <= _shortfall(before) - MIN_MEANINGFUL_SHORTFALL_INCHES
+
+
 def total_shortfall(result: Pass) -> float:
     """How many inches of change it would take to clear everything."""
     return sum(_shortfall(finding) for finding in result.problems)

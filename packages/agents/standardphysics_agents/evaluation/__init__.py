@@ -26,7 +26,7 @@ from .experiments import (
     save_experiments,
     target,
 )
-from .gate import GateResult, accepts, answered_checks, total_shortfall
+from .gate import GateResult, accepts, answered_checks, improved, total_shortfall
 from .runner import (
     FIX_CANDIDATE_LIMIT,
     EvaluationResult,
@@ -65,5 +65,6 @@ __all__ = [
     "run_knobs",
     "run_experiment", "run_grid", "save", "save_accessibility_sweep",
     "save_experiments", "scorer", "setup", "summary", "sweep_knob", "target",
+    "improved",
     "total_shortfall",
 ]

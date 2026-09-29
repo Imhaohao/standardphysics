@@ -34,13 +34,13 @@ import uuid
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field, replace
 
-from standardphysics_agents.evaluation.gate import accepts
+from standardphysics_agents.evaluation.gate import accepts, improved
 from standardphysics_agents.fix import carried_along
 from standardphysics_agents.fix.budget import deadline_in
 from standardphysics_agents.redesign import FurnitureMove
 from standardphysics_agents.training.checker import TrainingChecker
 from standardphysics_agents.training.edits import TrainingEdits, apply_edits, has_construction, node_moves, parse_edits
-from standardphysics_agents.training.menu import Menu, MenuLimits, build_menu, menu_messages, resolve
+from standardphysics_agents.training.menu import Menu, MenuLimits, Resolution, build_menu, menu_messages, resolve
 from standardphysics_agents.training.owner import WishBook, stated_book
 from standardphysics_contracts import (
     Finding,
@@ -132,6 +132,8 @@ class ModelLoop:
     """Per problem, the turns of menu picks it has stayed open through."""
     given_up: set[uuid.UUID] = field(default_factory=set)
     """Problems the model's own moves could not help either; nothing more is offered for them."""
+    open_at_menu: dict[uuid.UUID, Finding] = field(default_factory=dict)
+    """The open problems as measured when the last menu was built, to tell a miss from progress."""
 
     def __post_init__(self) -> None:
         self.current = self.start
@@ -154,6 +156,7 @@ class ModelLoop:
         if not open_problems:
             self.stop = "Every problem a move or a contractor can fix is fixed."
             return None
+        self.open_at_menu = {problem.id: problem for problem in open_problems}
         trying = [problem for problem in open_problems if problem.id not in self.given_up]
         if not trying:
             self.stop = GAVE_UP
@@ -191,9 +194,11 @@ class ModelLoop:
         self.built_ins |= {move.node_id for move in edits.fixture_moves}
         return ""
 
-    def _after_turn(self, menu: Menu, own_idea: bool, refused: str, still_open: set[uuid.UUID]) -> None:
+    def _after_turn(self, menu: Menu, resolution: Resolution, refused: str,
+                    still_open: dict[uuid.UUID, Finding]) -> None:
         """Gives up on what the model's own moves could not help, stops on a menu turn that changed nothing,
-        and counts a miss for every problem a menu turn left open."""
+        and counts a miss for each problem a turn aimed at that ended no closer to passing."""
+        own_idea = resolution.interface == "free_moves"
         if refused:
             asked_for = {problem_id for problem_id, label in menu.problems.items() if label in menu.no_option_clears}
             if (own_idea or not menu.options) and asked_for:
@@ -203,8 +208,10 @@ class ModelLoop:
             return
         if menu.tried_twice:
             return
-        for problem_id in menu.problems:
-            if problem_id in still_open:
+        aimed = _aimed_at(menu, resolution)
+        for problem_id, label in menu.problems.items():
+            before, after = self.open_at_menu.get(problem_id), still_open.get(problem_id)
+            if label in aimed and before is not None and after is not None and not improved(before, after):
                 self.misses[problem_id] = self.misses.get(problem_id, 0) + 1
 
     def take(self, turn: int, reply: str) -> ModelLoopEvent:
@@ -215,7 +222,7 @@ class ModelLoop:
         own_idea = resolution.interface == "free_moves"
         refused = self._apply(edits, own_idea, menu)
         open_problems = self.open_problems()
-        self._after_turn(menu, own_idea, refused, {problem.id for problem in open_problems})
+        self._after_turn(menu, resolution, refused, {problem.id: problem for problem in open_problems})
         self.last = {**resolution.as_dict(), "fixable_left": len(open_problems), "kept": not refused}
         picked = [menu.picked_in_owner_words(number) for number in resolution.applied]
         if own_idea and edits is not None and not refused:
@@ -225,6 +232,13 @@ class ModelLoop:
         return ModelLoopEvent(kind="turn", turn=turn, picked=picked, construction=construction,
                               why=menu.in_owner_words(resolution.why),
                               fixable_left=len(open_problems), working_on=_titles(open_problems))
+
+
+def _aimed_at(menu: Menu, resolution: Resolution) -> set[str]:
+    """The problem labels a turn tried: its picks' targets, or, for the model's own moves, those no option cleared."""
+    if resolution.interface == "free_moves":
+        return set(menu.no_option_clears)
+    return {label for number in resolution.applied if (option := menu.option(number)) for label in option.aims_at()}
 
 
 def _own_move_words(graph: SceneGraph, move: FurnitureMove) -> str:

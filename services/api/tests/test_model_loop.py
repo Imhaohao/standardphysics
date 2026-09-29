@@ -6,11 +6,13 @@ import threading
 import urllib.error
 import uuid
 from dataclasses import replace
+from types import SimpleNamespace
 
 import pytest
 from model_provider import Reply, completion, serve_provider
 from standardphysics_agents.training.construction import FixtureMove
 from standardphysics_agents.training.edits import TrainingEdits
+from standardphysics_agents.training.menu import Menu, Option, Resolution
 
 from conftest import drain
 from standardphysics_api import model_loop
@@ -169,8 +171,27 @@ def test_the_menu_gets_two_turns_at_a_problem_before_the_model_writes_its_own_mo
     assert model_loop.MENU_MISSES_BEFORE_OWN_MOVES == 2
 
 
+def _finding(problem_id, measured):
+    return SimpleNamespace(id=problem_id, measured_inches=measured, required_inches=36.0)
+
+
+def test_a_miss_counts_only_for_a_problem_the_turn_aimed_at_that_got_no_closer():
+    aimed, untouched, eased = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    option = Option(1, "slide Chair 5 in further from the Table, for P1", TrainingEdits(),
+                    {"clears": [], "improves": [{"problem": "P3", "from_inches": 30.0, "to_inches": 33.0}]})
+    assert option.aims_at() == {"P1", "P3"}
+    menu = Menu(problems={aimed: "P1", untouched: "P2", eased: "P3"}, options=[option])
+    loop = model_loop.ModelLoop(start=SimpleNamespace(), checker=None, stated=None)
+    loop.open_at_menu = {aimed: _finding(aimed, 31.0), untouched: _finding(untouched, 30.0), eased: _finding(eased, 30.0)}
+    after = {aimed: _finding(aimed, 31.4), untouched: _finding(untouched, 30.0), eased: _finding(eased, 33.0)}
+    loop._after_turn(menu, Resolution(completion="", interface="choose", applied=[1]), "", after)
+    assert loop.misses == {aimed: 1}, "P2 was not tried, and P3 got 3 in closer, which is progress"
+
+
 def test_after_its_menu_misses_a_problem_is_asked_for_own_moves_and_then_given_up(make_client, monkeypatch):
     monkeypatch.setattr(model_loop, "MENU_MISSES_BEFORE_OWN_MOVES", 1)
+    monkeypatch.setattr(model_loop, "improved", lambda before, after: False)
+    monkeypatch.setattr(model_loop, "_aimed_at", lambda menu, resolution: set(menu.problems.values()))
     prompts = []
 
     def picks_then_gives_nothing(self, messages, seconds=None):

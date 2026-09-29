@@ -137,6 +137,11 @@ class Option:
     def as_prompt(self) -> dict:
         return {"option": self.number, "do": self.wording, **self.effect}
 
+    def aims_at(self) -> set[str]:
+        """The problem labels this option was offered for or was measured to clear or improve."""
+        improves = {change["problem"] for change in self.effect.get("improves", [])}
+        return {*_PROBLEM_LABEL.findall(self.wording), *self.effect.get("clears", []), *improves}
+
 
 _ID_TAG = re.compile(r" \[[0-9a-f]{4}\]")
 _PROBLEM_LABEL = re.compile(r"\bP\d+\b")
