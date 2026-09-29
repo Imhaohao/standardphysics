@@ -32,7 +32,7 @@ import math
 import time
 import uuid
 from collections.abc import Callable, Iterator
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from standardphysics_agents.evaluation.gate import accepts
 from standardphysics_agents.fix import carried_along
@@ -109,6 +109,12 @@ def _titles(problems: list[Finding]) -> list[str]:
     return list(dict.fromkeys(problem.title for problem in problems))
 
 
+MENU_MISSES_BEFORE_OWN_MOVES = 2
+"""Turns of menu picks a problem may stay open through before the loop stops offering the menu for it and asks
+the model for its own moves instead, so it does not keep picking from options that have already failed it."""
+GAVE_UP = "Nothing we can move or build clears what is left, so it stays on your list."
+
+
 @dataclass
 class ModelLoop:
     """One loop's state: the layout so far, every move made, and what to tell the model next turn."""
@@ -122,6 +128,10 @@ class ModelLoop:
     menu: Menu | None = None
     stop: str = ""
     built_ins: set = field(default_factory=set)
+    misses: dict[uuid.UUID, int] = field(default_factory=dict)
+    """Per problem, the turns of menu picks it has stayed open through."""
+    given_up: set[uuid.UUID] = field(default_factory=set)
+    """Problems the model's own moves could not help either; nothing more is offered for them."""
 
     def __post_init__(self) -> None:
         self.current = self.start
@@ -139,30 +149,63 @@ class ModelLoop:
         return len(self.open_problems())
 
     def next_messages(self) -> list[dict] | None:
-        """The prompt for the next turn, or None when there is nothing left the menu can offer."""
-        if self.fixable_left() == 0:
+        """The prompt for the next turn, or None when every problem is fixed or given up."""
+        open_problems = self.open_problems()
+        if not open_problems:
             self.stop = "Every problem a move or a contractor can fix is fixed."
             return None
-        limits = MenuLimits(deadline=deadline_in(LOOP_MENU_SECONDS))
-        menu = without_wall_shifts(build_menu(self.current, self.checker, stated=self.stated, limits=limits))
-        self.menu = menu
-        return menu_messages(self.current, self.checker, menu, self.last)
+        trying = [problem for problem in open_problems if problem.id not in self.given_up]
+        if not trying:
+            self.stop = GAVE_UP
+            return None
+        self.menu = self._menu_for(trying)
+        return menu_messages(self.current, self.checker, self.menu, self.last)
 
-    def _measures_better(self, edits: TrainingEdits) -> bool:
-        """Whether the room with these edits passes the gate every menu option passed: better, nothing new failing."""
-        return bool(accepts(self.checker.assess(self.current), self.checker.assess(apply_edits(self.current, edits))))
+    def _menu_for(self, trying: list[Finding]) -> Menu:
+        """The menu for the problems still worth trying, or none at all for those the menu has failed twice."""
+        stuck = frozenset(problem.id for problem in trying
+                          if self.misses.get(problem.id, 0) >= MENU_MISSES_BEFORE_OWN_MOVES)
+        if stuck:
+            labels_only = build_menu(self.current, self.checker, stated=self.stated,
+                                     limits=MenuLimits(focus=stuck, deadline=deadline_in(0.0)))
+            return replace(labels_only, options=[], tried_twice=list(labels_only.no_option_clears))
+        limits = MenuLimits(focus=frozenset(problem.id for problem in trying), deadline=deadline_in(LOOP_MENU_SECONDS))
+        return without_wall_shifts(build_menu(self.current, self.checker, stated=self.stated, limits=limits))
 
-    def _apply(self, edits: TrainingEdits | None, own_idea: bool) -> str:
-        """Makes the change and returns "", or leaves the room as it was and returns why the loop stops."""
+    def _own_idea_holds(self, edits: TrainingEdits, menu: Menu) -> bool:
+        """Whether the model's own moves keep every owner wish and directive, and pass the gate every option passed."""
+        after = apply_edits(self.current, edits)
+        if menu.veto is not None and menu.veto(self.current, after):
+            return False
+        return bool(accepts(self.checker.assess(self.current), self.checker.assess(after)))
+
+    def _apply(self, edits: TrainingEdits | None, own_idea: bool, menu: Menu) -> str:
+        """Makes the change and returns "", or leaves the room as it was and returns why nothing changed."""
         added = _all_moves(edits) if edits else []
         if edits is None or not (added or has_construction(edits)):
             return "The model did not pick a change that helps, so it stopped here."
-        if own_idea and not self._measures_better(edits):
+        if own_idea and not self._own_idea_holds(edits, menu):
             return "The model's own idea didn't measure any better, so nothing changed and it stopped here."
         self.current = apply_edits(self.current, edits)
         self.moves = _combined(self.moves, added)
         self.built_ins |= {move.node_id for move in edits.fixture_moves}
         return ""
+
+    def _after_turn(self, menu: Menu, own_idea: bool, refused: str, still_open: set[uuid.UUID]) -> None:
+        """Gives up on what the model's own moves could not help, stops on a menu turn that changed nothing,
+        and counts a miss for every problem a menu turn left open."""
+        if refused:
+            asked_for = {problem_id for problem_id, label in menu.problems.items() if label in menu.no_option_clears}
+            if (own_idea or not menu.options) and asked_for:
+                self.given_up |= asked_for
+            else:
+                self.stop = refused
+            return
+        if menu.tried_twice:
+            return
+        for problem_id in menu.problems:
+            if problem_id in still_open:
+                self.misses[problem_id] = self.misses.get(problem_id, 0) + 1
 
     def take(self, turn: int, reply: str) -> ModelLoopEvent:
         menu = self.offered()
@@ -170,11 +213,12 @@ class ModelLoop:
         resolution = resolve(reply, self.current, menu, self.checker.pinned)
         edits = parse_edits(resolution.completion)
         own_idea = resolution.interface == "free_moves"
-        self.stop = self._apply(edits, own_idea)
+        refused = self._apply(edits, own_idea, menu)
         open_problems = self.open_problems()
-        self.last = {**resolution.as_dict(), "fixable_left": len(open_problems)}
+        self._after_turn(menu, own_idea, refused, {problem.id for problem in open_problems})
+        self.last = {**resolution.as_dict(), "fixable_left": len(open_problems), "kept": not refused}
         picked = [menu.picked_in_owner_words(number) for number in resolution.applied]
-        if own_idea and edits is not None and not self.stop:
+        if own_idea and edits is not None and not refused:
             picked = [_own_move_words(before, move) for move in edits.moves]
         construction = [menu.picked_in_owner_words(number) for number in resolution.applied
                         if (option := menu.option(number)) is not None and has_construction(option.edits)]

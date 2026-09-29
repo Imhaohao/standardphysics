@@ -122,6 +122,8 @@ def test_problems_no_option_clears_are_named_so_the_model_can_write_its_own_move
     content = json.loads(menu_messages(room[0], checker, empty, None)[1]["content"])
     assert content["options"] == [] and content["no_option_clears"] == list(menu.problems.values())
     assert "no_option_clears" in MENU_SYSTEM_PROMPT and '"moves"' in MENU_SYSTEM_PROMPT
+    tried = json.loads(menu_messages(room[0], checker, replace(empty, tried_twice=["P1"]), None)[1]["content"])
+    assert tried["menu_tried_twice"] == ["P1"] and "menu_tried_twice" in MENU_SYSTEM_PROMPT
 
 
 def test_unparseable_answers_become_no_moves_rather_than_a_collision(room, checker, menu):

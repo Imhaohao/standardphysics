@@ -118,10 +118,11 @@ MENU_INSTRUCTION = (
 MENU_ANSWER_FORMAT = (
     'Answer with JSON only: {"choose":[<option numbers in the order to apply>],"why":"<one sentence>"}. '
     "The menu never covers every idea. `no_option_clears` lists the problems no option clears, and `options` can "
-    'be empty. For those, the last choice is always open: answer {"moves":[{"node_id":"<id>","dx":<meters>,'
-    '"dy":<meters>,"rotation_degrees":<degrees>}],"why":"<one sentence>"} using ids from `room.movable_objects`. '
-    "Each such move goes to the nearest legal spot, and the whole answer is kept only if the room then measures "
-    "better with nothing new failing."
+    "be empty. `menu_tried_twice` lists problems two turns of menu picks left open: that turn has no options "
+    'and wants your own moves. For those, the last choice is always open: answer {"moves":[{"node_id":"<id>",'
+    '"dx":<meters>,"dy":<meters>,"rotation_degrees":<degrees>}],"why":"<one sentence>"} using ids from '
+    "`room.movable_objects`. Each such move goes to the nearest legal spot, and the whole answer is kept only if "
+    "the room then measures better with nothing new failing and every owner wish still holds."
 )
 MENU_SYSTEM_PROMPT = f"{MENU_INSTRUCTION}\n\n{MENU_ANSWER_FORMAT}"
 
@@ -160,6 +161,8 @@ class Menu:
     """The owner's wishes as the model reads them."""
     no_option_clears: list[str] = field(default_factory=list)
     """Labels of the problems no option clears, which only the model's own moves can still try."""
+    tried_twice: list[str] = field(default_factory=list)
+    """Labels of the problems two turns of menu picks left open, which this turn asks the model's own moves for."""
 
     def option(self, number: int) -> Option | None:
         return next((option for option in self.options if option.number == number), None)
@@ -639,12 +642,14 @@ def menu_messages(room: SceneGraph, checker: TrainingChecker, menu: Menu, last_r
     view = room_view(room, checker.scenario, [])
     view.pop("problems", None)
     view.pop("walls_you_can_move", None)
-    content = {"problems": menu.problem_view, "options": [option.as_prompt() for option in menu.options],
+    content: dict[str, object] = {"problems": menu.problem_view, "options": [option.as_prompt() for option in menu.options],
                "last_result": last_result, "room": view}
     if menu.wish_view:
         content["owner_wishes"] = menu.wish_view
     if menu.no_option_clears:
         content["no_option_clears"] = menu.no_option_clears
+    if menu.tried_twice:
+        content["menu_tried_twice"] = menu.tried_twice
     return [{"role": "system", "content": MENU_SYSTEM_PROMPT},
             {"role": "user", "content": json.dumps(content, separators=(",", ":"))}]
 

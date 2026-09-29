@@ -37,8 +37,9 @@ def _configure(monkeypatch, ask):
 
 
 def _first_option(self, messages, seconds=None):
+    """Option 1 each turn; on a turn the menu has nothing for, a model with no idea of its own picks nothing."""
     options = json.loads(messages[-1]["content"])["options"]
-    return json.dumps({"choose": [options[0]["option"]], "why": "It clears P1 with the least moving."})
+    return json.dumps({"choose": [options[0]["option"]] if options else [], "why": "It clears P1 with the least moving."})
 
 
 def test_the_button_is_hidden_until_a_model_is_set_up(make_client, monkeypatch):
@@ -56,7 +57,7 @@ def test_the_model_takes_turns_until_it_stops_and_the_moves_add_up(make_client, 
     kinds = [event["kind"] for event in events]
     assert kinds[0] == "started" and kinds[-1] == "finished" and "turn" in kinds
     turns = [event for event in events if event["kind"] == "turn"]
-    assert all(turn["picked"] and turn["why"] for turn in turns)
+    assert turns[0]["picked"] and all(turn["why"] for turn in turns)
     owner_text = " ".join([*(words for turn in turns for words in turn["picked"]), *(turn["why"] for turn in turns)])
     assert not re.search(r"\[[0-9a-f]{4}\]|\bP\d+\b", owner_text)
     finished = events[-1]
@@ -140,7 +141,53 @@ def test_the_model_s_own_moves_are_dropped_when_the_room_measures_no_better(make
     events = _events(client, scan_id)
     assert [event["kind"] for event in events] == ["started", "turn", "finished"]
     assert events[1]["picked"] == [] and events[-1]["moves"] == []
-    assert "own idea" in events[-1]["message"]
+    assert events[-1]["message"] == model_loop.GAVE_UP
+
+
+def test_the_model_s_own_moves_are_refused_when_they_move_a_piece_the_owner_asked_to_keep(make_client, monkeypatch):
+    built = _menu_emptied_after_building(monkeypatch)
+    wrote = []
+
+    def copies_a_real_option(self, messages, seconds=None):
+        if not wrote:
+            option = next(option for option in built[-1].options if option.edits.moves and not option.edits.fixture_moves)
+            wrote.append([move.model_dump(mode="json") for move in option.edits.moves])
+        return json.dumps({"moves": wrote[0], "why": "It clears the aisle."})
+
+    _configure(monkeypatch, copies_a_real_option)
+    client, scan_id = _sample(make_client)
+    assert _events(client, scan_id)[-1]["moves"], "unheld, the copied moves are kept"
+    held = wrote[0][0]["node_id"]
+    wishes = [{"kind": "stays_put", "node_id": held, "text": "Keep it where it is"}]
+    assert client.put(f"/api/scans/{scan_id}/owner-wishes", json={"wishes": wishes}).status_code == 200
+    events = _events(client, scan_id)
+    assert held not in {move["node_id"] for move in events[-1]["moves"]}
+    assert events[1]["picked"] == []
+
+
+def test_the_menu_gets_two_turns_at_a_problem_before_the_model_writes_its_own_moves():
+    assert model_loop.MENU_MISSES_BEFORE_OWN_MOVES == 2
+
+
+def test_after_its_menu_misses_a_problem_is_asked_for_own_moves_and_then_given_up(make_client, monkeypatch):
+    monkeypatch.setattr(model_loop, "MENU_MISSES_BEFORE_OWN_MOVES", 1)
+    prompts = []
+
+    def picks_then_gives_nothing(self, messages, seconds=None):
+        prompts.append(json.loads(messages[-1]["content"]))
+        if prompts[-1]["options"]:
+            return _first_option(self, messages)
+        return json.dumps({"choose": [], "why": "I have no better idea."})
+
+    _configure(monkeypatch, picks_then_gives_nothing)
+    client, scan_id = _sample(make_client)
+    events = _events(client, scan_id)
+    turns = [event for event in events if event["kind"] == "turn"]
+    assert prompts[0]["options"] and "menu_tried_twice" not in prompts[0]
+    assert turns[0]["fixable_left"] > 0, "the sample shop keeps a problem after its first pick"
+    assert prompts[1]["options"] == [] and len(prompts[1]["menu_tried_twice"]) == turns[0]["fixable_left"]
+    assert len(prompts) == 2 and events[-1]["message"] == model_loop.GAVE_UP
+    assert events[-1]["moves"], "the first turn's pick is kept when a later problem is given up"
 
 
 def test_a_built_in_slide_becomes_a_move_of_that_piece_the_plan_can_show():
@@ -160,7 +207,7 @@ def provider(monkeypatch):
 
 def _first_option_reply(messages):
     options = json.loads(messages[-1]["content"])["options"]
-    return Reply(completion(json.dumps({"choose": [options[0]["option"]], "why": "It clears the aisle."})))
+    return Reply(completion(json.dumps({"choose": [options[0]["option"]] if options else [], "why": "It clears the aisle."})))
 
 
 def _ends_in_failure(client, scan_id, words):
