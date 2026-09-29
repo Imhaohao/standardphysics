@@ -4,10 +4,13 @@ Set SP_LOOP_MODEL_URL and SP_LOOP_MODEL (an OpenAI-compatible server, such as
 the Fireworks fine-tune behind scripts/finetune/fireworks_chat_server.py) and
 SP_LOOP_MODEL_LABEL (what the owner's button calls it). Each turn builds the
 menu for every problem still left, asks the model, applies its pick and
-re-checks, for at most MODEL_LOOP_TURNS turns, each menu built within LOOP_MENU_SECONDS. Furniture and built-in
-moves are offered (a slid counter is construction, reported as such); wall
-shifts are not, because the owner's plan cannot show a moved wall. Nothing is
-saved: the stream ends with every move the loop made, for the owner to open
+re-checks. The menu never covers every idea, so the model may also write its
+own moves for a problem no option clears, even when the menu is empty; those
+are kept only when the room then passes the same gate every option passed.
+It runs for at most MODEL_LOOP_TURNS turns, each menu built within
+LOOP_MENU_SECONDS. Furniture and built-in moves are offered (a slid counter
+is construction, reported as such); wall shifts are not, because the owner's
+plan cannot show a moved wall. Nothing is saved: the stream ends with every move the loop made, for the owner to open
 in the plan and keep or not.
 
 The loop works on what the owner's report shows: an answer resting on scan
@@ -25,13 +28,16 @@ from __future__ import annotations
 import itertools
 import json
 import logging
+import math
 import time
 import uuid
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 
+from standardphysics_agents.evaluation.gate import accepts
 from standardphysics_agents.fix import carried_along
 from standardphysics_agents.fix.budget import deadline_in
+from standardphysics_agents.redesign import FurnitureMove
 from standardphysics_agents.training.checker import TrainingChecker
 from standardphysics_agents.training.edits import TrainingEdits, apply_edits, has_construction, node_moves, parse_edits
 from standardphysics_agents.training.menu import Menu, MenuLimits, build_menu, menu_messages, resolve
@@ -44,6 +50,7 @@ from standardphysics_contracts import (
     NodeMove,
     SceneGraph,
     Vec3,
+    to_inches,
     to_meters,
 )
 
@@ -139,30 +146,53 @@ class ModelLoop:
         limits = MenuLimits(deadline=deadline_in(LOOP_MENU_SECONDS))
         menu = without_wall_shifts(build_menu(self.current, self.checker, stated=self.stated, limits=limits))
         self.menu = menu
-        if not menu.options:
-            self.stop = "Nothing we can move or build clears what is left, so it stays on your list."
-            return None
         return menu_messages(self.current, self.checker, menu, self.last)
+
+    def _measures_better(self, edits: TrainingEdits) -> bool:
+        """Whether the room with these edits passes the gate every menu option passed: better, nothing new failing."""
+        return bool(accepts(self.checker.assess(self.current), self.checker.assess(apply_edits(self.current, edits))))
+
+    def _apply(self, edits: TrainingEdits | None, own_idea: bool) -> str:
+        """Makes the change and returns "", or leaves the room as it was and returns why the loop stops."""
+        added = _all_moves(edits) if edits else []
+        if edits is None or not (added or has_construction(edits)):
+            return "The model did not pick a change that helps, so it stopped here."
+        if own_idea and not self._measures_better(edits):
+            return "The model's own idea didn't measure any better, so nothing changed and it stopped here."
+        self.current = apply_edits(self.current, edits)
+        self.moves = _combined(self.moves, added)
+        self.built_ins |= {move.node_id for move in edits.fixture_moves}
+        return ""
 
     def take(self, turn: int, reply: str) -> ModelLoopEvent:
         menu = self.offered()
+        before = self.current
         resolution = resolve(reply, self.current, menu, self.checker.pinned)
         edits = parse_edits(resolution.completion)
-        added = _all_moves(edits) if edits else []
-        if edits is not None and (added or has_construction(edits)):
-            self.current = apply_edits(self.current, edits)
-            self.moves = _combined(self.moves, added)
-            self.built_ins |= {move.node_id for move in edits.fixture_moves}
-        else:
-            self.stop = "The model did not pick a change that helps, so it stopped here."
+        own_idea = resolution.interface == "free_moves"
+        self.stop = self._apply(edits, own_idea)
         open_problems = self.open_problems()
         self.last = {**resolution.as_dict(), "fixable_left": len(open_problems)}
         picked = [menu.picked_in_owner_words(number) for number in resolution.applied]
+        if own_idea and edits is not None and not self.stop:
+            picked = [_own_move_words(before, move) for move in edits.moves]
         construction = [menu.picked_in_owner_words(number) for number in resolution.applied
                         if (option := menu.option(number)) is not None and has_construction(option.edits)]
         return ModelLoopEvent(kind="turn", turn=turn, picked=picked, construction=construction,
                               why=menu.in_owner_words(resolution.why),
                               fixable_left=len(open_problems), working_on=_titles(open_problems))
+
+
+def _own_move_words(graph: SceneGraph, move: FurnitureMove) -> str:
+    """A move the model wrote itself, in the owner's words."""
+    label = graph.by_id(move.node_id).label
+    inches = to_inches(math.hypot(move.dx, move.dy))
+    degrees = f"{abs(move.rotation_degrees):.0f} degrees"
+    if inches < 0.5:
+        return f"turn {label} {degrees}"
+    if abs(move.rotation_degrees) < 1:
+        return f"slide {label} {inches:.0f} in"
+    return f"slide {label} {inches:.0f} in and turn it {degrees}"
 
 
 def _in_words(seconds: float) -> str:
@@ -198,7 +228,7 @@ def _proposed(loop: ModelLoop, plan: Plan) -> list[uuid.UUID]:
 
 def _events(stages: Stages, graph: SceneGraph, plan: Plan, scenario, chooser: ModelChooser, typology,
             wishes) -> Iterator[ModelLoopEvent]:
-    """Turns until the room is clear, the menu runs dry, the model picks nothing, or the turns or time run out."""
+    """Turns until the room is clear, the model finds nothing that helps, or the turns or time run out."""
     with stages.locked():
         checker = stages.menu_checker(plan.start, scenario, typology, scope="fittings", trust_unsure_geometry=False)
         loop = ModelLoop(plan.start, checker,

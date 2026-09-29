@@ -45,7 +45,7 @@ import json
 import math
 import random
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from itertools import chain, zip_longest
 from uuid import UUID
 
@@ -117,9 +117,11 @@ MENU_INSTRUCTION = (
 )
 MENU_ANSWER_FORMAT = (
     'Answer with JSON only: {"choose":[<option numbers in the order to apply>],"why":"<one sentence>"}. '
-    'Only if no option helps, you may instead answer {"moves":[{"node_id":"<id>","dx":<meters>,"dy":<meters>,'
-    '"rotation_degrees":<degrees>}]} using ids from `room.movable_objects`; each such move is moved to the '
-    "nearest legal spot, or dropped if there is none."
+    "The menu never covers every idea. `no_option_clears` lists the problems no option clears, and `options` can "
+    'be empty. For those, the last choice is always open: answer {"moves":[{"node_id":"<id>","dx":<meters>,'
+    '"dy":<meters>,"rotation_degrees":<degrees>}],"why":"<one sentence>"} using ids from `room.movable_objects`. '
+    "Each such move goes to the nearest legal spot, and the whole answer is kept only if the room then measures "
+    "better with nothing new failing."
 )
 MENU_SYSTEM_PROMPT = f"{MENU_INSTRUCTION}\n\n{MENU_ANSWER_FORMAT}"
 
@@ -156,6 +158,8 @@ class Menu:
     held to as well."""
     wish_view: list[dict] = field(default_factory=list)
     """The owner's wishes as the model reads them."""
+    no_option_clears: list[str] = field(default_factory=list)
+    """Labels of the problems no option clears, which only the model's own moves can still try."""
 
     def option(self, number: int) -> Option | None:
         return next((option for option in self.options if option.number == number), None)
@@ -624,8 +628,10 @@ def build_menu(room: SceneGraph, checker: TrainingChecker, stated: WishBook | No
     for option in options:
         option.effect["clashes_with"] = [other.number for other in options if other is not option
                                          and _why_dropped(room, option.edits, other, veto)]
+    uncleared = [labels[finding.id] for finding in problems if limits.wants(finding)
+                 and not any(labels[finding.id] in option.effect["clears"] for option in options)]
     return Menu(problems=labels, options=options, problem_view=_problem_view(room, problems, labels), veto=veto,
-                wish_view=told)
+                wish_view=told, no_option_clears=uncleared)
 
 
 def menu_messages(room: SceneGraph, checker: TrainingChecker, menu: Menu, last_result: dict | None) -> list[dict]:
@@ -637,6 +643,8 @@ def menu_messages(room: SceneGraph, checker: TrainingChecker, menu: Menu, last_r
                "last_result": last_result, "room": view}
     if menu.wish_view:
         content["owner_wishes"] = menu.wish_view
+    if menu.no_option_clears:
+        content["no_option_clears"] = menu.no_option_clears
     return [{"role": "system", "content": MENU_SYSTEM_PROMPT},
             {"role": "user", "content": json.dumps(content, separators=(",", ":"))}]
 
@@ -730,12 +738,24 @@ def resolve_free_moves(room: SceneGraph, edits: TrainingEdits, pinned=frozenset(
     })
 
 
+def _free_answer(reply: str) -> tuple[TrainingEdits | None, str]:
+    """A free-form answer's edits and its reason, or None when the rest is not valid edits JSON."""
+    try:
+        answer = json.loads(_json_text(reply))
+    except ValueError:
+        return None, ""
+    if not isinstance(answer, dict):
+        return None, ""
+    why = str(answer.pop("why", ""))
+    return parse_edits(json.dumps(answer)), why
+
+
 def resolve(reply: str, room: SceneGraph, menu: Menu, pinned=frozenset()) -> Resolution:
     """Whatever the model answered, as edits that are legal by construction."""
     choice = parse_choice(reply)
     if choice is not None:
         return resolve_choice(room, menu, choice)
-    edits = parse_edits(reply)
+    edits, why = _free_answer(reply)
     if edits is not None:
-        return resolve_free_moves(room, edits, pinned, menu.veto)
+        return replace(resolve_free_moves(room, edits, pinned, menu.veto), why=why)
     return Resolution(completion=edits_json(EMPTY), interface="unparseable")

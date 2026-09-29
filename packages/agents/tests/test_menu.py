@@ -2,6 +2,7 @@
 
 import json
 import math
+from dataclasses import replace
 
 import pytest
 from standardphysics_agents.fix import relocation_violations, violations
@@ -105,6 +106,22 @@ def test_a_free_form_move_onto_another_piece_is_snapped_to_legal_floor(room, che
     assert resolution.interface == "free_moves" and resolution.snapped["kept"] == 1
     assert _legal(graph, resolution.completion)
     assert score_completion(resolution.completion, graph, checker).hard_constraints_pass
+
+
+def test_a_free_form_answer_keeps_the_model_s_reason(room, menu):
+    piece = next(node for node in room[0].nodes if node.movable)
+    move = {"node_id": str(piece.id), "dx": 0.05, "dy": 0.0, "rotation_degrees": 0}
+    resolution = resolve(json.dumps({"moves": [move], "why": "It opens the turning circle."}), room[0], menu)
+    assert resolution.interface == "free_moves" and resolution.why == "It opens the turning circle."
+
+
+def test_problems_no_option_clears_are_named_so_the_model_can_write_its_own_moves(room, checker, menu):
+    cleared = {label for option in menu.options for label in option.effect["clears"]}
+    assert menu.no_option_clears == [label for label in menu.problems.values() if label not in cleared]
+    empty = replace(menu, options=[], no_option_clears=list(menu.problems.values()))
+    content = json.loads(menu_messages(room[0], checker, empty, None)[1]["content"])
+    assert content["options"] == [] and content["no_option_clears"] == list(menu.problems.values())
+    assert "no_option_clears" in MENU_SYSTEM_PROMPT and '"moves"' in MENU_SYSTEM_PROMPT
 
 
 def test_unparseable_answers_become_no_moves_rather_than_a_collision(room, checker, menu):

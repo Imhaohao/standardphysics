@@ -5,6 +5,7 @@ import re
 import threading
 import urllib.error
 import uuid
+from dataclasses import replace
 
 import pytest
 from model_provider import Reply, completion, serve_provider
@@ -77,15 +78,69 @@ def test_an_unreachable_model_ends_the_stream_with_a_way_to_recover(make_client,
     assert last["kind"] == "failed" and "Try again" in last["message"]
 
 
-def test_a_turn_whose_menu_runs_out_of_time_ends_the_loop_without_asking_the_model(make_client, monkeypatch):
+def _nothing_from_the_menu(self, messages, seconds=None):
+    return json.dumps({"choose": [], "why": "Nothing here helps."})
+
+
+def test_an_empty_menu_still_asks_the_model_for_its_own_moves(make_client, monkeypatch):
     asked = []
-    _configure(monkeypatch, lambda self, messages: asked.append(messages) or _first_option(self, messages))
+    _configure(monkeypatch, lambda self, messages, seconds=None: asked.append(messages)
+               or _nothing_from_the_menu(self, messages))
     monkeypatch.setattr("standardphysics_api.model_loop.LOOP_MENU_SECONDS", 0.0)
     client, scan_id = _sample(make_client)
     events = _events(client, scan_id)
-    assert not asked
-    assert [event["kind"] for event in events] == ["started", "finished"]
+    [prompt] = [json.loads(messages[-1]["content"]) for messages in asked]
+    assert prompt["options"] == [] and len(prompt["no_option_clears"]) == events[0]["fixable_left"]
+    assert [event["kind"] for event in events] == ["started", "turn", "finished"]
     assert events[-1]["moves"] == [] and events[-1]["fixable_left"] == events[0]["fixable_left"]
+
+
+def _menu_emptied_after_building(monkeypatch) -> list:
+    """The loop's menus come back with no options; the real ones are kept here for the fake model to copy."""
+    built = []
+
+    def empty_menu(*args, **kwargs):
+        menu = real_build_menu(*args, **kwargs)
+        built.append(menu)
+        return replace(menu, options=[], no_option_clears=list(menu.problems.values()))
+
+    real_build_menu = model_loop.build_menu
+    monkeypatch.setattr(model_loop, "build_menu", empty_menu)
+    return built
+
+
+def test_the_model_s_own_moves_are_kept_when_the_room_measures_better(make_client, monkeypatch):
+    built = _menu_emptied_after_building(monkeypatch)
+
+    def copies_a_real_option(self, messages, seconds=None):
+        furniture_only = [option for option in built[-1].options if option.edits.moves and not option.edits.fixture_moves]
+        if not furniture_only:
+            return json.dumps({"choose": [], "why": "Nothing here helps."})
+        moves = [move.model_dump(mode="json") for move in furniture_only[0].edits.moves]
+        return json.dumps({"moves": moves, "why": "It clears the aisle."})
+
+    _configure(monkeypatch, copies_a_real_option)
+    client, scan_id = _sample(make_client)
+    events = _events(client, scan_id)
+    first = next(event for event in events if event["kind"] == "turn")
+    assert first["picked"] and first["picked"][0].startswith(("slide ", "turn ")) and first["why"]
+    assert not re.search(r"\[[0-9a-f]{4}\]|[0-9a-f]{8}-", " ".join(first["picked"]))
+    assert first["fixable_left"] <= events[0]["fixable_left"] and events[-1]["moves"]
+
+
+def test_the_model_s_own_moves_are_dropped_when_the_room_measures_no_better(make_client, monkeypatch):
+    _menu_emptied_after_building(monkeypatch)
+
+    def stands_still(self, messages, seconds=None):
+        piece = json.loads(messages[-1]["content"])["room"]["movable_objects"][0]["id"]
+        return json.dumps({"moves": [{"node_id": piece, "dx": 0.0, "dy": 0.0, "rotation_degrees": 0.0}]})
+
+    _configure(monkeypatch, stands_still)
+    client, scan_id = _sample(make_client)
+    events = _events(client, scan_id)
+    assert [event["kind"] for event in events] == ["started", "turn", "finished"]
+    assert events[1]["picked"] == [] and events[-1]["moves"] == []
+    assert "own idea" in events[-1]["message"]
 
 
 def test_a_built_in_slide_becomes_a_move_of_that_piece_the_plan_can_show():
