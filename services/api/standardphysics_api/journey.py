@@ -137,6 +137,9 @@ def _fixing(state: ShopState) -> Step:
     return "tools", NextStep(kind="done", title="Everything on your list is done")
 
 
+# The web shows the results from the follow-ups on, so the tools open with them.
+RESULTS_STEPS = {"follow_ups", "results", "checklist", "done"}
+
 STEPS: tuple[Callable[[ShopState], Step | None], ...] = (
     _walk, _in_shop, _measuring, _two_checks, _checking, _follow_ups,
 )
@@ -149,5 +152,5 @@ def journey(state: ShopState) -> Journey:
         shop_name=state.shop_name,
         stage=stage,
         next_step=next_step,
-        tools_unlocked=stage in {"results", "fix", "tools"},
+        tools_unlocked=next_step.kind in RESULTS_STEPS,
     )
