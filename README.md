@@ -15,7 +15,7 @@ The model view keeps measured geometry selectable while the side panel lists fin
 
 ## How the product grew
 
-The project began as a hackathon-scale traced loop: scan a room, measure it, check the constraints, propose a change, then check the result again. [`tools/loopforge`](tools/loopforge) preserves the small agent-loop starter. The early plan called for an iPhone LiDAR capture, a Blender-backed scene pipeline, and a reviewable result by the end of the weekend ([original build plan](docs/PLAN.md)).
+The project began as a hackathon-scale traced loop: scan a room, measure it, check the constraints, propose a change, then check the result again. [`tools/loopforge`](tools/loopforge) preserves the small agent-loop starter. The early plan called for an iPhone LiDAR capture, a Blender-backed scene pipeline, and a reviewable result by the end of the weekend ([original build plan](docs/archive/PLAN.md)).
 
 That first loop exposed the important split in the product. Room dimensions must come from geometry, while a model can help interpret a request or rank a layout proposal. The system therefore keeps the measurement pipeline, cited checks, and model proposal path separate. Proposals are measured again under the same hard constraints before they can be accepted.
 
@@ -25,9 +25,9 @@ The first room representation was a scene graph of measured walls, openings, and
 
 The public sample-shop fixture includes downloadable [GLB](packages/fixtures/standardphysics_fixtures/data/shop.glb) and [USDZ](packages/fixtures/standardphysics_fixtures/data/shop.usdz) models. They let a reviewer inspect demo geometry without access to private captures.
 
-The reconstruction work grew beyond the demo shop. Four Moffitt Library captures were aligned into a published floor revision ([progress record](docs/progress/PROGRESS_MOFFETT.json)). A later read-only audit counted 284 nodes in a subsequent A-102 revision ([implementation audit](docs/research/moffett-outlet-implementation-audit.txt)). This establishes that a larger multi-region capture can pass through reconstruction and publication. It is not an independent measurement study.
+The reconstruction work grew beyond the demo shop. Four Moffitt Library captures were aligned into a published floor revision ([progress record](docs/archive/progress/PROGRESS_MOFFETT.json)). A later read-only audit counted 284 nodes in a subsequent A-102 revision ([implementation audit](docs/archive/research/moffett-outlet-implementation-audit.txt)). This establishes that a larger multi-region capture can pass through reconstruction and publication. It is not an independent measurement study.
 
-We also tested photo-supported rendering on Moffitt views. One center-room pilot was rejected after eight validation images scored 5.42 dB masked PSNR and 0.025 masked SSIM, with visible gaps. A historical Brush control scored 11.90 dB and 0.329, but the masks were not matched, so this is not a controlled comparison. The [rendering audit](docs/research/deepseek-render-r003-audit.txt) records both the failure and its limits. The measured room model remains useful while photographic reconstruction stays experimental.
+We also tested photo-supported rendering on Moffitt views. One center-room pilot was rejected after eight validation images scored 5.42 dB masked PSNR and 0.025 masked SSIM, with visible gaps. A historical Brush control scored 11.90 dB and 0.329, but the masks were not matched, so this is not a controlled comparison. The [rendering audit](docs/archive/research/deepseek-render-r003-audit.txt) records both the failure and its limits. The measured room model remains useful while photographic reconstruction stays experimental.
 
 ![Live marimo notebook sweeping aisle, counter, and doorway dimensions through the same evaluation checks](apps/web/public/deck/scenario-sweep-notebook.png)
 
@@ -86,7 +86,7 @@ cd apps/web && npm run lint && npm run typecheck && npm run test && npm run e2e
 | What a reviewer asks | What is in the repo |
 |---|---|
 | Does it survive failures? | A crash-safe job queue, hard deadlines on every job, bounded retries, admission control on every input, and a test that injects each failure. See [failure modes](#failure-modes-and-what-happens). |
-| Is the code held to a standard? | ruff with a cyclomatic complexity ceiling and mypy across the contracts, pipeline, agents and API packages, strict TypeScript with an ESLint complexity ceiling, and a test that fails the build if a package imports upward. |
+| Is the code held to a standard? | ruff with a cyclomatic complexity ceiling and mypy across the contracts, pipeline, agents and API packages, strict TypeScript with an ESLint complexity ceiling, a test that fails the build if a package imports upward, and one that fails it if any hand-written source file in any language passes 800 lines. |
 | How is the repo built? | Six packages with one-way dependencies, contracts generated from one source of truth, pinned dependencies everywhere, and one CI workflow in which every check on code that ships gates the release image. |
 | Can it be operated? | Commit-tagged images, deploys that verify the new commit is serving before they record it, one-command rollback, tested backup and restore, alerting, log rotation and resource limits. |
 | Can you see what it does? | W&B Weave traces from the API and from every worker process, a live health endpoint, and a Weave Evaluation of the checks tagged by commit. |
@@ -98,7 +98,7 @@ Each row names what goes wrong, what the system does about it, and the test that
 
 | When this happens | Standard Physics | Proof |
 |---|---|---|
-| The server dies mid-job | Every job left running is queued again at startup, except a simulation, which is failed so its paid model calls never run twice, and a job three restarts in a row have cut short (`SP_MAX_JOB_INTERRUPTIONS`), which is failed until someone retries the scan; a claimed job always ends settled or back in the queue | [`test_job_lifecycle.py`](services/api/tests/test_job_lifecycle.py), [`test_worker_resilience.py`](services/api/tests/test_worker_resilience.py) |
+| The server dies mid-job | Every job left running is queued again at startup, except a simulation, which is failed so its paid model calls never run twice, and a job three restarts in a row have cut short (`SP_MAX_JOB_INTERRUPTIONS`), which is failed until someone retries the scan; a claimed job always ends settled or back in the queue | [`test_job_recovery.py`](services/api/tests/test_job_recovery.py), [`test_worker_resilience.py`](services/api/tests/test_worker_resilience.py) |
 | A second server starts on the same database | An exclusive lock lets only one process run jobs; the other serves requests and takes over the jobs once the first exits | [`worker_lock.py`](services/api/standardphysics_api/worker_lock.py), [`test_worker_resilience.py`](services/api/tests/test_worker_resilience.py) |
 | A job hangs forever | Every job runs in a child process that is killed, with anything it started, at its deadline; the next job runs | [`test_worker_jobs_in_own_process.py`](services/api/tests/test_worker_jobs_in_own_process.py), [`test_worker_bakes.py`](services/api/tests/test_worker_bakes.py) |
 | The database is locked or broken | Lock contention is retried with backoff for a bounded time; a permanent error stops retrying and marks the worker degraded | [`test_worker_resilience.py`](services/api/tests/test_worker_resilience.py) |
@@ -155,13 +155,13 @@ An upload lands in the artifact store and queues a `process` job. The worker tur
 
 Dependencies point one way: `contracts` at the bottom, `pipeline` and `agents` above it, `services/api` above those, and the two apps talk to the API over HTTP only. [`tests/test_layering.py`](tests/test_layering.py) fails the build if a package imports upward or imports a sibling its `pyproject.toml` does not declare, and [`tests/test_test_names.py`](tests/test_test_names.py) fails it if any test file sits outside a collected directory.
 
-The API is one service with one SQLite database, which is the right size for a 2 vCPU droplet: WAL mode, `BEGIN IMMEDIATE` transactions and atomic job claims make it safe. Scans, artifacts, revisions and the job queue are written through [`repository.py`](services/api/standardphysics_api/repository.py).
+The API is one service with one SQLite database, which is the right size for a 2 vCPU droplet: WAL mode, `BEGIN IMMEDIATE` transactions and atomic job claims make it safe. Scans and artifacts are written through [`repository.py`](services/api/standardphysics_api/repository.py), the job queue through [`repository_jobs.py`](services/api/standardphysics_api/repository_jobs.py), and revisions and assessments through [`repository_revisions.py`](services/api/standardphysics_api/repository_revisions.py).
 
 ## What CI enforces on every push
 
 One workflow, [`ci.yml`](.github/workflows/ci.yml), runs everything below. The release image is published only when every check on code that ships passes, security scans included, and production deploys only published images.
 
-- **Python:** ruff (with a complexity ceiling), mypy over the contracts, pipeline, agents and API packages, and every test suite, installed from [`requirements.lock`](requirements.lock).
+- **Python:** ruff (with a complexity ceiling), mypy over the contracts, pipeline, agents and API packages, and every test suite, installed from [`requirements.lock`](requirements.lock). [`tests/test_file_length.py`](tests/test_file_length.py) holds every hand-written Python, TypeScript, Swift and shell file to 800 lines.
 - **Web:** ESLint (with a complexity ceiling), strict TypeScript, unit tests, the production build, and a check that the TypeScript contracts match the Python ones.
 - **Reels:** ESLint and strict TypeScript over the promotional video app in `apps/reels`, which runs on every push but doesn't hold up a release because nothing in it ships.
 - **Browser:** Playwright against the real API: the owner's report, sharing, deleting a shop, an expired session, an API failure, and a second account refused another owner's shop.
@@ -259,3 +259,4 @@ The stand-in rows are the control. Swapping the measured geometry for merged box
 - [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md): running each part, the phone build, and how the team works
 - [`docs/MISSION.md`](docs/MISSION.md) and [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): what the reasoning layer is for and how it is designed
 - [`docs/UX.md`](docs/UX.md): the owner's experience, screen by screen
+- [`docs/archive/`](docs/archive): the hackathon build record, with the original plan, lane documents, handoffs, progress logs and research notes

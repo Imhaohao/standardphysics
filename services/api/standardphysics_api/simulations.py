@@ -28,13 +28,8 @@ from standardphysics_agents.precedents import directives_for_space
 from standardphysics_agents.router import LocalPolicyRouter, TypeSafeRouter
 from standardphysics_agents.scenario_suggestion import suggest_scenario
 from standardphysics_agents.simulation_report import simulation_result
-from standardphysics_agents.workflows import (
-    DEFAULT_PROFILES,
-    Interaction,
-    WorkflowBatchResult,
-    build_workflow_suite,
-    run_workflow_batch,
-)
+from standardphysics_agents.workflow_definitions import DEFAULT_PROFILES, Interaction, build_workflow_suite
+from standardphysics_agents.workflows import WorkflowBatchResult, run_workflow_batch
 from standardphysics_contracts import (
     AdaptiveRoundResult,
     LidarMesh,
@@ -50,6 +45,8 @@ from standardphysics_contracts.precedents import PrecedentDirective
 from standardphysics_pipeline import PipelineMeasurements
 
 from . import repository as repo
+from . import repository_jobs as jobs_repo
+from . import repository_revisions as revisions_repo
 from .budgets import admit_new_job
 from .errors import ApiProblem
 from .rearrangement_base import rearrangement_base
@@ -93,8 +90,8 @@ def queue_simulation(
     with database.transaction() as connection:
         if not repo.scan_exists(connection, scan_id):
             raise ApiProblem(404, "no scan")
-        latest = repo.get_revision(connection, scan_id)
-        scenario = repo.get_scenario(connection, scan_id)
+        latest = revisions_repo.get_revision(connection, scan_id)
+        scenario = revisions_repo.get_scenario(connection, scan_id)
         if latest is None:
             raise ApiProblem(409, "the shop is still being measured")
         graph = rearrangement_base(connection, latest)
@@ -119,7 +116,7 @@ def queue_simulation(
              scenario.model_dump_json(), mesh.id if mesh else None),
         )
         admit_new_job(connection, max_queued_jobs)
-        repo.queue_job_again(connection, scan_id, SIMULATE, body.base_revision)
+        jobs_repo.queue_job_again(connection, scan_id, SIMULATE, body.base_revision)
     worker.wake()
     return simulation_status(database, scan_id, body.base_revision)
 
