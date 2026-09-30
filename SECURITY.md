@@ -15,6 +15,7 @@ Please open a private security advisory on this repository from the Security tab
 | Signing out | Deletes the session row, so the token stops working on every device. | `test_signing_out_kills_the_token_everywhere` |
 | Sign-in throttling | Each account allows 10 wrong passwords and each network 30 attempts per 5 minutes, counted before any scrypt work. An unknown email costs exactly one scrypt call, the same as a wrong password, so timing does not reveal which emails exist. Each network may create 10 accounts an hour. | [`attempt_limiter.py`](services/api/standardphysics_api/attempt_limiter.py), [`test_sign_in_throttle.py`](services/api/tests/test_sign_in_throttle.py) |
 | Sign in with Apple | The identity token's signature, issuer and audience are verified against Apple's keys. A flood of unknown key ids fetches Apple's keys once, and each network may try 30 times per window. | [`apple_identity.py`](services/api/standardphysics_api/apple_identity.py), [`test_apple_sign_in.py`](services/api/tests/test_apple_sign_in.py) |
+| Beta waitlist | The public signup form takes 30 signups an hour from one network address. The address list is readable only with the admin token, compared in constant time. | [`waitlist.py`](services/api/standardphysics_api/waitlist.py), [`test_waitlist.py`](services/api/tests/test_waitlist.py) `test_one_network_cannot_fill_the_waitlist` |
 
 ### Account linking with Apple
 
