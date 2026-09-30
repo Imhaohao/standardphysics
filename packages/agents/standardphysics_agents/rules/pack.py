@@ -125,7 +125,11 @@ class AgentRulePack(BaseModel):
         return [rule for rule in self.rules if rule.tier <= max_tier]
 
     def enabled(self, ledger, max_tier: Tier = 1) -> list[RuleSpec]:
-        """Only rules a person has verified. See rules/verification.py."""
+        """Every rule the ledger has an entry for, preview entries included.
+
+        A preview entry switches a check on so its calculation runs; whether a
+        person reviewed it is `ledger.personally_verified`. See rules/verification.py.
+        """
         return [r for r in self.within_tier(max_tier) if ledger.verifies(r)]
 
     def as_contract_pack(self, ledger) -> RulePack:

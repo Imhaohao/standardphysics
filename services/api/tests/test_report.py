@@ -1,6 +1,16 @@
-from standardphysics_agents import VerificationLedger
+from standardphysics_agents import VerificationLedger, load_pack
+from standardphysics_agents.rules.verification import PREVIEW_NAMES, PREVIEW_REVIEWER
 
 from conftest import drain, no_blender_stages
+
+OLDER_PREVIEW_MARKER = next(name for name in PREVIEW_NAMES if name != PREVIEW_REVIEWER)
+
+
+def older_preview_ledger() -> VerificationLedger:
+    ledger = VerificationLedger()
+    for rule in load_pack().rules:
+        ledger = ledger.record(rule, verified_by=OLDER_PREVIEW_MARKER)
+    return ledger
 
 
 def test_the_report_carries_findings_and_who_verified_each_rule(make_client):
@@ -28,6 +38,16 @@ def test_a_preview_report_says_so_and_claims_no_human_review(make_client):
         drain(client)
         scan_id = client.get("/api/scans").json()["scans"][0]["id"]
         report = client.get(f"/api/scans/{scan_id}/report").json()
+        assert report["preview"] is True
+        assert not any(rule["check"]["verified_by_human"] for rule in report["rules"])
+
+
+def test_a_ledger_under_the_older_preview_marker_still_reads_as_a_preview(make_client):
+    with make_client(seed=True, stages=no_blender_stages(ledger_factory=older_preview_ledger)) as client:
+        drain(client)
+        scan_id = client.get("/api/scans").json()["scans"][0]["id"]
+        report = client.get(f"/api/scans/{scan_id}/report").json()
+        assert report["rules"]
         assert report["preview"] is True
         assert not any(rule["check"]["verified_by_human"] for rule in report["rules"])
 
