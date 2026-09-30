@@ -10,17 +10,35 @@ It is already deployed and in production use. We partnered with Sharetea in Berk
 | | |
 |---|---|
 | Live app | [standardphysics.app](https://standardphysics.app), with the iPhone app in TestFlight beta |
-| W&B Weave traces | [imhaohao-university-of-california-berkeley/physics](https://wandb.ai/imhaohao-university-of-california-berkeley/physics/weave): every production check, every job and every evaluation |
-| Weave evaluations | [Evals tab](https://wandb.ai/imhaohao-university-of-california-berkeley/physics/weave/evaluations), each run tagged with the commit it scored |
+| W&B Weave traces | [imhaohao-university-of-california-berkeley/physics](https://wandb.ai/imhaohao-university-of-california-berkeley/physics/weave): each assessment with every rule inside it, the agent loop's passes and router decisions, and every evaluation run |
+| Weave evaluations | [Evals tab](https://wandb.ai/imhaohao-university-of-california-berkeley/physics/weave/evaluations): six runs over 39 labelled cases, the latest three tagged with the commit they scored |
 | Production | A DigitalOcean droplet running the compose stack in [`deploy/digitalocean`](deploy/digitalocean), deployed only from images CI has tested |
 | Health, live | [`/health/details`](https://api.standardphysics.app/health/details): deployed commit, worker heartbeats, queue age, tracing status |
 | How it is built | [ARCHITECTURE.md](ARCHITECTURE.md), [RESILIENCE.md](RESILIENCE.md), [SECURITY.md](SECURITY.md) |
+| Since Part 1 | [What changed since the Part 1 submission](#what-changed-since-part-1) |
 
 | Room model and checks | Findings report |
 |---|---|
 | ![3D sample-shop model in the Standard Physics workspace, with findings and layout controls beside it](apps/web/public/deck/app-model.jpg) | ![Sample-shop findings report with measured values and cited ADA sections](apps/web/public/deck/app-report.jpg) |
 
 The model view keeps measured geometry selectable while the side panel lists findings and review questions. The report connects a measured value to a cited section and a proposed next step. The sample shop makes these screens reproducible without publishing private field imagery.
+
+## What changed since Part 1
+
+Our CoreWeave Hacks Part 1 submission is commit [`3cfd248`](https://github.com/Imhaohao/standardphysics/tree/3cfd2482), from 13 September. We've made more than 1,100 commits to master since then, and these are the ones that took the project toward production.
+
+| Area | At the end of Part 1 | Now | Started in |
+|---|---|---|---|
+| Accounts | No sign-in, so any scan was open to anyone who had its id | Owners sign in, sessions are stored hashed, and every scan route checks ownership | [`4061b9f`](https://github.com/Imhaohao/standardphysics/commit/4061b9fd) |
+| Container | No Dockerfile | A production image built from digest-pinned bases and run as a non-root user | [`c048608`](https://github.com/Imhaohao/standardphysics/commit/c0486081) |
+| Dependencies | Unpinned installs | Lockfiles that CI, the image and `start.sh` all install from | [`7f07890`](https://github.com/Imhaohao/standardphysics/commit/7f078906) |
+| Job worker | One loop with no queue lock and no deadlines | One process holds the queue lock, and every job runs in a child process that is killed at its deadline | [`689a02f`](https://github.com/Imhaohao/standardphysics/commit/689a02fa), [`a21d1de`](https://github.com/Imhaohao/standardphysics/commit/a21d1de7) |
+| Admission control | No budgets | Budgets for each owner, the job queue and the disk, answered with 429, 503 or 507 | [`4438d14`](https://github.com/Imhaohao/standardphysics/commit/4438d14a) |
+| Deploys | No deploy tooling | CI publishes the tested image, and `scripts/deploy.sh` waits for running jobs, then confirms the new commit is serving | [`b55740c`](https://github.com/Imhaohao/standardphysics/commit/b55740c1), [`afdf1c1`](https://github.com/Imhaohao/standardphysics/commit/afdf1c17) |
+| Backups and alerts | None | Nightly backups, a restore that checks every artifact's SHA-256, and a monitor that alerts on an outage | [`c186d79`](https://github.com/Imhaohao/standardphysics/commit/c186d799), [`f0ed86f`](https://github.com/Imhaohao/standardphysics/commit/f0ed86f2) |
+| CI | One job that installed the packages and ran pytest | Lint, types, tests, coverage floors, contract drift, a browser flow, an image smoke test and security scans, all gating the release image | [`ci.yml`](.github/workflows/ci.yml) |
+| Tests | 471 Python tests | About 2,000 Python tests, plus the web and iOS suites | |
+| Failure model | Not written down | 23 failure modes below, each with the test that proves it, and [RESILIENCE.md](RESILIENCE.md) for the long form | |
 
 ## Production readiness at a glance
 
@@ -134,7 +152,7 @@ The containers run as a non-root user with memory and CPU limits and rotated log
 
 Everything in this section lives in one public W&B project, [imhaohao-university-of-california-berkeley/physics](https://wandb.ai/imhaohao-university-of-california-berkeley/physics/weave), and every link opens without a W&B account. On 28 September 2026 at 10:42pm PT the project held 8,350 traced calls recorded since 13 September, and none of them raised an error. It also holds one Weave Evaluation with its 39-case dataset, the model that evaluation scores, and six evaluation runs.
 
-`@traced` in [`tracing.py`](packages/agents/standardphysics_agents/tracing.py) makes a function a Weave op. The API traces the checks it runs for a request, and every worker child process starts its own tracing and flushes it before it exits, so a scan's processing appears in Weave end to end. `/health/details` reports whether the API process's tracing started, why not when it did not, and how many of its sends to W&B have failed.
+`@traced` in [`tracing.py`](packages/agents/standardphysics_agents/tracing.py) makes a function a Weave op. The API traces the checks it runs for a request. Every worker child process starts its own tracing and flushes it before it exits, so the checks a job runs appear in Weave too. `/health/details` reports whether the API process's tracing started, why not when it did not, and how many of its sends to W&B have failed.
 
 ### Traced operations
 
@@ -142,7 +160,7 @@ Everything in this section lives in one public W&B project, [imhaohao-university
 |---|---|---|---|
 | `assess` | One assessment of a scene graph; every check below runs inside it | 546 | [Latest](https://wandb.ai/imhaohao-university-of-california-berkeley/physics/weave/calls/01a0eba2-a789-70bc-b324-16f1174d4777) |
 | `checks.run` and `checks.<rule>` | One accessibility rule measured against the scene graph; 17 rules, counted below | 1 to 545 per rule | Inside any `assess` call |
-| `router.local_policy` | The router choosing the loop's next action: `FIX`, `RESCAN_AREA`, `ASK_OWNER`, `ESCALATE` or `DONE` | 238 | [An `ASK_OWNER` decision](https://wandb.ai/imhaohao-university-of-california-berkeley/physics/weave/calls/01a0e709-7332-71fd-bf7f-e497d0f0d2e8) |
+| `router.local_policy` | The router choosing the loop's next action: `FIX`, `RESCAN_AREA`, `ASK_OWNER`, `ESCALATE` or `DONE`. Every routing decision in the project so far came from this local policy. With `TYPESAFE_API_KEY` set, the loop asks TypeSafe System One instead and traces it as `router.typesafe` | 238 | [An `ASK_OWNER` decision](https://wandb.ai/imhaohao-university-of-california-berkeley/physics/weave/calls/01a0e709-7332-71fd-bf7f-e497d0f0d2e8) |
 | `loop.pass` | One pass of the agent loop, which measures, lets the router decide, and then does only the action it chose | 4 | [The pass that ends a run](https://wandb.ai/imhaohao-university-of-california-berkeley/physics/weave/calls/01a0e521-98a4-76af-8d93-5bc4a4b11ef9) |
 | `loop.rescan`, `loop.ask`, `loop.escalate`, `loop.done` | The action a pass carried out | 1 each | [Rescan](https://wandb.ai/imhaohao-university-of-california-berkeley/physics/weave/calls/01a0e520-f214-782a-8452-b26c22c4d1d8), [ask](https://wandb.ai/imhaohao-university-of-california-berkeley/physics/weave/calls/01a0e521-40ad-7ca6-a893-a811a242a60b), [escalate](https://wandb.ai/imhaohao-university-of-california-berkeley/physics/weave/calls/01a0e521-8c7a-7e6a-99ba-4996e7eb3237), [done](https://wandb.ai/imhaohao-university-of-california-berkeley/physics/weave/calls/01a0e521-dd51-71b2-9696-a6e498083319) |
 | `fix.propose` | A search for a furniture rearrangement that clears the targeted findings | 45 | [Latest](https://wandb.ai/imhaohao-university-of-california-berkeley/physics/weave/calls/01a0eb86-8de9-7d51-9f26-b5d44fd2b829) |
