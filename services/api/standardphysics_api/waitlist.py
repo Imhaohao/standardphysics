@@ -8,13 +8,19 @@ import io
 from datetime import UTC, datetime
 from typing import Literal
 
-from fastapi import FastAPI, Header, Response
+from fastapi import FastAPI, Header, Request, Response
 from pydantic import BaseModel, EmailStr
 
 from .accounts import normalize_email
+from .attempt_limiter import AttemptLimiter
+from .auth import client_address
 from .db import Database
 from .errors import ApiProblem
 from .settings import Settings
+
+SIGNUPS_PER_ADDRESS = 30
+"""Enough for a class signing up together behind one campus network address."""
+SIGNUP_WINDOW_SECONDS = 3600
 
 
 class WaitlistSignup(BaseModel):
@@ -35,8 +41,12 @@ def _csv_export(database: Database) -> str:
 
 
 def install_waitlist_routes(app: FastAPI, database: Database, settings: Settings) -> None:
+    signups = AttemptLimiter(limit=SIGNUPS_PER_ADDRESS, window=SIGNUP_WINDOW_SECONDS,
+                             message="Too many signups from this network. Try again in an hour.")
+
     @app.post("/api/waitlist", status_code=202)
-    def join_waitlist(body: WaitlistSignup) -> Response:
+    def join_waitlist(body: WaitlistSignup, request: Request) -> Response:
+        signups.admit(client_address(request))
         with database.transaction() as connection:
             connection.execute(
                 "INSERT INTO beta_waitlist (email, role, created_at) VALUES (?, ?, ?)"

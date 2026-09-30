@@ -44,6 +44,7 @@ Jobs are claimed per lane, ordered by `queued_at` with measuring jobs first ([`r
 | Too many uploads at once | Each account streams at most 4 uploads (429) and the server at most 32 (503), both with `Retry-After`. | `test_uploads_past_the_concurrency_cap_are_refused_with_a_retry` |
 | The data volume fills | New scans and uploads are refused with 507 below 1 GB free. Every upload in flight holds a reservation of its declared bytes, so two uploads that together cross the floor are not both taken. | `test_two_uploads_that_together_cross_the_disk_floor_are_not_both_taken` |
 | Too many model calls at once | Each account runs at most 2 model previews (429) and the server at most 4 (503). | [`test_model_provider.py`](services/api/tests/test_model_provider.py) `test_slots_cap_each_owner_with_a_429_and_the_server_with_a_503` |
+| A script fills the beta waitlist | The public signup form takes 30 signups an hour from one network address and answers 429 after that, so the list can't be flooded from one machine. | [`test_waitlist.py`](services/api/tests/test_waitlist.py) `test_one_network_cannot_fill_the_waitlist` |
 
 ## Uploads and input
 
