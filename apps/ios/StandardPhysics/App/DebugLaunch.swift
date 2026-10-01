@@ -7,6 +7,11 @@ import simd
 ///
 ///     SIMCTL_CHILD_SP_DEBUG_SCREEN=photo:door_hardware xcrun simctl launch booted com.standardphysics.capture
 ///
+/// On the shop setup screens, `SP_DEBUG_PHOTOS=sending` opens with the photos
+/// taken before the screen still on their way, and `SP_DEBUG_PHOTOS=failing`
+/// opens with them sending to a server that refuses every try, so they come
+/// back to be taken again.
+///
 /// Debug builds only. The request wording is the server's, copied from
 /// services/api/standardphysics_api/owner_requests.py and
 /// packages/agents/standardphysics_agents/copy.py.
@@ -85,20 +90,44 @@ enum DebugLaunch {
         OwnerRequest(id: id, kind: kind, timing: "in_shop", title: title, detail: detail, unit: unit, status: "open")
     }
 
+    /// The in-shop requests, in the order the server asks them.
+    private static let order = ["restroom", "inside_doors", "entrance_threshold", "door_hardware", "floor_surface",
+                                "restroom_turning_space", "door_opening_force"]
+
+    /// The flow from the named screen on, with every request before it answered.
     private static func setup(_ name: String, argument: String?, model: AppModel) -> ShopSetupModel {
-        let order = ["restroom", "inside_doors", "entrance_threshold", "door_hardware", "floor_surface",
-                     "restroom_turning_space", "door_opening_force"]
-        let id = name == "push" ? "door_opening_force" : (argument ?? "restroom")
-        let step: ShopSetupModel.Step = switch name {
-        case "question": .question(requests[id] ?? requests["restroom"]!)
-        case "photo": .photo(requests[id] ?? requests["door_hardware"]!)
-        case "push": .pushForce(requests["door_opening_force"]!)
-        default: .measuring
-        }
-        let done = order.firstIndex(of: id) ?? order.count
-        let setup = ShopSetupModel(debugStep: step, progress: (done, order.count), app: model)
+        let opensAt = firstOpen(name, argument: argument).flatMap { order.firstIndex(of: $0) } ?? order.count
+        let answered = Array(order.prefix(opensAt))
+        let photoServer = ProcessInfo.processInfo.environment["SP_DEBUG_PHOTOS"]
+        let setup = ShopSetupModel(
+            debugRequests: order.compactMap { requests[$0] },
+            answered: Set(answered),
+            sending: photoServer == nil ? [] : answered.filter { requests[$0]?.isPhoto == true },
+            outbox: outbox(photoServer),
+            app: model)
         setup.debugPrompt = name == "measuring" ? measuringPrompt(argument) : nil
         return setup
+    }
+
+    /// The request a screen opens on. The measuring wait has none left.
+    private static func firstOpen(_ name: String, argument: String?) -> String? {
+        switch name {
+        case "push": "door_opening_force"
+        case "measuring": nil
+        case "photo": argument ?? "door_hardware"
+        default: argument ?? "restroom"
+        }
+    }
+
+    /// Photos on a debug screen never reach a server. A photo taken there
+    /// arrives after four seconds, unless `SP_DEBUG_PHOTOS` names a server
+    /// that holds every photo or refuses it.
+    private static func outbox(_ photoServer: String?) -> PhotoOutbox {
+        switch photoServer {
+        case "sending": PhotoOutbox { _ in try await Task.sleep(for: .seconds(3_600)) }
+        case "failing": PhotoOutbox { _ in throw OwnerAPIError.unreachable }
+        default: PhotoOutbox { _ in try await Task.sleep(for: .seconds(4)) }
+        }
     }
 
     private static func measuringPrompt(_ argument: String?) -> MeasuringView.Prompt {

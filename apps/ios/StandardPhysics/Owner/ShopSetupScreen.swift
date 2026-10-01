@@ -55,23 +55,27 @@ private struct QuickAnswerView: View {
             FlowDetail(request.detail)
             if let problem = setup.problem { FlowProblem(message: problem) }
         } actions: {
-            HStack(spacing: AppTheme.Spacing.small) {
-                Button("Yes") { setup.answer(true) }
-                    .buttonStyle(AppButtonStyle())
-                Button("No") { setup.answer(false) }
-                    .buttonStyle(AppButtonStyle())
+            StepActions(outbox: setup.outbox) {
+                HStack(spacing: AppTheme.Spacing.small) {
+                    Button("Yes") { setup.answer(true) }
+                        .buttonStyle(AppButtonStyle())
+                    Button("No") { setup.answer(false) }
+                        .buttonStyle(AppButtonStyle())
+                }
+                .disabled(setup.isSending)
             }
-            .disabled(setup.isSending)
         }
     }
 }
 
 /// Screen 6: one photo, with a drawing of the shot to take and the line the
-/// server writes about what it will be checked for.
+/// server writes about what it will be checked for. The step moves on once
+/// the camera has closed, and the photo sends while the owner carries on.
 private struct QuickPhotoView: View {
     @ObservedObject var setup: ShopSetupModel
     let request: OwnerRequest
     @State private var takingPhoto = false
+    @State private var takenPhoto: Data?
 
     var body: some View {
         FlowPage {
@@ -81,20 +85,27 @@ private struct QuickPhotoView: View {
             FlowDetail(request.detail)
             if let problem = setup.problem { FlowProblem(message: problem) }
         } actions: {
-            Button(setup.isSending ? "Sending your photo" : "Take photo") { takingPhoto = true }
-                .buttonStyle(AppButtonStyle())
-            Button("Skip for now") { setup.skip() }
-                .buttonStyle(AppButtonStyle(.link))
+            StepActions(outbox: setup.outbox) {
+                Button("Take photo") { takingPhoto = true }
+                    .buttonStyle(AppButtonStyle())
+                Button("Skip for now") { setup.skip() }
+                    .buttonStyle(AppButtonStyle(.link))
+            }
         }
         .disabled(setup.isSending)
-        .fullScreenCover(isPresented: $takingPhoto) {
+        .fullScreenCover(isPresented: $takingPhoto, onDismiss: sendTakenPhoto) {
             PhotoCapture { image in
+                takenPhoto = image.flatMap(PhotoEncoding.jpeg(from:))
                 takingPhoto = false
-                guard let image, let jpeg = PhotoEncoding.jpeg(from: image) else { return }
-                setup.sendPhoto(jpeg)
             }
             .ignoresSafeArea()
         }
+    }
+
+    private func sendTakenPhoto() {
+        guard let jpeg = takenPhoto else { return }
+        takenPhoto = nil
+        setup.sendPhoto(jpeg)
     }
 }
 
@@ -132,14 +143,48 @@ private struct DoorPushView: View {
             .onAppear { fieldFocused = true }
             if let problem = setup.problem { FlowProblem(message: problem) }
         } actions: {
-            Button(setup.isSending ? "Saving" : "Save") {
-                if let reading { setup.savePushForce(reading) }
+            StepActions(outbox: setup.outbox) {
+                Button(setup.isSending ? "Saving" : "Save") {
+                    if let reading { setup.savePushForce(reading) }
+                }
+                .buttonStyle(AppButtonStyle())
+                .disabled(reading == nil)
+                Button("Skip for now") { setup.skip() }
+                    .buttonStyle(AppButtonStyle(.link))
             }
-            .buttonStyle(AppButtonStyle())
-            .disabled(reading == nil)
-            Button("Skip for now") { setup.skip() }
-                .buttonStyle(AppButtonStyle(.link))
         }
         .disabled(setup.isSending)
+    }
+}
+
+/// A step's actions, under a quiet line saying how many photos are still
+/// sending. The line goes once the last one has arrived.
+struct StepActions<Actions: View>: View {
+    @ObservedObject var outbox: PhotoOutbox
+    @ViewBuilder let actions: Actions
+
+    var body: some View {
+        VStack(spacing: AppTheme.Spacing.small) {
+            if outbox.count > 0 {
+                photosSending
+                    .transition(.opacity)
+            }
+            actions
+        }
+        .animation(AppTheme.Motion.quick, value: outbox.count > 0)
+    }
+
+    private var photosSending: some View {
+        Label {
+            Text("Sending ^[\(outbox.count) photo](inflect: true)")
+        } icon: {
+            ProgressView()
+                .controlSize(.small)
+                .tint(AppTheme.mutedInk)
+                .accessibilityHidden(true)
+        }
+        .font(AppTheme.Typography.secondary)
+        .foregroundStyle(AppTheme.mutedInk)
+        .accessibilityElement(children: .combine)
     }
 }

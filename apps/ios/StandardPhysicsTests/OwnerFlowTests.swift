@@ -136,3 +136,130 @@ final class OwnerDetailTests: XCTestCase {
         XCTAssertEqual(journey.nextStep.count, 2)
     }
 }
+
+@MainActor
+final class BackgroundPhotoTests: XCTestCase {
+    private let jpeg = Data([0xFF, 0xD8, 0xFF, 0xE0])
+    private let doorHandle = photoRequest("door_hardware")
+    private let floor = photoRequest("floor_surface")
+
+    func testTakingAPhotoMovesOnBeforeItHasSent() async throws {
+        let server = PhotoServer(.hold)
+        let setup = flow([doorHandle, floor], server: server)
+
+        setup.sendPhoto(jpeg)
+
+        XCTAssertEqual(setup.step, .photo(floor))
+        XCTAssertEqual(setup.progress.done, 1)
+        XCTAssertEqual(setup.outbox.count, 1)
+        try await waitUntil { server.heldCount == 1 }
+        server.letOneThrough()
+        try await waitUntil { setup.outbox.count == 0 }
+        XCTAssertEqual(setup.step, .photo(floor))
+        XCTAssertEqual(server.tries.map(\.requestID), ["door_hardware"])
+    }
+
+    func testTheCountIsEveryPhotoStillOnItsWay() async throws {
+        let server = PhotoServer(.hold, .hold)
+        let outbox = PhotoOutbox(wait: server.wait, upload: server.receive)
+
+        outbox.send(photo("door_hardware")) { _ in XCTFail("no photo failed") }
+        outbox.send(photo("floor_surface")) { _ in XCTFail("no photo failed") }
+
+        XCTAssertEqual(outbox.count, 2)
+        try await waitUntil { server.heldCount == 2 }
+        server.letOneThrough()
+        try await waitUntil { outbox.count == 1 }
+        server.letOneThrough()
+        try await waitUntil { outbox.count == 0 }
+    }
+
+    func testAFailedSendIsTriedAgainUntilItGoesThrough() async throws {
+        let server = PhotoServer(.refuse, .refuse, .take)
+        let outbox = PhotoOutbox(wait: server.wait, upload: server.receive)
+        var failures = 0
+
+        outbox.send(photo("door_hardware")) { _ in failures += 1 }
+        try await waitUntil { outbox.count == 0 }
+
+        XCTAssertEqual(server.tries.map(\.jpeg), [jpeg, jpeg, jpeg], "every try sends the same photo")
+        XCTAssertEqual(server.waits, PhotoOutbox.retryWaits)
+        XCTAssertEqual(failures, 0)
+    }
+
+    func testAPhotoThatNeverSendsIsAskedForAgain() async throws {
+        let server = PhotoServer(.refuse, .refuse, .refuse)
+        let setup = flow([doorHandle], server: server)
+
+        setup.sendPhoto(jpeg)
+        XCTAssertEqual(setup.step, .measuring)
+        try await waitUntil { setup.outbox.count == 0 }
+
+        XCTAssertEqual(server.tries.count, 3)
+        XCTAssertEqual(server.waits, PhotoOutbox.retryWaits)
+        XCTAssertEqual(setup.step, .photo(doorHandle))
+        XCTAssertEqual(setup.problem, ShopSetupModel.unsentPhotoProblem)
+        XCTAssertEqual(setup.progress.done, 0)
+    }
+
+    func testAPhotoThatFailsMidStepComesBackOnceThatStepIsDone() async throws {
+        let server = PhotoServer(.refuse, .refuse, .refuse)
+        let setup = flow([doorHandle, floor], server: server)
+
+        setup.sendPhoto(jpeg)
+        try await waitUntil { setup.outbox.count == 0 }
+        XCTAssertEqual(setup.step, .photo(floor), "the screen never changes under the owner")
+        XCTAssertNil(setup.problem)
+
+        setup.sendPhoto(jpeg)
+        XCTAssertEqual(setup.step, .photo(doorHandle))
+        XCTAssertEqual(setup.problem, ShopSetupModel.unsentPhotoProblem)
+        try await waitUntil { setup.outbox.count == 0 }
+    }
+
+    private func flow(_ requests: [OwnerRequest], server: PhotoServer) -> ShopSetupModel {
+        ShopSetupModel(scanID: UUID(), requests: requests,
+            outbox: PhotoOutbox(wait: server.wait, upload: server.receive))
+    }
+
+    private func photo(_ requestID: String) -> PhotoOutbox.Photo {
+        PhotoOutbox.Photo(scanID: UUID(), requestID: requestID, jpeg: jpeg)
+    }
+}
+
+/// Stands in for the server in the photo tests. Each try takes the next
+/// answer in line, and a held try waits until the test lets it through.
+@MainActor
+private final class PhotoServer {
+    enum Answer { case take, refuse, hold }
+
+    private var answers: [Answer]
+    private var held: [CheckedContinuation<Void, Never>] = []
+    private(set) var tries: [PhotoOutbox.Photo] = []
+    private(set) var waits: [Duration] = []
+
+    var heldCount: Int { held.count }
+
+    init(_ answers: Answer...) { self.answers = answers }
+
+    func receive(_ photo: PhotoOutbox.Photo) async throws {
+        tries.append(photo)
+        switch answers.isEmpty ? .take : answers.removeFirst() {
+        case .take: return
+        case .refuse: throw OwnerAPIError.unreachable
+        case .hold: await withCheckedContinuation { held.append($0) }
+        }
+    }
+
+    func wait(_ duration: Duration) async throws {
+        waits.append(duration)
+    }
+
+    func letOneThrough() {
+        held.removeFirst().resume()
+    }
+}
+
+private func photoRequest(_ id: String) -> OwnerRequest {
+    OwnerRequest(id: id, kind: "photo", timing: "in_shop", title: id, detail: "", unit: nil, status: "open")
+}

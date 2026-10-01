@@ -19,7 +19,7 @@ enum Haptics {
         UINotificationFeedbackGenerator().notificationOccurred(.warning)
     }
 
-    /// An answer or a photo went through.
+    /// An answer went through, or a photo was taken and is on its way.
     static func sent() {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }

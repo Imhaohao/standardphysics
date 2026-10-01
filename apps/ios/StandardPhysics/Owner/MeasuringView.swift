@@ -25,7 +25,7 @@ struct MeasuringView: View {
             }
             promptPanel
         } actions: {
-            actions
+            StepActions(outbox: setup.outbox) { actions }
         }
         .task { await decidePrompt() }
         .task { await setup.watchForResults() }
