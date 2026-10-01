@@ -10,16 +10,22 @@ here is a change to both.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, StringConstraints, model_validator
 
 from .findings import Finding
 from .geometry import Vec3
 from .loop import NodeMove
 
 Role = Literal["owner", "team"]
+
+SHOP_NAME_MAX_LENGTH = 120
+"""The longest name a shop may have, the same limit as the shop name an account is made with."""
+
+ShopName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=SHOP_NAME_MAX_LENGTH)]
+"""Spaces around the name are dropped before its length is checked, so a name of only spaces is empty."""
 
 
 class Session(BaseModel):
@@ -162,6 +168,12 @@ class Journey(BaseModel):
 
 class JourneyList(BaseModel):
     journeys: list[Journey]
+
+
+class RenameShopRequest(BaseModel):
+    """The name the owner gives a shop, for `PATCH /api/scans/{id}`."""
+
+    name: ShopName
 
 
 Destination = Literal["seating", "restroom", "fitting_room", "shelves", "pickup"]

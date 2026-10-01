@@ -112,6 +112,37 @@ struct StepProgress: View {
     }
 }
 
+/// The one field a shop's name is typed in: before a walk, on review, and
+/// when renaming a shop from home. Left empty, the shop is called
+/// `placeholder`, which the field shows in grey.
+struct ShopNameField: View {
+    @Binding var name: String
+    let placeholder: String
+    var focusOnAppear = false
+    var submit: () -> Void = {}
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.label) {
+            Text("Shop name")
+                .font(AppTheme.Typography.secondary)
+                .foregroundStyle(AppTheme.mutedInk)
+                .accessibilityHidden(true)
+            TextField("Shop name", text: $name, prompt: Text(placeholder))
+                .textInputAutocapitalization(.words)
+                .submitLabel(.done)
+                .focused($focused)
+                .onSubmit(submit)
+                .onChange(of: name) { _, typed in
+                    let limited = ShopName.limited(typed)
+                    if limited != typed { name = limited }
+                }
+                .fieldSurface(focused: focused)
+        }
+        .onAppear { focused = focusOnAppear }
+    }
+}
+
 /// A problem that stopped a step, said as what to do next.
 struct FlowProblem: View {
     let message: String

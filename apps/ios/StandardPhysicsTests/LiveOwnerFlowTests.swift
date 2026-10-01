@@ -41,6 +41,9 @@ final class LiveOwnerFlowTests: XCTestCase {
         XCTAssertEqual(requests.first { $0.id == "door_hardware" }?.status, "answered")
         let journeys = try await api.journeys()
         XCTAssertEqual(journeys.first?.scanID, scanID)
+        try await api.renameShop(scanID: scanID, to: "Tea House Annex")
+        let renamed = try await api.journey(scanID: scanID)
+        XCTAssertEqual(renamed.shopName, "Tea House Annex")
         try await api.registerDevice(String(repeating: "ab", count: 32), environment: PushRegistration.environment)
 
         let second = try await uploadPhoneWalk(token: token, joining: scanID)

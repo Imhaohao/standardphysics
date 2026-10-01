@@ -1531,6 +1531,15 @@ export interface RebuildRequest {
   base_revision: number;
 }
 /**
+ * The name the owner gives a shop, for `PATCH /api/scans/{id}`.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "RenameShopRequest".
+ */
+export interface RenameShopRequest {
+  name: string;
+}
+/**
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
  * via the `definition` "ReplayChapter".
  */

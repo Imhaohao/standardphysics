@@ -7,6 +7,8 @@ import simd
 ///
 ///     SIMCTL_CHILD_SP_DEBUG_SCREEN=photo:door_hardware xcrun simctl launch booted com.standardphysics.capture
 ///
+/// `home:rename` opens home with the rename sheet up on its first shop.
+///
 /// Debug builds only. The request wording is the server's, copied from
 /// services/api/standardphysics_api/owner_requests.py and
 /// packages/agents/standardphysics_agents/copy.py.
@@ -28,6 +30,7 @@ enum DebugLaunch {
         switch name {
         case "home":
             model.showForDebugging(journeys: journeys(argument))
+            if argument == "rename" { model.shopToRename = model.journeys.first }
             return .home
         case "question", "photo", "push", "measuring":
             return .setup(setup(name, argument: argument, model: model))
