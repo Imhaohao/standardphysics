@@ -57,3 +57,49 @@ final class CoverageViewRulesTests: CoverageEngineTestCase {
         XCTAssertFalse(engine.snapshot.surfaces[0].isDone)
     }
 }
+
+final class PaintProjectionTests: XCTestCase {
+    /// Sees down -z like an AR camera: x and y pass through, w is the distance in front.
+    private let lookingDownMinusZ = simd_float4x4(columns: (
+        SIMD4<Float>(1, 0, 0, 0),
+        SIMD4<Float>(0, 1, 0, 0),
+        SIMD4<Float>(0, 0, 0, -1),
+        SIMD4<Float>(0, 0, 0, 0)
+    ))
+    private let screen = CGSize(width: 400, height: 800)
+
+    private var projection: PaintProjection { PaintProjection(worldToClip: lookingDownMinusZ, viewport: screen) }
+
+    func testAPointStraightAheadLandsInTheMiddleOfTheScreen() {
+        XCTAssertEqual(projection.screenPoint(of: SIMD3(0, 0, -2)), CGPoint(x: 200, y: 400))
+    }
+
+    func testAPointToTheRightLandsRightOfCenterAndShrinksWithDistance() {
+        XCTAssertEqual(projection.screenPoint(of: SIMD3(1, 0, -2)), CGPoint(x: 300, y: 400))
+        XCTAssertEqual(projection.screenPoint(of: SIMD3(1, 0, -4)), CGPoint(x: 250, y: 400))
+    }
+
+    func testAPointBehindTheCameraHasNoPlaceOnScreen() {
+        XCTAssertNil(projection.screenPoint(of: SIMD3(0, 0, 1)))
+    }
+
+    func testACellIsDrawnOnlyWhenEveryCornerIsInFrontOfTheCamera() {
+        let ahead = PaintCell(PaintedSample(worldPoint: SIMD3(0, 0, -2), worldNormal: SIMD3(0, 0, 1), isObserved: true))
+        let straddling = PaintCell(PaintedSample(worldPoint: SIMD3(0, 0, 0), worldNormal: SIMD3(1, 0, 0), isObserved: true))
+
+        XCTAssertFalse(projection.path(for: [ahead]).isEmpty)
+        XCTAssertTrue(projection.path(for: [straddling]).isEmpty)
+    }
+
+    func testACellIsAHandWideSquareLyingOnItsSurface() {
+        let cell = PaintCell(PaintedSample(worldPoint: SIMD3(0, 0, 0), worldNormal: SIMD3(0, 0, 1), isObserved: true))
+        let half = PaintCell.side / 2
+
+        XCTAssertEqual(cell.corners.count, 4)
+        for (corner, expected) in zip(cell.corners, [SIMD3(-half, -half, 0), SIMD3(half, -half, 0), SIMD3(half, half, 0), SIMD3(-half, half, 0)]) {
+            XCTAssertEqual(corner.x, expected.x, accuracy: 0.0001)
+            XCTAssertEqual(corner.y, expected.y, accuracy: 0.0001)
+            XCTAssertEqual(corner.z, expected.z, accuracy: 0.0001)
+        }
+    }
+}

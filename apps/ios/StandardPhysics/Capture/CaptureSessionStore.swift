@@ -1,3 +1,4 @@
+import ARKit
 import RoomPlan
 import SwiftUI
 
@@ -17,6 +18,9 @@ final class CaptureSessionStore: ObservableObject {
     @Published private(set) var paint: [PaintedSample] = []
     /// When the walk will stop on its own, once the owner has been warned.
     @Published private(set) var timeLimit: Date?
+    /// RoomPlan's AR session once the walk has started it, for anything
+    /// drawn over the camera that has to share it.
+    @Published private(set) var arSession: ARSession?
     weak var controller: RoomCaptureController?
 
     private var scanningStartedAt: Date?
@@ -34,6 +38,7 @@ final class CaptureSessionStore: ObservableObject {
         self.controller = controller
         do {
             try controller.start(in: ScanExporter.makeCaptureDirectory(), uploadPlan: uploadPlan)
+            arSession = controller.arSession
             phase = .scanning
             scanningStartedAt = Date()
         } catch {
