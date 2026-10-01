@@ -595,6 +595,14 @@ Failing: readiness: https://api.standardphysics.app/health/ready answered 503
 Failing: queue: the oldest queued job has waited 2400s, over the 1800s limit
 ```
 
+The API sends one more kind of message to the same address. When a new
+address joins the TestFlight waitlist, it posts "A shop owner joined the
+TestFlight waitlist. 3 people are on it now." under the title "New TestFlight
+waitlist signup". It names the role and the count, never the address, which
+stays in `/api/waitlist.csv`. Someone joining again with the same address
+sends nothing. This needs no timer: the API reads `SP_ALERT_WEBHOOK` when it
+starts, so it takes effect at the next deploy or restart.
+
 Turn it on once the webhook is in `.env`, and run it once by hand:
 
 ```bash

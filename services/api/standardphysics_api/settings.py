@@ -157,6 +157,12 @@ class Settings:
     `from_environment` fills it in, so a server built in a test stays local."""
     weave_entity: str | None = None
     waitlist_admin_token: str | None = None
+    team_alert_webhook: str | None = field(default=None, repr=False)
+    """Where the team hears about things worth knowing at once, from SP_ALERT_WEBHOOK: the same ntfy topic or
+    chat webhook monitor.sh alerts. Nothing is sent when it is unset. Kept out of repr because an ntfy topic
+    is the only thing that keeps its messages private."""
+    team_alert_format: str = ""
+    """SP_ALERT_FORMAT: "ntfy" for a self-hosted ntfy server, otherwise worked out from the address."""
     auto_deep_simulation: bool = False
     auto_deep_samples: int = 1000
     auto_deep_typesafe_call_limit: int = 3000
@@ -321,6 +327,8 @@ class Settings:
             weave_project=os.environ.get(PROJECT_ENV) or None,
             weave_entity=os.environ.get(ENTITY_ENV) or None,
             waitlist_admin_token=os.environ.get("SP_WAITLIST_ADMIN_TOKEN") or None,
+            team_alert_webhook=os.environ.get("SP_ALERT_WEBHOOK") or None,
+            team_alert_format=os.environ.get("SP_ALERT_FORMAT", ""),
             auto_deep_simulation=_flag("SP_AUTO_DEEP_SIMULATION"),
             bake_in_own_process=not _flag("SP_BAKE_IN_PROCESS"),
             jobs_in_own_process=not _flag("SP_JOBS_IN_PROCESS"),
