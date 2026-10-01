@@ -45,7 +45,7 @@ struct SceneCaptureOptions: Equatable, Sendable {
         usesPersonSegmentationWithDepth || usesPersonSegmentation
     }
 
-    static func select(from capabilities: SceneCaptureCapabilities) -> Self {
+    static func select(from capabilities: SceneCaptureCapabilities, filtersPeople: Bool = true) -> Self {
         let reconstruction: SceneReconstructionMode?
         if capabilities.supportsMeshWithClassification {
             reconstruction = .meshWithClassification
@@ -55,6 +55,9 @@ struct SceneCaptureOptions: Equatable, Sendable {
             reconstruction = nil
         }
 
+        guard filtersPeople else {
+            return Self(reconstruction: reconstruction, usesPersonSegmentationWithDepth: false, usesPersonSegmentation: false)
+        }
         if capabilities.supportsPersonSegmentationWithDepth {
             return Self(
                 reconstruction: reconstruction,
@@ -76,8 +79,8 @@ enum SceneCaptureConfiguration {
         let options: SceneCaptureOptions
     }
 
-    static func prepare() -> Prepared {
-        let options = SceneCaptureOptions.select(from: .current)
+    static func prepare(filtersPeople: Bool = true) -> Prepared {
+        let options = SceneCaptureOptions.select(from: .current, filtersPeople: filtersPeople)
         let configuration = ARWorldTrackingConfiguration()
         if let reconstruction = options.reconstruction {
             switch reconstruction {
