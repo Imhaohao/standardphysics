@@ -399,7 +399,7 @@ final class AppModel: ObservableObject {
     /// asked and leaves them worrying about it.
     func deleteScan(_ scan: CapturedScan) async {
         let remoteID = ResumableUploadStore(captureDirectory: scan.directory).scanID
-        uploads[scan.id] = nil
+        uploads.removeValue(forKey: scan.id)?.cancel()
         do { try CaptureLibrary.remove(scan) } catch {
             deletionMessage = "That scan could not be removed. Try again."
             return
@@ -415,15 +415,30 @@ final class AppModel: ObservableObject {
     /// with it. A shop still being measured is taken off the list at once and
     /// removed on the server when its measuring stops.
     func deleteShop(_ journey: Journey) async {
+        await deleteShop(scanID: journey.scanID)
+    }
+
+    /// Deletes the walk whose questions are on screen, for an owner who would
+    /// rather not finish them, then goes home.
+    func deleteWalk(_ setup: ShopSetupModel) async {
+        if let scan = setup.upload?.scan {
+            await deleteScan(scan)
+        } else if let scanID = setup.scanID {
+            await deleteShop(scanID: scanID)
+        }
+        showStart()
+    }
+
+    private func deleteShop(scanID: UUID) async {
         guard let baseURL = AppEnvironment.apiBaseURL else { return }
         do {
-            try await ScanUploadClient(baseURL: baseURL, token: session.token).delete(id: journey.scanID)
+            try await ScanUploadClient(baseURL: baseURL, token: session.token).delete(id: scanID)
         } catch {
             deletionMessage = "That shop could not be deleted. Check your connection and try again."
             return
         }
         deletionMessage = nil
-        await forgetShop(journey.scanID)
+        await forgetShop(scanID)
     }
 
     /// The owner deleted a shop on its web page: drop this phone's copy of it
@@ -435,7 +450,7 @@ final class AppModel: ObservableObject {
 
     private func forgetShop(_ scanID: UUID) async {
         for scan in savedScans where ResumableUploadStore(captureDirectory: scan.directory).scanID == scanID {
-            uploads[scan.id] = nil
+            uploads.removeValue(forKey: scan.id)?.cancel()
             try? CaptureLibrary.remove(scan)
         }
         savedScans = CaptureLibrary.all()

@@ -5,6 +5,13 @@ import SwiftUI
 struct ShopSetupScreen: View {
     @ObservedObject var app: AppModel
     @ObservedObject var setup: ShopSetupModel
+    @State private var confirmingDelete = false
+    @State private var deleting = false
+
+    /// Lets the owner drop the walk without answering the rest of its questions.
+    private var deleteScan: FlowExit {
+        FlowExit(title: deleting ? "Deleting" : "Delete scan", role: .destructive) { confirmingDelete = true }
+    }
 
     var body: some View {
         Group {
@@ -12,20 +19,30 @@ struct ShopSetupScreen: View {
             case .preparing:
                 PreparingView()
             case .question(let request):
-                QuickAnswerView(setup: setup, request: request)
+                QuickAnswerView(setup: setup, request: request, exit: deleteScan)
                     .id(request.id)
             case .photo(let request):
-                QuickPhotoView(setup: setup, request: request)
+                QuickPhotoView(setup: setup, request: request, exit: deleteScan)
                     .id(request.id)
             case .pushForce(let request):
-                DoorPushView(setup: setup, request: request)
+                DoorPushView(setup: setup, request: request, exit: deleteScan)
                     .id(request.id)
             case .measuring:
                 MeasuringView(app: app, setup: setup)
             }
         }
+        .disabled(deleting)
         .transition(.opacity)
         .animation(AppTheme.Motion.quick, value: setup.step)
+        .confirmationDialog("Delete this scan?", isPresented: $confirmingDelete, titleVisibility: .visible) {
+            Button("Delete scan", role: .destructive) {
+                deleting = true
+                Task { await app.deleteWalk(setup) }
+            }
+            Button("Keep it", role: .cancel) {}
+        } message: {
+            Text("The room, the walkthrough and your answers so far all go with it.")
+        }
         .task { await setup.begin() }
     }
 }
@@ -46,9 +63,10 @@ private struct PreparingView: View {
 private struct QuickAnswerView: View {
     @ObservedObject var setup: ShopSetupModel
     let request: OwnerRequest
+    let exit: FlowExit
 
     var body: some View {
-        FlowPage {
+        FlowPage(exit: exit) {
             StepProgress(done: setup.progress.done, total: setup.progress.total)
             SketchSheet(height: 200) { QuestionSketch(requestID: request.id) }
             FlowTitle(request.title)
@@ -71,10 +89,11 @@ private struct QuickAnswerView: View {
 private struct QuickPhotoView: View {
     @ObservedObject var setup: ShopSetupModel
     let request: OwnerRequest
+    let exit: FlowExit
     @State private var takingPhoto = false
 
     var body: some View {
-        FlowPage {
+        FlowPage(exit: exit) {
             StepProgress(done: setup.progress.done, total: setup.progress.total)
             SketchSheet(height: 230) { SamplePhoto(requestID: request.id) }
             FlowTitle(request.title)
@@ -103,6 +122,7 @@ private struct QuickPhotoView: View {
 private struct DoorPushView: View {
     @ObservedObject var setup: ShopSetupModel
     let request: OwnerRequest
+    let exit: FlowExit
     @State private var pounds = ""
     @FocusState private var fieldFocused: Bool
 
@@ -111,7 +131,7 @@ private struct DoorPushView: View {
     }
 
     var body: some View {
-        FlowPage {
+        FlowPage(exit: exit) {
             StepProgress(done: setup.progress.done, total: setup.progress.total)
             SketchSheet(height: 220) { PushGaugeSketch() }
             FlowTitle(request.title)
