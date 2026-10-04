@@ -6,7 +6,8 @@ name: iOS app
 # LiveOwnerFlowTests walks datasets/phone/test1 through a real API started from
 # services/api, which imports packages/agents and packages/pipeline, so a
 # change to any of those or to their pinned dependencies can too.
-# LiveReportPDFTests prints a report link served by apps/web.
+# LiveReportPDFTests prints a report link served by apps/web. XcodeGen comes
+# through .github/actions/pinned-download, so a change there can break it too.
 on:
   push:
     paths:
@@ -21,6 +22,7 @@ on:
       - "requirements-dev.lock"
       - "datasets/phone/test1/**"
       - ".github/workflows/ios.yml"
+      - ".github/actions/**"
   pull_request:
     paths:
       - "apps/ios/**"
@@ -34,6 +36,7 @@ on:
       - "requirements-dev.lock"
       - "datasets/phone/test1/**"
       - ".github/workflows/ios.yml"
+      - ".github/actions/**"
   workflow_dispatch:
 
 concurrency:
@@ -58,12 +61,16 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - run: xcodebuild -version
+      - name: Download XcodeGen
+        uses: ./.github/actions/pinned-download
+        with:
+          url: https://github.com/yonaskolb/XcodeGen/releases/download/${{ env.XCODEGEN_VERSION }}/xcodegen.zip
+          sha256: ${{ env.XCODEGEN_SHA256 }}
+          path: ${{ runner.temp }}/xcodegen.zip
       # project.pbxproj is committed as XcodeGen writes it, so a project.yml
       # edit without regenerating shows up here instead of on someone's laptop.
       - name: Fail if the Xcode project is stale against project.yml
         run: |
-          curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 -o "$RUNNER_TEMP/xcodegen.zip" "https://github.com/yonaskolb/XcodeGen/releases/download/$XCODEGEN_VERSION/xcodegen.zip"
-          echo "$XCODEGEN_SHA256  $RUNNER_TEMP/xcodegen.zip" | shasum -a 256 -c
           unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP"
           "$RUNNER_TEMP/xcodegen/bin/xcodegen" generate
           git diff --exit-code -- .

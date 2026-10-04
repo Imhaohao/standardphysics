@@ -7,7 +7,8 @@ identity instead of building its own copy, and publish retags the candidate
 digest instead of building again, so the bytes released are the bytes checked.
 
 Everything the build pulls in is pinned too: base images by digest, pip at a
-named version, and the downloaded XcodeGen against a sha256 sum.
+named version, and each downloaded tool against a sha256 sum, which the
+pinned-download action checks on every run, cached or not.
 """
 
 from __future__ import annotations
@@ -20,8 +21,10 @@ import yaml
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 WORKFLOWS = ROOT / ".github" / "workflows"
+PINNED_DOWNLOAD = "./.github/actions/pinned-download"
 BUILD_STEP = re.compile(r"docker/build-push-action|docker (buildx )?build\b")
 UNBOUNDED_PIP_UPGRADE = re.compile(r"pip install[^\n]*--upgrade pip(?!=)")
+ENV_REFERENCE = re.compile(r"\$\{\{ env\.(\w+) \}\}")
 
 
 def _workflow(name: str) -> dict[str, Any]:
@@ -105,11 +108,88 @@ def test_pip_upgrades_name_a_version():
     assert not unbounded
 
 
-def test_xcodegen_is_checked_against_its_sha256_before_it_runs():
-    ios = _workflow("ios.yml")
-    assert re.fullmatch(r"[0-9a-f]{64}", ios["env"]["XCODEGEN_SHA256"])
-    stale_check = next(
-        step for step in ios["jobs"]["simulator"]["steps"] if "xcodegen.zip" in step.get("run", "")
+def _workflow_jobs() -> list[tuple[dict[str, Any], dict[str, Any]]]:
+    """Every job in every workflow, with the env its steps' inputs can read."""
+    jobs = []
+    for path in sorted(WORKFLOWS.glob("*.yml")):
+        workflow = yaml.safe_load(path.read_text())
+        jobs += [({**workflow.get("env", {}), **job.get("env", {})}, job) for job in workflow["jobs"].values()]
+    return jobs
+
+
+def _pinned_downloads() -> list[tuple[dict[str, Any], list[dict[str, Any]], int]]:
+    """Each use of the pinned-download action: its job's env, the job's steps and its place in them."""
+    return [
+        (env, job["steps"], index)
+        for env, job in _workflow_jobs()
+        for index, step in enumerate(job.get("steps", []))
+        if step.get("uses") == PINNED_DOWNLOAD
+    ]
+
+
+def _resolved(value: str, env: dict[str, Any]) -> str:
+    return ENV_REFERENCE.sub(lambda reference: str(env[reference[1]]), value)
+
+
+def _asset_name(download: dict[str, Any]) -> str:
+    return download["with"]["path"].rsplit("/", 1)[-1]
+
+
+def _action_steps(name: str) -> list[dict[str, Any]]:
+    action = yaml.safe_load((ROOT / ".github" / "actions" / name / "action.yml").read_text())
+    return action["runs"]["steps"]
+
+
+def _position(steps: list[dict[str, Any]], marker: str) -> int:
+    return next(index for index, step in enumerate(steps) if marker in _step_text(step))
+
+
+def test_release_assets_are_downloaded_only_through_the_pinned_download_action():
+    direct = [
+        step.get("name", step.get("run", ""))
+        for _, job in _workflow_jobs()
+        for step in job.get("steps", [])
+        if "releases/download" in step.get("run", "")
+    ]
+    assert not direct
+
+
+def test_the_scanners_and_xcodegen_are_pinned_by_sha256():
+    digests = {
+        _asset_name(steps[index]): _resolved(steps[index]["with"]["sha256"], env)
+        for env, steps, index in _pinned_downloads()
+    }
+    assert set(digests) == {"gitleaks.tar.gz", "grype.tar.gz", "xcodegen.zip"}
+    assert all(re.fullmatch(r"[0-9a-f]{64}", digest) for digest in digests.values())
+
+
+def test_each_download_is_used_only_after_the_action_has_checked_it():
+    for _, steps, index in _pinned_downloads():
+        asset = _asset_name(steps[index])
+        users = [position for position, step in enumerate(steps) if asset in step.get("run", "")]
+        assert users and min(users) > index
+
+
+def test_the_pinned_download_checks_the_digest_on_every_run_and_caches_only_a_match():
+    steps = _action_steps("pinned-download")
+    restore, fetch, check, save = (
+        _position(steps, marker)
+        for marker in ("actions/cache/restore@", "curl ", "shasum -a 256 --check --strict", "actions/cache/save@")
     )
-    run = stale_check["run"]
-    assert run.index("shasum -a 256 -c") < run.index("unzip")
+    assert restore < fetch < check < save
+    assert "if" not in steps[check]
+    assert steps[fetch]["if"] == steps[save]["if"] == "steps.cache.outputs.cache-hit != 'true'"
+    assert steps[restore]["with"]["key"] == steps[save]["with"]["key"] == "pinned-download-${{ inputs.sha256 }}"
+
+
+def test_a_failed_download_retries_for_minutes_before_it_gives_up():
+    steps = _action_steps("pinned-download")
+    curl = steps[_position(steps, "curl ")]["run"]
+    retries = int(re.search(r"--retry (\d+)", curl)[1])
+    retry_window = int(re.search(r"--retry-max-time (\d+)", curl)[1])
+    assert "--retry-all-errors" in curl
+    # Without --retry-delay curl waits one second and doubles each wait, so n
+    # retries wait 2**n - 1 seconds in all. Five fixed five-second waits gave
+    # up after 25 seconds of 500s from GitHub's release download.
+    assert "--retry-delay" not in curl
+    assert min(2**retries - 1, retry_window) >= 120
