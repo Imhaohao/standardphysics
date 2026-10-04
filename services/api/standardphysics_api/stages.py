@@ -23,9 +23,12 @@ import threading
 from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass, field
 
+import numpy as np
 from standardphysics_agents import (
+    CheckContext,
     LocalPolicyRouter,
     LoopStep,
+    Observation,
     TypeSafeRouter,
     VerificationLedger,
     assess,
@@ -33,6 +36,7 @@ from standardphysics_agents import (
     load_pack,
 )
 from standardphysics_agents.ask import Answer, ask
+from standardphysics_agents.checks import route_pinches
 from standardphysics_agents.fix import FixOutcome, combine_rejections, propose_fix
 from standardphysics_agents.loop import loop_steps
 from standardphysics_agents.precedents import rejection_for_space
@@ -57,7 +61,7 @@ from standardphysics_contracts import (
     Stop,
     Vec3,
 )
-from standardphysics_pipeline import PipelineMeasurements, blender, parse_room_json, reconstruct
+from standardphysics_pipeline import Grid, PipelineMeasurements, blender, parse_room_json, reconstruct
 from standardphysics_pipeline.discovery import (
     Detection,
     DiscoveryError,
@@ -180,6 +184,24 @@ def without_route_rules(ledger: VerificationLedger) -> VerificationLedger:
     """The same verifications minus every rule about a customer route, for a scan that has none yet."""
     route_rule_ids = {rule.id for rule in load_pack().rules if ROUTE_SUBJECTS.intersection(rule.applies_to)}
     return VerificationLedger(entries=[entry for entry in ledger.entries if entry.rule_id not in route_rule_ids])
+
+
+def _checked_with(ledger: VerificationLedger, scenario: Scenario | None) -> tuple[VerificationLedger, Scenario]:
+    """The rules and route a layout is checked with: none of the route rules until the owner confirms a route."""
+    if scenario is None:
+        return without_route_rules(ledger), NO_ROUTE_YET
+    return ledger, scenario
+
+
+@dataclass(frozen=True)
+class RoomClearance:
+    """A layout's clearance as the route checks measure it."""
+
+    grid: Grid
+    metres: np.ndarray
+    """Metres from each cell to the nearest one a trip in the shop cannot use, zero on those cells themselves."""
+    pinches: list[Observation]
+    """The narrowest point of each gap on the route, one observation per finding the route width check makes."""
 
 
 @dataclass(frozen=True)
@@ -368,10 +390,8 @@ class Stages:
         visible outcome per requested requirement, with unevaluated checks as
         unobserved rows. Lane A hardens applicability behind it.
         """
-        ledger = self.ledger_factory()
+        ledger, scenario = _checked_with(self.ledger_factory(), scenario)
         pack = load_pack()
-        if scenario is None:
-            ledger, scenario = without_route_rules(ledger), NO_ROUTE_YET
         with _held(self._assess_lock):
             result = assess(graph, scenario, self.measure, ledger=ledger, pass_number=pass_number)
         for missing in result.unevaluated:
@@ -380,6 +400,18 @@ class Stages:
         waiting = {gap.rule_id: gap.waiting_on for gap in result.unevaluated}
         scope = build_scope_manifest(graph, scenario, result.assessment, enabled, waiting)
         return result.assessment.model_copy(update={"rules_checked": len(enabled), "scope": scope})
+
+    def clearance(self, graph: SceneGraph, scenario: Scenario | None) -> RoomClearance:
+        """The clearance this layout's route widths are read from, and the narrowest point of each gap on the route.
+
+        Measured on `assess`'s own cache and under its lock, with the rules it would check, so the map of a layout a
+        drag check has just measured reuses that check's grid and routes, and marks the gaps its findings name.
+        """
+        ledger, scenario = _checked_with(self.ledger_factory(), scenario)
+        context = CheckContext(graph=graph, scenario=scenario, measure=self.measure, rules=load_pack(), ledger=ledger)
+        with _held(self._assess_lock):
+            grid, metres = self.measure.room_clearance(graph)
+            return RoomClearance(grid, metres, route_pinches(context))
 
     def propose(
         self, graph: SceneGraph, scenario: Scenario, targets: list[Finding], typology: SpaceTypology | None = None,

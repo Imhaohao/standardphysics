@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, StringConstraints, model_validator
 from standardphysics_contracts import (
     AskAnswer,
     AskRequest,
+    ClearanceMap,
     LayoutCheckRequest,
     LayoutCheckResult,
     LoopRequest,
@@ -25,6 +26,7 @@ from standardphysics_contracts import (
 )
 
 from .auth import owner_of
+from .clearance import clearance_map
 from .combine import SaveCombineRequest, rooms_of, save_combine
 from .db import Database
 from .labels import (
@@ -67,6 +69,11 @@ def install_layout_routes(
     @app.post("/api/scans/{scan_id}/layout-checks", response_model=LayoutCheckResult)
     def layout_check(scan_id: uuid.UUID, body: LayoutCheckRequest) -> LayoutCheckResult:
         return check_layout(database, stages, scan_id, body)
+
+    @app.post("/api/scans/{scan_id}/clearance-maps", response_model=ClearanceMap)
+    def clearance(scan_id: uuid.UUID, body: LayoutCheckRequest) -> ClearanceMap:
+        """How much room the layout a check of the same body measures leaves around every point of the floor."""
+        return clearance_map(database, stages, scan_id, body)
 
     @app.post("/api/scans/{scan_id}/ask", response_model=AskAnswer)
     def ask_about_the_shop(scan_id: uuid.UUID, body: AskRequest) -> AskAnswer:
