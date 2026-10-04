@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import type { ClearanceControls } from "@/components/clearance/useClearanceOverlay";
 import type { FoundHandles } from "@/components/workspace/FoundOutlines";
 import type { ArrangeHandlers } from "@/components/workspace/ShopModel";
 import type { StaffHandles } from "@/components/workspace/StaffAreas";
@@ -48,7 +49,11 @@ function lookOf(glbUrl: string | null, scanGlbUrl: string | null) {
   return glbUrl ? ("reconstructed" as const) : ("plain" as const);
 }
 
-export function OwnerModel({ scene, glbUrl, scanGlbUrl, setup, lightweight }: { scene: SceneGraph; glbUrl: string | null; scanGlbUrl: string | null; setup: ModelSetup; lightweight: boolean }) {
+export function OwnerModel({ scene, glbUrl, scanGlbUrl, setup, lightweight, clearance }: {
+  scene: SceneGraph; glbUrl: string | null; scanGlbUrl: string | null; setup: ModelSetup; lightweight: boolean;
+  /** The clearance map on the floor, and how far its legend slides the picture. */
+  clearance: Pick<ClearanceControls, "overlay" | "frameShift">;
+}) {
   return (
     <Viewer
       scene={setup.shown}
@@ -59,7 +64,8 @@ export function OwnerModel({ scene, glbUrl, scanGlbUrl, setup, lightweight }: { 
       route={setup.route}
       staff={setup.staff}
       found={setup.found}
-      frameShift={setup.frameShift}
+      clearance={clearance.overlay}
+      frameShift={setup.frameShift + clearance.frameShift}
       dragging={setup.dragging}
       cutWalls={!setup.wheelchair}
       glbUrl={glbUrl}

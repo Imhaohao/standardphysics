@@ -1,12 +1,12 @@
 import type { LayoutCheckResult, NodeMove } from "@/types/contracts";
 import type { MoveSet } from "./moves";
 
-export type RunCheck = (moves: NodeMove[], sequence: number) => Promise<LayoutCheckResult>;
+export type RunCheck<Result = LayoutCheckResult> = (moves: NodeMove[], sequence: number) => Promise<Result>;
 
-export type Checked = { key: string; moves: MoveSet; result: LayoutCheckResult; milliseconds: number };
+export type Checked<Result = LayoutCheckResult> = { key: string; moves: MoveSet; result: Result; milliseconds: number };
 
-type Listeners = {
-  onResult: (checked: Checked) => void;
+type Listeners<Result> = {
+  onResult: (checked: Checked<Result>) => void;
   onError: (moves: MoveSet) => void;
   onBusy: (busy: boolean) => void;
 };
@@ -26,22 +26,24 @@ export function layoutKey(moves: MoveSet): string {
  * queue work nobody will read. While one check is out, later asks collapse into
  * a single follow-up for whatever layout is newest when it returns. Answers are
  * cached by layout, so undo, snap-back and returning to a spot need no request.
+ * The clearance map is asked for the same way, so `Result` is whatever the server
+ * answers about a layout.
  */
-export class LayoutChecker {
-  private readonly cache = new Map<string, LayoutCheckResult>();
+export class LayoutChecker<Result = LayoutCheckResult> {
+  private readonly cache = new Map<string, Result>();
   private inFlight = false;
   private queued: MoveSet | null = null;
   private sequence = 0;
   private generation = 0;
 
-  constructor(private readonly run: RunCheck, private readonly listeners: Listeners) {}
+  constructor(private readonly run: RunCheck<Result>, private readonly listeners: Listeners<Result>) {}
 
-  cached(moves: MoveSet): LayoutCheckResult | undefined {
+  cached(moves: MoveSet): Result | undefined {
     return this.cache.get(layoutKey(moves));
   }
 
   /** Remembers a check made elsewhere, such as the one a Fix room run ends with, so the layout needs no request. */
-  seed(moves: MoveSet, result: LayoutCheckResult): void {
+  seed(moves: MoveSet, result: Result): void {
     this.cache.set(layoutKey(moves), result);
   }
 

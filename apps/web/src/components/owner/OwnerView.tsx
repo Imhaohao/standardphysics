@@ -31,6 +31,8 @@ import { ToolsPanel } from "./ToolsPanel";
 import { FoundLegend, FoundSection } from "./FoundList";
 import { usePieceEditing } from "./useFoundEdits";
 import { LayoutStage } from "./LayoutStage";
+import { ClearanceKey } from "@/components/clearance/ClearanceKey";
+import { useClearanceOverlay } from "@/components/clearance/useClearanceOverlay";
 import { type TryLayout, useTryLayout } from "./useTryLayout";
 import { type FoundObjects, foundInModel, pointedInModel, showsFound, useFoundObjects } from "./useFoundObjects";
 import { guessCounter, useOwnerModel } from "./useOwnerModel";
@@ -291,6 +293,7 @@ function OwnerShop(props: ShopProps) {
   const panel = currentPanel(journey, counterSkipped, tools.tool, readOnly);
   const letGoOfFinding = useCallback(() => setSelected(null), []);
   const { trying, found, trial, scanned } = useTrying(panel, arrangement, scene, assessment, letGoOfFinding);
+  const clearance = useClearanceOverlay(scene, arrangement, trying);
   const editing = usePieceEditing(found, scan.id, scene.revision, { readOnly, trying });
   const foundShown = showsFound(panel);
   const pickNode = useNodePicker(panel, scene, foundShown, found.pickNode, setCounter);
@@ -365,6 +368,7 @@ function OwnerShop(props: ShopProps) {
         builtIn={isBuiltIn(scene, arrangement.activeId)}
         review={<PlanReview review={review} scene={scene} finding={planFinding} onRelook={showProposal} onPreview={arrangement.setActiveId} />}
         fixPlan={fixPlanCard(modelLabel, { scanId: scan.id, revision: scene.revision, onOpen: showFixedLayout, plan: Object.values(arrangement.moves) })}
+        clearance={<ClearanceKey clearance={clearance} className="items-start lg:hidden" />}
         statusOf={statusOf} onDecide={statuses.set} onAllClear={allClear.show}
         onReset={putEverythingBack} onDone={leavePlan} />
     ),
@@ -378,9 +382,9 @@ function OwnerShop(props: ShopProps) {
 
   const model = (
     <>
-      <OwnerModel scene={scene} glbUrl={props.glbUrl} scanGlbUrl={props.scanGlbUrl ?? null} setup={setup} lightweight={props.embedded} />
+      <OwnerModel scene={scene} glbUrl={props.glbUrl} scanGlbUrl={props.scanGlbUrl ?? null} setup={setup} lightweight={props.embedded} clearance={clearance} />
       {panel === "wheelchair" && <DrivingPad />}
-      {trying && <LayoutStage arrangement={arrangement} scanned={scene} trial={trial} pointedIds={new Set([...pointedNodes(found), ...proposed.ids])} staff={setup.staff} />}
+      {trying && <LayoutStage arrangement={arrangement} scanned={scene} trial={trial} pointedIds={new Set([...pointedNodes(found), ...proposed.ids])} staff={setup.staff} clearance={clearance} />}
       <FoundLegend list={{ ...found, editing }} shown={foundShown} />
     </>
   );

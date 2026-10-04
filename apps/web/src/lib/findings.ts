@@ -15,9 +15,14 @@ export function findingForNode(findings: Finding[], nodeId: string): Finding | u
   return order.find((finding) => finding.locus?.node_ids.includes(nodeId));
 }
 
-export function formatInches(inches: number): string {
+/** The figure a measurement is shown as: whole within a twentieth of a whole inch, otherwise to a tenth. */
+export function shownFigure(inches: number): string {
   const rounded = Math.round(inches);
-  return Math.abs(inches - rounded) < 0.05 ? `${rounded} in` : `${inches.toFixed(1)} in`;
+  return Math.abs(inches - rounded) < 0.05 ? `${rounded}` : inches.toFixed(1);
+}
+
+export function formatInches(inches: number): string {
+  return `${shownFigure(inches)} in`;
 }
 
 export function countNeedingAttention(findings: Finding[]): number {

@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { FoundHandles } from "@/components/workspace/FoundOutlines";
 import { type FoundGroup, type FoundRow, foundGroups, foundMarks, rowCenter } from "@/lib/found-objects";
+import { useWideScreen } from "@/lib/wide-screen";
 import type { SceneGraph, Vec3 } from "@/types/contracts";
 
 /** Past this many pieces the camera stays on the whole shop; flying to the middle of 24 chairs shows none of them. */
@@ -10,8 +11,6 @@ const MOST_PIECES_TO_FLY_TO = 3;
 
 /** The legend's footprint over the model: its `w-80` plus its `left-4` inset, in CSS pixels. */
 export const LEGEND_INSET_PX = 320 + 16;
-/** Tailwind's `lg`, where the legend sits over the model instead of the list sitting under the step. */
-const WIDE_SCREEN = "(min-width: 64rem)";
 
 export type FoundObjects = {
   groups: FoundGroup[];
@@ -54,16 +53,6 @@ function useFraming(scene: SceneGraph, groups: FoundGroup[]): Framing {
     };
     return { ofRow, ofPiece: (nodeId: string) => rowCenter(scene, { nodeIds: [nodeId] }), onlyPiece };
   }, [scene, groups]);
-}
-
-function subscribeToWidth(onChange: () => void) {
-  const query = window.matchMedia(WIDE_SCREEN);
-  query.addEventListener("change", onChange);
-  return () => query.removeEventListener("change", onChange);
-}
-
-function useWideScreen(): boolean {
-  return useSyncExternalStore(subscribeToWidth, () => window.matchMedia(WIDE_SCREEN).matches, () => false);
 }
 
 /** The steps that read the shop rather than work on it; the others use the model for picking, dragging or driving. */

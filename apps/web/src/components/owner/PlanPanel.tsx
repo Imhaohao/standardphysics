@@ -51,7 +51,7 @@ function pieceWords(pieceName: string | null, activeId: string | null): { piece:
 }
 
 /** Try a layout: drag pieces on the plan, watch each check change as they move, and keep the plan without changing the scan. */
-export function PlanPanel({ arrangement, scanned, pieceName, fixedNote, builtIn = false, review, fixPlan, statusOf, onDecide, onAllClear, onReset, onDone }: {
+export function PlanPanel({ arrangement, scanned, pieceName, fixedNote, builtIn = false, review, fixPlan, clearance, statusOf, onDecide, onAllClear, onReset, onDone }: {
   arrangement: Arrangement;
   /** The findings the shop was assessed with, until the scanned layout's own check comes back. */
   scanned: Finding[];
@@ -63,6 +63,8 @@ export function PlanPanel({ arrangement, scanned, pieceName, fixedNote, builtIn 
   review?: ReactNode;
   /** One press to have the layout model fix the plan as it stands. */
   fixPlan?: ReactNode;
+  /** The clearance map's switch and legend, which sit here on a phone and over the plan on a wide screen. */
+  clearance?: ReactNode;
   /** Said when the owner reaches for a piece that is built in. */
   fixedNote: string | null;
   /** What the owner decided about each problem: a contractor's job, set aside, or still to do. */
@@ -80,6 +82,7 @@ export function PlanPanel({ arrangement, scanned, pieceName, fixedNote, builtIn 
   return (
     <div className="flex min-h-full flex-col gap-5" data-check-ms={arrangement.latencyMs ?? undefined}>
       <Refusals arrangement={arrangement} fixedNote={fixedNote} />
+      {clearance}
       <PlanScore before={before} left={left} checking={arrangement.checking} moved={arrangement.hasMoves} />
       {!arrangement.hasMoves && <p className="-mt-2 text-ink-muted">Drag a piece on the plan.</p>}
       {movable.length + changes.filter((change) => change.kind === "new").length > 0 && fixPlan}
