@@ -62,6 +62,24 @@ def _candidate_kind(detection: Detection) -> str:
     return f"candidate_{detection.class_key}"
 
 
+def _surface_frame(normal: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Return the tangent and bitangent that make a right-handed frame with the surface's normal between them.
+
+    The tangent runs level along a wall, and the bitangent then runs up it. A
+    surface facing straight up or down has no level direction of its own, so
+    its tangent is the world's x axis. The bitangent is tangent × normal, which
+    makes the columns [tangent, normal, bitangent] a rotation. Taking normal ×
+    tangent instead makes them a reflection.
+    """
+    up = np.array([0.0, 0.0, 1.0], dtype=np.float64)
+    tangent = np.cross(normal, up)
+    if np.linalg.norm(tangent) < 1e-4:
+        tangent = np.array([1.0, 0.0, 0.0], dtype=np.float64)
+    else:
+        tangent /= np.linalg.norm(tangent)
+    return tangent, np.cross(tangent, normal)
+
+
 def _surface_dimensions(
     detection: Detection,
     observed_region: list[Vec3],
@@ -79,13 +97,7 @@ def _surface_dimensions(
         return Vec3(x=FACEPLATE_DEFAULT_SIZE[0], y=FACEPLATE_DEFAULT_SIZE[1], z=FACEPLATE_DEFAULT_SIZE[2])
     if not observed_region:
         return Vec3(x=0.0, y=0.0, z=0.0)
-    up = np.array([0.0, 0.0, 1.0], dtype=np.float64)
-    tangent = np.cross(normal, up)
-    if np.linalg.norm(tangent) < 1e-4:
-        tangent = np.array([1.0, 0.0, 0.0], dtype=np.float64)
-    else:
-        tangent /= np.linalg.norm(tangent)
-    bitangent = np.cross(normal, tangent)
+    tangent, bitangent = _surface_frame(normal)
     points = np.asarray([[point.x, point.y, point.z] for point in observed_region], dtype=np.float64)
     span = points @ tangent
     rise = points @ bitangent
@@ -358,13 +370,7 @@ def _anchored_attachment(
         uncertainty_reasons=uncertainty_reasons,
     )
 
-    up = np.array([0.0, 0.0, 1.0], dtype=np.float64)
-    tangent = np.cross(normal_vec, up)
-    if np.linalg.norm(tangent) < 1e-4:
-        tangent = np.array([1.0, 0.0, 0.0], dtype=np.float64)
-    else:
-        tangent /= np.linalg.norm(tangent)
-    bitangent = np.cross(normal_vec, tangent)
+    tangent, bitangent = _surface_frame(normal_vec)
     rot_matrix = np.column_stack([tangent, normal_vec, bitangent])
 
     stable_seed = f"{support_node.id}_{round(float(center_pt[0]), 2)}_{round(float(center_pt[1]), 2)}_{round(float(center_pt[2]), 2)}"

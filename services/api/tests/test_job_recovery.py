@@ -267,7 +267,9 @@ def test_sweep_never_retries_a_failed_input_until_new_evidence(tmp_path):
         deadline = time.monotonic() + 60
         while time.monotonic() < deadline:
             status = client.get(f"/api/scans/{scan_id}/evidence").json()
-            if status["semantic_state"] == "complete":
+            # The evidence reads complete inside the job, a moment before the worker marks the job itself done.
+            job_states = [row[0] for row in process_job_states(client, scan_id)]
+            if status["semantic_state"] == "complete" and "running" not in job_states:
                 break
             time.sleep(0.1)
         settled = client.get(f"/api/scans/{scan_id}/evidence").json()

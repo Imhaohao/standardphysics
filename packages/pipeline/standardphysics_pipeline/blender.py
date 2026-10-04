@@ -31,15 +31,30 @@ class BlenderError(RuntimeError):
 
 
 def _run(script: str, args: list[str]) -> str:
-    result = subprocess.run(
-        [blender_path(), "--background", "--python", str(SCRIPTS / script), "--", *args],
-        capture_output=True,
-        text=True,
-        timeout=TIMEOUT_SECONDS,
-    )
+    try:
+        result = subprocess.run(
+            [blender_path(), "--background", "--python", str(SCRIPTS / script), "--", *args],
+            capture_output=True,
+            text=True,
+            timeout=TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as stopped:
+        raise BlenderError(_timed_out(stopped)) from stopped
     if result.returncode != 0:
         raise BlenderError(result.stderr[-2000:] or result.stdout[-2000:])
     return result.stdout
+
+
+def _timed_out(stopped: subprocess.TimeoutExpired) -> str:
+    """Name Blender's time limit, then keep the end of what it printed before it was stopped."""
+    printed = (_printed(stopped.stderr) or _printed(stopped.stdout))[-2000:]
+    message = f"Blender timed out after {stopped.timeout:g} seconds"
+    return f"{message}\n{printed}" if printed else message
+
+
+def _printed(output: str | bytes | None) -> str:
+    """Output captured before a timeout arrives as bytes, even from a run that asked for text."""
+    return output.decode(errors="replace") if isinstance(output, bytes) else output or ""
 
 
 def export_glb(graph: SceneGraph, out_path: pathlib.Path, lidar_mesh: pathlib.Path | None = None) -> pathlib.Path:

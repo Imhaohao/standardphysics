@@ -14,9 +14,11 @@ import { LidarShopModel } from "./LidarShopModel";
 import { CombinedRooms } from "./CombinedRooms";
 import { PaintedScan, type ScanPieces } from "./PaintedScan";
 import { GaussianSplatScan } from "./GaussianSplatScan";
+import { ShopLights } from "./ShopLights";
 import type { CapturedSplatAsset } from "@/lib/captured-splats";
 import type { RoomGroup, RoomPlacement } from "@/lib/room-groups";
-import { showsSplats } from "@/lib/viewer-source";
+import { lightCasts } from "@/lib/scan-shadows";
+import { shownSurface, type ShownSurface } from "@/lib/viewer-source";
 import type { MotionPoint } from "@/lib/motion-vector";
 import type { WheelchairProfile } from "@/lib/wheelchair-profile";
 import { StaffAreas, type StaffHandles } from "./StaffAreas";
@@ -83,7 +85,6 @@ class GlbFallback extends Component<{ fallback: ReactNode; children: ReactNode }
 }
 
 const GROUND_PLANE_ARGS: [number, number] = [160, 160];
-const HEMI_LIGHT_ARGS: [string, string, number] = ["#ffffff", "#d8d2c4", 1.25];
 const BG_COLOR_ARGS: [string] = ["#f6f5f1"];
 const DPR_DEFAULT: [number, number] = [1, 2];
 const DPR_LIGHTWEIGHT: [number, number] = [1, 1];
@@ -91,48 +92,21 @@ const DPR_SPLATS: [number, number] = [1, 1.5];
 const EMPTY_STALE_SET = new Set<string>();
 const NOTHING_TO_DO = () => {};
 
-/**
- * The light casts only while the renderer draws shadows. Turning the canvas's
- * shadows off stops the shadow map updating but leaves every material sampling
- * the last one drawn, so shadows froze in place while rooms moved. A light that
- * stops casting changes the lighting setup, and three rebuilds the materials
- * without the shadow lookup.
- */
-function Lights({ castShadow }: { castShadow: boolean }) {
-  return (
-    <>
-      <hemisphereLight args={HEMI_LIGHT_ARGS} />
-      <directionalLight
-        position={[6, 22, 10]}
-        intensity={1.25}
-        castShadow={castShadow}
-        shadow-mapSize={[2048, 2048]}
-        shadow-camera-left={-36}
-        shadow-camera-right={36}
-        shadow-camera-top={36}
-        shadow-camera-bottom={-36}
-        shadow-bias={-0.0004}
-      />
-    </>
-  );
-}
-
-type ShopSurfacesProps = Pick<ViewerProps, "scene" | "exported" | "arrange" | "dragAllNodes" | "lightweight" | "glbUrl" | "scanGlbUrl" | "splatAssets" | "onSplatError" | "lidarUrl" | "selected" | "onSelectNode" | "cutWalls" | "materialMode" | "staleNodeIds" | "coverage" | "highlightNodeIds" | "combinedRooms" | "picking">;
+type ShopSurfacesProps = Pick<ViewerProps, "scene" | "exported" | "arrange" | "dragAllNodes" | "lightweight" | "glbUrl" | "scanGlbUrl" | "splatAssets" | "onSplatError" | "lidarUrl" | "selected" | "onSelectNode" | "cutWalls" | "materialMode" | "staleNodeIds" | "coverage" | "highlightNodeIds" | "combinedRooms" | "picking"> & { surface: ShownSurface };
 
 /** The boxes have no captured surface to show, so the captured modes fall back to plain material on them. */
 function boxMaterialMode(mode: ViewerProps["materialMode"]) {
   return mode === "scan" || mode === "splat" ? ("plain" as const) : mode;
 }
 
-/** The captured room for the modes that show one, or null for the modes that show the boxes. */
+/** The captured room for the surfaces that show one, or null for the boxes. */
 function capturedRoom(props: ShopSurfacesProps, boxes: ReactNode, picking: ReactNode, pieces: ScanPieces | null): ReactNode | null {
-  const { materialMode, scanGlbUrl, splatAssets } = props;
-  const splatsOnScreen = showsSplats({ materialMode, hasSplats: Boolean(splatAssets?.length), hasScanGlb: scanGlbUrl !== null });
-  if (splatsOnScreen && splatAssets) {
+  const { surface, scanGlbUrl, splatAssets } = props;
+  if (surface === "splats" && splatAssets) {
     return <SplatRoom key={JSON.stringify(splatAssets)} assets={splatAssets} fallback={boxes} picking={picking} onError={props.onSplatError} />;
   }
-  if (materialMode === "scan" && scanGlbUrl) {
-    return <ScannedRoom url={scanGlbUrl} whileLoading={boxes} picking={picking} cutAbove={props.cutWalls ? SCAN_CUT_HEIGHT : null} pieces={pieces} />;
+  if (surface === "scan" && scanGlbUrl) {
+    return <ScannedRoom url={scanGlbUrl} whileLoading={boxes} picking={picking} cutAbove={props.cutWalls ? SCAN_CUT_HEIGHT : null} pieces={pieces} shadows={!props.lightweight} />;
   }
   return null;
 }
@@ -179,7 +153,7 @@ function ShopSurfaces(props: ShopSurfacesProps) {
   const pieces = useScanPieces(exported, scene, arrange !== null);
   const boxes = <BoxShopModel {...modelProps} />;
   const picking = <BoxShopModel {...modelProps} pickOnly />;
-  if (props.combinedRooms?.rooms.some((room) => room.scan_glb_url)) {
+  if (props.surface === "combined" && props.combinedRooms) {
     return (
       <>
         {boxes}
@@ -222,23 +196,37 @@ function SplatRoom({ assets, fallback, picking, onError }: { assets: CapturedSpl
  * there they stay as invisible targets, so tapping the scanned counter still
  * picks the counter, and a picked piece is outlined over the scan.
  */
-function ScannedRoom({ url, whileLoading, picking, cutAbove, pieces }: { url: string; whileLoading: ReactNode; picking: ReactNode; cutAbove: number | null; pieces: ScanPieces | null }) {
+function ScannedRoom({ url, whileLoading, picking, cutAbove, pieces, shadows }: { url: string; whileLoading: ReactNode; picking: ReactNode; cutAbove: number | null; pieces: ScanPieces | null; shadows: boolean }) {
   return (
     <group>
       <GlbFallback key={url} fallback={whileLoading}>
-        <Suspense fallback={whileLoading}><PaintedScan url={url} cutAbove={cutAbove} pieces={pieces} />{picking}</Suspense>
+        <Suspense fallback={whileLoading}><PaintedScan url={url} cutAbove={cutAbove} pieces={pieces} shadows={shadows} />{picking}</Suspense>
       </GlbFallback>
     </group>
   );
 }
 
-/** Splats are expensive enough to pay for with resolution and antialiasing; the boxes are not. */
+/**
+ * Splats are expensive enough to pay for with resolution and antialiasing; the boxes are not.
+ * A lightweight device draws no shadows at all; elsewhere they are filtered, so their edges are soft.
+ */
 function canvasTuning(lightweight: boolean | undefined, splatAssets: CapturedSplatAsset[] | undefined) {
   const splatting = Boolean(splatAssets?.length);
   return {
     dpr: lightweight ? DPR_LIGHTWEIGHT : splatting ? DPR_SPLATS : DPR_DEFAULT,
     antialias: !splatting,
+    shadows: lightweight ? false : ("percentage" as const),
   };
+}
+
+function hasCombinedMeshes(combinedRooms: ViewerProps["combinedRooms"]): boolean {
+  return Boolean(combinedRooms?.rooms.some((room) => room.scan_glb_url));
+}
+
+/** Which surface the room is drawn as, and whether the light casts onto it. */
+function lighting({ materialMode, splatAssets, scanGlbUrl, combinedRooms, arrange, lightweight }: ViewerProps) {
+  const surface = shownSurface({ materialMode, hasSplats: Boolean(splatAssets?.length), hasScanGlb: scanGlbUrl !== null, combined: hasCombinedMeshes(combinedRooms) });
+  return { surface, castShadow: !lightweight && lightCasts(surface, arrange !== null) };
 }
 
 type WheelchairProps = Pick<ViewerProps, "scene" | "wheelchairMode" | "wheelchairProfile" | "onWheelchairStateChange" | "wheelchairDockTarget" | "wheelchairDockDestination" | "onClearWheelchairDock" | "onWheelchairSelectNode" | "onWheelchairExit" | "wheelchairStart">;
@@ -295,11 +283,12 @@ export default function Viewer(viewerProps: ViewerProps) {
     onWheelchairExit,
   } = viewerProps;
   const tuning = canvasTuning(lightweight, splatAssets);
+  const { surface, castShadow } = lighting(viewerProps);
   return (
     <Canvas
       frameloop={wheelchairMode ? "always" : "demand"}
       dpr={tuning.dpr}
-      shadows={!lightweight}
+      shadows={tuning.shadows}
       camera={{ position: pose.position, fov: pose.fov, ...clipPlanes(scene) }}
       flat
       gl={{ antialias: tuning.antialias, localClippingEnabled: true }}
@@ -311,7 +300,7 @@ export default function Viewer(viewerProps: ViewerProps) {
       aria-label="3D model of the shop"
     >
       <color attach="background" args={BG_COLOR_ARGS} />
-      <Lights castShadow={!lightweight} />
+      <ShopLights room={viewerProps.exported} castShadow={castShadow} />
       {!wheelchairMode && <CameraRig pose={pose} locked={dragging} bounds={null} zoom={zoomRange(scene)} frameShift={viewerProps.frameShift} />}
       <Wheelchair
         scene={scene}
@@ -329,7 +318,7 @@ export default function Viewer(viewerProps: ViewerProps) {
         <planeGeometry args={GROUND_PLANE_ARGS} />
         <meshStandardMaterial color={MODEL.ground} roughness={1} />
       </mesh>
-      <ShopSurfaces {...viewerProps} />
+      <ShopSurfaces {...viewerProps} surface={surface} />
       {selected && <FindingAnnotation finding={selected} />}
       <FloorPlanMarks route={route} staff={viewerProps.staff ?? null} />
       <FoundOutlines scene={scene} handles={viewerProps.found} />

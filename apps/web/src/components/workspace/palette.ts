@@ -26,6 +26,20 @@ export const WALL_CUT_HEIGHT = 1.2;
  */
 export const SCAN_CUT_HEIGHT = 2.2;
 
+/**
+ * How a moved piece's shadow lies on the photographed room.
+ *
+ * `darkening` is the share of its brightness a floor loses where a piece shades
+ * it. Swept over a photographed concrete floor, 0.45 read as a hole cut into the
+ * photograph and 0.25 blended into the floor's own blotches; a third reads as
+ * shade. A surface turned away from the light loses less (see shadowCatcher.ts).
+ *
+ * `penumbra` is the width of a shadow's soft edge in metres. Shop light comes
+ * from wide ceiling fittings, so a crisp sunlit edge looked pasted on; ten
+ * centimetres keeps a table's outline and loses the hard line.
+ */
+export const SHADOW = { color: "#000000", darkening: 0.35, penumbra: 0.1 } as const;
+
 const NODE_COLORS: Record<string, string> = {
   outlet: MODEL.outlet,
   candidate_outlet: MODEL.candidate_outlet,

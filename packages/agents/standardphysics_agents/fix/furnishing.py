@@ -28,7 +28,7 @@ from typing import Any
 
 import numpy as np
 from standardphysics_contracts import NodeMove, Scenario, SceneGraph, SceneNode, Vec3, to_meters
-from standardphysics_pipeline.footprints import polygon_bounds, rotation_about_z
+from standardphysics_pipeline.footprints import Polygon, rotation_about_z
 from standardphysics_pipeline.occupancy import blocks_floor, reads_as_wall
 
 from ..checks import roles
@@ -130,8 +130,17 @@ def _grown(mask: np.ndarray, cells: int) -> np.ndarray:
     return _window_sums(np.pad(mask, cells), 2 * cells + 1, 2 * cells + 1) > 0
 
 
+def _sample_count(length: float) -> int:
+    return max(2, int(length / SAMPLE_METERS) + 2)
+
+
 def _samples(half: float) -> np.ndarray:
-    return np.linspace(-half, half, max(2, int(2 * half / SAMPLE_METERS) + 2))
+    return np.linspace(-half, half, _sample_count(2 * half))
+
+
+def _fractions(edge: np.ndarray) -> np.ndarray:
+    """Return fractions of the way along an edge, spaced as closely as `_samples` spaces a footprint's points."""
+    return np.linspace(0.0, 1.0, _sample_count(float(np.hypot(*edge))))
 
 
 def _inscribed(bounds: Bounds, degrees: float) -> Bounds:
@@ -171,7 +180,7 @@ class _Floor:
             if node.id not in planned and (reads_as_wall(node) or blocks_floor(node)):
                 floor.mark_node(node)
         for door in (node for node in graph.nodes if node.kind in SWING_KINDS):
-            floor.mark_world_box(polygon_bounds(door_keep_clear(door)))
+            floor.mark_rectangle(door_keep_clear(door))
         floor.blocked = _grown(floor.blocked, 1)
         return floor
 
@@ -192,10 +201,13 @@ class _Floor:
                        centre.y + across * sin_t + along * cos_t, -self.axis)
         self.mark_points(x.ravel(), y.ravel())
 
-    def mark_world_box(self, bounds: Bounds) -> None:
-        low_x, low_y, high_x, high_y = bounds
-        x, y = np.meshgrid(np.arange(low_x, high_x + SAMPLE_METERS, SAMPLE_METERS),
-                           np.arange(low_y, high_y + SAMPLE_METERS, SAMPLE_METERS))
+    def mark_rectangle(self, corners: Polygon) -> None:
+        """Stamp a rectangle given as its four world corners in order, however it is turned."""
+        first, second, _, last = (np.asarray(corner, dtype=float) for corner in corners)
+        along, across = second - first, last - first
+        steps_along, steps_across = np.meshgrid(_fractions(along), _fractions(across))
+        x = first[0] + steps_along * along[0] + steps_across * across[0]
+        y = first[1] + steps_along * along[1] + steps_across * across[1]
         frame_x, frame_y = _rotate(x, y, -self.axis)
         self.mark_points(frame_x.ravel(), frame_y.ravel())
 
