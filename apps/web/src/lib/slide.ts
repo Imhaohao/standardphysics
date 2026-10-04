@@ -194,36 +194,48 @@ function shareInsideLimits(run: Run, at: Point, step: Point): number {
   return run.limits.reduce((share, limit) => Math.min(share, shareInsideDisc(limit, at, step)), 1);
 }
 
-type Glide = { step: Point; region: number; side: Edge };
+/** The share of `step` the piece can take inside every region and every limit. */
+function openShare(run: Run, at: Point, step: Point): number {
+  return Math.min(freeShare(run, at, step), shareInsideLimits(run, at, step));
+}
 
-/** Each way the piece could slide from a contact: along every side it pushes into, as far as that side runs. */
-function glides(run: Run, at: Point, desired: Point): Glide[] {
+/** Each way along a side the piece pushes into, as far as that side runs. */
+function alongSides(run: Run, at: Point, desired: Point): Point[] {
   return run.obstructions.flatMap((region, index) => sidesPushedInto(region.edges, at, desired, run.sinks[index]).map((side) => {
     const along = alongSide(desired, side);
-    const share = Math.min(1, sideEnds(region.edges, side, at, along, run.sinks[index]), shareInsideLimits(run, at, along));
-    return { step: scale(along, share), region: index, side };
+    return scale(along, Math.min(1, sideEnds(region.edges, side, at, along, run.sinks[index])));
   }));
 }
 
-function goesSomewhere(run: Run, at: Point, glide: Glide): boolean {
-  return length(glide.step) > REACHED && length(glide.step) * freeShare(run, at, glide.step) > REACHED;
+function onRim(limit: Limit, at: Point): boolean {
+  return length(subtract(at, limit.centre)) >= limit.radius - SAFETY;
 }
 
-/** The slide that keeps most of the move, or none when every way on goes into something. */
-function bestGlide(run: Run, at: Point, desired: Point): Glide | null {
-  return glides(run, at, desired)
-    .filter((glide) => goesSomewhere(run, at, glide))
-    .reduce<Glide | null>((best, glide) => (best === null || length(glide.step) > length(best.step) ? glide : best), null);
+/** Round a travel limit the piece is held at: straight across the circle to its point nearest the target. */
+function acrossLimits(run: Run, at: Point, target: Point): Point[] {
+  return run.limits.filter((limit) => onRim(limit, at) && length(subtract(target, limit.centre)) > limit.radius)
+    .map((limit) => subtract(intoDisc(limit, target), at));
 }
 
-/** One step of a slide: straight at the goal until something is in the way, then along it. */
-function advance(run: Run, at: Point, goal: Point): Point {
-  const desired = subtract(goal, at);
+/**
+ * Where the piece can slide from a contact: along each side it pushes into,
+ * or across a travel limit, each as far as nothing stops it. The one that ends
+ * nearest the target wins, or none when every way on goes into something.
+ */
+function bestGlide(run: Run, at: Point, desired: Point, target: Point): Point | null {
+  const ends = [...alongSides(run, at, desired), ...acrossLimits(run, at, target)]
+    .map((step) => add(at, scale(step, openShare(run, at, step))))
+    .filter((end) => length(subtract(end, at)) > REACHED);
+  return ends.reduce<Point | null>((best, end) => (best === null || length(subtract(target, end)) < length(subtract(target, best)) ? end : best), null);
+}
+
+/** One step of a slide: straight at the target until something is in the way, then along it. */
+function advance(run: Run, at: Point, target: Point): Point {
+  const desired = subtract(target, at);
   if (length(desired) < REACHED) return at;
-  const share = freeShare(run, at, desired);
+  const share = openShare(run, at, desired);
   if (share * length(desired) > REACHED) return add(at, scale(desired, share));
-  const glide = bestGlide(run, at, desired);
-  return glide ? add(at, scale(glide.step, freeShare(run, at, glide.step))) : at;
+  return bestGlide(run, at, desired, target) ?? at;
 }
 
 /** What the piece rests against that keeps it from the target. */
@@ -231,17 +243,16 @@ function stopsAt(run: Run, at: Point, target: Point): Stop[] {
   const desired = subtract(target, at);
   if (length(desired) < REACHED) return [];
   const pressed = run.obstructions.filter((region, index) => sidesPushedInto(region.edges, at, desired, run.sinks[index]).length > 0);
-  const limits = run.limits.filter((limit) => length(subtract(target, limit.centre)) > limit.radius && length(subtract(at, limit.centre)) >= limit.radius - SAFETY);
+  const limits = run.limits.filter((limit) => length(subtract(target, limit.centre)) > limit.radius && onRim(limit, at));
   const stops = [...pressed, ...limits].map((found) => found.tag);
   return stops.filter((stop, index) => stops.findIndex((other) => other.nodeId === stop.nodeId && other.reason === stop.reason) === index);
 }
 
 function glideToward(space: SlideSpace, from: Point, target: Point, forgiveAtHome: boolean): Slide {
   const run = runFrom(space, from, forgiveAtHome);
-  const goal = run.limits.reduce((point, limit) => intoDisc(limit, point), target);
   let at = from;
   for (let step = 0; step < MOST_STEPS; step++) {
-    const next = advance(run, at, goal);
+    const next = advance(run, at, target);
     if (length(subtract(next, at)) < REACHED) break;
     at = next;
   }

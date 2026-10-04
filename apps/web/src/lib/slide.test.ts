@@ -227,6 +227,17 @@ describe("the floor's edge and the travel limit", () => {
     expect(Math.hypot(round.held.at.x, round.held.at.y)).toBeCloseTo(MAX_TRAVEL_METERS, 5);
     expect(round.held.at.y).toBeGreaterThan(0.4);
   });
+
+  it("slides along a wall toward a pointer beyond the travel limit, as far as the nearest legal spot", () => {
+    const shelf: PieceDescription = { id: "case", kind: "object", label: "Display case", at: [1.6, 0, 0.45], size: [2.4, 0.6, 0.9], movable: true };
+    const along = slideOf([...WALLS, shelf], "case", { x: 3.4, y: 0.9 });
+    expect(along.at.x).toBeCloseTo(1.75, 8);
+    expect(along.at.y).toBeCloseTo(0.9, 8);
+    const capped = slideOf([...WALLS, shelf], "case", { x: 3.4, y: 3 });
+    expect(capped.at.x).toBeCloseTo(1.75, 8);
+    expect(Math.hypot(capped.at.x - 1.6, capped.at.y)).toBeCloseTo(MAX_TRAVEL_METERS, 5);
+    expect(capped.blockedBy.map((stop) => stop.reason).sort()).toEqual(["collided", "moved_too_far"]);
+  });
 });
 
 describe("keyboard nudges and turns", () => {

@@ -9,8 +9,10 @@ import {
   drawOrder, hasMoved, labelBesideLine, type PlanBox, type PlanLabel, placeLabels, planRole, planTextMeters, planTurnDegrees,
   turnedBounds, turnedHalfExtent, turnedPoint, viewBoxAttribute,
 } from "@/lib/plan-view";
+import type { Stop } from "@/lib/slide";
 import type { StaffHandles } from "@/lib/staff-areas";
 import type { Finding, SceneGraph, SceneNode, Vec3 } from "@/types/contracts";
+import { KeepClearSquares, PressedAgainst } from "./PlanGuides";
 import { STAFF_AREA_ATTRIBUTE, StaffPlanAreas, StaffPlanLabels } from "./StaffPlanAreas";
 import { type PlanDragHandlers, usePlanDrag } from "./usePlanDrag";
 
@@ -32,6 +34,8 @@ type PlanProps = PieceState & PlanDragHandlers & {
   onKey: (nodeId: string, event: KeyboardEvent, turnDegrees: number) => void;
   /** The staff-only floor, drawn under the furniture. */
   staff: StaffHandles | null;
+  /** What the piece in hand is pressed against, while a drag holds it short of the pointer. */
+  pressedOn: Stop[];
 };
 
 /** How the scanned room sits on screen: turned square, fitted, with text sized to it. */
@@ -59,11 +63,12 @@ function placement(node: SceneNode) {
 export function LayoutPlan(props: PlanProps) {
   const drawingRef = useRef<SVGGElement>(null);
   const drag = usePlanDrag(drawingRef, props);
-  const ids = { hatch: useId(), lift: useId() };
+  const ids = { hatch: useId(), keepClear: useId(), lift: useId() };
   const frame = useMemo(() => frameOf(props.scanned), [props.scanned]);
   const nodes = useMemo(() => drawOrder(drawnNodes(props.shown), frame.floor), [props.shown, frame.floor]);
   const heldId = drag.draggingId ?? props.activeId;
   const draw: DrawContext = { props, drag, frame, hatch: `url(#${ids.hatch})`, lift: `url(#${ids.lift})` };
+  const holding = drag.draggingId !== null;
   return (
     <svg viewBox={viewBoxAttribute(frame.box)} onPointerDown={(event) => closeStaffUnlessOnIt(props.staff, event.target)} className="size-full touch-none select-none" role="group" aria-label="Your shop from above. Drag a piece to move it, or focus one and use the arrow keys.">
       <PlanDefs ids={ids} frame={frame} />
@@ -71,7 +76,9 @@ export function LayoutPlan(props: PlanProps) {
         {nodes.filter((node) => node.kind === "floor").map((node) => <Backdrop key={node.id} node={node} />)}
         {props.staff && <StaffPlanAreas handles={props.staff} svgRef={drawingRef} />}
         <Ghosts shown={props.shown} scanned={props.scanned} movedIds={props.movedIds} />
+        {holding && <KeepClearSquares shown={props.shown} pressedOn={props.pressedOn} hatch={`url(#${ids.keepClear})`} />}
         {nodes.filter((node) => node.kind !== "floor").map((node) => <PlanNode key={node.id} node={node} draw={draw} />)}
+        {holding && <PressedAgainst shown={props.shown} scanned={props.scanned} pressedOn={props.pressedOn} />}
         {props.cleared.map((finding) => <DimensionLine key={`cleared-${finding.id}`} finding={finding} tone="cleared" />)}
         {props.problems.map((finding) => <DimensionLine key={finding.id} finding={finding} tone="problem" />)}
       </g>
@@ -84,11 +91,14 @@ export function LayoutPlan(props: PlanProps) {
 
 type DrawContext = { props: PlanProps; drag: DragBinding; frame: PlanFrame; hatch: string; lift: string };
 
-function PlanDefs({ ids, frame }: { ids: { hatch: string; lift: string }; frame: PlanFrame }) {
+function PlanDefs({ ids, frame }: { ids: { hatch: string; keepClear: string; lift: string }; frame: PlanFrame }) {
   return (
     <defs>
       <pattern id={ids.hatch} width={0.08} height={0.08} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
         <line x1="0" y1="0" x2="0" y2="0.08" stroke="var(--color-ink)" strokeWidth={0.015} strokeOpacity={0.5} />
+      </pattern>
+      <pattern id={ids.keepClear} width={0.1} height={0.1} patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
+        <line x1="0" y1="0" x2="0" y2="0.1" stroke="var(--color-accent)" strokeWidth={0.012} strokeOpacity={0.45} />
       </pattern>
       <filter id={ids.lift} x="-50%" y="-50%" width="200%" height="200%">
         <feDropShadow dx={0} dy={0} stdDeviation={frame.text * 0.3} floodColor="var(--color-ink)" floodOpacity={0.35} />

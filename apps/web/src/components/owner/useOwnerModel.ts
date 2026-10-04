@@ -64,6 +64,7 @@ function useArrangeHandlers(arrangement: Arrangement | null, setDragging: (on: b
   return useMemo(() => (arrangement === null ? null : {
     activeId: arrangement.activeId,
     blockedIds: arrangement.blockedIds,
+    pressedIds: arrangement.pressedIds,
     onGrab: (nodeId: string) => { arrangement.setActiveId(nodeId); setDragging(true); },
     onDrag: arrangement.drag,
     onDrop: () => { setDragging(false); void arrangement.drop(); },

@@ -23,6 +23,8 @@ type Placed = { node: SceneNode; geometry: BufferGeometry; matrix: Matrix4; sour
 export type ArrangeHandlers = {
   activeId: string | null;
   blockedIds: Set<string>;
+  /** What the piece in hand is pressed against while a drag holds it short of the pointer. */
+  pressedIds: Set<string>;
   onGrab: (nodeId: string) => void;
   onDrag: (nodeId: string, dx: number, dy: number) => void;
   onDrop: (nodeId: string) => void;
@@ -176,11 +178,15 @@ function useDrag(node: SceneNode, arrange: ArrangeHandlers | null, dragAllNodes:
   };
 }
 
+/** Refused by the check, in hand, or what the piece in hand is pressed against. */
+function arrangingEdge(nodeId: string, arrange: ArrangeHandlers | null): string | null {
+  if (!arrange) return null;
+  if (arrange.blockedIds.has(nodeId)) return MODEL.problem;
+  return arrange.activeId === nodeId || arrange.pressedIds.has(nodeId) ? MODEL.accent : null;
+}
+
 function edgeColor(node: SceneNode, props: Omit<ModelProps, "shown">): string | null {
-  if (props.arrange?.blockedIds.has(node.id)) return MODEL.problem;
-  if (props.arrange?.activeId === node.id) return MODEL.accent;
-  if (props.focus?.has(node.id)) return props.focusColor;
-  return null;
+  return arrangingEdge(node.id, props.arrange) ?? (props.focus?.has(node.id) ? props.focusColor : null);
 }
 
 /** Over a built-in fixture while planning: it can move, but moving it means construction. */
@@ -275,6 +281,18 @@ function meshRaycast(faded: boolean, clipWall: boolean) {
 
 type ModelNodeProps = { placed: Placed } & Omit<ModelProps, "shown">;
 
+/** Each way arranging can mark one node: the piece in hand, one the check refused, one the piece in hand is pressed against. */
+const ARRANGE_MARKS: ((arrange: ArrangeHandlers, nodeId: string) => boolean)[] = [
+  (arrange, nodeId) => arrange.activeId === nodeId,
+  (arrange, nodeId) => arrange.blockedIds.has(nodeId),
+  (arrange, nodeId) => arrange.pressedIds.has(nodeId),
+];
+
+function sameArrangeLook(prev: ArrangeHandlers | null, next: ArrangeHandlers | null, nodeId: string): boolean {
+  if (prev === null || next === null) return prev === next;
+  return ARRANGE_MARKS.every((marked) => marked(prev, nodeId) === marked(next, nodeId));
+}
+
 // eslint-disable-next-line complexity
 function areModelNodePropsEqual(prev: ModelNodeProps, next: ModelNodeProps): boolean {
   if (prev.placed !== next.placed) return false;
@@ -305,19 +323,7 @@ function areModelNodePropsEqual(prev: ModelNodeProps, next: ModelNodeProps): boo
   const nextCoverage = next.coverage?.get(nodeId);
   if (prevCoverage !== nextCoverage) return false;
 
-  const prevActive = prev.arrange?.activeId === nodeId;
-  const nextActive = next.arrange?.activeId === nodeId;
-  if (prevActive !== nextActive) return false;
-
-  const prevBlocked = prev.arrange?.blockedIds.has(nodeId) ?? false;
-  const nextBlocked = next.arrange?.blockedIds.has(nodeId) ?? false;
-  if (prevBlocked !== nextBlocked) return false;
-
-  const prevArrangeEnabled = prev.arrange !== null;
-  const nextArrangeEnabled = next.arrange !== null;
-  if (prevArrangeEnabled !== nextArrangeEnabled) return false;
-
-  return true;
+  return sameArrangeLook(prev.arrange, next.arrange, nodeId);
 }
 
 // eslint-disable-next-line complexity
