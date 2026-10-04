@@ -1,6 +1,7 @@
 """Ranking rearrangements by how the room looks, and planning the seating as a whole room."""
 
 import json
+import math
 from pathlib import Path
 
 import pytest
@@ -15,7 +16,7 @@ from standardphysics_agents.fix.composition import (
     squaring_turn,
     tables_by_chair,
 )
-from standardphysics_agents.fix.furnishing import arrangements
+from standardphysics_agents.fix.furnishing import CELL_METERS, _Floor, arrangements
 from standardphysics_agents.fix.moves import move_node
 from standardphysics_contracts import Mat4, NodeMove, Scenario, SceneGraph, SceneNode, Vec3
 from standardphysics_fixtures.shop import build_graph, build_scenario, node_id
@@ -108,3 +109,37 @@ def test_whole_room_plans_are_square_unstacked_and_cheapest_first(pack):
         assert not composition.leaves_overlaps(plan.moves)
         assert all(abs(squaring_turn(node, composition.axis_degrees)) < 0.5 for node in after.nodes if node.id in moved)
     assert [plan.disruption for plan in plans] == sorted(plan.disruption for plan in plans)
+
+
+def _bare_room_with_the_door_turned(degrees):
+    """Keep the sample shop's floor and walls, and stand its front door at (0, -1) turned `degrees`."""
+    graph = build_graph()
+    door = graph.by_id(node_id("door_front"))
+    position = door.transform.position
+    turned = move_node(door, _slide(door, -position.x, -1.0 - position.y, degrees))
+    nodes = [node for node in graph.nodes if node.kind in {"wall", "floor"}]
+    return graph.model_copy(update={"nodes": [*nodes, turned]}), turned
+
+
+def _blocked_beside(floor, door, direction, metres):
+    """Say whether the planner keeps every piece off the floor `metres` from the door's centre in `direction`."""
+    centre = door.transform.position
+    point = Vec3(x=centre.x + metres * direction[0], y=centre.y + metres * direction[1], z=0.0)
+    frame_x, frame_y = floor.to_frame(point)
+    return bool(floor.blocked[int((frame_y - floor.y0) // CELL_METERS), int((frame_x - floor.x0) // CELL_METERS)])
+
+
+@pytest.mark.parametrize("degrees", [0.0, 90.0, 45.0])
+def test_whole_room_plans_keep_clear_the_floor_a_door_sweeps_whichever_way_it_faces(degrees):
+    """The planner marks the door's keep-clear square as the turned rectangle it is.
+
+    The door is 0.9 m wide, so 0.8 m out from it is inside the square and 0.8 m
+    along its wall is not. Marking the box square to the world around a door
+    at an angle would also block that floor along the wall.
+    """
+    graph, door = _bare_room_with_the_door_turned(degrees)
+    floor = _Floor.of(graph, room_axis_degrees(graph), set())
+    along = (math.cos(math.radians(degrees)), math.sin(math.radians(degrees)))
+    out = (-along[1], along[0])
+    assert all(_blocked_beside(floor, door, out, metres) for metres in (0.8, -0.8))
+    assert not any(_blocked_beside(floor, door, along, metres) for metres in (0.8, -0.8))
