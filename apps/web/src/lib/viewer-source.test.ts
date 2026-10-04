@@ -1,5 +1,29 @@
 import { describe, expect, it } from "vitest";
-import { showsSplats, viewerSourcePlan } from "./viewer-source";
+import { showsSplats, shownSurface, viewerSourcePlan } from "./viewer-source";
+
+describe("shownSurface", () => {
+  const nothingCaptured = { hasSplats: false, hasScanGlb: false, combined: false };
+
+  it("draws the painted scan in scan mode once one has been baked", () => {
+    expect(shownSurface({ ...nothingCaptured, materialMode: "scan", hasScanGlb: true })).toBe("scan");
+  });
+
+  it("draws the boxes in scan mode while no scan has been baked and no splats stand in", () => {
+    expect(shownSurface({ ...nothingCaptured, materialMode: "scan" })).toBe("boxes");
+  });
+
+  it("draws the splats when they are what the mode shows", () => {
+    expect(shownSurface({ ...nothingCaptured, materialMode: "splat", hasSplats: true, hasScanGlb: true })).toBe("splats");
+  });
+
+  it("draws the boxes for every box mode, whatever else the scan has", () => {
+    expect(shownSurface({ materialMode: "plain", hasSplats: true, hasScanGlb: true, combined: false })).toBe("boxes");
+  });
+
+  it("draws the combined walks over anything else", () => {
+    expect(shownSurface({ materialMode: "scan", hasSplats: true, hasScanGlb: true, combined: true })).toBe("combined");
+  });
+});
 
 describe("showsSplats", () => {
   it("shows the painted mesh rather than the splats when a scan has both", () => {
