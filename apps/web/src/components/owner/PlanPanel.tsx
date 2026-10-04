@@ -153,9 +153,9 @@ function shiftOf(change: FindingChange): Shift {
   };
 }
 
-function Inches({ value, strong = false }: { value: number | null; strong?: boolean }) {
+function Inches({ value, needed = null, strong = false }: { value: number | null; needed?: number | null; strong?: boolean }) {
   if (value === null) return null;
-  return <span className={`measurement ${strong ? "font-semibold text-ink" : ""}`}>{formatInches(value)}</span>;
+  return <span className={`measurement ${strong ? "font-semibold text-ink" : ""}`}>{formatInches(value, needed)}</span>;
 }
 
 /** "46 in to 29 in, 36 in needed": the number this layout moved, and what the standard asks for. */
@@ -165,9 +165,9 @@ function MeasurementShift({ change }: { change: FindingChange }) {
   const both = was !== null && now !== null;
   return (
     <p className="text-sm text-ink-muted">
-      <Inches value={was} />
+      <Inches value={was} needed={needed} />
       {both && " to "}
-      <Inches value={now} strong />
+      <Inches value={now} needed={needed} strong />
       {needed !== null && <>, <Inches value={needed} /> needed</>}
     </p>
   );
@@ -182,7 +182,7 @@ function StillToFix({ findings }: { findings: Finding[] }) {
         {findings.map((finding) => (
           <li key={finding.id} className="flex items-baseline justify-between gap-3">
             <span className="text-pretty">{finding.title}</span>
-            {finding.measured_inches !== null && <span className="measurement shrink-0 text-sm text-problem">{formatInches(finding.measured_inches)}</span>}
+            {finding.measured_inches !== null && <span className="measurement shrink-0 text-sm text-problem">{formatInches(finding.measured_inches, finding.required_inches)}</span>}
           </li>
         ))}
       </ul>
@@ -230,7 +230,7 @@ function BuildingRow({ finding, status, onDecide }: { finding: Finding; status: 
     <li className="flex flex-col gap-3 rounded-2xl bg-sheet p-4 shadow-float">
       <div className="flex items-baseline justify-between gap-3">
         <p className="text-pretty font-semibold">{finding.title}</p>
-        {finding.measured_inches !== null && <span className="measurement shrink-0 text-sm text-problem">{formatInches(finding.measured_inches)}</span>}
+        {finding.measured_inches !== null && <span className="measurement shrink-0 text-sm text-problem">{formatInches(finding.measured_inches, finding.required_inches)}</span>}
       </div>
       {finding.fix && <p className="border-l-2 border-accent pl-3 text-pretty">{finding.fix}</p>}
       <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-2">

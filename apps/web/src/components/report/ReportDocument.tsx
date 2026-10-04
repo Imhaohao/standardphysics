@@ -47,7 +47,7 @@ function ProblemBlock({ finding, decision }: { finding: Finding; decision?: Deci
         <div className="flex items-baseline justify-between gap-4">
           <h3 className="text-xl font-semibold leading-snug">{finding.title}</h3>
           {finding.measured_inches !== null && (
-            <span className="measurement shrink-0 text-lg">{formatInches(finding.measured_inches)}</span>
+            <span className="measurement shrink-0 text-lg">{formatInches(finding.measured_inches, finding.required_inches)}</span>
           )}
         </div>
         <p className="mt-2 text-ink-muted">{finding.detail}</p>

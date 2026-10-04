@@ -214,10 +214,22 @@ function nodeState(node: SceneNode, props: Omit<ModelProps, "shown">) {
   };
 }
 
+/**
+ * A GLB with no materials of its own comes in wearing three's default, which
+ * is solid metal. Metal shows only what it reflects, and the viewer gives it
+ * nothing to reflect, so every face the casting light missed drew pitch black;
+ * the sample shop's model is one. A finish the export chose as metal stays
+ * metal; only bare, untextured full metal is drawn as a plain surface.
+ */
+export function withoutBareMetal(material: Material) {
+  if (material instanceof MeshStandardMaterial && material.metalness === 1 && !material.metalnessMap) material.metalness = 0;
+}
+
 function styledMaterial(source: Material | Material[], faded: boolean, clippingPlanes: Plane[] | null, stripPhotoMap: boolean): Material | Material[] {
   // eslint-disable-next-line complexity
   const style = (material: Material) => {
     const copy = material.clone();
+    withoutBareMetal(copy);
     if (stripPhotoMap && copy instanceof MeshStandardMaterial) copy.map = null;
     copy.transparent = faded || material.transparent;
     copy.opacity = faded ? material.opacity * 0.15 : material.opacity;

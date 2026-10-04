@@ -20,6 +20,15 @@ export function showsSplats({ materialMode, hasSplats, hasScanGlb }: { materialM
   return materialMode === "scan" && !hasScanGlb;
 }
 
+/** What the viewer draws the room as: the boxes, the painted scan, the splats, or several photographed walks side by side. */
+export type ShownSurface = "boxes" | "scan" | "splats" | "combined";
+
+export function shownSurface({ materialMode, hasSplats, hasScanGlb, combined }: { materialMode: ViewerMaterialMode; hasSplats: boolean; hasScanGlb: boolean; combined: boolean }): ShownSurface {
+  if (combined) return "combined";
+  if (showsSplats({ materialMode, hasSplats, hasScanGlb })) return "splats";
+  return materialMode === "scan" && hasScanGlb ? "scan" : "boxes";
+}
+
 /** Selects the source-specific rules that keep a current clean GLB independent of an older photo build. */
 export function viewerSourcePlan({ materialMode, hasCleanGlb, hasPhotoBuild, staleNodeIds }: ViewerSourceInput) {
   const usePhotoBuild = hasPhotoBuild && (materialMode === "captured" || materialMode === "coverage");

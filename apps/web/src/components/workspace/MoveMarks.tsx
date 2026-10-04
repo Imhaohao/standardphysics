@@ -5,12 +5,14 @@ import { useEffect, useMemo } from "react";
 import { CanvasTexture, RepeatWrapping, SRGBColorSpace, Vector3, type Texture } from "three";
 import type { SceneNode } from "@/types/contracts";
 import { MODEL } from "./palette";
+import { shadowCatcherMaterial } from "./shadowCatcher";
 
 const HATCH_SPACING = 0.08;
 const SHADOW_SPREAD = 1.2;
 /** Marks sit a hair above the floor and are pulled toward the camera, so the scanned floor never shows through them. */
 const LIFT = 0.006;
-const PULL_FORWARD = { polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 } as const;
+const PULL = 4;
+const PULL_FORWARD = { polygonOffset: true, polygonOffsetFactor: -PULL, polygonOffsetUnits: -PULL } as const;
 /** Lines are drawn over the scan: a bumpy scanned floor would otherwise swallow a line lying on it. */
 const ON_TOP = { depthTest: false, renderOrder: 3, lineWidth: 3, color: MODEL.accent } as const;
 
@@ -73,24 +75,46 @@ function yawOf(node: SceneNode): number {
   return Math.atan2(node.transform.m[4], node.transform.m[0]);
 }
 
+/**
+ * A shadow catcher over the hatch, which is drawn over the floor and would
+ * otherwise hide any shadow that falls on it: a piece nudged a few inches
+ * stands mostly over its own old spot.
+ */
+function CatchShadowsOnHatch() {
+  const catcher = useMemo(() => shadowCatcherMaterial(PULL + 1), []);
+  useEffect(() => () => catcher.dispose(), [catcher]);
+  return <primitive object={catcher} attach="material" />;
+}
+
 /** Where the piece stood: hatched like every surface the phone never saw, and outlined so the spot reads at a glance. */
-function VacatedSpot({ node }: { node: SceneNode }) {
+function VacatedSpot({ node, shadows }: { node: SceneNode; shadows: boolean }) {
   const { x, y } = node.dimensions;
   const hatch = useTexture(hatchTile, x / HATCH_SPACING / 4, y / HATCH_SPACING / 4);
   const [hx, hy] = [x / 2, y / 2];
   const outline = [floorPoint(node, -hx, -hy), floorPoint(node, hx, -hy), floorPoint(node, hx, hy), floorPoint(node, -hx, hy), floorPoint(node, -hx, -hy)];
+  const rotation: [number, number, number] = [-Math.PI / 2, 0, yawOf(node)];
+  const placement = { position: floorPoint(node), rotation, raycast: () => null };
   return (
     <>
-      <mesh position={floorPoint(node)} rotation={[-Math.PI / 2, 0, yawOf(node)]} raycast={() => null}>
+      <mesh {...placement}>
         <planeGeometry args={[x, y]} />
         <meshBasicMaterial map={hatch} {...PULL_FORWARD} />
       </mesh>
+      {shadows && (
+        <mesh {...placement} receiveShadow>
+          <planeGeometry args={[x, y]} />
+          <CatchShadowsOnHatch />
+        </mesh>
+      )}
       <Line points={outline} {...ON_TOP} dashed dashSize={0.08} gapSize={0.05} />
     </>
   );
 }
 
-/** Where the piece landed: a soft shadow grounds it, so it reads as standing there rather than pasted on. */
+/**
+ * Where the piece landed, when the light casts no real shadow: a soft pool
+ * under it grounds it, so it reads as standing there rather than pasted on.
+ */
 function Landing({ node }: { node: SceneNode }) {
   const shadow = useTexture(shadowTile);
   return (
@@ -101,12 +125,16 @@ function Landing({ node }: { node: SceneNode }) {
   );
 }
 
-/** What a move did, drawn on the floor: the spot it left, the path it took and where it stands now. */
-export function MoveMarks({ from, to }: { from: SceneNode; to: SceneNode }) {
+/**
+ * What a move did, drawn on the floor: the spot it left, the path it took and
+ * where it stands now. With `shadows`, the light throws the piece's own shadow
+ * and the painted pool under it stands down.
+ */
+export function MoveMarks({ from, to, shadows }: { from: SceneNode; to: SceneNode; shadows: boolean }) {
   return (
     <group>
-      <VacatedSpot node={from} />
-      <Landing node={to} />
+      <VacatedSpot node={from} shadows={shadows} />
+      {!shadows && <Landing node={to} />}
       <Line points={[floorPoint(from), floorPoint(to)]} {...ON_TOP} dashed dashSize={0.12} gapSize={0.08} />
     </group>
   );

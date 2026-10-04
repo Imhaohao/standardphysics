@@ -335,24 +335,21 @@ DOOR_SWEEP_ACROSS = 1.0
 
 
 def door_keep_clear(door: SceneNode) -> Polygon:
-    """The floor a door sweeps, as a square the width of the opening.
+    """A door keeps clear a square of floor the width of its opening on each side of its wall.
 
     A hinged door needs a quarter disc of radius equal to its width. A square
     of that side covers it and a little more, which errs toward keeping
     furniture further from a door rather than closer.
+
+    The squares are laid out in the door's own frame and turned with it. A
+    door in a wall that is not square to the world then keeps clear the floor
+    in front of it, rather than a strip of floor along its wall.
     """
-    centre = door.transform.position
     reach = max(door.dimensions.x, door.dimensions.y)
-    swings_along_x = door.dimensions.x >= door.dimensions.y
-    along, across = reach * DOOR_SWEEP_ALONG, reach * DOOR_SWEEP_ACROSS
-    half_x = along if swings_along_x else across
-    half_y = across if swings_along_x else along
-    return [
-        (centre.x - half_x, centre.y - half_y),
-        (centre.x + half_x, centre.y - half_y),
-        (centre.x + half_x, centre.y + half_y),
-        (centre.x - half_x, centre.y + half_y),
-    ]
+    along, across = 2 * reach * DOOR_SWEEP_ALONG, 2 * reach * DOOR_SWEEP_ACROSS
+    if door.dimensions.x >= door.dimensions.y:
+        return sized_footprint(door, along, across)
+    return sized_footprint(door, across, along)
 
 
 def collision_shape(node: SceneNode, tolerance: float = OVERLAP_TOLERANCE) -> Polygon:

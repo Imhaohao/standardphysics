@@ -3,10 +3,12 @@
 import { useGLTF } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
-import { BackSide, BufferGeometry, Group, LinearFilter, Matrix4, Mesh, MeshBasicMaterial, Plane, Vector3, type Color, type Material, type Object3D, type Texture } from "three";
+import { BackSide, BufferGeometry, DoubleSide, Group, LinearFilter, Matrix4, Mesh, MeshBasicMaterial, Plane, Vector3, type Color, type Material, type Object3D, type Texture } from "three";
 import { carveGeometry, carveRegion, type CarveRegion } from "@/lib/carve-scan";
+import { movedFromScan, shadowCasters } from "@/lib/scan-shadows";
 import { toViewerMatrix } from "@/lib/scene-matrix";
 import { MoveMarks } from "./MoveMarks";
+import { catchShadowsOn, shadowCatcherMaterial } from "./shadowCatcher";
 import type { SceneGraph, SceneNode } from "@/types/contracts";
 
 /** The colour of a surface seen from the side the phone never stood on. */
@@ -38,7 +40,13 @@ export function withoutMipmaps(texture: Texture | null): Texture | null {
   return copy;
 }
 
-/** Creates an unlit display material without changing the GLTF-owned source material or textures. */
+/**
+ * Creates an unlit display material without changing the GLTF-owned source material or textures.
+ *
+ * Both faces go into a shadow map. The scan is an open surface, one triangle
+ * thick, and a shadow pass draws only the faces turned away from the light, so
+ * a moved table's top, which faces the light, threw no shadow at all.
+ */
 export function paintedMaterial(source: Material, vertexColors: boolean): MeshBasicMaterial {
   const photographic = source as PhotographSourceMaterial;
   const usesEmissiveMap = !photographic.map && Boolean(photographic.emissiveMap);
@@ -52,6 +60,7 @@ export function paintedMaterial(source: Material, vertexColors: boolean): MeshBa
     map: withoutMipmaps(photographic.map ?? photographic.emissiveMap ?? null),
     opacity: source.opacity,
     side: source.side,
+    shadowSide: DoubleSide,
     transparent: source.transparent,
     vertexColors,
   });
@@ -113,12 +122,28 @@ function asOne(material: Material | Material[]): Material {
 }
 
 const NOT_PICKABLE = () => null;
+const NO_CASTERS = new Set<string>();
 
 /** The pieces the owner may move, cut out of the scan so each one can follow its own box; null leaves the scan whole. */
 export type ScanPieces = { carve: SceneNode[]; placed: SceneGraph };
 
-/** The painted room and its cut-out pieces, with what carving made so it can be released with them. */
-type Painted = { room: Object3D; pieces: Map<string, Group>; made: { geometries: BufferGeometry[]; materials: Material[] } };
+/**
+ * One piece cut out of the scan: the group its triangles hang on, the parts
+ * that cast once it has moved, and the catchers that shade it while it stays.
+ */
+export type ScanPiece = { group: Group; parts: Mesh[]; catchers: Mesh[] };
+
+/**
+ * The painted room and its cut-out pieces, the room's own shadow catchers,
+ * and what painting made so it can be released with them.
+ */
+export type Painted = {
+  room: Object3D;
+  surfaces: Mesh[];
+  catchers: Mesh[];
+  pieces: Map<string, ScanPiece>;
+  made: { geometries: BufferGeometry[]; materials: Material[] };
+};
 
 /**
  * The captured surface with the colour the photos gave it.
@@ -129,36 +154,58 @@ type Painted = { room: Object3D; pieces: Map<string, Group>; made: { geometries:
  * what owns objects, so nothing here can be picked or dragged. While a layout
  * is being planned, each movable piece's triangles are cut out and drawn where
  * its box now stands, so moving the counter moves the scanned counter.
+ *
+ * With `shadows`, a moved piece also throws a shadow onto the room around it.
+ * Only a moved piece casts: everything still where it was scanned already has
+ * its real shadow in the photographs.
  */
-export function PaintedScan({ url, cutAbove = null, pieces = null }: { url: string; cutAbove?: number | null; pieces?: ScanPieces | null }) {
+export function PaintedScan({ url, cutAbove = null, pieces = null, shadows = false }: { url: string; cutAbove?: number | null; pieces?: ScanPieces | null; shadows?: boolean }) {
   const { scene } = useGLTF(url);
-  const carve = pieces?.carve ?? null;
-  const painted = useMemo(() => {
-    const made = paint(scene, carve);
-    cutAt(made.room, cutAbove);
-    return made;
-  }, [scene, carve, cutAbove]);
+  const { carve, catching } = carving(pieces, shadows);
+  const painted = useMemo(() => paintScan(scene, carve, { catching, cutAbove }), [scene, carve, catching, cutAbove]);
   useEffect(() => () => disposePainted(painted), [painted]);
+  useShadowRoles(painted, catching ? pieces : null);
   return (
     <>
       <primitive object={painted.room} />
-      {pieces && carve?.map((node) => {
-        const group = painted.pieces.get(node.id);
-        const now = pieces.placed.nodes.find((candidate) => candidate.id === node.id) ?? node;
-        return group ? <MovedPiece key={node.id} group={group} from={node} to={now} /> : null;
-      })}
+      {pieces && <MovedPieces painted={painted} pieces={pieces} shadows={catching} />}
     </>
   );
+}
+
+/** What to cut out of the scan, and whether what is cut out throws shadows once it moves. */
+function carving(pieces: ScanPieces | null, shadows: boolean) {
+  const carve = pieces?.carve ?? null;
+  return { carve, catching: shadows && carve !== null };
+}
+
+/** Every piece cut out of the scan, hung where its box now stands. */
+function MovedPieces({ painted, pieces, shadows }: { painted: Painted; pieces: ScanPieces; shadows: boolean }) {
+  return pieces.carve.map((node) => {
+    const piece = painted.pieces.get(node.id);
+    const now = pieces.placed.nodes.find((candidate) => candidate.id === node.id) ?? node;
+    return piece ? <MovedPiece key={node.id} group={piece.group} from={node} to={now} shadows={shadows} /> : null;
+  });
+}
+
+/**
+ * The scan painted, cut into its pieces when `carve` names them, laid with
+ * shadow catchers when `catching`, and cut off above `cutAbove`.
+ */
+export function paintScan(scene: Object3D, carve: SceneNode[] | null, { catching, cutAbove }: { catching: boolean; cutAbove: number | null }): Painted {
+  const painted = paint(scene, carve);
+  if (catching) layCatchers(painted);
+  cutAt(painted, cutAbove);
+  return painted;
 }
 
 function paint(scene: Object3D, carve: SceneNode[] | null): Painted {
   const room = scene.clone(true);
   room.updateMatrixWorld(true);
   const regions = carve?.map(carveRegion) ?? [];
-  const painted: Painted = { room, pieces: new Map(), made: { geometries: [], materials: [] } };
-  const meshes: Mesh[] = [];
-  room.traverse((object) => { if (object instanceof Mesh) meshes.push(object); });
-  for (const mesh of meshes) {
+  const painted: Painted = { room, surfaces: [], catchers: [], pieces: new Map(), made: { geometries: [], materials: [] } };
+  room.traverse((object) => { if (object instanceof Mesh) painted.surfaces.push(object); });
+  for (const mesh of painted.surfaces) {
     mesh.material = paintedMaterials(mesh.material, hasVertexColors(mesh));
     mesh.raycast = NOT_PICKABLE;
     if (regions.length > 0) carveInto(mesh, regions, painted);
@@ -179,18 +226,54 @@ function carveInto(mesh: Mesh, regions: CarveRegion[], { pieces, made }: Painted
     part.raycast = NOT_PICKABLE;
     const shell = backfaceShell(part);
     part.add(shell);
-    pieceGroup(pieces, id).add(part);
+    const piece = scanPiece(pieces, id);
+    piece.group.add(part);
+    piece.parts.push(part);
     made.geometries.push(geometry);
     made.materials.push(shell.material as Material);
   }
 }
 
-function pieceGroup(pieces: Map<string, Group>, id: string): Group {
+function scanPiece(pieces: Map<string, ScanPiece>, id: string): ScanPiece {
   const existing = pieces.get(id);
   if (existing) return existing;
-  const group = new Group();
-  pieces.set(id, group);
-  return group;
+  const piece: ScanPiece = { group: new Group(), parts: [], catchers: [] };
+  pieces.set(id, piece);
+  return piece;
+}
+
+/** One shadow catcher over every painted surface, the room's and each piece's, all sharing one material. */
+function layCatchers(painted: Painted) {
+  const material = shadowCatcherMaterial();
+  painted.made.materials.push(material);
+  painted.catchers = painted.surfaces.map((surface) => catchShadowsOn(surface, material));
+  for (const piece of painted.pieces.values()) piece.catchers = piece.parts.map((part) => catchShadowsOn(part, material));
+}
+
+/**
+ * Who casts and who catches. A moved piece casts and catches nothing, since
+ * shading itself would darken a photograph that already shows how it is lit.
+ * The room and every piece still in place catch, but only while something
+ * casts: a catcher is a second pass over its whole surface.
+ */
+export function showShadows({ catchers, pieces }: Painted, casters: Set<string>) {
+  const casting = [...pieces.keys()].some((id) => casters.has(id));
+  for (const catcher of catchers) catcher.visible = casting;
+  for (const [id, piece] of pieces) {
+    const moved = casters.has(id);
+    for (const part of piece.parts) part.castShadow = moved;
+    for (const catcher of piece.catchers) catcher.visible = casting && !moved;
+  }
+}
+
+/** Keeps who casts and who catches in step with the layout, and draws a frame whenever that changes. */
+function useShadowRoles(painted: Painted, pieces: ScanPieces | null) {
+  const invalidate = useThree((state) => state.invalidate);
+  const casters = useMemo(() => (pieces ? shadowCasters(pieces.carve, pieces.placed) : NO_CASTERS), [pieces]);
+  useLayoutEffect(() => {
+    showShadows(painted, casters);
+    invalidate();
+  }, [painted, casters, invalidate]);
 }
 
 /** The rigid move from where a piece was scanned to where its box stands now. */
@@ -198,15 +281,11 @@ function moveBetween(from: SceneNode, to: SceneNode): Matrix4 {
   return toViewerMatrix(to.transform).multiply(toViewerMatrix(from.transform).invert());
 }
 
-function hasMoved(from: SceneNode, to: SceneNode): boolean {
-  return from.transform.m.some((value, index) => Math.abs(value - to.transform.m[index]) > 1e-4);
-}
-
 /**
  * A scanned piece drawn where its box now stands, with marks on the floor for
  * where it was, where it went and how it got there.
  */
-function MovedPiece({ group, from, to }: { group: Group; from: SceneNode; to: SceneNode }) {
+function MovedPiece({ group, from, to, shadows }: { group: Group; from: SceneNode; to: SceneNode; shadows: boolean }) {
   const invalidate = useThree((state) => state.invalidate);
   const mover = useRef<Group>(null);
   useLayoutEffect(() => {
@@ -218,7 +297,7 @@ function MovedPiece({ group, from, to }: { group: Group; from: SceneNode; to: Sc
   return (
     <>
       <group ref={mover} matrixAutoUpdate={false}><primitive object={group} /></group>
-      {hasMoved(from, to) && <MoveMarks from={from} to={to} />}
+      {movedFromScan(from, to) && <MoveMarks from={from} to={to} shadows={shadows} />}
     </>
   );
 }
@@ -231,11 +310,17 @@ function disposePainted({ room, made }: Painted) {
   made.materials.forEach((material) => material.dispose());
 }
 
-/** Everything above `height` left out, so a view from above looks into the rooms rather than onto a ceiling. */
-function cutAt(root: Object3D, height: number | null) {
+/**
+ * Everything above `height` left out, so a view from above looks into the
+ * rooms rather than onto a ceiling. The cut-out pieces are cut too, their
+ * grey backs and their shadow catchers along with their photographs.
+ */
+function cutAt({ room, pieces }: Painted, height: number | null) {
   const planes = height === null ? null : [new Plane(new Vector3(0, -1, 0), height)];
-  root.traverse((object) => {
+  const clip = (object: Object3D) => {
     if (!(object instanceof Mesh)) return;
     for (const material of Array.isArray(object.material) ? object.material : [object.material]) material.clippingPlanes = planes;
-  });
+  };
+  room.traverse(clip);
+  for (const piece of pieces.values()) piece.group.traverse(clip);
 }
