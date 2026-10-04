@@ -33,6 +33,7 @@ final class LiveOwnerFlowTests: XCTestCase {
         let asked = try await walkThroughRequests(setup)
         XCTAssertEqual(asked.first, "restroom")
         XCTAssertFalse(asked.contains("restroom_turning_space"), "a no to the restroom closes its photo")
+        try await waitUntil(timeout: 30) { setup.outbox.count == 0 }
         XCTAssertEqual(setup.step, .measuring)
 
         let api = try XCTUnwrap(app.api())
