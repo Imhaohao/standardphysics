@@ -98,7 +98,7 @@ function PlanDefs({ ids, frame }: { ids: { hatch: string; keepClear: string; lif
         <line x1="0" y1="0" x2="0" y2="0.08" stroke="var(--color-ink)" strokeWidth={0.015} strokeOpacity={0.5} />
       </pattern>
       <pattern id={ids.keepClear} width={0.1} height={0.1} patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
-        <line x1="0" y1="0" x2="0" y2="0.1" stroke="var(--color-accent)" strokeWidth={0.012} strokeOpacity={0.45} />
+        <line x1="0" y1="0" x2="0" y2="0.1" stroke="var(--color-accent)" strokeWidth={0.014} strokeOpacity={0.6} />
       </pattern>
       <filter id={ids.lift} x="-50%" y="-50%" width="200%" height="200%">
         <feDropShadow dx={0} dy={0} stdDeviation={frame.text * 0.3} floodColor="var(--color-ink)" floodOpacity={0.35} />
@@ -113,7 +113,8 @@ function PlanNode({ node, draw }: { node: SceneNode; draw: DrawContext }) {
   if (role === "backdrop") return <Backdrop node={node} />;
   if (role === "fixed") return <FixedPiece node={node} hatch={draw.hatch} turnDegrees={frame.turn} onTap={props.onFixedTap} />;
   if (role === "riding") return <RidingPiece node={node} scene={props.shown} state={props} />;
-  return <MovablePiece node={node} state={props} held={drag.draggingId === node.id} lift={draw.lift} drag={drag} onKey={(event) => props.onKey(node.id, event, frame.turn)} />;
+  const held = drag.draggingId === node.id;
+  return <MovablePiece node={node} state={props} held={held} pressed={held && props.pressedOn.length > 0} lift={draw.lift} drag={drag} onKey={(event) => props.onKey(node.id, event, frame.turn)} />;
 }
 
 /** A tap anywhere on the plan but a staff area closes the open one, as a tap off it does in 3D. */
@@ -193,7 +194,8 @@ function RidingPiece({ node, scene, state }: { node: SceneNode; scene: SceneGrap
   );
 }
 
-function MovablePiece({ node, state, held, lift, drag, onKey }: { node: SceneNode; state: PieceState; held: boolean; lift: string; drag: DragBinding; onKey: (event: KeyboardEvent) => void }) {
+/** A piece in hand is lifted toward the owner, and set down to its true size while something holds it back, so the contact reads true. */
+function MovablePiece({ node, state, held, pressed, lift, drag, onKey }: { node: SceneNode; state: PieceState; held: boolean; pressed: boolean; lift: string; drag: DragBinding; onKey: (event: KeyboardEvent) => void }) {
   const { width, depth, transform } = placement(node);
   const tone = pieceTone(node.id, state);
   const [grabWidth, grabDepth] = [Math.max(width, SMALLEST_GRAB_METERS), Math.max(depth, SMALLEST_GRAB_METERS)];
@@ -212,7 +214,7 @@ function MovablePiece({ node, state, held, lift, drag, onKey }: { node: SceneNod
       onPointerCancel={drag.release}
       onKeyDown={onKey}
     >
-      <g className="plan-lift" data-held={held || undefined} filter={held ? lift : undefined}>
+      <g className="plan-lift" data-held={held || undefined} data-pressed={pressed || undefined} filter={held ? lift : undefined}>
         <rect x={-grabWidth / 2} y={-grabDepth / 2} width={grabWidth} height={grabDepth} fill="transparent" />
         <rect
           x={-width / 2} y={-depth / 2} width={width} height={depth}

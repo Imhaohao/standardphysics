@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
+import { useId, useMemo } from "react";
 import { floorPolygon, footprint, type Point, type Polygon } from "@/lib/footprints";
 import { doorKeepClear, swingsOpen } from "@/lib/layout-rules";
 import { measuredPosition } from "@/lib/moves";
 import { liesFlat } from "@/lib/room-shell";
 import type { Stop } from "@/lib/slide";
-import type { SceneGraph, SceneNode } from "@/types/contracts";
+import type { SceneGraph } from "@/types/contracts";
 import { MAX_TRAVEL_METERS } from "@/types/geometry-rules";
 
 /** The plan is drawn with y running down the screen, so room points flip on the way in. */
@@ -14,35 +14,54 @@ function drawn(polygon: Polygon): string {
   return polygon.map((point) => `${point.x.toFixed(4)},${(-point.y).toFixed(4)}`).join(" ");
 }
 
-const GUIDE = { stroke: "var(--color-accent)", vectorEffect: "non-scaling-stroke" as const };
+const ACCENT = { stroke: "var(--color-accent)", vectorEffect: "non-scaling-stroke" as const };
 
 function pressedNodes(pressedOn: Stop[], reason: Stop["reason"]): Set<string> {
   return new Set(pressedOn.filter((stop) => stop.reason === reason).map((stop) => stop.nodeId));
 }
 
+function floorOutline(scene: SceneGraph): string | null {
+  const floor = scene.nodes.find(liesFlat);
+  return floor ? drawn(floorPolygon(floor)) : null;
+}
+
+/**
+ * The outline of something the piece in hand is pressed against: a soft halo
+ * with a thin line through it, so it reads as lit by the contact rather than
+ * picked up like the piece itself.
+ */
+function Lit({ points }: { points: string }) {
+  return (
+    <>
+      <polygon points={points} fill="none" {...ACCENT} strokeWidth={7} strokeOpacity={0.22} />
+      <polygon points={points} fill="none" {...ACCENT} strokeWidth={1.5} />
+    </>
+  );
+}
+
 /**
  * The floor each door sweeps, shown while a piece is in hand so a piece that
- * stops in open floor in front of a door shows why. The square the piece is
- * pressed against is drawn solid.
+ * stops in open floor in front of a door shows why. Only the part over the
+ * floor is drawn, and the square the piece is pressed against is lit.
  */
 export function KeepClearSquares({ shown, pressedOn, hatch }: { shown: SceneGraph; pressedOn: Stop[]; hatch: string }) {
+  const clipId = useId();
+  const floor = useMemo(() => floorOutline(shown), [shown]);
   const doors = useMemo(() => shown.nodes.filter(swingsOpen).map((door) => ({ id: door.id, zone: drawn(doorKeepClear(door)) })), [shown]);
   const pressed = pressedNodes(pressedOn, "blocked_a_door");
   return (
     <g aria-hidden className="pointer-events-none">
-      {doors.map(({ id, zone }) => (
-        <polygon
-          key={id} points={zone} fill={hatch} fillOpacity={pressed.has(id) ? 1 : 0.6} {...GUIDE}
-          strokeWidth={pressed.has(id) ? 2.5 : 1} strokeDasharray={pressed.has(id) ? undefined : "4 3"} strokeOpacity={pressed.has(id) ? 1 : 0.7}
-        />
-      ))}
+      {floor && <clipPath id={clipId}><polygon points={floor} /></clipPath>}
+      <g clipPath={floor ? `url(#${clipId})` : undefined}>
+        {doors.map(({ id, zone }) => (
+          <g key={id}>
+            <polygon points={zone} fill={hatch} {...ACCENT} strokeWidth={1.25} strokeDasharray={pressed.has(id) ? undefined : "5 3"} />
+            {pressed.has(id) && <Lit points={zone} />}
+          </g>
+        ))}
+      </g>
     </g>
   );
-}
-
-function floorOutline(scanned: SceneGraph): string | null {
-  const floor = scanned.nodes.find(liesFlat);
-  return floor ? drawn(floorPolygon(floor)) : null;
 }
 
 function scannedSpot(scanned: SceneGraph, nodeId: string): Point | null {
@@ -50,14 +69,10 @@ function scannedSpot(scanned: SceneGraph, nodeId: string): Point | null {
   return node ? measuredPosition(node) : null;
 }
 
-function Blocker({ node }: { node: SceneNode }) {
-  return <polygon points={drawn(footprint(node))} fill="none" {...GUIDE} strokeWidth={2.5} />;
-}
-
 /**
  * What the piece in hand is pressed against: the piece or wall it touches, the
  * floor's edge, or the circle 60 inches round where the scan found it. The
- * door squares carry their own pressed state.
+ * door squares light up on their own.
  */
 export function PressedAgainst({ shown, scanned, pressedOn }: { shown: SceneGraph; scanned: SceneGraph; pressedOn: Stop[] }) {
   const touched = pressedNodes(pressedOn, "collided");
@@ -68,10 +83,10 @@ export function PressedAgainst({ shown, scanned, pressedOn }: { shown: SceneGrap
     .filter((spot): spot is Point => spot !== null);
   return (
     <g aria-hidden className="pointer-events-none">
-      {blockers.map((node) => <Blocker key={node.id} node={node} />)}
-      {edge && <polygon points={edge} fill="none" {...GUIDE} strokeWidth={2.5} />}
+      {blockers.map((node) => <Lit key={node.id} points={drawn(footprint(node))} />)}
+      {edge && <Lit points={edge} />}
       {limits.map((spot) => (
-        <circle key={`${spot.x},${spot.y}`} cx={spot.x} cy={-spot.y} r={MAX_TRAVEL_METERS} fill="none" {...GUIDE} strokeWidth={1.5} strokeDasharray="6 4" />
+        <circle key={`${spot.x},${spot.y}`} cx={spot.x} cy={-spot.y} r={MAX_TRAVEL_METERS} fill="none" {...ACCENT} strokeWidth={1.5} strokeDasharray="6 4" />
       ))}
     </g>
   );
