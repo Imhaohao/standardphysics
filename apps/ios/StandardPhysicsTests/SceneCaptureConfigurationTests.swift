@@ -30,6 +30,20 @@ final class SceneCaptureConfigurationTests: XCTestCase {
         XCTAssertTrue(options.peopleFilteringEnabled)
     }
 
+    func testWithoutPeopleFilteringTheMeshIsStillRecorded() {
+        let options = SceneCaptureOptions.select(from: SceneCaptureCapabilities(
+            supportsMesh: true,
+            supportsMeshWithClassification: true,
+            supportsPersonSegmentationWithDepth: true,
+            supportsPersonSegmentation: true
+        ), filtersPeople: false)
+
+        XCTAssertEqual(options.reconstruction, .meshWithClassification)
+        XCTAssertFalse(options.usesPersonSegmentationWithDepth)
+        XCTAssertFalse(options.usesPersonSegmentation)
+        XCTAssertFalse(options.peopleFilteringEnabled)
+    }
+
     func testUnsupportedCapabilitiesDoNotSetUnsupportedFlags() {
         let options = SceneCaptureOptions.select(from: SceneCaptureCapabilities(
             supportsMesh: false,
