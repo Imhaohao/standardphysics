@@ -21,26 +21,28 @@ export function pickUp({ rules, base, moves }: Arranging, nodeId: string): HeldP
 
 export type Pulled = { held: HeldPiece; moves: MoveSet; blockedBy: Stop[] };
 
+function movedAtAll(from: Point, to: Point): boolean {
+  return Math.hypot(to.x - from.x, to.y - from.y) > 1e-9;
+}
+
 /**
  * The piece after the pointer moves by (dx, dy): as close to the pointer as the
  * room lets it get. The server's own rules check every spot the slide picks,
- * and a spot they would refuse leaves the piece where it was.
+ * and a spot they would refuse leaves the piece where it was. A piece that does
+ * not move hands back the very same moves.
  */
 export function pull(arranging: Arranging, held: HeldPiece, dx: number, dy: number): Pulled {
   const wanted = { x: held.wanted.x + dx, y: held.wanted.y + dy };
   const { at, blockedBy } = slide(held.space, held.at, wanted);
+  const stays = { held: { ...held, wanted }, moves: arranging.moves, blockedBy };
+  if (!movedAtAll(held.at, at)) return stays;
   const moves = placedAt(arranging.base, arranging.moves, held.nodeId, at);
   const refused = !held.space.lifted && refusedChange(arranging.rules, arranging.base, arranging.moves, moves, held.nodeId).length > 0;
-  if (refused) return { held: { ...held, wanted }, moves: arranging.moves, blockedBy };
-  return { held: { ...held, wanted, at }, moves, blockedBy };
+  return refused ? stays : { held: { ...held, wanted, at }, moves, blockedBy };
 }
 
 /** A change the editor made or turned down, with what it would have broken. */
 export type Outcome = { moves: MoveSet; refused: Blocked[] };
-
-function movedAtAll(from: Point, to: Point): boolean {
-  return Math.hypot(to.x - from.x, to.y - from.y) > 1e-9;
-}
 
 /** An arrow key's step: the piece slides as far as it can, and when it cannot move at all, says what is in the way. */
 export function nudge(arranging: Arranging, nodeId: string, dx: number, dy: number): Outcome {

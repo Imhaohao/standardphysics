@@ -66,6 +66,13 @@ describe("sliding a piece along what it runs into", () => {
     expect(around.blockedBy).toEqual([]);
   });
 
+  it("hands back the very same moves while the pointer only pushes a piece harder into a wall", () => {
+    const state = arranging([...WALLS, chair([0, 1.7])]);
+    const pulled = pull(state, pickUp(state, "chair"), 0, 0.5);
+    expect(pulled.moves).toBe(state.moves);
+    expect(pulled.blockedBy.map((stop) => stop.nodeId)).toEqual(["north"]);
+  });
+
   it("lands in the same spot every time for the same pointer path, and a still pointer leaves it still", () => {
     const pieces = [...WALLS, chair([0, 0])];
     const path = [{ x: 1, y: 1 }, { x: 2.5, y: 3 }, { x: 4, y: 0.5 }, { x: 3.2, y: -3 }];

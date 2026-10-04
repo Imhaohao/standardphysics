@@ -252,7 +252,9 @@ export function useArrangement(scanId: string, scene: SceneGraph, persist: Persi
 
   /** Pulls the piece toward the pointer, sliding it along whatever it would run into on the way. */
   const drag = useCallback((nodeId: string, dx: number, dy: number) => {
-    place(pullBy(movesRef.current, nodeId, dx, dy), { refused: NO_BLOCKS });
+    const pulled = pullBy(movesRef.current, nodeId, dx, dy);
+    if (pulled === movesRef.current) return;
+    place(pulled, { refused: NO_BLOCKS });
     mark("moved");
     settle.after(DRAG_SETTLE_MS, () => request(movesRef.current, false));
   }, [place, pullBy, movesRef, mark, settle, request]);
