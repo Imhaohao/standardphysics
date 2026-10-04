@@ -73,7 +73,9 @@ def _interior_side(graph: SceneGraph, door: SceneNode) -> tuple[float, float]:
     middle = floors[0].transform.position if floors else Vec3(x=0.0, y=0.0, z=0.0)
     position = door.transform.position
     dx, dy = middle.x - position.x, middle.y - position.y
-    return (0.0, 1.0) if abs(dy) >= abs(dx) else (1.0 if dx > 0 else -1.0, 0.0)
+    if abs(dy) >= abs(dx):
+        return (0.0, 1.0 if dy >= 0 else -1.0)
+    return (1.0 if dx > 0 else -1.0, 0.0)
 
 
 def _patch_centre(

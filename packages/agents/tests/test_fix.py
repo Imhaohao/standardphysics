@@ -14,7 +14,7 @@ from standardphysics_agents.fix import (
     propose_fix,
     violations,
 )
-from standardphysics_agents.fix.moves import carried_by_hand
+from standardphysics_agents.fix.moves import carried_by_hand, move_node
 from standardphysics_agents.training.prompt import room_view
 from standardphysics_contracts import (
     Mat4,
@@ -35,6 +35,7 @@ from standardphysics_pipeline import (
     gap_between,
     polygon_bounds,
 )
+from standardphysics_pipeline.footprints import rotation_about_z
 
 CASE_EAST = node_id("case_east")
 CASE_WEST = node_id("case_west")
@@ -104,6 +105,13 @@ def _node(name, kind, label, centre, dims, movable):
         transform=Mat4.translation(*centre),
         movable=movable,
     )
+
+
+def _in_the_frame_of(node, point):
+    """Measure a floor point from the node's centre along the node's own x and y axes, to six places."""
+    cos_t, sin_t = rotation_about_z(node)
+    dx, dy = point[0] - node.transform.position.x, point[1] - node.transform.position.y
+    return round(dx * cos_t + dy * sin_t, 6), round(dy * cos_t - dx * sin_t, 6)
 
 
 class TestHardConstraints:
@@ -228,6 +236,23 @@ class TestHardConstraints:
         door = graph.by_id(DOOR)
         keep_clear = door_keep_clear(door)
         assert gap_between(keep_clear, footprint(door)) == 0.0
+
+    @pytest.mark.parametrize("degrees", [0.0, 90.0, 45.0])
+    def test_the_swing_square_turns_with_the_door(self, graph, degrees):
+        """The square reaches half the opening along the wall each way and the whole opening out from it on both sides.
+
+        The square used to be laid out along the world's axes whichever way the
+        door faced. A door in a wall running north to south then kept clear only
+        half its width of the floor in front of it, and the square ran a whole
+        width along the wall instead.
+        """
+        door = graph.by_id(DOOR)
+        turned = move_node(
+            door, NodeMove(node_id=DOOR, delta_translation=Vec3(x=0.0, y=0.0, z=0.0), delta_rotation_z_degrees=degrees)
+        )
+        half, reach = door.dimensions.x / 2, door.dimensions.x
+        corners = {_in_the_frame_of(turned, corner) for corner in door_keep_clear(turned)}
+        assert corners == {(-half, -reach), (half, -reach), (half, reach), (-half, reach)}
 
     def test_the_collision_shape_is_smaller_than_the_real_footprint(self, graph):
         node = graph.by_id(CASE_EAST)

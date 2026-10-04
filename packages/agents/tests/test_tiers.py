@@ -37,6 +37,25 @@ def _shelf(name, centre, dims):
     return v.box(name, "Shelf", centre, dims, movable=False)
 
 
+def _opposite(point):
+    return Vec3(x=-point.x, y=-point.y, z=point.z)
+
+
+def _turned_half_way_round(graph, scenario):
+    """Turn the shop and its route half a turn about the middle of the floor, which puts the door in the north wall.
+
+    Every piece in the shop is a box square to the walls, and half a turn
+    leaves such a box as it was, so the turn only moves each centre to the
+    opposite side of the room.
+    """
+    nodes = [
+        node.model_copy(update={"transform": Mat4.translation(*_opposite(node.transform.position).as_tuple())})
+        for node in graph.nodes
+    ]
+    stops = [stop.model_copy(update={"position": _opposite(stop.position)}) for stop in scenario.stops]
+    return graph.model_copy(update={"nodes": nodes}), scenario.model_copy(update={"stops": stops})
+
+
 def test_every_rule_in_the_pack_has_a_check_or_is_a_request(pack):
     """A rule with nothing behind it produces no findings, which from the
     outside is indistinguishable from a shop that passes it."""
@@ -135,6 +154,25 @@ class TestDoorManeuveringClearance:
         )
         assert found[0].outcome == "problem"
         assert "not enough room to open" in found[0].title
+
+    def test_a_chair_inside_a_door_in_the_north_wall_fails(
+        self, graph, scenario, pipeline, pack, ledger
+    ):
+        """The room lies south of this door, so its clearance is measured south of it.
+
+        A door further from the middle of the floor along y than along x used
+        to have its clearance measured on its +y side, even when the middle of
+        the floor lay toward -y. For a door in the north wall that patch was
+        outside the room, and nothing inside the doorway could fail it.
+        """
+        blocked = v.add(
+            graph, v.box("blocker", "Chair", (0.0, -3.3, 0.45), (0.45, 0.45, 0.9))
+        )
+        turned, route = _turned_half_way_round(blocked, scenario)
+        found = _findings(
+            turned, route, pipeline, pack, ledger, "door_maneuvering_clearance"
+        )
+        assert found[0].outcome == "problem"
 
     def test_it_says_what_to_do(self, graph, scenario, pipeline, pack, ledger):
         blocked = v.add(

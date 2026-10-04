@@ -37,4 +37,12 @@ describe("formatInches", () => {
   it("drops the decimal on whole inches and keeps one place otherwise", () => {
     expect([formatInches(30.99999), formatInches(29.79), formatInches(35.98)]).toEqual(["31 in", "29.8 in", "36 in"]);
   });
+
+  it("never rounds a measurement into the number it is held to", () => {
+    expect([formatInches(35.98, 36), formatInches(36.02, 36)]).toEqual(["35.98 in", "36.02 in"]);
+  });
+
+  it("rounds as usual when the measurement meets the number or reads apart from it anyway", () => {
+    expect([formatInches(36, 36), formatInches(31, 36), formatInches(35.98, null)]).toEqual(["36 in", "31 in", "36 in"]);
+  });
 });
