@@ -1,0 +1,47 @@
+name: Pinned download
+description: >-
+  Puts a release asset at a path once it matches its pinned sha256, taking it
+  from the Actions cache when an earlier run verified it and from its URL
+  otherwise.
+
+# On 2026-10-04 GitHub's release download answered 500 to all six tries the
+# inline curl made over 25 seconds, so grype never installed and the image
+# scan failed. On master that skips publish, and deploy.sh refuses a commit
+# with no published image. A download now retries with doubling waits for up
+# to five minutes, and most runs skip it: an asset is cached under its digest
+# once it has matched, and the digest is checked again on every run, wherever
+# the file came from.
+inputs:
+  url:
+    description: Where the asset is published.
+    required: true
+  sha256:
+    description: The sha256 the asset must have. It also names the cache entry.
+    required: true
+  path:
+    description: Where the verified asset goes.
+    required: true
+runs:
+  using: composite
+  steps:
+    - id: cache
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ inputs.path }}
+        key: pinned-download-${{ inputs.sha256 }}
+    - if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        URL: ${{ inputs.url }}
+        ASSET: ${{ inputs.path }}
+      run: curl -fsSL --connect-timeout 20 --max-time 120 --retry 8 --retry-all-errors --retry-max-time 300 -o "$ASSET" "$URL"
+    - shell: bash
+      env:
+        SHA256: ${{ inputs.sha256 }}
+        ASSET: ${{ inputs.path }}
+      run: echo "$SHA256  $ASSET" | shasum -a 256 --check --strict
+    - if: steps.cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ inputs.path }}
+        key: pinned-download-${{ inputs.sha256 }}

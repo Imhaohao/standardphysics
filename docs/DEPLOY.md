@@ -277,13 +277,23 @@ published sha256, and the apt packages follow bookworm's security updates.
 Two more CI jobs watch what goes into the image. `supply-chain` runs gitleaks
 over every commit, pip-audit over `requirements.lock`, and `npm audit` over the
 workspace's production dependencies at high severity and up.
-`image-vulnerabilities` builds the image and fails when grype finds a critical
-vulnerability that has a fixed version. Neither is in the publish job's
-`needs`, so a new advisory against an unchanged dependency shows as a red
-check on the commit without blocking a hotfix. The fix is a dependency bump:
-`scripts/lock_python.sh` for Python, `npm update <package>` in `apps/web` for
-the workspace, or a newer `NODE_IMAGE` digest for the base image. Every action
-in the workflows is pinned to a commit SHA, with its version in a comment.
+`image-vulnerabilities` scans the image the image job tested and fails when
+grype finds a critical vulnerability that has a fixed version. Both jobs are in
+the publish job's `needs`, so when either fails on master the commit gets no
+published image, and `scripts/deploy.sh` refuses a commit without one. A new
+advisory against an unchanged dependency holds releases back until a
+dependency bump fixes it: `scripts/lock_python.sh` for Python,
+`npm update <package>` in `apps/web` for the workspace, or a newer
+`NODE_IMAGE` digest for the base image.
+
+gitleaks, grype and XcodeGen come through `.github/actions/pinned-download`,
+which checks each file against its pinned sha256 on every run. A file that
+matched is kept in the Actions cache under its digest, and a download the
+cache cannot answer retries for up to five minutes. When a job still fails
+because a download did rather than because of a finding, re-run it with
+`gh run rerun <run id> --failed`, and publish follows once it passes. Every
+action in the workflows is pinned to a commit SHA, with its version in a
+comment.
 
 Nothing new can start between the queue read and the restart. A request that
 passed admission a moment before the flag was set queues its job, and that job
