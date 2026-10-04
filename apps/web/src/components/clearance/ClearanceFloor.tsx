@@ -10,7 +10,6 @@ import { type ClearancePicture, HALO_TOKEN, TIGHT_TOKEN, tokenValue } from "./us
 /** Metres above the floor the map lies, high enough to clear a scanned floor's ripples and low enough to read as on it. */
 const LIFT = { field: 0.012, edge: 0.016, ring: 0.02 };
 const RING_METERS = { inner: 0.085, outer: 0.12 };
-const LABEL_HEIGHT = 0.32;
 
 /** The picture's pixels as a floor texture. Its rows run from the highest y down, so the texture is read upside down. */
 function useFloorTexture(picture: ClearancePicture): DataTexture {
@@ -46,20 +45,22 @@ export function ClearanceFloor({ overlay, floorZ }: { overlay: ClearanceOverlay;
   );
   return (
     <group>
-      <mesh position={[centre.x, floorZ + LIFT.field, -centre.y]} rotation={[-Math.PI / 2, 0, (field.rotationDegrees * Math.PI) / 180]} renderOrder={1} raycast={NO_HITS}>
+      <mesh position={[centre.x, floorZ + LIFT.field, -centre.y]} rotation={[-Math.PI / 2, 0, (field.rotationDegrees * Math.PI) / 180]} renderOrder={1} raycast={NEVER_HIT}>
         <planeGeometry args={[field.columns * field.cellMeters, field.rows * field.cellMeters]} />
         <meshBasicMaterial map={texture} transparent opacity={opacity} depthWrite={false} toneMapped={false} />
       </mesh>
-      {edge.length > 0 && <Line points={edge} segments color={halo} lineWidth={5} transparent opacity={opacity} depthWrite={false} renderOrder={2} raycast={NO_HITS} />}
-      {edge.length > 0 && <Line points={edge} segments color={tight} lineWidth={2} transparent opacity={opacity} depthWrite={false} renderOrder={3} raycast={NO_HITS} />}
+      {edge.length > 0 && <Line points={edge} segments color={halo} lineWidth={3.5} transparent opacity={opacity} depthWrite={false} renderOrder={2} raycast={NEVER_HIT} />}
+      {edge.length > 0 && <Line points={edge} segments color={tight} lineWidth={1.25} transparent opacity={opacity} depthWrite={false} renderOrder={3} raycast={NEVER_HIT} />}
       {pinchesToMark(field).map((pinch) => (
         <group key={pinch.finding_id} position={[pinch.point.x, floorZ + LIFT.ring, -pinch.point.y]}>
-          <mesh rotation-x={-Math.PI / 2} renderOrder={4} raycast={NO_HITS}>
+          <mesh rotation-x={-Math.PI / 2} renderOrder={4} raycast={NEVER_HIT}>
             <ringGeometry args={[RING_METERS.inner, RING_METERS.outer, 40]} />
             <meshBasicMaterial color={tight} side={DoubleSide} transparent opacity={opacity} depthWrite={false} toneMapped={false} />
           </mesh>
-          <Html position={[0, LABEL_HEIGHT, 0]} center zIndexRange={[20, 0]} style={{ pointerEvents: "none", opacity }}>
-            <span className="measurement block whitespace-nowrap rounded-md bg-sheet/95 px-2 py-1 text-sm font-semibold text-clearance-tight shadow-md">{pinchWords(pinch, field.bands)}</span>
+          <Html zIndexRange={[20, 0]} style={{ pointerEvents: "none", opacity }}>
+            <span className="flex -translate-x-1/2 -translate-y-full flex-col items-center pb-4">
+              <span className="measurement whitespace-nowrap rounded-md bg-sheet px-2 py-1 text-sm font-semibold text-clearance-tight shadow-md">{pinchWords(pinch, field.bands)}</span>
+            </span>
           </Html>
         </group>
       ))}
@@ -67,4 +68,5 @@ export function ClearanceFloor({ overlay, floorZ }: { overlay: ClearanceOverlay;
   );
 }
 
-function NO_HITS() {}
+/** The map never takes the pointer, so a drag or a tap reaches the piece or floor beneath it. */
+const NEVER_HIT = () => {};

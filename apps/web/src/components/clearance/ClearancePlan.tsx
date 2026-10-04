@@ -28,15 +28,15 @@ export function ClearancePlanField({ overlay }: { overlay: ClearanceOverlay }) {
   const corner = roomPointOf(field, 0, 0);
   const tight = pathOf(picture.tightEdge);
   return (
-    <g aria-hidden className="pointer-events-none transition-opacity duration-200 motion-reduce:transition-none" opacity={stale ? STALE_OPACITY : 1}>
+    <g aria-hidden className="pointer-events-none" opacity={stale ? STALE_OPACITY : 1}>
       {url && (
         <image
           href={url} x={corner.x} y={-corner.y} width={field.columns * field.cellMeters} height={field.rows * field.cellMeters}
           preserveAspectRatio="none" transform={`rotate(${-field.rotationDegrees} ${corner.x} ${-corner.y})`}
         />
       )}
-      <path d={tight} fill="none" stroke="var(--color-clearance-halo)" strokeWidth={4.5} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-      <path d={tight} fill="none" stroke="var(--color-clearance-tight)" strokeWidth={1.5} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+      <path d={tight} fill="none" stroke="var(--color-clearance-halo)" strokeWidth={3} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+      <path d={tight} fill="none" stroke="var(--color-clearance-tight)" strokeWidth={1} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
     </g>
   );
 }
@@ -48,8 +48,8 @@ export function ClearancePinchRings({ overlay, textMeters }: { overlay: Clearanc
     <g aria-hidden className="pointer-events-none" opacity={overlay.stale ? STALE_OPACITY : 1}>
       {pinchesToMark(overlay.picture.field).map((pinch) => (
         <g key={pinch.finding_id} transform={`translate(${pinch.point.x.toFixed(4)} ${(-pinch.point.y).toFixed(4)})`}>
-          <circle r={radius * 1.9} fill="var(--color-clearance-tight)" fillOpacity={0.16} />
-          <circle r={radius} fill="var(--color-sheet)" stroke="var(--color-clearance-tight)" strokeWidth={2.5} vectorEffect="non-scaling-stroke" />
+          <circle r={radius * 2.2} fill="var(--color-clearance-tight)" fillOpacity={0.2} />
+          <circle r={radius} fill="var(--color-sheet)" stroke="var(--color-clearance-tight)" strokeWidth={3} vectorEffect="non-scaling-stroke" />
           <circle r={radius * 0.32} fill="var(--color-clearance-tight)" />
         </g>
       ))}

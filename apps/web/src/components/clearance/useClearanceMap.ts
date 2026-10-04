@@ -6,7 +6,7 @@ import { type Checked, LayoutChecker, layoutKey } from "@/lib/layout-checker";
 import { clearanceMap } from "@/lib/layout-client";
 import type { MoveSet } from "@/lib/moves";
 import { useStoredSwitch } from "@/lib/stored-switch";
-import type { ClearanceMap } from "@/types/contracts";
+import type { ClearanceMap, NodeMove } from "@/types/contracts";
 
 /** The map last drawn and the layout it describes, or why there is none to draw. */
 export type ClearanceView = { field: ClearanceField | null; key: string | null; failed: boolean };
@@ -21,9 +21,10 @@ export function useClearanceChoice(): [boolean, (on: boolean) => void] {
 /**
  * The clearance map of the layout the plan last settled on, while the viewer has the map on.
  *
- * `settled` changes only when the layout check is asked for, so the map is asked for at the same moments: a rest in
- * a drag, a drop, an undo. One request is out at a time, a newer layout replaces the one waiting, and a map already
- * fetched comes back from the cache, the same way the checks are asked for. Dragging never waits on any of it.
+ * `settled` changes when the plan comes to rest, at the moments the layout check is asked for or answered from its
+ * cache: a pause in a drag, a drop, an undo, a refused drop snapping back. One request is out at a time, a newer
+ * layout replaces the one waiting, and a map already fetched comes back from the cache, the same way the checks are
+ * asked for. Dragging never waits on any of it.
  */
 export function useClearanceMap(scanId: string, revision: number, settled: MoveSet, on: boolean): ClearanceView {
   const [view, setView] = useState<ClearanceView>(NOTHING_YET);
@@ -56,7 +57,7 @@ function useMapChecker(scanId: string, revision: number, onResult: (checked: Che
     const key = `${scanId}@${revision}`;
     if (made.current?.key === key) return made.current.checker;
     made.current?.checker.cancel();
-    const run = (moves: Parameters<typeof clearanceMap>[3], sequence: number) => clearanceMap(scanId, revision, sequence, moves);
+    const run = (moves: NodeMove[], sequence: number) => clearanceMap(scanId, revision, sequence, moves);
     const fresh = new LayoutChecker<ClearanceMap>(run, { onResult, onError, onBusy: IGNORE_BUSY });
     made.current = { key, checker: fresh };
     return fresh;

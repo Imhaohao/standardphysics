@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowsOutLineHorizontal, CircleNotch } from "@phosphor-icons/react";
+import { ArrowsOutLineHorizontal, Check, CircleNotch } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import type { ClearanceBands } from "@/types/contracts";
@@ -10,7 +10,7 @@ import type { ClearanceControls } from "./useClearanceOverlay";
 export function ClearanceToggle({ on, onChange }: { on: boolean; onChange: (on: boolean) => void }) {
   return (
     <Button variant="chip" aria-pressed={on} onClick={() => onChange(!on)}>
-      <ArrowsOutLineHorizontal size={16} weight="bold" aria-hidden />
+      {on ? <Check size={16} weight="bold" aria-hidden /> : <ArrowsOutLineHorizontal size={16} weight="bold" aria-hidden />}
       Show clearance
     </Button>
   );
@@ -42,7 +42,7 @@ function rowsFor(bands: ClearanceBands): Row[] {
   return [
     { swatch: <Fill className="bg-clearance-turning" />, inches: `${bands.turning_inches} in or more`, meaning: "Room to turn around" },
     { swatch: <Fill className="bg-clearance-route" />, inches: `${bands.route_inches} to ${bands.turning_inches} in`, meaning: "A wheelchair fits" },
-    { swatch: <Fill className="bg-clearance-reduced" />, inches: `${bands.reduced_inches} to ${bands.route_inches} in`, meaning: `Fits for ${bands.reduced_run_inches} in at most` },
+    { swatch: <Fill className="bg-clearance-reduced" />, inches: `${bands.reduced_inches} to ${bands.route_inches} in`, meaning: `OK for stretches up to ${bands.reduced_run_inches} in long` },
     { swatch: <TightEdge />, inches: `Under ${bands.reduced_inches} in`, meaning: "Too tight to get through" },
   ];
 }
@@ -78,7 +78,7 @@ function legendBody(bands: ClearanceBands | null, failed: boolean): ReactNode {
         ))}
         <tr>
           <td aria-hidden><PinchRing /></td>
-          <td colSpan={2} className="whitespace-nowrap text-ink-muted">Where a route doesn&rsquo;t fit, with its width</td>
+          <td colSpan={2} className="whitespace-nowrap text-ink-muted">A gap a route doesn&rsquo;t fit through, and its width</td>
         </tr>
       </tbody>
     </table>
