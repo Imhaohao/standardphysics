@@ -327,6 +327,13 @@ def _off_the_floor(base: SceneGraph, candidate: SceneGraph, checked: list[SceneN
     return found
 
 
+DOOR_SWEEP_ALONG = 0.5
+"""How far a door's keep-clear square runs along its wall each side of the door's centre, in opening widths."""
+
+DOOR_SWEEP_ACROSS = 1.0
+"""How far the square reaches out from the wall on each side, in opening widths: a leaf is as long as its opening."""
+
+
 def door_keep_clear(door: SceneNode) -> Polygon:
     """The floor a door sweeps, as a square the width of the opening.
 
@@ -337,8 +344,9 @@ def door_keep_clear(door: SceneNode) -> Polygon:
     centre = door.transform.position
     reach = max(door.dimensions.x, door.dimensions.y)
     swings_along_x = door.dimensions.x >= door.dimensions.y
-    half_x = reach / 2 if swings_along_x else reach
-    half_y = reach if swings_along_x else reach / 2
+    along, across = reach * DOOR_SWEEP_ALONG, reach * DOOR_SWEEP_ACROSS
+    half_x = along if swings_along_x else across
+    half_y = across if swings_along_x else along
     return [
         (centre.x - half_x, centre.y - half_y),
         (centre.x + half_x, centre.y - half_y),

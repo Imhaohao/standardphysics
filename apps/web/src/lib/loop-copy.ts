@@ -1,5 +1,5 @@
 import { formatInches } from "@/lib/findings";
-import { METERS_PER_INCH } from "@/lib/moves";
+import { METERS_PER_INCH } from "@/types/geometry-rules";
 import type { LoopProgress } from "@/lib/loop-progress";
 import type { LoopPass, LoopResult } from "@/types/contracts";
 
