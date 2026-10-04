@@ -96,13 +96,23 @@
       "parameters": {
         "circle_diameter_inches": 60.0,
         "t_square_inches": 60.0,
-        "t_arm_width_inches": 36.0
+        "t_arm_width_inches": 36.0,
+        "toe_clearance_top_inches": 9.0,
+        "toe_clearance_depth_max_inches": 25.0,
+        "toe_clearance_past_knee_max_inches": 6.0,
+        "toe_clearance_width_min_inches": 30.0,
+        "knee_clearance_top_inches": 27.0,
+        "knee_clearance_depth_max_inches": 25.0,
+        "knee_clearance_reduction_depth_inches": 1.0,
+        "knee_clearance_reduction_height_inches": 6.0,
+        "knee_clearance_width_min_inches": 30.0
       },
       "applies_to": [
         "turning_room"
       ],
       "evidence": "measured",
-      "source_text": "304.3 Size. Turning space shall comply with 304.3.1 or 304.3.2. 304.3.1 Circular Space. The turning space shall be a space of 60 inches (1525 mm) diameter minimum. The space shall be permitted to include knee and toe clearance complying with 306.",
+      "source_text": "304.3 Size. Turning space shall comply with 304.3.1 or 304.3.2. 304.3.1 Circular Space. The turning space shall be a space of 60 inches (1525 mm) diameter minimum. The space shall be permitted to include knee and toe clearance complying with 306. 306.1 General. Where space beneath an element is included as part of clear floor or ground space or turning space, the space shall comply with 306. Additional space shall not be prohibited beneath an element but shall not be considered as part of the clear floor or ground space or turning space. 306.2.1 General. Space under an element between the finish floor or ground and 9 inches (230 mm) above the finish floor or ground shall be considered toe clearance and shall comply with 306.2. 306.2.2 Maximum Depth. Toe clearance shall extend 25 inches (635 mm) maximum under an element. 306.2.4 Additional Clearance. Space extending greater than 6 inches (150 mm) beyond the available knee clearance at 9 inches (230 mm) above the finish floor or ground shall not be considered toe clearance. 306.2.5 Width. Toe clearance shall be 30 inches (760 mm) wide minimum. 306.3.1 General. Space under an element between 9 inches (230 mm) and 27 inches (685 mm) above the finish floor or ground shall be considered knee clearance and shall comply with 306.3. 306.3.2 Maximum Depth. Knee clearance shall extend 25 inches (635 mm) maximum under an element at 9 inches (230 mm) above the finish floor or ground. 306.3.4 Clearance Reduction. Between 9 inches (230 mm) and 27 inches (685 mm) above the finish floor or ground, the knee clearance shall be permitted to reduce at a rate of 1 inch (25 mm) in depth for each 6 inches (150 mm) in height. 306.3.5 Width. Knee clearance shall be 30 inches (760 mm) wide minimum.",
+      "review_note": "The 306 numbers sit here because 304.3.1 is the text that grants the credit. 603.2.1 asks a restroom for turning space complying with 304, and 305.4 grants a clear floor space the same credit, so both read these. 306.2.3 and 306.3.3 set minimum depths only where an element requires knee and toe clearance, which a turning space or a clear floor space never does, so they are left out.",
       "resolved_by": "moving_things"
     },
     {
@@ -196,7 +206,7 @@
         "service_counter"
       ],
       "evidence": "measured",
-      "source_text": "305.3 Size. The clear floor or ground space shall be 30 inches (760 mm) minimum by 48 inches (1220 mm) minimum. Referenced by 904.4.1, which positions that space for a parallel approach adjacent to the 36 inch minimum length of counter.",
+      "source_text": "305.3 Size. The clear floor or ground space shall be 30 inches (760 mm) minimum by 48 inches (1220 mm) minimum. Referenced by 904.4.1, which positions that space for a parallel approach adjacent to the 36 inch minimum length of counter. 305.4 Knee and Toe Clearance. Unless otherwise specified, clear floor or ground space shall be permitted to include knee and toe clearance complying with 306.",
       "resolved_by": "moving_things"
     },
     {

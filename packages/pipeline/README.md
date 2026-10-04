@@ -32,6 +32,8 @@ python -m standardphysics_pipeline.check_blender
 | `occupancy.py` | Floor rasterization and the distance transform |
 | `routes.py` | Widest path, bottleneck width, and the pinch point |
 | `measure.py` | The `MeasurementProvider` Lane C calls |
+| `space_beneath.py` | What the LiDAR mesh saw under each raised piece, read once at ingest |
+| `knee_and_toe.py` | The knee and toe clearance ADA 2010 306 counts under a piece, for turning space and clear floor space only |
 
 ## Before you push
 

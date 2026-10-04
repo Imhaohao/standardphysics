@@ -217,6 +217,38 @@ class SurfaceHeight(BaseModel):
         return self
 
 
+class SpaceBeneath(BaseModel):
+    """What the LiDAR mesh showed under a raised piece, cell by cell in the piece's own frame.
+
+    A RoomPlan box is solid from the floor to its top, so the open space under
+    a table never reaches the occupancy grid. ADA 2010 lets a turning space or
+    a clear floor space reach into knee and toe clearance under an element,
+    and this is the evidence for it: measured once at ingest, it rides on the
+    piece and moves and turns with it when a layout is rearranged.
+
+    The grid starts at the corner at the piece's local -x, -y and runs along
+    its local x for `columns` and its local y for `rows`. Each cell records
+    whether the floor there was seen, and how high the space above that floor
+    stays open before the mesh shows anything: a leg, a panel, an apron, the
+    underside of the top, or a chair pushed in. Whether any of it counts is
+    the rule pack's to say, not this record's.
+    """
+
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+    cell_size: float = Field(gt=0)
+    columns: int = Field(ge=1)
+    rows: int = Field(ge=1)
+    floor_seen: str
+    """Row-major, one bit per cell, 1 where the mesh has a floor face: numpy `packbits`, zlib, base64."""
+    open_cm: str
+    """Row-major, one byte per cell: whole centimetres from the floor up to the lowest surface the mesh shows
+    above it, and never above where the underside of the piece's top could be. zlib, then base64."""
+    mesh_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    """The LiDAR artifact this was read from."""
+    method: int = Field(ge=1)
+    """Which version of the measuring rules drew it."""
+
+
 class SceneNode(BaseModel):
     id: UUID
     kind: NodeKind
@@ -234,6 +266,8 @@ class SceneNode(BaseModel):
     reconstruction: DisplayReconstruction | None = Field(default=None, exclude_if=lambda value: value is None)
     attachment: SurfaceAttachment | None = Field(default=None, exclude_if=lambda value: value is None)
     top_surface: SurfaceHeight | None = Field(default=None, exclude_if=lambda value: value is None)
+    space_beneath: SpaceBeneath | None = Field(default=None, exclude_if=lambda value: value is None)
+    """What the mesh saw under this piece, for knee and toe clearance. Null when the scan had no mesh."""
     group: str | None = Field(default=None, exclude_if=lambda value: value is None)
     """Which part of the owner's list of found pieces they filed this under.
 

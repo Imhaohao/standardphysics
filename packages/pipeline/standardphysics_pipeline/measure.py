@@ -9,7 +9,8 @@ threshold check cannot afford that.
 from __future__ import annotations
 
 from collections import OrderedDict
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass, field, replace
 from uuid import UUID
 
 import numpy as np
@@ -32,6 +33,18 @@ from .footprints import (
     gap_between,
     gap_between_nodes,
     rotation_about_z,
+)
+from .knee_and_toe import (
+    KneeAndToeLimits,
+    KneeAndToeSpace,
+    PieceCredit,
+    cells_within,
+    credits_for,
+    freed_toward,
+    only_if_seen,
+    pieces_at,
+    widest_circle,
+    with_freed,
 )
 from .occupancy import CELL_SIZE, Grid, blocks_floor, build_grid
 from .routes import (
@@ -94,11 +107,20 @@ def _square_is_clear(grid: Grid, at: Vec3, heading: tuple[float, float], side: f
 
 def _signature(graph: SceneGraph) -> tuple:
     """Everything the grid depends on, so moving, turning or resizing any node
-    rebuilds it, and asking three questions about one layout does not."""
+    rebuilds it, and asking three questions about one layout does not. The
+    space the mesh saw under a node is in it too, because the knee and toe
+    clearance counted on the grid comes from there."""
     return tuple(
-        (str(node.id), node.kind, tuple(node.transform.m), node.dimensions.as_tuple())
+        (str(node.id), node.kind, tuple(node.transform.m), node.dimensions.as_tuple(), _beneath_key(node))
         for node in graph.nodes
     )
+
+
+def _beneath_key(node: SceneNode) -> tuple | None:
+    beneath = node.space_beneath
+    if beneath is None:
+        return None
+    return (beneath.mesh_sha256, beneath.method, hash(beneath.floor_seen), hash(beneath.open_cm))
 
 
 def _outward_normal(node: SceneNode) -> tuple[float, float]:
@@ -168,16 +190,32 @@ def _band_clear(grid: Grid, origin: Vec3, outward, along, depth: float, half: fl
     solid by definition, so sampling from zero always fails on the object whose
     space is being measured.
     """
-    start = grid.cell_size
-    if depth < start:
+    if depth < grid.cell_size:
         return True
+    return _cells_free(grid, *_band_points(grid, origin, outward, along, depth, half))
+
+
+def _band_points(grid: Grid, origin: Vec3, outward, along, depth: float, half: float) -> tuple[np.ndarray, np.ndarray]:
+    """The points `_band_clear` samples, one cell apart, starting one cell out from the face."""
+    start = grid.cell_size
     columns = max(int(half * 2 / grid.cell_size), 1)
     rungs = max(int((depth - start) / grid.cell_size), 1)
     offsets = np.linspace(-half, half, columns + 1)[:, None]
-    reaches = np.linspace(start, depth, rungs + 1)[None, :]
+    reaches = np.linspace(start, max(depth, start), rungs + 1)[None, :]
     xs = origin.x + along[0] * offsets + outward[0] * reaches
     ys = origin.y + along[1] * offsets + outward[1] * reaches
-    return _cells_free(grid, xs, ys)
+    return xs, ys
+
+
+def _band_cells(grid: Grid, space: ClearFloorResult, face: _Face) -> tuple[np.ndarray, np.ndarray]:
+    """The grid cells under the clear floor `space` reports in front of `face`."""
+    origin = _slid(space.center, face.outward, -COUNTER_CLEAR_DEPTH / 2)
+    xs, ys = _band_points(
+        grid, origin, face.outward, face.along, to_meters(space.inches_deep), to_meters(space.inches_wide) / 2
+    )
+    columns = np.trunc((xs - grid.origin_x) / grid.cell_size).astype(int).ravel()
+    rows = np.trunc((ys - grid.origin_y) / grid.cell_size).astype(int).ravel()
+    return rows, columns
 
 
 def _clear_depth(grid: Grid, origin: Vec3, outward, along) -> float:
@@ -219,11 +257,56 @@ def _approach_at(grid: Grid, origin: Vec3, outward, along) -> ClearFloorResult:
     )
 
 
+@dataclass(frozen=True)
+class _Face:
+    """A counter's front face: its centre, which way a customer stands from it, and which way it runs."""
+
+    centre: Vec3
+    outward: tuple[float, float]
+    along: tuple[float, float]
+
+    @classmethod
+    def of(cls, counter: SceneNode) -> _Face:
+        outward = _outward_normal(counter)
+        return cls(_front_face_centre(counter, outward), outward, (-outward[1], outward[0]))
+
+    def origins(self, slide_meters: float) -> list[Vec3]:
+        return [_slid(self.centre, self.along, offset) for offset in _offsets_from_centre(slide_meters)]
+
+    def middle(self, origin: Vec3) -> Vec3:
+        """The middle of the required space measured from `origin`, where `_approach_at` centres it."""
+        return _slid(origin, self.outward, COUNTER_CLEAR_DEPTH / 2)
+
+
+def _approach(face: _Face, slide_meters: float, grid_for: Callable[[Vec3], Grid]) -> ClearFloorResult:
+    """The clear floor at the position along the face nearest its centre where it fits, else at the centre.
+
+    `grid_for` gives the grid to measure on for a space centred on a point,
+    which is how knee and toe clearance facing that space gets counted.
+    """
+    for origin in face.origins(slide_meters):
+        grid = grid_for(face.middle(origin))
+        if not _band_clear(grid, origin, face.outward, face.along, COUNTER_CLEAR_DEPTH, COUNTER_CLEAR_WIDTH / 2):
+            continue
+        result = _approach_at(grid, origin, face.outward, face.along)
+        if result.fits:
+            return result
+    return _approach_at(grid_for(face.middle(face.centre)), face.centre, face.outward, face.along)
+
+
+def _circle_at(at: Vec3, radius: float) -> ClearFloorResult:
+    diameter = to_inches(radius * 2)
+    return ClearFloorResult(inches_wide=diameter, inches_deep=diameter, center=at, fits=diameter >= 60.0)
+
+
 @dataclass
 class _Layout:
     grid: Grid
     clearance: np.ndarray
     paths: dict[tuple, PathResult] = field(default_factory=dict)
+    credits: dict[KneeAndToeLimits, list[PieceCredit]] = field(default_factory=dict)
+
+
 def _clearance_of(result: PathResult) -> np.ndarray:
     """The per-cell clearance a reachable route always carries."""
     assert result.clearance is not None
@@ -469,20 +552,43 @@ class PipelineMeasurements:
         return turn
 
     def turning_space(self, graph: SceneGraph, at: Vec3) -> ClearFloorResult:
-        _, clearance = self._field(graph)
-        grid, _ = self._field(graph)
+        grid, clearance = self._field(graph)
         row, col = grid.to_cell(at.x, at.y)
         if not grid.contains(row, col):
             return ClearFloorResult(
                 inches_wide=0.0, inches_deep=0.0, center=at, fits=False
             )
-        diameter = to_inches(float(clearance[row, col]) * 2)
-        return ClearFloorResult(
-            inches_wide=diameter,
-            inches_deep=diameter,
-            center=at,
-            fits=diameter >= 60.0,
-        )
+        return _circle_at(at, float(clearance[row, col]))
+
+    def _credits(self, graph: SceneGraph, limits: KneeAndToeLimits) -> list[PieceCredit]:
+        layout = self._layout(graph)
+        if limits not in layout.credits:
+            layout.credits[limits] = credits_for(graph, layout.grid, limits)
+        return layout.credits[limits]
+
+    def turning_space_with_knee_and_toe(
+        self, graph: SceneGraph, at: Vec3, limits: KneeAndToeLimits
+    ) -> KneeAndToeSpace:
+        """The turning space at `at`, counting knee and toe clearance under the pieces whose open side faces it.
+
+        ADA 2010 304.3.1 lets a turning space include knee and toe clearance
+        complying with 306, and `limits` carries 306's numbers from the rule
+        pack. `turning_space` keeps answering on the plain grid, because a
+        passing space and every other question may not count it.
+        """
+        grid, clearance = self._field(graph)
+        if not grid.contains(*grid.to_cell(at.x, at.y)):
+            return KneeAndToeSpace(self.turning_space(graph, at))
+        credits = self._credits(graph, limits)
+        counted = freed_toward(credits, at)
+        radius = widest_circle(grid, clearance, counted, at)
+        if_seen = freed_toward(credits, at, floor_assumed_clear=True)
+        hoped = widest_circle(grid, clearance, if_seen, at)
+        space = KneeAndToeSpace(_circle_at(at, radius), under=pieces_at(counted, *cells_within(grid, at, radius)))
+        if hoped <= radius:
+            return space
+        unseen = pieces_at(only_if_seen(credits, at), *cells_within(grid, at, hoped))
+        return replace(space, if_seen=_circle_at(at, hoped), unseen_under=unseen)
 
     def largest_square(
         self, graph: SceneGraph, at: Vec3, heading: tuple[float, float]
@@ -577,21 +683,33 @@ class PipelineMeasurements:
         `center` is where the required rectangle sits, against the counter face
         and rotated with it, so it does not move as the measurement grows.
         """
-        counter = graph.by_id(counter_id)
         grid, _ = self._field(graph)
-        outward = _outward_normal(counter)
-        along = (-outward[1], outward[0])
-        face = _front_face_centre(counter, outward)
-        positions = [_slid(face, along, offset) for offset in _offsets_from_centre(slide_meters)]
-        promising = (
-            origin for origin in positions
-            if _band_clear(grid, origin, outward, along, COUNTER_CLEAR_DEPTH, COUNTER_CLEAR_WIDTH / 2)
-        )
-        for origin in promising:
-            result = _approach_at(grid, origin, outward, along)
-            if result.fits:
-                return result
-        return _approach_at(grid, face, outward, along)
+        return _approach(_Face.of(graph.by_id(counter_id)), slide_meters, lambda _: grid)
+
+    def counter_approach_with_knee_and_toe(
+        self, graph: SceneGraph, counter_id: UUID, slide_meters: float, limits: KneeAndToeLimits
+    ) -> KneeAndToeSpace:
+        """The clear floor in front of a counter, counting knee and toe clearance under other pieces facing it.
+
+        ADA 2010 305.4 lets a clear floor space include knee and toe clearance
+        complying with 306. The counter's own is left out: the space starts at
+        its face, so it never reaches under the counter.
+        """
+        grid, _ = self._field(graph)
+        face = _Face.of(graph.by_id(counter_id))
+        credits = [credit for credit in self._credits(graph, limits) if credit.node_id != counter_id]
+
+        def counting(floor_assumed_clear: bool) -> Callable[[Vec3], Grid]:
+            return lambda middle: with_freed(grid, freed_toward(credits, middle, floor_assumed_clear))
+
+        space = _approach(face, slide_meters, counting(False))
+        under = pieces_at(freed_toward(credits, space.center), *_band_cells(grid, space, face))
+        counted = KneeAndToeSpace(space, under=under)
+        hoped = _approach(face, slide_meters, counting(True))
+        if hoped == space:
+            return counted
+        unseen = pieces_at(only_if_seen(credits, hoped.center), *_band_cells(grid, hoped, face))
+        return replace(counted, if_seen=hoped, unseen_under=unseen)
 
     def _intruders(
         self, graph: SceneGraph, counter_id: UUID, space: Polygon
