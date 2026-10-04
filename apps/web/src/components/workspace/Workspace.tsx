@@ -133,7 +133,7 @@ function useKeyboard(task: Task, arrangement: Arrangement, combine: Combine, cle
 }
 
 function useArrangeHandlers(enabled: boolean, arrangement: Arrangement, setDragging: (on: boolean) => void) {
-  const { setActiveId, drag, drop, activeId, blockedIds } = arrangement;
+  const { setActiveId, drag, drop, activeId, blockedIds, pressedIds } = arrangement;
   return useMemo<ArrangeHandlers | null>(
     () =>
       !enabled
@@ -141,6 +141,7 @@ function useArrangeHandlers(enabled: boolean, arrangement: Arrangement, setDragg
         : {
             activeId,
             blockedIds,
+            pressedIds,
             onGrab: (nodeId) => {
               setActiveId(nodeId);
               setDragging(true);
@@ -151,7 +152,7 @@ function useArrangeHandlers(enabled: boolean, arrangement: Arrangement, setDragg
               drop();
             },
           },
-    [enabled, activeId, blockedIds, setActiveId, drag, drop, setDragging],
+    [enabled, activeId, blockedIds, pressedIds, setActiveId, drag, drop, setDragging],
   );
 }
 
@@ -166,6 +167,7 @@ function useCombineHandlers(enabled: boolean, combine: Combine, setDragging: (on
         : {
             activeId: activeRoom,
             blockedIds: EMPTY_SET,
+            pressedIds: EMPTY_SET,
             onGrab: (nodeId) => {
               onGrab(nodeId);
               setDragging(true);

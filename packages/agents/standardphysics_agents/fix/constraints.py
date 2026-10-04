@@ -327,6 +327,13 @@ def _off_the_floor(base: SceneGraph, candidate: SceneGraph, checked: list[SceneN
     return found
 
 
+DOOR_SWEEP_ALONG = 0.5
+"""How far a door's keep-clear square runs along its wall each side of the door's centre, in opening widths."""
+
+DOOR_SWEEP_ACROSS = 1.0
+"""How far the square reaches out from the wall on each side, in opening widths: a leaf is as long as its opening."""
+
+
 def door_keep_clear(door: SceneNode) -> Polygon:
     """A door keeps clear a square of floor the width of its opening on each side of its wall.
 
@@ -339,10 +346,10 @@ def door_keep_clear(door: SceneNode) -> Polygon:
     in front of it, rather than a strip of floor along its wall.
     """
     reach = max(door.dimensions.x, door.dimensions.y)
-    opening_along_x = door.dimensions.x >= door.dimensions.y
-    if opening_along_x:
-        return sized_footprint(door, reach, 2 * reach)
-    return sized_footprint(door, 2 * reach, reach)
+    along, across = 2 * reach * DOOR_SWEEP_ALONG, 2 * reach * DOOR_SWEEP_ACROSS
+    if door.dimensions.x >= door.dimensions.y:
+        return sized_footprint(door, along, across)
+    return sized_footprint(door, across, along)
 
 
 def collision_shape(node: SceneNode, tolerance: float = OVERLAP_TOLERANCE) -> Polygon:

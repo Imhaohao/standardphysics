@@ -1,6 +1,7 @@
 import type { SceneNode } from "@/types/contracts";
 
 import { EPSILON, add, dot, length, normalize, scale, subtract, type MotionPoint } from "./motion-vector";
+import { blocksFloor } from "./room-shell";
 
 export type CollisionRect = {
   node: SceneNode;
@@ -128,7 +129,11 @@ function splitWall(wall: CollisionRect, portals: CollisionRect[]): CollisionRect
   });
 }
 
-/** Builds viewer-plane collision rectangles from scene coordinates. Floors and portals stay passable. */
+/**
+ * Builds viewer-plane collision rectangles from scene coordinates. Floors and portals stay passable, and a
+ * piece is in the way only where the server's occupancy grid counts it: between a quarter inch and 27 inches
+ * up, so the chair rolls under a wall cabinet and over a floor mat.
+ */
 export function wheelchairMotionGeometry(nodes: SceneNode[]): WheelchairMotionGeometry {
   const rects = nodes.flatMap((node) => {
     const rect = sceneRect(node);
@@ -137,7 +142,7 @@ export function wheelchairMotionGeometry(nodes: SceneNode[]): WheelchairMotionGe
   const portals = rects.filter((rect) => rect.node.kind === "door" || rect.node.kind === "opening");
   const walls = rects.filter((rect) => rect.node.kind === "wall").flatMap((wall) => splitWall(wall, portals));
   const targets = rects.filter((rect) => rect.node.kind === "object" || rect.node.kind === "outlet" || rect.node.kind === "candidate_outlet");
-  const objects = targets.filter((rect) => rect.node.dimensions.z > EPSILON && rect.node.kind === "object");
+  const objects = targets.filter((rect) => rect.node.kind === "object" && blocksFloor(rect.node));
 
   return {
     floors: rects.filter((rect) => rect.node.kind === "floor"),

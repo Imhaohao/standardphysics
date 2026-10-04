@@ -6,7 +6,7 @@ import { type ProposalReviewState, useProposalReview } from "@/components/propos
 import { Button } from "@/components/ui/Button";
 import { formatInches } from "@/lib/findings";
 import { inventoryLines } from "@/lib/inventory";
-import { METERS_PER_INCH } from "@/lib/moves";
+import { METERS_PER_INCH } from "@/types/geometry-rules";
 import type { Finding, NodeMove, OwnerWish, ProposalResult, SceneGraph } from "@/types/contracts";
 
 type Props = { scanId: string; scene: SceneGraph; finding: Finding; wishes: OwnerWish[]; onTry: (moves: NodeMove[]) => void };

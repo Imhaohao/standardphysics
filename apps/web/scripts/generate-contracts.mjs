@@ -9,12 +9,11 @@ const repoRoot = join(webRoot, "..", "..");
 const localPython = join(repoRoot, ".venv", "bin", "python");
 const python = process.env.PYTHON ?? (existsSync(localPython) ? localPython : "python3");
 
-const schema = JSON.parse(
-  execFileSync(python, ["-m", "standardphysics_contracts.json_schema"], {
-    cwd: repoRoot,
-    encoding: "utf8",
-  }),
-);
+function runPython(module) {
+  return execFileSync(python, ["-m", module], { cwd: repoRoot, encoding: "utf8" });
+}
+
+const schema = JSON.parse(runPython("standardphysics_contracts.json_schema"));
 
 const banner = [
   "/**",
@@ -31,3 +30,7 @@ const typescript = await compile(schema, "StandardPhysicsContracts", {
 });
 
 writeFileSync(join(webRoot, "src", "types", "contracts.ts"), typescript);
+
+// The tolerances and limits a dragged piece is checked against, read from the
+// Python modules that define them, so the browser never keeps its own copy.
+writeFileSync(join(webRoot, "src", "types", "geometry-rules.ts"), runPython("standardphysics_agents.fix.geometry_rules"));

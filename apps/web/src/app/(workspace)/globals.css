@@ -99,14 +99,14 @@
     paint-order: stroke;
   }
 
-  /* A piece in hand on the plan rises a little toward the owner. */
+  /* A piece in hand on the plan rises a little toward the owner, and sets down to its true size against whatever stops it. */
   .plan-lift {
     transition-property: scale;
     transition-duration: 150ms;
     transition-timing-function: var(--ease-settle);
   }
 
-  .plan-lift[data-held] {
+  .plan-lift[data-held]:not([data-pressed]) {
     scale: var(--scale-lift);
   }
 

@@ -1,4 +1,4 @@
-const METERS_PER_INCH = 0.0254;
+import { METERS_PER_INCH } from "@/types/geometry-rules";
 
 export function inchesToMeters(inches: number): number {
   return inches * METERS_PER_INCH;

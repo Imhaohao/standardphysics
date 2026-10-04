@@ -47,7 +47,7 @@ export function LayoutStage({ arrangement, scanned, trial, pointedIds, staff, cl
             shown={arrangement.shown} scanned={scanned}
             activeId={arrangement.activeId} blockedIds={arrangement.blockedIds} pointedIds={pointedIds} movedIds={trial.movedIds}
             problems={trial.drawn.problems} cleared={trial.drawn.cleared}
-            onFixedTap={trial.onFixedTap} onKey={trial.onKey} staff={staff} clearance={clearance.overlay} {...handlers}
+            onFixedTap={trial.onFixedTap} onKey={trial.onKey} staff={staff} clearance={clearance.overlay} pressedOn={arrangement.pressedOn} {...handlers}
           />
         </div>
       )}

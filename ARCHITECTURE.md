@@ -87,6 +87,8 @@ standardphysics_contracts
 
 Every shape that crosses the wire is a Pydantic model in [`packages/contracts`](packages/contracts/standardphysics_contracts). [`generate-contracts.mjs`](apps/web/scripts/generate-contracts.mjs) exports their JSON Schema and compiles it to [`apps/web/src/types/contracts.ts`](apps/web/src/types/contracts.ts). The `contracts` job in [`ci.yml`](.github/workflows/ci.yml) regenerates the file and fails when `git diff` shows it changed, so the web client cannot drift from the API.
 
+The same script writes [`apps/web/src/types/geometry-rules.ts`](apps/web/src/types/geometry-rules.ts), the tolerances and limits the workspace checks a dragged piece against before the server sees it: the overlap tolerance, the floor margin, the travel cap, the resting and riding gaps, the band of heights that blocks the floor and the door keep-clear sizing. [`geometry_rules.py`](packages/agents/standardphysics_agents/fix/geometry_rules.py) reads each one from the module that defines it. The same CI job diffs that file too, and [`tests/test_geometry_rules.py`](tests/test_geometry_rules.py) fails when a constant changes without it.
+
 ## Deployment
 
 Production is one DigitalOcean droplet with 2 vCPUs and 4 GB of memory, running three containers from [`deploy/digitalocean/docker-compose.yml`](deploy/digitalocean/docker-compose.yml).
