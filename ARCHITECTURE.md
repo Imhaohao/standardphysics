@@ -42,7 +42,7 @@ A walk becomes results through a chain of jobs. Each job is a row in the `jobs` 
 | Step | What happens | Code |
 | --- | --- | --- |
 | Upload | The phone creates a scan with `POST /api/scans` and streams each artifact to `PUT /api/scans/{id}/artifacts/{artifact_id}` with an `X-Checksum-SHA256` header. The file is validated off the event loop and stored once. | [`upload_routes.py`](services/api/standardphysics_api/upload_routes.py) |
-| `process` | Ingests the RoomPlan room, the photo frames, the poses and the LiDAR mesh into a scene graph. It runs photo discovery, measures floor coverage, saves the ingest revision and checks it in the same job. | `JobHandlers._process` |
+| `process` | Ingests the RoomPlan room, the photo frames, the poses and the LiDAR mesh into a scene graph. It runs photo discovery, measures floor coverage and the space under each raised piece from one read of the mesh, saves the ingest revision and checks it in the same job. | `JobHandlers._process` |
 | `assess` | Runs the rule checks on one revision, saves the assessment, marks the scan ready and queues the display job. An owner edit or a deploy that changed the checks queues one. | `JobHandlers._assess` |
 | `display` | Builds the scene GLB with Blender if the revision has none, then draws a still for each finding. It draws again if a re-check replaced the findings while it ran. | `JobHandlers._display` |
 | `texture` | Bakes the walk's photos onto the mesh as an immutable photo build, then queues furniture refinement. | [`textures.py`](services/api/standardphysics_api/textures.py) |

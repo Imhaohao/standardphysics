@@ -17,6 +17,7 @@ from ..tracing import traced
 from . import roles
 from .clear_floor import fits_rectangle
 from .context import CheckContext
+from .knee_and_toe import Settled, approach_counted, settle_one
 from .observation import Observation
 from .rectangles import facing, intruders, rectangle
 from .vertical import mounted_locus
@@ -120,8 +121,12 @@ def service_counter_approach(ctx: CheckContext) -> list[Observation]:
     Nothing asks for the space to be centred. It may sit anywhere along the
     face as long as it runs alongside 36 inches of that counter, so a sign at
     one end of a long counter does not fail it while the middle is clear. The
-    forward approach of 904.4.2 is not searched: it needs knee and toe space
-    under the counter, which a scan does not show.
+    forward approach of 904.4.2 is not searched. It needs knee and toe space
+    under the counter itself, and nothing here counts the counter's own.
+
+    305.4 lets the space include knee and toe clearance under the pieces
+    around it, a table it backs onto for one. That is counted only when the
+    space falls short without it; see `knee_and_toe`.
     """
     rule = ctx.rule(APPROACH_RULE)
     height_rule = ctx.rule(HEIGHT_RULE)
@@ -129,8 +134,14 @@ def service_counter_approach(ctx: CheckContext) -> list[Observation]:
     for counter in roles.service_counters(ctx.graph):
         at = _portion_for(ctx.graph, counter, height_rule) or counter
         slide = _slide_meters(at, rule, height_rule)
-        result = ctx.measure.counter_approach(ctx.graph, at.id, slide_meters=slide)
-        observations.append(_approach(ctx, rule, counter, at, result))
+        settled = settle_one(
+            ctx.measure.counter_approach(ctx.graph, at.id, slide_meters=slide),
+            approach_counted(ctx, at.id, slide),
+            lambda space: fits_rectangle(
+                space, rule.parameter("clear_width_min_inches"), rule.parameter("clear_depth_min_inches")
+            ),
+        )
+        observations.append(_approach(ctx, rule, counter, at, settled))
     return observations
 
 
@@ -149,7 +160,8 @@ def _slide_meters(at: SceneNode, rule: RuleSpec, height_rule: RuleSpec) -> float
     return max(0.0, (face + space) / 2 - portion)
 
 
-def _approach(ctx: CheckContext, rule: RuleSpec, counter, at, result) -> Observation:
+def _approach(ctx: CheckContext, rule: RuleSpec, counter, at, settled: Settled) -> Observation:
+    result = settled.space
     required_wide = rule.parameter("clear_width_min_inches")
     required_deep = rule.parameter("clear_depth_min_inches")
     satisfied = fits_rectangle(result, required_wide, required_deep)
@@ -160,11 +172,11 @@ def _approach(ctx: CheckContext, rule: RuleSpec, counter, at, result) -> Observa
         satisfied=satisfied,
         measured_inches=min(result.inches_wide, result.inches_deep),
         required_inches=rule.threshold,
-        relied_on=(counter.id,) if at is counter else (counter.id, at.id),
-        locus=region_locus(result, [at.id, *(
+        relied_on=((counter.id,) if at is counter else (counter.id, at.id)) + settled.pieces,
+        locus=region_locus(result, [at.id, *settled.pieces, *(
             intruders(ctx.graph, rectangle(
                 result.center, to_meters(required_wide), to_meters(required_deep), rotation,
-            ), ignoring=beside) if not satisfied else []
+            ), ignoring=beside | frozenset(settled.pieces)) if not satisfied else []
         )], rotation=rotation),
         facts={
             "counter": counter.label,
@@ -172,9 +184,11 @@ def _approach(ctx: CheckContext, rule: RuleSpec, counter, at, result) -> Observa
             "measured_deep": result.inches_deep,
             "required_wide": required_wide,
             "required_deep": required_deep,
+            **settled.facts(ctx),
         },
         dedupe_key=(APPROACH_RULE, str(counter.id)),
-        reason="measured" if satisfied else "too_small",
+        reason="unseen_floor" if settled.look_under else "measured" if satisfied else "too_small",
+        asks_for=settled.asks_for,
     )
 
 

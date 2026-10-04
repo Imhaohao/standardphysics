@@ -576,14 +576,18 @@ def _inside_convex_polygon(polygon, world_x: np.ndarray, world_y: np.ndarray, ma
     return inside
 
 
-def _cell_centres(grid: Grid) -> tuple[np.ndarray, np.ndarray]:
-    rows, cols = grid.shape
-    xs = grid.origin_x + (np.arange(cols) + 0.5) * grid.cell_size
-    ys = grid.origin_y + (np.arange(rows) + 0.5) * grid.cell_size
+def _cell_centres(
+    grid: Grid, rows: slice = slice(None), columns: slice = slice(None)
+) -> tuple[np.ndarray, np.ndarray]:
+    row_count, column_count = grid.shape
+    xs = grid.origin_x + (np.arange(column_count)[columns] + 0.5) * grid.cell_size
+    ys = grid.origin_y + (np.arange(row_count)[rows] + 0.5) * grid.cell_size
     return np.meshgrid(xs, ys)
 
 
-def occupancy_excluding(graph: SceneGraph, grid: Grid, node_id) -> np.ndarray:
+def occupancy_excluding(
+    graph: SceneGraph, grid: Grid, node_id, rows: slice = slice(None), columns: slice = slice(None)
+) -> np.ndarray:
     """The same floor with one object taken away.
 
     `grid.owner` records a single owner per cell and the first node to claim a
@@ -593,10 +597,11 @@ def occupancy_excluding(graph: SceneGraph, grid: Grid, node_id) -> np.ndarray:
 
     Rasterising the remaining nodes answers the question honestly. The grid's
     origin and cell size are reused so the result lines up with the original
-    cell for cell.
+    cell for cell. `rows` and `columns` narrow it to one window of the grid,
+    for a question about the floor under one piece.
     """
-    world_x, world_y = _cell_centres(grid)
-    occupied = np.zeros(grid.shape, dtype=bool)
+    world_x, world_y = _cell_centres(grid, rows, columns)
+    occupied = np.zeros(world_x.shape, dtype=bool)
 
     for node in graph.nodes:
         if node.id == node_id or not blocks_floor(node):

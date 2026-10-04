@@ -17,6 +17,7 @@ from standardphysics_contracts.findings import Asks, Outcome
 from .checks import roles
 from .checks.observation import Observation
 from .copy import FindingCopy, another_look, describe, request
+from .knee_copy import look_underneath, with_counted_floor
 from .rules import AgentRulePack, RuleSpec
 
 FINDING_NAMESPACE = uuid.UUID("7b3c1f04-5e2a-4c6b-9d18-000000000002")
@@ -41,13 +42,15 @@ def resolve(
     """A check resting on geometry we are unsure of becomes a request."""
     if not (rule.measurable or observation.seen_directly):
         return "question", describe(observation, rule)
+    if observation.facts.get("look_under"):
+        return "question", look_underneath(observation.facts["look_under"])
     if observation.asks_for:
         return "question", request(rule, observation.facts)
     unsure = roles.needs_another_look(graph, observation.relied_on)
     if unsure:
         return "question", another_look([node.label for node in unsure])
     outcome: Outcome = "passes" if observation.satisfied else "problem"
-    return outcome, describe(observation, rule)
+    return outcome, with_counted_floor(describe(observation, rule), observation)
 
 
 def asks_of(observation: Observation, rule: RuleSpec, graph: SceneGraph) -> Asks | None:
