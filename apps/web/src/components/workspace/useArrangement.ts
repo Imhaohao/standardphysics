@@ -13,7 +13,6 @@ const DRAG_SETTLE_MS = 160;
 const NUDGE_SETTLE_MS = 350;
 const SCANNED_LAYOUT = layoutKey({});
 const NO_BLOCKS: Blocked[] = [];
-const NO_MOVES: MoveSet = {};
 
 export type Arrangement = ReturnType<typeof useArrangement>;
 
@@ -29,6 +28,8 @@ export type AfterSave = "clear" | "keep";
 
 type Layout = {
   moves: MoveSet;
+  /** The layout the plan last came to rest on, which the checks describe and the clearance map follows. */
+  settled: MoveSet;
   check: LayoutCheckResult | null;
   baseline: LayoutCheckResult | null;
   refused: Blocked[];
@@ -36,7 +37,7 @@ type Layout = {
   problem: string | null;
 };
 
-const EMPTY_LAYOUT: Layout = { moves: {}, check: null, baseline: null, refused: NO_BLOCKS, history: [], problem: null };
+const EMPTY_LAYOUT: Layout = { moves: {}, settled: {}, check: null, baseline: null, refused: NO_BLOCKS, history: [], problem: null };
 
 /** What the screen shows for a checked layout: nothing extra for the scanned one, whose answer is the baseline. */
 function shownCheck(checked: Checked): LayoutCheckResult | null {
@@ -69,7 +70,7 @@ function useLayoutState() {
   const commit = useCallback((checked: Checked, cached: (moves: MoveSet) => LayoutCheckResult | undefined) => {
     const legal = legalRef.current;
     if (checked.result.blocked.length > 0) {
-      place(legal, { refused: checked.result.blocked, check: layoutKey(legal) === SCANNED_LAYOUT ? null : cached(legal) ?? null });
+      place(legal, { refused: checked.result.blocked, settled: legal, check: layoutKey(legal) === SCANNED_LAYOUT ? null : cached(legal) ?? null });
       return;
     }
     legalRef.current = checked.moves;
@@ -232,12 +233,11 @@ export function useArrangement(scanId: string, scene: SceneGraph, persist: Persi
 
   const shown = useMemo(() => applyMoves(scene, layout.moves), [scene, layout.moves]);
 
-  /** The layout the plan last came to rest on, which the checks describe and the clearance map follows. */
-  const [settled, setSettled] = useState<MoveSet>(NO_MOVES);
+  /** Asks for a layout's check, and marks it as the one the plan has come to rest on. */
   const ask = useCallback((moves: MoveSet, commitIt: boolean) => {
-    setSettled(moves);
+    setLayout((current) => ({ ...current, settled: moves }));
     request(moves, commitIt);
-  }, [request]);
+  }, [setLayout, request]);
 
   /** Checks the scanned layout once, so every later layout has something to be compared with. */
   const start = useCallback(() => {
@@ -270,8 +270,7 @@ export function useArrangement(scanId: string, scene: SceneGraph, persist: Persi
     legalRef.current = moves;
     const cached = cachedCheck(moves);
     const check = layoutKey(moves) === SCANNED_LAYOUT ? null : cached ?? null;
-    place(moves, { history, check, refused: NO_BLOCKS, problem: null });
-    setSettled(moves);
+    place(moves, { history, check, refused: NO_BLOCKS, problem: null, settled: moves });
     if (!cached) request(moves, false);
   }, [cancel, settle, legalRef, cachedCheck, place, request]);
 
@@ -307,8 +306,7 @@ export function useArrangement(scanId: string, scene: SceneGraph, persist: Persi
   const preview = useCallback((proposed: NodeMove[]) => {
     cancel();
     const moves = movesOf(proposed);
-    place(moves, { check: null, problem: null, refused: NO_BLOCKS });
-    setSettled(moves);
+    place(moves, { check: null, problem: null, refused: NO_BLOCKS, settled: moves });
     mark("loaded");
   }, [cancel, place, mark]);
 
@@ -319,7 +317,6 @@ export function useArrangement(scanId: string, scene: SceneGraph, persist: Persi
     legalRef.current = {};
     movesRef.current = {};
     setLayout((current) => ({ ...EMPTY_LAYOUT, baseline: current.baseline }));
-    setSettled(NO_MOVES);
     setActiveId(null);
     mark("cleared");
   }, [cancel, settle, legalRef, movesRef, setLayout, mark]);
@@ -349,7 +346,7 @@ export function useArrangement(scanId: string, scene: SceneGraph, persist: Persi
   const canSave = hasMoves && !saved && !checking && !saving && check !== null && check.blocked.length === 0;
 
   return {
-    shown, moves, settled, check, checking, saving, saved, problem: layout.problem, activeId, hasMoves, blockedIds, canSave,
+    shown, moves, settled: layout.settled, check, checking, saving, saved, problem: layout.problem, activeId, hasMoves, blockedIds, canSave,
     baseline: layout.baseline, refused: layout.refused, canUndo: layout.history.length > 0, latencyMs,
     source: suggestion.source, puttingBack: suggestion.puttingBack,
     setActiveId, drag, drop, nudge, reset, clearPending, putBack, undo, start, save, load, loadSuggestion, preview, restore,
