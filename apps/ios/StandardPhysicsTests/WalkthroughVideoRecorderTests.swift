@@ -14,7 +14,7 @@ final class WalkthroughVideoRecorderTests: XCTestCase {
         XCTAssertTrue(recorder.append(pixelBuffer: frame, timestamp: 10))
         XCTAssertTrue(recorder.append(pixelBuffer: frame, timestamp: 10.1))
 
-        let result = await finish(recorder)
+        let result = try await finish(recorder)
         guard case .success(let videoURL?) = result else {
             return XCTFail("Expected a video URL, got \(result)")
         }
@@ -34,7 +34,7 @@ final class WalkthroughVideoRecorderTests: XCTestCase {
         let outputURL = directory.appendingPathComponent("walkthrough.mp4")
         let recorder = try WalkthroughVideoRecorder(outputURL: outputURL)
 
-        let result = await finish(recorder)
+        let result = try await finish(recorder)
         guard case .success(nil) = result else {
             return XCTFail("Expected success(nil), got \(result)")
         }
@@ -82,7 +82,7 @@ final class WalkthroughVideoRecorderTests: XCTestCase {
 
         recorder.cancel()
         recorder.cancel()
-        let result = await finish(recorder)
+        let result = try await finish(recorder)
         guard case .success(nil) = result else {
             return XCTFail("Expected success(nil) after cancel, got \(result)")
         }
@@ -93,16 +93,17 @@ final class WalkthroughVideoRecorderTests: XCTestCase {
         _ recorder: WalkthroughVideoRecorder,
         file: StaticString = #filePath,
         line: UInt = #line
-    ) async -> Result<URL?, Error> {
+    ) async throws -> Result<URL?, Error> {
         let expectation = expectation(description: "finish")
         let result = ResultBox()
         recorder.finish {
             result.value = $0
             expectation.fulfill()
         }
-        await fulfillment(of: [expectation], timeout: 10)
-        XCTAssertNotNil(result.value, file: file, line: line)
-        return result.value!
+        // A loaded CI simulator has taken longer than 10 s to finish the file. The wait returns as soon as
+        // the recorder calls back, and a recorder that never does fails this test instead of crashing the run.
+        await fulfillment(of: [expectation], timeout: 30)
+        return try XCTUnwrap(result.value, file: file, line: line)
     }
 
     private func makeTemporaryDirectory() throws -> URL {

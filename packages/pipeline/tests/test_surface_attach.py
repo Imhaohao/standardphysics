@@ -57,6 +57,19 @@ def wall_node(centre, size, *, yaw=0.0, quality="measured") -> SceneNode:
     )
 
 
+def floor_node() -> SceneNode:
+    """Make a level floor sheet, 4 m square, centred under the room's origin."""
+    return SceneNode(
+        id=uuid.uuid4(),
+        kind="floor",
+        label="Floor",
+        raw_category="floor",
+        dimensions=Vec3(x=4.0, y=4.0, z=0.01),
+        transform=Mat4.translation(0.0, 0.0, 0.0),
+        movable=False,
+    )
+
+
 class TestSurfaceAttachmentProjection:
     def test_ray_for_pixel_points_towards_target(self):
         cam = camera_at((0.0, 0.0, 1.0), (0.0, 2.0, 1.0))
@@ -210,3 +223,29 @@ class TestSurfaceAttachmentProjection:
         assert attachment.support_type == "lidar_surface"
         assert outlet_node.kind == "outlet"
 
+
+@pytest.mark.parametrize(
+    ("support", "camera_position", "looking_at"),
+    [
+        (wall_node((0.0, 2.0, 1.25), (3.0, 0.1, 2.5)), (0.0, 0.0, 1.0), (0.0, 2.0, 1.0)),
+        (wall_node((0.0, -2.0, 1.25), (3.0, 0.1, 2.5)), (0.0, 0.0, 1.0), (0.0, -2.0, 1.0)),
+        (wall_node((2.0, 0.0, 1.25), (3.0, 0.1, 2.5), yaw=math.pi / 2), (0.0, 0.0, 1.0), (2.0, 0.0, 1.0)),
+        (wall_node((-2.0, 0.0, 1.25), (3.0, 0.1, 2.5), yaw=math.pi / 2), (0.0, 0.0, 1.0), (-2.0, 0.0, 1.0)),
+        (wall_node((1.5, 1.5, 1.25), (3.0, 0.1, 2.5), yaw=-math.pi / 4), (0.0, 0.0, 1.0), (1.5, 1.5, 1.0)),
+        (floor_node(), (0.0, -1.0, 1.5), (0.0, 0.5, 0.0)),
+    ],
+    ids=["facing south", "facing north", "facing west", "facing east", "facing south-west", "facing straight up"],
+)
+def test_an_attached_node_is_turned_by_a_rotation_not_a_reflection(support, camera_position, looking_at):
+    """The node's frame is its surface's tangent, normal and bitangent, and their determinant has to be +1.
+
+    The bitangent used to be normal × tangent, which makes the determinant -1.
+    Such a transform mirrors the node, and on a wall it pointed the node's own
+    z axis down the wall instead of up it.
+    """
+    graph = SceneGraph(scan_id=uuid.uuid4(), nodes=[support], capture_to_room=capture_to_room(0.0))
+    detection = Detection("f1", "outlet", (300.0, 220.0, 340.0, 260.0), False, 0.95, category="outlet")
+    attachment, node = attach_detection_to_surface(detection, camera_at(camera_position, looking_at), graph)
+    rotation = np.asarray(node.transform.m).reshape(4, 4)[:3, :3]
+    assert attachment.support_node_id == support.id
+    assert np.linalg.det(rotation) == pytest.approx(1.0)

@@ -50,7 +50,7 @@ function FindingRow({ finding, selected, onSelect, extra }: RowProps) {
           <span className="flex items-baseline justify-between gap-3">
             <span className="font-semibold leading-snug">{finding.title}</span>
             {finding.measured_inches !== null && (
-              <span className="measurement shrink-0 text-ink-muted">{formatInches(finding.measured_inches)}</span>
+              <span className="measurement shrink-0 text-ink-muted">{formatInches(finding.measured_inches, finding.required_inches)}</span>
             )}
           </span>
           {selected && finding.detail && <span className="mt-1 block text-ink-muted">{finding.detail}</span>}

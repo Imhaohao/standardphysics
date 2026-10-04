@@ -38,9 +38,9 @@ describe("formatClearWidth", () => {
     );
   });
 
-  it("rounds down instead where rounding would carry a width that falls short onto a band edge", () => {
+  it("keeps the digits that separate a width from a band edge it falls just short of", () => {
     expect([35.98, 35.95, 31.97, 59.99].map((inches) => formatClearWidth(inches, BANDS))).toEqual(
-      ["35.9 in", "35.9 in", "31.9 in", "59.9 in"],
+      ["35.98 in", "35.95 in", "31.97 in", "59.99 in"],
     );
   });
 
@@ -164,6 +164,6 @@ describe("the pinches the map marks", () => {
     const sealed = pinch({ finding_id: "sealed", inches: null });
     const fine = pinch({ finding_id: "fine", inches: 75, meets_rule: true });
     const marked = pinchesToMark(field([[0]], { pinches: [failing, sealed, fine] }));
-    expect(marked.map((each) => pinchWords(each, BANDS))).toEqual(["35.9 in", "No way through"]);
+    expect(marked.map((each) => pinchWords(each, BANDS))).toEqual(["35.98 in", "No way through"]);
   });
 });

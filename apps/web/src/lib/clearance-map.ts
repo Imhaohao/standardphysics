@@ -1,5 +1,5 @@
 import type { ClearanceBands, ClearanceMap, ClearancePinch } from "@/types/contracts";
-import { shownFigure } from "./findings";
+import { formatInches } from "./findings";
 import { base64Bytes, readGreyPng } from "./grey-png";
 
 /**
@@ -41,15 +41,13 @@ export async function decodeClearance(map: ClearanceMap): Promise<ClearanceField
 }
 
 /**
- * A width as the map labels it: the figure the rest of the app shows, unless that figure would reach a band edge the
- * width falls short of, and then rounded down to a tenth instead. 19.19 in is "19.2 in" here as everywhere, but
- * 35.98 in is "35.9 in", never "36 in", and 31.97 in is "31.9 in". A width the checks count as 36 is "36 in".
+ * A width as the map labels it: as the rest of the app prints a measurement against its requirement, held here to
+ * the band edge just above the width. 19.19 in reads "19.2 in", but 35.98 in reads "35.98 in", never "36 in", and
+ * 31.97 in reads "31.97 in". A width the checks count as meeting an edge reads as that edge.
  */
 export function formatClearWidth(inches: number, bands: ClearanceBands): string {
-  const figure = shownFigure(inches);
   const edges = [bands.reduced_inches, bands.route_inches, bands.turning_inches];
-  const roundedOnto = edges.some((edge) => inches + COMPARISON_EPSILON < edge && Number.parseFloat(figure) >= edge);
-  return roundedOnto ? `${Math.floor((inches + COMPARISON_EPSILON) * 10) / 10} in` : `${figure} in`;
+  return formatInches(inches, edges.find((edge) => inches + COMPARISON_EPSILON < edge) ?? null);
 }
 
 /** The most pixels the painted map runs to on its longer side, which keeps a big room's picture light to paint. */

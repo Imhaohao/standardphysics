@@ -86,7 +86,7 @@ function Comparison({ finding }: { finding: Finding }) {
     <dl className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2">
       <dt className="sr-only">Your shop</dt>
       <dd className="h-3 bg-problem" style={{ width: `${bars.measured * 100}%` }} aria-hidden />
-      <dd className="measurement text-lg font-semibold text-problem">{formatInches(measured)}</dd>
+      <dd className="measurement text-lg font-semibold text-problem">{formatInches(measured, required)}</dd>
       <dt className="sr-only">What&rsquo;s needed</dt>
       <dd className="h-3 border-2 border-dashed border-ink/50" style={{ width: `${bars.required * 100}%` }} aria-hidden />
       <dd className="measurement text-ink-muted">{formatInches(required)} needed</dd>

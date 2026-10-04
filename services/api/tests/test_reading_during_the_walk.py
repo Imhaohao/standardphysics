@@ -2,17 +2,22 @@
 
 Real HTTP and the real worker; only the detector is a stand-in. The job record
 of the walk's discovery counts the photos the walk already read, and a pose
-that could not be the frame's own is refused before anything is stored.
+that could not be the frame's own is refused before anything is stored. An
+artifact that reaches a scan still uploading is answered without the write lock.
 """
 
 import hashlib
 import json
 import time
+import uuid
 
+import pytest
 from evidence_uploads import complete_geometry, lidar_mesh_bytes, process_job_states
 from standardphysics_pipeline.discovery import Detection, DiscoveryResult
 
 from conftest import create_scan, drain, no_blender_stages
+from standardphysics_api.repository import SEMANTIC_INPUT_KINDS
+from standardphysics_api.upload_routes import TEXTURE_INPUT_KINDS, _queue_for_arrival
 
 
 def pose(frame_id: str, timestamp: float, metres: float) -> dict:
@@ -112,3 +117,33 @@ def test_a_pose_that_is_not_the_frames_own_is_refused_and_nothing_is_stored(make
         assert [response.status_code for response in refusals] == [400, 400, 400]
         assert client.get(f"/api/scans/{scan_id}").json()["artifacts"] == []
         assert read == []
+
+
+class ReadsOnly:
+    """The app's database for reading, which fails the test the moment anything takes the write lock."""
+
+    def __init__(self, database):
+        self.connect = database.connect
+
+    def transaction(self):
+        raise AssertionError("took the write lock")
+
+
+def test_an_artifact_arriving_mid_walk_is_answered_without_the_write_lock(make_client):
+    with make_client(stages=no_blender_stages()) as client:
+        scan_id = create_scan(client)
+        app = client.app.state
+        locked_out = ReadsOnly(app.database)
+
+        def arrive(kind: str) -> bool:
+            return _queue_for_arrival(locked_out, app.store, app.worker, uuid.UUID(scan_id), kind, 0.0)
+
+        assert not [kind for kind in sorted(SEMANTIC_INPUT_KINDS) if arrive(kind)]
+        complete_geometry(client, scan_id)
+        assert client.post(f"/api/scans/{scan_id}/complete").status_code == 200
+        with pytest.raises(AssertionError, match="took the write lock"):
+            arrive("frames")
+
+
+def test_every_texture_input_is_a_semantic_input():
+    assert TEXTURE_INPUT_KINDS <= SEMANTIC_INPUT_KINDS
