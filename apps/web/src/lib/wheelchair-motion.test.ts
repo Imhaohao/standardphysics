@@ -83,6 +83,22 @@ describe("wheelchair motion geometry", () => {
     expect(geometry.targets.map((rect) => rect.node.id)).toEqual(["table"]);
   });
 
+  it("only counts what the server's occupancy grid counts: a quarter inch to 27 inches off the floor", () => {
+    const at = (id: string, bottom: number, height: number) => {
+      const piece = node({ id, kind: "object", dimensions: { x: 1, y: 1, z: height }, x: 3 });
+      piece.transform.m[11] = bottom + height / 2;
+      return piece;
+    };
+    const cabinet = at("wall cabinet", 0.7, 0.6);
+    const mat = at("floor mat", 0, 0.004);
+    const shelf = at("low shelf", 0.6, 0.6);
+    const geometry = wheelchairMotionGeometry([cabinet, mat, shelf]);
+    expect(geometry.obstacles.map((rect) => rect.node.id)).toEqual(["low shelf"]);
+    expect(geometry.targets).toHaveLength(3);
+    expect(sweepWheelchair({ x: 0, z: 0 }, { x: 6, z: 0 }, [geometry.obstacles[0]], 0.3).reached).toBe(false);
+    expect(sweepWheelchair({ x: 0, z: 0 }, { x: 6, z: 0 }, wheelchairMotionGeometry([cabinet, mat]).obstacles, 0.3).reached).toBe(true);
+  });
+
   it("extracts a published-style X/Z floor surface and constrains the default spawn to it", () => {
     const geometry = wheelchairMotionGeometry([
       node({

@@ -7,12 +7,11 @@ import type { Arrangement } from "@/components/workspace/useArrangement";
 import { blockedSentence } from "@/lib/blocked-copy";
 import { formatInches } from "@/lib/findings";
 import { type ChangeKind, changeTitle, type FindingChange, layoutChanges, unchangedProblems } from "@/lib/layout-changes";
+import { TURN_STEP_DEGREES } from "@/lib/moves";
 import { justCleared, needsBuilding, openProblems, type StatusOf } from "@/lib/owner-decisions";
 import type { ChecklistStatus } from "@/lib/owner-journey";
 import type { Finding } from "@/types/contracts";
 import { ActionBar } from "./StepHeading";
-
-const TURN_STEP_DEGREES = 15;
 
 /**
  * The findings as they stand, against the scanned layout's: the latest check,

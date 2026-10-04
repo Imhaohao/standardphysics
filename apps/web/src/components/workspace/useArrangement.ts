@@ -5,8 +5,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type Checked, LayoutChecker, layoutKey } from "@/lib/layout-checker";
 import { type ArrangementEvent, type MovesSource, sourceAfter } from "@/lib/arrangement-source";
 import { ApiRefusal, checkLayout, putBackSuggestion, saveLayout } from "@/lib/layout-client";
-import { applyMoves, type MoveSet, withMove } from "@/lib/moves";
+import { applyMoves, type MoveSet } from "@/lib/moves";
+import type { Stop } from "@/lib/slide";
 import type { Blocked, LayoutCheckResult, NodeMove, SceneGraph } from "@/types/contracts";
+import { useHand } from "./useHand";
 
 /** How long a piece rests under the pointer before the layout is checked mid-drag. */
 const DRAG_SETTLE_MS = 160;
@@ -215,6 +217,11 @@ function useSave(scanId: string, revision: number, persist: Persist, afterSave: 
   return { save, saving, savedKey, setSavedKey };
 }
 
+/** A piece or a door the piece in hand is pressed against, rather than the floor's edge or its travel limit. */
+function againstSomething(stop: Stop): boolean {
+  return stop.reason === "collided" || stop.reason === "blocked_a_door";
+}
+
 function movesOf(proposed: NodeMove[]): MoveSet {
   return Object.fromEntries(proposed.map((move) => [move.node_id, move]));
 }
@@ -228,6 +235,7 @@ export function useArrangement(scanId: string, scene: SceneGraph, persist: Persi
   const setProblem = useCallback((problem: string) => setLayout((current) => ({ ...current, problem })), [setLayout]);
   const suggestion = useSuggestion(scanId, scene.revision, setProblem);
   const { mark } = suggestion;
+  const { pressedOn, pullBy, letGo, step } = useHand(scene);
 
   const shown = useMemo(() => applyMoves(scene, layout.moves), [scene, layout.moves]);
 
@@ -237,23 +245,37 @@ export function useArrangement(scanId: string, scene: SceneGraph, persist: Persi
   }, [cachedCheck, request]);
 
   const drop = useCallback(() => {
+    letGo();
     settle.clear();
     request(movesRef.current, true);
-  }, [settle, request, movesRef]);
+  }, [letGo, settle, request, movesRef]);
 
+  /** Pulls the piece toward the pointer, sliding it along whatever it would run into on the way. */
   const drag = useCallback((nodeId: string, dx: number, dy: number) => {
-    place(withMove(movesRef.current, nodeId, dx, dy, 0), { refused: NO_BLOCKS });
+    const pulled = pullBy(movesRef.current, nodeId, dx, dy);
+    if (pulled === movesRef.current) return;
+    place(pulled, { refused: NO_BLOCKS });
     mark("moved");
     settle.after(DRAG_SETTLE_MS, () => request(movesRef.current, false));
-  }, [place, movesRef, mark, settle, request]);
+  }, [place, pullBy, movesRef, mark, settle, request]);
 
-  /** Slides or turns a piece a step: the one in hand, or the one named, which a keyboard can do before the pick has rendered. */
+  /**
+   * Slides or turns a piece a step: the one in hand, or the one named, which a
+   * keyboard can do before the pick has rendered. A step that cannot move at
+   * all, or a turn into something, is refused with the reason, as a refused
+   * drop is.
+   */
   const nudge = useCallback((dx: number, dy: number, degrees: number, nodeId: string | null = activeId) => {
     if (!nodeId) return;
-    place(withMove(movesRef.current, nodeId, dx, dy, degrees), { refused: NO_BLOCKS });
+    const outcome = step(movesRef.current, nodeId, dx, dy, degrees);
+    if (outcome.refused.length > 0) {
+      setLayout((current) => ({ ...current, refused: outcome.refused }));
+      return;
+    }
+    place(outcome.moves, { refused: NO_BLOCKS });
     mark("moved");
     settle.after(NUDGE_SETTLE_MS, drop);
-  }, [activeId, place, movesRef, mark, settle, drop]);
+  }, [activeId, step, movesRef, setLayout, place, mark, settle, drop]);
 
   /** Jumps straight to a layout already known to be legal, such as an undo step, using its cached check when there is one. */
   const jumpTo = useCallback((moves: MoveSet, history: MoveSet[]) => {
@@ -334,10 +356,11 @@ export function useArrangement(scanId: string, scene: SceneGraph, persist: Persi
   const hasMoves = Object.keys(moves).length > 0;
   const saved = savedKey === layoutKey(moves);
   const blockedIds = useMemo(() => new Set(check?.blocked.map((b) => b.node_id) ?? []), [check]);
+  const pressedIds = useMemo(() => new Set(pressedOn.filter(againstSomething).map((stop) => stop.nodeId)), [pressedOn]);
   const canSave = hasMoves && !saved && !checking && !saving && check !== null && check.blocked.length === 0;
 
   return {
-    shown, moves, check, checking, saving, saved, problem: layout.problem, activeId, hasMoves, blockedIds, canSave,
+    shown, moves, check, checking, saving, saved, problem: layout.problem, activeId, hasMoves, blockedIds, canSave, pressedOn, pressedIds,
     baseline: layout.baseline, refused: layout.refused, canUndo: layout.history.length > 0, latencyMs,
     source: suggestion.source, puttingBack: suggestion.puttingBack,
     setActiveId, drag, drop, nudge, reset, clearPending, putBack, undo, start, save, load, loadSuggestion, preview, restore,

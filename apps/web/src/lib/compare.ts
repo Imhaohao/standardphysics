@@ -1,6 +1,6 @@
 import type { Mat4, SceneGraph, SceneNode } from "@/types/contracts";
 import { formatInches } from "./findings";
-import { METERS_PER_INCH } from "./moves";
+import { METERS_PER_INCH } from "@/types/geometry-rules";
 
 function angleOf(transform: Mat4): number {
   return Math.atan2(transform.m[4], transform.m[0]);

@@ -1,12 +1,15 @@
 "use client";
 
-import { Edges, Html, useGLTF } from "@react-three/drei";
+import { Edges, Html, Line, useGLTF } from "@react-three/drei";
 import { useThree, type ThreeEvent } from "@react-three/fiber";
 import { Wrench } from "@phosphor-icons/react";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { BoxGeometry, Matrix4, Mesh, MeshStandardMaterial, Plane, Raycaster, Vector3, type BufferGeometry, type Intersection, type Material } from "three";
 import { canUseCapturedGlbGeometry, displayScale, drawnInModel, MAX_DISPLAY_WALL_HEIGHT } from "@/lib/display-geometry";
 import { groupGlbPrimitives } from "@/lib/glb-parts";
+import { footprint, type Polygon } from "@/lib/footprints";
+import { doorKeepClear, swingsOpen } from "@/lib/layout-rules";
+import { readsAsWall } from "@/lib/room-shell";
 import { displayMatrix, toViewerMatrix } from "@/lib/scene-matrix";
 import type { SceneGraph, SceneNode } from "@/types/contracts";
 import { MODEL, nodeColor, WALL_CUT_HEIGHT } from "./palette";
@@ -23,6 +26,8 @@ type Placed = { node: SceneNode; geometry: BufferGeometry; matrix: Matrix4; sour
 export type ArrangeHandlers = {
   activeId: string | null;
   blockedIds: Set<string>;
+  /** What the piece in hand is pressed against while a drag holds it short of the pointer. */
+  pressedIds: Set<string>;
   onGrab: (nodeId: string) => void;
   onDrag: (nodeId: string, dx: number, dy: number) => void;
   onDrop: (nodeId: string) => void;
@@ -176,11 +181,15 @@ function useDrag(node: SceneNode, arrange: ArrangeHandlers | null, dragAllNodes:
   };
 }
 
+/** Refused by the check, in hand, or what the piece in hand is pressed against. */
+function arrangingEdge(nodeId: string, arrange: ArrangeHandlers | null): string | null {
+  if (!arrange) return null;
+  if (arrange.blockedIds.has(nodeId)) return MODEL.problem;
+  return arrange.activeId === nodeId || arrange.pressedIds.has(nodeId) ? MODEL.accent : null;
+}
+
 function edgeColor(node: SceneNode, props: Omit<ModelProps, "shown">): string | null {
-  if (props.arrange?.blockedIds.has(node.id)) return MODEL.problem;
-  if (props.arrange?.activeId === node.id) return MODEL.accent;
-  if (props.focus?.has(node.id)) return props.focusColor;
-  return null;
+  return arrangingEdge(node.id, props.arrange) ?? (props.focus?.has(node.id) ? props.focusColor : null);
 }
 
 /** Over a built-in fixture while planning: it can move, but moving it means construction. */
@@ -287,6 +296,18 @@ function meshRaycast(faded: boolean, clipWall: boolean) {
 
 type ModelNodeProps = { placed: Placed } & Omit<ModelProps, "shown">;
 
+/** Each way arranging can mark one node: the piece in hand, one the check refused, one the piece in hand is pressed against. */
+const ARRANGE_MARKS: ((arrange: ArrangeHandlers, nodeId: string) => boolean)[] = [
+  (arrange, nodeId) => arrange.activeId === nodeId,
+  (arrange, nodeId) => arrange.blockedIds.has(nodeId),
+  (arrange, nodeId) => arrange.pressedIds.has(nodeId),
+];
+
+function sameArrangeLook(prev: ArrangeHandlers | null, next: ArrangeHandlers | null, nodeId: string): boolean {
+  if (prev === null || next === null) return prev === next;
+  return ARRANGE_MARKS.every((marked) => marked(prev, nodeId) === marked(next, nodeId));
+}
+
 // eslint-disable-next-line complexity
 function areModelNodePropsEqual(prev: ModelNodeProps, next: ModelNodeProps): boolean {
   if (prev.placed !== next.placed) return false;
@@ -317,19 +338,7 @@ function areModelNodePropsEqual(prev: ModelNodeProps, next: ModelNodeProps): boo
   const nextCoverage = next.coverage?.get(nodeId);
   if (prevCoverage !== nextCoverage) return false;
 
-  const prevActive = prev.arrange?.activeId === nodeId;
-  const nextActive = next.arrange?.activeId === nodeId;
-  if (prevActive !== nextActive) return false;
-
-  const prevBlocked = prev.arrange?.blockedIds.has(nodeId) ?? false;
-  const nextBlocked = next.arrange?.blockedIds.has(nodeId) ?? false;
-  if (prevBlocked !== nextBlocked) return false;
-
-  const prevArrangeEnabled = prev.arrange !== null;
-  const nextArrangeEnabled = next.arrange !== null;
-  if (prevArrangeEnabled !== nextArrangeEnabled) return false;
-
-  return true;
+  return sameArrangeLook(prev.arrange, next.arrange, nodeId);
 }
 
 // eslint-disable-next-line complexity
@@ -385,6 +394,25 @@ function ModelNodes({ placements, ...props }: { placements: Placed[] } & Omit<Mo
   );
 }
 
+/** Just above the floor, so a mark there is never lost in it. */
+const BASE_LIFT = 0.012;
+
+function onTheFloor(outline: Polygon): [number, number, number][] {
+  return [...outline, outline[0]].map(({ x, y }) => [x, BASE_LIFT, -y]);
+}
+
+/**
+ * The floor under a wall the piece in hand is pressed against, or the square a
+ * door it is held back by sweeps. Walls are cut short in the model and doors
+ * are not drawn, so their own edges would barely show.
+ */
+function PressedBases({ shown, arrange }: { shown: SceneGraph; arrange: ArrangeHandlers | null }) {
+  const outlines = useMemo(() => shown.nodes
+    .filter((node) => arrange?.pressedIds.has(node.id) && (readsAsWall(node) || swingsOpen(node)))
+    .map((node) => ({ id: node.id, points: onTheFloor(swingsOpen(node) ? doorKeepClear(node) : footprint(node)) })), [shown, arrange]);
+  return outlines.map(({ id, points }) => <Line key={id} points={points} color={MODEL.accent} lineWidth={4} depthTest={false} renderOrder={6} />);
+}
+
 function visibleNodes(scene: SceneGraph, includeFloors = false): SceneNode[] {
   return drawnInModel(scene.nodes).filter((node) => !HIDDEN_KINDS.has(node.kind) && (includeFloors || node.kind !== "floor"));
 }
@@ -410,7 +438,12 @@ export function GlbShopModel({ url, exported, ...props }: ModelProps & { url: st
     });
   }, [meshes, exported, props.shown, props.staleNodeIds]);
 
-  return <ModelNodes placements={placements} {...props} />;
+  return (
+    <>
+      <ModelNodes placements={placements} {...props} />
+      <PressedBases shown={props.shown} arrange={props.arrange} />
+    </>
+  );
 }
 
 export function BoxShopModel(props: ModelProps) {
@@ -426,5 +459,10 @@ export function BoxShopModel(props: ModelProps) {
     [props.shown],
   );
 
-  return <ModelNodes placements={placements} {...props} />;
+  return (
+    <>
+      <ModelNodes placements={placements} {...props} />
+      <PressedBases shown={props.shown} arrange={props.arrange} />
+    </>
+  );
 }

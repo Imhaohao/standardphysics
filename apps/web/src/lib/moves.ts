@@ -1,4 +1,7 @@
 import type { Mat4, NodeMove, SceneGraph, SceneNode } from "@/types/contracts";
+import { HAND_CARRIED_HEIGHT, HAND_CARRIED_SPAN, HAND_CARRIED_VOLUME, METERS_PER_INCH, RESTING_GAP, RIDING_GAP } from "@/types/geometry-rules";
+import { centreOf, containsPoint, footprint, type Point } from "./footprints";
+import { boundsTheRoom, liesFlat } from "./room-shell";
 
 export type MoveSet = Record<string, NodeMove>;
 
@@ -14,42 +17,47 @@ export function moveNode(node: SceneNode, move: NodeMove): SceneNode {
   return { ...node, transform };
 }
 
-/** Mirrors Lane C's RESTING_GAP: an underside higher than this above the floor was resting on something. */
-const RESTING_GAP = 0.12;
-
-function floorHeight(scene: SceneGraph): number {
-  return scene.nodes.find((node) => node.kind === "floor")?.transform.m[11] ?? 0;
+/** Mirrors Lane C's floor_height: the height of the first sheet lying down, or zero. */
+export function floorHeight(scene: SceneGraph): number {
+  return scene.nodes.find(liesFlat)?.transform.m[11] ?? 0;
 }
 
-function underside(node: SceneNode): number {
+export function underside(node: SceneNode): number {
   return node.transform.m[11] - node.dimensions.z / 2;
+}
+
+export function topOf(node: SceneNode): number {
+  return node.transform.m[11] + node.dimensions.z / 2;
 }
 
 /** Mirrors Lane C's rests_on_something: a piece held up off the floor by whatever is under it. */
 export function restsOnSomething(node: SceneNode, floorZ: number): boolean {
-  return node.kind === "object" && underside(node) > floorZ + RESTING_GAP;
+  return !boundsTheRoom(node) && underside(node) > floorZ + RESTING_GAP;
 }
 
-function coversPoint(node: SceneNode, x: number, y: number): boolean {
-  const m = node.transform.m;
-  const [cos, sin] = [m[0], m[4]];
-  const [dx, dy] = [x - m[3], y - m[7]];
-  const localX = dx * cos + dy * sin;
-  const localY = -dx * sin + dy * cos;
-  return Math.abs(localX) <= node.dimensions.x / 2 && Math.abs(localY) <= node.dimensions.y / 2;
+function fitsInHands(node: SceneNode): boolean {
+  const { x, y, z } = node.dimensions;
+  return z <= HAND_CARRIED_HEIGHT && Math.max(x, y) <= HAND_CARRIED_SPAN && x * y * z <= HAND_CARRIED_VOLUME;
 }
 
-/** Mirrors Lane C's RIDING_GAP: an underside this close to another piece's top is sitting on it. */
-const RIDING_GAP = 0.05;
+/** Mirrors Lane C's carried_by_hand: a movable piece staff pick up and set down anywhere, so it has no travel limit. */
+export function carriedByHand(node: SceneNode): boolean {
+  return node.movable && !liesFlat(node) && !boundsTheRoom(node) && fitsInHands(node);
+}
 
-function topOf(node: SceneNode): number {
-  return node.transform.m[11] + node.dimensions.z / 2;
+/** Mirrors Lane C's measured_position: where the scan found the piece, before any saved layout moved it. */
+export function measuredPosition(node: SceneNode): Point {
+  return node.measured_position ? { x: node.measured_position.x, y: node.measured_position.y } : centreOf(node);
+}
+
+function covers(carrier: SceneNode, point: Point): boolean {
+  return containsPoint(footprint(carrier), point);
 }
 
 /** Mirrors Lane C's test in riders_of: the rider's underside is on the carrier's top, over its footprint. */
 export function sitsOn(rider: SceneNode, carrier: SceneNode): boolean {
-  return rider.id !== carrier.id && rider.kind === "object" &&
-    Math.abs(underside(rider) - topOf(carrier)) <= RIDING_GAP && coversPoint(carrier, rider.transform.m[3], rider.transform.m[7]);
+  return rider.id !== carrier.id && !boundsTheRoom(rider) &&
+    Math.abs(underside(rider) - topOf(carrier)) <= RIDING_GAP && covers(carrier, centreOf(rider));
 }
 
 /** Mirrors Lane C's riders_of: what sits on the carrier's top, like a register on a counter. */
@@ -87,14 +95,18 @@ export function carriedAlong(scene: SceneGraph, moves: MoveSet): MoveSet {
   return all;
 }
 
+/** Mirrors Lane C's surface_under: the highest top among the pieces directly under this one's centre, or the floor. */
+export function surfaceUnder(scene: SceneGraph, node: SceneNode, floorZ: number): number {
+  const centre = centreOf(node);
+  return scene.nodes
+    .filter((other) => other.id !== node.id && !boundsTheRoom(other) && covers(other, centre))
+    .reduce((highest, other) => Math.max(highest, topOf(other)), floorZ);
+}
+
 /** Mirrors Lane C's settle: sit on the highest top under the piece's centre, or on the floor. */
 function settle(scene: SceneGraph, node: SceneNode, floorZ: number): SceneNode {
-  const [x, y] = [node.transform.m[3], node.transform.m[7]];
-  const surface = scene.nodes
-    .filter((other) => other.id !== node.id && other.kind === "object" && coversPoint(other, x, y))
-    .reduce((highest, other) => Math.max(highest, other.transform.m[11] + other.dimensions.z / 2), floorZ);
   const m = [...node.transform.m];
-  m[11] = surface + node.dimensions.z / 2;
+  m[11] = surfaceUnder(scene, node, floorZ) + node.dimensions.z / 2;
   return { ...node, transform: { m } as Mat4 };
 }
 
@@ -175,8 +187,6 @@ export function withMove(moves: MoveSet, nodeId: string, dx: number, dy: number,
   };
 }
 
-export const METERS_PER_INCH = 0.0254;
-
 const NUDGE_DIRECTIONS: Record<string, [number, number]> = {
   ArrowUp: [0, 1],
   ArrowDown: [0, -1],
@@ -184,7 +194,17 @@ const NUDGE_DIRECTIONS: Record<string, [number, number]> = {
   ArrowRight: [1, 0],
 };
 
-const TURN_STEP_DEGREES = 15;
+/** The moves with `nodeId`'s centre at `at`, keeping whatever turn it already has. */
+export function placedAt(scene: SceneGraph, moves: MoveSet, nodeId: string, at: Point): MoveSet {
+  const node = scene.nodes.find((candidate) => candidate.id === nodeId);
+  if (!node) return moves;
+  const origin = centreOf(node);
+  const delta_translation = { x: at.x - origin.x, y: at.y - origin.y, z: 0 };
+  return { ...moves, [nodeId]: { node_id: nodeId, delta_translation, delta_rotation_z_degrees: moves[nodeId]?.delta_rotation_z_degrees ?? 0 } };
+}
+
+/** How far R, or a turn button, turns the piece in hand. */
+export const TURN_STEP_DEGREES = 15;
 
 type KeyPress = Pick<KeyboardEvent, "key" | "shiftKey" | "preventDefault">;
 

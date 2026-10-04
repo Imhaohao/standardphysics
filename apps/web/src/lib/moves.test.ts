@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { SceneGraph, SceneNode } from "@/types/contracts";
+import { METERS_PER_INCH } from "@/types/geometry-rules";
 import {
-  applyMoves, candidateMoves, METERS_PER_INCH, moveNode, nudgeForKey, restsOnSomething, ridersOf, screenStepInRoom, sitsOn, supportOf, withMove,
+  applyMoves, candidateMoves, moveNode, nudgeForKey, restsOnSomething, ridersOf, screenStepInRoom, sitsOn, supportOf, withMove,
 } from "./moves";
 
 const table: SceneNode = {
