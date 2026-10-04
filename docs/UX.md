@@ -103,6 +103,7 @@ A guest's shops are deleted 30 days after any of them was last opened. The remin
 | --- | --- |
 | `GET /api/journeys` | Every shop the account has, each with its stage and next step. The app's home card reads this. |
 | `GET /api/scans/{id}/journey` | One shop's `Journey`. |
+| `PATCH /api/scans/{id}` | `{name}`. Renames the shop on every walk of it, so a walk still being measured keeps the name when it takes this one's place. Spaces around the name are dropped, and an empty name or one over 120 characters is refused. |
 | `GET /api/scans/{id}/requests` | Every request for the shop, in the order to ask them. The in-shop ones exist as soon as the scan does. |
 | `PUT /api/scans/{id}/requests/{request_id}/answer` | `{yes}` or `{number}`. A "no" to the restroom or inside-door question closes the requests that depend on it as not applicable. |
 | `PUT /api/scans/{id}/requests/{request_id}/photo` | A JPEG or PNG body, at most 15 MB. The photo waits for a person on the team to check it. |

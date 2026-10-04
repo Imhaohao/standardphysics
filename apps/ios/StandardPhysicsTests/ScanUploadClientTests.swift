@@ -57,8 +57,7 @@ final class ScanUploadClientTests: XCTestCase {
         let shop = UUID(uuidString: "2F1D6E1E-8D0B-4C54-9E0A-3C6B1B8F2A10")!
         var bodies: [[String: Any]] = []
         URLProtocolStub.handler = { request in
-            let body = request.httpBody ?? request.httpBodyStream.map(Self.read) ?? Data()
-            bodies.append((try? JSONSerialization.jsonObject(with: body)) as? [String: Any] ?? [:])
+            bodies.append((try? JSONSerialization.jsonObject(with: sentBody(of: request))) as? [String: Any] ?? [:])
             return (201, #"{"id":"\#(UUID().uuidString)","state":"uploading"}"#.data(using: .utf8)!)
         }
         let configuration = URLSessionConfiguration.ephemeral
@@ -71,19 +70,6 @@ final class ScanUploadClientTests: XCTestCase {
 
         XCTAssertEqual(bodies.first?["replaces"] as? String, "2f1d6e1e-8d0b-4c54-9e0a-3c6b1b8f2a10")
         XCTAssertNil(bodies.last?["replaces"])
-    }
-
-    private static func read(_ stream: InputStream) -> Data {
-        stream.open()
-        defer { stream.close() }
-        var data = Data()
-        var buffer = [UInt8](repeating: 0, count: 4_096)
-        while stream.hasBytesAvailable {
-            let count = stream.read(&buffer, maxLength: buffer.count)
-            guard count > 0 else { break }
-            data.append(buffer, count: count)
-        }
-        return data
     }
 
     func testRejectsMalformedRemoteIdentifier() async throws {
@@ -198,6 +184,68 @@ final class WorkspaceWebViewTests: XCTestCase {
         XCTAssertEqual(WorkspaceDownloadDestination.safeFilename(".."), "architecture.zip")
         XCTAssertEqual(WorkspaceDownloadDestination.safeFilename("folder\\plan.zip"), "plan.zip")
     }
+}
+
+final class ShopRenameRequestTests: XCTestCase {
+    override func tearDown() {
+        URLProtocolStub.handler = nil
+        super.tearDown()
+    }
+
+    func testRenamingAShopPatchesItsScanWithTheNewName() async throws {
+        let shop = UUID(uuidString: "2F1D6E1E-8D0B-4C54-9E0A-3C6B1B8F2A10")!
+        var sent: URLRequest?
+        var body = Data()
+        URLProtocolStub.handler = { request in
+            sent = request
+            body = sentBody(of: request)
+            return (200, Data(#"{"id": "2f1d6e1e-8d0b-4c54-9e0a-3c6b1b8f2a10", "name": "Tea House Annex"}"#.utf8))
+        }
+
+        try await ownerAPI().renameShop(scanID: shop, to: "Tea House Annex")
+
+        XCTAssertEqual(sent?.httpMethod, "PATCH")
+        XCTAssertEqual(sent?.url?.path, "/api/scans/2f1d6e1e-8d0b-4c54-9e0a-3c6b1b8f2a10")
+        XCTAssertEqual(sent?.value(forHTTPHeaderField: "Authorization"), "Bearer owner-token")
+        XCTAssertEqual(sent?.value(forHTTPHeaderField: "Content-Type"), "application/json")
+        XCTAssertEqual(try JSONSerialization.jsonObject(with: body) as? [String: String], ["name": "Tea House Annex"])
+    }
+
+    /// The production server answers 405 until the rename route is deployed.
+    func testAServerThatCannotRenameYetRefusesTheRename() async throws {
+        URLProtocolStub.handler = { _ in (405, Data(#"{"error": "method not allowed"}"#.utf8)) }
+
+        do {
+            try await ownerAPI().renameShop(scanID: UUID(), to: "Tea House")
+            XCTFail("Expected the rename to be refused")
+        } catch let error as OwnerAPIError {
+            XCTAssertEqual(error, .refused("Method not allowed."))
+        }
+    }
+
+    private func ownerAPI() -> OwnerAPI {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [URLProtocolStub.self]
+        return OwnerAPI(baseURL: URL(string: "https://standard.physics")!, token: "owner-token",
+            session: URLSession(configuration: configuration))
+    }
+}
+
+/// What a request sent as its body. URLSession hands a stub the body as a
+/// stream rather than as `httpBody`.
+private func sentBody(of request: URLRequest) -> Data {
+    if let body = request.httpBody { return body }
+    guard let stream = request.httpBodyStream else { return Data() }
+    stream.open()
+    defer { stream.close() }
+    var data = Data()
+    var buffer = [UInt8](repeating: 0, count: 4_096)
+    while stream.hasBytesAvailable {
+        let count = stream.read(&buffer, maxLength: buffer.count)
+        guard count > 0 else { break }
+        data.append(buffer, count: count)
+    }
+    return data
 }
 
 private final class URLProtocolStub: URLProtocol {

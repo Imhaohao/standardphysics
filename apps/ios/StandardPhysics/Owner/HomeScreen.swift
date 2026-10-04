@@ -29,7 +29,12 @@ struct HomeScreen: View {
                 List {
                     header
                     if !otherShops.isEmpty {
-                        OtherShopsSection(journeys: otherShops, open: model.open, delete: { shopToDelete = $0 })
+                        OtherShopsSection(
+                            journeys: otherShops,
+                            open: model.open,
+                            rename: { model.shopToRename = $0 },
+                            delete: { shopToDelete = $0 }
+                        )
                     }
                     if !phoneOnlyScans.isEmpty {
                         SavedScansSection(
@@ -73,6 +78,11 @@ struct HomeScreen: View {
             } message: { _ in
                 Text("The room, the walkthrough and the findings all go with it.")
             }
+            .sheet(item: $model.shopToRename) { journey in
+                RenameShopSheet(journey: journey) { name in
+                    try await model.renameShop(journey.scanID, to: name)
+                }
+            }
             .task { await model.refreshSavedScanStates() }
             .task { await model.refreshJourneys() }
         }
@@ -88,7 +98,10 @@ struct HomeScreen: View {
                 .accessibilityAddTraits(.isHeader)
             if let primary {
                 NextStepCard(journey: primary) { model.open(primary) }
-                    .contextMenu { DeleteShopButton { shopToDelete = primary } }
+                    .contextMenu {
+                        RenameShopButton { model.shopToRename = primary }
+                        DeleteShopButton { shopToDelete = primary }
+                    }
             } else if !model.journeysLoaded {
                 ProgressView()
                     .tint(AppTheme.accent)
@@ -188,6 +201,17 @@ enum NextStepMark {
     }
 }
 
+/// Renaming a shop, the same in its swipe and its long-press menu.
+private struct RenameShopButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Label("Rename shop", systemImage: "pencil")
+        }
+    }
+}
+
 /// The destructive action on a shop, the same in its swipe and its long-press menu.
 private struct DeleteShopButton: View {
     let action: () -> Void
@@ -202,6 +226,7 @@ private struct DeleteShopButton: View {
 private struct OtherShopsSection: View {
     let journeys: [Journey]
     let open: (Journey) -> Void
+    let rename: (Journey) -> Void
     let delete: (Journey) -> Void
 
     var body: some View {
@@ -231,10 +256,16 @@ private struct OtherShopsSection: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .contextMenu { DeleteShopButton { delete(journey) } }
+                .contextMenu {
+                    RenameShopButton { rename(journey) }
+                    DeleteShopButton { delete(journey) }
+                }
                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                     DeleteShopButton { delete(journey) }
                         .labelStyle(.iconOnly)
+                    RenameShopButton { rename(journey) }
+                        .labelStyle(.iconOnly)
+                        .tint(AppTheme.accent)
                 }
                 .listRowBackground(AppTheme.panel)
                 .listRowSeparatorTint(AppTheme.rule)
@@ -243,6 +274,69 @@ private struct OtherShopsSection: View {
                     bottom: AppTheme.Spacing.compact, trailing: AppTheme.Spacing.card
                 ))
             }
+        }
+    }
+}
+
+/// A new name for a shop, asked for from its long-press menu or its swipe.
+/// When the name doesn't save, the sheet stays open with it still typed.
+struct RenameShopSheet: View {
+    let journey: Journey
+    let rename: (String) async throws -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var name: String
+    @State private var saving = false
+    @State private var problem: String?
+
+    init(journey: Journey, rename: @escaping (String) async throws -> Void) {
+        self.journey = journey
+        self.rename = rename
+        _name = State(initialValue: journey.shopName)
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                DraftingPaper()
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.section) {
+                    ShopNameField(name: $name, placeholder: journey.shopName, focusOnAppear: true, submit: save)
+                    if let problem { FlowProblem(message: problem) }
+                    Button(saving ? "Saving" : "Save name", action: save)
+                        .buttonStyle(AppButtonStyle())
+                        .disabled(saving)
+                    Spacer()
+                }
+                .padding(AppTheme.Spacing.page)
+            }
+            .navigationTitle("Rename shop")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
+    }
+
+    /// An unchanged name closes the sheet without asking the server.
+    private func save() {
+        let chosen = ShopName.chosen(name, fallback: journey.shopName)
+        guard !saving else { return }
+        guard chosen != journey.shopName else {
+            dismiss()
+            return
+        }
+        saving = true
+        problem = nil
+        Task {
+            do {
+                try await rename(chosen)
+                dismiss()
+            } catch {
+                problem = ShopName.notSaved
+                AccessibilityNotification.Announcement(ShopName.notSaved).post()
+            }
+            saving = false
         }
     }
 }

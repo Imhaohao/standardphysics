@@ -37,6 +37,8 @@ final class AppModel: ObservableObject {
     @Published private(set) var journeysLoaded = false
     @Published var deletionMessage: String?
     @Published var accountDeletionMessage: String?
+    /// The shop whose rename sheet is open on home.
+    @Published var shopToRename: Journey?
     @Published var developerMode = DeveloperMode.isOn {
         didSet { DeveloperMode.isOn = developerMode }
     }
@@ -50,6 +52,9 @@ final class AppModel: ObservableObject {
     /// The shop the next walk joins, when the web asked for another room or
     /// another walk of the same shop.
     private var walkJoins: UUID?
+    /// What the owner typed in the shop name field before the walk, or nil
+    /// until they type, so the field starts on the account's shop name.
+    @Published private var typedShopName: String?
     private var subscriptions: Set<AnyCancellable> = []
 
     init(canScan: Bool) {
@@ -118,6 +123,15 @@ final class AppModel: ObservableObject {
         guard let owner = session.owner, !owner.guest, !owner.shopName.isEmpty else { return "My shop" }
         return owner.shopName
     }
+
+    /// The shop name field before a walk, which names the walk's scan.
+    var nextShopName: String {
+        get { typedShopName ?? defaultShopName }
+        set { typedShopName = newValue }
+    }
+
+    /// A walk that joins a shop keeps that shop's name, so there is no name to ask for.
+    var walkJoinsAShop: Bool { walkJoins != nil }
 
     func api() -> OwnerAPI? {
         guard let baseURL = AppEnvironment.apiBaseURL, let token = session.token else { return nil }
@@ -248,6 +262,7 @@ final class AppModel: ObservableObject {
     /// before that.
     func showStart() {
         walkJoins = nil
+        typedShopName = nil
         savedScans = CaptureLibrary.all()
         if hasShops {
             screen = .home
@@ -259,6 +274,7 @@ final class AppModel: ObservableObject {
 
     func startWalk(joining shop: UUID? = nil) {
         walkJoins = shop
+        typedShopName = nil
         screen = .beforeYouWalk
     }
 
@@ -339,7 +355,7 @@ final class AppModel: ObservableObject {
     }
 
     /// The walk's scan is made on the server as the walk starts, so its name
-    /// is settled then: the shop it joins, or the account's shop name.
+    /// is settled then: the shop it joins, or the name in the field before it.
     func walkUploadPlan() -> WalkUploadPlan? {
         guard let baseURL = AppEnvironment.apiBaseURL, let token = session.token else { return nil }
         return WalkUploadPlan(
@@ -350,7 +366,7 @@ final class AppModel: ObservableObject {
     }
 
     private func walkName(joining shop: UUID?) -> String {
-        shop.flatMap(shopName(of:)) ?? defaultShopName
+        ShopName.forWalk(joining: shop.flatMap(shopName(of:)), typed: nextShopName, fallback: defaultShopName)
     }
 
     private func shopName(of scanID: UUID) -> String? {
@@ -439,6 +455,15 @@ final class AppModel: ObservableObject {
         }
         deletionMessage = nil
         await forgetShop(scanID)
+    }
+
+    /// Gives a shop a new name on the account. Home shows it at once, and the
+    /// shops are read again for the other walks of it the server renamed too.
+    func renameShop(_ scanID: UUID, to name: String) async throws {
+        guard let api = api() else { throw OwnerAPIError.signedOut }
+        try await api.renameShop(scanID: scanID, to: name)
+        journeys = journeys.map { $0.scanID == scanID ? $0.named(name) : $0 }
+        Task { await refreshJourneys() }
     }
 
     /// The owner deleted a shop on its web page: drop this phone's copy of it

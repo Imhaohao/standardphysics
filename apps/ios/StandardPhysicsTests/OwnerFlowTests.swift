@@ -128,6 +128,36 @@ final class OwnerDetailTests: XCTestCase {
         XCTAssertNil(WalkHistory.openingLine(after: 20))
     }
 
+    func testANewShopIsNamedWhatWasTypedBeforeTheWalk() {
+        XCTAssertEqual(ShopName.forWalk(joining: nil, typed: "  Tea House  ", fallback: "My shop"), "Tea House")
+    }
+
+    func testANewShopWhoseNameWasClearedTakesTheAccountsShopName() {
+        XCTAssertEqual(ShopName.forWalk(joining: nil, typed: "   ", fallback: "g studio"), "g studio")
+    }
+
+    func testAWalkThatJoinsAShopKeepsThatShopsName() {
+        XCTAssertEqual(ShopName.forWalk(joining: "Corner Books", typed: "Tea House", fallback: "My shop"), "Corner Books")
+    }
+
+    func testATypedNameStopsWhereTheServerWouldRefuseIt() {
+        XCTAssertEqual(ShopName.limited(String(repeating: "a", count: 200)).count, ShopName.maximumLength)
+        let family = "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}"
+        let families = ShopName.limited(String(repeating: family, count: 30))
+        XCTAssertEqual(families.unicodeScalars.count, ShopName.maximumLength)
+        XCTAssertEqual(families.count, 24, "five scalars each, and none cut in half")
+    }
+
+    func testARenamedShopKeepsItsPlaceInTheJourney() throws {
+        let json = #"{"scan_id": "2F1D6E1E-8D0B-4C54-9E0A-3C6B1B8F2A10", "shop_name": "Tea House", "stage": "results", "next_step": {"kind": "results", "title": "Your results are ready", "count": 3}, "tools_unlocked": true}"#
+        let journey = try JSONDecoder().decode(Journey.self, from: Data(json.utf8))
+        let renamed = journey.named("Tea House Annex")
+
+        XCTAssertEqual(renamed.shopName, "Tea House Annex")
+        XCTAssertEqual(renamed.scanID, journey.scanID)
+        XCTAssertEqual(renamed.nextStep, journey.nextStep)
+    }
+
     func testAJourneyBeforeResultsKeepsTheOwnerOnThePhone() throws {
         let json = #"{"scan_id": "2F1D6E1E-8D0B-4C54-9E0A-3C6B1B8F2A10", "shop_name": "Tea House", "stage": "fill_in_the_gaps", "next_step": {"kind": "photos", "title": "Take 2 more photos", "count": 2}, "tools_unlocked": false}"#
         let journey = try JSONDecoder().decode(Journey.self, from: Data(json.utf8))

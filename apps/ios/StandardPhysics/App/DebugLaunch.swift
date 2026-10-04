@@ -12,6 +12,8 @@ import simd
 /// opens with them sending to a server that refuses every try, so they come
 /// back to be taken again.
 ///
+/// `home:rename` opens home with the rename sheet up on its first shop.
+///
 /// Debug builds only. The request wording is the server's, copied from
 /// services/api/standardphysics_api/owner_requests.py and
 /// packages/agents/standardphysics_agents/copy.py.
@@ -33,6 +35,7 @@ enum DebugLaunch {
         switch name {
         case "home":
             model.showForDebugging(journeys: journeys(argument))
+            if argument == "rename" { model.shopToRename = model.journeys.first }
             return .home
         case "question", "photo", "push", "measuring":
             return .setup(setup(name, argument: argument, model: model))

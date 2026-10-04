@@ -150,6 +150,25 @@ def list_shops(connection: sqlite3.Connection, owner_id: uuid.UUID) -> list[Scan
     return [_scan(connection, row, with_photos=False) for row in rows]
 
 
+def rename_shop(connection: sqlite3.Connection, scan_id: uuid.UUID, name: str) -> None:
+    """Give a shop a new name: this walk of it, the walks it replaced and the walks replacing it.
+
+    A later walk of the same shop takes this scan's place in the list once it
+    is measured (see `list_shops`), so renaming this scan alone would lose the
+    name the moment a walk still being measured replaced it.
+    """
+    connection.execute(
+        "WITH RECURSIVE walks(id) AS ("
+        " SELECT ?"
+        " UNION SELECT scans.replaces_scan_id FROM scans JOIN walks ON scans.id = walks.id"
+        " WHERE scans.replaces_scan_id IS NOT NULL"
+        " UNION SELECT scans.id FROM scans JOIN walks ON scans.replaces_scan_id = walks.id"
+        ") UPDATE scans SET name = ?"
+        " WHERE id IN (SELECT id FROM walks) AND owner_id = (SELECT owner_id FROM scans WHERE id = ?)",
+        (str(scan_id), name, str(scan_id)),
+    )
+
+
 def scan_exists(connection: sqlite3.Connection, scan_id: uuid.UUID) -> bool:
     return connection.execute("SELECT 1 FROM scans WHERE id = ?", (str(scan_id),)).fetchone() is not None
 
