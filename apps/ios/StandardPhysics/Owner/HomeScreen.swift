@@ -1,16 +1,13 @@
 import SwiftUI
 
-/// Home after the first walk: the newest shop's one next step, any other
-/// shops on the account, and scans still only on this phone.
+/// Home after the first walk: every shop on the account in one list, newest
+/// first, each tagged with its next step, then scans still only on this phone.
 ///
 /// Shops come from the account, so a second phone signed in to it finds them
 /// too. A scan saved here and never uploaded is listed until it is.
 struct HomeScreen: View {
     @ObservedObject var model: AppModel
     @State private var shopToDelete: Journey?
-
-    private var primary: Journey? { model.journeys.first }
-    private var otherShops: [Journey] { Array(model.journeys.dropFirst()) }
 
     /// Scans on this phone the account doesn't list yet: never uploaded, or
     /// uploaded to a shop the server hasn't answered about.
@@ -28,9 +25,9 @@ struct HomeScreen: View {
                 DraftingPaper()
                 List {
                     header
-                    if !otherShops.isEmpty {
-                        OtherShopsSection(
-                            journeys: otherShops,
+                    if !model.journeys.isEmpty {
+                        ShopsSection(
+                            journeys: model.journeys,
                             open: model.open,
                             rename: { model.shopToRename = $0 },
                             delete: { shopToDelete = $0 }
@@ -90,34 +87,40 @@ struct HomeScreen: View {
 
     @ViewBuilder private var header: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.card) {
-            Text(primary?.shopName ?? model.defaultShopName)
+            Text(title)
                 .font(AppTheme.Typography.hero)
                 .foregroundStyle(AppTheme.ink)
                 .lineLimit(2)
                 .minimumScaleFactor(0.7)
                 .accessibilityAddTraits(.isHeader)
-            if let primary {
-                NextStepCard(journey: primary) { model.open(primary) }
-                    .contextMenu {
-                        RenameShopButton { model.shopToRename = primary }
-                        DeleteShopButton { shopToDelete = primary }
-                    }
-            } else if !model.journeysLoaded {
+            if model.journeys.isEmpty && !model.journeysLoaded {
                 ProgressView()
                     .tint(AppTheme.accent)
                     .frame(maxWidth: .infinity, minHeight: 96)
             }
             GuestDeletionNotice(model: model, session: model.session)
         }
+        .padding(.bottom, AppTheme.Spacing.small)
         .plainRow(top: 56)
     }
 
+    /// Names the list under it, or the shop-to-be before the first walk has one.
+    private var title: String {
+        switch model.journeys.count {
+        case 0: model.defaultShopName
+        case 1: "Your shop"
+        default: "Your shops"
+        }
+    }
+
+    private var hasNothingYet: Bool { model.journeys.isEmpty && phoneOnlyScans.isEmpty }
+
     @ViewBuilder private var walkAnotherShop: some View {
         if model.canScan {
-            Button(primary == nil && phoneOnlyScans.isEmpty ? "Walk your shop" : "Walk another shop") {
+            Button(hasNothingYet ? "Walk your shop" : "Walk another shop") {
                 model.startWalk()
             }
-            .buttonStyle(AppButtonStyle(primary == nil && phoneOnlyScans.isEmpty ? .primary : .secondary))
+            .buttonStyle(AppButtonStyle(hasNothingYet ? .primary : .secondary))
             .plainRow(top: AppTheme.Spacing.section)
         }
     }
@@ -139,41 +142,7 @@ struct HomeScreen: View {
     }
 }
 
-/// The one next step for a shop, the largest thing on home.
-struct NextStepCard: View {
-    let journey: Journey
-    let open: () -> Void
-
-    var body: some View {
-        Button(action: open) {
-            HStack(alignment: .center, spacing: AppTheme.Spacing.card) {
-                Image(systemName: NextStepMark.symbol(for: journey.nextStep.kind))
-                    .font(.system(size: 26, weight: .semibold))
-                    .foregroundStyle(NextStepMark.colour(for: journey.nextStep.kind))
-                    .frame(width: 36)
-                    .accessibilityHidden(true)
-                Text(journey.nextStep.title)
-                    .font(AppTheme.Typography.cardTitle)
-                    .foregroundStyle(AppTheme.ink)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                Image(systemName: "chevron.right")
-                    .font(.headline)
-                    .foregroundStyle(AppTheme.faintInk)
-                    .accessibilityHidden(true)
-            }
-            .padding(AppTheme.Spacing.card)
-            .frame(maxWidth: .infinity, minHeight: 96, alignment: .leading)
-            .raisedPanel()
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityHint("Opens this step")
-    }
-}
-
-/// A mark per kind of next step, so the card says what kind of thing it is
+/// A mark per kind of next step, so a shop's tag says what kind of thing it is
 /// before its words are read.
 enum NextStepMark {
     private static let symbols: [String: String] = [
@@ -201,6 +170,32 @@ enum NextStepMark {
     }
 }
 
+/// A shop's next step, small under its name: the step's mark in its colour and
+/// the step's words, on a light wash of that colour.
+struct NextStepTag: View {
+    let step: Journey.NextStep
+
+    private static let wash = 0.12
+
+    var body: some View {
+        let colour = NextStepMark.colour(for: step.kind)
+        HStack(spacing: AppTheme.Spacing.label) {
+            Image(systemName: NextStepMark.symbol(for: step.kind))
+                .foregroundStyle(colour)
+                .imageScale(.small)
+                .accessibilityHidden(true)
+            Text(step.title)
+                .foregroundStyle(AppTheme.ink)
+                .multilineTextAlignment(.leading)
+                .lineLimit(2)
+        }
+        .font(AppTheme.Typography.secondary)
+        .padding(.horizontal, AppTheme.Spacing.label)
+        .padding(.vertical, AppTheme.Spacing.tag)
+        .background(colour.opacity(Self.wash), in: RoundedRectangle(cornerRadius: AppTheme.Radius.control, style: .continuous))
+    }
+}
+
 /// Renaming a shop, the same in its swipe and its long-press menu.
 private struct RenameShopButton: View {
     let action: () -> Void
@@ -223,7 +218,8 @@ private struct DeleteShopButton: View {
     }
 }
 
-private struct OtherShopsSection: View {
+/// Every shop on the account, newest first, each opening at its next step.
+private struct ShopsSection: View {
     let journeys: [Journey]
     let open: (Journey) -> Void
     let rename: (Journey) -> Void
@@ -231,22 +227,14 @@ private struct OtherShopsSection: View {
 
     var body: some View {
         Section {
-            Text("Your other shops")
-                .font(AppTheme.Typography.title)
-                .foregroundStyle(AppTheme.ink)
-                .accessibilityAddTraits(.isHeader)
-                .plainRow(top: AppTheme.Spacing.section)
-                .padding(.bottom, AppTheme.Spacing.small)
             ForEach(journeys) { journey in
                 Button { open(journey) } label: {
                     HStack(spacing: AppTheme.Spacing.compact) {
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: AppTheme.Spacing.label) {
                             Text(journey.shopName)
                                 .font(AppTheme.Typography.heading)
                                 .foregroundStyle(AppTheme.ink)
-                            Label(journey.nextStep.title, systemImage: NextStepMark.symbol(for: journey.nextStep.kind))
-                                .font(AppTheme.Typography.secondary)
-                                .foregroundStyle(AppTheme.mutedInk)
+                            NextStepTag(step: journey.nextStep)
                         }
                         Spacer(minLength: AppTheme.Spacing.small)
                         Image(systemName: "chevron.right")
