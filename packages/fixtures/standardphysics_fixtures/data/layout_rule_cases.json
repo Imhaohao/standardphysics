@@ -1,0 +1,102 @@
+{
+  "about": "Small rooms, moves and the verdicts the workspace's drag and the server's hard constraints must both reach. apps/web/src/lib/layout-rule-cases.test.ts checks the browser's port of the rules against them, and tests/test_layout_rule_cases.py checks the server's drag check. A piece is a centre (at), a width, depth and height (size) and a turn in degrees; measured is where the scan found a piece a saved layout has moved since. Each move puts the piece's centre at `to` and turns it by `turn` degrees. `blocked` lists the rules the move breaks that the browser can check: collided, blocked_a_door, left_the_floor and moved_too_far. Each slide drags a piece toward `to`; the browser must land it at `lands`, which the server allows, and the server must refuse the spot `past` it.",
+  "rooms": {
+    "walled": [
+      { "id": "floor", "kind": "floor", "label": "Floor", "at": [0, 0, 0], "size": [6, 4, 0.01] },
+      { "id": "north", "kind": "wall", "label": "North wall", "at": [0, 2, 1.25], "size": [6.2, 0.1, 2.5] },
+      { "id": "south", "kind": "wall", "label": "South wall", "at": [0, -2, 1.25], "size": [6.2, 0.1, 2.5] },
+      { "id": "east", "kind": "wall", "label": "East wall", "at": [3, 0, 1.25], "size": [0.1, 4.2, 2.5] },
+      { "id": "west", "kind": "wall", "label": "West wall", "at": [-3, 0, 1.25], "size": [0.1, 4.2, 2.5] },
+      { "id": "chair", "kind": "object", "label": "Chair", "at": [0, 0, 0.45], "size": [0.5, 0.5, 0.9], "movable": true }
+    ],
+    "open floor": [
+      { "id": "floor", "kind": "floor", "label": "Floor", "at": [0, 0, 0], "size": [6, 4, 0.01] },
+      { "id": "chair", "kind": "object", "label": "Chair", "at": [0, 0, 0.45], "size": [0.5, 0.5, 0.9], "movable": true }
+    ],
+    "left past the edge": [
+      { "id": "floor", "kind": "floor", "label": "Floor", "at": [0, 0, 0], "size": [6, 4, 0.01] },
+      { "id": "chair", "kind": "object", "label": "Chair", "at": [2.78, 1.7, 0.45], "size": [0.5, 0.5, 0.9], "movable": true }
+    ],
+    "turned door": [
+      { "id": "floor", "kind": "floor", "label": "Floor", "at": [0, 0, 0], "size": [8, 8, 0.01] },
+      { "id": "door", "kind": "door", "label": "Side door", "at": [0, 1, 1], "size": [0.9, 0.05, 2], "turn": 30 },
+      { "id": "chair", "kind": "object", "label": "Chair", "at": [-2, 1, 0.45], "size": [0.5, 0.5, 0.9], "movable": true }
+    ],
+    "boxed twice": [
+      { "id": "floor", "kind": "floor", "label": "Floor", "at": [0, 0, 0], "size": [6, 4, 0.01] },
+      { "id": "east", "kind": "wall", "label": "East wall", "at": [3, 0, 1.25], "size": [0.1, 4.2, 2.5] },
+      { "id": "table", "kind": "object", "label": "Table", "at": [0, 0, 0.375], "size": [1, 1, 0.75], "movable": true },
+      { "id": "copy", "kind": "object", "label": "Table seen twice", "at": [0.3, 0, 0.375], "size": [1, 1, 0.75] }
+    ],
+    "moved off its double": [
+      { "id": "floor", "kind": "floor", "label": "Floor", "at": [0, 0, 0], "size": [6, 4, 0.01] },
+      { "id": "table", "kind": "object", "label": "Table", "at": [1.5, 0, 0.375], "size": [1, 1, 0.75], "movable": true, "measured": [0, 0] },
+      { "id": "copy", "kind": "object", "label": "Table seen twice", "at": [0.3, 0, 0.375], "size": [1, 1, 0.75] }
+    ],
+    "case by the wall": [
+      { "id": "floor", "kind": "floor", "label": "Floor", "at": [0, 0, 0], "size": [6, 4, 0.01] },
+      { "id": "north", "kind": "wall", "label": "North wall", "at": [0, 2, 1.25], "size": [6.2, 0.1, 2.5] },
+      { "id": "case", "kind": "object", "label": "Display case", "at": [0, 1.4, 0.45], "size": [2.4, 0.6, 0.9], "movable": true }
+    ],
+    "shelf over the floor": [
+      { "id": "floor", "kind": "floor", "label": "Floor", "at": [0, 0, 0], "size": [6, 4, 0.01] },
+      { "id": "shelf", "kind": "object", "label": "Shelf", "at": [0, 0, 0.8], "size": [0.8, 0.4, 0.4] },
+      { "id": "stool", "kind": "object", "label": "Stool", "at": [-1.5, 0, 0.225], "size": [0.4, 0.4, 0.45], "movable": true },
+      { "id": "table", "kind": "object", "label": "Table", "at": [-1.5, 1, 0.375], "size": [0.6, 0.6, 0.75], "movable": true }
+    ],
+    "counter with a register": [
+      { "id": "floor", "kind": "floor", "label": "Floor", "at": [0, 0, 0], "size": [6, 4, 0.01] },
+      { "id": "counter", "kind": "object", "label": "Counter", "at": [1.5, 0, 0.5], "size": [1, 1.2, 1] },
+      { "id": "register", "kind": "object", "label": "Register", "at": [1.05, 0, 1.1], "size": [0.4, 0.4, 0.2] },
+      { "id": "cart", "kind": "object", "label": "Cart", "at": [-1, 0, 0.4], "size": [0.6, 0.6, 0.8], "movable": true },
+      { "id": "tray", "kind": "object", "label": "Tray", "at": [-0.75, 0, 0.825], "size": [0.5, 0.5, 0.05], "movable": true }
+    ],
+    "laptop on a table": [
+      { "id": "floor", "kind": "floor", "label": "Floor", "at": [0, 0, 0], "size": [6, 4, 0.01] },
+      { "id": "east", "kind": "wall", "label": "East wall", "at": [3, 0, 1.25], "size": [0.1, 4.2, 2.5] },
+      { "id": "table", "kind": "object", "label": "Table", "at": [1.5, 0, 0.375], "size": [1, 1, 0.75], "movable": true },
+      { "id": "laptop", "kind": "object", "label": "Laptop", "at": [1.9, 0, 0.77], "size": [0.3, 0.2, 0.04], "movable": true }
+    ],
+    "open shop": [
+      { "id": "floor", "kind": "floor", "label": "Floor", "at": [0, 0, 0], "size": [10, 10, 0.01] },
+      { "id": "case", "kind": "object", "label": "Display case", "at": [0, 0, 0.45], "size": [2.4, 0.6, 0.9], "movable": true },
+      { "id": "stool", "kind": "object", "label": "Stool", "at": [0, 2, 0.225], "size": [0.4, 0.4, 0.45], "movable": true }
+    ]
+  },
+  "verdicts": [
+    { "name": "a chair 4 mm into a wall still fits", "room": "walled", "node": "chair", "to": [0, 1.704], "blocked": [] },
+    { "name": "6 mm into a wall is a collision", "room": "walled", "node": "chair", "to": [0, 1.706], "blocked": [["chair", "collided"]] },
+    { "name": "flush in a corner fits", "room": "walled", "node": "chair", "to": [2.7, 1.7], "blocked": [] },
+    { "name": "past the corner the first wall it hits is named", "room": "walled", "node": "chair", "to": [2.75, 1.75], "blocked": [["chair", "collided"]] },
+    { "name": "half a centimetre past the floor's edge is within its margin", "room": "open floor", "node": "chair", "to": [2.755, 0], "blocked": [] },
+    { "name": "three centimetres past the floor's edge leaves the floor", "room": "open floor", "node": "chair", "to": [2.78, 0], "blocked": [["chair", "left_the_floor"]] },
+    { "name": "a chair the scan left 3 cm past the edge may slide along it", "room": "left past the edge", "node": "chair", "to": [2.78, 0], "blocked": [] },
+    { "name": "but it may not go further out", "room": "left past the edge", "node": "chair", "to": [2.8, 1.7], "blocked": [["chair", "left_the_floor"]] },
+    { "name": "near a floor corner it may reach 4 cm from the corner", "room": "left past the edge", "node": "chair", "to": [2.78, 1.775], "blocked": [] },
+    { "name": "and no further, measured from the corner itself", "room": "left past the edge", "node": "chair", "to": [2.78, 1.78], "blocked": [["chair", "left_the_floor"]] },
+    { "name": "a chair beside a turned door clears its keep-clear square", "room": "turned door", "node": "chair", "to": [0.55, 1.75], "blocked": [], "turned_door": true },
+    { "name": "a chair at the end of a turned door's square is in its way", "room": "turned door", "node": "chair", "to": [-0.85, 1.4], "blocked": [["chair", "blocked_a_door"]], "turned_door": true },
+    { "name": "a chair in front of a turned door is in its way", "room": "turned door", "node": "chair", "to": [0, 0.5], "blocked": [["chair", "blocked_a_door"]] },
+    { "name": "a table may move through the copy the scan made of it", "room": "boxed twice", "node": "table", "to": [0.6, 0], "blocked": [] },
+    { "name": "but not into a wall beyond it, nor further than its travel limit", "room": "boxed twice", "node": "table", "to": [2.5, 0], "blocked": [["table", "collided"], ["table", "moved_too_far"]] },
+    { "name": "a table put back on its scanned spot may overlap the copy there", "room": "moved off its double", "node": "table", "to": [0, 0], "blocked": [] },
+    { "name": "two centimetres short of that spot the overlap counts", "room": "moved off its double", "node": "table", "to": [0.02, 0], "blocked": [["table", "collided"]] },
+    { "name": "a case turned 15 degrees into a wall collides", "room": "case by the wall", "node": "case", "to": [0.02, 1.4], "turn": 15, "blocked": [["case", "collided"]] },
+    { "name": "turned in place it collides too", "room": "case by the wall", "node": "case", "to": [0, 1.4], "turn": 15, "blocked": [["case", "collided"]], "server_forgives_turns": true },
+    { "name": "a stool fits under a shelf", "room": "shelf over the floor", "node": "stool", "to": [0, 0], "blocked": [] },
+    { "name": "a table does not", "room": "shelf over the floor", "node": "table", "to": [0, 0.1], "blocked": [["table", "collided"]] },
+    { "name": "a cart may come up to the counter with its tray short of the register", "room": "counter with a register", "node": "cart", "to": [0.3, 0], "blocked": [] },
+    { "name": "its tray may not reach under the register, though the register sits higher", "room": "counter with a register", "node": "cart", "to": [0.4, 0], "blocked": [["tray", "collided"]] },
+    { "name": "a laptop hanging over its table's edge reaches the wall first", "room": "laptop on a table", "node": "table", "to": [2.42, 0], "blocked": [["laptop", "collided"]] },
+    { "name": "a case may end up 59 inches from where it was scanned", "room": "open shop", "node": "case", "to": [1.4986, 0], "blocked": [] },
+    { "name": "61 inches is too far", "room": "open shop", "node": "case", "to": [1.5494, 0], "blocked": [["case", "moved_too_far"]] },
+    { "name": "a stool is carried, so it has no travel limit", "room": "open shop", "node": "stool", "to": [4, 2], "blocked": [] }
+  ],
+  "slides": [
+    { "name": "into a wall, then along it", "room": "walled", "node": "chair", "to": [1, 3], "lands": [1, 1.7], "past": [1, 1.706], "refused": "collided" },
+    { "name": "into a corner", "room": "walled", "node": "chair", "to": [5, 5], "lands": [2.7, 1.7], "past": [2.706, 1.7], "refused": "collided" },
+    { "name": "along a turned door's keep-clear square", "room": "turned door", "node": "chair", "to": [0, 1.6], "lands": [-0.9452722283113838, 1.0542468245269454], "past": [-0.9366119742735394, 1.0592468245269453], "refused": "blocked_a_door", "turned_door": true },
+    { "name": "to the floor's edge where there is no wall", "room": "open floor", "node": "chair", "to": [10, 0], "lands": [2.759999, 0], "past": [2.762, 0], "refused": "left_the_floor" },
+    { "name": "to the travel limit", "room": "open shop", "node": "case", "to": [3, 0], "lands": [1.523999, 0], "past": [1.526, 0], "refused": "moved_too_far" }
+  ]
+}

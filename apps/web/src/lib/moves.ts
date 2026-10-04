@@ -95,14 +95,18 @@ export function carriedAlong(scene: SceneGraph, moves: MoveSet): MoveSet {
   return all;
 }
 
-/** Mirrors Lane C's settle: sit on the highest top under the piece's centre, or on the floor. */
-function settle(scene: SceneGraph, node: SceneNode, floorZ: number): SceneNode {
+/** Mirrors Lane C's surface_under: the highest top among the pieces directly under this one's centre, or the floor. */
+export function surfaceUnder(scene: SceneGraph, node: SceneNode, floorZ: number): number {
   const centre = centreOf(node);
-  const surface = scene.nodes
+  return scene.nodes
     .filter((other) => other.id !== node.id && !boundsTheRoom(other) && covers(other, centre))
     .reduce((highest, other) => Math.max(highest, topOf(other)), floorZ);
+}
+
+/** Mirrors Lane C's settle: sit on the highest top under the piece's centre, or on the floor. */
+function settle(scene: SceneGraph, node: SceneNode, floorZ: number): SceneNode {
   const m = [...node.transform.m];
-  m[11] = surface + node.dimensions.z / 2;
+  m[11] = surfaceUnder(scene, node, floorZ) + node.dimensions.z / 2;
   return { ...node, transform: { m } as Mat4 };
 }
 
@@ -189,6 +193,15 @@ const NUDGE_DIRECTIONS: Record<string, [number, number]> = {
   ArrowLeft: [-1, 0],
   ArrowRight: [1, 0],
 };
+
+/** The moves with `nodeId`'s centre at `at`, keeping whatever turn it already has. */
+export function placedAt(scene: SceneGraph, moves: MoveSet, nodeId: string, at: Point): MoveSet {
+  const node = scene.nodes.find((candidate) => candidate.id === nodeId);
+  if (!node) return moves;
+  const origin = centreOf(node);
+  const delta_translation = { x: at.x - origin.x, y: at.y - origin.y, z: 0 };
+  return { ...moves, [nodeId]: { node_id: nodeId, delta_translation, delta_rotation_z_degrees: moves[nodeId]?.delta_rotation_z_degrees ?? 0 } };
+}
 
 /** How far R, or a turn button, turns the piece in hand. */
 export const TURN_STEP_DEGREES = 15;
