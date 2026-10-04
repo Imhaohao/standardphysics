@@ -429,7 +429,10 @@ final class LiveWalkStreamingTests: XCTestCase {
         for number in 0..<3 { streamer.offer(try Self.frame(number, in: directory)) }
         streamer.finishOffering()
         let receipt = { ResumableUploadStore(captureDirectory: directory).completedArtifactIDs }
-        for _ in 0..<100 where receipt().count < 3 { try await Task.sleep(for: .milliseconds(50)) }
+        // The API answers a frame only after taking the database's write lock twice, and in
+        // CI its worker is still processing the scans LiveOwnerFlowTests just finished, so an
+        // answer can take seconds. A five-second wait was not always enough.
+        try await waitUntil(timeout: 30) { receipt().count == 3 }
         await streamer.stop()
 
         XCTAssertEqual(receipt(), ["frame-0000", "frame-0001", "frame-0002"])
