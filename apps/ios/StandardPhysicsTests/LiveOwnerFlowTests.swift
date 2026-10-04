@@ -33,6 +33,7 @@ final class LiveOwnerFlowTests: XCTestCase {
         let asked = try await walkThroughRequests(setup)
         XCTAssertEqual(asked.first, "restroom")
         XCTAssertFalse(asked.contains("restroom_turning_space"), "a no to the restroom closes its photo")
+        try await waitUntil(timeout: 30) { setup.outbox.count == 0 }
         XCTAssertEqual(setup.step, .measuring)
 
         let api = try XCTUnwrap(app.api())
@@ -41,6 +42,9 @@ final class LiveOwnerFlowTests: XCTestCase {
         XCTAssertEqual(requests.first { $0.id == "door_hardware" }?.status, "answered")
         let journeys = try await api.journeys()
         XCTAssertEqual(journeys.first?.scanID, scanID)
+        try await api.renameShop(scanID: scanID, to: "Tea House Annex")
+        let renamed = try await api.journey(scanID: scanID)
+        XCTAssertEqual(renamed.shopName, "Tea House Annex")
         try await api.registerDevice(String(repeating: "ab", count: 32), environment: PushRegistration.environment)
 
         let second = try await uploadPhoneWalk(token: token, joining: scanID)

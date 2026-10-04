@@ -48,6 +48,44 @@ struct Journey: Decodable, Identifiable, Equatable, Sendable {
     /// Still on the phone's side of the journey: walking, answering in the
     /// shop, or waiting for the measurements.
     var isBeforeResults: Bool { ["upload", "answers", "photos", "measuring", "failed"].contains(nextStep.kind) }
+
+    /// The same shop under a new name, shown until the shops are read again.
+    func named(_ name: String) -> Journey {
+        Journey(scanID: scanID, shopName: name, stage: stage, nextStep: nextStep, toolsUnlocked: toolsUnlocked)
+    }
+}
+
+/// What a shop is called, wherever the owner types its name.
+enum ShopName {
+    /// The longest name the server keeps, as `SHOP_NAME_MAX_LENGTH` in
+    /// packages/contracts/standardphysics_contracts/owner.py.
+    static let maximumLength = 120
+
+    static let notSaved = "That name couldn\u{2019}t be saved. Check your connection and try again."
+
+    /// What the owner typed without the spaces around it, or `fallback` when
+    /// that leaves nothing.
+    static func chosen(_ typed: String, fallback: String) -> String {
+        let trimmed = typed.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? fallback : trimmed
+    }
+
+    /// The name a walk's scan is made with. A walk that joins a shop keeps
+    /// that shop's name, and a new shop takes the one typed before the walk.
+    static func forWalk(joining joinedShopName: String?, typed: String, fallback: String) -> String {
+        joinedShopName ?? chosen(typed, fallback: fallback)
+    }
+
+    /// The typed name cut to the longest the server keeps. The server counts
+    /// Unicode scalars where Swift counts characters, and an emoji can be
+    /// several scalars, so the count here is the server's.
+    static func limited(_ typed: String) -> String {
+        var scalars = 0
+        return String(typed.prefix { character in
+            scalars += character.unicodeScalars.count
+            return scalars <= maximumLength
+        })
+    }
 }
 
 enum OwnerAPIError: LocalizedError, Equatable {
@@ -65,7 +103,7 @@ enum OwnerAPIError: LocalizedError, Equatable {
 }
 
 /// The owner's side of the API: the requests asked in the shop, the journey
-/// behind the home card, and the device that gets notifications.
+/// and the name behind the home card, and the device that gets notifications.
 struct OwnerAPI: Sendable {
     let baseURL: URL
     let token: String
@@ -106,15 +144,23 @@ struct OwnerAPI: Sendable {
         return try JSONDecoder().decode(Journey.self, from: data)
     }
 
+    /// Renames the shop on every walk of it, so a walk still being measured
+    /// keeps the new name when it takes this one's place.
+    func renameShop(scanID: UUID, to name: String) async throws {
+        try await sendJSON(["name": name], to: scanPath(scanID), method: "PATCH")
+    }
+
     func registerDevice(_ deviceToken: String, environment: String) async throws {
         let url = baseURL.appendingPathComponent("api/devices").appendingPathComponent(deviceToken)
         try await sendJSON(["environment": environment], to: url, method: "PUT")
     }
 
+    private func scanPath(_ scanID: UUID) -> URL {
+        baseURL.appendingPathComponent("api/scans").appendingPathComponent(scanID.uuidString.lowercased())
+    }
+
     private func scanPath(_ scanID: UUID, _ leaf: String) -> URL {
-        baseURL.appendingPathComponent("api/scans")
-            .appendingPathComponent(scanID.uuidString.lowercased())
-            .appendingPathComponent(leaf)
+        scanPath(scanID).appendingPathComponent(leaf)
     }
 
     private func requestPath(_ scanID: UUID, _ requestID: String, _ leaf: String) -> URL {

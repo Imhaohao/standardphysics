@@ -61,16 +61,18 @@ final class RoomCaptureController: UIViewController, RoomCaptureViewDelegate, Ro
         recorder.start()
     }
 
-    /// Before iOS 27, RoomPlan kept the settings of an AR session that was
-    /// already running, which is how the walk got its LiDAR mesh. On iOS 27
-    /// that inherited session opens the front camera alongside the back ones,
-    /// the back camera drops below the rate world tracking needs, and RoomPlan
-    /// ends the walk on a black screen. There RoomPlan runs the session itself.
+    /// RoomPlan keeps the settings of an AR session that is already running,
+    /// which is how the walk gets its LiDAR mesh. On iOS 27, filtering people
+    /// out of that session opened the front camera alongside the back ones and
+    /// left the walk black, so there the mesh is recorded without it.
     private static func prepareSceneCapture(on session: ARSession) -> SceneCaptureOptions? {
-        if #available(iOS 27, *) { return nil }
-        let prepared = SceneCaptureConfiguration.prepare()
+        let prepared = SceneCaptureConfiguration.prepare(filtersPeople: canFilterPeople)
         session.run(prepared.configuration)
         return prepared.options
+    }
+
+    private static var canFilterPeople: Bool {
+        if #available(iOS 27, *) { false } else { true }
     }
 
     /// Each keyframe also goes to the server during the walk, on Wi-Fi.

@@ -1,11 +1,19 @@
-"""Creating, listing, reading and deleting scans, and the graph and findings saved for one."""
+"""Creating, listing, reading, renaming and deleting scans, and the graph and findings saved for one."""
 
 from __future__ import annotations
 
 import uuid
 
 from fastapi import FastAPI, Request, Response
-from standardphysics_contracts import Assessment, CreateScanRequest, Scan, ScanList, Scenario, SceneGraph
+from standardphysics_contracts import (
+    Assessment,
+    CreateScanRequest,
+    RenameShopRequest,
+    Scan,
+    ScanList,
+    Scenario,
+    SceneGraph,
+)
 
 from . import repository as repo
 from . import repository_jobs as jobs_repo
@@ -49,6 +57,13 @@ def install_scan_routes(app: FastAPI, database: Database, store: ArtifactStore, 
     @app.get("/api/scans/{scan_id}", response_model=Scan)
     def get_scan(scan_id: uuid.UUID) -> Scan:
         with database.connect() as connection:
+            return scan_or_404(connection, scan_id)
+
+    @app.patch("/api/scans/{scan_id}", response_model=Scan)
+    def rename_shop(scan_id: uuid.UUID, body: RenameShopRequest) -> Scan:
+        with database.transaction() as connection:
+            scan_or_404(connection, scan_id)
+            repo.rename_shop(connection, scan_id, body.name)
             return scan_or_404(connection, scan_id)
 
     @app.delete("/api/scans/{scan_id}", status_code=204)

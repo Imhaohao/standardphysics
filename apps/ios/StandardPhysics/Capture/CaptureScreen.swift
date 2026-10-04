@@ -38,8 +38,8 @@ struct CaptureScreen: View {
             .ignoresSafeArea()
             .allowsHitTesting(false)
 
-            if painting {
-                PaintedCoverageView(session: capture.controller?.arSession, paint: capture.paint)
+            if painting, let session = capture.arSession {
+                PaintedCoverageView(session: session, paint: capture.paint)
                     .ignoresSafeArea()
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)

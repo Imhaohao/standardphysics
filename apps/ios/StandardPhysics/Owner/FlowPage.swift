@@ -4,8 +4,11 @@ import SwiftUI
 /// with the step's actions held at the bottom where a thumb reaches them.
 struct FlowPage<Content: View, Actions: View>: View {
     var back: (() -> Void)?
+    var exit: FlowExit?
     @ViewBuilder let content: Content
     @ViewBuilder let actions: Actions
+
+    private var showsBar: Bool { back != nil || exit != nil }
 
     var body: some View {
         NavigationStack {
@@ -17,7 +20,7 @@ struct FlowPage<Content: View, Actions: View>: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, AppTheme.Spacing.page)
-                    .padding(.top, back == nil ? AppTheme.Spacing.page : AppTheme.Spacing.small)
+                    .padding(.top, showsBar ? AppTheme.Spacing.small : AppTheme.Spacing.page)
                     .padding(.bottom, AppTheme.Spacing.section * 2)
                 }
                 .scrollBounceBehavior(.basedOnSize)
@@ -40,11 +43,25 @@ struct FlowPage<Content: View, Actions: View>: View {
                         }
                     }
                 }
+                if let exit {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button(exit.title, role: exit.role, action: exit.action)
+                            .foregroundStyle(exit.role == .destructive ? AppTheme.problem : AppTheme.accent)
+                    }
+                }
             }
-            .toolbar(back == nil ? .hidden : .visible, for: .navigationBar)
+            .toolbar(showsBar ? .visible : .hidden, for: .navigationBar)
             .navigationBarTitleDisplayMode(.inline)
         }
     }
+}
+
+/// A way out of a flow that isn't a step back, like deleting the walk its
+/// questions are about.
+struct FlowExit {
+    let title: String
+    var role: ButtonRole?
+    let action: () -> Void
 }
 
 /// What the actions sit on: the sheet's own colour, fading in over the last
@@ -109,6 +126,37 @@ struct StepProgress: View {
         .animation(AppTheme.Motion.quick, value: done)
         .accessibilityElement()
         .accessibilityLabel("\(min(done + 1, total)) of \(total)")
+    }
+}
+
+/// The one field a shop's name is typed in: before a walk, on review, and
+/// when renaming a shop from home. Left empty, the shop is called
+/// `placeholder`, which the field shows in grey.
+struct ShopNameField: View {
+    @Binding var name: String
+    let placeholder: String
+    var focusOnAppear = false
+    var submit: () -> Void = {}
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.label) {
+            Text("Shop name")
+                .font(AppTheme.Typography.secondary)
+                .foregroundStyle(AppTheme.mutedInk)
+                .accessibilityHidden(true)
+            TextField("Shop name", text: $name, prompt: Text(placeholder))
+                .textInputAutocapitalization(.words)
+                .submitLabel(.done)
+                .focused($focused)
+                .onSubmit(submit)
+                .onChange(of: name) { _, typed in
+                    let limited = ShopName.limited(typed)
+                    if limited != typed { name = limited }
+                }
+                .fieldSurface(focused: focused)
+        }
+        .onAppear { focused = focusOnAppear }
     }
 }
 

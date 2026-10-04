@@ -21,8 +21,9 @@ struct WelcomeScreen: View {
     }
 }
 
-/// Screen 2: the few things to do before walking, as a checklist the owner
-/// can tick off. Ticking is for them; "I'm ready" works either way.
+/// Screen 2: the shop's name, already filled in, and the few things to do
+/// before walking as a checklist the owner can tick off. Ticking is for them;
+/// "I'm ready" works either way.
 struct BeforeYouWalkScreen: View {
     @ObservedObject var model: AppModel
     @State private var ticked: Set<Int> = []
@@ -37,6 +38,9 @@ struct BeforeYouWalkScreen: View {
     var body: some View {
         FlowPage(back: { model.showStart() }) {
             FlowTitle("Before you walk")
+            if !model.walkJoinsAShop {
+                ShopNameField(name: $model.nextShopName, placeholder: model.defaultShopName)
+            }
             SketchSheet(height: 150) { WalkPlan() }
             VStack(spacing: 0) {
                 ForEach(items.indices, id: \.self) { index in

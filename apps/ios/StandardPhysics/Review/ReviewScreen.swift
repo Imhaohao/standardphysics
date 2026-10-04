@@ -58,11 +58,7 @@ struct ReviewScreen: View {
                         Button("Scan detailed surfaces") { model.beginCapture() }
                             .buttonStyle(AppButtonStyle(.secondary))
                     }
-                    Text("Name this shop")
-                        .font(AppTheme.Typography.title)
-                    TextField(model.defaultShopName, text: $name)
-                        .textInputAutocapitalization(.words)
-                        .fieldSurface()
+                    ShopNameField(name: $name, placeholder: model.defaultShopName)
                     Button("Upload scan") {
                         do {
                             model.upload(scan: try scan.renamed(shopName), name: shopName)
@@ -90,7 +86,6 @@ struct ReviewScreen: View {
     /// The name typed, or the account's shop name, or "My shop". A name is
     /// never required: a first walk uploads before anyone has typed one.
     private var shopName: String {
-        let typed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        return typed.isEmpty ? model.defaultShopName : typed
+        ShopName.chosen(name, fallback: model.defaultShopName)
     }
 }

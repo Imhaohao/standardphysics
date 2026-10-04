@@ -86,6 +86,10 @@ enum AppTheme {
         static let control: CGFloat = 16
         static let compact: CGFloat = 14
         static let small: CGFloat = 12
+        /// Between a field and the label above it.
+        static let label: CGFloat = 8
+        /// Above and below the words in a small tag.
+        static let tag: CGFloat = 4
     }
 
     /// Paper has square corners. Only the controls are cut, and barely.

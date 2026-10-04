@@ -115,6 +115,7 @@ def test_repeated_wrong_passwords_are_slowed_down(make_client):
 
 SCAN_ROUTES = [
     ("get", ""),
+    ("patch", ""),
     ("delete", ""),
     ("get", "/scene"),
     ("get", "/assessment"),
