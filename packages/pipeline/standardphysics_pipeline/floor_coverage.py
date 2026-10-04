@@ -16,7 +16,6 @@ from __future__ import annotations
 import base64
 import functools
 import math
-import pathlib
 import zlib
 from dataclasses import dataclass
 
@@ -24,7 +23,7 @@ import numpy as np
 from standardphysics_contracts import FloorCoverage, Mat4, SceneGraph, SceneNode, lies_flat
 
 from .footprints import floor_polygon, footprint, polygon_bounds, rotation_about_z
-from .lidar import MeshArrays, into_room, load_mesh, triangles_in_arkit_world
+from .lidar import MeshArrays, into_room, triangles_in_arkit_world
 from .occupancy import CELL_SIZE, blocks_floor
 
 METHOD = 1
@@ -49,27 +48,28 @@ UPPER_STOREY = 1.0
 """Metres above the lowest floor sheet beyond which a flat sheet is a ceiling."""
 
 MOST_SUBDIVISIONS = 64
-"""The most cells one face's edge may span before the face is split in four.
+"""The most sample spacings one face's edge may span before the face is split in four.
 
-A face is sampled on a lattice a cell apart, which costs the square of its
-length in cells. Splitting a large face first keeps each lattice small without
-ever sampling it more coarsely than a cell.
+A face is sampled on a lattice one spacing apart, a cell for the floor, which
+costs the square of its length in spacings. Splitting a large face first keeps
+each lattice small without ever sampling it more coarsely than asked.
 """
-
-
-def with_floor_coverage(graph: SceneGraph, mesh_path: pathlib.Path, mesh_sha256: str) -> SceneGraph:
-    """The graph carrying its floor coverage, or unchanged when the mesh cannot be read."""
-    mesh = load_mesh(mesh_path)
-    if mesh is None:
-        return graph
-    return graph.model_copy(update={"floor_coverage": measure_floor_coverage(graph, mesh, mesh_sha256)})
 
 
 def measure_floor_coverage(graph: SceneGraph, mesh: MeshArrays, mesh_sha256: str) -> list[FloorCoverage]:
     """One grid per floor sheet, from a mesh already read, or none without a room frame."""
     if graph.capture_to_room is None:
         return []
-    faces = into_room(triangles_in_arkit_world(mesh), graph.capture_to_room).astype(np.float64)
+    return floor_coverage_from_faces(graph, faces_in_room(mesh, graph.capture_to_room), mesh_sha256)
+
+
+def faces_in_room(mesh: MeshArrays, capture_to_room: Mat4) -> np.ndarray:
+    """Every face of the mesh as three corners in the room frame."""
+    return into_room(triangles_in_arkit_world(mesh), capture_to_room).astype(np.float64)
+
+
+def floor_coverage_from_faces(graph: SceneGraph, faces: np.ndarray, mesh_sha256: str) -> list[FloorCoverage]:
+    """One grid per floor sheet, from faces already in the room frame."""
     standing = [node for node in graph.contents() if blocks_floor(node)]
     return [_measure_one(floor, faces, standing, mesh_sha256) for floor in floor_sheets(graph)]
 
@@ -120,30 +120,43 @@ def _floor_samples(faces: np.ndarray, floor_z: float) -> np.ndarray:
     """Points spread over every face lying down at this floor's height, no further apart than a cell."""
     if not len(faces):
         return np.empty((0, 2))
+    return face_samples(faces[lying_on_the_floor(faces, floor_z)][:, :, :2])
+
+
+def lying_on_the_floor(faces: np.ndarray, floor_z: float) -> np.ndarray:
+    """Which faces lie down within `FLOOR_BAND` of this floor's height, and so are that floor."""
     near = np.all(np.abs(faces[:, :, 2] - floor_z) <= FLOOR_BAND, axis=1)
     normals = np.cross(faces[:, 1] - faces[:, 0], faces[:, 2] - faces[:, 0])
     lengths = np.linalg.norm(normals, axis=1)
     lying = np.abs(normals[:, 2]) >= LYING_DOWN * np.maximum(lengths, 1e-12)
-    floor_faces = _split_large(faces[near & lying & (lengths > 0)][:, :, :2])
-    if not len(floor_faces):
-        return np.empty((0, 2))
-    steps = np.ceil(_longest_edges(floor_faces) / CELL_SIZE).astype(int).clip(min=1)
-    return np.concatenate([_lattice(floor_faces[steps == n], n) for n in np.unique(steps)])
+    return near & lying & (lengths > 0)
+
+
+def face_samples(faces: np.ndarray, spacing: float = CELL_SIZE) -> np.ndarray:
+    """Points spread over every face, corners included, no further apart than `spacing`.
+
+    Works for faces in the plan, two coordinates a corner, or in the room, three.
+    """
+    faces = _split_large(faces, spacing)
+    if not len(faces):
+        return np.empty((0, faces.shape[2]))
+    steps = np.ceil(_longest_edges(faces) / spacing).astype(int).clip(min=1)
+    return np.concatenate([_lattice(faces[steps == n], n) for n in np.unique(steps)])
 
 
 def _longest_edges(faces: np.ndarray) -> np.ndarray:
     return np.max(np.linalg.norm(faces - np.roll(faces, 1, axis=1), axis=2), axis=1)
 
 
-def _split_large(faces: np.ndarray) -> np.ndarray:
-    """Faces longer than `MOST_SUBDIVISIONS` cells, quartered at their midpoints until none is."""
-    large = _longest_edges(faces) > MOST_SUBDIVISIONS * CELL_SIZE if len(faces) else np.zeros(0, dtype=bool)
+def _split_large(faces: np.ndarray, spacing: float) -> np.ndarray:
+    """Faces longer than `MOST_SUBDIVISIONS` samples, quartered at their midpoints until none is."""
+    large = _longest_edges(faces) > MOST_SUBDIVISIONS * spacing if len(faces) else np.zeros(0, dtype=bool)
     if not large.any():
         return faces
     a, b, c = faces[large, 0], faces[large, 1], faces[large, 2]
     ab, bc, ca = (a + b) / 2, (b + c) / 2, (c + a) / 2
     quarters = np.concatenate([np.stack(corners, axis=1) for corners in ((a, ab, ca), (ab, b, bc), (ca, bc, c), (ab, bc, ca))])
-    return np.concatenate([faces[~large], _split_large(quarters)])
+    return np.concatenate([faces[~large], _split_large(quarters, spacing)])
 
 
 def _lattice(faces: np.ndarray, steps: int) -> np.ndarray:
@@ -151,7 +164,7 @@ def _lattice(faces: np.ndarray, steps: int) -> np.ndarray:
     weights = np.asarray([(i / steps, j / steps) for i in range(steps + 1) for j in range(steps + 1 - i)])
     first, second = faces[:, 1] - faces[:, 0], faces[:, 2] - faces[:, 0]
     points = faces[:, None, 0] + weights[None, :, :1] * first[:, None] + weights[None, :, 1:] * second[:, None]
-    return points.reshape(-1, 2)
+    return points.reshape(-1, faces.shape[2])
 
 
 def _mark_points(observed: np.ndarray, layout: _Layout, points: np.ndarray) -> None:

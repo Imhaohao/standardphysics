@@ -32,6 +32,7 @@ python -m standardphysics_pipeline.check_blender
 | `occupancy.py` | Floor rasterization and the distance transform |
 | `routes.py` | Widest path, bottleneck width, and the pinch point |
 | `measure.py` | The `MeasurementProvider` Lane C calls |
+| `space_beneath.py` | What the LiDAR mesh saw under each raised piece, read once at ingest |
 
 ## Before you push
 

@@ -1678,6 +1678,7 @@ export interface SceneNode {
   raw_category: string;
   reconstruction?: DisplayReconstruction | null;
   relation?: string | null;
+  space_beneath?: SpaceBeneath | null;
   texts?: SurfaceText[];
   top_surface?: SurfaceHeight | null;
   transform: Mat4;
@@ -1712,6 +1713,34 @@ export interface SocketTarget {
   confidence: number;
   id: string;
   status: "observed" | "inferred" | "unknown";
+}
+/**
+ * What the LiDAR mesh showed under a raised piece, cell by cell in the piece's own frame.
+ *
+ * A RoomPlan box is solid from the floor to its top, so the open space under
+ * a table never reaches the occupancy grid. ADA 2010 lets a turning space or
+ * a clear floor space reach into knee and toe clearance under an element,
+ * and this is the evidence for it: measured once at ingest, it rides on the
+ * piece and moves and turns with it when a layout is rearranged.
+ *
+ * The grid starts at the corner at the piece's local -x, -y and runs along
+ * its local x for `columns` and its local y for `rows`. Each cell records
+ * whether the floor there was seen, and how high the space above that floor
+ * stays open before the mesh shows anything: a leg, a panel, an apron, the
+ * underside of the top, or a chair pushed in. Whether any of it counts is
+ * the rule pack's to say, not this record's.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "SpaceBeneath".
+ */
+export interface SpaceBeneath {
+  cell_size: number;
+  columns: number;
+  floor_seen: string;
+  mesh_sha256: string;
+  method: number;
+  open_cm: string;
+  rows: number;
 }
 /**
  * Words read off a surface, and the frames they were read from.
