@@ -16,6 +16,7 @@ from standardphysics_contracts import Artifact, ArtifactKind, CompleteRequest, E
 
 from . import repository as repo
 from . import repository_jobs as jobs_repo
+from . import repository_revisions as revisions_repo
 from .auth import owner_of
 from .budgets import Budgets, InFlight, Reservation, UploadAdmission, UploadReservations
 from .coverage import parse_coverage
@@ -159,6 +160,10 @@ async def _stage_upload(
         raise ApiProblem(408, f"The upload stopped arriving: {slow}. Send it again.") from None
 
 
+TEXTURE_INPUT_KINDS = frozenset(("photo_manifest", "frames", "poses", "lidar_mesh"))
+"""Artifact kinds a texture build reads. Each is a semantic input too, so one check of the kind covers both."""
+
+
 def _queue_for_arrival(
     database: Database,
     store: ArtifactStore,
@@ -172,15 +177,22 @@ def _queue_for_arrival(
     True when a semantic job was queued, which is the caller's cue to wake the
     worker. A scan still uploading is left alone: the bundle is not whole yet,
     and queueing per arriving frame would run a provider job on a partial one.
+    A texture needs the room's geometry, so a scan with no revision has none
+    to queue. Both are read before anything takes the write lock, so a frame
+    streamed during the walk is answered as soon as it is stored, even while
+    the worker holds the lock.
     """
-    if kind in ("photo_manifest", "frames", "poses", "lidar_mesh"):
-        maybe_queue_texture(database, store, worker, scan_id)
     if kind not in repo.SEMANTIC_INPUT_KINDS:
+        return False
+    with database.connect() as connection:
+        uploading = scan_or_404(connection, scan_id).state == "uploading"
+        has_room = revisions_repo.get_revision(connection, scan_id) is not None
+    if kind in TEXTURE_INPUT_KINDS and has_room:
+        maybe_queue_texture(database, store, worker, scan_id)
+    if uploading:
         return False
     with database.transaction() as connection:
         scan = scan_or_404(connection, scan_id)
-        if scan.state == "uploading":
-            return False
         record_closure(connection, scan)
         queued = maybe_queue_semantic(connection, scan, PROCESS, settle_seconds=settle_seconds)
     return queued == "queued"
