@@ -145,16 +145,14 @@ final class LiveReportPDFTests: XCTestCase {
         guard let address = ProcessInfo.processInfo.environment["SP_LIVE_REPORT"], let url = URL(string: address) else {
             throw XCTSkip("Set SP_LIVE_REPORT to a report link to run")
         }
-        let pdf = try await XCTUnwrapAsync(await LinkPDFRenderer().pdf(of: url))
+        let renderer = LinkPDFRenderer()
+        let printed = await renderer.pdf(of: url)
+        let pdf = try XCTUnwrap(printed, renderer.lastFailure ?? "no PDF and no reason")
 
         XCTAssertEqual(String(decoding: pdf.prefix(4), as: UTF8.self), "%PDF")
         XCTAssertGreaterThan(pdf.count, 10_000)
         if let out = ProcessInfo.processInfo.environment["SP_LIVE_REPORT_OUT"] {
             try pdf.write(to: URL(fileURLWithPath: out))
         }
-    }
-
-    private func XCTUnwrapAsync<T>(_ value: T?) async throws -> T {
-        try XCTUnwrap(value)
     }
 }
