@@ -238,6 +238,9 @@ final class LinkPDFRenderer: NSObject, WKNavigationDelegate {
 
     private var webView: WKWebView?
     private var continuation: CheckedContinuation<Data?, Never>?
+    private var deadline: Task<Void, Never>?
+    /// Why the last `pdf(of:)` came back empty, so a caller or a test can say what WebKit did.
+    private(set) var lastFailure: String?
 
     func pdf(of url: URL) async -> Data? {
         let configuration = WKWebViewConfiguration()
@@ -246,12 +249,15 @@ final class LinkPDFRenderer: NSObject, WKNavigationDelegate {
         view.navigationDelegate = self
         Self.parkPastTheScreenEdge(view)
         webView = view
+        lastFailure = nil
         return await withCheckedContinuation { continuation in
             self.continuation = continuation
             view.load(URLRequest(url: url))
-            Task {
-                try? await Task.sleep(for: Self.timeout)
-                self.finish(nil)
+            // One renderer serves every share, so each load gets its own deadline, cancelled
+            // when the load ends. A deadline left running would end the next share early.
+            deadline = Task {
+                guard (try? await Task.sleep(for: Self.timeout)) != nil else { return }
+                self.fail("the page did not finish loading within \(Self.timeout)")
             }
         }
     }
@@ -259,19 +265,30 @@ final class LinkPDFRenderer: NSObject, WKNavigationDelegate {
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         Task {
             try? await Task.sleep(for: Self.settleTime)
-            finish(try? await webView.pdf())
+            do {
+                finish(try await webView.pdf())
+            } catch {
+                fail("printing the loaded page failed: \(error.localizedDescription)")
+            }
         }
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-        finish(nil)
+        fail("the page failed to load: \(error.localizedDescription)")
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        fail("the page could not be reached: \(error.localizedDescription)")
+    }
+
+    private func fail(_ reason: String) {
+        if continuation != nil { lastFailure = reason }
         finish(nil)
     }
 
     private func finish(_ data: Data?) {
+        deadline?.cancel()
+        deadline = nil
         continuation?.resume(returning: data)
         continuation = nil
         webView?.navigationDelegate = nil
