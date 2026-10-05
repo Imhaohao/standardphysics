@@ -53,6 +53,7 @@ from .routes import (
     clearance_map,
     longest_run_below,
     path_clearances,
+    room_clearance,
     runs_below,
     straddling_blockers,
     what_sealed_the_route,
@@ -334,6 +335,15 @@ class PipelineMeasurements:
     def _field(self, graph: SceneGraph) -> tuple[Grid, np.ndarray]:
         layout = self._layout(graph)
         return layout.grid, layout.clearance
+
+    def room_clearance(self, graph: SceneGraph) -> tuple[Grid, np.ndarray]:
+        """This layout's grid, and the metres of clearance at each of its cells that a leg held in the room reads.
+
+        Taken from the grid the route checks measure this layout on, cached and all, so twice a cell's clearance is
+        the width a leg through it reports there.
+        """
+        grid, clearance = self._field(graph)
+        return grid, room_clearance(grid, clearance)
 
     def _widest(self, graph, grid, clearance, start, goal, anchors) -> PathResult:
         paths = self._layout(graph).paths

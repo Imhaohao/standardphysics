@@ -30,6 +30,8 @@ export type AfterSave = "clear" | "keep";
 
 type Layout = {
   moves: MoveSet;
+  /** The layout the plan last came to rest on, which the checks describe and the clearance map follows. */
+  settled: MoveSet;
   check: LayoutCheckResult | null;
   baseline: LayoutCheckResult | null;
   refused: Blocked[];
@@ -37,7 +39,7 @@ type Layout = {
   problem: string | null;
 };
 
-const EMPTY_LAYOUT: Layout = { moves: {}, check: null, baseline: null, refused: NO_BLOCKS, history: [], problem: null };
+const EMPTY_LAYOUT: Layout = { moves: {}, settled: {}, check: null, baseline: null, refused: NO_BLOCKS, history: [], problem: null };
 
 /** What the screen shows for a checked layout: nothing extra for the scanned one, whose answer is the baseline. */
 function shownCheck(checked: Checked): LayoutCheckResult | null {
@@ -70,7 +72,7 @@ function useLayoutState() {
   const commit = useCallback((checked: Checked, cached: (moves: MoveSet) => LayoutCheckResult | undefined) => {
     const legal = legalRef.current;
     if (checked.result.blocked.length > 0) {
-      place(legal, { refused: checked.result.blocked, check: layoutKey(legal) === SCANNED_LAYOUT ? null : cached(legal) ?? null });
+      place(legal, { refused: checked.result.blocked, settled: legal, check: layoutKey(legal) === SCANNED_LAYOUT ? null : cached(legal) ?? null });
       return;
     }
     legalRef.current = checked.moves;
@@ -239,16 +241,22 @@ export function useArrangement(scanId: string, scene: SceneGraph, persist: Persi
 
   const shown = useMemo(() => applyMoves(scene, layout.moves), [scene, layout.moves]);
 
+  /** Asks for a layout's check, and marks it as the one the plan has come to rest on. */
+  const ask = useCallback((moves: MoveSet, commitIt: boolean) => {
+    setLayout((current) => ({ ...current, settled: moves }));
+    request(moves, commitIt);
+  }, [setLayout, request]);
+
   /** Checks the scanned layout once, so every later layout has something to be compared with. */
   const start = useCallback(() => {
-    if (!cachedCheck({})) request({}, false);
-  }, [cachedCheck, request]);
+    if (!cachedCheck({})) ask({}, false);
+  }, [cachedCheck, ask]);
 
   const drop = useCallback(() => {
     letGo();
     settle.clear();
-    request(movesRef.current, true);
-  }, [letGo, settle, request, movesRef]);
+    ask(movesRef.current, true);
+  }, [letGo, settle, ask, movesRef]);
 
   /** Pulls the piece toward the pointer, sliding it along whatever it would run into on the way. */
   const drag = useCallback((nodeId: string, dx: number, dy: number) => {
@@ -256,8 +264,8 @@ export function useArrangement(scanId: string, scene: SceneGraph, persist: Persi
     if (pulled === movesRef.current) return;
     place(pulled, { refused: NO_BLOCKS });
     mark("moved");
-    settle.after(DRAG_SETTLE_MS, () => request(movesRef.current, false));
-  }, [place, pullBy, movesRef, mark, settle, request]);
+    settle.after(DRAG_SETTLE_MS, () => ask(movesRef.current, false));
+  }, [place, pullBy, movesRef, mark, settle, ask]);
 
   /**
    * Slides or turns a piece a step: the one in hand, or the one named, which a
@@ -284,7 +292,7 @@ export function useArrangement(scanId: string, scene: SceneGraph, persist: Persi
     legalRef.current = moves;
     const cached = cachedCheck(moves);
     const check = layoutKey(moves) === SCANNED_LAYOUT ? null : cached ?? null;
-    place(moves, { history, check, refused: NO_BLOCKS, problem: null });
+    place(moves, { history, check, refused: NO_BLOCKS, problem: null, settled: moves });
     if (!cached) request(moves, false);
   }, [cancel, settle, legalRef, cachedCheck, place, request]);
 
@@ -310,8 +318,8 @@ export function useArrangement(scanId: string, scene: SceneGraph, persist: Persi
     place(moves, { refused: NO_BLOCKS, problem: null });
     mark(event, id);
     setActiveId(proposed[0]?.node_id ?? null);
-    request(moves, true);
-  }, [cancel, settle, seed, place, mark, request]);
+    ask(moves, true);
+  }, [cancel, settle, seed, place, mark, ask]);
   /** Loads a layout; `known` is its check when one came with it, such as the check a Fix room run ends with. */
   const load = useCallback((proposed: NodeMove[], known?: LayoutCheckResult | null) => loadFrom(proposed, "loaded", null, known), [loadFrom]);
   /** Loads the model's suggested layout, remembered by id so a save or a put-back reaches the server. */
@@ -319,7 +327,8 @@ export function useArrangement(scanId: string, scene: SceneGraph, persist: Persi
 
   const preview = useCallback((proposed: NodeMove[]) => {
     cancel();
-    place(movesOf(proposed), { check: null, problem: null, refused: NO_BLOCKS });
+    const moves = movesOf(proposed);
+    place(moves, { check: null, problem: null, refused: NO_BLOCKS, settled: moves });
     mark("loaded");
   }, [cancel, place, mark]);
 
@@ -360,7 +369,7 @@ export function useArrangement(scanId: string, scene: SceneGraph, persist: Persi
   const canSave = hasMoves && !saved && !checking && !saving && check !== null && check.blocked.length === 0;
 
   return {
-    shown, moves, check, checking, saving, saved, problem: layout.problem, activeId, hasMoves, blockedIds, canSave, pressedOn, pressedIds,
+    shown, moves, settled: layout.settled, check, checking, saving, saved, problem: layout.problem, activeId, hasMoves, blockedIds, canSave, pressedOn, pressedIds,
     baseline: layout.baseline, refused: layout.refused, canUndo: layout.history.length > 0, latencyMs,
     source: suggestion.source, puttingBack: suggestion.puttingBack,
     setActiveId, drag, drop, nudge, reset, clearPending, putBack, undo, start, save, load, loadSuggestion, preview, restore,

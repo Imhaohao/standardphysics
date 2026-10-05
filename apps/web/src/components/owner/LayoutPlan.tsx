@@ -2,7 +2,11 @@
 
 import { Lock } from "@phosphor-icons/react";
 import { type KeyboardEvent, type PointerEvent, useId, useMemo, useRef } from "react";
+import {
+  type ClearanceOverlay, ClearancePinchRings, ClearancePlanField, isPinchLabel, pinchLabels, STALE_OPACITY,
+} from "@/components/clearance/ClearancePlan";
 import { drawnNodes, footprint } from "@/components/FloorPlan";
+import { pinchesToMark } from "@/lib/clearance-map";
 import { displayName, floorHeight } from "@/lib/found-objects";
 import { supportOf } from "@/lib/moves";
 import {
@@ -34,6 +38,8 @@ type PlanProps = PieceState & PlanDragHandlers & {
   onKey: (nodeId: string, event: KeyboardEvent, turnDegrees: number) => void;
   /** The staff-only floor, drawn under the furniture. */
   staff: StaffHandles | null;
+  /** How much room there is around each point, drawn over the floor and under the furniture when the owner asks. */
+  clearance: ClearanceOverlay | null;
   /** What the piece in hand is pressed against, while a drag holds it short of the pointer. */
   pressedOn: Stop[];
 };
@@ -74,6 +80,7 @@ export function LayoutPlan(props: PlanProps) {
       <PlanDefs ids={ids} frame={frame} />
       <g ref={drawingRef} transform={`rotate(${frame.turn.toFixed(3)})`}>
         {nodes.filter((node) => node.kind === "floor").map((node) => <Backdrop key={node.id} node={node} />)}
+        {props.clearance && <ClearancePlanField overlay={props.clearance} />}
         {props.staff && <StaffPlanAreas handles={props.staff} svgRef={drawingRef} />}
         <Ghosts shown={props.shown} scanned={props.scanned} movedIds={props.movedIds} />
         {holding && <KeepClearSquares shown={props.shown} pressedOn={props.pressedOn} hatch={`url(#${ids.keepClear})`} />}
@@ -81,9 +88,10 @@ export function LayoutPlan(props: PlanProps) {
         {holding && <PressedAgainst shown={props.shown} scanned={props.scanned} pressedOn={props.pressedOn} />}
         {props.cleared.map((finding) => <DimensionLine key={`cleared-${finding.id}`} finding={finding} tone="cleared" />)}
         {props.problems.map((finding) => <DimensionLine key={finding.id} finding={finding} tone="problem" />)}
+        {props.clearance && <ClearancePinchRings overlay={props.clearance} textMeters={frame.text} />}
       </g>
       {props.staff && <StaffPlanLabels areas={props.staff.areas} turnDegrees={frame.turn} size={frame.text} />}
-      <MeasurementLabels problems={props.problems} frame={frame} />
+      <MeasurementLabels problems={props.problems} frame={frame} clearance={props.clearance} />
       <NameTag node={props.shown.nodes.find((node) => node.id === heldId)} frame={frame} />
     </svg>
   );
@@ -281,24 +289,32 @@ function middleStretch(points: Vec3[]): [Vec3, Vec3] {
   return [points[after - 1], points[after]];
 }
 
-function measurementLabels(problems: Finding[], frame: PlanFrame): PlanLabel[] {
+function measurementLabels(problems: Finding[], frame: PlanFrame, clearance: ClearanceOverlay | null): PlanLabel[] {
   const centreX = frame.box.minX + frame.box.width / 2;
-  return problems.flatMap((finding) => {
+  const marked = clearance ? pinchesToMark(clearance.picture.field) : [];
+  const markedIds = new Set(marked.map((pinch) => pinch.finding_id));
+  const findingLabels = problems.filter((finding) => !markedIds.has(finding.id)).flatMap((finding) => {
     const annotation = finding.locus?.annotation;
     if (!annotation?.label || annotation.points.length < 2) return [];
     const [a, b] = middleStretch(annotation.points).map((point) => turnedPoint(point, frame.turn));
     const at = labelBesideLine(a, b, annotation.label, frame.text, centreX);
     return [{ key: finding.id, text: annotation.label, ...at }];
   });
+  const bands = clearance?.picture.field.bands;
+  return [...(bands ? pinchLabels(marked, bands, frame.turn, frame.text) : []), ...findingLabels];
 }
 
-/** The problems' measurements, upright, one per spot, and slid apart where they would overlap. */
-function MeasurementLabels({ problems, frame }: { problems: Finding[]; frame: PlanFrame }) {
-  const labels = useMemo(() => placeLabels(measurementLabels(problems, frame), frame.text), [problems, frame]);
+/**
+ * The problems' measurements, upright, one per spot, and slid apart where they would overlap. With the clearance
+ * map on, a gap it marks is labelled from the mark, rounded down, so the width is shown once and never rounded up.
+ */
+function MeasurementLabels({ problems, frame, clearance }: { problems: Finding[]; frame: PlanFrame; clearance: ClearanceOverlay | null }) {
+  const labels = useMemo(() => placeLabels(measurementLabels(problems, frame, clearance), frame.text), [problems, frame, clearance]);
+  const faint = (label: PlanLabel) => Boolean(clearance?.stale) && isPinchLabel(label);
   return (
     <g aria-hidden className="pointer-events-none">
       {labels.map((label) => (
-        <text key={label.key} x={label.x} y={label.y} fontSize={frame.text} textAnchor="middle" className="measurement plan-label" fill="var(--color-problem)" strokeWidth={frame.text * 0.25}>
+        <text key={label.key} x={label.x} y={label.y} fontSize={frame.text} textAnchor="middle" className="measurement plan-label" fill={isPinchLabel(label) ? "var(--color-clearance-tight)" : "var(--color-problem)"} strokeWidth={frame.text * 0.25} opacity={faint(label) ? STALE_OPACITY : 1}>
           {label.text}
         </text>
       ))}

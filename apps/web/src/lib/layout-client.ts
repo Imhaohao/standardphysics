@@ -1,6 +1,7 @@
 import { readLines } from "@/lib/ndjson";
 import type {
   AskAnswer,
+  ClearanceMap,
   LayoutCheckResult,
   LoopEvent,
   ModelLoopEvent,
@@ -66,6 +67,15 @@ export const LAYOUT_CHECK_MS = 20_000;
 
 export function checkLayout(scanId: string, baseRevision: number, sequence: number, moves: NodeMove[]) {
   return sendJson<LayoutCheckResult>(`/api/scans/${scanId}/layout-checks`, {
+    base_revision: baseRevision,
+    sequence,
+    moves,
+  }, "POST", LAYOUT_CHECK_MS);
+}
+
+/** How much room the layout a check with the same moves describes leaves around every point of the floor. */
+export function clearanceMap(scanId: string, baseRevision: number, sequence: number, moves: NodeMove[]) {
+  return sendJson<ClearanceMap>(`/api/scans/${scanId}/clearance-maps`, {
     base_revision: baseRevision,
     sequence,
     moves,

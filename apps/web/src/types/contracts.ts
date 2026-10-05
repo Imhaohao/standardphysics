@@ -467,6 +467,63 @@ export interface ClearFloorResult {
   inches_wide: number;
 }
 /**
+ * The widths a clearance map changes colour at, in inches, read from the rule pack the checks use.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "ClearanceBands".
+ */
+export interface ClearanceBands {
+  reduced_inches: number;
+  reduced_run_inches: number;
+  route_inches: number;
+  turning_inches: number;
+}
+/**
+ * How much room there is around every point of a layout's floor, from the grid the route checks measure on.
+ *
+ * The floor is cut into square cells `cell_meters` on a side, `columns` along the scene's x and `rows` along its y,
+ * turned `rotation_z_degrees` about `origin`, the corner of the cell with the lowest x and y. A cell's clear width
+ * is the widest circle centred on it that stays clear, the number a route through that point is checked against.
+ *
+ * `widths_png` holds one 8-bit grey PNG pixel per cell, base64. The first row is the row with the highest y, so it
+ * reads as a plan drawn with y up. 0 marks a cell nobody can stand on: something blocks it, or it is off the floor
+ * a trip through the shop may use. Any other value is the clear width in steps of `width_step_inches`, rounded
+ * down, and 255 also stands for anything wider. Rounding down means no cell reads wider than the grid measured, and
+ * the bands split at whole steps, so a stored cell sits in the same band its unrounded width does. The grid itself
+ * resolves 25 mm, about an inch of width, which is why the pinch widths come from the footprints instead.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "ClearanceMap".
+ */
+export interface ClearanceMap {
+  bands: ClearanceBands;
+  cell_meters: number;
+  columns: number;
+  graph_hash: string;
+  origin: Vec3;
+  pinches: ClearancePinch[];
+  rotation_z_degrees: number;
+  rows: number;
+  sequence: number;
+  width_step_inches: number;
+  widths_png: string;
+}
+/**
+ * The narrowest point the route width check found on one gap of the customer route.
+ *
+ * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
+ * via the `definition` "ClearancePinch".
+ */
+export interface ClearancePinch {
+  blocking_node_ids: string[];
+  destination: string;
+  finding_id: string;
+  inches: number | null;
+  meets_rule: boolean;
+  origin: string;
+  point: Vec3;
+}
+/**
  * The optional body of POST /complete.
  *
  * A legacy client sends no body at all and keeps its existing behavior. A

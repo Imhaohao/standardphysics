@@ -2,6 +2,8 @@
 
 import { Cube, SquaresFour } from "@phosphor-icons/react";
 import { useMemo } from "react";
+import { ClearanceKey } from "@/components/clearance/ClearanceKey";
+import type { ClearanceControls } from "@/components/clearance/useClearanceOverlay";
 import { Button } from "@/components/ui/Button";
 import type { Arrangement } from "@/components/workspace/useArrangement";
 import type { StaffHandles } from "@/lib/staff-areas";
@@ -20,7 +22,7 @@ const VIEWS: { id: LayoutView; words: string; Icon: typeof Cube }[] = [
  * same moved layout, so switching views shows the same pieces where they were
  * left; the model stays mounted under the plan so switching is instant.
  */
-export function LayoutStage({ arrangement, scanned, trial, pointedIds, staff }: {
+export function LayoutStage({ arrangement, scanned, trial, pointedIds, staff, clearance }: {
   arrangement: Arrangement;
   scanned: SceneGraph;
   trial: TryLayout;
@@ -28,6 +30,8 @@ export function LayoutStage({ arrangement, scanned, trial, pointedIds, staff }: 
   pointedIds: Set<string>;
   /** The staff-only floor, shared with the 3D view so a change in one shows in the other. */
   staff: StaffHandles | null;
+  /** The clearance map, drawn in whichever view is showing, and its switch and legend. */
+  clearance: ClearanceControls;
 }) {
   const { drag, drop } = arrangement;
   const handlers = useMemo(() => ({
@@ -38,22 +42,25 @@ export function LayoutStage({ arrangement, scanned, trial, pointedIds, staff }: 
   return (
     <>
       {trial.view === "plan" && (
-        <div className="absolute inset-0 z-30 bg-paper pt-16">
+        <div className={`absolute inset-0 z-30 bg-paper pt-16 ${clearance.on ? "lg:pr-88" : ""}`}>
           <LayoutPlan
             shown={arrangement.shown} scanned={scanned}
             activeId={arrangement.activeId} blockedIds={arrangement.blockedIds} pointedIds={pointedIds} movedIds={trial.movedIds}
             problems={trial.drawn.problems} cleared={trial.drawn.cleared}
-            onFixedTap={trial.onFixedTap} onKey={trial.onKey} staff={staff} pressedOn={arrangement.pressedOn} {...handlers}
+            onFixedTap={trial.onFixedTap} onKey={trial.onKey} staff={staff} clearance={clearance.overlay} pressedOn={arrangement.pressedOn} {...handlers}
           />
         </div>
       )}
-      <div role="group" aria-label="How to show the shop" className="absolute right-3 top-3 z-30 flex gap-1 rounded-xl bg-sheet/95 p-1 shadow-float">
-        {VIEWS.map(({ id, words, Icon }) => (
-          <Button key={id} aria-pressed={trial.view === id} className="aria-pressed:bg-ink aria-pressed:text-paper" onClick={() => trial.setView(id)}>
-            <Icon size={16} weight="bold" aria-hidden />
-            {words}
-          </Button>
-        ))}
+      <div className="absolute right-3 top-3 z-30 flex flex-col items-end gap-2">
+        <div role="group" aria-label="How to show the shop" className="flex gap-1 rounded-xl bg-sheet/95 p-1 shadow-float">
+          {VIEWS.map(({ id, words, Icon }) => (
+            <Button key={id} aria-pressed={trial.view === id} className="aria-pressed:bg-ink aria-pressed:text-paper" onClick={() => trial.setView(id)}>
+              <Icon size={16} weight="bold" aria-hidden />
+              {words}
+            </Button>
+          ))}
+        </div>
+        <ClearanceKey clearance={clearance} className="hidden items-end lg:flex" />
       </div>
     </>
   );

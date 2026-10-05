@@ -35,6 +35,7 @@ from .ramps import ramps
 from .reach import reach_range
 from .restroom import restroom_turning_space
 from .result import CheckResult, as_result
+from .route_width import RULE_ID as ROUTE_WIDTH
 from .route_width import route_clear_width, route_width_verdict
 from .self_service import self_service_reach
 from .service_counter import (
@@ -114,14 +115,32 @@ def _waiting_on_a_reader(ctx: CheckContext, max_tier: Tier) -> list[Unevaluated]
 @traced("checks.run")
 def run_checks(ctx: CheckContext, max_tier: Tier = 1) -> CheckResult:
     enabled = {rule.id for rule in ctx.rules.enabled(ctx.ledger, max_tier)}
-    observations: list[Observation] = []
     unevaluated: list[Unevaluated] = [
         *_waiting_on_a_reader(ctx, max_tier),
         *_waiting_on_a_check(ctx, max_tier),
     ]
+    ran = _run(ctx, REGISTRY, enabled)
+    return CheckResult(ran.observations, [*unevaluated, *ran.unevaluated])
 
+
+def route_pinches(ctx: CheckContext, max_tier: Tier = 1) -> list[Observation]:
+    """The narrowest point of every leg, kept and dropped exactly as `run_checks` keeps and drops them.
+
+    One per gap however many legs pass through it, none inside a staff-only area, and none at all unless a person
+    has verified the route width rule. A map that marks these marks the gaps the findings name.
+    """
+    enabled = {rule.id for rule in ctx.rules.enabled(ctx.ledger, max_tier)}
+    return _run(ctx, [(frozenset({ROUTE_WIDTH}), route_clear_width)], enabled).observations
+
+
+def _run(
+    ctx: CheckContext, checks: Iterable[tuple[frozenset[str], CheckFn]], enabled: set[str]
+) -> CheckResult:
+    """Each check whose rule a person has verified, with what lands in a staff-only area dropped and one gap kept once."""
+    observations: list[Observation] = []
+    unevaluated: list[Unevaluated] = []
     staff_only = staff_areas(ctx.scenario, ctx.graph)
-    for rule_ids, check in REGISTRY:
+    for rule_ids, check in checks:
         if not rule_ids & enabled:
             continue
         result = as_result(check(ctx))
@@ -129,7 +148,6 @@ def run_checks(ctx: CheckContext, max_tier: Tier = 1) -> CheckResult:
             o for o in result.observations if o.rule_id in enabled and not in_staff_area(o, staff_only)
         )
         unevaluated.extend(result.unevaluated)
-
     return CheckResult(dedupe(observations, ctx.rules), unevaluated)
 
 
@@ -141,7 +159,7 @@ __all__ = [
     "Unevaluated", "dedupe", "dining_surface_height", "door_clear_width",
     "door_maneuvering_clearance", "door_verdict", "exit_path", "grab_bars", "kiosks", "lavatory", "passing_space",
     "point_of_sale_height", "protruding_objects", "ramps", "reach_range", "restroom_turning_space",
-    "route_clear_width", "route_width_verdict", "run_checks", "scan_cannot_see", "self_service_reach",
+    "route_clear_width", "route_pinches", "route_width_verdict", "run_checks", "scan_cannot_see", "self_service_reach",
     "service_counter_approach", "service_counter_height", "turn_clear_width",
     "turn_verdict", "turning_space", "water_closet_location",
 ]

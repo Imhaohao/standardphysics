@@ -146,6 +146,64 @@ class LayoutCheckResult(BaseModel):
     blocked: list[Blocked]
 
 
+class ClearanceBands(BaseModel):
+    """The widths a clearance map changes colour at, in inches, read from the rule pack the checks use."""
+
+    reduced_inches: float
+    """32: no stretch of route may be narrower (ADA 2010 403.5.1's exception)."""
+    route_inches: float
+    """36: a route at least this wide complies along its whole length (403.5.1)."""
+    reduced_run_inches: float
+    """24: the longest a stretch may stay between the two widths above."""
+    turning_inches: float
+    """60: a circle this wide is room to turn a wheelchair around (304.3.1)."""
+
+
+class ClearancePinch(BaseModel):
+    """The narrowest point the route width check found on one gap of the customer route."""
+
+    finding_id: UUID
+    """The finding this gap gives the layout, the same id a layout check of it carries."""
+    point: Vec3
+    inches: float | None
+    """The width there, as the finding reports it: measured between the two footprints when they straddle the gap,
+    and read off the grid otherwise. None when nothing gets through, and `point` is then the stop out of reach."""
+    meets_rule: bool
+    """Whether the check passed it, counting the exception for short stretches between 32 and 36 inches."""
+    origin: str
+    destination: str
+    """The stops at either end of the tightest leg through it."""
+    blocking_node_ids: list[UUID]
+
+
+class ClearanceMap(BaseModel):
+    """How much room there is around every point of a layout's floor, from the grid the route checks measure on.
+
+    The floor is cut into square cells `cell_meters` on a side, `columns` along the scene's x and `rows` along its y,
+    turned `rotation_z_degrees` about `origin`, the corner of the cell with the lowest x and y. A cell's clear width
+    is the widest circle centred on it that stays clear, the number a route through that point is checked against.
+
+    `widths_png` holds one 8-bit grey PNG pixel per cell, base64. The first row is the row with the highest y, so it
+    reads as a plan drawn with y up. 0 marks a cell nobody can stand on: something blocks it, or it is off the floor
+    a trip through the shop may use. Any other value is the clear width in steps of `width_step_inches`, rounded
+    down, and 255 also stands for anything wider. Rounding down means no cell reads wider than the grid measured, and
+    the bands split at whole steps, so a stored cell sits in the same band its unrounded width does. The grid itself
+    resolves 25 mm, about an inch of width, which is why the pinch widths come from the footprints instead.
+    """
+
+    sequence: int
+    graph_hash: str
+    origin: Vec3
+    cell_meters: float
+    columns: int
+    rows: int
+    rotation_z_degrees: float
+    widths_png: str
+    width_step_inches: float
+    bands: ClearanceBands
+    pinches: list[ClearancePinch]
+
+
 class SaveLayoutRequest(BaseModel):
     base_revision: int
     moves: list[NodeMove]

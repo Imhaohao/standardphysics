@@ -15,6 +15,16 @@
   --color-pass: #2e7d4f;
   --color-attention: #9a6200;
 
+  /* The clearance map tints the floor by how wide the clear space around each point is. The two calm steps say a
+     route fits; the tight edge is a line, never a fill. The ground goes under every band, and the halo under the
+     edge, so the map reads the same over a photographed floor as over the paper plan. */
+  --color-clearance-turning: color-mix(in oklab, var(--color-pass) 44%, transparent);
+  --color-clearance-route: color-mix(in oklab, var(--color-pass) 20%, transparent);
+  --color-clearance-reduced: color-mix(in oklab, var(--color-attention) 55%, transparent);
+  --color-clearance-ground: color-mix(in oklab, var(--color-sheet) 74%, transparent);
+  --color-clearance-tight: var(--color-problem);
+  --color-clearance-halo: var(--color-sheet);
+
   --font-sans: var(--font-karla), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-libre-franklin), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-atkinson-mono), ui-monospace, monospace;

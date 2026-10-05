@@ -22,6 +22,9 @@ import { shownSurface, type ShownSurface } from "@/lib/viewer-source";
 import type { MotionPoint } from "@/lib/motion-vector";
 import type { WheelchairProfile } from "@/lib/wheelchair-profile";
 import { StaffAreas, type StaffHandles } from "./StaffAreas";
+import { ClearanceFloor } from "@/components/clearance/ClearanceFloor";
+import type { ClearanceOverlay } from "@/components/clearance/ClearancePlan";
+import { floorHeight } from "@/lib/found-objects";
 import { type RouteHandles, StopMarkers } from "./StopMarkers";
 import { WheelchairController, type WheelchairState } from "./WheelchairController";
 
@@ -41,6 +44,8 @@ type ViewerProps = {
   staff?: StaffHandles | null;
   /** The pieces the scan found, outlined and linked to the owner's list of them. */
   found?: FoundHandles | null;
+  /** How much room there is around each point of the floor, laid on it when the viewer asks. */
+  clearance?: ClearanceOverlay | null;
   /** Pixels to slide the picture right, clear of a panel laid over the canvas's left edge. */
   frameShift?: number;
   dragging: boolean;
@@ -253,10 +258,12 @@ function Wheelchair({ scene, wheelchairMode, wheelchairProfile, onWheelchairStat
   );
 }
 
-/** What is drawn on the floor: staff-only areas under the customer path and its stops. */
-function FloorPlanMarks({ route, staff }: { route: RouteHandles | null; staff: StaffHandles | null }) {
+/** What is drawn on the floor: the clearance map, then staff-only areas, under the customer path and its stops. */
+function FloorPlanMarks({ scene, route, staff, clearance }: { scene: SceneGraph; route: RouteHandles | null; staff: StaffHandles | null; clearance?: ClearanceOverlay | null }) {
+  const floorZ = useMemo(() => floorHeight(scene), [scene]);
   return (
     <>
+      {clearance && <ClearanceFloor overlay={clearance} floorZ={floorZ} />}
       {staff && <StaffAreas handles={staff} />}
       {route && <StopMarkers route={route} />}
     </>
@@ -320,7 +327,7 @@ export default function Viewer(viewerProps: ViewerProps) {
       </mesh>
       <ShopSurfaces {...viewerProps} surface={surface} />
       {selected && <FindingAnnotation finding={selected} />}
-      <FloorPlanMarks route={route} staff={viewerProps.staff ?? null} />
+      <FloorPlanMarks scene={scene} route={route} staff={viewerProps.staff ?? null} clearance={viewerProps.clearance} />
       <FoundOutlines scene={scene} handles={viewerProps.found} />
     </Canvas>
   );

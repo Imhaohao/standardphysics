@@ -51,6 +51,8 @@ import { EvidencePanel } from "./EvidencePanel";
 import { OutcomeMatrix } from "./OutcomeMatrix";
 import type { LaneView } from "@/lib/evidence";
 import { useDeveloperMode } from "@/lib/developer-mode";
+import { ClearanceKey } from "@/components/clearance/ClearanceKey";
+import { useClearanceOverlay } from "@/components/clearance/useClearanceOverlay";
 
 
 
@@ -515,6 +517,11 @@ function usePhotoTextures(scanId: string, revision: number, initial: TextureStat
   return { status, requesting, request, error, furniture, retryFurniture };
 }
 
+/** The clearance map describes the arrangement's layout, so it is offered where the model shows that layout. */
+function showsClearance(task: Task, wheelchairMode: boolean): boolean {
+  return (task === "findings" || task === "arrange") && !wheelchairMode;
+}
+
 type WorkspaceBodyProps = WorkspaceProps & {
   findings: Finding[]; task: Task; selected: Finding | null; focus: Focus | null; mode: ViewMode; picked: ReturnType<typeof usePicked>; dragging: boolean; amount: number; setAmount: (amount: number) => void; showScanEvidence: boolean; setShowScanEvidence: (value: boolean | ((current: boolean) => boolean)) => void; visuals: ReturnType<typeof useWorkspaceVisuals>; actions: ReturnType<typeof useWorkspaceActions>;
 };
@@ -534,6 +541,8 @@ function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, te
   const [dockDestination, setDockDestination] = useState<MotionPoint | null>(null);
   const [splatError, setSplatError] = useState<string | null>(null);
   useKeyboard(task, visuals.arrangement, visuals.combine, actions.clear, wheelchairMode);
+  const clearanceShown = showsClearance(task, wheelchairMode);
+  const clearance = useClearanceOverlay(scene, visuals.arrangement, clearanceShown);
 
   const toggleWheelchairMode = useCallback(() => {
     setWheelchairMode((curr) => !curr);
@@ -625,6 +634,8 @@ function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, te
           splatAssets={splatAssets}
           onSplatError={setSplatError}
           lidarUrl={displayedLidarUrl}
+          clearance={clearance.overlay}
+          frameShift={clearance.frameShift}
           pose={visuals.pose}
           selected={task === "findings" ? focus : null}
           onSelectNode={actions.selectNode}
@@ -648,6 +659,7 @@ function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, te
             Gaps and blur remain in this view. Measurements use the scan geometry.
           </p>
         )}
+        <ClearanceKey clearance={clearance} offered={clearanceShown} className="absolute right-4 top-4 hidden items-end lg:flex" />
         <PickedObject
           scanId={scan.id}
           revision={scene.revision}
@@ -675,6 +687,7 @@ function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, te
         />
       </section>
       <aside hidden={wheelchairMode} className="min-h-0 overflow-y-auto px-3 pb-10 pt-4 lg:pt-0">
+        <ClearanceKey clearance={clearance} offered={clearanceShown} className="mb-4 items-start lg:hidden" />
         <div className="mb-3 flex flex-col gap-3">
           {developer && !wheelchairMode && (
             <EvidencePanel

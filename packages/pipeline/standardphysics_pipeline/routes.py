@@ -155,6 +155,16 @@ def _clearance_within(
     return np.minimum(clearance, edge)
 
 
+def room_clearance(grid: Grid, clearance: np.ndarray) -> np.ndarray:
+    """`clearance` as a trip between two stops on the scanned floor reads it, and zero wherever that trip may not go.
+
+    `widest_path` takes every width of such a trip from this field, so a map of it shows the numbers the route checks
+    report. A trip with a stop off the floor also gets the ground outside, so near a doorway it can measure wider.
+    """
+    walkable = _walkable(grid, grid.occupied, in_the_room=grid.indoors is not None)
+    return np.where(walkable, _clearance_within(grid, clearance, walkable), 0.0)
+
+
 def _exempt_mask(
     grid: Grid, stops: list[tuple[int, int]], radius_m: float
 ) -> np.ndarray:
