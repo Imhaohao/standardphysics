@@ -7,6 +7,7 @@ import os
 import pathlib
 import signal
 import threading
+import time
 import uuid
 
 import child_stages
@@ -56,12 +57,22 @@ def _kill_if_left(pid_file: pathlib.Path) -> None:
         os.kill(int(pid_file.read_text()), signal.SIGKILL)
 
 
-def _gone(pid: int) -> bool:
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return True
-    return False
+def _gone(pid: int, within_seconds: float = 5.0) -> bool:
+    """Whether the process exits within the time given.
+
+    A kill is delivered asynchronously, and a killed process stays visible to
+    os.kill until its parent or init reaps it, so a check made straight after
+    the kill can still find it.
+    """
+    deadline = time.monotonic() + within_seconds
+    while True:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return True
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(0.05)
 
 
 @pytest.fixture

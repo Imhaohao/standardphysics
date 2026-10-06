@@ -234,7 +234,12 @@ final class LinkPDFRenderer: NSObject, WKNavigationDelegate {
     private static let settleTime: Duration = .milliseconds(800)
     /// A report page with its model and pictures took over 20 s to finish loading on a
     /// cold simulator, and a phone on shop Wi-Fi can be slower still.
-    private static let timeout: Duration = .seconds(45)
+    static let shareTimeout: Duration = .seconds(45)
+    private let timeout: Duration
+
+    init(timeout: Duration = LinkPDFRenderer.shareTimeout) {
+        self.timeout = timeout
+    }
 
     private var webView: WKWebView?
     private var continuation: CheckedContinuation<Data?, Never>?
@@ -256,8 +261,8 @@ final class LinkPDFRenderer: NSObject, WKNavigationDelegate {
             // One renderer serves every share, so each load gets its own deadline, cancelled
             // when the load ends. A deadline left running would end the next share early.
             deadline = Task {
-                guard (try? await Task.sleep(for: Self.timeout)) != nil else { return }
-                self.fail("the page did not finish loading within \(Self.timeout)")
+                guard (try? await Task.sleep(for: self.timeout)) != nil else { return }
+                self.fail("the page did not finish loading within \(self.timeout)")
             }
         }
     }
