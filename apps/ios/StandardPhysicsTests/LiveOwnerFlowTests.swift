@@ -69,7 +69,9 @@ final class LiveOwnerFlowTests: XCTestCase {
         try await session.signIn(email: email, password: "a long password")
         let signedIn = try XCTUnwrap(app.api())
         let shops = try await signedIn.journeys().map(\.scanID)
-        XCTAssertTrue(shops.contains(scanID))
+        // The shop is listed under whichever walk is current: the second walk replaces the
+        // first in the list once the server has measured it, which a slow run can reach by now.
+        XCTAssertTrue(shops.contains(scanID) || shops.contains(second), "the saved shop is on the account")
     }
 
     /// Answers everything the phone asks, the way an owner might: no restroom,
