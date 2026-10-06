@@ -145,7 +145,9 @@ final class LiveReportPDFTests: XCTestCase {
         guard let address = ProcessInfo.processInfo.environment["SP_LIVE_REPORT"], let url = URL(string: address) else {
             throw XCTSkip("Set SP_LIVE_REPORT to a report link to run")
         }
-        let renderer = LinkPDFRenderer()
+        // The report page loads its model and pictures. A simulator on a busy CI runner has
+        // taken longer than the 45 s a share allows, which is the runner, not the page.
+        let renderer = LinkPDFRenderer(timeout: .seconds(150))
         let printed = await renderer.pdf(of: url)
         let pdf = try XCTUnwrap(printed, renderer.lastFailure ?? "no PDF and no reason")
 
