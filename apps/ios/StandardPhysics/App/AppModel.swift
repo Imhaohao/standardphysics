@@ -43,8 +43,6 @@ final class AppModel: ObservableObject {
         didSet { DeveloperMode.isOn = developerMode }
     }
     @Published private(set) var captureSessionID = UUID()
-    @Published private(set) var recoveryDirectories: [URL] = []
-    @Published private(set) var recoveryMessage: String?
     @Published private(set) var walkProblem: String?
     private var uploads: [UUID: UploadViewModel] = [:]
     /// The upload that sent the owner to sign in, so signing in finishes it.
@@ -483,26 +481,12 @@ final class AppModel: ObservableObject {
         await refreshJourneys()
     }
 
-    func recoverSavedRoom(_ directory: URL) async {
-        recoveryMessage = "Saving your room"
-        let result = await Task.detached(priority: .userInitiated) {
-            Result { try CaptureRecovery.recover(from: directory) }
-        }.value
-        switch result {
-        case .success(let scan):
-            recoveryMessage = nil
-            recoveryDirectories.removeAll { $0 == directory }
-            screen = .review(scan)
-        case .failure: recoveryMessage = "Free some space on this phone, then save again."
-        }
-    }
-
     /// Keeps every half-finished upload on this phone moving while home is on
     /// screen, the way it did before the first-run flow existed.
     func refreshSavedScanStates() async {
         if let root = try? FileManager.default.url(for: .applicationSupportDirectory,
             in: .userDomainMask, appropriateFor: nil, create: true).appendingPathComponent("Captures") {
-            recoveryDirectories = CaptureRecovery.directories(in: root)
+            CaptureRecovery.discardAbandoned(in: root)
         }
         while !Task.isCancelled {
             resumeUploads()

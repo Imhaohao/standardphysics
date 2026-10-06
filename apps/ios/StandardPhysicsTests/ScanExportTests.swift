@@ -225,6 +225,29 @@ final class ScanExportTests: XCTestCase {
         XCTAssertEqual(moved.name, "Front room")
     }
 
+    func testOnlyWalksLeftUnfinishedForTenMinutesAreDiscarded() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        func walk(_ name: String, files: [String]) throws -> URL {
+            let directory = root.appendingPathComponent(name)
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            for file in files { try Data("{}".utf8).write(to: directory.appendingPathComponent(file)) }
+            return directory
+        }
+        let cancelled = try walk("cancelled", files: ["room.recovery.json"])
+        let saved = try walk("saved", files: ["room.recovery.json", "capture.json"])
+        let unmarked = try walk("unmarked", files: ["poses.json"])
+        let later = Date().addingTimeInterval(CaptureRecovery.abandonedAfter + 60)
+
+        CaptureRecovery.discardAbandoned(in: root, now: Date())
+        XCTAssertTrue(FileManager.default.fileExists(atPath: cancelled.path), "a walk still saving keeps its folder")
+
+        CaptureRecovery.discardAbandoned(in: root, now: later)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: cancelled.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: saved.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: unmarked.path))
+    }
+
     private func loadFixtureRoom() throws -> CapturedRoom {
         let source = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "apple_bedroom3.room", withExtension: "json"))
         return try JSONDecoder().decode(CapturedRoom.self, from: Data(contentsOf: source))

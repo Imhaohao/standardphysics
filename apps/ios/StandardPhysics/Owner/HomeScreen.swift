@@ -46,7 +46,6 @@ struct HomeScreen: View {
                             .foregroundStyle(AppTheme.mutedInk)
                             .plainRow(top: AppTheme.Spacing.compact)
                     }
-                    recovery
                     walkAnotherShop
                     AccountRow(model: model, session: model.session)
                         .plainRow(top: AppTheme.Spacing.section)
@@ -125,21 +124,6 @@ struct HomeScreen: View {
         }
     }
 
-    @ViewBuilder private var recovery: some View {
-        ForEach(model.recoveryDirectories, id: \.self) { directory in
-            Button("Recover saved room") {
-                Task { await model.recoverSavedRoom(directory) }
-            }
-            .buttonStyle(AppButtonStyle(.secondary))
-            .plainRow(top: AppTheme.Spacing.small)
-        }
-        if let message = model.recoveryMessage {
-            Text(message)
-                .font(AppTheme.Typography.secondary)
-                .foregroundStyle(AppTheme.mutedInk)
-                .plainRow(top: AppTheme.Spacing.compact)
-        }
-    }
 }
 
 /// A mark per kind of next step, so a shop's tag says what kind of thing it is
