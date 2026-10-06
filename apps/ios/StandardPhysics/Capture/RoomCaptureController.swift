@@ -103,7 +103,7 @@ final class RoomCaptureController: UIViewController, RoomCaptureViewDelegate, Ro
                     self.recording = nil
                     self.processingTimeout?.cancel()
                     self.processingTimeout = nil
-                    self.failCapture("Free some space on this phone, then go to home to recover your room.")
+                    self.failCapture("Free some space on this phone, then walk the room again.")
                     return
                 }
                 self.recording = recovered
@@ -135,7 +135,7 @@ final class RoomCaptureController: UIViewController, RoomCaptureViewDelegate, Ro
         recorder?.cancel { [weak self] error in
             guard let self else { return }
             if error != nil {
-                self.store?.didFail("Free some space on this phone, then go to home to recover your room.")
+                self.store?.didFail("Free some space on this phone, then walk the room again.")
             }
         }
         detailRecorder = nil
