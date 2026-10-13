@@ -255,6 +255,11 @@ def _rests_on(box: Box, base: Box, rules: LandmarkRules) -> bool:
     return bool(inside and abs(bottom - top) < rules.on_top_m and bottom > 0.15)
 
 
+def touches_furniture(box: Box, landmarks: list[Landmark], reach_m: float = 0.1) -> bool:
+    """Whether a box touches a piece of furniture both videos saw, so it is that piece's hidden side."""
+    return any(footprint_gap(box, landmark.box) <= reach_m for landmark in landmarks)
+
+
 def supports_under(box: Box, landmarks: list[Landmark]) -> list[float]:
     """Tops of the furniture whose footprint holds the centre of `box`."""
     tops = []
@@ -275,9 +280,15 @@ def _between(box: Box, near: list[tuple[float, Landmark]]) -> tuple[Landmark, La
     return None
 
 
-def place_phrase(box: Box, landmarks: list[Landmark], rules: LandmarkRules = LandmarkRules()) -> str:
-    """"on the coffee table", "between the sofa and the side table", "beside the bookshelf", or ""."""
-    named = [lm for lm in landmarks if lm.name and lm.name != "object" and not lm.ambiguous]
+def place_phrase(box: Box, landmarks: list[Landmark], rules: LandmarkRules = LandmarkRules(), subject: str = "") -> str:
+    """"on the coffee table", "between the sofa and the side table", "beside the bookshelf", or "".
+
+    Furniture of the subject's own kind is never the reference: "the chair moved from beside
+    the chair" tells the reader nothing, and such a piece is often what the change left behind.
+    """
+    kind = subject.split()[-1:]
+    named = [lm for lm in landmarks if lm.name and lm.name != "object" and not lm.ambiguous
+             and lm.name.split()[-1:] != kind]
     for landmark in named:
         if _rests_on(box, landmark.box, rules):
             return f"on the {landmark.name}"

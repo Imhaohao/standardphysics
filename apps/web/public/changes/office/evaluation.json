@@ -3,16 +3,17 @@
   "scale": 0.989,
   "rmse_m": 0.029
  },
- "recall": 0.6,
+ "recall": 0.75,
  "precision": 0.75,
  "partial": [
   "c3 points at the wooden crate but covers too little of it"
  ],
  "names_correct": "1 of 3",
+ "head_nouns_correct": "3 of 3",
  "mean_centre_error_m": 0.033,
- "mean_bottom_error_m": 0.026,
- "mean_height_error_m": 0.025,
- "mean_overlap": 0.7,
+ "mean_bottom_error_m": 0.018,
+ "mean_height_error_m": 0.017,
+ "mean_overlap": 0.716,
  "mean_distance_error_m": 0.017,
  "false_alarms": [],
  "unverifiable_reported": [],
@@ -24,6 +25,7 @@
    "found": "c1",
    "name": "armchair",
    "name_ok": true,
+   "head_noun_ok": true,
    "shape_position_error_m": 0.072,
    "before": {
     "centre_error_m": 0.077,
@@ -48,6 +50,7 @@
    "found": "c2",
    "name": "wooden stool",
    "name_ok": false,
+   "head_noun_ok": true,
    "shape_position_error_m": 0.028,
    "before": {
     "centre_error_m": 0.014,
@@ -72,6 +75,7 @@
    "found": null,
    "name": "wooden crate",
    "name_ok": true,
+   "head_noun_ok": true,
    "shape_position_error_m": 0.226,
    "before": {
     "centre_error_m": 0.221,
@@ -82,24 +86,24 @@
    "partial": "c3"
   },
   {
-   "truth": "plastic container",
-   "type": "added",
-   "found": null
-  },
-  {
    "truth": "brass pot",
    "type": "added",
    "found": "c4",
    "name": "copper pot",
    "name_ok": false,
+   "head_noun_ok": true,
    "shape_position_error_m": 0.027,
    "after": {
     "centre_error_m": 0.028,
-    "bottom_error_m": 0.044,
-    "height_error_m": -0.079,
-    "overlap": 0.51
+    "bottom_error_m": 0.006,
+    "height_error_m": -0.041,
+    "overlap": 0.59
    }
   }
  ],
+ "unobservable": [
+  "plastic container (added): its spot was in view in fewer than 3 frames of the other video"
+ ],
+ "seen_once_on_unchanged": [],
  "phantom_furniture": []
 }

@@ -24,6 +24,16 @@ def article(phrase: str) -> str:
     return "an" if phrase[:1].lower() in "aeiou" else "a"
 
 
+def is_plural(phrase: str) -> bool:
+    last = phrase.split()[-1].lower() if phrase.split() else ""
+    return last.endswith("s") and not last.endswith(("ss", "us", "is"))
+
+
+def some(phrase: str) -> str:
+    """ "a box", "an armchair", or "plates" with no article for more than one."""
+    return phrase if is_plural(phrase) else f"{article(phrase)} {phrase}"
+
+
 def turn_phrase(turn_deg: float | None) -> str:
     if turn_deg is None or abs(turn_deg) < 20:
         return ""
@@ -75,7 +85,11 @@ def removed_sentence(detail: str, where: str) -> str:
 
 
 def added_sentence(detail: str, where: str) -> str:
-    return f"{article(detail).capitalize()} {detail} appeared{_where(where)}."
+    return f"{_capital(some(detail))} appeared{_where(where)}."
+
+
+def _capital(text: str) -> str:
+    return text[:1].upper() + text[1:]
 
 
 def partly_seen(sentence: str) -> str:
@@ -84,9 +98,12 @@ def partly_seen(sentence: str) -> str:
 
 
 def unchecked_sentence(detail: str, where: str, video: str) -> str:
+    """Seen only after, it may be new; seen only before, it may since have gone."""
     other = "before" if video == "after" else "after"
-    return (f"{article(detail).capitalize()} {detail}{_where(where)} shows only in the {video} video; "
-            f"the {other} video never looked there, so it may or may not be new.")
+    doubt = "may or may not be new" if video == "after" else "may or may not still be there"
+    shows, it = ("show", "they") if is_plural(detail) else ("shows", "it")
+    return (f"{_capital(some(detail))}{_where(where)} {shows} only in the {video} video; "
+            f"the {other} video never looked there, so {it} {doubt}.")
 
 
 def short_clause(change: dict) -> str:
@@ -94,7 +111,7 @@ def short_clause(change: dict) -> str:
     if change["type"] == "moved":
         return f"the {name} moved {length(change['distance_m'])}"
     if change["type"] == "added":
-        return f"{article(name)} {name} appeared"
+        return f"{some(name)} appeared"
     return f"the {name} was removed"
 
 

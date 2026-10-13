@@ -22,9 +22,10 @@ from .landmarks import (
     merge_touching,
     place_phrase,
     supports_under,
+    touches_furniture,
     vote_classes,
 )
-from .matching import MatchRules, pair_moves
+from .matching import MatchRules, absorb_fragments, match_heights, pair_moves
 from .naming import Embedder, Namer, PlainNamer, Segmenter, make_namer
 from .pictures import isolated, outlined, runs_off_frame, sightings
 from .regions import Region, RegionRules, find_regions, finish_regions, one_sided_regions, settle
@@ -185,8 +186,13 @@ def never_seen_whole(seen: list) -> bool:
     return all(runs_off_frame(sighting) for sighting in seen if sighting.visible >= 0.5 * best)
 
 
-def name_landmarks(scene: Scene, namer: Namer, segmenter: Segmenter | None, changed: list[Region]) -> list[Landmark]:
-    """Find and name the unchanged furniture of the before video, which the change sentences point to."""
+def name_landmarks(scene: Scene, namer: Namer, segmenter: Segmenter | None, gone: list[Region]) -> list[Landmark]:
+    """Find and name the unchanged furniture of the before video, which the change sentences point to.
+
+    `gone` holds the regions that disappeared, removed things and the old spots of moved
+    ones. Only something that left can leave scraps behind; a basket set on a nightstand
+    does not make the nightstand a scrap.
+    """
     if segmenter is None:
         return []
     ids = np.flatnonzero(scene.cloud.epoch == BEFORE)
@@ -194,15 +200,27 @@ def name_landmarks(scene: Scene, namer: Namer, segmenter: Segmenter | None, chan
     views = of_epoch(scene.views, BEFORE)[::2]
     classes = vote_classes(points, views, [segmenter.classes(view.image) for view in views])
     found = find_landmarks(points, scene.status[ids], classes, segmenter.names, ceiling_height(scene))
-    changes = [(region.box, region.names.get("name", "")) for region in changed]
-    found = merge_touching(apart_from(found, points, changes), points)
+    left = [(region.box, region.names.get("name", "")) for region in gone]
+    found = merge_touching(apart_from(found, points, left), points)
+    named = []
     for landmark in found:
         landmark.point_ids = ids[landmark.point_ids]
         seen = sightings(scene.cloud.points[landmark.point_ids], of_epoch(scene.views, BEFORE))
         names = namer.name(outlined(seen[0], margin=0.6)) if seen else {"name": "object", "detail": ""}
-        landmark.name = fitting_name(landmark.category, names["name"])
-        landmark.detail = names.get("detail", "")
-    return found
+        if agree_on_kind(landmark.category, names["name"]):
+            landmark.name = fitting_name(landmark.category, names["name"])
+            landmark.detail = names.get("detail", "")
+            named.append(landmark)
+    return named
+
+
+def agree_on_kind(category: str, model_name: str) -> bool:
+    """The segmenter's category and the vision model's name describe the same kind of thing.
+
+    When they disagree (a "chair" the model calls a nightstand) neither is trusted, and the
+    piece is left unnamed rather than labelled wrongly. With no vision model the category stands.
+    """
+    return model_name == "object" or fitting_name(category, model_name) == model_name
 
 
 def _load_segmenter(log) -> Segmenter | None:
@@ -216,13 +234,13 @@ def _load_segmenter(log) -> Segmenter | None:
 def locate_regions(regions: list[Region], landmarks: list[Landmark]) -> None:
     """Stand each region on what holds it up, then say where it is against the furniture.
 
-    The measured phrase replaces the model's own caption of where the region is.
+    Only a measured phrase is kept. The vision model also guesses a location, but a guess
+    the geometry never checked could put an object beside furniture metres away, so with
+    nothing measured the sentence says no location at all.
     """
     for region in regions:
         region.box = settle(region.box, [0.0, *supports_under(region.box, landmarks)])
-        measured = place_phrase(region.box, landmarks)
-        if measured:
-            region.names["where"] = measured
+        region.names["where"] = place_phrase(region.box, landmarks, subject=region.names.get("name", ""))
 
 
 # Words that make a name part of the building, or a passer-by, rather than a thing in the room.
@@ -278,15 +296,20 @@ def run(before: Path, after: Path, out: Path, settings: Settings = Settings(), l
     unchecked = unchecked_regions(scene, removed + added)
     describe_regions(scene, removed + added, namer, _load_embedder(log))
     describe_regions(scene, unchecked, namer, None)
-    unchecked = objects_only(unchecked, not isinstance(namer, PlainNamer))
-    landmarks = name_landmarks(scene, namer, _load_segmenter(log), removed + added + unchecked)
+    landmarks = name_landmarks(scene, namer, _load_segmenter(log), removed)
+    unchecked = [region for region in objects_only(unchecked, not isinstance(namer, PlainNamer))
+                 if not touches_furniture(region.box, landmarks)]
     distinguish(landmarks, removed + added + unchecked)
     locate_regions(removed + added + unchecked, landmarks)
     log(f"seen by one video only: {', '.join(r.names.get('name', 'object') for r in unchecked) or 'nothing'}")
     log(f"furniture that stayed: {', '.join(lm.name for lm in landmarks) or 'none named'}")
     timer.lap("naming")
     moves = pair_moves(removed, added, scene.cloud.points, settings.matching)
-    found = change_records.assemble(moves, removed, added, landmarks)
+    paired = {id(move.removed) for move in moves} | {id(move.added) for move in moves}
+    loose_removed, loose_added = absorb_fragments(moves, [r for r in removed if id(r) not in paired],
+                                                  [r for r in added if id(r) not in paired], scene.cloud.points)
+    match_heights(moves)
+    found = change_records.assemble(moves, loose_removed, loose_added, landmarks)
     for change in found:
         log(f"  {change.id} {change.type}: {change.sentence}")
     scale = {"factor": round(factor, 4), "from": "camera height" if settings.camera_height_m else "reconstruction"}

@@ -1,55 +1,50 @@
 {
- "capture": "Share Tea walkthrough, a private iPhone capture kept out of git",
- "role": "development: the stools it first misreported led to the 85% rule",
- "detector": "678eab8370c6",
- "clips_s": {
-  "before": [
-   168.0,
-   16.0
-  ],
-  "after": [
-   198.0,
-   16.0
-  ],
-  "fps": 30
- },
- "true_phone_height_m": {
-  "before": 1.461,
-  "after": 1.389
- },
- "run": "room-changes run before.mp4 after.mp4 --camera-height 1.4",
- "summary": "Nothing in the room moved, appeared or disappeared between the two videos.",
- "changes": [],
- "seen_by_one_video_only": [
-  {
-   "video": "before",
-   "name": "bar stool",
-   "count": 1
+  "capture": "Share Tea walkthrough, a private iPhone capture kept out of git",
+  "role": "development: the stools it first misreported led to the 85% rule",
+  "detector": "6d29accc7676",
+  "clips_s": {
+    "before": [
+      168.0,
+      16.0
+    ],
+    "after": [
+      198.0,
+      16.0
+    ],
+    "fps": 30
   },
-  {
-   "video": "after",
-   "name": "wooden chair",
-   "count": 3
+  "true_phone_height_m": {
+    "before": 1.461,
+    "after": 1.389
   },
-  {
-   "video": "after",
-   "name": "black chair",
-   "count": 1
+  "run": "room-changes run before.mp4 after.mp4 --camera-height 1.4",
+  "summary": "Nothing in the room moved, appeared or disappeared between the two videos.",
+  "changes": [],
+  "seen_by_one_video_only": [
+    {
+      "video": "after",
+      "name": "black chair",
+      "count": 1
+    },
+    {
+      "video": "after",
+      "name": "wooden chair",
+      "count": 3
+    }
+  ],
+  "coverage": {
+    "before_checked_by_other": 0.879,
+    "after_checked_by_other": 0.338
+  },
+  "scale": {
+    "factor": 0.8791,
+    "from": "camera height"
+  },
+  "evaluation": {
+    "camera_alignment": {
+      "scale": 0.972,
+      "rmse_m": 0.089
+    },
+    "false_alarms": []
   }
- ],
- "coverage": {
-  "before_checked_by_other": 0.879,
-  "after_checked_by_other": 0.338
- },
- "scale": {
-  "factor": 0.8791,
-  "from": "camera height"
- },
- "evaluation": {
-  "camera_alignment": {
-   "scale": 0.972,
-   "rmse_m": 0.089
-  },
-  "false_alarms": []
- }
 }

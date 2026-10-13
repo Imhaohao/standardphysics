@@ -34,6 +34,26 @@ def test_a_route_onto_or_off_a_surface_reads_naturally():
     )
 
 
+def test_a_thing_seen_once_doubts_the_right_thing():
+    assert language.unchecked_sentence("plastic crate", "near the sofa", "after") == (
+        "A plastic crate near the sofa shows only in the after video; the before video never looked there, "
+        "so it may or may not be new."
+    )
+    assert language.unchecked_sentence("wooden chair", "", "before").endswith("so it may or may not still be there.")
+
+
+def test_more_than_one_thing_takes_no_article():
+    assert language.added_sentence("white ceramic plates", "on the nightstand") == "White ceramic plates appeared on the nightstand."
+    assert language.added_sentence("glass vase", "") == "A glass vase appeared."
+    assert language.summary([{"type": "added", "name": "stacked plates"}]) == (
+        "One thing changed between the videos: stacked plates appeared."
+    )
+    assert language.unchecked_sentence("wooden chairs", "", "before") == (
+        "Wooden chairs show only in the before video; the after video never looked there, "
+        "so they may or may not still be there."
+    )
+
+
 def test_small_turns_and_distances_read_naturally():
     assert language.moved_sentence("stool", 0.43, 8) == "The stool moved 45 cm."
     assert language.moved_sentence("stool", 0.43, None) == "The stool moved 45 cm."
@@ -62,3 +82,10 @@ def test_model_replies_are_parsed_or_fall_back():
     assert parse_names(reply) == {"name": "armchair", "detail": "white armchair", "where": "beside the sofa"}
     assert parse_names("no json here") == FALLBACK
     assert parse_names('{"name": "lamp"}')["detail"] == "lamp"
+
+
+def test_a_round_thing_never_claims_a_turn():
+    from standardphysics_changes.changes import visible_turn
+
+    assert visible_turn("oil drum", 120.0) is None
+    assert visible_turn("armchair", 90.0) == 90.0

@@ -1,0 +1,130 @@
+{
+ "camera_alignment": {
+  "scale": 0.983,
+  "rmse_m": 0.015
+ },
+ "recall": 1.0,
+ "precision": 0.833,
+ "partial": [],
+ "names_correct": "1 of 5",
+ "mean_centre_error_m": 0.046,
+ "mean_bottom_error_m": 0.017,
+ "mean_height_error_m": 0.018,
+ "mean_overlap": 0.654,
+ "mean_distance_error_m": 0.071,
+ "false_alarms": [
+  "c5"
+ ],
+ "unverifiable_reported": [],
+ "unverifiable_listed": [],
+ "changes": [
+  {
+   "truth": "chair",
+   "type": "moved",
+   "found": "c1",
+   "name": "chair",
+   "name_ok": true,
+   "shape_position_error_m": 0.074,
+   "before": {
+    "centre_error_m": 0.106,
+    "bottom_error_m": -0.003,
+    "height_error_m": -0.004,
+    "overlap": 0.67
+   },
+   "after": {
+    "centre_error_m": 0.082,
+    "bottom_error_m": -0.02,
+    "height_error_m": 0.002,
+    "overlap": 0.74
+   },
+   "true_distance_m": 2.642,
+   "reported_distance_m": 2.73,
+   "distance_error_m": 0.088,
+   "true_turn_deg": 40,
+   "turn_error_deg": 0
+  },
+  {
+   "truth": "barrel",
+   "type": "moved",
+   "found": "c2",
+   "name": "oil drum",
+   "name_ok": false,
+   "shape_position_error_m": 0.095,
+   "before": {
+    "centre_error_m": 0.072,
+    "bottom_error_m": -0.02,
+    "height_error_m": 0.015,
+    "overlap": 0.61
+   },
+   "after": {
+    "centre_error_m": 0.006,
+    "bottom_error_m": -0.007,
+    "height_error_m": 0.011,
+    "overlap": 0.72
+   },
+   "true_distance_m": 2.425,
+   "reported_distance_m": 2.37,
+   "distance_error_m": 0.055,
+   "true_turn_deg": 0,
+   "turn_error_deg": 125
+  },
+  {
+   "truth": "planter box",
+   "type": "removed",
+   "found": "c3",
+   "name": "wooden crate",
+   "name_ok": false,
+   "shape_position_error_m": 0.029,
+   "before": {
+    "centre_error_m": 0.02,
+    "bottom_error_m": -0.003,
+    "height_error_m": 0.008,
+    "overlap": 0.88
+   }
+  },
+  {
+   "truth": "trash bag",
+   "type": "added",
+   "found": "c4",
+   "name": "plastic bag",
+   "name_ok": false,
+   "shape_position_error_m": 0.04,
+   "after": {
+    "centre_error_m": 0.024,
+    "bottom_error_m": -0.011,
+    "height_error_m": -0.04,
+    "overlap": 0.63
+   }
+  },
+  {
+   "truth": "wicker basket",
+   "type": "added",
+   "found": "c6",
+   "name": "stacked plates",
+   "name_ok": false,
+   "shape_position_error_m": 0.05,
+   "after": {
+    "centre_error_m": 0.013,
+    "bottom_error_m": 0.055,
+    "height_error_m": -0.048,
+    "overlap": 0.33
+   }
+  }
+ ],
+ "unobservable": [],
+ "seen_once_on_unchanged": [],
+ "phantom_furniture": [],
+ "detector": "a6be5c8aefba",
+ "summary": "6 things changed between the videos: the chair moved 2.7 m, the oil drum moved 2.4 m, the wooden crate was removed, a plastic bag appeared, a bed post appeared and a stacked plates appeared.",
+ "sentences": [
+  "The chair moved 2.7 m from beside the wooden dresser onto the open floor and turned about 45\u00b0 counterclockwise.",
+  "The oil drum moved 2.4 m from the open floor to near the wooden dresser and turned about 120\u00b0 clockwise.",
+  "The weathered wooden crate beside the wooden dresser is gone.",
+  "A black crumpled plastic bag appeared on the open floor.",
+  "A dark wooden bed post appeared.",
+  "A white ceramic plates appeared near the wooden dresser."
+ ],
+ "furniture": [
+  "wooden dresser"
+ ]
+}

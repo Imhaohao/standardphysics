@@ -49,17 +49,26 @@ def _route(move: Move, landmarks: list[Landmark]) -> language.Route:
     )
 
 
+ROUND_THINGS = frozenset({"barrel", "drum", "bucket", "pot", "vase", "stool", "basket", "bin", "can", "plant", "jar"})
+
+
+def visible_turn(name: str, turn_deg: float | None) -> float | None:
+    """A drum or a stool looks the same however far it turned, so any turn measured on it is noise."""
+    return None if name.split()[-1:] and name.split()[-1] in ROUND_THINGS else turn_deg
+
+
 def _moved(move: Move, landmarks: list[Landmark]) -> Change:
     subject = max((move.removed, move.added), key=lambda region: region.seed_count)
     name = subject.names.get("name", "object")
+    turn = visible_turn(name, move.turn_deg)
     where_before = move.removed.names.get("where", "")
     where_after = move.added.names.get("where", "")
     distance = round(move.distance_m, 2)
     return Change(
         id="", type="moved", name=name, detail=subject.names.get("detail", name),
-        sentence=language.moved_sentence(name, distance, move.turn_deg, _route(move, landmarks)),
+        sentence=language.moved_sentence(name, distance, turn, _route(move, landmarks)),
         before=move.removed, after=move.added, where_before=where_before, where_after=where_after,
-        distance_m=distance, turn_deg=move.turn_deg, similarity=move.similarity,
+        distance_m=distance, turn_deg=turn, similarity=move.similarity,
     )
 
 

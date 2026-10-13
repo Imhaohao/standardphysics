@@ -1,66 +1,67 @@
 {
- "capture": "Share Tea walkthrough, a private iPhone capture kept out of git",
- "role": "development: cut from a part of the walk nothing was tuned on and rerun as the detector changed; its false alarm was never tuned away",
- "detector": "678eab8370c6",
- "clips_s": {
-  "before": [
-   69.0,
-   16.0
-  ],
-  "after": [
-   104.0,
-   16.0
-  ],
-  "fps": 30
- },
- "true_phone_height_m": {
-  "before": 1.41,
-  "after": 1.393
- },
- "run": "room-changes run before.mp4 after.mp4 --camera-height 1.4",
- "summary": "One thing changed between the videos: a computer monitor appeared.",
- "changes": [
-  {
-   "type": "added",
-   "sentence": "A black computer monitor appeared near the television.",
-   "points": 291,
-   "evidence": {
-    "old_spot": null,
-    "new_spot": {
-     "empty_in": 10,
-     "of": 32,
-     "video": "before"
+  "capture": "Share Tea walkthrough, a private iPhone capture kept out of git",
+  "role": "development: cut from a part of the walk nothing was tuned on and rerun as the detector changed; its false alarm was never tuned away",
+  "detector": "6d29accc7676",
+  "clips_s": {
+    "before": [
+      69.0,
+      16.0
+    ],
+    "after": [
+      104.0,
+      16.0
+    ],
+    "fps": 30
+  },
+  "true_phone_height_m": {
+    "before": 1.41,
+    "after": 1.393
+  },
+  "run": "room-changes run before.mp4 after.mp4 --camera-height 1.4",
+  "summary": "One thing changed between the videos: a computer monitor appeared.",
+  "changes": [
+    {
+      "type": "added",
+      "sentence": "A black computer monitor appeared near the counter.",
+      "points": null,
+      "evidence": {
+        "points": 291,
+        "old_spot": null,
+        "new_spot": {
+          "empty_in": 10,
+          "of": 32,
+          "video": "before"
+        }
+      }
     }
-   }
-  }
- ],
- "seen_by_one_video_only": [
-  {
-   "video": "before",
-   "name": "wooden chair",
-   "count": 1
+  ],
+  "seen_by_one_video_only": [
+    {
+      "video": "after",
+      "name": "bar stool",
+      "count": 1
+    },
+    {
+      "video": "before",
+      "name": "wooden chair",
+      "count": 1
+    }
+  ],
+  "coverage": {
+    "before_checked_by_other": 0.653,
+    "after_checked_by_other": 0.777
   },
-  {
-   "video": "after",
-   "name": "bar stool",
-   "count": 1
-  }
- ],
- "coverage": {
-  "before_checked_by_other": 0.653,
-  "after_checked_by_other": 0.777
- },
- "scale": {
-  "factor": 0.902,
-  "from": "camera height"
- },
- "evaluation": {
-  "camera_alignment": {
-   "scale": 0.974,
-   "rmse_m": 0.133
+  "scale": {
+    "factor": 0.902,
+    "from": "camera height"
   },
-  "false_alarms": [
-   "c1"
-  ]
- }
+  "evaluation": {
+    "camera_alignment": {
+      "scale": 0.974,
+      "rmse_m": 0.133
+    },
+    "false_alarms": [
+      "c1"
+    ]
+  }
 }

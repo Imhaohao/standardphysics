@@ -1,0 +1,133 @@
+{
+ "camera_alignment": {
+  "scale": 1.0,
+  "rmse_m": 0.017
+ },
+ "recall": 1.0,
+ "precision": 0.833,
+ "partial": [],
+ "names_correct": "1 of 5",
+ "mean_centre_error_m": 0.046,
+ "mean_bottom_error_m": 0.071,
+ "mean_height_error_m": 0.068,
+ "mean_overlap": 0.546,
+ "mean_distance_error_m": 0.028,
+ "false_alarms": [
+  "c4"
+ ],
+ "unverifiable_reported": [],
+ "unverifiable_listed": [],
+ "changes": [
+  {
+   "truth": "plastic chair",
+   "type": "moved",
+   "found": "c1",
+   "name": "plastic chair",
+   "name_ok": true,
+   "shape_position_error_m": 0.105,
+   "before": {
+    "centre_error_m": 0.059,
+    "bottom_error_m": -0.018,
+    "height_error_m": -0.033,
+    "overlap": 0.74
+   },
+   "after": {
+    "centre_error_m": 0.106,
+    "bottom_error_m": -0.016,
+    "height_error_m": -0.002,
+    "overlap": 0.6
+   },
+   "true_distance_m": 3.089,
+   "reported_distance_m": 3.05,
+   "distance_error_m": 0.039,
+   "true_turn_deg": 135,
+   "turn_error_deg": 5
+  },
+  {
+   "truth": "metal stool",
+   "type": "moved",
+   "found": "c2",
+   "name": "stool",
+   "name_ok": false,
+   "shape_position_error_m": 0.041,
+   "before": {
+    "centre_error_m": 0.017,
+    "bottom_error_m": -0.02,
+    "height_error_m": 0.021,
+    "overlap": 0.6
+   },
+   "after": {
+    "centre_error_m": 0.04,
+    "bottom_error_m": 0.409,
+    "height_error_m": -0.405,
+    "overlap": 0.06
+   },
+   "true_distance_m": 2.642,
+   "reported_distance_m": 2.66,
+   "distance_error_m": 0.018,
+   "true_turn_deg": 0
+  },
+  {
+   "truth": "barrel",
+   "type": "removed",
+   "found": "c3",
+   "name": "blue barrel",
+   "name_ok": false,
+   "shape_position_error_m": 0.067,
+   "before": {
+    "centre_error_m": 0.068,
+    "bottom_error_m": -0.015,
+    "height_error_m": -0.005,
+    "overlap": 0.43
+   }
+  },
+  {
+   "truth": "sack",
+   "type": "added",
+   "found": "c5",
+   "name": "metal bucket",
+   "name_ok": false,
+   "shape_position_error_m": 0.023,
+   "after": {
+    "centre_error_m": 0.023,
+    "bottom_error_m": -0.015,
+    "height_error_m": -0.002,
+    "overlap": 0.7
+   }
+  },
+  {
+   "truth": "vase",
+   "type": "added",
+   "found": "c6",
+   "name": "white vase",
+   "name_ok": false,
+   "shape_position_error_m": 0.012,
+   "after": {
+    "centre_error_m": 0.012,
+    "bottom_error_m": -0.001,
+    "height_error_m": -0.01,
+    "overlap": 0.69
+   }
+  }
+ ],
+ "unobservable": [],
+ "seen_once_on_unchanged": [],
+ "phantom_furniture": [
+  "white plastic chair"
+ ],
+ "detector": "6eeaae48a55e",
+ "summary": "6 things changed between the videos: the plastic chair moved 3.1 m, the stool moved 2.7 m, the blue barrel was removed, the plastic chair was removed, a metal bucket appeared and a white vase appeared.",
+ "sentences": [
+  "The plastic chair moved 3.1 m from between the white plastic chair and the wooden table to the other side of the wooden table and turned about 135\u00b0 counterclockwise.",
+  "The stool moved 2.7 m from beside the wooden table to the other side of the wooden table.",
+  "The blue metal barrel near the wooden table is gone.",
+  "The white plastic chair between the white plastic chair and the wooden table is gone.",
+  "A gray metal bucket appeared beside the dark brown leather chair.",
+  "A white ceramic vase appeared on the wooden table."
+ ],
+ "furniture": [
+  "wooden table",
+  "dark brown leather chair",
+  "white plastic chair"
+ ]
+}

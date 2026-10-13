@@ -1,6 +1,6 @@
 {
  "format": 1,
- "detector": "678eab8370c6",
+ "detector": "6d29accc7676",
  "inputs": {
   "before": "before.mp4",
   "after": "after.mp4"
@@ -1981,9 +1981,9 @@
   }
  ],
  "seconds": {
-  "reconstruction": 45.1,
-  "change evidence": 5.7,
-  "naming": 34.1
+  "reconstruction": 37.7,
+  "change evidence": 3.6,
+  "naming": 20.8
  },
  "scale": {
   "factor": 0.9212,

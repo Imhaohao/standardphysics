@@ -58,6 +58,12 @@ def name_matches(truth_label: str, predicted: str) -> bool:
     return predicted.lower().strip() in SAME_THING.get(truth_label, {truth_label})
 
 
+def head_noun_matches(truth_label: str, predicted: str) -> bool:
+    """A looser second score: the last word, the kind of thing, agrees ("white vase" for a "vase")."""
+    head = predicted.lower().split()[-1:] or [""]
+    return head[0] in {phrase.split()[-1] for phrase in SAME_THING.get(truth_label, {truth_label})}
+
+
 def _wrap(degrees: float) -> float:
     return (degrees + 180) % 360 - 180
 
@@ -154,7 +160,8 @@ def _score_one(item: dict, predictions: list[dict], fits: dict[str, Fit], used: 
         return {"truth": item["label"], "type": item["type"], "found": None}
     used.add(change["id"])
     row = {"truth": item["label"], "type": item["type"], "found": change["id"], "name": change["name"],
-           "name_ok": name_matches(item["label"], change["name"]), "shape_position_error_m": round(error, 3)}
+           "name_ok": name_matches(item["label"], change["name"]),
+           "head_noun_ok": head_noun_matches(item["label"], change["name"]), "shape_position_error_m": round(error, 3)}
     for side in ("before", "after"):
         errors = _side_errors(item[side], change[side], fits["metres"])
         if errors:
@@ -198,9 +205,61 @@ def _listed_unverifiable(truth: dict, scene: dict, fit: Fit) -> list[str]:
     return listed
 
 
+MIN_FRAMES_IN_VIEW = 3
+
+
+def frames_in_view(box: dict, cameras: list, intrinsics: list) -> int:
+    """How many of a walk's true frames had at least a quarter of a box's sample points in the picture."""
+    k = np.asarray(intrinsics, dtype=float)
+    width, height = 2 * k[0, 2], 2 * k[1, 2]
+    centre, size = np.asarray(box["center"]), np.asarray(box["size"])
+    offsets = np.array([[x, y, z] for x in (-0.5, 0, 0.5) for y in (-0.5, 0, 0.5) for z in (-0.5, 0.5)])
+    points = centre + offsets * size
+    count = 0
+    for pose in cameras:
+        to_camera = np.linalg.inv(np.asarray(pose))
+        camera = points @ to_camera[:3, :3].T + to_camera[:3, 3]
+        depth = np.maximum(camera[:, 2], 1e-6)
+        u, v = camera[:, 0] / depth * k[0, 0] + k[0, 2], camera[:, 1] / depth * k[1, 1] + k[1, 2]
+        inside = (camera[:, 2] > 0.4) & (u > 10) & (u < width - 10) & (v > 10) & (v < height - 10)
+        count += int(inside.mean() >= 0.25)
+    return count
+
+
+def observable(item: dict, truth: dict) -> bool:
+    """Whether the other video ever pointed at the spot that tells this change apart from no change.
+
+    A new thing needs the before video to have seen its spot empty, a removed one needs the
+    after video to have seen its spot empty, and a move needs both.
+    """
+    if "intrinsics" not in truth:
+        return True
+    cameras, k = truth["cameras_opencv_c2w"], truth["intrinsics"]
+    needs = [(item["after"], "before"), (item["before"], "after")]
+    return all(frames_in_view(box, cameras[walk], k) >= MIN_FRAMES_IN_VIEW for box, walk in needs if box)
+
+
+def seen_once_on_unchanged(scene: dict, truth: dict, fit: Fit) -> list[str]:
+    """Seen-once entries that are really part of an object that never changed."""
+    still = [item["before"] for item in truth.get("objects", {}).values()
+             if item["before"] and item["after"] and item["before"]["center"] == item["after"]["center"]]
+    flagged = []
+    for thing in scene.get("unchecked", []):
+        centre = fit.point(thing["box"]["center"])
+        for box in still:
+            if _floor_distance(centre, box["center"]) <= max(0.3, 0.5 * float(np.hypot(*box["size"][:2]))):
+                flagged.append(f"{thing['id']} is part of something that never changed")
+                break
+    return flagged
+
+
 def phantom_furniture(scene: dict, truth: dict, fit: Fit) -> list[str]:
-    """Furniture the result names that stands on no real object, so a sentence citing it would invent a landmark."""
-    boxes = [box for item in truth.get("objects", {}).values() for box in (item["before"], item["after"]) if box]
+    """Furniture the result names that stands on no real unchanged object, so a sentence citing it would mislead.
+
+    Only objects that stayed put count; the old spot of a moved chair is not furniture.
+    """
+    boxes = [item["before"] for item in truth.get("objects", {}).values()
+             if item["before"] and item["after"] and item["before"]["center"] == item["after"]["center"]]
     phantoms = []
     for piece in scene.get("furniture", []):
         centre = fit.point(piece["box"]["center"])
@@ -227,6 +286,7 @@ def _totals(rows: list[dict], scene: dict, fits: dict[str, Fit], rmse: float, un
         "precision": round(len(found) / len(scene["changes"]), 3) if scene["changes"] else None,
         "partial": [f"{row['partial']} points at the {row['truth']} but covers too little of it" for row in partial],
         "names_correct": f"{sum(row['name_ok'] for row in found)} of {len(found)}",
+        "head_nouns_correct": f"{sum(row['head_noun_ok'] for row in found)} of {len(found)}",
         "mean_centre_error_m": _mean([side["centre_error_m"] for side in sides]),
         "mean_bottom_error_m": _mean([abs(side["bottom_error_m"]) for side in sides]),
         "mean_height_error_m": _mean([abs(side["height_error_m"]) for side in sides]),
@@ -242,10 +302,18 @@ def _totals(rows: list[dict], scene: dict, fits: dict[str, Fit], rmse: float, un
 def score(scene: dict, truth: dict) -> dict:
     fits, rmse = camera_fits(scene, truth)
     used: set = set()
-    rows = [_score_one(item, scene["changes"], fits, used) for item in truth["changes"]]
+    seeable = [item for item in truth["changes"] if observable(item, truth)]
+    unseeable = [item for item in truth["changes"] if not observable(item, truth)]
+    rows = [_score_one(item, scene["changes"], fits, used) for item in seeable]
     reported = _reported_unverifiable(truth, scene["changes"], fits["shape"])
     totals = _totals(rows, scene, fits, rmse, reported, _listed_unverifiable(truth, scene, fits["shape"]))
-    return {**totals, "phantom_furniture": phantom_furniture(scene, truth, fits["shape"])}
+    return {
+        **totals,
+        "unobservable": [f"{item['label']} ({item['type']}): its spot was in view in fewer than "
+                         f"{MIN_FRAMES_IN_VIEW} frames of the other video" for item in unseeable],
+        "seen_once_on_unchanged": seen_once_on_unchanged(scene, truth, fits["shape"]),
+        "phantom_furniture": phantom_furniture(scene, truth, fits["shape"]),
+    }
 
 
 def evaluate(result_dir: Path, truth_path: Path) -> dict:

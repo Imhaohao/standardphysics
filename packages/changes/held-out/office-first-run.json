@@ -1,0 +1,106 @@
+{
+ "camera_alignment": {
+  "scale": 0.989,
+  "rmse_m": 0.029
+ },
+ "recall": 0.6,
+ "precision": 0.75,
+ "partial": [
+  "c3 points at the wooden crate but covers too little of it"
+ ],
+ "names_correct": "1 of 3",
+ "mean_centre_error_m": 0.033,
+ "mean_bottom_error_m": 0.026,
+ "mean_height_error_m": 0.025,
+ "mean_overlap": 0.7,
+ "mean_distance_error_m": 0.017,
+ "false_alarms": [],
+ "unverifiable_reported": [],
+ "unverifiable_listed": [],
+ "changes": [
+  {
+   "truth": "armchair",
+   "type": "moved",
+   "found": "c1",
+   "name": "armchair",
+   "name_ok": true,
+   "shape_position_error_m": 0.072,
+   "before": {
+    "centre_error_m": 0.077,
+    "bottom_error_m": -0.033,
+    "height_error_m": -0.018,
+    "overlap": 0.73
+   },
+   "after": {
+    "centre_error_m": 0.027,
+    "bottom_error_m": -0.008,
+    "height_error_m": 0.007,
+    "overlap": 0.86
+   },
+   "true_distance_m": 1.656,
+   "reported_distance_m": 1.68,
+   "distance_error_m": 0.024,
+   "true_turn_deg": -90
+  },
+  {
+   "truth": "bar stool",
+   "type": "moved",
+   "found": "c2",
+   "name": "wooden stool",
+   "name_ok": false,
+   "shape_position_error_m": 0.028,
+   "before": {
+    "centre_error_m": 0.014,
+    "bottom_error_m": -0.033,
+    "height_error_m": 0.001,
+    "overlap": 0.66
+   },
+   "after": {
+    "centre_error_m": 0.021,
+    "bottom_error_m": -0.012,
+    "height_error_m": 0.02,
+    "overlap": 0.74
+   },
+   "true_distance_m": 2.6,
+   "reported_distance_m": 2.59,
+   "distance_error_m": 0.01,
+   "true_turn_deg": 0
+  },
+  {
+   "truth": "wooden crate",
+   "type": "removed",
+   "found": null,
+   "name": "wooden crate",
+   "name_ok": true,
+   "shape_position_error_m": 0.226,
+   "before": {
+    "centre_error_m": 0.221,
+    "bottom_error_m": -0.016,
+    "height_error_m": 0.035,
+    "overlap": 0.16
+   },
+   "partial": "c3"
+  },
+  {
+   "truth": "plastic container",
+   "type": "added",
+   "found": null
+  },
+  {
+   "truth": "brass pot",
+   "type": "added",
+   "found": "c4",
+   "name": "copper pot",
+   "name_ok": false,
+   "shape_position_error_m": 0.027,
+   "after": {
+    "centre_error_m": 0.028,
+    "bottom_error_m": 0.044,
+    "height_error_m": -0.079,
+    "overlap": 0.51
+   }
+  }
+ ],
+ "phantom_furniture": [],
+ "detector": "590b3d4af243"
+}

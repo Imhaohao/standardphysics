@@ -13,6 +13,7 @@ import numpy as np
 from . import language
 from .changes import Change, confidence
 from .evidence import GONE, KEPT, UNSEEN, DepthLookup, Tolerance, compare
+from .landmarks import inside_box
 from .pictures import box_pixels, detail_crop, empty_spot_view, padded_bounds, sightings
 from .regions import Box, Region
 from .views import AFTER, BEFORE, EPOCH_NAMES, View, of_epoch
@@ -147,7 +148,8 @@ def write_cloud(path: Path, scene, found: list[Change]) -> dict:
     change_of = np.zeros(len(cloud), dtype=np.uint8)
     for number, change in enumerate(found, start=1):
         for region in change.regions:
-            change_of[region.point_ids] = number
+            inside = inside_box(cloud.points[region.point_ids], region.box, margin_m=0.05)
+            change_of[region.point_ids[inside]] = number
     display = np.where(scene.status == GONE, KEPT, scene.status).astype(np.uint8)
     parts = [cloud.points.astype("<f4"), cloud.colors.astype(np.uint8), cloud.epoch.astype(np.uint8), display,
              change_of]

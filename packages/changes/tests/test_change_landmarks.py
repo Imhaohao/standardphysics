@@ -111,3 +111,11 @@ def test_pixel_labels_vote_onto_the_points_they_see():
     classes[:, :40] = 3
     points = np.array([[-0.5, 0.0, 3.0], [0.5, 0.0, 3.0], [0.0, 0.0, 1.0]])
     assert vote_classes(points, [view, view], [classes, classes]).tolist() == [3, 7, -1]
+
+
+def test_a_chair_is_never_placed_beside_a_chair():
+    seat = Box(np.array([1.0, 0.0, 0.4]), np.array([0.5, 0.5, 0.8]), 0.0)
+    other = Landmark(category="chair", point_ids=np.arange(1), box=Box(np.array([1.6, 0.0, 0.4]),
+                     np.array([0.5, 0.5, 0.8]), 0.0), name="white plastic chair")
+    assert place_phrase(seat, [other]) == "beside the white plastic chair"
+    assert place_phrase(seat, [other], subject="plastic chair") == "on the open floor"

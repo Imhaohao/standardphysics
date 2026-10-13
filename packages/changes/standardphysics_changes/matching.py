@@ -8,7 +8,8 @@ import numpy as np
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial import cKDTree
 
-from .regions import Box, Region
+from .landmarks import footprint_gap
+from .regions import Box, Region, fit_box
 
 
 @dataclass(frozen=True)
@@ -105,6 +106,64 @@ def consistent_turn(turn: float | None, before: Box, after: Box, tolerance_deg: 
     axis_turn = (second - first) % 180
     disagreement = abs((turn - axis_turn + 90) % 180 - 90)
     return turn if disagreement <= tolerance_deg else None
+
+
+def _head(region: Region) -> str:
+    words = region.names.get("name", "").split()
+    return words[-1] if words else ""
+
+
+def _touches(a: Box, b: Box, reach_m: float) -> bool:
+    return footprint_gap(a, b) <= reach_m
+
+
+def absorb_fragments(moves: list[Move], removed: list[Region], added: list[Region], points: np.ndarray,
+                     reach_m: float = 0.1) -> tuple[list[Region], list[Region]]:
+    """Fold a stray piece of a moved object back into the move instead of reporting it on its own.
+
+    One chair can come out as two regions at its old spot when its legs and seat are seen from
+    different frames. An unpaired region that touches either end of a move and carries the same
+    kind of name joins that end, and its points refit the box; the rest are returned untouched.
+    """
+    def fold(regions: list[Region], end: str) -> list[Region]:
+        left = []
+        for region in regions:
+            host = next((getattr(m, end) for m in moves if _head(getattr(m, end)) == _head(region)
+                         and _touches(getattr(m, end).box, region.box, reach_m)), None)
+            if host is None:
+                left.append(region)
+                continue
+            host.point_ids = np.union1d(host.point_ids, region.point_ids)
+            host.box = fit_box(points[host.point_ids])
+        return left
+
+    loose = fold(removed, "removed"), fold(added, "added")
+    for move in moves:
+        move.distance_m = float(np.linalg.norm(move.added.box.center[:2] - move.removed.box.center[:2]))
+    return loose
+
+
+def _bottom(box: Box) -> float:
+    return float(box.center[2] - box.size[2] / 2)
+
+
+def _top(box: Box) -> float:
+    return float(box.center[2] + box.size[2] / 2)
+
+
+def match_heights(moves: list[Move], same_top_m: float = 0.1, floating_m: float = 0.2) -> None:
+    """Both ends of a move are one object, so when one end's box lost its legs it borrows the other's height.
+
+    A stool whose thin legs one video never resolved comes out as a seat hanging in the air.
+    The tops agreeing is what separates that from a box lifted onto a table, whose top rises too.
+    """
+    for move in moves:
+        low, high = sorted((move.removed.box, move.added.box), key=_bottom)
+        if abs(_top(low) - _top(high)) > same_top_m or _bottom(high) - _bottom(low) <= floating_m:
+            continue
+        bottom, top = _bottom(low), _top(high)
+        high.center = np.array([high.center[0], high.center[1], (bottom + top) / 2])
+        high.size = np.array([high.size[0], high.size[1], top - bottom])
 
 
 def _thin(points: np.ndarray, cap: int = 1500) -> np.ndarray:

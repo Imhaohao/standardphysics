@@ -1,6 +1,6 @@
 {
  "format": 1,
- "detector": "678eab8370c6",
+ "detector": "6d29accc7676",
  "inputs": {
   "before": "before.mp4",
   "after": "after.mp4"
@@ -16,7 +16,7 @@
    "type": "moved",
    "name": "armchair",
    "detail": "black leather wooden armchair",
-   "sentence": "The armchair moved 1.7 m from between the console table and the wooden bench onto the open floor.",
+   "sentence": "The armchair moved 1.7 m from between the console table and the wooden bench to beside the wooden table.",
    "partly_seen": false,
    "size": [
     1.0,
@@ -152,7 +152,7 @@
       ]
      ]
     },
-    "where": "on the open floor"
+    "where": "beside the wooden table"
    },
    "pictures": {
     "before": {
@@ -245,7 +245,7 @@
    "type": "moved",
    "name": "wooden stool",
    "detail": "dark brown wooden stool",
-   "sentence": "The wooden stool moved 2.6 m from beside the console table to near the wooden bench.",
+   "sentence": "The wooden stool moved 2.6 m from between the console table and the wooden table to near the wooden bench.",
    "partly_seen": false,
    "size": [
     0.55,
@@ -323,7 +323,7 @@
       ]
      ]
     },
-    "where": "beside the console table"
+    "where": "between the console table and the wooden table"
    },
    "after": {
     "box": {
@@ -639,14 +639,14 @@
    "type": "added",
    "name": "copper pot",
    "detail": "shiny copper pot with lid",
-   "sentence": "A shiny copper pot with lid appeared near the potted plant.",
+   "sentence": "A shiny copper pot with lid appeared on the wooden table.",
    "partly_seen": false,
    "size": [
     0.26,
     0.29,
-    0.21
+    0.25
    ],
-   "size_text": "about 30 cm by 25 cm and 20 cm tall",
+   "size_text": "about 30 cm by 25 cm and 25 cm tall",
    "confidence": 0.96,
    "evidence": {
     "points": 889,
@@ -663,34 +663,34 @@
      "center": [
       3.531,
       1.353,
-      0.997
+      0.978
      ],
      "size": [
       0.26,
       0.292,
-      0.212
+      0.25
      ],
      "yaw_deg": 23.9,
      "corners": [
       [
        3.471,
        1.167,
-       0.891
+       0.853
       ],
       [
        3.709,
        1.273,
-       0.891
+       0.853
       ],
       [
        3.353,
        1.434,
-       0.891
+       0.853
       ],
       [
        3.591,
        1.539,
-       0.891
+       0.853
       ],
       [
        3.471,
@@ -714,46 +714,46 @@
       ]
      ]
     },
-    "where": "near the potted plant"
+    "where": "on the wooden table"
    },
    "pictures": {
     "before": {
      "file": "pictures/c4-before.jpg",
      "video": "before",
      "time_s": 5.0,
-     "aspect": 1.0,
+     "aspect": 0.996,
      "box": [
       [
-       0.452,
-       0.718
+       0.495,
+       0.723
       ],
       [
-       1.014,
-       0.811
+       0.997,
+       0.812
       ],
       [
-       0.447,
-       0.481
+       0.492,
+       0.499
       ],
       [
-       0.87,
-       0.535
+       0.872,
+       0.55
       ],
       [
-       0.5,
-       0.349
+       0.546,
+       0.335
       ],
       [
-       1.119,
-       0.414
+       1.108,
+       0.394
       ],
       [
-       0.482,
-       0.187
+       0.53,
+       0.189
       ],
       [
-       0.938,
-       0.223
+       0.944,
+       0.221
       ]
      ]
     },
@@ -764,36 +764,36 @@
      "aspect": 1.0,
      "box": [
       [
-       0.676,
-       0.728
+       0.67,
+       0.752
       ],
       [
-       0.762,
-       0.65
+       0.755,
+       0.671
       ],
       [
-       0.188,
-       0.669
+       0.19,
+       0.691
       ],
       [
-       0.309,
-       0.601
+       0.31,
+       0.619
       ],
       [
-       0.728,
-       0.357
+       0.731,
+       0.323
       ],
       [
-       0.812,
-       0.311
+       0.814,
+       0.277
       ],
       [
-       0.221,
-       0.319
+       0.229,
+       0.285
       ],
       [
-       0.343,
-       0.278
+       0.35,
+       0.244
       ]
      ]
     }
@@ -1029,6 +1029,64 @@
       3.852,
       3.687,
       0.767
+     ]
+    ]
+   }
+  },
+  {
+   "name": "wooden table",
+   "box": {
+    "center": [
+     3.495,
+     1.398,
+     0.811
+    ],
+    "size": [
+     1.202,
+     0.512,
+     0.084
+    ],
+    "yaw_deg": 88.6,
+    "corners": [
+     [
+      3.736,
+      0.79,
+      0.769
+     ],
+     [
+      3.766,
+      1.992,
+      0.769
+     ],
+     [
+      3.224,
+      0.803,
+      0.769
+     ],
+     [
+      3.254,
+      2.005,
+      0.769
+     ],
+     [
+      3.736,
+      0.79,
+      0.853
+     ],
+     [
+      3.766,
+      1.992,
+      0.853
+     ],
+     [
+      3.224,
+      0.803,
+      0.853
+     ],
+     [
+      3.254,
+      2.005,
+      0.853
      ]
     ]
    }
@@ -2540,117 +2598,13 @@
   }
  ],
  "seconds": {
-  "reconstruction": 46.0,
-  "change evidence": 7.1,
-  "naming": 43.6
+  "reconstruction": 37.0,
+  "change evidence": 4.6,
+  "naming": 27.2
  },
  "scale": {
   "factor": 0.8758,
   "from": "camera height"
  },
- "unchecked": [
-  {
-   "id": "u1",
-   "video": "before",
-   "name": "wooden table",
-   "detail": "light brown wooden table",
-   "sentence": "A light brown wooden table in front of the chair shows only in the before video; the after video never looked there, so it may or may not be new.",
-   "box": {
-    "center": [
-     3.477,
-     0.808,
-     0.753
-    ],
-    "size": [
-     0.178,
-     0.472,
-     0.172
-    ],
-    "yaw_deg": 87.9,
-    "corners": [
-     [
-      3.709,
-      0.711,
-      0.667
-     ],
-     [
-      3.715,
-      0.889,
-      0.667
-     ],
-     [
-      3.238,
-      0.728,
-      0.667
-     ],
-     [
-      3.244,
-      0.906,
-      0.667
-     ],
-     [
-      3.709,
-      0.711,
-      0.839
-     ],
-     [
-      3.715,
-      0.889,
-      0.839
-     ],
-     [
-      3.238,
-      0.728,
-      0.839
-     ],
-     [
-      3.244,
-      0.906,
-      0.839
-     ]
-    ]
-   },
-   "size_text": "about 45 cm by 20 cm and 15 cm tall",
-   "picture": {
-    "file": "pictures/u1.jpg",
-    "video": "before",
-    "time_s": 4.5,
-    "aspect": 1.0,
-    "box": [
-     [
-      0.884,
-      1.268
-     ],
-     [
-      0.901,
-      1.079
-     ],
-     [
-      0.322,
-      0.978
-     ],
-     [
-      0.409,
-      0.868
-     ],
-     [
-      0.938,
-      1.088
-     ],
-     [
-      0.946,
-      0.918
-     ],
-     [
-      0.325,
-      0.826
-     ],
-     [
-      0.416,
-      0.731
-     ]
-    ]
-   }
-  }
- ]
+ "unchecked": []
 }
