@@ -169,6 +169,24 @@ def playable_copy(source: Path, target: Path) -> str | None:
     return target.name if subprocess.run(command, check=False).returncode == 0 else None
 
 
+def unchecked_records(scene, regions: list[Region], out: Path) -> list[dict]:
+    """Things only one video saw. They are listed, never counted as changes."""
+    folder = out / "pictures"
+    folder.mkdir(parents=True, exist_ok=True)
+    records = []
+    for number, region in enumerate(regions, start=1):
+        identifier, video = f"u{number}", EPOCH_NAMES[region.epoch]
+        name, detail, where = (region.names.get(key, "") for key in ("name", "detail", "where"))
+        view = _sighting_view(region, scene)
+        shot = picture(view, region.box, folder / f"{identifier}.jpg") if view is not None else None
+        records.append({
+            "id": identifier, "video": video, "name": name or "object", "detail": detail or "object",
+            "sentence": language.unchecked_sentence(detail or name or "object", where, video),
+            "box": box_record(region.box), "size_text": language.size_phrase(region.box.size), "picture": shot,
+        })
+    return records
+
+
 def landmark_record(landmark) -> dict:
     return {"name": landmark.name, "box": box_record(landmark.box)}
 

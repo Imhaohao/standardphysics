@@ -1982,12 +1982,13 @@
   }
  ],
  "seconds": {
-  "reconstruction": 39.5,
-  "change evidence": 4.3,
-  "naming": 25.3
+  "reconstruction": 47.7,
+  "change evidence": 7.2,
+  "naming": 34.6
  },
  "scale": {
   "factor": 0.9232,
   "from": "camera height"
- }
+ },
+ "unchecked": []
 }

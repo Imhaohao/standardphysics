@@ -68,6 +68,12 @@ def added_sentence(detail: str, where: str) -> str:
     return f"{article(detail).capitalize()} {detail} appeared{_where(where)}."
 
 
+def unchecked_sentence(detail: str, where: str, video: str) -> str:
+    other = "before" if video == "after" else "after"
+    return (f"{article(detail).capitalize()} {detail}{_where(where)} shows only in the {video} video; "
+            f"the {other} video never looked there, so it may or may not be new.")
+
+
 def short_clause(change: dict) -> str:
     name = change["name"]
     if change["type"] == "moved":

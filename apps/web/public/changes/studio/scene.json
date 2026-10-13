@@ -243,7 +243,7 @@
    "type": "moved",
    "name": "ottoman",
    "detail": "brown leather ottoman",
-   "sentence": "The ottoman moved 90 cm from near the sideboard to between the brown leather chair and the sideboard and turned about 60\u00b0 clockwise.",
+   "sentence": "The ottoman moved 90 cm from near the sideboard to between the brown leather chair and the sideboard.",
    "size": [
     0.71,
     0.99,
@@ -463,7 +463,7 @@
     }
    },
    "distance_m": 0.9,
-   "turn_deg": -60,
+   "turn_deg": null,
    "similarity": 1.1
   },
   {
@@ -2757,12 +2757,13 @@
   }
  ],
  "seconds": {
-  "reconstruction": 41.7,
-  "change evidence": 4.8,
-  "naming": 36.6
+  "reconstruction": 47.8,
+  "change evidence": 7.3,
+  "naming": 45.9
  },
  "scale": {
   "factor": 0.9406,
   "from": "camera height"
- }
+ },
+ "unchecked": []
 }

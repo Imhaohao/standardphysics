@@ -1,5 +1,5 @@
 /* eslint-disable @next/next/no-img-element -- crops are static files beside scene.json, already sized */
-import { BOX_EDGES, type ChangePicture, type ChangeType } from "@/lib/room-changes";
+import { BOX_EDGES, type ChangePicture } from "@/lib/room-changes";
 
 function clockTime(seconds: number): string {
   const whole = Math.round(seconds);
@@ -9,19 +9,20 @@ function clockTime(seconds: number): string {
 type BoxPictureProps = {
   picture: ChangePicture | undefined;
   base: string;
-  type: ChangeType;
+  /** The tone class suffix: a change type, or "unchecked". */
+  tone: string;
   emptySpot: boolean;
   alt: string;
 };
 
 /** A frame from one video with the change's 3D box drawn where the camera saw it. */
-export function BoxPicture({ picture, base, type, emptySpot, alt }: BoxPictureProps) {
+export function BoxPicture({ picture, base, tone, emptySpot, alt }: BoxPictureProps) {
   if (!picture) {
     return <div className="grid aspect-[4/5] place-items-center rounded-md bg-ink/5 text-sm text-ink-faint">No clear view</div>;
   }
   return (
     <figure className="min-w-0">
-      <div className={`change-tone-${type} relative overflow-hidden rounded-md bg-ink/5`} style={{ aspectRatio: picture.aspect }}>
+      <div className={`change-tone-${tone} relative overflow-hidden rounded-md bg-ink/5`} style={{ aspectRatio: picture.aspect }}>
         <img src={`${base}/${picture.file}`} alt={alt} className="size-full object-cover" />
         <svg viewBox="0 0 1 1" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 size-full" aria-hidden>
           {BOX_EDGES.map(([a, b]) => (

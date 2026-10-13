@@ -27,6 +27,17 @@ export type RoomChange = {
   turn_deg?: number | null;
 };
 
+export type UncheckedThing = {
+  id: string;
+  video: Video;
+  name: string;
+  detail: string;
+  sentence: string;
+  box: ChangeBox;
+  size_text: string;
+  picture: ChangePicture | null;
+};
+
 export type ChangeCamera = {
   video: Video;
   frame: number;
@@ -45,6 +56,8 @@ export type ChangeScene = {
   summary: string;
   changes: RoomChange[];
   coverage: { before_checked_by_other: number; after_checked_by_other: number };
+  /** Things only one video saw, in places the other never looked: listed, never counted as changes. */
+  unchecked?: UncheckedThing[];
   /** Furniture that stayed put, which the sentences describe changes against. */
   furniture: { name: string; box: ChangeBox }[];
   room: { low: Vec3; high: Vec3 };

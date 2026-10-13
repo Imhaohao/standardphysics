@@ -134,7 +134,19 @@ def _move_errors(item: dict, change: dict) -> dict:
     return row
 
 
+MIN_OVERLAP = 0.25
+
+
+def _best_overlap(row: dict) -> float:
+    return max((row[side]["overlap"] for side in ("before", "after") if side in row), default=0.0)
+
+
 def _score_one(item: dict, predictions: list[dict], fits: dict[str, Fit], used: set) -> dict:
+    """A true change is found when a report of its type sits within 50 cm and its box covers a real part of it.
+
+    A report nearby whose box overlaps the object by less than a quarter is recorded as partial:
+    it points at the right spot but did not find the object's extent.
+    """
     candidates = [(c, match_error(item, c, fits["shape"])) for c in predictions
                   if c["type"] == item["type"] and c["id"] not in used]
     change, error = min(candidates, key=lambda pair: pair[1], default=(None, np.inf))
@@ -149,6 +161,8 @@ def _score_one(item: dict, predictions: list[dict], fits: dict[str, Fit], used: 
             row[side] = errors
     if item["type"] == "moved":
         row |= _move_errors(item, change)
+    if _best_overlap(row) < MIN_OVERLAP:
+        row["partial"], row["found"] = row["found"], None
     return row
 
 
@@ -179,13 +193,15 @@ def _mean(values: list[float]) -> float | None:
 
 def _totals(rows: list[dict], scene: dict, fits: dict[str, Fit], rmse: float, unverifiable: list[str]) -> dict:
     found = [row for row in rows if row["found"]]
+    partial = [row for row in rows if row.get("partial")]
     sides = [row[side] for row in found for side in ("before", "after") if side in row]
     moves = [row for row in found if row["type"] == "moved"]
-    matched = {row["found"] for row in found}
+    matched = {row["found"] for row in found} | {row["partial"] for row in partial}
     return {
         "camera_alignment": {"scale": round(fits["shape"].scale, 3), "rmse_m": round(rmse, 3)},
         "recall": round(len(found) / len(rows), 3) if rows else None,
         "precision": round(len(found) / len(scene["changes"]), 3) if scene["changes"] else None,
+        "partial": [f"{row['partial']} points at the {row['truth']} but covers too little of it" for row in partial],
         "names_correct": f"{sum(row['name_ok'] for row in found)} of {len(found)}",
         "mean_centre_error_m": _mean([side["centre_error_m"] for side in sides]),
         "mean_bottom_error_m": _mean([abs(side["bottom_error_m"]) for side in sides]),

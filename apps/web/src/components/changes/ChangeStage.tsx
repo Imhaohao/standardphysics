@@ -13,6 +13,7 @@ import { CameraPaths } from "./CameraPaths";
 import { ChangeCloud, type CloudView } from "./ChangeCloud";
 import { ChangeMark } from "./ChangeMarks";
 import { FurnitureNames } from "./FurnitureNames";
+import { UncheckedMarks } from "./UncheckedMarks";
 
 /** What the camera should look at; `nonce` lets the same request be made twice. */
 export type Focus = { kind: "overview"; nonce: number } | { kind: "change"; id: string; nonce: number };
@@ -60,7 +61,8 @@ function overviewPose(scene: ChangeScene, camera: PerspectiveCamera): Pose {
   const start = scene.cameras.find((item) => item.video === "before")?.position ?? [target.x, target.y - 3, 1.5];
   const away = new Vector3(start[0] - target.x, start[1] - target.y, 0).normalize();
   const direction = away.multiplyScalar(Math.cos(OVERVIEW_TILT)).setZ(Math.sin(OVERVIEW_TILT));
-  const distance = (radius / Math.sin(narrowFov(camera) / 2)) * 1.02;
+  const labelRoom = camera.aspect < 1 ? 1.18 : 1.06;
+  const distance = (radius / Math.sin(narrowFov(camera) / 2)) * labelRoom;
   return { position: target.clone().addScaledVector(direction, distance), target };
 }
 
@@ -68,7 +70,8 @@ function overviewPose(scene: ChangeScene, camera: PerspectiveCamera): Pose {
 export function changePose(change: RoomChange, camera: PerspectiveCamera, around: Vector3): Pose {
   const target = new Vector3(...changeCentre(change));
   const direction = camera.position.clone().sub(around).normalize();
-  const distance = Math.min(4.5, Math.max(1.6, (changeReach(change) / Math.sin(narrowFov(camera) / 2)) * 1.1));
+  const cap = change.type === "moved" ? 9 : 4.5;
+  const distance = Math.min(cap, Math.max(1.6, (changeReach(change) / Math.sin(narrowFov(camera) / 2)) * 1.15));
   const position = target.clone().addScaledVector(direction, distance);
   position.z = Math.max(position.z, target.z + 0.8);
   return { position, target };
@@ -167,6 +170,7 @@ export function ChangeStage({ scene, cloud, view, selectedId, focus, onSelect, o
           selected={change.id === selectedId} dimmed={selectedId !== null && change.id !== selectedId}
           onSelect={onSelect} />
       ))}
+      <UncheckedMarks things={scene.unchecked ?? []} colour={palette.hatch} before={view.before} after={view.after} />
       <CameraPaths cameras={scene.cameras} before={view.paths && view.before} after={view.paths && view.after}
         colour={palette.ink} />
       <OrbitControls makeDefault maxPolarAngle={Math.PI * 0.49} minDistance={0.8} maxDistance={14} enableDamping={false} />

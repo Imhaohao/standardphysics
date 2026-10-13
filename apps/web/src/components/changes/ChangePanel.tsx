@@ -3,7 +3,9 @@ import { Button } from "@/components/ui/Button";
 import { type ChangeScene, formatLength, percent, phoneHeight } from "@/lib/room-changes";
 import { ChangeCard } from "./ChangeCard";
 import { EvidenceDiagram } from "./EvidenceDiagram";
+import { Figure } from "./Figure";
 import { RoomSwitcher } from "./RoomSwitcher";
+import { UncheckedList } from "./UncheckedList";
 
 function InputVideos({ base, scene }: { base: string; scene: ChangeScene }) {
   const { before, after } = scene.videos ?? { before: null, after: null };
@@ -30,9 +32,9 @@ function MeasuredWith({ scene }: { scene: ChangeScene }) {
   return (
     <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
       <dt className="text-ink-muted">Phone height</dt>
-      <dd className="text-ink"><span className="measurement">{formatLength(phoneHeight(scene.cameras))}</span> above the floor</dd>
+      <dd className="text-ink"><Figure>{formatLength(phoneHeight(scene.cameras))}</Figure> above the floor</dd>
       <dt className="text-ink-muted">Frames compared</dt>
-      <dd className="text-ink"><span className="measurement">{frames("before")}</span> before and <span className="measurement">{frames("after")}</span> after</dd>
+      <dd className="text-ink"><Figure>{String(frames("before"))}</Figure> before and <Figure>{String(frames("after"))}</Figure> after</dd>
     </dl>
   );
 }
@@ -42,7 +44,7 @@ function CoverageBar({ label, share }: { label: string; share: number }) {
     <div>
       <div className="flex items-baseline justify-between gap-3 text-sm">
         <span className="text-ink-muted">{label}</span>
-        <span className="measurement text-ink">{percent(share)}</span>
+        <Figure>{percent(share)}</Figure>
       </div>
       <div className="mt-1 h-2 overflow-hidden rounded-full bg-[repeating-linear-gradient(135deg,var(--color-unseen)_0_2px,transparent_2px_6px)]"
         role="presentation">
@@ -118,6 +120,7 @@ export function ChangePanel({ room, base, scene, selectedId, onSelect, cardRefs,
           </li>
         ))}
       </ol>
+      <UncheckedList base={base} things={scene.unchecked ?? []} />
       <BlindSpots scene={scene} shown={blindSpots} onToggle={onBlindSpots} />
     </div>
   );

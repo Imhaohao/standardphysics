@@ -56,7 +56,7 @@ function ChangeLabel({ change, place, selected, onSelect }: {
       <Button variant="chip" aria-pressed={selected} onClick={() => onSelect(change.id)}
         className={`change-tone-${change.type} py-1 pl-2`}>
         <ChangeTypeIcon type={change.type} />
-        {change.name}
+        <span className={selected ? "" : "sr-only sm:not-sr-only"}>{change.name}</span>
       </Button>
     </Html>
   );

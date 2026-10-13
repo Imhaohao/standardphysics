@@ -8,7 +8,7 @@ import numpy as np
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial import cKDTree
 
-from .regions import Region
+from .regions import Box, Region
 
 
 @dataclass(frozen=True)
@@ -83,6 +83,30 @@ def estimate_turn(before: np.ndarray, after: np.ndarray, step_deg: float = 5.0) 
     return float(angles[best])
 
 
+def long_axis_deg(box: Box, min_aspect: float = 1.25) -> float | None:
+    """Which way a box's long side points, in degrees modulo 180, or None for a nearly square footprint."""
+    long_side, short_side = float(box.size[:2].max()), float(box.size[:2].min())
+    if long_side < min_aspect * short_side:
+        return None
+    along_x = box.size[0] >= box.size[1]
+    return float(np.degrees(box.yaw) + (0 if along_x else 90)) % 180
+
+
+def consistent_turn(turn: float | None, before: Box, after: Box, tolerance_deg: float = 20.0) -> float | None:
+    """The shape's turn, kept only if it agrees with how an elongated footprint's long side turned.
+
+    An ottoman seen from different sides can overlay best at a wrong angle; its footprint's
+    long side still says which way it lies, up to a half turn. When the two disagree the
+    turn is unknowable from these views and is left out.
+    """
+    first, second = long_axis_deg(before), long_axis_deg(after)
+    if turn is None or first is None or second is None:
+        return turn
+    axis_turn = (second - first) % 180
+    disagreement = abs((turn - axis_turn + 90) % 180 - 90)
+    return turn if disagreement <= tolerance_deg else None
+
+
 def _thin(points: np.ndarray, cap: int = 1500) -> np.ndarray:
     if len(points) <= cap:
         return points
@@ -104,7 +128,7 @@ def pair_moves(removed: list[Region], added: list[Region], points: np.ndarray,
     for i, j in zip(rows, cols):
         if np.isfinite(scores[i, j]):
             a, b = removed[i], added[j]
-            turn = estimate_turn(points[a.point_ids], points[b.point_ids])
+            turn = consistent_turn(estimate_turn(points[a.point_ids], points[b.point_ids]), a.box, b.box)
             distance = float(np.linalg.norm(b.box.center[:2] - a.box.center[:2]))
             moves.append(Move(a, b, distance, turn, float(scores[i, j])))
     return moves

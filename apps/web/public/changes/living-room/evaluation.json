@@ -5,6 +5,7 @@
  },
  "recall": 1.0,
  "precision": 1.0,
+ "partial": [],
  "names_correct": "5 of 5",
  "mean_centre_error_m": 0.049,
  "mean_bottom_error_m": 0.02,

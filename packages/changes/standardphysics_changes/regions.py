@@ -8,7 +8,7 @@ import numpy as np
 from scipy.ndimage import binary_dilation, label
 from scipy.spatial import ConvexHull, QhullError
 
-from .evidence import GONE, KEPT
+from .evidence import GONE, KEPT, UNSEEN
 
 
 @dataclass(frozen=True)
@@ -177,6 +177,53 @@ def _region_from_label(component, cells, seeds, raised, allowed, kind, epoch, ru
     member_ids = np.flatnonzero(grown[tuple(cells.T)] & raised)
     return Region(kind=kind, epoch=epoch, point_ids=member_ids, box=Box(np.zeros(3), np.zeros(3), 0.0),
                   seed_count=len(seed_ids))
+
+
+@dataclass(frozen=True)
+class OneSidedRules:
+    voxel_m: float = 0.04
+    min_points: int = 500
+    longest_m: float = 1.6
+    shortest_m: float = 0.15
+    min_height_m: float = 0.12
+    max_checked_share: float = 0.05
+
+
+def _checked_share(component: np.ndarray, checked: np.ndarray) -> float:
+    """How much of the band around a component the other video did see."""
+    shell = binary_dilation(component, np.ones((3, 3, 3), dtype=bool), iterations=2) & ~component
+    return float((shell & checked).sum() / max(shell.sum(), 1))
+
+
+def one_sided_regions(points: np.ndarray, status: np.ndarray, epoch: int, ceiling_m: float,
+                      rules: OneSidedRules = OneSidedRules()) -> list[Region]:
+    """Object-sized clumps only this video saw, standing in a part of the room the other video never checked.
+
+    The hidden back of a sofa is also unseen, but the sofa around it was seen by both, so
+    a clump counts only when almost nothing around it was checked either.
+    """
+    raised = (points[:, 2] > 0.05) & (points[:, 2] < ceiling_m)
+    unseen = raised & (status == UNSEEN)
+    if unseen.sum() < rules.min_points:
+        return []
+    cells, _, shape = _grid(points, rules.voxel_m)
+    checked = _occupancy(cells, shape, raised & (status == KEPT))
+    labels, count = label(_occupancy(cells, shape, unseen), np.ones((3, 3, 3), dtype=bool))
+    point_labels = labels[tuple(cells.T)]
+    found = []
+    for index in range(1, count + 1):
+        members = np.flatnonzero((point_labels == index) & unseen)
+        if len(members) < rules.min_points:
+            continue
+        box = fit_box(points[members])
+        if _object_sized(box, rules) and _checked_share(labels == index, checked) <= rules.max_checked_share:
+            found.append(Region(kind="unchecked", epoch=epoch, point_ids=members, box=box, seed_count=len(members)))
+    return found
+
+
+def _object_sized(box: Box, rules: OneSidedRules) -> bool:
+    longest, shortest = float(box.size[:2].max()), float(box.size[:2].min())
+    return longest <= rules.longest_m and shortest >= rules.shortest_m and float(box.size[2]) >= rules.min_height_m
 
 
 def finish_regions(regions: list[Region], points: np.ndarray, rules: RegionRules = RegionRules()) -> list[Region]:

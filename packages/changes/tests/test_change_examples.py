@@ -15,12 +15,12 @@ ROOT = pathlib.Path(__file__).resolve().parents[3]
 RESULTS = ROOT / "apps" / "web" / "public" / "changes"
 TRUTH = ROOT / "datasets" / "changes"
 
-# room, changes it must find, how many it may report at most
+# room, changes found with a box covering the object, changes only partly found, things listed as seen once
 EXPECTED = [
-    ("living-room", 5, 5),
-    ("studio", 5, 5),
-    ("living-room-same", 0, 0),
-    ("living-room-blind-spot", 1, 1),
+    ("living-room", 5, 0, 0),
+    ("studio", 4, 1, 0),
+    ("living-room-same", 0, 0, 0),
+    ("living-room-blind-spot", 1, 0, 1),
 ]
 
 
@@ -29,13 +29,14 @@ def scored(room: str) -> tuple[dict, dict]:
     return scene, score(scene, json.loads((TRUTH / room / "truth.json").read_text()))
 
 
-@pytest.mark.parametrize(("room", "must_find", "may_report"), EXPECTED)
-def test_each_example_finds_its_changes_and_nothing_else(room, must_find, may_report):
+@pytest.mark.parametrize(("room", "found", "partial", "seen_once"), EXPECTED)
+def test_each_example_finds_its_changes_and_nothing_else(room, found, partial, seen_once):
     scene, report = scored(room)
-    assert sum(1 for row in report["changes"] if row["found"]) == must_find
-    assert len(scene["changes"]) <= may_report
+    assert sum(1 for row in report["changes"] if row["found"]) == found
+    assert len(report["partial"]) == partial
     assert report["false_alarms"] == []
     assert report["unverifiable_reported"] == []
+    assert len(scene["unchecked"]) == seen_once
 
 
 @pytest.mark.parametrize("room", ["living-room", "studio", "living-room-blind-spot"])
@@ -45,7 +46,7 @@ def test_boxes_stand_on_what_holds_them_up(room):
     assert report["mean_height_error_m"] < 0.1
 
 
-@pytest.mark.parametrize("room", [room for room, _, _ in EXPECTED])
+@pytest.mark.parametrize("room", [room for room, *_ in EXPECTED])
 def test_sentences_carry_the_numbers_beside_them(room):
     scene, _ = scored(room)
     for change in scene["changes"]:

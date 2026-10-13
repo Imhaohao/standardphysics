@@ -2,10 +2,8 @@ import { forwardRef } from "react";
 import { CHANGE_LABEL, type RoomChange, type SpotEvidence, formatLength, sentenceCase } from "@/lib/room-changes";
 import { BoxPicture } from "./BoxPicture";
 import { ChangeTypeIcon } from "./ChangeTypeIcon";
+import { Figure } from "./Figure";
 
-function Measure({ children }: { children: string }) {
-  return <span className="measurement text-ink">{children}</span>;
-}
 
 /** Footprint and height as two plain numbers; the sentence already carries distance and turn. */
 function SizeFacts({ size }: { size: RoomChange["size"] }) {
@@ -13,9 +11,9 @@ function SizeFacts({ size }: { size: RoomChange["size"] }) {
   return (
     <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
       <dt className="text-ink-muted">Footprint</dt>
-      <dd><Measure>{formatLength(Math.max(a, b))}</Measure> by <Measure>{formatLength(Math.min(a, b))}</Measure></dd>
+      <dd><Figure>{formatLength(Math.max(a, b))}</Figure> by <Figure>{formatLength(Math.min(a, b))}</Figure></dd>
       <dt className="text-ink-muted">Height</dt>
-      <dd><Measure>{formatLength(height)}</Measure></dd>
+      <dd><Figure>{formatLength(height)}</Figure></dd>
     </dl>
   );
 }
@@ -75,9 +73,9 @@ export const ChangeCard = forwardRef<HTMLButtonElement, ChangeCardProps>(functio
         <span className="font-display text-lg font-semibold text-ink">{sentenceCase(change.name)}</span>
       </h3>
       <div className="mt-3 grid grid-cols-2 gap-3">
-        <BoxPicture picture={change.pictures.before} base={base} type={change.type} emptySpot={change.type === "added"}
+        <BoxPicture picture={change.pictures.before} base={base} tone={change.type} emptySpot={change.type === "added"}
           alt={`The before video at the spot where the ${change.name} ${change.type === "added" ? "later appeared" : "stood"}`} />
-        <BoxPicture picture={change.pictures.after} base={base} type={change.type} emptySpot={change.type === "removed"}
+        <BoxPicture picture={change.pictures.after} base={base} tone={change.type} emptySpot={change.type === "removed"}
           alt={`The after video at the spot where the ${change.name} ${change.type === "removed" ? "used to be" : "is now"}`} />
       </div>
       <p className="mt-3 text-base text-ink text-pretty">{change.sentence}</p>

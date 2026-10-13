@@ -99,9 +99,16 @@ def _pieces(points: np.ndarray, ids: np.ndarray, rules: LandmarkRules) -> list[n
     return [ids[point_labels == index] for index in range(1, count + 1)]
 
 
-def _is_furniture_sized(box: Box, count: int, rules: LandmarkRules) -> bool:
-    return (count >= rules.min_points and float(box.size[:2].max()) >= rules.min_extent_m
-            and float(box.size[:2].min()) >= rules.min_thickness_m)
+# The longest footprint side each kind of furniture plausibly has. A "chair" 2.3 m long is
+# a chair joined to its neighbours by the segmenter, and would mislead every sentence near it.
+LONGEST_SIDE_M = {"chair": 1.3, "plant": 1.5, "television": 2.2, "bench": 2.5, "cabinet": 2.6, "shelf": 2.6,
+                  "table": 2.8, "counter": 6.0, "sofa": 3.2, "bed": 2.6}
+
+
+def _is_furniture_sized(box: Box, count: int, category: str, rules: LandmarkRules) -> bool:
+    longest = float(box.size[:2].max())
+    return (count >= rules.min_points and longest >= rules.min_extent_m
+            and float(box.size[:2].min()) >= rules.min_thickness_m and longest <= LONGEST_SIDE_M.get(category, 3.0))
 
 
 def find_landmarks(points: np.ndarray, status: np.ndarray, classes: np.ndarray, names: dict[int, str],
@@ -117,8 +124,9 @@ def find_landmarks(points: np.ndarray, status: np.ndarray, classes: np.ndarray, 
             continue
         for members in _pieces(points, ids, rules):
             box = fit_box(points[members]) if len(members) >= rules.min_points else None
-            if box is not None and _is_furniture_sized(box, len(members), rules):
-                found.append(Landmark(members, box, FURNITURE[class_name]))
+            category = FURNITURE[class_name]
+            if box is not None and _is_furniture_sized(box, len(members), category, rules):
+                found.append(Landmark(members, box, category))
     return found
 
 
@@ -150,7 +158,7 @@ def _belongs_to(piece: Landmark, host: Landmark, points: np.ndarray) -> bool:
     """Mostly inside the host's box, or touching a host of the same category."""
     if float(inside_box(points[piece.point_ids], host.box, margin_m=0.05).mean()) >= 0.5:
         return True
-    return piece.category == host.category and footprint_gap(piece.box, host.box) <= 0.05
+    return piece.category == host.category and footprint_gap(piece.box, host.box) <= 0.15
 
 
 def merge_touching(landmarks: list[Landmark], points: np.ndarray) -> list[Landmark]:

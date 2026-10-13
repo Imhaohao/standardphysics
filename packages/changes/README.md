@@ -51,11 +51,11 @@ Each example is a pair of six-second handheld walkthroughs rendered in Blender f
 | Room | What it tests | Result |
 |---|---|---|
 | Living room | Two moves, a removal and two additions, one of them on a table | 5 of 5 found, none false, 5 of 5 named right |
-| Studio | A different room, furniture and pair of paths, held out until the detector was finished | 5 of 5 found, none false, 4 of 5 named right |
+| Studio | A different room, furniture and pair of paths, held out until the detector was finished | 4 of 5 found and 1 only partly, none false, all 4 named right |
 | Nothing changed | The living room twice from different paths | Nothing reported |
-| Blind spot | The before walk never looks at half the room, and a crate appears in that half | The armchair's move found; the crate not reported |
+| Blind spot | The before walk never looks at half the room, and a crate appears in that half | The armchair's move found; the crate listed as seen by one video only, not as a change |
 
-A rendered room comes with exact answers. `truth.json` records every object's box in both videos and every camera pose, and `room-changes evaluate` scores a result against it. It lines the estimated camera path up with the true one and matches each true change to a reported one of the same type within 50 cm. Errors are measured in the reconstruction's own metres, after the camera-height correction, as a person reading the sentences would meet them. The figures below average every before and after box:
+A rendered room comes with exact answers. `truth.json` records every object's box in both videos and every camera pose, and `room-changes evaluate` scores a result against it. It lines the estimated camera path up with the true one and matches each true change to a reported one of the same type within 50 cm whose box covers at least a quarter of the object; a report nearby that covers less is counted as partial. Errors are measured in the reconstruction's own metres, after the camera-height correction, as a person reading the sentences would meet them. The figures below average every before and after box:
 
 ```bash
 packages/changes/.venv/bin/room-changes evaluate apps/web/public/changes/studio datasets/changes/studio/truth.json
@@ -63,21 +63,29 @@ packages/changes/.venv/bin/room-changes evaluate apps/web/public/changes/studio 
 
 | Measure | Living room | Studio |
 |---|---|---|
-| Box centre error on the floor | 4.9 cm | 13.7 cm |
+| Box centre error on the floor | 4.9 cm | 8.2 cm |
 | Box bottom error | 2.0 cm | 2.7 cm |
 | Box height error | 4.5 cm | 2.7 cm |
-| 3D overlap with the true box | 0.69 | 0.55 |
+| 3D overlap with the true box | 0.69 | 0.61 |
 | Distance moved, error | 5.5 cm | 5.5 cm |
 | Turn of the armchair | 5° off | exact |
+| Turn of the stool and the ottoman | left out | left out |
 | Camera path error | 1.9 cm | 2.5 cm |
 
-The studio's two weak spots are both in the record. The wooden crate sat beside the before walk's path, so that video only saw one end of it; its box covers that end, sits 47 cm from the crate's centre, and the vision model called the end "a wooden step". The ottoman is nearly the same shape end to end, and the turn came out 60° one way when it was 90° the other. That is 30° off if its two ends count as alike, and 150° if not.
+The studio's weak spot is the wooden crate. It sat right beside the before walk's path, so that video only ever saw one end of it. The box covers that end and overlaps the crate by 0.16, so the scorer counts it as partial, and the vision model called the end "a wooden step". The stool and the ottoman turned too, but a stool looks the same after a quarter turn and the ottoman's shape and footprint disagreed about its turn, so neither sentence states one rather than guess.
 
 [`tests/test_change_examples.py`](tests/test_change_examples.py) re-scores all four checked-in results on every test run, so regenerating an example with a worse detector fails the build.
 
 ### Real phone footage
 
-The rendered rooms are the only footage with exact answers. As a check on real video, two stretches of the Share Tea walkthrough, a real iPhone capture of a shop that is not in this repository, were cut 30 seconds apart where both look along the same counter. Nothing was staged between them, and ARKit's camera track gives true metres. The reconstruction tracked the camera to within 8.9 cm and came out 17% large without a camera height. The first version of the detector reported two of the counter's open-frame stools as removed. From some angles the after video sees through the gaps in a stool, so a stool reads as partly empty. Requiring 85% of all sightlines into a region to see empty space removed both, and the pair now reports nothing, which is right for a scene where nothing moved. A real before and after pair with staged changes and hand-measured truth is the obvious next example to add.
+The rendered rooms are the only footage with exact answers. As a check on real video, two pairs of stretches were cut from the Share Tea walkthrough, a real iPhone capture of a shop that is kept out of this repository, using `capture_pair.py`. Nothing was staged within either pair. ARKit's camera track and the RoomPlan floor give true metres and the true phone height, so both pairs score the reconstruction and count false alarms. Their scores, without any imagery, are in [`real-footage`](real-footage).
+
+| Pair | What it was used for | Camera path error | Scale error with a 1.4 m phone height | Reported |
+|---|---|---|---|---|
+| Counter, at 168 s and 198 s | Tuning: it led to the 85% rule | 8.9 cm | 2.8% (17% with no height given) | Nothing |
+| Shop, at 69 s and 104 s | Held out, run once with the finished detector | 13.3 cm | 2.6% | One false alarm |
+
+On the counter, the first version of the detector reported two open-frame bar stools as removed. From some angles the after video sees through the gaps between a stool's rails, so it reads as partly empty; requiring 85% of all sightlines into a region to see empty space removed both. The held-out shop pair reports one change that did not happen: "a black computer monitor appeared". The monitor is in both videos. It stands in front of a glass display case, and the likeliest cause is that the before video's depth went through the glass to the case's back, so the monitor's spot read as empty. It is left in rather than tuned away, because a rule chosen after seeing this pair would no longer be tested by it. A real pair with staged changes and hand-measured truth is the next example to add.
 
 ## How it works
 
@@ -100,13 +108,15 @@ flowchart LR
 2. **Seeing through, not differencing.** Each surface point from the before video is projected into every after frame. If the after camera's depth lands on the point, the surface is still there. If the camera saw farther than the point, its line of sight passed through where the point was, which is evidence that it is gone. If something nearer blocked the view, or no frame pointed that way, the after video says nothing about the point. The same test runs the other way for new things. This third answer is what keeps a different viewpoint, an occluded corner or a spot only one video saw from turning into a change, and the viewer hatches those spots instead.
 3. **Regions.** Points that several frames saw through are grouped into connected regions, grown through neighbours the other video never contradicted, and fitted with upright boxes. A region survives only if 85% of all sightlines into it saw empty space. Its box then stands on the floor or the table top underneath, because within about 15 cm of a support depth can't tell an object's base from what it rests on.
 4. **Names and matches.** Qwen3-VL, running locally, names each region from its clearest frame. DINOv2 turns the region's pixels into an appearance fingerprint. A gone region and a new one that look alike, are of similar size and sit at least 15 cm apart become one move. The turn is the yaw that best lays the old shape onto the new one, and it is left out when the shape looks the same turned.
-5. **Words from geometry.** Mask2Former labels the furniture in the before frames, the labels are voted onto the 3D points, and each unchanged piece gets a box and a name nothing else in the room shares. "On the coffee table", "between the bookshelf and the coffee table" and "to the other side of the coffee table" are computed from those boxes, so a sentence never places an object somewhere the 3D model does not.
+5. **Seen once.** A clump of surface that only one video saw, standing where almost nothing around it was checked either, is listed under "Seen by one video only" instead of being reported. The hidden back of a sofa is also unseen, but the sofa around it was seen by both, so it is not listed.
+6. **Words from geometry.** Mask2Former labels the furniture in the before frames, the labels are voted onto the 3D points, and each unchanged piece gets a box and a name nothing else in the room shares. "On the coffee table", "between the bookshelf and the coffee table" and "to the other side of the coffee table" are computed from those boxes, so a sentence never places an object somewhere the 3D model does not.
 
 ## Tradeoffs
 
 - **A change needs a second look.** It counts only where the other video saw through the old or new spot, from several frames. That keeps false alarms down, but a change the second video never pointed at goes unreported. `coverage` in `scene.json` and the bars in the viewer say how much of each video the other one checked.
 - **Thin and small things are filtered out.** Regions under 10 cm across their footprint or under about 150 surface points are dropped, along with pixels at the frame edge and within 40 cm of the lens. Each of these filters removed a false alarm on the living room, where every one was a sliver along a silhouette or a smear at the frame edge. A broom or a frame leaning on a wall would be missed.
 - **The scale needs a hint.** MapAnything predicts metric depth, but its scale came out 6 to 11% large on the rendered rooms and 17% large on the real counter. A phone height is easy to know and fixes most of that; a measured length in the room would fix the rest, and is not an option yet.
+- **Glass, mirrors and screens can fake a change.** Depth through glass lands behind it, so an object in front of a display case can read as new or gone; that is the likeliest cause of the held-out real false alarm above.
 - **Repeated open-frame furniture is hard.** Stools and chairs made of thin rails read as partly empty from some angles. The 85% rule handles the real counter above, but a pair of chairs swapped for identical ones would not be seen as a change at all.
 - **The vision model is local and Apple-only.** Qwen3-VL runs through MLX. On other machines `--namer none` still finds and measures every change and places it against the furniture.
 

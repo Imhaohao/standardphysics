@@ -93,6 +93,10 @@
     --change: var(--color-removed);
   }
 
+  .change-tone-unchecked {
+    --change: var(--color-unseen);
+  }
+
   .change-tone {
     color: var(--change);
   }

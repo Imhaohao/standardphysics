@@ -2757,12 +2757,13 @@
   }
  ],
  "seconds": {
-  "reconstruction": 40.2,
-  "change evidence": 5.1,
-  "naming": 38.6
+  "reconstruction": 47.5,
+  "change evidence": 7.5,
+  "naming": 47.9
  },
  "scale": {
   "factor": 0.9035,
   "from": "camera height"
- }
+ },
+ "unchecked": []
 }

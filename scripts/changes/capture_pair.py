@@ -39,6 +39,22 @@ def arkit_track(capture: pathlib.Path) -> tuple[np.ndarray, np.ndarray]:
     return times - times[0], positions
 
 
+def floor_height(capture: pathlib.Path) -> float | None:
+    """The floor's height in ARKit's world, from the RoomPlan export saved beside the poses."""
+    room = capture / "room.json"
+    floors = json.loads(room.read_text()).get("floors", []) if room.exists() else []
+    if not floors:
+        return None
+    return float(np.array(floors[0]["transform"], dtype=float).reshape(4, 4).T[1, 3])
+
+
+def phone_height(times: np.ndarray, positions: np.ndarray, start: float, length: float, floor: float | None):
+    if floor is None:
+        return None
+    inside = (times >= start) & (times <= start + length)
+    return round(float(np.median(positions[inside, 1]) - floor), 3)
+
+
 def cut(capture: pathlib.Path, start: float, length: float, fps: int, turn: str, target: pathlib.Path) -> None:
     command = ["ffmpeg", "-y", "-loglevel", "error", "-ss", str(start), "-t", str(length),
                "-i", str(capture / "walkthrough.mp4"), "-vf", f"{turn},fps={fps}", "-c:v", "libx264", "-crf", "20",
@@ -62,14 +78,17 @@ def main() -> None:
     args = parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     times, positions = arkit_track(args.capture)
-    cameras = {}
+    floor = floor_height(args.capture)
+    cameras, heights = {}, {}
     for walk, (start, length) in (("before", args.before), ("after", args.after)):
         cut(args.capture, start, length, args.fps, args.turn, args.out / f"{walk}.mp4")
         cameras[walk] = clip_cameras(times, positions, start, length, args.fps)
+        heights[walk] = phone_height(times, positions, start, length, floor)
     truth = {
         "frame": "ARKit world, metres, y up; only camera positions are recorded",
-        "source": str(args.capture),
+        "source": args.capture.name,
         "clips": {"before": args.before, "after": args.after, "fps": args.fps},
+        "phone_height_m": heights,
         "cameras_opencv_c2w": cameras,
         "changes": [],
         "unverifiable": [],

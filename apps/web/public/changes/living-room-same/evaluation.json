@@ -5,6 +5,7 @@
  },
  "recall": null,
  "precision": null,
+ "partial": [],
  "names_correct": "0 of 0",
  "mean_centre_error_m": null,
  "mean_bottom_error_m": null,

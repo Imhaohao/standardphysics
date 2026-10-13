@@ -12,7 +12,7 @@ import numpy as np
 
 from . import changes as change_records
 from .evidence import UNSEEN, DepthLookup, Tolerance, classify, gather
-from .export import write_report
+from .export import unchecked_records, write_report
 from .geometry import Cloud, apply, build_cloud, room_frame
 from .landmarks import (
     Landmark,
@@ -27,7 +27,7 @@ from .landmarks import (
 from .matching import MatchRules, pair_moves
 from .naming import Embedder, Namer, Segmenter, make_namer
 from .pictures import isolated, outlined, sightings
-from .regions import Region, RegionRules, find_regions, finish_regions, settle
+from .regions import Region, RegionRules, find_regions, finish_regions, one_sided_regions, settle
 from .views import AFTER, BEFORE, View, load_views, of_epoch, save_views
 
 
@@ -213,6 +213,22 @@ def locate_regions(regions: list[Region], landmarks: list[Landmark]) -> None:
             region.names["where"] = measured
 
 
+NOT_OBJECTS = {"wall", "floor", "ceiling", "window", "door", "curtain", "shadow", "light", "corner", "object"}
+
+
+def unchecked_regions(scene: Scene, changed: list[Region]) -> list[Region]:
+    """Things only one video saw, in places the other never looked, apart from anything already reported."""
+    found = []
+    for epoch in (BEFORE, AFTER):
+        ids = np.flatnonzero(scene.cloud.epoch == epoch)
+        for region in one_sided_regions(scene.cloud.points[ids], scene.status[ids], epoch, ceiling_height(scene)):
+            region.point_ids = ids[region.point_ids]
+            near = any(np.linalg.norm(region.box.center[:2] - other.box.center[:2]) < 0.5 for other in changed)
+            if not near:
+                found.append(region)
+    return found
+
+
 def _load_embedder(log) -> Embedder | None:
     try:
         return Embedder()
@@ -232,10 +248,14 @@ def run(before: Path, after: Path, out: Path, settings: Settings = Settings(), l
     log(f"{len(removed)} regions gone, {len(added)} regions new")
     timer.lap("change evidence")
     namer = make_namer(settings.namer)
+    unchecked = unchecked_regions(scene, removed + added)
     describe_regions(scene, removed + added, namer, _load_embedder(log))
-    landmarks = name_landmarks(scene, namer, _load_segmenter(log), removed + added)
-    distinguish(landmarks, removed + added)
-    locate_regions(removed + added, landmarks)
+    describe_regions(scene, unchecked, namer, None)
+    unchecked = [region for region in unchecked if region.names.get("name") not in NOT_OBJECTS]
+    landmarks = name_landmarks(scene, namer, _load_segmenter(log), removed + added + unchecked)
+    distinguish(landmarks, removed + added + unchecked)
+    locate_regions(removed + added + unchecked, landmarks)
+    log(f"seen by one video only: {', '.join(r.names.get('name', 'object') for r in unchecked) or 'nothing'}")
     log(f"furniture that stayed: {', '.join(lm.name for lm in landmarks) or 'none named'}")
     timer.lap("naming")
     moves = pair_moves(removed, added, scene.cloud.points, settings.matching)
@@ -244,7 +264,7 @@ def run(before: Path, after: Path, out: Path, settings: Settings = Settings(), l
         log(f"  {change.id} {change.type}: {change.sentence}")
     scale = {"factor": round(factor, 4), "from": "camera height" if settings.camera_height_m else "reconstruction"}
     report = write_report(out, scene, found, landmarks, {"before": before, "after": after},
-                          {"seconds": timer.spent, "scale": scale})
+                          {"seconds": timer.spent, "scale": scale, "unchecked": unchecked_records(scene, unchecked, out)})
     timer.lap("report")
     return report
 
