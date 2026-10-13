@@ -101,9 +101,11 @@ def test_without_a_vision_model_every_seen_once_clump_is_kept():
     def clump(name):
         return Region("unchecked", 1, np.arange(1), Box(np.zeros(3), np.ones(3), 0.0), 1, names={"name": name})
 
-    clumps = [clump("object"), clump("wall section"), clump("black pillar"), clump("plastic crate")]
-    assert len(objects_only(clumps, named_by_model=False)) == 4
-    assert [c.names["name"] for c in objects_only(clumps, named_by_model=True)] == ["object", "plastic crate"]
+    clumps = [clump("object"), clump("wall section"), clump("black pillar"), clump("plastic crate"), clump("glass vase"),
+              clump("counter stool"), clump("bar counter"), clump("person")]
+    assert len(objects_only(clumps, named_by_model=False)) == 8
+    kept = [c.names["name"] for c in objects_only(clumps, named_by_model=True)]
+    assert kept == ["object", "plastic crate", "glass vase", "counter stool"]
 
 
 def test_a_region_cut_by_the_frame_edge_says_it_was_only_partly_seen():

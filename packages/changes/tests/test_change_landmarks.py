@@ -95,8 +95,14 @@ def test_a_strip_of_a_moved_armchair_is_not_a_chair_left_behind():
     old_spot = Box(np.array([-1.3, 0.2, 0.5]), np.array([0.9, 0.9, 1.0]), 0.0)
     assert not _is_furniture_sized(strip.box, 1000, "chair", LandmarkRules())
     assert _is_furniture_sized(rocking_chair.box, 1000, "chair", LandmarkRules())
-    assert apart_from([strip, rocking_chair], np.zeros((1, 3)), [(old_spot, "armchair")]) == []
-    assert apart_from([rocking_chair], np.zeros((1, 3)), [(old_spot, "cardboard box")]) == [rocking_chair]
+    touching = Landmark(np.arange(1), Box(np.array([-1.3, 0.85, 0.5]), np.array([0.5, 0.4, 0.9]), 0.0), "chair")
+    assert apart_from([touching, rocking_chair], np.zeros((1, 3)), [(old_spot, "armchair")]) == [rocking_chair]
+
+
+def test_an_unmoved_chair_beside_a_moved_one_stays_furniture():
+    moved_from = Box(np.array([0.0, 0.0, 0.45]), np.array([0.5, 0.5, 0.9]), 0.0)
+    neighbour = Landmark(np.arange(1), Box(np.array([0.9, 0.0, 0.45]), np.array([0.5, 0.5, 0.9]), 0.0), "chair")
+    assert apart_from([neighbour], np.array([[0.9, 0.0, 0.45]]), [(moved_from, "dining chair")]) == [neighbour]
 
 
 def test_pixel_labels_vote_onto_the_points_they_see():

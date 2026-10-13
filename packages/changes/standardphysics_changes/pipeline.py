@@ -232,10 +232,15 @@ STRUCTURE = {"wall", "floor", "ceiling", "window", "door", "curtain", "shadow", 
 
 
 def objects_only(regions: list[Region], named_by_model: bool) -> list[Region]:
-    """Drop clumps a vision model called part of the room. With no model, every clump stays."""
+    """Drop clumps a vision model called part of the room. With no model, every clump stays.
+
+    Only the last word decides, the noun the rest describes: a "glass vase" and a "counter
+    stool" are things, a "glass wall" and a "bar counter" are the building.
+    """
     if not named_by_model:
         return regions
-    return [region for region in regions if not set(region.names.get("name", "").split()) & STRUCTURE]
+    return [region for region in regions if region.names.get("name", "object").split()[-1:] != []
+            and region.names.get("name", "object").split()[-1] not in STRUCTURE]
 
 
 def unchecked_regions(scene: Scene, changed: list[Region]) -> list[Region]:

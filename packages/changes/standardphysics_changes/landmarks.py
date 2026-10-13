@@ -153,8 +153,11 @@ def _part_of_change(landmark: Landmark, points: np.ndarray, box: Box) -> bool:
     return (close and similar_size) or float(inside_box(points[landmark.point_ids], box).mean()) > 0.5
 
 
-def _same_kind_nearby(landmark: Landmark, changes: list[tuple[Box, str]], reach_m: float = 1.2) -> bool:
-    """A piece of the same kind as a change close by: most likely what that change left behind."""
+def _same_kind_touching(landmark: Landmark, changes: list[tuple[Box, str]], reach_m: float = 0.1) -> bool:
+    """A piece of the same kind as a change and touching it: most likely what that change left behind.
+
+    An unmoved chair half a metre from a moved one is a real chair and stays.
+    """
     family = NAME_FAMILIES.get(landmark.category, {landmark.category})
     return any(set(name.split()) & family and footprint_gap(landmark.box, box) <= reach_m for box, name in changes)
 
@@ -164,10 +167,10 @@ def apart_from(landmarks: list[Landmark], points: np.ndarray, changes: list[tupl
 
     A basket set on a table covers a corner of the table, so overlap alone is not enough;
     the piece has to sit inside the change, be mostly covered by it, or be the same kind of
-    thing close by, like a strip of a moved armchair that its old spot still shows.
+    thing touching it, like a strip of a moved armchair that its old spot still shows.
     """
     return [lm for lm in landmarks if not any(_part_of_change(lm, points, box) for box, _ in changes)
-            and not _same_kind_nearby(lm, changes)]
+            and not _same_kind_touching(lm, changes)]
 
 
 def _belongs_to(piece: Landmark, host: Landmark, points: np.ndarray) -> bool:

@@ -112,9 +112,47 @@ STUDIO = {
     "unverifiable": [],
 }
 
+# Added after every detector rule was fixed, and scored once with that detector: the only room
+# here whose result no rule was ever adjusted for.
+OFFICE = {
+    "room": {"half_x": 2.4, "half_y": 2.0, "height": 2.7, "floor": "herringbone_parquet",
+             "wall": "patterned_plaster_wall", "rug": ("denim_fabric", (1.6, 1.2), (0.6, -0.3))},
+    "objects": [
+        ("desk", "SchoolDesk_01", "desk", (-1.6, 1.5, 0), (-1.6, 1.5, 0)),
+        ("desk_chair", "GreenChair_01", "chair", (-1.6, 0.95, 180), (-1.6, 0.95, 180)),
+        ("console", "ClassicConsole_01", "console table", (0.6, 1.65, 0), (0.6, 1.65, 0)),
+        ("table", "WoodenTable_03", "table", (1.5, -0.2, 90), (1.5, -0.2, 90)),
+        ("bench", "painted_wooden_bench", "bench", (-2.1, -0.4, 90), (-2.1, -0.4, 90)),
+        ("plant", "potted_plant_02", "potted plant", (2.0, 1.55, 0), (2.0, 1.55, 0)),
+        ("lounge_chair", "modern_arm_chair_01", "armchair", (-0.3, 0.4, 30), (0.5, -1.05, -60)),
+        ("bar_chair", "bar_chair_round_01", "bar stool", (0.9, 0.85, 0), (-0.7, -1.2, 0)),
+        ("crate", "wooden_crate_01", "wooden crate", (-1.2, -1.2, 10), None),
+        ("container", "industrial_pastic_container", "plastic container", None, (2.0, -1.4, 0)),
+        ("pot", "brass_pot_01", "brass pot", None, (1.5, -0.2, 0, "table")),
+    ],
+    "walks": {
+        "before": [
+            ((-2.0, -1.6, 1.45), (-0.6, 1.5, 0.4)),
+            ((-0.8, -1.7, 1.47), (0.4, 1.2, 0.3)),
+            ((0.4, -1.65, 1.45), (-0.6, 1.0, 0.2)),
+            ((1.6, -1.5, 1.43), (0.0, 1.2, 0.3)),
+            ((2.0, -0.4, 1.4), (-1.2, 0.9, 0.4)),
+        ],
+        "after": [
+            ((2.0, 0.8, 1.35), (-1.2, -0.6, 0.3)),
+            ((1.0, -1.6, 1.37), (-1.0, 0.9, 0.2)),
+            ((-0.4, -1.7, 1.36), (1.2, 0.6, 0.3)),
+            ((-1.9, -1.3, 1.34), (0.9, 0.6, 0.35)),
+            ((-2.0, 0.0, 1.33), (1.5, 1.0, 0.45)),
+        ],
+    },
+    "unverifiable": [],
+}
+
 SCENES = {
     "living-room": LIVING_ROOM,
     "living-room-same": LIVING_ROOM_SAME,
     "living-room-blind-spot": LIVING_ROOM_BLIND_SPOT,
     "studio": STUDIO,
+    "office": OFFICE,
 }

@@ -137,6 +137,7 @@ export function formatLength(metres: number): string {
 export const EXAMPLE_ROOMS = [
   { room: "living-room", label: "Living room" },
   { room: "studio", label: "Studio" },
+  { room: "office", label: "Office" },
   { room: "living-room-same", label: "Nothing changed" },
   { room: "living-room-blind-spot", label: "Blind spot" },
 ] as const;

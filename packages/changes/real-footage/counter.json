@@ -1,6 +1,7 @@
 {
  "capture": "Share Tea walkthrough, a private iPhone capture kept out of git",
- "role": "tuning: the stools it first misreported led to the 85% rule",
+ "role": "development: the stools it first misreported led to the 85% rule",
+ "detector": "678eab8370c6",
  "clips_s": {
   "before": [
    168.0,

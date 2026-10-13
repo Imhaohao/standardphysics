@@ -23,6 +23,17 @@ def test_a_move_between_two_spots_described_alike_says_where_it_headed():
     assert language.moved_sentence("stool", 3.2, None, route) == "The stool moved 3.2 m toward the bookshelf."
 
 
+def test_a_route_onto_or_off_a_surface_reads_naturally():
+    onto = language.Route(before="between the console table and the wooden bench", after="on the open floor")
+    assert language.moved_sentence("armchair", 1.68, None, onto) == (
+        "The armchair moved 1.7 m from between the console table and the wooden bench onto the open floor."
+    )
+    off = language.Route(before="on the coffee table", after="beside the sofa")
+    assert language.moved_sentence("basket", 0.8, None, off) == (
+        "The basket moved 80 cm from the coffee table to beside the sofa."
+    )
+
+
 def test_small_turns_and_distances_read_naturally():
     assert language.moved_sentence("stool", 0.43, 8) == "The stool moved 45 cm."
     assert language.moved_sentence("stool", 0.43, None) == "The stool moved 45 cm."

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import subprocess
@@ -17,6 +18,18 @@ from .regions import Box, Region
 from .views import AFTER, BEFORE, EPOCH_NAMES, View, of_epoch
 
 FORMAT_VERSION = 1
+# The scorer and the command line can change without changing what is detected.
+NOT_DETECTOR = {"evaluate.py", "cli.py", "__main__.py"}
+
+
+def detector_fingerprint() -> str:
+    """A hash of the detector's own source, so a result says exactly which detector made it."""
+    digest = hashlib.sha1()
+    for source in sorted(Path(__file__).parent.glob("*.py")):
+        if source.name not in NOT_DETECTOR:
+            digest.update(source.name.encode())
+            digest.update(source.read_bytes())
+    return digest.hexdigest()[:12]
 
 
 def _round(values, digits: int = 3) -> list:
@@ -199,6 +212,7 @@ def write_report(out: Path, scene, found: list[Change], landmarks: list, inputs:
     low, high = np.percentile(scene.cloud.points, [1, 99], axis=0)
     report = {
         "format": FORMAT_VERSION,
+        "detector": detector_fingerprint(),
         "inputs": {side: Path(path).name for side, path in inputs.items()},
         "videos": {side: playable_copy(Path(path), out / f"{side}.mp4") for side, path in inputs.items()},
         "summary": language.summary(records),

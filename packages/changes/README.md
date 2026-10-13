@@ -48,33 +48,37 @@ To test on a walk you already have, `scripts/changes/capture_pair.py` cuts two s
 
 Each example is a pair of six-second handheld walkthroughs rendered in Blender from CC0 Poly Haven models by [`render_example_room.py`](../../scripts/changes/render_example_room.py), using the rooms in [`example_scenes.py`](../../scripts/changes/example_scenes.py). The footage imitates a phone: the camera shakes and rolls, the shutter blurs motion and reads the sensor top to bottom, the exposure drifts, and the video carries grain and compression. The inputs live in [`datasets/changes`](../../datasets/changes), the outputs in [`apps/web/public/changes`](../../apps/web/public/changes), and the viewer switches between them.
 
+Only the office is a true test. Every detection rule was fixed before it was rendered, and it was scored once, by detector `590b3d4af243`, and checked in as it came out. A grammar fix to the sentences afterwards ("to on the floor" became "onto the floor") changed the fingerprint to `678eab8370c6`, the one every `scene.json` now records; the office was regenerated with it and its scores came out identical. The other four rooms are development examples: the studio was held out at first, but four of the rules came from its mistakes, so it no longer tests anything the detector hasn't seen.
+
 | Room | What it tests | Result |
 |---|---|---|
+| Office (held out) | A new room, furniture and pair of paths: two moves, a removal, and two additions, one of them on a table | 3 of 5 found, 1 partly, 1 missed, none false; 1 of 3 named exactly right |
 | Living room | Two moves, a removal and two additions, one of them on a table | 5 of 5 found, none false, 5 of 5 named right |
-| Studio | A different room, furniture and pair of paths, held out until the detector was finished | 4 of 5 found and 1 only partly, none false, 3 of 4 named right; the partial one is worded as partly seen |
+| Studio | A second room, furniture and pair of paths | 4 of 5 found and 1 only partly, none false, 3 of 4 named right; the partial one is worded as partly seen |
 | Nothing changed | The living room twice from different paths | Nothing reported |
 | Blind spot | The before walk never looks at half the room, and a crate appears in that half | The armchair's move found; the crate listed as seen by one video only, not as a change |
 
 A rendered room comes with exact answers. `truth.json` records every object's box in both videos and every camera pose, and `room-changes evaluate` scores a result against it. It lines the estimated camera path up with the true one and matches each true change to a reported one of the same type within 50 cm whose box covers at least a quarter of the object; a report nearby that covers less is counted as partial. Errors are measured in the reconstruction's own metres, after the camera-height correction, as a person reading the sentences would meet them. The figures below average every before and after box:
 
 ```bash
-packages/changes/.venv/bin/room-changes evaluate apps/web/public/changes/studio datasets/changes/studio/truth.json
+packages/changes/.venv/bin/room-changes evaluate apps/web/public/changes/office datasets/changes/office/truth.json
 ```
 
-| Measure | Living room | Studio |
-|---|---|---|
-| Box centre error on the floor | 4.9 cm | 8.2 cm |
-| Box bottom error | 2.0 cm | 2.7 cm |
-| Box height error | 4.5 cm | 2.7 cm |
-| 3D overlap with the true box | 0.69 | 0.61 |
-| Distance moved, error | 5.5 cm | 5.5 cm |
-| Turn of the armchair | 5° off | exact |
-| Turn of the stool and the ottoman | left out | left out |
-| Camera path error | 1.9 cm | 2.5 cm |
+| Measure | Office (held out) | Living room | Studio |
+|---|---|---|---|
+| Box centre error on the floor | 3.3 cm | 4.9 cm | 8.2 cm |
+| Box bottom error | 2.6 cm | 2.0 cm | 2.7 cm |
+| Box height error | 2.5 cm | 4.5 cm | 2.7 cm |
+| 3D overlap with the true box | 0.70 | 0.69 | 0.61 |
+| Distance moved, error | 1.7 cm | 5.5 cm | 5.5 cm |
+| Turn of the armchair | left out | 5° off | exact |
+| Camera path error | 2.9 cm | 1.9 cm | 2.5 cm |
 
-The studio's weak spot is the wooden crate. It sat right beside the before walk's path, so that video only ever saw one end of it. The box covers that end and overlaps the crate by 0.16, so the scorer counts it as partial. The vision model called the end "a wooden step", and because every view of it ran into the frame's edge, its sentence ends "only part of it was ever in view, so it may be larger". The brass vase was named "a tall golden glass vase", which the scorer counts as wrong. The stool and the ottoman turned too, but a stool looks the same after a quarter turn and the ottoman's shape and footprint disagreed about its turn, so neither sentence states one rather than guess.
+In the office, the plastic container that appeared in the corner was in view in none of the before video's 96 frames and 2 of the after video's, so nothing could say whether it was new, and leaving it unreported is the right answer for a spot neither video properly saw. The wooden crate was beside both walks' paths, so only part of it was seen; it is boxed partly and worded that way. The bar stool was named "a wooden stool" and the brass pot "a copper pot", which the scorer's short list of synonyms counts as wrong, and the list was not widened after seeing them. One "seen by one video only" entry is the far end of the table, which only the before video filmed. The armchair turned a quarter turn, but its shape and footprint disagreed, so the sentence leaves the turn out.
 
-[`tests/test_change_examples.py`](tests/test_change_examples.py) re-scores all four checked-in results on every test run: what is found, partial and listed as seen once, which names are right, which changes are worded as partly seen, and that every piece of furniture a sentence can cite stands on a real object in the truth file. Regenerating an example with a worse detector, or with wording that drifts, fails the build.
+In the studio the wooden crate sat right beside the before walk's path, so that video only ever saw one end of it. The box covers that end and overlaps the crate by 0.16, so the scorer counts it as partial. The vision model called the end "a wooden step", and because every view of it ran into the frame's edge, its sentence ends "only part of it was ever in view, so it may be larger". The brass vase was named "a tall golden glass vase", which the scorer counts as wrong. The stool and the ottoman turned too, but a stool looks the same after a quarter turn and the ottoman's shape and footprint disagreed about its turn, so neither sentence states one rather than guess.
+
+[`tests/test_change_examples.py`](tests/test_change_examples.py) re-scores all five checked-in results on every test run, including that each was made by the same detector: what is found, partial and listed as seen once, which names are right, which changes are worded as partly seen, and that every piece of furniture a sentence can cite stands on a real object in the truth file. Regenerating an example with a worse detector, or with wording that drifts, fails the build.
 
 ### Real phone footage
 
@@ -83,9 +87,9 @@ The rendered rooms are the only footage with exact answers. As a check on real v
 | Pair | What it was used for | Camera path error | Scale error with a 1.4 m phone height | Reported |
 |---|---|---|---|---|
 | Counter, at 168 s and 198 s | Tuning: it led to the 85% rule | 8.9 cm | 2.8% (17% with no height given) | Nothing |
-| Shop, at 69 s and 104 s | Held out, run once with the finished detector | 13.3 cm | 2.6% | One false alarm |
+| Shop, at 69 s and 104 s | Development: run as the detector changed, but its false alarm was never tuned away | 13.3 cm | 2.6% | One false alarm |
 
-On the counter, the first version of the detector reported two open-frame bar stools as removed. From some angles the after video sees through the gaps between a stool's rails, so it reads as partly empty; requiring 85% of all sightlines into a region to see empty space removed both. The held-out shop pair reports one change that did not happen: "a black computer monitor appeared". The monitor is in both videos. It stands in front of a glass display case, and the likeliest cause is that the before video's depth went through the glass to the case's back, so the monitor's spot read as empty. It is left in rather than tuned away, because a rule chosen after seeing this pair would no longer be tested by it. On both real pairs the walks overlap less than the rendered ones, and the "seen by one video only" lists name the chairs and stools that one walk filmed and the other did not; people passing through are left out of that list. A real pair with staged changes and hand-measured truth is the next example to add.
+On the counter, the first version of the detector reported two open-frame bar stools as removed. From some angles the after video sees through the gaps between a stool's rails, so it reads as partly empty; requiring 85% of all sightlines into a region to see empty space removed both. The shop pair reports one change that did not happen: "a black computer monitor appeared". The monitor is in both videos. It stands in front of a glass display case, and the likeliest cause is that the before video's depth went through the glass to the case's back, so the monitor's spot read as empty. It is left in rather than tuned away. The shop pair was cut from a part of the walk nothing had been tuned on, and it ran under each later version of the detector; its seen-once list is why people are now left out of that list. On both real pairs the walks overlap less than the rendered ones, and the "seen by one video only" lists name the chairs and stools that one walk filmed and the other did not; people passing through are left out of that list. A real pair with staged changes and hand-measured truth is the next example to add.
 
 ## How it works
 
@@ -116,7 +120,7 @@ flowchart LR
 - **A change needs a second look.** It counts only where the other video saw through the old or new spot, from several frames. That keeps false alarms down, but a change the second video never pointed at goes unreported. `coverage` in `scene.json` and the bars in the viewer say how much of each video the other one checked.
 - **Thin and small things are filtered out.** Regions under 10 cm across their footprint or under about 150 surface points are dropped, along with pixels at the frame edge and within 40 cm of the lens. Each of these filters removed a false alarm on the living room, where every one was a sliver along a silhouette or a smear at the frame edge. A broom or a frame leaning on a wall would be missed.
 - **The scale needs a hint.** MapAnything predicts metric depth, but its scale came out 6 to 11% large on the rendered rooms and 17% large on the real counter. A phone height is easy to know and fixes most of that; a measured length in the room would fix the rest, and is not an option yet.
-- **Glass, mirrors and screens can fake a change.** Depth through glass lands behind it, so an object in front of a display case can read as new or gone; that is the likeliest cause of the held-out real false alarm above.
+- **Glass, mirrors and screens can fake a change.** Depth through glass lands behind it, so an object in front of a display case can read as new or gone; that is the likeliest cause of the shop pair's false alarm above.
 - **Repeated open-frame furniture is hard.** Stools and chairs made of thin rails read as partly empty from some angles. The 85% rule handles the real counter above, but a pair of chairs swapped for identical ones would not be seen as a change at all.
 - **The vision model is local and Apple-only.** Qwen3-VL runs through MLX. On other machines `--namer none` still finds and measures every change and places it against the furniture.
 
@@ -126,7 +130,7 @@ flowchart LR
 
 ## Tests
 
-The geometry, evidence test, regions, matching, furniture relations and sentences have unit tests that need only numpy and scipy, and the four examples are re-scored, all in the repository's normal suite:
+The geometry, evidence test, regions, matching, furniture relations and sentences have unit tests that need only numpy and scipy, and the five examples are re-scored, all in the repository's normal suite:
 
 ```bash
 .venv/bin/python -m pytest packages/changes/tests

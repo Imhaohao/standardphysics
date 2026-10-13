@@ -46,11 +46,21 @@ class Route:
     heading: str = ""
 
 
+def _from(place: str) -> str:
+    """ "from on the table" reads as "from the table"."""
+    return "from " + (place[3:] if place.startswith("on ") else place)
+
+
+def _to(place: str) -> str:
+    """ "to on the open floor" reads as "onto the open floor"."""
+    return "onto " + place[3:] if place.startswith("on ") else "to " + place
+
+
 def route_phrase(route: Route) -> str:
     if route.crossed and route.before:
-        return f" from {route.before} to the other side of the {route.crossed}"
+        return f" {_from(route.before)} to the other side of the {route.crossed}"
     if route.before and route.after and route.before != route.after:
-        return f" from {route.before} to {route.after}"
+        return f" {_from(route.before)} {_to(route.after)}"
     if route.heading:
         return f" toward the {route.heading}"
     return f" to a spot {route.after}" if route.after else ""

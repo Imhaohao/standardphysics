@@ -1,6 +1,7 @@
 {
  "capture": "Share Tea walkthrough, a private iPhone capture kept out of git",
- "role": "held out: cut from another part of the walk and run with the finished detector",
+ "role": "development: cut from a part of the walk nothing was tuned on and rerun as the detector changed; its false alarm was never tuned away",
+ "detector": "678eab8370c6",
  "clips_s": {
   "before": [
    69.0,
@@ -21,7 +22,7 @@
  "changes": [
   {
    "type": "added",
-   "sentence": "A black computer monitor appeared on the desk.",
+   "sentence": "A black computer monitor appeared near the television.",
    "points": 291,
    "evidence": {
     "old_spot": null,
