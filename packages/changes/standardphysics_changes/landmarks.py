@@ -8,7 +8,7 @@ stays two pieces. The words "on", "beside" and "between" are then decided by box
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import numpy as np
 from scipy.ndimage import label
@@ -38,6 +38,8 @@ NAME_FAMILIES = {
     "shelf": {"shelf", "bookshelf", "bookcase", "shelving", "shelves"},
     "counter": {"counter", "bar", "worktop"},
     "bench": {"bench"},
+    "oven": {"oven", "stove", "range", "cooker"},
+    "fridge": {"fridge", "refrigerator"},
 }
 
 
@@ -130,12 +132,46 @@ def find_landmarks(points: np.ndarray, status: np.ndarray, classes: np.ndarray, 
         ids = np.flatnonzero(standing & (classes == class_id))
         if len(ids) < rules.min_points:
             continue
+        category = FURNITURE[class_name]
         for members in _pieces(points, ids, rules):
-            box = fit_box(points[members]) if len(members) >= rules.min_points else None
-            category = FURNITURE[class_name]
-            if box is not None and _is_furniture_sized(box, len(members), category, rules):
-                found.append(Landmark(members, box, category))
+            found.extend(_sized_pieces(points, members, category, rules))
     return found
+
+
+def _sized_pieces(points: np.ndarray, members: np.ndarray, category: str, rules: LandmarkRules,
+                  split: bool = True) -> list[Landmark]:
+    """A piece of furniture's size, or the pieces it falls into on a grid half as fine.
+
+    Two pieces a few centimetres apart, such as a desk and the bench beside it, join on the
+    coarse grid into one "table" too long to be a table; the finer grid separates them.
+    """
+    if len(members) < rules.min_points:
+        return []
+    box = fit_box(points[members])
+    if _is_furniture_sized(box, len(members), category, rules):
+        return [Landmark(members, box, category)]
+    if not split or float(box.size[:2].max()) <= LONGEST_SIDE_M.get(category, 3.0):
+        return []
+    finer = replace(rules, voxel_m=rules.voxel_m / 2)
+    return [piece for part in _pieces(points, members, finer)
+            for piece in _sized_pieces(points, part, category, rules, split=False)]
+
+
+def settle_kind(landmark: Landmark, model_name: str, rules: LandmarkRules = LandmarkRules()) -> bool:
+    """Decide what kind of furniture a piece is when the segmenter and the vision model disagree.
+
+    The segmenter often files a desk, a bench or a nightstand under a neighbouring class, while
+    the vision model names it plainly. A name of another known kind wins when the piece has that
+    kind's size and shape; a name of no known kind ("staircase") leaves the piece out.
+    """
+    if model_name == "object" or fitting_name(landmark.category, model_name) == model_name:
+        return True
+    for category in NAME_FAMILIES:
+        if fitting_name(category, model_name) == model_name and _is_furniture_sized(
+                landmark.box, len(landmark.point_ids), category, rules):
+            landmark.category = category
+            return True
+    return False
 
 
 def inside_box(points: np.ndarray, box: Box, margin_m: float = 0.05) -> np.ndarray:
@@ -260,13 +296,22 @@ def touches_furniture(box: Box, landmarks: list[Landmark], reach_m: float = 0.1)
     return any(footprint_gap(box, landmark.box) <= reach_m for landmark in landmarks)
 
 
-def supports_under(box: Box, landmarks: list[Landmark]) -> list[float]:
-    """Tops of the furniture whose footprint holds the centre of `box`."""
-    tops = []
-    for landmark in landmarks:
-        if _distance_to_footprint(box.center[:2], landmark.box) <= 0.02:
-            tops.append(float(landmark.box.center[2] + landmark.box.size[2] / 2))
-    return tops
+def surface_top(heights: np.ndarray, bin_m: float = 0.02) -> float:
+    """The height of a piece's top surface: its densest layer above its middle height.
+
+    The highest points of a table are a stray handle or the base of whatever stands on it;
+    a table top is a flat layer seen from above, so far more points share its height.
+    """
+    upper = heights[heights >= np.median(heights)]
+    counts, edges = np.histogram(upper, bins=max(1, int(np.ceil((upper.max() - upper.min()) / bin_m))))
+    densest = int(np.argmax(counts))
+    return float(edges[densest + 1])
+
+
+def supports_under(box: Box, landmarks: list[Landmark], points: np.ndarray) -> list[float]:
+    """Top surfaces of the furniture whose footprint holds the centre of `box`."""
+    return [surface_top(points[landmark.point_ids, 2]) for landmark in landmarks
+            if _distance_to_footprint(box.center[:2], landmark.box) <= 0.02]
 
 
 def _between(box: Box, near: list[tuple[float, Landmark]]) -> tuple[Landmark, Landmark] | None:

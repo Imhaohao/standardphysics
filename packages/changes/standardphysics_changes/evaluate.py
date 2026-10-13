@@ -29,6 +29,10 @@ SAME_THING = {
     "jerry can": {"jerry can", "jerrycan", "fuel can", "gas can", "petrol can", "metal can", "fuel container"},
     "bucket": {"bucket", "wooden bucket", "pail"},
     "suitcase": {"suitcase", "vintage suitcase", "luggage", "travel case"},
+    "lounge chair": {"lounge chair", "armchair", "chair", "accent chair", "lounge", "recliner"},
+    "stool": {"stool", "wooden stool", "painted stool", "small stool", "step stool"},
+    "boombox": {"boombox", "radio", "stereo", "cassette player", "portable stereo", "boom box"},
+    "military crate": {"crate", "wooden crate", "military crate", "ammo crate", "wooden box", "wooden chest"},
 }
 CLOSE_M = 0.5
 

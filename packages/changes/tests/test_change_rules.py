@@ -9,7 +9,7 @@ from standardphysics_changes.geometry import Cloud
 from standardphysics_changes.landmarks import Landmark, merge_touching
 from standardphysics_changes.matching import consistent_turn, long_axis_deg
 from standardphysics_changes.pictures import Sighting, runs_off_frame, touches_edge
-from standardphysics_changes.pipeline import Scene, agree_on_kind, distinguish, empty_share, objects_only, regions_of
+from standardphysics_changes.pipeline import Scene, distinguish, empty_share, objects_only, regions_of
 from standardphysics_changes.regions import Box, OneSidedRules, Region, RegionRules, fit_box, one_sided_regions
 from test_change_geometry import camera_at, floor_and_box
 
@@ -63,11 +63,11 @@ def test_a_stray_piece_of_a_moved_chair_joins_the_move():
     seat = rng.uniform([0.0, 0.0, 0.0], [0.5, 0.5, 0.8], (200, 3))
     legs = rng.uniform([0.5, 0.0, 0.0], [0.7, 0.5, 0.5], (100, 3))
     new = rng.uniform([3.0, 0.0, 0.0], [3.6, 0.5, 0.8], (200, 3))
-    points = np.vstack([seat, legs, new])
+    far = rng.uniform([8.8, 8.8, 0.0], [9.2, 9.2, 0.4], (100, 3))
+    points = np.vstack([seat, legs, new, far])
     old = Region("removed", 0, np.arange(200), fit_box(seat), 200, names={"name": "plastic chair"})
     stray = Region("removed", 0, np.arange(200, 300), fit_box(legs), 100, names={"name": "white plastic chair"})
-    box = Region("removed", 0, np.arange(200, 300), Box(np.array([9.0, 9.0, 0.2]), np.ones(3) * 0.4, 0.0), 100,
-                 names={"name": "cardboard box"})
+    box = Region("removed", 0, np.arange(500, 600), fit_box(far), 100, names={"name": "cardboard box"})
     after = Region("added", 1, np.arange(300, 500), fit_box(new), 200, names={"name": "plastic chair"})
     move = Move(old, after, 3.0, None, 1.0)
     loose_removed, loose_added = absorb_fragments([move], [stray, box], [], points)
@@ -75,12 +75,20 @@ def test_a_stray_piece_of_a_moved_chair_joins_the_move():
     assert len(move.removed.point_ids) == 300
 
 
-def test_a_piece_the_two_models_disagree_about_goes_unnamed():
-    assert agree_on_kind("chair", "wooden chair")
-    assert agree_on_kind("cabinet", "side table")
-    assert agree_on_kind("table", "object")
-    assert not agree_on_kind("chair", "nightstand")
-    assert not agree_on_kind("shelf", "staircase")
+def test_the_vision_model_can_refile_a_piece_of_the_right_size():
+    from standardphysics_changes.landmarks import settle_kind
+
+    def piece(category, size):
+        return Landmark(np.arange(2000), Box(np.array([0.0, 0.0, 0.4]), np.array(size), 0.0), category)
+
+    assert settle_kind(piece("chair", [0.5, 0.5, 0.9]), "wooden chair")
+    assert settle_kind(piece("table", [1.0, 0.5, 0.8]), "object")
+    nightstand = piece("chair", [0.5, 0.4, 0.6])
+    assert settle_kind(nightstand, "nightstand") and nightstand.category == "cabinet"
+    bench = piece("table", [1.2, 0.45, 0.9])
+    assert settle_kind(bench, "wooden bench") and bench.category == "bench"
+    assert not settle_kind(piece("shelf", [1.0, 0.4, 1.8]), "staircase")
+    assert not settle_kind(piece("table", [0.3, 0.3, 0.3]), "sofa")
 
 
 def test_a_name_inside_a_longer_one_is_ambiguous():
@@ -190,3 +198,46 @@ def test_the_namer_gets_a_second_view_only_when_it_shows_enough():
     views = [SimpleNamespace(visible=1.0), SimpleNamespace(visible=0.6), SimpleNamespace(visible=0.5)]
     assert len(clearest_two(views)) == 2
     assert len(clearest_two([views[0], SimpleNamespace(visible=0.3)])) == 1
+
+
+def test_a_table_top_is_its_densest_layer_not_its_highest_points():
+    from standardphysics_changes.landmarks import supports_under
+
+    rng = np.random.default_rng(9)
+    top = np.column_stack([rng.uniform(0, 0.6, 3000), rng.uniform(0, 0.5, 3000), rng.uniform(0.69, 0.70, 3000)])
+    smeared = np.column_stack([rng.uniform(0.2, 0.4, 600), rng.uniform(0.15, 0.35, 600), rng.uniform(0.70, 0.80, 600)])
+    front = np.column_stack([rng.uniform(0, 0.6, 1500), np.zeros(1500), rng.uniform(0.0, 0.7, 1500)])
+    points = np.vstack([top, smeared, front])
+    table = Landmark(np.arange(len(points)), fit_box(points), "cabinet", "side table")
+    basket = Box(np.array([0.3, 0.25, 0.82]), np.array([0.2, 0.2, 0.06]), 0.0)
+    assert supports_under(basket, [table], points)[0] == pytest.approx(0.70, abs=0.02)
+
+
+def test_a_desk_fused_with_the_bench_beside_it_comes_apart():
+    from standardphysics_changes.landmarks import find_landmarks
+
+    rng = np.random.default_rng(5)
+    desk = rng.uniform([0.0, 0.0, 0.72], [2.0, 0.9, 0.75], (40000, 3))
+    bench = rng.uniform([2.06, 0.0, 0.72], [3.2, 0.5, 0.75], (15000, 3))
+    points = np.vstack([desk, bench])
+    found = find_landmarks(points, np.zeros(len(points), np.uint8), np.zeros(len(points), int), {0: "table-merged"}, 2.5)
+    assert sorted(round(float(piece.box.size[:2].max()), 1) for piece in found) == [1.1, 2.0]
+
+
+def test_a_chair_base_under_its_seat_joins_the_move_whatever_it_is_called():
+    from standardphysics_changes.matching import Move, absorb_fragments
+
+    rng = np.random.default_rng(11)
+    seat = rng.uniform([0.0, 0.0, 0.35], [0.8, 0.8, 0.9], (400, 3))
+    base = rng.uniform([0.2, 0.2, 0.0], [0.6, 0.6, 0.3], (120, 3))
+    beside = rng.uniform([1.0, 0.0, 0.0], [1.3, 0.3, 0.3], (120, 3))
+    old = rng.uniform([4.0, 0.0, 0.0], [4.8, 0.8, 0.9], (400, 3))
+    points = np.vstack([seat, base, beside, old])
+    chair = Region("added", 1, np.arange(400), fit_box(seat), 400, names={"name": "leather chair"})
+    star = Region("added", 1, np.arange(400, 520), fit_box(base), 120, names={"name": "metallic chair base"})
+    basket = Region("added", 1, np.arange(520, 640), fit_box(beside), 120, names={"name": "basket"})
+    gone = Region("removed", 0, np.arange(640, 1040), fit_box(old), 400, names={"name": "leather chair"})
+    move = Move(gone, chair, 4.0, None, 1.0)
+    _, loose_added = absorb_fragments([move], [], [star, basket], points)
+    assert loose_added == [basket]
+    assert move.added.box.center[2] - move.added.box.size[2] / 2 < 0.05

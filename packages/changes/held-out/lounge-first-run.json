@@ -1,0 +1,118 @@
+{
+ "camera_alignment": {
+  "scale": 1.023,
+  "rmse_m": 0.028
+ },
+ "recall": 0.667,
+ "precision": 0.8,
+ "partial": [],
+ "names_correct": "2 of 4",
+ "head_nouns_correct": "3 of 4",
+ "mean_centre_error_m": 0.117,
+ "mean_bottom_error_m": 0.133,
+ "mean_height_error_m": 0.184,
+ "mean_overlap": 0.517,
+ "mean_distance_error_m": 0.28,
+ "false_alarms": [
+  "c5"
+ ],
+ "unverifiable_reported": [],
+ "unverifiable_listed": [],
+ "changes": [
+  {
+   "truth": "lounge chair",
+   "type": "moved",
+   "found": "c1",
+   "name": "leather chair",
+   "name_ok": false,
+   "head_noun_ok": true,
+   "shape_position_error_m": 0.07,
+   "before": {
+    "centre_error_m": 0.102,
+    "bottom_error_m": 0.395,
+    "height_error_m": -0.424,
+    "overlap": 0.53
+   },
+   "after": {
+    "centre_error_m": 0.03,
+    "bottom_error_m": 0.351,
+    "height_error_m": -0.385,
+    "overlap": 0.61
+   },
+   "true_distance_m": 2.408,
+   "reported_distance_m": 2.29,
+   "distance_error_m": 0.118,
+   "true_turn_deg": -180,
+   "turn_error_deg": 5
+  },
+  {
+   "truth": "stool",
+   "type": "moved",
+   "found": "c2",
+   "name": "toy truck",
+   "name_ok": false,
+   "head_noun_ok": false,
+   "shape_position_error_m": 0.371,
+   "before": {
+    "centre_error_m": 0.055,
+    "bottom_error_m": -0.003,
+    "height_error_m": 0.023,
+    "overlap": 0.68
+   },
+   "after": {
+    "centre_error_m": 0.387,
+    "bottom_error_m": -0.001,
+    "height_error_m": 0.025,
+    "overlap": 0.18
+   },
+   "true_distance_m": 2.302,
+   "reported_distance_m": 1.86,
+   "distance_error_m": 0.442,
+   "true_turn_deg": 30
+  },
+  {
+   "truth": "boombox",
+   "type": "removed",
+   "found": "c3",
+   "name": "boombox",
+   "name_ok": true,
+   "head_noun_ok": true,
+   "shape_position_error_m": 0.115,
+   "before": {
+    "centre_error_m": 0.078,
+    "bottom_error_m": 0.045,
+    "height_error_m": -0.241,
+    "overlap": 0.29
+   }
+  },
+  {
+   "truth": "military crate",
+   "type": "added",
+   "found": null
+  },
+  {
+   "truth": "military crate",
+   "type": "added",
+   "found": "c4",
+   "name": "wooden box",
+   "name_ok": true,
+   "head_noun_ok": true,
+   "shape_position_error_m": 0.049,
+   "after": {
+    "centre_error_m": 0.049,
+    "bottom_error_m": -0.004,
+    "height_error_m": 0.007,
+    "overlap": 0.81
+   }
+  },
+  {
+   "truth": "brass vase",
+   "type": "added",
+   "found": null
+  }
+ ],
+ "unobservable": [],
+ "seen_once_on_unchanged": [],
+ "phantom_furniture": [],
+ "doubted_real_changes": []
+}

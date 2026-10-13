@@ -9,9 +9,9 @@
  "names_correct": "5 of 5",
  "head_nouns_correct": "5 of 5",
  "mean_centre_error_m": 0.049,
- "mean_bottom_error_m": 0.02,
- "mean_height_error_m": 0.045,
- "mean_overlap": 0.694,
+ "mean_bottom_error_m": 0.022,
+ "mean_height_error_m": 0.044,
+ "mean_overlap": 0.691,
  "mean_distance_error_m": 0.055,
  "false_alarms": [],
  "unverifiable_reported": [],
@@ -105,12 +105,12 @@
    "name": "basket",
    "name_ok": true,
    "head_noun_ok": true,
-   "shape_position_error_m": 0.002,
+   "shape_position_error_m": 0.003,
    "after": {
     "centre_error_m": 0.045,
-    "bottom_error_m": -0.0,
-    "height_error_m": -0.046,
-    "overlap": 0.56
+    "bottom_error_m": -0.008,
+    "height_error_m": -0.039,
+    "overlap": 0.54
    }
   }
  ],

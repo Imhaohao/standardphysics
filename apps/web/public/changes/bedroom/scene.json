@@ -1,6 +1,6 @@
 {
  "format": 1,
- "detector": "875704297675",
+ "detector": "bcdcc7f26ef1",
  "inputs": {
   "before": "before.mp4",
   "after": "after.mp4"
@@ -804,14 +804,14 @@
    "type": "added",
    "name": "woven basket",
    "detail": "light brown woven basket",
-   "sentence": "A light brown woven basket appeared near the wooden dresser.",
+   "sentence": "A light brown woven basket appeared on the side table.",
    "partly_seen": false,
    "size": [
     0.41,
     0.2,
-    0.07
+    0.12
    ],
-   "size_text": "about 40 cm by 20 cm and 5 cm tall",
+   "size_text": "about 40 cm by 20 cm and 10 cm tall",
    "confidence": 0.88,
    "evidence": {
     "points": 538,
@@ -828,34 +828,34 @@
      "center": [
       2.201,
       3.592,
-      0.796
+      0.772
      ],
      "size": [
       0.412,
       0.196,
-      0.069
+      0.117
      ],
      "yaw_deg": 5.7,
      "corners": [
       [
        2.006,
        3.474,
-       0.761
+       0.714
       ],
       [
        2.416,
        3.515,
-       0.761
+       0.714
       ],
       [
        1.986,
        3.669,
-       0.761
+       0.714
       ],
       [
        2.396,
        3.71,
-       0.761
+       0.714
       ],
       [
        2.006,
@@ -879,7 +879,7 @@
       ]
      ]
     },
-    "where": "near the wooden dresser"
+    "where": "on the side table"
    },
    "pictures": {
     "before": {
@@ -889,36 +889,36 @@
      "aspect": 1.0,
      "box": [
       [
-       0.286,
-       0.6
+       0.293,
+       0.62
       ],
       [
-       0.818,
-       0.528
+       0.816,
+       0.545
       ],
       [
-       0.209,
-       0.56
+       0.217,
+       0.579
       ],
       [
-       0.725,
-       0.494
+       0.724,
+       0.51
       ],
       [
-       0.271,
-       0.507
+       0.268,
+       0.466
       ],
       [
-       0.807,
-       0.441
+       0.798,
+       0.401
       ],
       [
-       0.193,
-       0.471
+       0.191,
+       0.431
       ],
       [
-       0.714,
-       0.41
+       0.706,
+       0.37
       ]
      ]
     },
@@ -929,36 +929,36 @@
      "aspect": 1.0,
      "box": [
       [
-       0.197,
-       0.571
+       0.202,
+       0.615
       ],
       [
-       0.813,
-       0.567
+       0.815,
+       0.611
       ],
       [
-       0.219,
-       0.523
+       0.224,
+       0.564
       ],
       [
-       0.805,
-       0.52
+       0.807,
+       0.56
       ],
       [
        0.19,
-       0.466
+       0.439
       ],
       [
        0.811,
-       0.464
+       0.437
       ],
       [
        0.213,
-       0.423
+       0.396
       ],
       [
        0.803,
-       0.421
+       0.394
       ]
      ]
     }
@@ -1078,6 +1078,64 @@
       3.611,
       3.154,
       1.213
+     ]
+    ]
+   }
+  },
+  {
+   "name": "side table",
+   "box": {
+    "center": [
+     2.261,
+     3.674,
+     0.43
+    ],
+    "size": [
+     0.617,
+     0.693,
+     0.735
+    ],
+    "yaw_deg": 81.3,
+    "corners": [
+     [
+      2.557,
+      3.317,
+      0.062
+     ],
+     [
+      2.65,
+      3.927,
+      0.062
+     ],
+     [
+      1.872,
+      3.422,
+      0.062
+     ],
+     [
+      1.965,
+      4.031,
+      0.062
+     ],
+     [
+      2.557,
+      3.317,
+      0.797
+     ],
+     [
+      2.65,
+      3.927,
+      0.797
+     ],
+     [
+      1.872,
+      3.422,
+      0.797
+     ],
+     [
+      1.965,
+      4.031,
+      0.797
      ]
     ]
    }
@@ -2589,9 +2647,9 @@
   }
  ],
  "seconds": {
-  "reconstruction": 36.8,
+  "reconstruction": 36.7,
   "change evidence": 4.8,
-  "naming": 31.2
+  "naming": 32.5
  },
  "scale": {
   "factor": 0.9061,
@@ -2604,39 +2662,39 @@
    "name": "bed post",
    "detail": "dark wooden bed post",
    "reason": "unsupported",
-   "sentence": "A dark wooden bed post seems to have appeared 80 cm above the floor with nothing under most of it, so it is more likely a misread surface than a change and is not counted.",
+   "sentence": "A dark wooden bed post seems to have appeared 55 cm above the floor with nothing under most of it, so it is more likely a misread surface than a change and is not counted.",
    "box": {
     "center": [
      1.711,
      1.881,
-     1.011
+     0.887
     ],
     "size": [
      0.21,
      0.12,
-     0.461
+     0.709
     ],
     "yaw_deg": 20.8,
     "corners": [
      [
       1.634,
       1.788,
-      0.78
+      0.533
      ],
      [
       1.831,
       1.862,
-      0.78
+      0.533
      ],
      [
       1.591,
       1.9,
-      0.78
+      0.533
      ],
      [
       1.788,
       1.975,
-      0.78
+      0.533
      ],
      [
       1.634,
@@ -2660,44 +2718,44 @@
      ]
     ]
    },
-   "size_text": "about 20 cm by 10 cm and 45 cm tall",
+   "size_text": "about 20 cm by 10 cm and 70 cm tall",
    "picture": {
     "file": "pictures/u1.jpg",
     "video": "after",
     "time_s": 4.44,
-    "aspect": 1.007,
+    "aspect": 1.0,
     "box": [
      [
-      0.546,
-      0.814
+      0.532,
+      0.813
      ],
      [
-      0.621,
-      0.747
+      0.581,
+      0.753
      ],
      [
-      0.4,
-      0.804
+      0.436,
+      0.803
      ],
      [
-      0.485,
-      0.739
+      0.492,
+      0.745
      ],
      [
-      0.534,
-      0.203
+      0.521,
+      0.201
      ],
      [
-      0.614,
-      0.185
+      0.575,
+      0.189
      ],
      [
-      0.38,
-      0.203
+      0.417,
+      0.201
      ],
      [
-      0.472,
-      0.185
+      0.478,
+      0.189
      ]
     ]
    }

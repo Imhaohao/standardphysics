@@ -21,6 +21,7 @@ from .landmarks import (
     fitting_name,
     merge_touching,
     place_phrase,
+    settle_kind,
     supports_under,
     touches_furniture,
     vote_classes,
@@ -229,21 +230,13 @@ def name_landmarks(scene: Scene, namer: Namer, segmenter: Segmenter | None, gone
     for landmark in found:
         landmark.point_ids = ids[landmark.point_ids]
         seen = sightings(scene.cloud.points[landmark.point_ids], of_epoch(scene.views, BEFORE))
-        names = namer.name(outlined(seen[0], margin=0.6)) if seen else {"name": "object", "detail": ""}
-        if agree_on_kind(landmark.category, names["name"]):
+        views = [outlined(sighting, margin=0.6) for sighting in clearest_two(seen)]
+        names = namer.name(*views) if seen else {"name": "object", "detail": ""}
+        if settle_kind(landmark, names["name"]):
             landmark.name = fitting_name(landmark.category, names["name"])
             landmark.detail = names.get("detail", "")
             named.append(landmark)
     return named
-
-
-def agree_on_kind(category: str, model_name: str) -> bool:
-    """The segmenter's category and the vision model's name describe the same kind of thing.
-
-    When they disagree (a "chair" the model calls a nightstand) neither is trusted, and the
-    piece is left unnamed rather than labelled wrongly. With no vision model the category stands.
-    """
-    return model_name == "object" or fitting_name(category, model_name) == model_name
 
 
 def _load_segmenter(log) -> Segmenter | None:
@@ -254,7 +247,7 @@ def _load_segmenter(log) -> Segmenter | None:
         return None
 
 
-def locate_regions(regions: list[Region], landmarks: list[Landmark]) -> None:
+def locate_regions(regions: list[Region], landmarks: list[Landmark], points: np.ndarray) -> None:
     """Stand each region on what holds it up, then say where it is against the furniture.
 
     Only a measured phrase is kept. The vision model also guesses a location, but a guess
@@ -262,7 +255,7 @@ def locate_regions(regions: list[Region], landmarks: list[Landmark]) -> None:
     nothing measured the sentence says no location at all.
     """
     for region in regions:
-        region.box = settle(region.box, [0.0, *supports_under(region.box, landmarks)])
+        region.box = settle(region.box, [0.0, *supports_under(region.box, landmarks, points)])
         region.names["where"] = place_phrase(region.box, landmarks, subject=region.names.get("name", ""))
 
 
@@ -323,7 +316,7 @@ def run(before: Path, after: Path, out: Path, settings: Settings = Settings(), l
     unchecked = [region for region in objects_only(unchecked, not isinstance(namer, PlainNamer))
                  if not touches_furniture(region.box, landmarks)]
     distinguish(landmarks, removed + added + unchecked)
-    locate_regions(removed + added + unchecked, landmarks)
+    locate_regions(removed + added + unchecked, landmarks, scene.cloud.points)
     log(f"seen by one video only: {', '.join(r.names.get('name', 'object') for r in unchecked) or 'nothing'}")
     for region in unchecked:
         region.doubt = region.doubt or "one video"

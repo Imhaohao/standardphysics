@@ -143,7 +143,8 @@ export const EXAMPLE_ROOMS = [
   { room: "bedroom", label: "Bedroom" },
   { room: "kitchen", label: "Kitchen" },
   { room: "workshop", label: "Workshop" },
-  { room: "living-room-same", label: "Nothing changed" },
+  { room: "lounge", label: "Lounge" },
+  { room: "living-room-same", label: "No changes" },
   { room: "living-room-blind-spot", label: "Blind spot" },
 ] as const;
 

@@ -3,21 +3,17 @@
   "scale": 0.984,
   "rmse_m": 0.029
  },
- "recall": 0.6,
- "precision": 0.6,
- "partial": [
-  "c3 points at the suitcase but covers too little of it"
- ],
- "names_correct": "3 of 3",
- "head_nouns_correct": "3 of 3",
- "mean_centre_error_m": 0.07,
- "mean_bottom_error_m": 0.015,
- "mean_height_error_m": 0.051,
- "mean_overlap": 0.602,
+ "recall": 0.833,
+ "precision": 1.0,
+ "partial": [],
+ "names_correct": "5 of 5",
+ "head_nouns_correct": "5 of 5",
+ "mean_centre_error_m": 0.076,
+ "mean_bottom_error_m": 0.016,
+ "mean_height_error_m": 0.045,
+ "mean_overlap": 0.566,
  "mean_distance_error_m": 0.064,
- "false_alarms": [
-  "c4"
- ],
+ "false_alarms": [],
  "unverifiable_reported": [],
  "unverifiable_listed": [],
  "changes": [
@@ -94,18 +90,32 @@
   {
    "truth": "suitcase",
    "type": "added",
-   "found": null,
+   "found": "c4",
    "name": "suitcase",
    "name_ok": true,
    "head_noun_ok": true,
-   "shape_position_error_m": 0.443,
+   "shape_position_error_m": 0.016,
    "after": {
-    "centre_error_m": 0.462,
-    "bottom_error_m": 0.013,
-    "height_error_m": -0.064,
-    "overlap": 0.23
-   },
-   "partial": "c3"
+    "centre_error_m": 0.063,
+    "bottom_error_m": -0.015,
+    "height_error_m": -0.03,
+    "overlap": 0.55
+   }
+  },
+  {
+   "truth": "suitcase",
+   "type": "added",
+   "found": "c3",
+   "name": "suitcase",
+   "name_ok": true,
+   "head_noun_ok": true,
+   "shape_position_error_m": 0.069,
+   "after": {
+    "centre_error_m": 0.116,
+    "bottom_error_m": -0.018,
+    "height_error_m": -0.032,
+    "overlap": 0.4
+   }
   }
  ],
  "unobservable": [],

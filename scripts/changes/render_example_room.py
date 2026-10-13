@@ -44,6 +44,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--out", type=pathlib.Path, required=True)
     parser.add_argument("--samples", type=int, default=32)
     parser.add_argument("--preview", action="store_true", help="render one still per recording")
+    parser.add_argument("--truth-only", action="store_true",
+                        help="rewrite the object boxes in an existing truth.json without rendering")
     return parser.parse_args(argv)
 
 
@@ -267,6 +269,43 @@ def oriented_box(root: bpy.types.Object, extent: dict, placement: tuple) -> dict
     }
 
 
+def _mesh_corners(obj) -> list[Vector]:
+    return [obj.matrix_world @ Vector(corner) for corner in obj.bound_box]
+
+
+def _apart(a: list[Vector], b: list[Vector], gap_m: float) -> bool:
+    return any(min(c[axis] for c in a) > max(c[axis] for c in b) + gap_m
+               or min(c[axis] for c in b) > max(c[axis] for c in a) + gap_m for axis in range(3))
+
+
+def separate_pieces(root: bpy.types.Object, gap_m: float = 0.03) -> list[list[Vector]]:
+    """A model's mesh corners grouped into the separate things the model is made of.
+
+    Most models are one thing, but some are a set, such as two suitcases side by side; each
+    of those is a separate object a detector should find, so each gets its own truth box.
+    """
+    groups = []
+    for corners in (_mesh_corners(obj) for obj in meshes_under(root)):
+        touching = [group for group in groups if not _apart(corners, group, gap_m)]
+        merged = corners + [corner for group in touching for corner in group]
+        groups = [group for group in groups if not any(group is other for other in touching)] + [merged]
+    return groups
+
+
+def piece_box(corners: list[Vector], yaw_deg: float) -> dict:
+    """An upright box around one piece, measured in the piece's own frame so its yaw doesn't inflate it."""
+    turn = Matrix.Rotation(math.radians(-yaw_deg), 3, "Z")
+    local = [turn @ corner for corner in corners]
+    low = Vector((min(c.x for c in local), min(c.y for c in local), min(c.z for c in local)))
+    high = Vector((max(c.x for c in local), max(c.y for c in local), max(c.z for c in local)))
+    centre = turn.transposed() @ ((low + high) / 2)
+    world_low = Vector((min(c.x for c in corners), min(c.y for c in corners), min(c.z for c in corners)))
+    world_high = Vector((max(c.x for c in corners), max(c.y for c in corners), max(c.z for c in corners)))
+    size = high - low
+    return {"center": [round(v, 4) for v in centre], "size": [round(size.x, 4), round(size.y, 4), round(size.z, 4)],
+            "yaw_deg": yaw_deg, "aabb_min": [round(v, 4) for v in world_low], "aabb_max": [round(v, 4) for v in world_high]}
+
+
 def hang_frame(room: dict) -> None:
     root = import_model("frame", "hanging_picture_frame_01")
     extent = local_extent(root)
@@ -286,7 +325,12 @@ def stage(objects: list, models: dict, epoch: int) -> dict:
             continue
         place(root, extent, placement, tops)
         tops[name] = world_bounds(root)[1].z
-        boxes[name] = oriented_box(root, extent, placement)
+        pieces = separate_pieces(root)
+        if len(pieces) == 1:
+            boxes[name] = oriented_box(root, extent, placement)
+            continue
+        for number, corners in enumerate(pieces, start=1):
+            boxes[f"{name}-{number}"] = piece_box(corners, placement[2])
     return boxes
 
 
@@ -384,8 +428,11 @@ def change_kind(first: dict | None, second: dict | None) -> str | None:
 
 
 def truth_record(scene_spec: dict, boxes: list[dict], cameras: dict, camera: bpy.types.Object) -> dict:
-    labels = {name: label for name, _, label, *_ in scene_spec["objects"]}
-    hidden = set(scene_spec["unverifiable"])
+    labels = {}
+    for name, _, label, *_ in scene_spec["objects"]:
+        parts = sorted(key for key in {*boxes[0], *boxes[1]} if key.rsplit("-", 1)[0] == name and key != name)
+        labels |= {part: label for part in parts} or {name: label}
+    hidden = {part for part in labels if part.rsplit("-", 1)[0] in set(scene_spec["unverifiable"]) or part in set(scene_spec["unverifiable"])}
     changes, unverifiable = [], []
     for name in labels:
         first, second = boxes[0].get(name), boxes[1].get(name)
@@ -424,9 +471,12 @@ def main() -> None:
     camera.data.lens, camera.data.sensor_width = 26, 36
     bpy.context.scene.camera = camera
     boxes, cameras = [], {}
+    if args.truth_only:
+        cameras = json.loads((args.out / "truth.json").read_text())["cameras_opencv_c2w"]
     for epoch, walk in enumerate(["before", "after"]):
         boxes.append(stage(spec["objects"], models, epoch))
-        cameras[walk] = render_walk(camera, spec["walks"][walk], walk, args.out, args.preview)
+        if not args.truth_only:
+            cameras[walk] = render_walk(camera, spec["walks"][walk], walk, args.out, args.preview)
     if not args.preview:
         (args.out / "truth.json").write_text(json.dumps(truth_record(spec, boxes, cameras, camera), indent=1))
 

@@ -1,6 +1,6 @@
 {
  "format": 1,
- "detector": "875704297675",
+ "detector": "bcdcc7f26ef1",
  "inputs": {
   "before": "before.mp4",
   "after": "after.mp4"
@@ -303,7 +303,7 @@
    }
   },
   {
-   "name": "side table",
+   "name": "wooden side table",
    "box": {
     "center": [
      3.074,
@@ -1983,9 +1983,9 @@
   }
  ],
  "seconds": {
-  "reconstruction": 36.5,
-  "change evidence": 3.8,
-  "naming": 20.4
+  "reconstruction": 36.4,
+  "change evidence": 3.9,
+  "naming": 22.4
  },
  "scale": {
   "factor": 0.9232,

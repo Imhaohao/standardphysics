@@ -26,7 +26,8 @@ EXPECTED = [
     ("office", 3, 1, 0, 0),
     ("bedroom", 5, 0, 1, 0),
     ("kitchen", 5, 0, 0, 0),
-    ("workshop", 3, 1, 0, 1),
+    ("workshop", 5, 0, 0, 0),
+    ("lounge", 4, 0, 0, 0),
 ]
 # room, names that match the object exactly, names whose kind of thing is right, and which changes admit being partly seen
 NAMES_AND_HEDGES = [
@@ -36,10 +37,11 @@ NAMES_AND_HEDGES = [
     ("office", "1 of 3", "3 of 3", ["wooden crate"]),
     ("bedroom", "2 of 5", "3 of 5", []),
     ("kitchen", "1 of 5", "4 of 5", []),
-    ("workshop", "3 of 3", "3 of 3", []),
+    ("workshop", "5 of 5", "5 of 5", []),
+    ("lounge", "2 of 4", "3 of 4", []),
 ]
-# furniture the sentences may cite that stands on no real object: the kitchen's stove read as a white plastic chair
-KNOWN_PHANTOMS = {"kitchen": ["white plastic chair"]}
+# furniture that stands on no real object: part of the kitchen's stove read as a white plastic patio chair
+KNOWN_PHANTOMS = {"kitchen": ["white plastic patio chair"]}
 
 
 def scored(room: str) -> tuple[dict, dict]:

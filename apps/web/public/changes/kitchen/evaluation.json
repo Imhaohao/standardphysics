@@ -9,9 +9,9 @@
  "names_correct": "1 of 5",
  "head_nouns_correct": "4 of 5",
  "mean_centre_error_m": 0.047,
- "mean_bottom_error_m": 0.023,
- "mean_height_error_m": 0.027,
- "mean_overlap": 0.607,
+ "mean_bottom_error_m": 0.015,
+ "mean_height_error_m": 0.012,
+ "mean_overlap": 0.613,
  "mean_distance_error_m": 0.028,
  "false_alarms": [],
  "unverifiable_reported": [],
@@ -27,9 +27,9 @@
    "shape_position_error_m": 0.105,
    "before": {
     "centre_error_m": 0.06,
-    "bottom_error_m": 0.082,
-    "height_error_m": -0.134,
-    "overlap": 0.67
+    "bottom_error_m": -0.018,
+    "height_error_m": -0.033,
+    "overlap": 0.72
    },
    "after": {
     "centre_error_m": 0.106,
@@ -108,16 +108,16 @@
    "shape_position_error_m": 0.012,
    "after": {
     "centre_error_m": 0.012,
-    "bottom_error_m": -0.001,
-    "height_error_m": -0.01,
-    "overlap": 0.69
+    "bottom_error_m": -0.007,
+    "height_error_m": -0.005,
+    "overlap": 0.68
    }
   }
  ],
  "unobservable": [],
  "seen_once_on_unchanged": [],
  "phantom_furniture": [
-  "white plastic chair"
+  "white plastic patio chair"
  ],
  "doubted_real_changes": []
 }

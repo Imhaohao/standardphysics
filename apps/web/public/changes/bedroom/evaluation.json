@@ -9,9 +9,9 @@
  "names_correct": "2 of 5",
  "head_nouns_correct": "3 of 5",
  "mean_centre_error_m": 0.046,
- "mean_bottom_error_m": 0.017,
- "mean_height_error_m": 0.018,
- "mean_overlap": 0.654,
+ "mean_bottom_error_m": 0.01,
+ "mean_height_error_m": 0.011,
+ "mean_overlap": 0.691,
  "mean_distance_error_m": 0.071,
  "false_alarms": [],
  "unverifiable_reported": [],
@@ -108,9 +108,9 @@
    "shape_position_error_m": 0.05,
    "after": {
     "centre_error_m": 0.013,
-    "bottom_error_m": 0.055,
-    "height_error_m": -0.048,
-    "overlap": 0.33
+    "bottom_error_m": 0.007,
+    "height_error_m": -0.0,
+    "overlap": 0.59
    }
   }
  ],

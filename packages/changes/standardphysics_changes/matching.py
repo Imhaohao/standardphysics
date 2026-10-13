@@ -8,7 +8,7 @@ import numpy as np
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial import cKDTree
 
-from .landmarks import footprint_gap
+from .landmarks import footprint_gap, inside_box
 from .regions import Box, Region, fit_box
 
 
@@ -117,24 +117,38 @@ def _touches(a: Box, b: Box, reach_m: float) -> bool:
     return footprint_gap(a, b) <= reach_m
 
 
+def _belongs(region: Region, host: Region, points: np.ndarray, reach_m: float) -> bool:
+    if _head(host) == _head(region) and _touches(host.box, region.box, reach_m):
+        return True
+    footprint = Box(host.box.center, np.array([*host.box.size[:2], 100.0]), host.box.yaw)
+    return float(inside_box(points[region.point_ids], footprint, margin_m=0.05).mean()) >= 0.5
+
+
+def _grown(old: Box, refit: Box) -> Box:
+    bottom = min(_bottom(old), _bottom(refit))
+    top = _top(refit)
+    return Box(np.array([*refit.center[:2], (bottom + top) / 2]), np.array([*refit.size[:2], top - bottom]), refit.yaw)
+
+
 def absorb_fragments(moves: list[Move], removed: list[Region], added: list[Region], points: np.ndarray,
                      reach_m: float = 0.1) -> tuple[list[Region], list[Region]]:
     """Fold a stray piece of a moved object back into the move instead of reporting it on its own.
 
     One chair can come out as two regions at its old spot when its legs and seat are seen from
-    different frames. An unpaired region that touches either end of a move and carries the same
-    kind of name joins that end, and its points refit the box; the rest are returned untouched.
+    different frames. An unpaired region joins an end of a move when it touches that end and has
+    the same kind of name, or when most of it lies under that end's footprint whatever it is
+    called, like a chair's base below its seat. Its points refit the box, which keeps the floor
+    it already stood on; the rest are returned untouched.
     """
     def fold(regions: list[Region], end: str) -> list[Region]:
         left = []
         for region in regions:
-            host = next((getattr(m, end) for m in moves if _head(getattr(m, end)) == _head(region)
-                         and _touches(getattr(m, end).box, region.box, reach_m)), None)
+            host = next((getattr(m, end) for m in moves if _belongs(region, getattr(m, end), points, reach_m)), None)
             if host is None:
                 left.append(region)
                 continue
             host.point_ids = np.union1d(host.point_ids, region.point_ids)
-            host.box = fit_box(points[host.point_ids])
+            host.box = _grown(host.box, fit_box(points[host.point_ids]))
         return left
 
     loose = fold(removed, "removed"), fold(added, "added")
