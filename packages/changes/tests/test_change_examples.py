@@ -22,6 +22,12 @@ EXPECTED = [
     ("living-room-same", 0, 0, 0),
     ("living-room-blind-spot", 1, 0, 1),
 ]
+# room, names that match the object among the changes found, and which changes admit being partly seen
+NAMES_AND_HEDGES = [
+    ("living-room", "5 of 5", []),
+    ("studio", "3 of 4", ["wooden crate"]),
+    ("living-room-blind-spot", "1 of 1", []),
+]
 
 
 def scored(room: str) -> tuple[dict, dict]:
@@ -38,6 +44,20 @@ def test_each_example_finds_its_changes_and_nothing_else(room, found, partial, s
     assert report["unverifiable_reported"] == []
     assert len(scene["unchecked"]) == seen_once
     assert len(report["unverifiable_listed"]) == len(json.loads((TRUTH / room / "truth.json").read_text())["unverifiable"])
+
+
+@pytest.mark.parametrize(("room", "names", "hedged"), NAMES_AND_HEDGES)
+def test_names_stay_right_and_only_partly_seen_changes_say_so(room, names, hedged):
+    scene, report = scored(room)
+    assert report["names_correct"] == names
+    rows = {row.get("found") or row.get("partial"): row["truth"] for row in report["changes"]}
+    assert sorted(rows[change["id"]] for change in scene["changes"] if change["partly_seen"]) == sorted(hedged)
+
+
+@pytest.mark.parametrize("room", [room for room, *_ in EXPECTED])
+def test_every_piece_of_furniture_the_sentences_can_cite_is_a_real_object(room):
+    _, report = scored(room)
+    assert report["phantom_furniture"] == []
 
 
 @pytest.mark.parametrize("room", ["living-room", "studio", "living-room-blind-spot"])

@@ -21,7 +21,7 @@
  "changes": [
   {
    "type": "added",
-   "sentence": "A black computer monitor appeared between the chair and the television.",
+   "sentence": "A black computer monitor appeared on the desk.",
    "points": 291,
    "evidence": {
     "old_spot": null,
@@ -36,19 +36,13 @@
  "seen_by_one_video_only": [
   {
    "video": "before",
-   "name": "wooden chair"
+   "name": "wooden chair",
+   "count": 1
   },
   {
    "video": "after",
-   "name": "bar stool"
-  },
-  {
-   "video": "after",
-   "name": "person"
-  },
-  {
-   "video": "after",
-   "name": "person"
+   "name": "bar stool",
+   "count": 1
   }
  ],
  "coverage": {

@@ -198,6 +198,18 @@ def _listed_unverifiable(truth: dict, scene: dict, fit: Fit) -> list[str]:
     return listed
 
 
+def phantom_furniture(scene: dict, truth: dict, fit: Fit) -> list[str]:
+    """Furniture the result names that stands on no real object, so a sentence citing it would invent a landmark."""
+    boxes = [box for item in truth.get("objects", {}).values() for box in (item["before"], item["after"]) if box]
+    phantoms = []
+    for piece in scene.get("furniture", []):
+        centre = fit.point(piece["box"]["center"])
+        reaches = [max(0.5, 0.5 * float(np.hypot(*box["size"][:2]))) for box in boxes]
+        if not any(_floor_distance(centre, box["center"]) <= reach for box, reach in zip(boxes, reaches)):
+            phantoms.append(piece["name"])
+    return phantoms
+
+
 def _mean(values: list[float]) -> float | None:
     return round(float(np.mean(values)), 3) if values else None
 
@@ -232,7 +244,8 @@ def score(scene: dict, truth: dict) -> dict:
     used: set = set()
     rows = [_score_one(item, scene["changes"], fits, used) for item in truth["changes"]]
     reported = _reported_unverifiable(truth, scene["changes"], fits["shape"])
-    return _totals(rows, scene, fits, rmse, reported, _listed_unverifiable(truth, scene, fits["shape"]))
+    totals = _totals(rows, scene, fits, rmse, reported, _listed_unverifiable(truth, scene, fits["shape"]))
+    return {**totals, "phantom_furniture": phantom_furniture(scene, truth, fits["shape"])}
 
 
 def evaluate(result_dir: Path, truth_path: Path) -> dict:

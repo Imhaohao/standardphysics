@@ -8,7 +8,7 @@ from standardphysics_changes.export import frames_seeing_empty
 from standardphysics_changes.geometry import Cloud
 from standardphysics_changes.landmarks import Landmark, merge_touching
 from standardphysics_changes.matching import consistent_turn, long_axis_deg
-from standardphysics_changes.pictures import touches_edge
+from standardphysics_changes.pictures import Sighting, runs_off_frame, touches_edge
 from standardphysics_changes.pipeline import Scene, distinguish, empty_share, objects_only, regions_of
 from standardphysics_changes.regions import Box, OneSidedRules, Region, RegionRules, fit_box, one_sided_regions
 from test_change_geometry import camera_at, floor_and_box
@@ -54,6 +54,26 @@ def test_furniture_sharing_a_name_takes_a_fitting_description_or_drops_out_of_se
     assert leather.name == "brown leather chair" and not leather.ambiguous
     assert wall_crop.ambiguous
     assert sofa.name == "sofa" and not sofa.ambiguous
+
+
+def test_a_name_inside_a_longer_one_is_ambiguous():
+    def piece(name, detail=""):
+        return Landmark(np.arange(1), Box(np.zeros(3), np.ones(3), 0.0), "chair", name, detail)
+
+    plain, wooden = piece("chair"), piece("wooden chair")
+    distinguish([plain, wooden], [])
+    assert plain.ambiguous
+    assert not wooden.ambiguous
+
+
+def test_a_surface_that_carries_on_past_the_frame_edge_runs_off_frame():
+    view = camera_at([0, 0, 0])
+    mask = np.zeros(view.shape, dtype=bool)
+    mask[20:40, 70:80] = True
+    sighting = Sighting(view, mask, 200, 1.0)
+    assert runs_off_frame(sighting)
+    view.depth[:, 78:] = 5.0
+    assert not runs_off_frame(sighting)
 
 
 def test_an_elongated_object_keeps_a_turn_only_when_its_long_side_agrees():

@@ -15,7 +15,7 @@
    "type": "moved",
    "name": "armchair",
    "detail": "dark wood frame with green cushion",
-   "sentence": "The armchair moved 1.7 m from beside the dark wood antique armchair to near the chair and turned about 90\u00b0 clockwise.",
+   "sentence": "The armchair moved 1.7 m from near the sideboard to near the round table and turned about 90\u00b0 clockwise.",
    "partly_seen": false,
    "size": [
     0.8,
@@ -93,7 +93,7 @@
       ]
      ]
     },
-    "where": "beside the dark wood antique armchair"
+    "where": "near the sideboard"
    },
    "after": {
     "box": {
@@ -151,7 +151,7 @@
       ]
      ]
     },
-    "where": "near the chair"
+    "where": "near the round table"
    },
    "pictures": {
     "before": {
@@ -244,7 +244,7 @@
    "type": "moved",
    "name": "ottoman",
    "detail": "brown leather ottoman",
-   "sentence": "The ottoman moved 90 cm from between the chair and the wooden chair to between the chair and the sideboard.",
+   "sentence": "The ottoman moved 90 cm from near the sideboard to beside the round table.",
    "partly_seen": false,
    "size": [
     0.71,
@@ -322,7 +322,7 @@
       ]
      ]
     },
-    "where": "between the chair and the wooden chair"
+    "where": "near the sideboard"
    },
    "after": {
     "box": {
@@ -380,7 +380,7 @@
       ]
      ]
     },
-    "where": "between the chair and the sideboard"
+    "where": "beside the round table"
    },
    "pictures": {
     "before": {
@@ -473,7 +473,7 @@
    "type": "removed",
    "name": "wooden step",
    "detail": "brown wooden step",
-   "sentence": "The brown wooden step beside the chair is gone; only part of it was ever in view, so it may be larger.",
+   "sentence": "The brown wooden step near the round table is gone; only part of it was ever in view, so it may be larger.",
    "partly_seen": true,
    "size": [
     0.46,
@@ -547,7 +547,7 @@
       ]
      ]
     },
-    "where": "beside the chair"
+    "where": "near the round table"
    },
    "after": null,
    "pictures": {
@@ -638,7 +638,7 @@
    "type": "added",
    "name": "plastic crate",
    "detail": "brown plastic crate",
-   "sentence": "A brown plastic crate appeared near the dark wood antique armchair.",
+   "sentence": "A brown plastic crate appeared on the open floor.",
    "partly_seen": false,
    "size": [
     0.44,
@@ -713,7 +713,7 @@
       ]
      ]
     },
-    "where": "near the dark wood antique armchair"
+    "where": "on the open floor"
    },
    "pictures": {
     "before": {
@@ -803,8 +803,8 @@
    "type": "added",
    "name": "glass vase",
    "detail": "tall golden glass vase",
-   "sentence": "A tall golden glass vase appeared on the sideboard; only part of it was ever in view, so it may be larger.",
-   "partly_seen": true,
+   "sentence": "A tall golden glass vase appeared on the sideboard.",
+   "partly_seen": false,
    "size": [
     0.21,
     0.23,
@@ -1024,64 +1024,6 @@
    }
   },
   {
-   "name": "wooden chair",
-   "box": {
-    "center": [
-     0.142,
-     3.019,
-     0.514
-    ],
-    "size": [
-     0.954,
-     0.992,
-     0.923
-    ],
-    "yaw_deg": 0.9,
-    "corners": [
-     [
-      -0.327,
-      2.515,
-      0.053
-     ],
-     [
-      0.627,
-      2.53,
-      0.053
-     ],
-     [
-      -0.343,
-      3.507,
-      0.053
-     ],
-     [
-      0.61,
-      3.523,
-      0.053
-     ],
-     [
-      -0.327,
-      2.515,
-      0.976
-     ],
-     [
-      0.627,
-      2.53,
-      0.976
-     ],
-     [
-      -0.343,
-      3.507,
-      0.976
-     ],
-     [
-      0.61,
-      3.523,
-      0.976
-     ]
-    ]
-   }
-  },
-  {
    "name": "round table",
    "box": {
     "center": [
@@ -1135,122 +1077,6 @@
       3.367,
       2.895,
       0.783
-     ]
-    ]
-   }
-  },
-  {
-   "name": "chair",
-   "box": {
-    "center": [
-     3.165,
-     1.783,
-     0.532
-    ],
-    "size": [
-     0.576,
-     0.508,
-     0.912
-    ],
-    "yaw_deg": 85.8,
-    "corners": [
-     [
-      3.397,
-      1.478,
-      0.076
-     ],
-     [
-      3.44,
-      2.052,
-      0.076
-     ],
-     [
-      2.891,
-      1.515,
-      0.076
-     ],
-     [
-      2.933,
-      2.089,
-      0.076
-     ],
-     [
-      3.397,
-      1.478,
-      0.988
-     ],
-     [
-      3.44,
-      2.052,
-      0.988
-     ],
-     [
-      2.891,
-      1.515,
-      0.988
-     ],
-     [
-      2.933,
-      2.089,
-      0.988
-     ]
-    ]
-   }
-  },
-  {
-   "name": "dark wood antique armchair",
-   "box": {
-    "center": [
-     -0.295,
-     1.838,
-     0.515
-    ],
-    "size": [
-     0.299,
-     1.27,
-     0.919
-    ],
-    "yaw_deg": 2.9,
-    "corners": [
-     [
-      -0.412,
-      1.196,
-      0.056
-     ],
-     [
-      -0.113,
-      1.211,
-      0.056
-     ],
-     [
-      -0.476,
-      2.465,
-      0.056
-     ],
-     [
-      -0.177,
-      2.48,
-      0.056
-     ],
-     [
-      -0.412,
-      1.196,
-      0.975
-     ],
-     [
-      -0.113,
-      1.211,
-      0.975
-     ],
-     [
-      -0.476,
-      2.465,
-      0.975
-     ],
-     [
-      -0.177,
-      2.48,
-      0.975
      ]
     ]
    }
@@ -2820,9 +2646,9 @@
   }
  ],
  "seconds": {
-  "reconstruction": 43.7,
-  "change evidence": 5.7,
-  "naming": 37.5
+  "reconstruction": 43.0,
+  "change evidence": 5.6,
+  "naming": 33.0
  },
  "scale": {
   "factor": 0.9406,

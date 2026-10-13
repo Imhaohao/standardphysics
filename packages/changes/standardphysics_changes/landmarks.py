@@ -105,10 +105,18 @@ LONGEST_SIDE_M = {"chair": 1.3, "plant": 1.5, "television": 2.2, "bench": 2.5, "
                   "table": 2.8, "counter": 6.0, "sofa": 3.2, "bed": 2.6}
 
 
+# The narrowest footprint side and the most elongated footprint each kind plausibly has. A
+# "chair" 29 cm by 1.22 m is a sliver of something else, not a chair.
+SHAPE = {"chair": (0.3, 1.9), "sofa": (0.45, 3.8), "table": (0.3, 4.5), "plant": (0.12, 2.5), "bed": (0.8, 2.5),
+         "bench": (0.25, 6.0), "cabinet": (0.2, 6.0), "shelf": (0.15, 8.0)}
+
+
 def _is_furniture_sized(box: Box, count: int, category: str, rules: LandmarkRules) -> bool:
-    longest = float(box.size[:2].max())
-    return (count >= rules.min_points and longest >= rules.min_extent_m
-            and float(box.size[:2].min()) >= rules.min_thickness_m and longest <= LONGEST_SIDE_M.get(category, 3.0))
+    longest, shortest = float(box.size[:2].max()), float(box.size[:2].min())
+    narrowest, most_elongated = SHAPE.get(category, (rules.min_thickness_m, 10.0))
+    return (count >= rules.min_points and longest >= rules.min_extent_m and shortest >= rules.min_thickness_m
+            and longest <= LONGEST_SIDE_M.get(category, 3.0) and shortest >= narrowest
+            and longest <= most_elongated * shortest)
 
 
 def find_landmarks(points: np.ndarray, status: np.ndarray, classes: np.ndarray, names: dict[int, str],
@@ -145,13 +153,21 @@ def _part_of_change(landmark: Landmark, points: np.ndarray, box: Box) -> bool:
     return (close and similar_size) or float(inside_box(points[landmark.point_ids], box).mean()) > 0.5
 
 
-def apart_from(landmarks: list[Landmark], points: np.ndarray, boxes: list[Box]) -> list[Landmark]:
+def _same_kind_nearby(landmark: Landmark, changes: list[tuple[Box, str]], reach_m: float = 1.2) -> bool:
+    """A piece of the same kind as a change close by: most likely what that change left behind."""
+    family = NAME_FAMILIES.get(landmark.category, {landmark.category})
+    return any(set(name.split()) & family and footprint_gap(landmark.box, box) <= reach_m for box, name in changes)
+
+
+def apart_from(landmarks: list[Landmark], points: np.ndarray, changes: list[tuple[Box, str]]) -> list[Landmark]:
     """Drop pieces that are really part of a change, such as leaves left over from a plant that was taken away.
 
     A basket set on a table covers a corner of the table, so overlap alone is not enough;
-    the piece has to sit inside the change or be mostly covered by it.
+    the piece has to sit inside the change, be mostly covered by it, or be the same kind of
+    thing close by, like a strip of a moved armchair that its old spot still shows.
     """
-    return [lm for lm in landmarks if not any(_part_of_change(lm, points, box) for box in boxes)]
+    return [lm for lm in landmarks if not any(_part_of_change(lm, points, box) for box, _ in changes)
+            and not _same_kind_nearby(lm, changes)]
 
 
 def _belongs_to(piece: Landmark, host: Landmark, points: np.ndarray) -> bool:

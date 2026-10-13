@@ -3,6 +3,8 @@
 import numpy as np
 from standardphysics_changes.landmarks import (
     Landmark,
+    LandmarkRules,
+    _is_furniture_sized,
     apart_from,
     crossed,
     fitting_name,
@@ -83,8 +85,18 @@ def test_leftovers_of_a_change_are_not_furniture_but_the_table_under_it_is():
     removed_plant = Box(np.array([0.0, 3.7, 0.75]), np.array([0.6, 0.6, 1.3]), np.radians(40))
     basket = Box(np.array([0.2, 0.8, 0.52]), np.array([0.4, 0.3, 0.24]), 0.0)
     points = np.zeros((1, 3))
-    kept = apart_from([plant_left, TABLE, SOFA], points, [removed_plant, basket])
+    kept = apart_from([plant_left, TABLE, SOFA], points, [(removed_plant, "potted plant"), (basket, "basket")])
     assert [lm.name for lm in kept] == ["coffee table", "sofa"]
+
+
+def test_a_strip_of_a_moved_armchair_is_not_a_chair_left_behind():
+    strip = Landmark(np.arange(1), Box(np.array([-2.1, 0.3, 0.5]), np.array([0.29, 1.22, 0.9]), 0.0), "chair")
+    rocking_chair = Landmark(np.arange(1), Box(np.array([-1.2, 1.4, 0.5]), np.array([0.6, 0.9, 1.0]), 0.0), "chair")
+    old_spot = Box(np.array([-1.3, 0.2, 0.5]), np.array([0.9, 0.9, 1.0]), 0.0)
+    assert not _is_furniture_sized(strip.box, 1000, "chair", LandmarkRules())
+    assert _is_furniture_sized(rocking_chair.box, 1000, "chair", LandmarkRules())
+    assert apart_from([strip, rocking_chair], np.zeros((1, 3)), [(old_spot, "armchair")]) == []
+    assert apart_from([rocking_chair], np.zeros((1, 3)), [(old_spot, "cardboard box")]) == [rocking_chair]
 
 
 def test_pixel_labels_vote_onto_the_points_they_see():

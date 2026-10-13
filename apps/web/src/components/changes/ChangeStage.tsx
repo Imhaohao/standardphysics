@@ -71,7 +71,7 @@ function overviewPose(scene: ChangeScene, camera: PerspectiveCamera): Pose {
 function closerPose(centre: Vec3, reach: number, cap: number, camera: PerspectiveCamera, around: Vector3): Pose {
   const target = new Vector3(...centre);
   const direction = camera.position.clone().sub(around).normalize();
-  const distance = Math.min(cap, Math.max(1.6, (reach / Math.sin(narrowFov(camera) / 2)) * 1.15));
+  const distance = Math.min(cap, Math.max(2.4, (reach / Math.sin(narrowFov(camera) / 2)) * 1.15));
   const position = target.clone().addScaledVector(direction, distance);
   position.z = Math.max(position.z, target.z + 0.8);
   return { position, target };

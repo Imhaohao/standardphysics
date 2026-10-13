@@ -74,6 +74,38 @@ def touches_edge(mask: np.ndarray, margin_px: int = 12) -> bool:
                 or cols.max() >= width - 1 - margin_px)
 
 
+def _edge_bands(shape: tuple[int, int], margin_px: int) -> list[tuple[np.ndarray, tuple]]:
+    """For each side of the frame, the pixels near it and the index of the edge pixel each one lines up with."""
+    height, width = shape
+    rows, cols = np.mgrid[0:height, 0:width]
+    return [
+        (cols < margin_px, (rows, np.zeros_like(cols))),
+        (cols >= width - margin_px, (rows, np.full_like(cols, width - 1))),
+        (rows < margin_px, (np.zeros_like(rows), cols)),
+        (rows >= height - margin_px, (np.full_like(rows, height - 1), cols)),
+    ]
+
+
+def runs_off_frame(sighting: Sighting, tolerance: Tolerance = Tolerance(), margin_px: int = 12) -> bool:
+    """Whether the region's surface carries on past the frame's edge, rather than stopping just short of it.
+
+    A vase near the top of the frame touches the edge band, but above it the picture shows
+    wall at another depth. A crate cut off by the frame shows its own surface right up to
+    the last pixel, at the depth it had just inside.
+    """
+    depth = sighting.view.depth
+    continuing = near = 0
+    for band, (edge_rows, edge_cols) in _edge_bands(depth.shape, margin_px):
+        inside = sighting.mask & band & (depth > 0)
+        if not inside.any():
+            continue
+        own = depth[inside]
+        edge = depth[edge_rows[inside], edge_cols[inside]]
+        near += int(inside.sum())
+        continuing += int(np.sum((edge > 0) & (np.abs(edge - own) < tolerance.at(own))))
+    return near > 0 and continuing >= 0.5 * near
+
+
 def _framing_score(mask: np.ndarray, visible: int) -> float:
     """Many visible points, away from the frame edge, so the object is whole in the picture."""
     rows, cols = np.nonzero(mask)

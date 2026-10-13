@@ -42,5 +42,6 @@
    "distance_error_m": 0.019,
    "true_turn_deg": -45
   }
- ]
+ ],
+ "phantom_furniture": []
 }

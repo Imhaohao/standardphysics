@@ -22,27 +22,18 @@
  "seen_by_one_video_only": [
   {
    "video": "before",
-   "name": "bar stool"
+   "name": "bar stool",
+   "count": 1
   },
   {
    "video": "after",
-   "name": "wooden chair"
+   "name": "wooden chair",
+   "count": 3
   },
   {
    "video": "after",
-   "name": "wooden chair"
-  },
-  {
-   "video": "after",
-   "name": "wooden chair"
-  },
-  {
-   "video": "after",
-   "name": "person"
-  },
-  {
-   "video": "after",
-   "name": "black chair"
+   "name": "black chair",
+   "count": 1
   }
  ],
  "coverage": {

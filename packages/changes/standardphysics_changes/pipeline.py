@@ -26,7 +26,7 @@ from .landmarks import (
 )
 from .matching import MatchRules, pair_moves
 from .naming import Embedder, Namer, PlainNamer, Segmenter, make_namer
-from .pictures import isolated, outlined, sightings, touches_edge
+from .pictures import isolated, outlined, runs_off_frame, sightings
 from .regions import Region, RegionRules, find_regions, finish_regions, one_sided_regions, settle
 from .views import AFTER, BEFORE, View, load_views, of_epoch, save_views
 
@@ -170,9 +170,19 @@ def describe_regions(scene: Scene, regions: list[Region], namer: Namer, embedder
             region.names = {"name": "object", "detail": "object", "where": ""}
             continue
         region.names = namer.name(outlined(seen[0], margin=1.2))
-        region.cut_off = all(touches_edge(sighting.mask) for sighting in seen[:3])
+        region.cut_off = never_seen_whole(seen)
         if embedder is not None:
             region.descriptor = embedder.embed([isolated(s) for s in seen[:3]])
+
+
+def never_seen_whole(seen: list) -> bool:
+    """No good view shows the region ending inside the frame: in every one its surface runs off the edge.
+
+    A vase near the top of the frame runs off in most views, but two show its top, so its
+    full height was seen; a crate beside the camera's path runs off in every view there is.
+    """
+    best = max(sighting.visible for sighting in seen)
+    return all(runs_off_frame(sighting) for sighting in seen if sighting.visible >= 0.5 * best)
 
 
 def name_landmarks(scene: Scene, namer: Namer, segmenter: Segmenter | None, changed: list[Region]) -> list[Landmark]:
@@ -184,7 +194,8 @@ def name_landmarks(scene: Scene, namer: Namer, segmenter: Segmenter | None, chan
     views = of_epoch(scene.views, BEFORE)[::2]
     classes = vote_classes(points, views, [segmenter.classes(view.image) for view in views])
     found = find_landmarks(points, scene.status[ids], classes, segmenter.names, ceiling_height(scene))
-    found = merge_touching(apart_from(found, points, [region.box for region in changed]), points)
+    changes = [(region.box, region.names.get("name", "")) for region in changed]
+    found = merge_touching(apart_from(found, points, changes), points)
     for landmark in found:
         landmark.point_ids = ids[landmark.point_ids]
         seen = sightings(scene.cloud.points[landmark.point_ids], of_epoch(scene.views, BEFORE))
@@ -214,9 +225,10 @@ def locate_regions(regions: list[Region], landmarks: list[Landmark]) -> None:
             region.names["where"] = measured
 
 
-# Words that make a name part of the building rather than a thing in it.
+# Words that make a name part of the building, or a passer-by, rather than a thing in the room.
 STRUCTURE = {"wall", "floor", "ceiling", "window", "door", "curtain", "shadow", "corner", "section", "counter",
-             "pillar", "column", "beam", "pipe", "rail", "railing", "stairs", "staircase", "reflection", "glass"}
+             "pillar", "column", "beam", "pipe", "rail", "railing", "stairs", "staircase", "reflection", "glass",
+             "person", "people", "man", "woman", "child"}
 
 
 def objects_only(regions: list[Region], named_by_model: bool) -> list[Region]:
@@ -287,17 +299,26 @@ def distinguish(landmarks: list[Landmark], regions: list[Region]) -> None:
     label in the viewer but no sentence points to it, since "beside the chair" would not
     say which chair.
     """
-    taken = [region.names.get("name") for region in regions] + [landmark.name for landmark in landmarks]
+    taken = [region.names.get("name", "") for region in regions] + [landmark.name for landmark in landmarks]
     for landmark in landmarks:
-        if taken.count(landmark.name) == 1:
+        if not _collides(landmark.name, taken):
             continue
         detail = landmark.detail
         fits = bool(detail) and fitting_name(landmark.category, detail) == detail
-        if fits and len(detail.split()) <= 4 and taken.count(detail) == 0:
+        if fits and len(detail.split()) <= 4 and not _collides(detail, taken + [detail]):
             taken.append(detail)
             landmark.name = detail
         else:
             landmark.ambiguous = True
+
+
+def _collides(name: str, taken: list[str]) -> bool:
+    """Used twice, or inside a longer name, so "the chair" next to "the wooden chair" says no one chair."""
+    words = set(name.split())
+    others = list(taken)
+    if name in others:
+        others.remove(name)
+    return any(words <= set(other.split()) for other in others if other)
 
 
 def ceiling_height(scene: Scene) -> float:
