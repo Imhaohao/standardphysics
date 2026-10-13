@@ -228,3 +228,15 @@ def test_a_known_phone_height_rescales_the_room():
     grown = views[0].scaled(2.0)
     assert grown.position[2] == pytest.approx(3.0)
     assert float(grown.depth[0, 0]) == pytest.approx(6.0)
+
+
+def test_a_tilted_plane_with_a_small_offset_is_not_taken_for_the_floor():
+    from standardphysics_changes.geometry import _height_under
+
+    up = np.array([0.0, 0.0, 1.0])
+    centre = np.array([3.0, 0.0, 0.5])
+    floor = (np.array([0.0, 0.0, 1.0]), 0.0)
+    tilt = np.radians(30)
+    slope = (np.array([-np.sin(tilt), 0.0, np.cos(tilt)]), -0.5)
+    assert slope[1] < floor[1]
+    assert _height_under(centre, *floor, up) < _height_under(centre, *slope, up)

@@ -48,8 +48,18 @@ def turn_phrase(turn_deg: float | None) -> str:
     if turn_deg is None or abs(turn_deg) < 20:
         return ""
     rounded = int(round(abs(turn_deg) / 15) * 15)
+    if rounded >= 180:
+        return " and turned around"
     side = "counterclockwise" if turn_deg > 0 else "clockwise"
     return f" and turned about {rounded}° {side}"
+
+
+def plain_noun(size_m) -> str:
+    """What to call a thing when the views can't agree what it is: an object, sized by its box."""
+    longest = float(max(size_m))
+    if longest < 0.35:
+        return "small object"
+    return "large object" if longest > 1.2 else "object"
 
 
 def _where(phrase: str) -> str:

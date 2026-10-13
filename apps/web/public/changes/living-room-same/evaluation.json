@@ -1,6 +1,7 @@
 {
+ "detector": "6c215f76dcac",
  "camera_alignment": {
-  "scale": 0.981,
+  "scale": 0.98,
   "rmse_m": 0.015
  },
  "recall": null,
@@ -8,6 +9,7 @@
  "partial": [],
  "names_correct": "0 of 0",
  "head_nouns_correct": "0 of 0",
+ "wrong_kind_names": [],
  "mean_centre_error_m": null,
  "mean_bottom_error_m": null,
  "mean_height_error_m": null,

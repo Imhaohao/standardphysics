@@ -11,6 +11,7 @@ from typing import Callable
 import numpy as np
 
 from . import changes as change_records
+from . import language
 from .evidence import UNSEEN, DepthLookup, Tolerance, classify, gather
 from .export import unchecked_records, write_report
 from .geometry import Cloud, apply, build_cloud, room_frame
@@ -27,7 +28,7 @@ from .landmarks import (
     vote_classes,
 )
 from .matching import MatchRules, absorb_fragments, match_heights, pair_moves
-from .naming import Embedder, Namer, PlainNamer, Segmenter, make_namer
+from .naming import Embedder, Namer, PlainNamer, Segmenter, agreed_names, make_namer
 from .pictures import isolated, outlined, runs_off_frame, sightings
 from .regions import Region, RegionRules, find_regions, finish_regions, one_sided_regions, settle, support_share
 from .views import AFTER, BEFORE, View, load_views, of_epoch, save_views
@@ -171,7 +172,9 @@ def describe_regions(scene: Scene, regions: list[Region], namer: Namer, embedder
         if not seen:
             region.names = {"name": "object", "detail": "object", "where": ""}
             continue
-        region.names = namer.name(*(outlined(sighting, margin=1.2) for sighting in clearest_two(seen)))
+        views = [outlined(sighting, margin=1.2) for sighting in clearest_two(seen)]
+        plain = language.plain_noun(region.box.size)
+        region.names = agreed_names(namer, views) or {"name": plain, "detail": plain, "where": ""}
         region.cut_off = never_seen_whole(seen)
         if embedder is not None:
             region.descriptor = embedder.embed([isolated(s) for s in seen[:3]])
@@ -231,7 +234,7 @@ def name_landmarks(scene: Scene, namer: Namer, segmenter: Segmenter | None, gone
         landmark.point_ids = ids[landmark.point_ids]
         seen = sightings(scene.cloud.points[landmark.point_ids], of_epoch(scene.views, BEFORE))
         views = [outlined(sighting, margin=0.6) for sighting in clearest_two(seen)]
-        names = namer.name(*views) if seen else {"name": "object", "detail": ""}
+        names = (agreed_names(namer, views) if seen else None) or {"name": "object", "detail": ""}
         if settle_kind(landmark, names["name"]):
             landmark.name = fitting_name(landmark.category, names["name"])
             landmark.detail = names.get("detail", "")

@@ -1,6 +1,6 @@
 {
  "format": 1,
- "detector": "bcdcc7f26ef1",
+ "detector": "6c215f76dcac",
  "inputs": {
   "before": "before.mp4",
   "after": "after.mp4"
@@ -9,13 +9,13 @@
   "before": "before.mp4",
   "after": "after.mp4"
  },
- "summary": "5 things changed between the videos: the cart moved 2.3 m, the metal chair moved 2.2 m, a suitcase appeared, a suitcase appeared and a wooden bucket appeared.",
+ "summary": "5 things changed between the videos: the cart moved 2.3 m, the chair moved 2.2 m, a suitcase appeared, a suitcase appeared and a wooden bucket appeared.",
  "changes": [
   {
    "id": "c1",
    "type": "moved",
    "name": "cart",
-   "detail": "green metal rolling cart",
+   "detail": "green metal cart with wheels",
    "sentence": "The cart moved 2.3 m from between the desk and the wooden cabinet to near the bookshelf.",
    "partly_seen": false,
    "size": [
@@ -243,9 +243,9 @@
   {
    "id": "c2",
    "type": "moved",
-   "name": "metal chair",
+   "name": "chair",
    "detail": "blue metal chair",
-   "sentence": "The metal chair moved 2.2 m from beside the desk to near the wooden cabinet.",
+   "sentence": "The chair moved 2.2 m from beside the desk to near the wooden cabinet.",
    "partly_seen": false,
    "size": [
     0.57,
@@ -638,8 +638,8 @@
    "id": "c4",
    "type": "added",
    "name": "suitcase",
-   "detail": "greenish gray hardshell suitcase",
-   "sentence": "A greenish gray hardshell suitcase appeared on the desk.",
+   "detail": "green suitcase",
+   "sentence": "A green suitcase appeared on the desk.",
    "partly_seen": false,
    "size": [
     0.73,
@@ -2649,7 +2649,7 @@
  "seconds": {
   "reconstruction": 37.2,
   "change evidence": 4.7,
-  "naming": 30.8
+  "naming": 40.0
  },
  "scale": {
   "factor": 0.9653,

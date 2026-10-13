@@ -252,8 +252,7 @@ WORKSHOP = {
     "unverifiable": [],
 }
 
-# Held out: written before its first run, with furniture models no earlier room uses,
-# and scored once before anything was changed.
+# Development now: held out for its first run, saved in packages/changes/held-out.
 LOUNGE = {
     "room": {"half_x": 2.4, "half_y": 2.1, "height": 2.6, "floor": "herringbone_parquet",
              "wall": "patterned_plaster_wall", "rug": ("denim_fabric", (1.8, 1.4), (0.0, 0.5))},
@@ -288,6 +287,42 @@ LOUNGE = {
     "unverifiable": [],
 }
 
+# Held out: written before its first run, with models no earlier room uses, and scored
+# once before anything was changed.
+STUDY = {
+    "room": {"half_x": 2.4, "half_y": 2.0, "height": 2.6, "floor": "diagonal_parquet", "wall": "beige_wall_002",
+             "rug": ("caban", (1.7, 1.2), (0.1, 0.3))},
+    "objects": [
+        ("sofa", "chinese_sofa", "sofa", (0.0, 1.6, 0), (0.0, 1.6, 0)),
+        ("table", "WoodenTable_01", "table", (0.1, 0.4, 0), (0.1, 0.4, 0)),
+        ("cabinet", "GothicCabinet_01", "cabinet", (-2.15, 0.6, 90), (-2.15, 0.6, 90)),
+        ("console", "chinese_console_table", "console table", (2.15, 0.2, -90), (2.15, 0.2, -90)),
+        ("chair", "gallinera_chair", "side chair", (0.1, -0.4, 180), (-1.3, -1.0, 45)),
+        ("stool", "chinese_stool", "stool", (-1.4, 1.3, 0), (1.2, -1.0, 0)),
+        ("pot", "planter_pot_clay", "clay pot", (1.4, 1.4, 0), None),
+        ("jug", "jug_01", "jug", (2.15, 0.4, 0, "console"), None),
+        ("trash_can", "metal_trash_can", "trash can", None, (-0.9, -0.2, 0)),
+        ("vase", "brass_vase_03", "brass vase", None, (0.4, 0.5, 0, "table")),
+    ],
+    "walks": {
+        "before": [
+            ((1.9, -1.6, 1.44), (-0.8, 1.2, 0.4)),
+            ((0.6, -1.7, 1.46), (-0.6, 0.8, 0.2)),
+            ((-0.6, -1.7, 1.45), (0.8, 0.9, 0.3)),
+            ((-1.7, -1.5, 1.43), (0.5, 1.0, 0.3)),
+            ((-1.5, -0.4, 1.41), (1.4, 0.4, 0.4)),
+        ],
+        "after": [
+            ((-1.3, 0.9, 1.35), (1.2, -0.8, 0.3)),
+            ((-1.6, -1.6, 1.36), (1.2, 0.6, 0.25)),
+            ((0.0, -1.75, 1.37), (-0.6, 1.0, 0.3)),
+            ((1.6, -1.5, 1.35), (-1.0, 0.8, 0.35)),
+            ((1.4, -0.3, 1.34), (-1.6, 0.3, 0.4)),
+        ],
+    },
+    "unverifiable": [],
+}
+
 SCENES = {
     "living-room": LIVING_ROOM,
     "living-room-same": LIVING_ROOM_SAME,
@@ -298,4 +333,5 @@ SCENES = {
     "kitchen": KITCHEN,
     "workshop": WORKSHOP,
     "lounge": LOUNGE,
+    "study": STUDY,
 }

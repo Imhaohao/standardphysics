@@ -1,6 +1,6 @@
 {
  "format": 1,
- "detector": "bcdcc7f26ef1",
+ "detector": "6c215f76dcac",
  "inputs": {
   "before": "before.mp4",
   "after": "after.mp4"
@@ -9,7 +9,7 @@
   "before": "before.mp4",
   "after": "after.mp4"
  },
- "summary": "5 things changed between the videos: the chair moved 2.7 m, the oil drum moved 2.4 m, the wooden crate was removed, a plastic bag appeared and a woven basket appeared.",
+ "summary": "5 things changed between the videos: the chair moved 2.7 m, the oil drum moved 2.4 m, the wooden crate was removed, a plastic bag appeared and an object appeared.",
  "changes": [
   {
    "id": "c1",
@@ -244,7 +244,7 @@
    "id": "c2",
    "type": "moved",
    "name": "oil drum",
-   "detail": "red metal barrel",
+   "detail": "red metal barrel with warning label",
    "sentence": "The oil drum moved 2.4 m from the open floor to near the wooden dresser.",
    "partly_seen": false,
    "size": [
@@ -802,9 +802,9 @@
   {
    "id": "c5",
    "type": "added",
-   "name": "woven basket",
-   "detail": "light brown woven basket",
-   "sentence": "A light brown woven basket appeared on the side table.",
+   "name": "object",
+   "detail": "object",
+   "sentence": "An object appeared on the side table.",
    "partly_seen": false,
    "size": [
     0.41,
@@ -2648,8 +2648,8 @@
  ],
  "seconds": {
   "reconstruction": 36.7,
-  "change evidence": 4.8,
-  "naming": 32.5
+  "change evidence": 4.9,
+  "naming": 42.2
  },
  "scale": {
   "factor": 0.9061,

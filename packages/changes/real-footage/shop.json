@@ -1,7 +1,7 @@
 {
   "capture": "Share Tea walkthrough, a private iPhone capture kept out of git",
   "role": "development: cut from a part of the walk nothing was tuned on and rerun as the detector changed; its false alarm was never tuned away",
-  "detector": "bcdcc7f26ef1",
+  "detector": "6c215f76dcac",
   "clips_s": {
     "before": [
       69.0,
@@ -44,14 +44,20 @@
     },
     {
       "reason": "one video",
+      "video": "after",
+      "name": "object",
+      "count": 1
+    },
+    {
+      "reason": "one video",
       "video": "before",
-      "name": "bar stool",
+      "name": "wooden chair",
       "count": 1
     },
     {
       "reason": "unsupported",
       "video": "after",
-      "name": "computer monitor",
+      "name": "object",
       "count": 1
     }
   ]

@@ -1,0 +1,125 @@
+{
+ "detector": "a4ca1176806d",
+ "camera_alignment": {
+  "scale": 1.221,
+  "rmse_m": 0.021
+ },
+ "recall": 0.429,
+ "precision": 0.75,
+ "partial": [
+  "c3 points at the jug but covers too little of it"
+ ],
+ "names_correct": "2 of 3",
+ "head_nouns_correct": "2 of 3",
+ "wrong_kind_names": [],
+ "mean_centre_error_m": 0.303,
+ "mean_bottom_error_m": 0.277,
+ "mean_height_error_m": 0.196,
+ "mean_overlap": 0.23,
+ "mean_distance_error_m": 0.482,
+ "false_alarms": [],
+ "unverifiable_reported": [],
+ "unverifiable_listed": [],
+ "changes": [
+  {
+   "truth": "side chair",
+   "type": "moved",
+   "found": "c1",
+   "name": "wooden chair",
+   "name_ok": true,
+   "head_noun_ok": true,
+   "shape_position_error_m": 0.39,
+   "before": {
+    "centre_error_m": 0.235,
+    "bottom_error_m": 0.206,
+    "height_error_m": -0.159,
+    "overlap": 0.32
+   },
+   "after": {
+    "centre_error_m": 0.274,
+    "bottom_error_m": 0.183,
+    "height_error_m": -0.142,
+    "overlap": 0.28
+   },
+   "true_distance_m": 1.523,
+   "reported_distance_m": 1.27,
+   "distance_error_m": 0.253,
+   "true_turn_deg": -135
+  },
+  {
+   "truth": "stool",
+   "type": "moved",
+   "found": "c2",
+   "name": "wooden stool",
+   "name_ok": true,
+   "head_noun_ok": true,
+   "shape_position_error_m": 0.092,
+   "before": {
+    "centre_error_m": 0.564,
+    "bottom_error_m": 0.624,
+    "height_error_m": -0.433,
+    "overlap": 0.0
+   },
+   "after": {
+    "centre_error_m": 0.238,
+    "bottom_error_m": 0.093,
+    "height_error_m": 0.082,
+    "overlap": 0.28
+   },
+   "true_distance_m": 3.471,
+   "reported_distance_m": 2.76,
+   "distance_error_m": 0.711,
+   "true_turn_deg": 0
+  },
+  {
+   "truth": "clay pot",
+   "type": "removed",
+   "found": null
+  },
+  {
+   "truth": "jug",
+   "type": "removed",
+   "found": null,
+   "name": "small object",
+   "name_ok": false,
+   "head_noun_ok": false,
+   "shape_position_error_m": 0.082,
+   "before": {
+    "centre_error_m": 0.455,
+    "bottom_error_m": 0.113,
+    "height_error_m": -0.051,
+    "overlap": 0.0
+   },
+   "partial": "c3"
+  },
+  {
+   "truth": "trash can",
+   "type": "added",
+   "found": "c4",
+   "name": "object",
+   "name_ok": false,
+   "head_noun_ok": false,
+   "shape_position_error_m": 0.024,
+   "after": {
+    "centre_error_m": 0.205,
+    "bottom_error_m": 0.277,
+    "height_error_m": -0.164,
+    "overlap": 0.27
+   }
+  },
+  {
+   "truth": "trash can",
+   "type": "added",
+   "found": null
+  },
+  {
+   "truth": "brass vase",
+   "type": "added",
+   "found": null
+  }
+ ],
+ "unobservable": [],
+ "seen_once_on_unchanged": [],
+ "phantom_furniture": [],
+ "doubted_real_changes": []
+}

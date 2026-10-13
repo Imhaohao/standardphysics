@@ -1,4 +1,5 @@
 {
+ "detector": "6c215f76dcac",
  "camera_alignment": {
   "scale": 1.0,
   "rmse_m": 0.017
@@ -8,6 +9,9 @@
  "partial": [],
  "names_correct": "1 of 5",
  "head_nouns_correct": "4 of 5",
+ "wrong_kind_names": [
+  "metal bucket"
+ ],
  "mean_centre_error_m": 0.047,
  "mean_bottom_error_m": 0.015,
  "mean_height_error_m": 0.012,
@@ -117,7 +121,7 @@
  "unobservable": [],
  "seen_once_on_unchanged": [],
  "phantom_furniture": [
-  "white plastic patio chair"
+  "chair"
  ],
  "doubted_real_changes": []
 }

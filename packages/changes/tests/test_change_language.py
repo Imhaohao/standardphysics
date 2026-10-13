@@ -101,3 +101,25 @@ def test_number_follows_the_noun_the_phrase_is_about():
     assert language.some("green suitcase with photos") == "a green suitcase with photos"
     assert language.is_plural("white ceramic plates")
     assert not language.is_plural("brown wooden seat with black metal legs")
+
+
+def test_a_half_turn_reads_as_turning_around():
+    assert language.turn_phrase(-178.0) == " and turned around"
+    assert language.turn_phrase(90.0) == " and turned about 90° counterclockwise"
+
+
+def test_views_that_disagree_on_the_kind_of_thing_give_no_name():
+    from standardphysics_changes.naming import agreed_names, kind_of
+
+    class Scripted:
+        def __init__(self, *answers):
+            self.answers = list(answers)
+
+        def name(self, *images):
+            return {"name": self.answers.pop(0), "detail": "", "where": ""}
+
+    assert kind_of("bookshelf") == kind_of("metal rack")
+    assert agreed_names(Scripted("stool", "wooden stool"), [None, None])["name"] == "stool"
+    assert agreed_names(Scripted("toy truck", "stool"), [None, None]) is None
+    assert language.plain_noun([0.3, 0.2, 0.4]) == "object"
+    assert language.plain_noun([0.2, 0.2, 0.1]) == "small object"

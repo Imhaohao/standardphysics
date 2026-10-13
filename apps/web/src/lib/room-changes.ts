@@ -144,6 +144,7 @@ export const EXAMPLE_ROOMS = [
   { room: "kitchen", label: "Kitchen" },
   { room: "workshop", label: "Workshop" },
   { room: "lounge", label: "Lounge" },
+  { room: "study", label: "Study" },
   { room: "living-room-same", label: "No changes" },
   { room: "living-room-blind-spot", label: "Blind spot" },
 ] as const;

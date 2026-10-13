@@ -1,6 +1,6 @@
 {
  "format": 1,
- "detector": "bcdcc7f26ef1",
+ "detector": "6c215f76dcac",
  "inputs": {
   "before": "before.mp4",
   "after": "after.mp4"
@@ -9,13 +9,13 @@
   "before": "before.mp4",
   "after": "after.mp4"
  },
- "summary": "5 things changed between the videos: the armchair moved 1.7 m, the ottoman moved 90 cm, the wooden step was removed, a plastic crate appeared and a vase appeared.",
+ "summary": "5 things changed between the videos: the armchair moved 1.7 m, the ottoman moved 90 cm, the wooden step was removed, a plastic crate appeared and a glass vase appeared.",
  "changes": [
   {
    "id": "c1",
    "type": "moved",
    "name": "armchair",
-   "detail": "dark wood frame with green fabric",
+   "detail": "dark wood frame with green cushion",
    "sentence": "The armchair moved 1.7 m from near the wooden chair to near the brown leather chair and turned about 90\u00b0 clockwise.",
    "partly_seen": false,
    "size": [
@@ -638,8 +638,8 @@
    "id": "c4",
    "type": "added",
    "name": "plastic crate",
-   "detail": "yellow plastic crate",
-   "sentence": "A yellow plastic crate appeared on the open floor.",
+   "detail": "brown plastic crate",
+   "sentence": "A brown plastic crate appeared on the open floor.",
    "partly_seen": false,
    "size": [
     0.44,
@@ -802,9 +802,9 @@
   {
    "id": "c5",
    "type": "added",
-   "name": "vase",
-   "detail": "golden vase",
-   "sentence": "A golden vase appeared on the sideboard.",
+   "name": "glass vase",
+   "detail": "tall golden glass vase",
+   "sentence": "A tall golden glass vase appeared on the sideboard.",
    "partly_seen": false,
    "size": [
     0.21,
@@ -1194,6 +1194,64 @@
       2.933,
       2.089,
       0.988
+     ]
+    ]
+   }
+  },
+  {
+   "name": "plant",
+   "box": {
+    "center": [
+     3.892,
+     3.393,
+     0.707
+    ],
+    "size": [
+     0.525,
+     0.349,
+     0.171
+    ],
+    "yaw_deg": 4.0,
+    "corners": [
+     [
+      3.642,
+      3.2,
+      0.621
+     ],
+     [
+      4.166,
+      3.237,
+      0.621
+     ],
+     [
+      3.618,
+      3.549,
+      0.621
+     ],
+     [
+      4.142,
+      3.585,
+      0.621
+     ],
+     [
+      3.642,
+      3.2,
+      0.792
+     ],
+     [
+      4.166,
+      3.237,
+      0.792
+     ],
+     [
+      3.618,
+      3.549,
+      0.792
+     ],
+     [
+      4.142,
+      3.585,
+      0.792
      ]
     ]
    }
@@ -2705,9 +2763,9 @@
   }
  ],
  "seconds": {
-  "reconstruction": 37.1,
+  "reconstruction": 37.2,
   "change evidence": 4.2,
-  "naming": 29.0
+  "naming": 39.4
  },
  "scale": {
   "factor": 0.9406,

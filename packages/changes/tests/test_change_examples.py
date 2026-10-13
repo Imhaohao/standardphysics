@@ -28,20 +28,22 @@ EXPECTED = [
     ("kitchen", 5, 0, 0, 0),
     ("workshop", 5, 0, 0, 0),
     ("lounge", 4, 0, 0, 0),
+    ("study", 3, 1, 1, 0),
 ]
 # room, names that match the object exactly, names whose kind of thing is right, and which changes admit being partly seen
 NAMES_AND_HEDGES = [
     ("living-room", "5 of 5", "5 of 5", []),
-    ("studio", "4 of 4", "4 of 4", ["wooden crate"]),
+    ("studio", "3 of 4", "4 of 4", ["wooden crate"]),
     ("living-room-blind-spot", "1 of 1", "1 of 1", []),
     ("office", "1 of 3", "3 of 3", ["wooden crate"]),
-    ("bedroom", "2 of 5", "3 of 5", []),
+    ("bedroom", "1 of 5", "2 of 5", []),
     ("kitchen", "1 of 5", "4 of 5", []),
     ("workshop", "5 of 5", "5 of 5", []),
     ("lounge", "2 of 4", "3 of 4", []),
+    ("study", "2 of 3", "2 of 3", []),
 ]
-# furniture that stands on no real object: part of the kitchen's stove read as a white plastic patio chair
-KNOWN_PHANTOMS = {"kitchen": ["white plastic patio chair"]}
+# furniture that stands on no real object: part of the kitchen's white stove, which both models took for a chair
+KNOWN_PHANTOMS = {"kitchen": ["chair"]}
 
 
 def scored(room: str) -> tuple[dict, dict]:
@@ -88,7 +90,7 @@ def test_furniture_the_sentences_can_cite_is_real_apart_from_known_misses(room):
 
 
 @pytest.mark.parametrize("room", ["living-room", "studio", "living-room-blind-spot", "office", "bedroom", "kitchen",
-                                  "workshop"])
+                                  "workshop", "study"])
 def test_boxes_stand_on_what_holds_them_up(room):
     _, report = scored(room)
     assert report["mean_bottom_error_m"] < 0.05
@@ -102,3 +104,13 @@ def test_sentences_carry_the_numbers_beside_them(room):
         if change["type"] == "moved":
             assert f"moved {language.length(change['distance_m'])}" in change["sentence"]
     assert scene["summary"] == language.summary(scene["changes"])
+
+
+def test_every_first_run_is_indexed_with_the_detector_that_made_it():
+    held_out = pathlib.Path(__file__).resolve().parents[1] / "held-out"
+    index = {entry["file"]: entry["detector"] for entry in json.loads((held_out / "index.json").read_text())["first_runs"]}
+    saved = {path.name for path in held_out.glob("*.json")} - {"index.json"}
+    assert set(index) == saved
+    for name, detector in index.items():
+        embedded = json.loads((held_out / name).read_text()).get("detector")
+        assert embedded in (None, detector)

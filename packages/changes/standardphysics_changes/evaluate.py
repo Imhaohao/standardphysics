@@ -33,8 +33,14 @@ SAME_THING = {
     "stool": {"stool", "wooden stool", "painted stool", "small stool", "step stool"},
     "boombox": {"boombox", "radio", "stereo", "cassette player", "portable stereo", "boom box"},
     "military crate": {"crate", "wooden crate", "military crate", "ammo crate", "wooden box", "wooden chest"},
+    "side chair": {"side chair", "chair", "wooden chair", "dining chair"},
+    "clay pot": {"pot", "clay pot", "planter", "flower pot", "terracotta pot", "plant pot"},
+    "jug": {"jug", "pitcher", "water jug"},
+    "trash can": {"trash can", "bin", "trash bin", "garbage can", "waste bin", "metal bin", "wastebasket"},
 }
 CLOSE_M = 0.5
+PLAIN_NOUNS = {"object", "small object", "large object"}
+"""What the detector calls a thing when its views disagree; vague, but never the wrong kind."""
 
 
 @dataclass
@@ -308,6 +314,8 @@ def _totals(rows: list[dict], scene: dict, fits: dict[str, Fit], rmse: float, un
         "partial": [f"{row['partial']} points at the {row['truth']} but covers too little of it" for row in partial],
         "names_correct": f"{sum(row['name_ok'] for row in found)} of {len(found)}",
         "head_nouns_correct": f"{sum(row['head_noun_ok'] for row in found)} of {len(found)}",
+        "wrong_kind_names": [row["name"] for row in found + partial if row.get("name")
+                             and not row["head_noun_ok"] and row["name"] not in PLAIN_NOUNS],
         "mean_centre_error_m": _mean([side["centre_error_m"] for side in sides]),
         "mean_bottom_error_m": _mean([abs(side["bottom_error_m"]) for side in sides]),
         "mean_height_error_m": _mean([abs(side["height_error_m"]) for side in sides]),
@@ -340,6 +348,6 @@ def score(scene: dict, truth: dict) -> dict:
 
 def evaluate(result_dir: Path, truth_path: Path) -> dict:
     scene = json.loads((result_dir / "scene.json").read_text())
-    report = score(scene, json.loads(truth_path.read_text()))
+    report = {"detector": scene.get("detector"), **score(scene, json.loads(truth_path.read_text()))}
     (result_dir / "evaluation.json").write_text(json.dumps(report, indent=1))
     return report

@@ -68,6 +68,47 @@ class QwenNamer:
         return parse_names(getattr(result, "text", str(result)))
 
 
+# Words for the same kind of thing. Two views that name an object with words from one group
+# agree on what it is; "bookshelf" counts as a shelf because it ends in one of the group's words.
+KINDS = [
+    {"chair", "armchair", "seat", "recliner", "stool", "ottoman", "footstool", "pouf", "bench"},
+    {"box", "crate", "carton", "bin", "container", "chest", "trunk"},
+    {"bag", "sack"},
+    {"pot", "vase", "jar", "planter", "urn"},
+    {"bucket", "pail"},
+    {"barrel", "drum", "keg"},
+    {"plant", "houseplant", "fern", "succulent", "tree"},
+    {"table", "desk"},
+    {"shelf", "bookshelf", "bookcase", "rack", "shelving", "shelves"},
+    {"cabinet", "cupboard", "dresser", "sideboard", "nightstand", "drawers", "wardrobe"},
+    {"cart", "trolley"},
+    {"suitcase", "luggage"},
+]
+
+
+def kind_of(name: str) -> str:
+    """The group a name's head word belongs to, or the head word itself."""
+    from .language import head_noun
+
+    head = head_noun(name)
+    for number, group in enumerate(KINDS):
+        if head in group or any(head.endswith(word) for word in group):
+            return f"kind {number}"
+    return head
+
+
+def agreed_names(namer: Namer, views: list[Image.Image]) -> dict | None:
+    """The clearest view's names when every view names the same kind of thing, else None.
+
+    A 4-bit vision model sometimes calls a stool a toy truck from one angle. Asking each view
+    on its own and keeping the answer only when they agree trades a confident wrong name for
+    a plain one.
+    """
+    answers = [namer.name(view) for view in views]
+    kinds = {kind_of(answer["name"]) for answer in answers}
+    return answers[0] if len(kinds) == 1 else None
+
+
 def parse_names(text: str) -> dict:
     """The model's JSON, trimmed to the three expected keys; anything unreadable becomes the fallback."""
     match = re.search(r"\{.*\}", text, flags=re.DOTALL)

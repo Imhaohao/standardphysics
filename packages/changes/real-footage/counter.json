@@ -1,7 +1,7 @@
 {
   "capture": "Share Tea walkthrough, a private iPhone capture kept out of git",
   "role": "development: the stools it first misreported led to the 85% rule",
-  "detector": "bcdcc7f26ef1",
+  "detector": "6c215f76dcac",
   "clips_s": {
     "before": [
       168.0,
@@ -25,12 +25,12 @@
     "after_checked_by_other": 0.338
   },
   "scale": {
-    "factor": 0.8791,
+    "factor": 0.8867,
     "from": "camera height"
   },
   "evaluation": {
     "camera_alignment": {
-      "scale": 0.972,
+      "scale": 0.964,
       "rmse_m": 0.089
     },
     "false_alarms": []
@@ -39,8 +39,14 @@
     {
       "reason": "one video",
       "video": "after",
+      "name": "black chair",
+      "count": 1
+    },
+    {
+      "reason": "one video",
+      "video": "after",
       "name": "wooden chair",
-      "count": 4
+      "count": 3
     }
   ]
 }

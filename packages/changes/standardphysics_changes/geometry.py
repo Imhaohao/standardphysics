@@ -125,8 +125,18 @@ def _lowest_broad_plane(points: np.ndarray, up: np.ndarray, tries: int = 400, ma
         return up, float(np.percentile(points @ up, 2))
     best = max(count for count, _, _ in found)
     broad = [(count, normal, offset) for count, normal, offset in found if count >= broad_share * best]
-    _, normal, offset = min(broad, key=lambda item: item[2])
+    centre = sample.mean(axis=0)
+    _, normal, offset = min(broad, key=lambda item: _height_under(centre, item[1], item[2], up))
     return normal, offset
+
+
+def _height_under(centre: np.ndarray, normal: np.ndarray, offset: float, up: np.ndarray) -> float:
+    """How high a plane is straight below the middle of the room, along one shared up.
+
+    Offsets along two different normals measure different things: a plane tilted 30 degrees
+    can have the smaller offset and still pass well above the floor in the middle of the room.
+    """
+    return float(centre @ up + (offset - normal @ centre) / (normal @ up))
 
 
 def fit_floor(points: np.ndarray, up: np.ndarray, rounds: int = 3) -> tuple[np.ndarray, float]:

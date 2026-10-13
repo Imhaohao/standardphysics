@@ -1,0 +1,41 @@
+{
+  "note": "Each room's first score, saved as it came out. Files written before the scorer recorded the detector carry it only here.",
+  "first_runs": [
+    {
+      "room": "office",
+      "file": "office-first-run.json",
+      "detector": "590b3d4af243"
+    },
+    {
+      "room": "bedroom",
+      "file": "bedroom-first-run.json",
+      "detector": "a6be5c8aefba"
+    },
+    {
+      "room": "kitchen",
+      "file": "kitchen-first-run.json",
+      "detector": "6eeaae48a55e"
+    },
+    {
+      "room": "workshop",
+      "file": "workshop-first-run.json",
+      "detector": "2104cbd57afb"
+    },
+    {
+      "room": "workshop",
+      "file": "workshop-first-run-corrected-truth.json",
+      "detector": "875704297675",
+      "answer_key": "per-piece truth; the same boxes as the first run, whose detector differed only in sentence grammar"
+    },
+    {
+      "room": "lounge",
+      "file": "lounge-first-run.json",
+      "detector": "ebd6d6e3da50"
+    },
+    {
+      "room": "study",
+      "file": "study-first-run.json",
+      "detector": "a4ca1176806d"
+    }
+  ]
+}

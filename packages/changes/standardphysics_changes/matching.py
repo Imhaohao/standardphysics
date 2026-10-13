@@ -41,8 +41,12 @@ def _size_ratio(a: Region, b: Region) -> float:
     return float(np.exp(np.mean(np.abs(np.log(big / small)))))
 
 
+PLAIN_NOUNS = frozenset({"object", "small object", "large object"})
+
+
 def _same_name(a: Region, b: Region) -> bool:
-    return bool(a.names.get("name")) and a.names.get("name") == b.names.get("name")
+    name = a.names.get("name", "")
+    return bool(name) and name not in PLAIN_NOUNS and name == b.names.get("name")
 
 
 def pair_score(a: Region, b: Region, rules: MatchRules) -> float | None:
