@@ -1,6 +1,6 @@
 {
  "format": 1,
- "detector": "6c215f76dcac",
+ "detector": "bb49e7320ebf",
  "inputs": {
   "before": "before.mp4",
   "after": "after.mp4"
@@ -9,31 +9,31 @@
   "before": "before.mp4",
   "after": "after.mp4"
  },
- "summary": "4 things changed between the videos: the wooden chair moved 1.5 m, the wooden stool moved 3.5 m, the small object was removed and an object appeared.",
+ "summary": "5 things changed between the videos: the wooden chair moved 1.6 m, the wooden stool moved 3.5 m, the small object was removed, an object appeared and a rusty trash can appeared.",
  "changes": [
   {
    "id": "c1",
    "type": "moved",
    "name": "wooden chair",
-   "detail": "dark wooden chair with slatted back",
-   "sentence": "The wooden chair moved 1.5 m from between the wooden cabinet and the wooden console table to beside the wooden cabinet.",
+   "detail": "dark wooden chair with gray cushion",
+   "sentence": "The wooden chair moved 1.6 m from between the wooden cabinet and the wooden console table to beside the wooden cabinet.",
    "partly_seen": false,
    "size": [
-    1.32,
-    0.9,
-    0.98
+    0.75,
+    0.55,
+    1.01
    ],
-   "size_text": "about 1.3 m by 90 cm and 1.0 m tall",
-   "confidence": 0.99,
+   "size_text": "about 75 cm by 55 cm and 1.0 m tall",
+   "confidence": 0.98,
    "evidence": {
-    "points": 24395,
+    "points": 15807,
     "old_spot": {
      "empty_in": 32,
      "of": 32,
      "video": "after"
     },
     "new_spot": {
-     "empty_in": 28,
+     "empty_in": 21,
      "of": 32,
      "video": "before"
     }
@@ -99,56 +99,56 @@
    "after": {
     "box": {
      "center": [
-      1.001,
-      3.276,
-      0.489
+      0.694,
+      3.234,
+      0.498
      ],
      "size": [
-      1.323,
-      0.901,
-      0.978
+      0.718,
+      0.623,
+      0.996
      ],
-     "yaw_deg": 4.6,
+     "yaw_deg": 37.6,
      "corners": [
       [
-       0.377,
-       2.774,
+       0.599,
+       2.768,
        0.0
       ],
       [
-       1.696,
-       2.879,
+       1.168,
+       3.206,
        0.0
       ],
       [
-       0.305,
-       3.672,
+       0.219,
+       3.262,
        0.0
       ],
       [
-       1.624,
-       3.777,
+       0.789,
+       3.7,
        0.0
       ],
       [
-       0.377,
-       2.774,
-       0.978
+       0.599,
+       2.768,
+       0.996
       ],
       [
-       1.696,
-       2.879,
-       0.978
+       1.168,
+       3.206,
+       0.996
       ],
       [
-       0.305,
-       3.672,
-       0.978
+       0.219,
+       3.262,
+       0.996
       ],
       [
-       1.624,
-       3.777,
-       0.978
+       0.789,
+       3.7,
+       0.996
       ]
      ]
     },
@@ -202,43 +202,43 @@
      "aspect": 1.0,
      "box": [
       [
-       0.104,
-       0.772
+       0.275,
+       0.813
       ],
       [
-       0.641,
-       0.691
+       0.606,
+       0.668
       ],
       [
-       0.174,
-       0.616
+       0.137,
+       0.702
       ],
       [
-       0.58,
-       0.569
+       0.451,
+       0.592
       ],
       [
-       0.017,
-       0.372
+       0.177,
+       0.267
       ],
       [
-       0.634,
-       0.34
+       0.566,
+       0.213
       ],
       [
-       0.119,
-       0.313
+       0.037,
+       0.226
       ],
       [
-       0.569,
-       0.295
+       0.401,
+       0.187
       ]
      ]
     }
    },
-   "distance_m": 1.52,
+   "distance_m": 1.55,
    "turn_deg": null,
-   "similarity": 0.85
+   "similarity": 0.99
   },
   {
    "id": "c2",
@@ -794,6 +794,171 @@
       [
        0.393,
        0.365
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "id": "c5",
+   "type": "added",
+   "name": "rusty trash can",
+   "detail": "gray metal trash can with peeling paint",
+   "sentence": "A gray metal trash can with peeling paint appeared beside the wooden cabinet.",
+   "partly_seen": false,
+   "size": [
+    0.74,
+    0.57,
+    0.91
+   ],
+   "size_text": "about 75 cm by 55 cm and 90 cm tall",
+   "confidence": 0.99,
+   "evidence": {
+    "points": 11526,
+    "old_spot": null,
+    "new_spot": {
+     "empty_in": 28,
+     "of": 32,
+     "video": "before"
+    }
+   },
+   "before": null,
+   "after": {
+    "box": {
+     "center": [
+      1.418,
+      3.228,
+      0.455
+     ],
+     "size": [
+      0.743,
+      0.568,
+      0.91
+     ],
+     "yaw_deg": 81.9,
+     "corners": [
+      [
+       1.647,
+       2.82,
+       0.0
+      ],
+      [
+       1.751,
+       3.556,
+       0.0
+      ],
+      [
+       1.084,
+       2.9,
+       0.0
+      ],
+      [
+       1.189,
+       3.636,
+       0.0
+      ],
+      [
+       1.647,
+       2.82,
+       0.91
+      ],
+      [
+       1.751,
+       3.556,
+       0.91
+      ],
+      [
+       1.084,
+       2.9,
+       0.91
+      ],
+      [
+       1.189,
+       3.636,
+       0.91
+      ]
+     ]
+    },
+    "where": "beside the wooden cabinet"
+   },
+   "pictures": {
+    "before": {
+     "file": "pictures/c5-before.jpg",
+     "video": "before",
+     "time_s": 1.0,
+     "aspect": 1.0,
+     "box": [
+      [
+       0.586,
+       0.685
+      ],
+      [
+       0.391,
+       0.575
+      ],
+      [
+       0.316,
+       0.812
+      ],
+      [
+       0.134,
+       0.665
+      ],
+      [
+       0.551,
+       0.244
+      ],
+      [
+       0.338,
+       0.187
+      ],
+      [
+       0.228,
+       0.303
+      ],
+      [
+       0.036,
+       0.225
+      ]
+     ]
+    },
+    "after": {
+     "file": "pictures/c5-after.jpg",
+     "video": "after",
+     "time_s": 4.06,
+     "aspect": 1.0,
+     "box": [
+      [
+       0.747,
+       0.718
+      ],
+      [
+       0.586,
+       0.594
+      ],
+      [
+       0.444,
+       0.813
+      ],
+      [
+       0.318,
+       0.66
+      ],
+      [
+       0.725,
+       0.244
+      ],
+      [
+       0.554,
+       0.189
+      ],
+      [
+       0.381,
+       0.281
+      ],
+      [
+       0.255,
+       0.213
       ]
      ]
     }
@@ -2541,117 +2706,12 @@
  ],
  "seconds": {
   "reconstruction": 36.7,
-  "change evidence": 5.5,
-  "naming": 41.2
+  "change evidence": 5.4,
+  "naming": 45.2
  },
  "scale": {
   "factor": 0.7125,
   "from": "camera height"
  },
- "unchecked": [
-  {
-   "id": "u1",
-   "video": "after",
-   "name": "wooden chair",
-   "detail": "dark wooden chair",
-   "reason": "one video",
-   "sentence": "A dark wooden chair beside the wooden cabinet shows only in the after video; the before video never looked there, so it may or may not be new.",
-   "box": {
-    "center": [
-     0.467,
-     4.303,
-     0.867
-    ],
-    "size": [
-     0.367,
-     1.237,
-     1.734
-    ],
-    "yaw_deg": 78.4,
-    "corners": [
-     [
-      1.037,
-      3.999,
-      0.0
-     ],
-     [
-      1.11,
-      4.358,
-      0.0
-     ],
-     [
-      -0.175,
-      4.247,
-      0.0
-     ],
-     [
-      -0.102,
-      4.607,
-      0.0
-     ],
-     [
-      1.037,
-      3.999,
-      1.734
-     ],
-     [
-      1.11,
-      4.358,
-      1.734
-     ],
-     [
-      -0.175,
-      4.247,
-      1.734
-     ],
-     [
-      -0.102,
-      4.607,
-      1.734
-     ]
-    ]
-   },
-   "size_text": "about 1.2 m by 35 cm and 1.7 m tall",
-   "picture": {
-    "file": "pictures/u1.jpg",
-    "video": "after",
-    "time_s": 5.94,
-    "aspect": 1.0,
-    "box": [
-     [
-      0.505,
-      0.723
-     ],
-     [
-      0.534,
-      0.68
-     ],
-     [
-      0.092,
-      0.725
-     ],
-     [
-      0.157,
-      0.682
-     ],
-     [
-      0.445,
-      0.1
-     ],
-     [
-      0.484,
-      0.114
-     ],
-     [
-      -0.04,
-      0.102
-     ],
-     [
-      0.048,
-      0.115
-     ]
-    ]
-   }
-  }
- ]
+ "unchecked": []
 }

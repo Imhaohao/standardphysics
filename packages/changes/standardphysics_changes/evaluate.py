@@ -266,6 +266,14 @@ def doubted_real_changes(scene: dict, truth: dict, fit: Fit) -> list[str]:
             and any(_floor_distance(fit.point(thing["box"]["center"]), spot) <= CLOSE_M for spot in spots)]
 
 
+def seen_once_on_nothing(scene: dict, truth: dict, fit: Fit) -> list[str]:
+    """Seen-once entries standing where no object of the truth file ever stood: invented things."""
+    boxes = [side for item in truth.get("objects", {}).values() for side in (item["before"], item["after"]) if side]
+    return [f"{thing['id']} stands where nothing is" for thing in _seen_once(scene)
+            if not any(_floor_distance(fit.point(thing["box"]["center"]), box["center"])
+                       <= max(CLOSE_M, 0.5 * float(np.hypot(*box["size"][:2]))) for box in boxes)]
+
+
 def seen_once_on_unchanged(scene: dict, truth: dict, fit: Fit) -> list[str]:
     """Seen-once entries that are really part of an object that never changed."""
     still = [item["before"] for item in truth.get("objects", {}).values()
@@ -341,6 +349,7 @@ def score(scene: dict, truth: dict) -> dict:
         "unobservable": [f"{item['label']} ({item['type']}): its spot was in view in fewer than "
                          f"{MIN_FRAMES_IN_VIEW} frames of the other video" for item in unseeable],
         "seen_once_on_unchanged": seen_once_on_unchanged(scene, truth, fits["shape"]),
+        "seen_once_on_nothing": seen_once_on_nothing(scene, truth, fits["shape"]),
         "phantom_furniture": phantom_furniture(scene, truth, fits["shape"]),
         "doubted_real_changes": doubted_real_changes(scene, truth, fits["shape"]),
     }

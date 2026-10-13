@@ -1,22 +1,22 @@
 {
- "detector": "6c215f76dcac",
+ "detector": "bb49e7320ebf",
  "camera_alignment": {
   "scale": 1.002,
   "rmse_m": 0.021
  },
- "recall": 0.429,
- "precision": 0.75,
+ "recall": 0.571,
+ "precision": 0.8,
  "partial": [
   "c3 points at the jug but covers too little of it"
  ],
- "names_correct": "2 of 3",
- "head_nouns_correct": "2 of 3",
+ "names_correct": "2 of 4",
+ "head_nouns_correct": "3 of 4",
  "wrong_kind_names": [],
- "mean_centre_error_m": 0.105,
- "mean_bottom_error_m": 0.017,
- "mean_height_error_m": 0.025,
- "mean_overlap": 0.648,
- "mean_distance_error_m": 0.012,
+ "mean_centre_error_m": 0.048,
+ "mean_bottom_error_m": 0.015,
+ "mean_height_error_m": 0.018,
+ "mean_overlap": 0.738,
+ "mean_distance_error_m": 0.024,
  "false_alarms": [],
  "unverifiable_reported": [],
  "unverifiable_listed": [],
@@ -28,7 +28,7 @@
    "name": "wooden chair",
    "name_ok": true,
    "head_noun_ok": true,
-   "shape_position_error_m": 0.398,
+   "shape_position_error_m": 0.092,
    "before": {
     "centre_error_m": 0.048,
     "bottom_error_m": -0.023,
@@ -36,14 +36,14 @@
     "overlap": 0.66
    },
    "after": {
-    "centre_error_m": 0.397,
-    "bottom_error_m": -0.0,
-    "height_error_m": -0.056,
-    "overlap": 0.26
+    "centre_error_m": 0.09,
+    "bottom_error_m": 0.001,
+    "height_error_m": -0.038,
+    "overlap": 0.68
    },
    "true_distance_m": 1.523,
-   "reported_distance_m": 1.52,
-   "distance_error_m": 0.003,
+   "reported_distance_m": 1.55,
+   "distance_error_m": 0.027,
    "true_turn_deg": -135
   },
   {
@@ -110,7 +110,17 @@
   {
    "truth": "trash can",
    "type": "added",
-   "found": null
+   "found": "c5",
+   "name": "rusty trash can",
+   "name_ok": false,
+   "head_noun_ok": true,
+   "shape_position_error_m": 0.066,
+   "after": {
+    "centre_error_m": 0.068,
+    "bottom_error_m": -0.004,
+    "height_error_m": 0.004,
+    "overlap": 0.77
+   }
   },
   {
    "truth": "brass vase",
@@ -120,6 +130,7 @@
  ],
  "unobservable": [],
  "seen_once_on_unchanged": [],
+ "seen_once_on_nothing": [],
  "phantom_furniture": [],
  "doubted_real_changes": []
 }

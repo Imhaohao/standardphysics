@@ -113,6 +113,27 @@ SHAPE = {"chair": (0.3, 1.9), "sofa": (0.45, 3.8), "table": (0.3, 4.5), "plant":
          "bench": (0.25, 6.0), "cabinet": (0.2, 6.0), "shelf": (0.15, 8.0)}
 
 
+def kind_category(name: str) -> str | None:
+    """The furniture kind a name's last word belongs to, if any: "wooden chair" is a chair."""
+    words = name.lower().split()
+    head = words[-1] if words else ""
+    return next((category for category, family in NAME_FAMILIES.items() if head in family), None)
+
+
+def fits_kind(box: Box, name: str) -> bool:
+    """Whether a box could be the kind of thing its name says; names of no known kind always fit.
+
+    A "chair" 1.3 m long has swallowed something beside it, and a "chair" 37 cm wide and
+    1.2 m long is a strip of wall; neither is the chair it is called.
+    """
+    category = kind_category(name)
+    if category is None:
+        return True
+    longest, shortest = float(box.size[:2].max()), float(box.size[:2].min())
+    narrowest, most_elongated = SHAPE.get(category, (0.0, 10.0))
+    return longest <= LONGEST_SIDE_M.get(category, 3.0) and shortest >= narrowest and longest <= most_elongated * shortest
+
+
 def _is_furniture_sized(box: Box, count: int, category: str, rules: LandmarkRules) -> bool:
     longest, shortest = float(box.size[:2].max()), float(box.size[:2].min())
     narrowest, most_elongated = SHAPE.get(category, (rules.min_thickness_m, 10.0))

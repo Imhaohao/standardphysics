@@ -1,5 +1,5 @@
 {
- "detector": "6c215f76dcac",
+ "detector": "bb49e7320ebf",
  "camera_alignment": {
   "scale": 1.023,
   "rmse_m": 0.028
@@ -113,6 +113,7 @@
  ],
  "unobservable": [],
  "seen_once_on_unchanged": [],
+ "seen_once_on_nothing": [],
  "phantom_furniture": [],
  "doubted_real_changes": []
 }

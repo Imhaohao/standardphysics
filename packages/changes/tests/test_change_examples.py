@@ -28,7 +28,7 @@ EXPECTED = [
     ("kitchen", 5, 0, 0, 0),
     ("workshop", 5, 0, 0, 0),
     ("lounge", 4, 0, 0, 0),
-    ("study", 3, 1, 1, 0),
+    ("study", 4, 1, 0, 0),
 ]
 # room, names that match the object exactly, names whose kind of thing is right, and which changes admit being partly seen
 NAMES_AND_HEDGES = [
@@ -40,7 +40,7 @@ NAMES_AND_HEDGES = [
     ("kitchen", "1 of 5", "4 of 5", []),
     ("workshop", "5 of 5", "5 of 5", []),
     ("lounge", "2 of 4", "3 of 4", []),
-    ("study", "2 of 3", "2 of 3", []),
+    ("study", "2 of 4", "3 of 4", []),
 ]
 # furniture that stands on no real object: part of the kitchen's white stove, which both models took for a chair
 KNOWN_PHANTOMS = {"kitchen": ["chair"]}
@@ -60,6 +60,7 @@ def test_each_example_finds_its_changes_and_nothing_else(room, found, partial, s
     assert report["unverifiable_reported"] == []
     assert len(scene["unchecked"]) == seen_once
     assert report["seen_once_on_unchanged"] == []
+    assert report["seen_once_on_nothing"] == []
     assert len(report["unverifiable_listed"]) == len(json.loads((TRUTH / room / "truth.json").read_text())["unverifiable"])
 
 

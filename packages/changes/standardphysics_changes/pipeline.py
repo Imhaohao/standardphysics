@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Callable
 
@@ -19,7 +19,9 @@ from .landmarks import (
     Landmark,
     apart_from,
     find_landmarks,
+    fits_kind,
     fitting_name,
+    footprint_gap,
     merge_touching,
     place_phrase,
     settle_kind,
@@ -30,7 +32,16 @@ from .landmarks import (
 from .matching import MatchRules, absorb_fragments, match_heights, pair_moves
 from .naming import Embedder, Namer, PlainNamer, Segmenter, agreed_names, make_namer
 from .pictures import isolated, outlined, runs_off_frame, sightings
-from .regions import Region, RegionRules, find_regions, finish_regions, one_sided_regions, settle, support_share
+from .regions import (
+    Region,
+    RegionRules,
+    find_regions,
+    finish_regions,
+    fit_box,
+    one_sided_regions,
+    settle,
+    support_share,
+)
 from .views import AFTER, BEFORE, View, load_views, of_epoch, save_views
 
 
@@ -180,6 +191,51 @@ def describe_regions(scene: Scene, regions: list[Region], namer: Namer, embedder
             region.descriptor = embedder.embed([isolated(s) for s in seen[:3]])
 
 
+def split_oversized(scene: Scene, regions: list[Region], rules: RegionRules, namer: Namer,
+                    embedder: Embedder | None) -> list[Region]:
+    """Re-cut a region too big for what it is named, such as a chair grown into the bin beside it.
+
+    Two objects a few centimetres apart join through the unseen floor between them. Their
+    seed points part on a grid half as fine; the pieces are kept, and named on their own,
+    only when at least two of them are big enough to be objects.
+    """
+    out = []
+    for region in regions:
+        pieces = [] if fits_kind(region.box, region.names.get("name", "")) else _finer_pieces(scene, region, rules)
+        if len(pieces) < 2:
+            out.append(region)
+            continue
+        describe_regions(scene, pieces, namer, embedder)
+        out.extend(pieces)
+    return out
+
+
+def _finer_pieces(scene: Scene, region: Region, rules: RegionRules) -> list[Region]:
+    ids = region.point_ids
+    finer = replace(rules, voxel_m=rules.voxel_m / 2)
+    pieces = finish_regions(find_regions(scene.cloud.points[ids], scene.status[ids], region.kind, region.epoch, finer),
+                            scene.cloud.points[ids], finer)
+    for piece in pieces:
+        piece.point_ids = ids[piece.point_ids]
+    return _rejoin_small(pieces, scene.cloud.points)
+
+
+def _rejoin_small(pieces: list[Region], points: np.ndarray, share: float = 0.25, reach_m: float = 0.1) -> list[Region]:
+    """Pieces much smaller than the biggest go back to a bigger piece they touch, like a bin's leaning lid."""
+    if len(pieces) < 2:
+        return pieces
+    biggest = max(len(piece.point_ids) for piece in pieces)
+    large = [piece for piece in pieces if len(piece.point_ids) >= share * biggest]
+    for piece in (piece for piece in pieces if len(piece.point_ids) < share * biggest):
+        host = min(large, key=lambda other: footprint_gap(other.box, piece.box))
+        if footprint_gap(host.box, piece.box) > reach_m:
+            large.append(piece)
+            continue
+        host.point_ids = np.union1d(host.point_ids, piece.point_ids)
+        host.box = fit_box(points[host.point_ids])
+    return large
+
+
 def clearest_two(seen: list) -> list:
     """The best view, and the next one when it shows at least half as much, so the namer can cross-check."""
     return seen[:1] + [sighting for sighting in seen[1:2] if sighting.visible >= 0.5 * seen[0].visible]
@@ -313,11 +369,14 @@ def run(before: Path, after: Path, out: Path, settings: Settings = Settings(), l
     timer.lap("change evidence")
     namer = make_namer(settings.namer)
     unchecked = unchecked_regions(scene, removed + added)
-    describe_regions(scene, removed + added, namer, _load_embedder(log))
+    embedder = _load_embedder(log)
+    describe_regions(scene, removed + added, namer, embedder)
+    removed = split_oversized(scene, removed, settings.regions, namer, embedder)
+    added = split_oversized(scene, added, settings.regions, namer, embedder)
     describe_regions(scene, unchecked, namer, None)
     landmarks = name_landmarks(scene, namer, _load_segmenter(log), removed)
     unchecked = [region for region in objects_only(unchecked, not isinstance(namer, PlainNamer))
-                 if not touches_furniture(region.box, landmarks)]
+                 if not touches_furniture(region.box, landmarks) and fits_kind(region.box, region.names.get("name", ""))]
     distinguish(landmarks, removed + added + unchecked)
     locate_regions(removed + added + unchecked, landmarks, scene.cloud.points)
     log(f"seen by one video only: {', '.join(r.names.get('name', 'object') for r in unchecked) or 'nothing'}")

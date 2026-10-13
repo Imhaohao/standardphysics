@@ -241,3 +241,31 @@ def test_a_chair_base_under_its_seat_joins_the_move_whatever_it_is_called():
     _, loose_added = absorb_fragments([move], [], [star, basket], points)
     assert loose_added == [basket]
     assert move.added.box.center[2] - move.added.box.size[2] / 2 < 0.05
+
+
+def test_a_box_must_fit_the_kind_of_thing_it_is_called():
+    from standardphysics_changes.landmarks import fits_kind
+
+    def box(x, y):
+        return Box(np.array([0.0, 0.0, 0.5]), np.array([x, y, 0.9]), 0.0)
+
+    assert fits_kind(box(0.6, 0.55), "wooden chair")
+    assert not fits_kind(box(1.32, 0.9), "wooden chair")
+    assert not fits_kind(box(0.37, 1.24), "dark wooden chair")
+    assert fits_kind(box(1.3, 0.9), "toy truck")
+
+
+def test_a_chair_grown_into_the_bin_beside_it_is_cut_apart():
+    from standardphysics_changes.evidence import GONE
+    from standardphysics_changes.pipeline import _finer_pieces
+
+    rng = np.random.default_rng(13)
+    chair = rng.uniform([0.0, 0.0, 0.05], [0.6, 0.6, 0.9], (30000, 3))
+    bin_ = rng.uniform([0.65, 0.0, 0.05], [1.2, 0.55, 0.9], (30000, 3))
+    lid = rng.uniform([1.25, 0.1, 0.05], [1.37, 0.45, 0.5], (4000, 3))
+    points = np.vstack([chair, bin_, lid])
+    status = np.full(len(points), GONE, np.uint8)
+    scene = scene_with(points, status, np.zeros(len(points)), np.zeros(len(points)), 1)
+    merged = Region("added", 1, np.arange(len(points)), fit_box(points), len(points))
+    pieces = _finer_pieces(scene, merged, RegionRules())
+    assert sorted(len(piece.point_ids) for piece in pieces) == [30000, 34000]
