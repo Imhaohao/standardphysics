@@ -6,6 +6,8 @@ export type Vec3 = [number, number, number];
 
 export type ChangeBox = { center: Vec3; size: Vec3; yaw_deg: number; corners: Vec3[] };
 export type ChangePlace = { box: ChangeBox; where: string };
+/** How many frames of the other video looked at a spot and saw mostly empty space there. */
+export type SpotEvidence = { empty_in: number; of: number; video: Video };
 export type ChangePicture = { file: string; video: Video; time_s: number; aspect: number; box: [number, number][] };
 
 export type RoomChange = {
@@ -17,7 +19,7 @@ export type RoomChange = {
   size: Vec3;
   size_text: string;
   confidence: number;
-  evidence: { points: number; seen_through_by: number; frames_in_other_video: number };
+  evidence: { points: number; old_spot: SpotEvidence | null; new_spot: SpotEvidence | null };
   before: ChangePlace | null;
   after: ChangePlace | null;
   pictures: Partial<Record<Video, ChangePicture>>;
@@ -111,11 +113,20 @@ export function changeReach(change: RoomChange): number {
   return Math.max(0.4, ...corners.map((corner) => Math.hypot(...corner.map((v, i) => v - centre[i]))));
 }
 
+/** The detector's own rounding (language.length), so a number reads the same in the sentence and the panel. */
 export function formatLength(metres: number): string {
-  const centimetres = Math.round((metres * 100) / 5) * 5;
+  const centimetres = Math.floor((metres * 100) / 5 + 0.5) * 5;
   if (centimetres < 100) return `${centimetres} cm`;
-  return `${metres.toFixed(1)} m`;
+  return `${(Math.floor(metres * 10 + 0.5) / 10).toFixed(1)} m`;
 }
+
+/** The rendered rooms checked in under public/changes, each testing something different. */
+export const EXAMPLE_ROOMS = [
+  { room: "living-room", label: "Living room" },
+  { room: "studio", label: "Studio" },
+  { room: "living-room-same", label: "Nothing changed" },
+  { room: "living-room-blind-spot", label: "Blind spot" },
+] as const;
 
 /** Positive yaw turns counterclockwise when the room is seen from above. */
 export function formatTurn(degrees: number | null | undefined): string | null {
@@ -144,6 +155,14 @@ export const CHANGE_TOKEN: Record<ChangeType, string> = {
   added: "--color-added",
   removed: "--color-removed",
 };
+
+/** How high the phone was held, as the room is measured: the median camera height above the floor. */
+export function phoneHeight(cameras: ChangeCamera[]): number {
+  const heights = cameras.map((camera) => camera.position[2]).sort((a, b) => a - b);
+  if (heights.length === 0) return 0;
+  const middle = Math.floor(heights.length / 2);
+  return heights.length % 2 ? heights[middle] : (heights[middle - 1] + heights[middle]) / 2;
+}
 
 /** A camera path through one video's frames, in the order they were filmed. */
 export function cameraPath(cameras: ChangeCamera[], video: Video): Vec3[] {

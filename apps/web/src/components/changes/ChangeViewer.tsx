@@ -1,46 +1,41 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Vector3 } from "three";
-import type { ChangeScene } from "@/lib/room-changes";
+import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ChangeScene, Cloud } from "@/lib/room-changes";
 import { ChangePanel } from "./ChangePanel";
-import { ChangeStage, type Shot, changeShot, overviewShot } from "./ChangeStage";
+import { ChangeStage, type Focus, type Orbit } from "./ChangeStage";
 import { type Showing, StageToolbar } from "./StageToolbar";
 import { useChangeScene } from "./useChangeScene";
 
-type CameraReader = () => [Vector3, Vector3];
+const STEP = Math.PI / 12;
+const KEY_ORBITS: Record<string, [number, number, number]> = {
+  ArrowLeft: [-STEP, 0, 1], ArrowRight: [STEP, 0, 1], ArrowUp: [0, STEP / 2, 1], ArrowDown: [0, -STEP / 2, 1],
+  "+": [0, 0, 0.85], "=": [0, 0, 0.85], "-": [0, 0, 1.18],
+};
 
 function useSelection(scene: ChangeScene) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [shot, setShot] = useState<Shot>(() => overviewShot(scene));
-  const readCamera = useRef<CameraReader | null>(null);
+  const [focus, setFocus] = useState<Focus>({ kind: "overview", nonce: 0 });
   const cardRefs = useRef(new Map<string, HTMLButtonElement>());
 
   const select = useCallback((id: string) => {
-    const change = scene.changes.find((item) => item.id === id);
-    const read = readCamera.current;
-    if (!change || !read) return;
-    const [position, target] = read();
+    if (!scene.changes.some((change) => change.id === id)) return;
     setSelectedId(id);
-    setShot(changeShot(change, position, target));
+    setFocus((current) => ({ kind: "change", id, nonce: current.nonce + 1 }));
     cardRefs.current.get(id)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [scene]);
 
   const reset = useCallback(() => {
     setSelectedId(null);
-    setShot({ ...overviewShot(scene), key: `overview-${Date.now()}` });
-  }, [scene]);
-
-  const onCamera = useCallback((read: CameraReader) => {
-    readCamera.current = read;
+    setFocus((current) => ({ kind: "overview", nonce: current.nonce + 1 }));
   }, []);
 
-  return { selectedId, setSelectedId, shot, select, reset, onCamera, cardRefs };
+  return { selectedId, setSelectedId, focus, select, reset, cardRefs };
 }
 
 function useEscapeToClear(clear: () => void) {
   useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
+    const onKey = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Escape") clear();
     };
     window.addEventListener("keydown", onKey);
@@ -48,8 +43,23 @@ function useEscapeToClear(clear: () => void) {
   }, [clear]);
 }
 
-function ReadyViewer({ base, scene, cloud }: { base: string; scene: ChangeScene; cloud: Parameters<typeof ChangeStage>[0]["cloud"] }) {
-  const { selectedId, setSelectedId, shot, select, reset, onCamera, cardRefs } = useSelection(scene);
+function useKeyboardOrbit() {
+  const orbit = useRef<Orbit | null>(null);
+  const onOrbit = useCallback((next: Orbit) => {
+    orbit.current = next;
+  }, []);
+  const onKeyDown = useCallback((event: KeyboardEvent<HTMLElement>) => {
+    const step = KEY_ORBITS[event.key];
+    if (!step || event.target !== event.currentTarget || !orbit.current) return;
+    event.preventDefault();
+    orbit.current(...step);
+  }, []);
+  return { onOrbit, onKeyDown };
+}
+
+function ReadyViewer({ room, base, scene, cloud }: { room: string; base: string; scene: ChangeScene; cloud: Cloud }) {
+  const { selectedId, setSelectedId, focus, select, reset, cardRefs } = useSelection(scene);
+  const { onOrbit, onKeyDown } = useKeyboardOrbit();
   const [showing, setShowing] = useState<Showing>("both");
   const [paths, setPaths] = useState(false);
   const [blindSpots, setBlindSpots] = useState(false);
@@ -62,18 +72,22 @@ function ReadyViewer({ base, scene, cloud }: { base: string; scene: ChangeScene;
 
   return (
     <main className="flex min-h-dvh flex-col lg:h-dvh lg:flex-row">
-      <section aria-label="Room in 3D" className="relative h-[62dvh] shrink-0 lg:h-auto lg:flex-1">
-        <ChangeStage scene={scene} cloud={cloud} view={view} selectedId={selectedId} shot={shot}
-          onSelect={select} onClear={clear} onCamera={onCamera} />
-        <div className="pointer-events-none absolute inset-x-0 top-0 p-3 sm:p-4">
+      <section aria-labelledby="stage-help" tabIndex={0} onKeyDown={onKeyDown}
+        className="sticky top-0 z-10 h-[52dvh] shrink-0 bg-paper outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent lg:relative lg:h-auto lg:flex-1">
+        <p id="stage-help" className="sr-only">
+          The room in 3D, built from both videos. Drag or use the arrow keys to turn it, scroll or press plus and minus to zoom.
+        </p>
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-20 p-3 sm:p-4">
           <div className="pointer-events-auto w-fit">
             <StageToolbar showing={showing} onShowing={setShowing} paths={paths} onPaths={() => setPaths((on) => !on)}
               blindSpots={blindSpots} onBlindSpots={toggleBlindSpots} onReset={reset} />
           </div>
         </div>
+        <ChangeStage scene={scene} cloud={cloud} view={view} selectedId={selectedId} focus={focus}
+          onSelect={select} onClear={clear} onOrbit={onOrbit} />
       </section>
       <aside className="bg-paper lg:w-[440px] lg:shrink-0 lg:overflow-y-auto lg:shadow-[-1px_0_0_var(--color-rule)]">
-        <ChangePanel base={base} scene={scene} selectedId={selectedId} onSelect={select} cardRefs={cardRefs}
+        <ChangePanel room={room} base={base} scene={scene} selectedId={selectedId} onSelect={select} cardRefs={cardRefs}
           blindSpots={blindSpots} onBlindSpots={toggleBlindSpots} />
       </aside>
     </main>
@@ -81,7 +95,7 @@ function ReadyViewer({ base, scene, cloud }: { base: string; scene: ChangeScene;
 }
 
 /** The /changes page: the shared 3D room on one side, what changed and how we know on the other. */
-export function ChangeViewer({ base }: { base: string }) {
+export function ChangeViewer({ room, base }: { room: string; base: string }) {
   const loaded = useChangeScene(base);
   if (loaded.state === "loading") {
     return <p className="grid min-h-dvh place-items-center text-base text-ink-muted">Loading the room…</p>;
@@ -97,5 +111,5 @@ export function ChangeViewer({ base }: { base: string }) {
       </div>
     );
   }
-  return <ReadyViewer base={base} scene={loaded.scene} cloud={loaded.cloud} />;
+  return <ReadyViewer room={room} base={base} scene={loaded.scene} cloud={loaded.cloud} />;
 }

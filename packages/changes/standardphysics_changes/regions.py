@@ -85,8 +85,28 @@ def _grow(seed: np.ndarray, allowed: np.ndarray, steps: int) -> np.ndarray:
     return grown | seed
 
 
+def settle(box: Box, supports: list[float], reach_m: float = 0.3) -> Box:
+    """Stand a box on the highest support just below it: the floor at 0, or a table top.
+
+    Within about 15 cm of whatever an object stands on, depth cannot tell the object from
+    its support, so its lowest points never count as changed and the box floats. An object
+    rests on something, so the gap below it is closed down to the nearest support in reach.
+    """
+    bottom = float(box.center[2] - box.size[2] / 2)
+    below = [support for support in supports if bottom - reach_m <= support <= bottom + 0.08]
+    if not below:
+        return box
+    top = float(box.center[2] + box.size[2] / 2)
+    base = max(below)
+    centre = box.center.copy()
+    centre[2] = (base + top) / 2
+    size = box.size.copy()
+    size[2] = top - base
+    return Box(centre, size, box.yaw)
+
+
 def fit_box(points: np.ndarray) -> Box:
-    """The smallest-footprint upright box, standing on the lowest point."""
+    """The smallest-footprint upright box around the points, from their 1st to 99th height percentile."""
     low, high = np.percentile(points[:, 2], [1, 99])
     xy = points[:, :2]
     yaw, extent, centre_xy = _min_area_rectangle(xy)

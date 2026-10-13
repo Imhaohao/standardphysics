@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
 
-type Variant = "primary" | "quiet" | "danger" | "chip" | "inverse" | "choice";
+type Variant = "primary" | "quiet" | "danger" | "chip" | "inverse" | "choice" | "toggle";
 
 const VARIANTS: Record<Variant, string> = {
   primary: "bg-ink text-paper hover:bg-ink/85 px-5 py-3 text-base",
@@ -9,6 +9,7 @@ const VARIANTS: Record<Variant, string> = {
   inverse: "text-paper hover:bg-paper/10 px-3 py-2 text-sm",
   choice: "bg-ink/[0.07] text-ink hover:bg-ink/[0.12] px-5 py-3 text-base",
   chip: "bg-sheet/95 text-ink shadow-float hover:bg-sheet shrink-0 whitespace-nowrap px-3 py-2 text-sm aria-pressed:bg-ink aria-pressed:text-paper",
+  toggle: "text-ink-muted hover:text-ink hover:bg-ink/5 px-3 py-2 text-sm aria-pressed:bg-ink aria-pressed:text-paper aria-pressed:hover:bg-ink",
 };
 
 /** The button look on its own, for a link that should read as a button. */

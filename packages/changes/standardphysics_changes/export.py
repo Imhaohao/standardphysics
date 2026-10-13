@@ -11,7 +11,7 @@ import numpy as np
 
 from . import language
 from .changes import Change, confidence
-from .evidence import GONE, KEPT, UNSEEN
+from .evidence import GONE, KEPT, UNSEEN, DepthLookup, Tolerance, compare
 from .pictures import box_pixels, detail_crop, empty_spot_view, padded_bounds, sightings
 from .regions import Box, Region
 from .views import AFTER, BEFORE, EPOCH_NAMES, View, of_epoch
@@ -69,6 +69,18 @@ def _pictures(change: Change, scene, folder: Path) -> dict:
     return {side: shot for side, shot in shots.items() if shot}
 
 
+def frames_seeing_empty(region: Region, scene, tolerance: Tolerance = Tolerance()) -> dict:
+    """How many of the other video's frames looked at this spot and saw mostly empty space there."""
+    points = scene.cloud.points[region.point_ids]
+    others = of_epoch(scene.views, 1 - region.epoch)
+    empty = 0
+    for view in others:
+        agree, through, _ = compare(points, DepthLookup.of(view, tolerance), tolerance)
+        if through.sum() >= 15 and through.sum() >= agree.sum():
+            empty += 1
+    return {"empty_in": empty, "of": len(others), "video": EPOCH_NAMES[1 - region.epoch]}
+
+
 def change_record(change: Change, scene, folder: Path) -> dict:
     subject = change.subject
     ids = subject.point_ids
@@ -83,8 +95,8 @@ def change_record(change: Change, scene, folder: Path) -> dict:
         "confidence": confidence(subject, scene.through[ids], scene.agree[ids]),
         "evidence": {
             "points": int(len(ids)),
-            "seen_through_by": int(np.median(scene.through[ids])),
-            "frames_in_other_video": len(of_epoch(scene.views, 1 - subject.epoch)),
+            "old_spot": frames_seeing_empty(change.before, scene) if change.before else None,
+            "new_spot": frames_seeing_empty(change.after, scene) if change.after else None,
         },
         "before": _place(change.before, change.where_before),
         "after": _place(change.after, change.where_after),
@@ -161,7 +173,7 @@ def landmark_record(landmark) -> dict:
     return {"name": landmark.name, "box": box_record(landmark.box)}
 
 
-def write_report(out: Path, scene, found: list[Change], landmarks: list, inputs: dict, timings: dict) -> dict:
+def write_report(out: Path, scene, found: list[Change], landmarks: list, inputs: dict, extras: dict) -> dict:
     folder = out / "pictures"
     folder.mkdir(exist_ok=True)
     records = [change_record(change, scene, folder) for change in found]
@@ -177,7 +189,7 @@ def write_report(out: Path, scene, found: list[Change], landmarks: list, inputs:
         "room": {"low": _round(low), "high": _round(high)},
         "cloud": write_cloud(out / "cloud.bin", scene, found),
         "cameras": [camera_record(view) for view in scene.views],
-        "seconds": timings,
+        **extras,
     }
     (out / "scene.json").write_text(json.dumps(report, indent=1))
     return report

@@ -41,6 +41,16 @@ class View:
             cam_to_world=transform @ self.cam_to_world,
         )
 
+    def scaled(self, factor: float) -> View:
+        """The same view in a world `factor` times larger: depth and camera position grow, the picture does not."""
+        pose = self.cam_to_world.copy()
+        pose[:3, 3] *= factor
+        return View(
+            epoch=self.epoch, frame_index=self.frame_index, time_s=self.time_s, image=self.image,
+            detail=self.detail, depth=self.depth * factor, confidence=self.confidence, intrinsics=self.intrinsics,
+            cam_to_world=pose,
+        )
+
 
 def of_epoch(views: list[View], epoch: int) -> list[View]:
     return [view for view in views if view.epoch == epoch]

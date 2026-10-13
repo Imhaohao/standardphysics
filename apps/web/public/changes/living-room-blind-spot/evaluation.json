@@ -1,0 +1,42 @@
+{
+ "camera_alignment": {
+  "scale": 0.996,
+  "rmse_m": 0.018
+ },
+ "recall": 1.0,
+ "precision": 1.0,
+ "names_correct": "1 of 1",
+ "mean_centre_error_m": 0.051,
+ "mean_bottom_error_m": 0.009,
+ "mean_height_error_m": 0.069,
+ "mean_overlap": 0.8,
+ "mean_distance_error_m": 0.019,
+ "false_alarms": [],
+ "unverifiable_reported": [],
+ "changes": [
+  {
+   "truth": "armchair",
+   "type": "moved",
+   "found": "c1",
+   "name": "armchair",
+   "name_ok": true,
+   "shape_position_error_m": 0.056,
+   "before": {
+    "centre_error_m": 0.046,
+    "bottom_error_m": 0.009,
+    "height_error_m": -0.075,
+    "overlap": 0.81
+   },
+   "after": {
+    "centre_error_m": 0.056,
+    "bottom_error_m": 0.008,
+    "height_error_m": -0.063,
+    "overlap": 0.79
+   },
+   "true_distance_m": 1.031,
+   "reported_distance_m": 1.05,
+   "distance_error_m": 0.019,
+   "true_turn_deg": -45
+  }
+ ]
+}

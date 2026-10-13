@@ -49,11 +49,12 @@ def _moved(move: Move, landmarks: list[Landmark]) -> Change:
     name = subject.names.get("name", "object")
     where_before = move.removed.names.get("where", "")
     where_after = move.added.names.get("where", "")
+    distance = round(move.distance_m, 2)
     return Change(
         id="", type="moved", name=name, detail=subject.names.get("detail", name),
-        sentence=language.moved_sentence(name, move.distance_m, move.turn_deg, _route(move, landmarks)),
+        sentence=language.moved_sentence(name, distance, move.turn_deg, _route(move, landmarks)),
         before=move.removed, after=move.added, where_before=where_before, where_after=where_after,
-        distance_m=move.distance_m, turn_deg=move.turn_deg, similarity=move.similarity,
+        distance_m=distance, turn_deg=move.turn_deg, similarity=move.similarity,
     )
 
 
@@ -75,7 +76,7 @@ def assemble(moves: list[Move], removed: list[Region], added: list[Region],
              landmarks: list[Landmark] = ()) -> list[Change]:
     """Moves first, then disappearances and appearances, each group largest first."""
     paired = {id(move.removed) for move in moves} | {id(move.added) for move in moves}
-    landmarks = list(landmarks)
+    landmarks = [landmark for landmark in landmarks if not landmark.ambiguous]
     changes = [_moved(move, landmarks) for move in sorted(moves, key=lambda m: -m.removed.box.volume)]
     changes += [_removed(r) for r in sorted(removed, key=lambda r: -r.box.volume) if id(r) not in paired]
     changes += [_added(r) for r in sorted(added, key=lambda r: -r.box.volume) if id(r) not in paired]

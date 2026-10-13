@@ -2,7 +2,7 @@
 
 import numpy as np
 import pytest
-from standardphysics_changes.evaluate import name_matches, umeyama
+from standardphysics_changes.evaluate import box_overlap, name_matches, umeyama
 from standardphysics_changes.evidence import GONE, KEPT, UNSEEN, DepthLookup, Evidence, Tolerance, classify, gather
 from standardphysics_changes.geometry import (
     Sampling,
@@ -14,7 +14,8 @@ from standardphysics_changes.geometry import (
     voxel_downsample,
 )
 from standardphysics_changes.matching import MatchRules, estimate_turn, pair_moves
-from standardphysics_changes.regions import RegionRules, find_regions, finish_regions, fit_box
+from standardphysics_changes.pipeline import height_scale
+from standardphysics_changes.regions import Box, RegionRules, find_regions, finish_regions, fit_box, settle
 from standardphysics_changes.views import View
 
 
@@ -191,7 +192,39 @@ def test_umeyama_recovers_a_similarity():
     assert np.allclose(shift, [1, 2, 3])
 
 
-def test_names_are_compared_loosely():
+def test_names_are_compared_against_a_short_list_of_synonyms():
     assert name_matches("armchair", "chair")
     assert name_matches("potted plant", "plant")
     assert not name_matches("cardboard box", "basket")
+    assert not name_matches("wooden stool", "chair")
+
+
+def test_a_floating_box_settles_onto_what_holds_it_up():
+    floating = Box(np.array([0.0, 0.0, 0.3]), np.array([0.4, 0.4, 0.32]), 0.0)
+    settled = settle(floating, [0.0])
+    assert settled.center[2] - settled.size[2] / 2 == pytest.approx(0.0)
+    assert settled.center[2] + settled.size[2] / 2 == pytest.approx(0.46)
+    on_table = Box(np.array([0.0, 0.0, 0.7]), np.array([0.3, 0.3, 0.2]), 0.0)
+    assert settle(on_table, [0.0, 0.45]).center[2] - settle(on_table, [0.0, 0.45]).size[2] / 2 == pytest.approx(0.45)
+    on_wall = Box(np.array([0.0, 0.0, 1.6]), np.array([0.5, 0.1, 0.6]), 0.0)
+    assert settle(on_wall, [0.0]) is on_wall
+
+
+def test_overlap_is_one_for_the_same_box_and_a_third_for_half_a_box_off():
+    a = {"center": np.array([0.0, 0.0, 0.5]), "size": np.array([1.0, 1.0, 1.0]), "yaw_deg": 0.0}
+    b = {**a, "center": np.array([0.5, 0.0, 0.5])}
+    far = {**a, "center": np.array([3.0, 0.0, 0.5])}
+    assert box_overlap(a, a) == pytest.approx(1.0, abs=0.03)
+    assert box_overlap(a, b) == pytest.approx(1 / 3, abs=0.03)
+    assert box_overlap(a, far) == 0.0
+
+
+def test_a_known_phone_height_rescales_the_room():
+    views = [camera_at([0, 0, 0], epoch=0) for _ in range(3)]
+    for view, height in zip(views, (1.5, 1.6, 1.7)):
+        view.cam_to_world[2, 3] = height
+    assert height_scale(views, 1.4) == pytest.approx(1.4 / 1.6)
+    assert height_scale(views, None) == 1.0
+    grown = views[0].scaled(2.0)
+    assert grown.position[2] == pytest.approx(3.0)
+    assert float(grown.depth[0, 0]) == pytest.approx(6.0)

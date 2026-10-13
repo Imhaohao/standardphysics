@@ -29,12 +29,18 @@ class Sighting:
         return padded_bounds(cols.min(), rows.min(), cols.max() + 1, rows.max() + 1, self.view.shape, margin)
 
 
+def _window(centre: float, side: float, limit: int) -> tuple[int, int]:
+    start = min(max(centre - side / 2, 0), limit - side)
+    return int(round(start)), int(round(start + side))
+
+
 def padded_bounds(left, top, right, bottom, shape, margin: float) -> tuple[int, int, int, int]:
+    """A square around the box with `margin` to spare, slid back inside the frame rather than cut by it."""
     height, width = shape
-    side = max(right - left, bottom - top, 24) * (1 + margin)
-    cx, cy = (left + right) / 2, (top + bottom) / 2
-    return (int(max(0, cx - side / 2)), int(max(0, cy - side / 2)),
-            int(min(width, cx + side / 2)), int(min(height, cy + side / 2)))
+    side = min(max(right - left, bottom - top, 24) * (1 + margin), height, width)
+    x0, x1 = _window((left + right) / 2, side, width)
+    y0, y1 = _window((top + bottom) / 2, side, height)
+    return x0, y0, x1, y1
 
 
 def _mask_from(u: np.ndarray, v: np.ndarray, shape: tuple[int, int]) -> np.ndarray:

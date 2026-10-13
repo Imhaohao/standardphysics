@@ -8,10 +8,11 @@ import numpy as np
 
 
 def length(metres: float) -> str:
-    centimetres = round(metres * 100 / 5) * 5
+    """Centimetres to the nearest 5 below a metre, tenths of a metre above, rounding halves up both ways."""
+    centimetres = int(np.floor(metres * 100 / 5 + 0.5)) * 5
     if centimetres < 100:
-        return f"{centimetres:.0f} cm"
-    return f"{metres:.1f} m"
+        return f"{centimetres} cm"
+    return f"{np.floor(metres * 10 + 0.5) / 10:.1f} m"
 
 
 def size_phrase(size: np.ndarray) -> str:

@@ -1,0 +1,17 @@
+{
+ "camera_alignment": {
+  "scale": 0.981,
+  "rmse_m": 0.015
+ },
+ "recall": null,
+ "precision": null,
+ "names_correct": "0 of 0",
+ "mean_centre_error_m": null,
+ "mean_bottom_error_m": null,
+ "mean_height_error_m": null,
+ "mean_overlap": null,
+ "mean_distance_error_m": null,
+ "false_alarms": [],
+ "unverifiable_reported": [],
+ "changes": []
+}

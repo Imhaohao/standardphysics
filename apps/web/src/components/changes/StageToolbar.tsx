@@ -1,5 +1,6 @@
 import { ArrowCounterClockwise, EyeSlash, Path } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
+import { Button } from "@/components/ui/Button";
 import { IconButton } from "@/components/ui/IconButton";
 
 export type Showing = "before" | "both" | "after";
@@ -10,12 +11,29 @@ const SHOWING: { value: Showing; label: string }[] = [
   { value: "after", label: "After" },
 ];
 
-function Toggle({ pressed, onToggle, children }: { pressed: boolean; onToggle: () => void; children: ReactNode }) {
+/** One floating tray of controls over the 3D view. */
+function Tray({ label, children }: { label?: string; children: ReactNode }) {
   return (
-    <button type="button" aria-pressed={pressed} onClick={onToggle}
-      className="pressable flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-ink-muted hover:bg-ink/5 hover:text-ink aria-pressed:bg-ink aria-pressed:text-paper">
+    <div role={label ? "group" : undefined} aria-label={label} className="flex items-center rounded-xl bg-sheet/95 p-1 shadow-float">
       {children}
-    </button>
+    </div>
+  );
+}
+
+/** Dashed for the before walk, solid for the after walk, matching the lines drawn in the room. */
+function PathKey() {
+  return (
+    <div className="flex items-center gap-3 px-2 text-sm text-ink-muted">
+      {(["before", "after"] as const).map((walk) => (
+        <span key={walk} className="flex items-center gap-1.5">
+          <svg width="22" height="6" aria-hidden>
+            <line x1="1" y1="3" x2="21" y2="3" stroke="currentColor" strokeWidth="1.5"
+              strokeDasharray={walk === "before" ? "4 3" : undefined} />
+          </svg>
+          {walk === "before" ? "Before walk" : "After walk"}
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -33,30 +51,30 @@ type ToolbarProps = {
 export function StageToolbar({ showing, onShowing, paths, onPaths, blindSpots, onBlindSpots, onReset }: ToolbarProps) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <div role="group" aria-label="Which video to show" className="flex rounded-xl bg-sheet/95 p-1 shadow-float">
+      <Tray label="Which video to show">
         {SHOWING.map((option) => (
-          <button key={option.value} type="button" aria-pressed={showing === option.value}
-            onClick={() => onShowing(option.value)}
-            className="pressable rounded-lg px-3 py-2 text-sm font-medium text-ink-muted hover:text-ink aria-pressed:bg-ink aria-pressed:text-paper">
+          <Button key={option.value} variant="toggle" aria-pressed={showing === option.value}
+            onClick={() => onShowing(option.value)}>
             {option.label}
-          </button>
+          </Button>
         ))}
-      </div>
-      <div className="flex rounded-xl bg-sheet/95 p-1 shadow-float">
-        <Toggle pressed={paths} onToggle={onPaths}>
+      </Tray>
+      <Tray>
+        <Button variant="toggle" aria-pressed={paths} onClick={onPaths}>
           <Path size={16} aria-hidden />
           Camera paths
-        </Toggle>
-        <Toggle pressed={blindSpots} onToggle={onBlindSpots}>
+        </Button>
+        <Button variant="toggle" aria-pressed={blindSpots} onClick={onBlindSpots}>
           <EyeSlash size={16} aria-hidden />
           Blind spots
-        </Toggle>
-      </div>
-      <div className="rounded-xl bg-sheet/95 p-1 shadow-float">
+        </Button>
+        {paths && <PathKey />}
+      </Tray>
+      <Tray>
         <IconButton label="Reset the view" tooltipSide="below" onClick={onReset}>
           <ArrowCounterClockwise size={18} aria-hidden />
         </IconButton>
-      </div>
+      </Tray>
     </div>
   );
 }

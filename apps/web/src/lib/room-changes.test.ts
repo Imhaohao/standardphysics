@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   BOX_EDGES, type RoomChange, type Vec3, cameraPath, changeCentre, changeReach, edgePositions, formatLength,
-  formatTurn, moveArc, parseCloud, percent, placeOf, sentenceCase,
+  formatTurn, moveArc, parseCloud, percent, phoneHeight, placeOf, sentenceCase,
 } from "./room-changes";
 
 function cube(center: Vec3, half = 0.5) {
@@ -16,7 +16,7 @@ function change(overrides: Partial<RoomChange>): RoomChange {
   return {
     id: "c1", type: "moved", name: "armchair", detail: "white armchair", sentence: "", size: [1, 1, 1],
     size_text: "about 1.0 m by 1.0 m and 1.0 m tall", confidence: 1,
-    evidence: { points: 10, seen_through_by: 20, frames_in_other_video: 32 },
+    evidence: { points: 10, old_spot: { empty_in: 20, of: 32, video: "after" }, new_spot: null },
     before: { box: cube([0, 0, 0.5]), where: "" }, after: { box: cube([3, 0, 0.5]), where: "" }, pictures: {},
     ...overrides,
   };
@@ -85,6 +85,8 @@ describe("paths", () => {
     });
     const cameras = [camera("before", 2, 2), camera("after", 0, 9), camera("before", 1, 1)];
     expect(cameraPath(cameras, "before").map((p) => p[0])).toEqual([1, 2]);
+    expect(phoneHeight(cameras)).toBe(1.5);
+    expect(phoneHeight([])).toBe(0);
   });
 
   it("arcs above both ends of a move and lands on them", () => {

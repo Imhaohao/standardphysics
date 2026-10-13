@@ -5,6 +5,7 @@ from standardphysics_changes.landmarks import (
     Landmark,
     apart_from,
     crossed,
+    fitting_name,
     footprint_gap,
     heading,
     merge_touching,
@@ -61,6 +62,20 @@ def test_a_piece_inside_a_larger_one_merges_into_it():
     merged = merge_touching([inner, big, beside], points)
     assert [m.category for m in merged] == ["table", "sofa"]
     assert len(merged[0].point_ids) == 400
+
+
+def test_a_model_name_must_agree_with_the_segmenters_category():
+    assert fitting_name("shelf", "bookshelf") == "bookshelf"
+    assert fitting_name("shelf", "staircase") == "shelf"
+    assert fitting_name("cabinet", "side table") == "side table"
+    assert fitting_name("table", "object") == "table"
+
+
+def test_two_halves_of_one_bookshelf_become_one_piece():
+    points = np.vstack([np.zeros((5, 3)), np.ones((5, 3)) * [0, 1.2, 1]])
+    top = Landmark(np.arange(5), Box(np.array([0, 0.3, 1.0]), np.array([0.3, 0.6, 2.0]), 0.0), "shelf")
+    bottom = Landmark(np.arange(5, 10), Box(np.array([0, 0.92, 1.0]), np.array([0.3, 0.6, 2.0]), 0.0), "shelf")
+    assert len(merge_touching([top, bottom], points)) == 1
 
 
 def test_leftovers_of_a_change_are_not_furniture_but_the_table_under_it_is():

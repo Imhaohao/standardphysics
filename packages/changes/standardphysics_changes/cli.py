@@ -12,6 +12,7 @@ def _run(args: argparse.Namespace) -> None:
     from .pipeline import Settings, run
 
     settings = Settings(frames_per_video=args.frames, namer=args.namer, fov_deg=args.fov,
+                        camera_height_m=args.camera_height, rotate_cw=args.rotate,
                         reuse_reconstruction=not args.fresh)
     report = run(args.before, args.after, args.out, settings)
     print()
@@ -25,8 +26,7 @@ def _evaluate(args: argparse.Namespace) -> None:
     from .evaluate import evaluate
 
     report = evaluate(args.result, args.truth)
-    print(json.dumps({key: report[key] for key in ("camera_alignment", "recall", "precision", "names_correct",
-                                                   "mean_position_error_m", "false_alarms")}, indent=1))
+    print(json.dumps({key: value for key, value in report.items() if key != "changes"}, indent=1))
     for row in report["changes"]:
         print(f"  {row['type']:<8} {row['truth']:<16} -> {row.get('found') or 'missed'} {row.get('name', '')}")
 
@@ -41,6 +41,10 @@ def parser() -> argparse.ArgumentParser:
     run.add_argument("--frames", type=int, default=32, help="frames sampled from each video")
     run.add_argument("--namer", choices=["auto", "qwen", "none"], default="auto")
     run.add_argument("--fov", type=float, help="horizontal field of view of the video in degrees, if known")
+    run.add_argument("--rotate", type=int, choices=[0, 90, 180, 270], default=0,
+                     help="turn every frame clockwise by this many degrees, for videos that don't say which way is up")
+    run.add_argument("--camera-height", type=float,
+                     help="how high you held the phone above the floor, in metres; corrects the model's scale")
     run.add_argument("--fresh", action="store_true", help="reconstruct again even if a cached result exists")
     run.set_defaults(handler=_run)
     score = commands.add_parser("evaluate", help="score a result against a rendered room's truth.json")

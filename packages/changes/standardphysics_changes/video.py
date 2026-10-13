@@ -32,10 +32,18 @@ def sharpness(gray: np.ndarray) -> float:
     return float(lap.var())
 
 
-def sample_frames(path: Path, count: int) -> list[Frame]:
-    """`count` frames spread evenly through the video, each the sharpest of its stretch."""
+TURNS = {90: "ROTATE_90_CLOCKWISE", 180: "ROTATE_180", 270: "ROTATE_90_COUNTERCLOCKWISE"}
+
+
+def sample_frames(path: Path, count: int, rotate_cw: int = 0) -> list[Frame]:
+    """`count` frames spread evenly through the video, each the sharpest of its stretch.
+
+    Phone videos usually say which way is up and OpenCV turns them; `rotate_cw` is for the
+    ones that don't, turning every frame clockwise by that many degrees.
+    """
     import cv2
 
+    turn = getattr(cv2, TURNS[rotate_cw]) if rotate_cw else None
     capture = cv2.VideoCapture(str(path))
     if not capture.isOpened():
         raise FileNotFoundError(f"cannot open video {path}")
@@ -55,7 +63,8 @@ def sample_frames(path: Path, count: int) -> list[Frame]:
             best[window] = (score, index, frame)
         index += 1
     capture.release()
-    return [Frame(i, i / fps, cv2.cvtColor(f, cv2.COLOR_BGR2RGB)) for _, (_, i, f) in sorted(best.items())]
+    frames = [(i, f if turn is None else cv2.rotate(f, turn)) for _, (_, i, f) in sorted(best.items())]
+    return [Frame(i, i / fps, cv2.cvtColor(f, cv2.COLOR_BGR2RGB)) for i, f in frames]
 
 
 def fit_to(rgb: np.ndarray, width: int, height: int) -> np.ndarray:

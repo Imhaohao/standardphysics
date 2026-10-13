@@ -1,7 +1,9 @@
 import { type RefObject } from "react";
-import { type ChangeScene, percent } from "@/lib/room-changes";
+import { Button } from "@/components/ui/Button";
+import { type ChangeScene, formatLength, percent, phoneHeight } from "@/lib/room-changes";
 import { ChangeCard } from "./ChangeCard";
 import { EvidenceDiagram } from "./EvidenceDiagram";
+import { RoomSwitcher } from "./RoomSwitcher";
 
 function InputVideos({ base, scene }: { base: string; scene: ChangeScene }) {
   const { before, after } = scene.videos ?? { before: null, after: null };
@@ -19,6 +21,19 @@ function InputVideos({ base, scene }: { base: string; scene: ChangeScene }) {
         ))}
       </div>
     </details>
+  );
+}
+
+/** What the distances rest on: the phone height the room was scaled to, and how many frames were compared. */
+function MeasuredWith({ scene }: { scene: ChangeScene }) {
+  const frames = (video: "before" | "after") => scene.cameras.filter((camera) => camera.video === video).length;
+  return (
+    <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+      <dt className="text-ink-muted">Phone height</dt>
+      <dd className="text-ink"><span className="measurement">{formatLength(phoneHeight(scene.cameras))}</span> above the floor</dd>
+      <dt className="text-ink-muted">Frames compared</dt>
+      <dd className="text-ink"><span className="measurement">{frames("before")}</span> before and <span className="measurement">{frames("after")}</span> after</dd>
+    </dl>
   );
 }
 
@@ -43,10 +58,9 @@ function BlindSpots({ scene, shown, onToggle }: { scene: ChangeScene; shown: boo
     <section aria-labelledby="blind-spots" className="space-y-4 px-1">
       <div className="flex items-center justify-between gap-3">
         <h2 id="blind-spots" className="font-display text-base font-semibold text-ink">Blind spots</h2>
-        <button type="button" aria-pressed={shown} onClick={onToggle}
-          className="pressable rounded-lg px-3 py-2 text-sm font-medium text-ink-muted hover:bg-ink/5 hover:text-ink aria-pressed:bg-ink aria-pressed:text-paper">
+        <Button variant="toggle" aria-pressed={shown} onClick={onToggle}>
           {shown ? "Hide them in the room" : "Show them in the room"}
-        </button>
+        </Button>
       </div>
       <div className="space-y-3">
         <CoverageBar label="Before video's surfaces the after video saw again" share={before} />
@@ -71,6 +85,7 @@ function BlindSpots({ scene, shown, onToggle }: { scene: ChangeScene; shown: boo
 }
 
 type PanelProps = {
+  room: string;
   base: string;
   scene: ChangeScene;
   selectedId: string | null;
@@ -80,15 +95,18 @@ type PanelProps = {
   onBlindSpots: () => void;
 };
 
-export function ChangePanel({ base, scene, selectedId, onSelect, cardRefs, blindSpots, onBlindSpots }: PanelProps) {
+export function ChangePanel({ room, base, scene, selectedId, onSelect, cardRefs, blindSpots, onBlindSpots }: PanelProps) {
   return (
     <div className="space-y-6 px-4 pb-10 pt-6 sm:px-6">
+      <RoomSwitcher current={room} />
       <header className="space-y-3 px-1">
         <h1 className="font-display text-2xl font-semibold text-ink text-balance">What changed in the room</h1>
         <p className="text-lg text-ink text-pretty">{scene.summary}</p>
+        <MeasuredWith scene={scene} />
       </header>
       <InputVideos base={base} scene={scene} />
-      <ol className="space-y-2" aria-label="Changes">
+      <h2 id="changes-list" className="sr-only">Changes</h2>
+      <ol className="space-y-2" aria-labelledby="changes-list">
         {scene.changes.map((change) => (
           <li key={change.id}>
             <ChangeCard

@@ -26,6 +26,27 @@ FURNITURE = {
 }
 
 
+# Words a vision model's name may use for a piece the segmenter put in each category.
+NAME_FAMILIES = {
+    "chair": {"chair", "armchair", "stool", "seat", "recliner"},
+    "sofa": {"sofa", "couch", "settee", "loveseat"},
+    "bed": {"bed"},
+    "table": {"table", "desk"},
+    "plant": {"plant", "pot", "succulent", "tree", "fern", "planter"},
+    "television": {"television", "tv", "screen", "monitor"},
+    "cabinet": {"cabinet", "table", "drawer", "drawers", "dresser", "sideboard", "nightstand", "chest", "console"},
+    "shelf": {"shelf", "bookshelf", "bookcase", "shelving", "shelves"},
+    "counter": {"counter", "bar", "worktop"},
+    "bench": {"bench"},
+}
+
+
+def fitting_name(category: str, proposed: str) -> str:
+    """The model's more specific name when it agrees with the segmenter's category, else the category."""
+    words = set(proposed.lower().replace("-", " ").split())
+    return proposed if words & NAME_FAMILIES.get(category, {category}) else category
+
+
 @dataclass(frozen=True)
 class LandmarkRules:
     voxel_m: float = 0.05
@@ -44,6 +65,9 @@ class Landmark:
     box: Box
     category: str
     name: str = ""
+    detail: str = ""
+    ambiguous: bool = False
+    """Shares its name with something else in the room, so no sentence may point to it."""
 
 
 def vote_classes(points: np.ndarray, views: list[View], class_maps: list[np.ndarray],
@@ -122,20 +146,24 @@ def apart_from(landmarks: list[Landmark], points: np.ndarray, boxes: list[Box]) 
     return [lm for lm in landmarks if not any(_part_of_change(lm, points, box) for box in boxes)]
 
 
-def _mostly_inside(piece: Landmark, host: Landmark, points: np.ndarray, share: float = 0.5) -> bool:
-    return float(inside_box(points[piece.point_ids], host.box, margin_m=0.05).mean()) >= share
+def _belongs_to(piece: Landmark, host: Landmark, points: np.ndarray) -> bool:
+    """Mostly inside the host's box, or touching a host of the same category."""
+    if float(inside_box(points[piece.point_ids], host.box, margin_m=0.05).mean()) >= 0.5:
+        return True
+    return piece.category == host.category and footprint_gap(piece.box, host.box) <= 0.05
 
 
 def merge_touching(landmarks: list[Landmark], points: np.ndarray) -> list[Landmark]:
-    """One piece of furniture the segmenter split in two, such as a side table seen as table and cabinet.
+    """One piece of furniture the segmenter split up, such as a side table seen as table and cabinet.
 
-    A piece joins a larger one only when most of it lies inside the larger one's box, so a
-    coffee table pushed up against a sofa stays its own piece.
+    A piece joins a larger one when most of it lies inside the larger one's box, or when the
+    two touch and are the same kind of thing, so a coffee table pushed up against a sofa
+    stays its own piece while two halves of one bookshelf become one.
     """
     pieces = sorted(landmarks, key=lambda landmark: -len(landmark.point_ids))
     merged: list[Landmark] = []
     for piece in pieces:
-        host = next((m for m in merged if _mostly_inside(piece, m, points)), None)
+        host = next((m for m in merged if _belongs_to(piece, m, points)), None)
         if host is None:
             merged.append(piece)
             continue
@@ -194,6 +222,15 @@ def _rests_on(box: Box, base: Box, rules: LandmarkRules) -> bool:
     return bool(inside and abs(bottom - top) < rules.on_top_m and bottom > 0.15)
 
 
+def supports_under(box: Box, landmarks: list[Landmark]) -> list[float]:
+    """Tops of the furniture whose footprint holds the centre of `box`."""
+    tops = []
+    for landmark in landmarks:
+        if _distance_to_footprint(box.center[:2], landmark.box) <= 0.02:
+            tops.append(float(landmark.box.center[2] + landmark.box.size[2] / 2))
+    return tops
+
+
 def _between(box: Box, near: list[tuple[float, Landmark]]) -> tuple[Landmark, Landmark] | None:
     for i, (_, first) in enumerate(near):
         for _, second in near[i + 1:]:
@@ -207,7 +244,7 @@ def _between(box: Box, near: list[tuple[float, Landmark]]) -> tuple[Landmark, La
 
 def place_phrase(box: Box, landmarks: list[Landmark], rules: LandmarkRules = LandmarkRules()) -> str:
     """"on the coffee table", "between the sofa and the side table", "beside the bookshelf", or ""."""
-    named = [landmark for landmark in landmarks if landmark.name and landmark.name != "object"]
+    named = [lm for lm in landmarks if lm.name and lm.name != "object" and not lm.ambiguous]
     for landmark in named:
         if _rests_on(box, landmark.box, rules):
             return f"on the {landmark.name}"
@@ -215,7 +252,8 @@ def place_phrase(box: Box, landmarks: list[Landmark], rules: LandmarkRules = Lan
                     key=lambda pair: pair[0])
     pair = _between(box, [(gap, lm) for gap, lm in ranked if gap <= rules.near_m])
     if pair:
-        return f"between the {pair[0].name} and the {pair[1].name}"
+        first, second = sorted(lm.name for lm in pair)
+        return f"between the {first} and the {second}"
     if ranked and ranked[0][0] <= rules.beside_m:
         return f"beside the {ranked[0][1].name}"
     if ranked and ranked[0][0] <= rules.near_m:
