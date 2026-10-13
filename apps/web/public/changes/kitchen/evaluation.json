@@ -1,8 +1,8 @@
 {
- "detector": "bb49e7320ebf",
+ "detector": "bf484abba956",
  "camera_alignment": {
-  "scale": 1.0,
-  "rmse_m": 0.017
+  "scale": 0.988,
+  "rmse_m": 0.018
  },
  "recall": 1.0,
  "precision": 1.0,
@@ -12,11 +12,11 @@
  "wrong_kind_names": [
   "metal bucket"
  ],
- "mean_centre_error_m": 0.047,
- "mean_bottom_error_m": 0.015,
- "mean_height_error_m": 0.012,
- "mean_overlap": 0.613,
- "mean_distance_error_m": 0.028,
+ "mean_centre_error_m": 0.053,
+ "mean_bottom_error_m": 0.014,
+ "mean_height_error_m": 0.015,
+ "mean_overlap": 0.596,
+ "mean_distance_error_m": 0.034,
  "false_alarms": [],
  "unverifiable_reported": [],
  "unverifiable_listed": [],
@@ -28,22 +28,22 @@
    "name": "plastic chair",
    "name_ok": true,
    "head_noun_ok": true,
-   "shape_position_error_m": 0.105,
+   "shape_position_error_m": 0.132,
    "before": {
-    "centre_error_m": 0.06,
-    "bottom_error_m": -0.018,
-    "height_error_m": -0.033,
-    "overlap": 0.72
+    "centre_error_m": 0.058,
+    "bottom_error_m": -0.014,
+    "height_error_m": -0.041,
+    "overlap": 0.68
    },
    "after": {
-    "centre_error_m": 0.106,
+    "centre_error_m": 0.122,
     "bottom_error_m": -0.016,
-    "height_error_m": -0.002,
-    "overlap": 0.6
+    "height_error_m": -0.01,
+    "overlap": 0.59
    },
    "true_distance_m": 3.089,
-   "reported_distance_m": 3.05,
-   "distance_error_m": 0.039,
+   "reported_distance_m": 3.04,
+   "distance_error_m": 0.049,
    "true_turn_deg": 135,
    "turn_error_deg": 5
   },
@@ -54,18 +54,18 @@
    "name": "stool",
    "name_ok": false,
    "head_noun_ok": true,
-   "shape_position_error_m": 0.041,
+   "shape_position_error_m": 0.027,
    "before": {
-    "centre_error_m": 0.017,
-    "bottom_error_m": -0.02,
-    "height_error_m": 0.021,
+    "centre_error_m": 0.011,
+    "bottom_error_m": -0.015,
+    "height_error_m": 0.017,
     "overlap": 0.6
    },
    "after": {
-    "centre_error_m": 0.04,
-    "bottom_error_m": -0.013,
-    "height_error_m": 0.017,
-    "overlap": 0.56
+    "centre_error_m": 0.039,
+    "bottom_error_m": -0.014,
+    "height_error_m": 0.012,
+    "overlap": 0.53
    },
    "true_distance_m": 2.642,
    "reported_distance_m": 2.66,
@@ -79,12 +79,12 @@
    "name": "blue barrel",
    "name_ok": false,
    "head_noun_ok": true,
-   "shape_position_error_m": 0.067,
+   "shape_position_error_m": 0.112,
    "before": {
-    "centre_error_m": 0.068,
-    "bottom_error_m": -0.015,
-    "height_error_m": -0.005,
-    "overlap": 0.43
+    "centre_error_m": 0.095,
+    "bottom_error_m": -0.014,
+    "height_error_m": -0.01,
+    "overlap": 0.42
    }
   },
   {
@@ -94,12 +94,12 @@
    "name": "metal bucket",
    "name_ok": false,
    "head_noun_ok": false,
-   "shape_position_error_m": 0.023,
+   "shape_position_error_m": 0.026,
    "after": {
-    "centre_error_m": 0.023,
+    "centre_error_m": 0.02,
     "bottom_error_m": -0.015,
-    "height_error_m": -0.002,
-    "overlap": 0.7
+    "height_error_m": -0.011,
+    "overlap": 0.71
    }
   },
   {
@@ -109,12 +109,12 @@
    "name": "white vase",
    "name_ok": false,
    "head_noun_ok": true,
-   "shape_position_error_m": 0.012,
+   "shape_position_error_m": 0.013,
    "after": {
-    "centre_error_m": 0.012,
-    "bottom_error_m": -0.007,
+    "centre_error_m": 0.023,
+    "bottom_error_m": -0.01,
     "height_error_m": -0.005,
-    "overlap": 0.68
+    "overlap": 0.64
    }
   }
  ],
@@ -122,7 +122,7 @@
  "seen_once_on_unchanged": [],
  "seen_once_on_nothing": [],
  "phantom_furniture": [
-  "chair"
+  "white chair"
  ],
  "doubted_real_changes": []
 }

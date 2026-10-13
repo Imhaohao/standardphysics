@@ -1,20 +1,20 @@
 {
- "detector": "bb49e7320ebf",
+ "detector": "bf484abba956",
  "camera_alignment": {
-  "scale": 0.977,
-  "rmse_m": 0.019
+  "scale": 0.955,
+  "rmse_m": 0.035
  },
- "recall": 1.0,
+ "recall": 0.8,
  "precision": 1.0,
  "partial": [],
- "names_correct": "5 of 5",
- "head_nouns_correct": "5 of 5",
+ "names_correct": "4 of 4",
+ "head_nouns_correct": "4 of 4",
  "wrong_kind_names": [],
- "mean_centre_error_m": 0.049,
- "mean_bottom_error_m": 0.021,
- "mean_height_error_m": 0.044,
- "mean_overlap": 0.693,
- "mean_distance_error_m": 0.06,
+ "mean_centre_error_m": 0.119,
+ "mean_bottom_error_m": 0.01,
+ "mean_height_error_m": 0.063,
+ "mean_overlap": 0.552,
+ "mean_distance_error_m": 0.045,
  "false_alarms": [],
  "unverifiable_reported": [],
  "unverifiable_listed": [],
@@ -26,24 +26,24 @@
    "name": "armchair",
    "name_ok": true,
    "head_noun_ok": true,
-   "shape_position_error_m": 0.039,
+   "shape_position_error_m": 0.071,
    "before": {
-    "centre_error_m": 0.093,
-    "bottom_error_m": -0.029,
-    "height_error_m": -0.054,
-    "overlap": 0.71
+    "centre_error_m": 0.132,
+    "bottom_error_m": 0.013,
+    "height_error_m": -0.097,
+    "overlap": 0.61
    },
    "after": {
-    "centre_error_m": 0.021,
-    "bottom_error_m": -0.02,
-    "height_error_m": -0.063,
-    "overlap": 0.82
+    "centre_error_m": 0.098,
+    "bottom_error_m": 0.008,
+    "height_error_m": -0.095,
+    "overlap": 0.68
    },
    "true_distance_m": 2.667,
-   "reported_distance_m": 2.77,
-   "distance_error_m": 0.103,
+   "reported_distance_m": 2.7,
+   "distance_error_m": 0.033,
    "true_turn_deg": -160,
-   "turn_error_deg": 5
+   "turn_error_deg": 10
   },
   {
    "truth": "wooden stool",
@@ -52,22 +52,22 @@
    "name": "stool",
    "name_ok": true,
    "head_noun_ok": true,
-   "shape_position_error_m": 0.06,
+   "shape_position_error_m": 0.137,
    "before": {
-    "centre_error_m": 0.032,
-    "bottom_error_m": -0.014,
-    "height_error_m": 0.031,
-    "overlap": 0.69
+    "centre_error_m": 0.087,
+    "bottom_error_m": 0.002,
+    "height_error_m": 0.024,
+    "overlap": 0.54
    },
    "after": {
-    "centre_error_m": 0.054,
-    "bottom_error_m": -0.022,
-    "height_error_m": 0.031,
-    "overlap": 0.68
+    "centre_error_m": 0.158,
+    "bottom_error_m": 0.008,
+    "height_error_m": 0.006,
+    "overlap": 0.36
    },
    "true_distance_m": 2.907,
-   "reported_distance_m": 2.89,
-   "distance_error_m": 0.017,
+   "reported_distance_m": 2.85,
+   "distance_error_m": 0.057,
    "true_turn_deg": 30
   },
   {
@@ -77,12 +77,12 @@
    "name": "potted plant",
    "name_ok": true,
    "head_noun_ok": true,
-   "shape_position_error_m": 0.032,
+   "shape_position_error_m": 0.138,
    "before": {
-    "centre_error_m": 0.073,
-    "bottom_error_m": -0.039,
-    "height_error_m": -0.083,
-    "overlap": 0.66
+    "centre_error_m": 0.124,
+    "bottom_error_m": 0.023,
+    "height_error_m": -0.147,
+    "overlap": 0.54
    }
   },
   {
@@ -92,33 +92,25 @@
    "name": "cardboard box",
    "name_ok": true,
    "head_noun_ok": true,
-   "shape_position_error_m": 0.012,
+   "shape_position_error_m": 0.062,
    "after": {
-    "centre_error_m": 0.024,
-    "bottom_error_m": -0.019,
-    "height_error_m": 0.005,
-    "overlap": 0.74
+    "centre_error_m": 0.113,
+    "bottom_error_m": 0.006,
+    "height_error_m": -0.008,
+    "overlap": 0.58
    }
   },
   {
    "truth": "wicker basket",
    "type": "added",
-   "found": "c5",
-   "name": "basket",
-   "name_ok": true,
-   "head_noun_ok": true,
-   "shape_position_error_m": 0.002,
-   "after": {
-    "centre_error_m": 0.046,
-    "bottom_error_m": -0.007,
-    "height_error_m": -0.039,
-    "overlap": 0.55
-   }
+   "found": null
   }
  ],
  "unobservable": [],
  "seen_once_on_unchanged": [],
  "seen_once_on_nothing": [],
  "phantom_furniture": [],
- "doubted_real_changes": []
+ "doubted_real_changes": [
+  "u1 set aside a real change"
+ ]
 }

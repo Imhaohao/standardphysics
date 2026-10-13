@@ -1,8 +1,8 @@
 {
- "detector": "bb49e7320ebf",
+ "detector": "bf484abba956",
  "camera_alignment": {
-  "scale": 0.98,
-  "rmse_m": 0.015
+  "scale": 0.959,
+  "rmse_m": 0.025
  },
  "recall": null,
  "precision": null,

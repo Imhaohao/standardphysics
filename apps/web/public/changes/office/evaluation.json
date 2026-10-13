@@ -1,22 +1,20 @@
 {
- "detector": "bb49e7320ebf",
+ "detector": "bf484abba956",
  "camera_alignment": {
-  "scale": 0.989,
-  "rmse_m": 0.029
+  "scale": 0.966,
+  "rmse_m": 0.028
  },
  "recall": 0.75,
- "precision": 0.75,
- "partial": [
-  "c3 points at the wooden crate but covers too little of it"
- ],
+ "precision": 1.0,
+ "partial": [],
  "names_correct": "1 of 3",
- "head_nouns_correct": "3 of 3",
+ "head_nouns_correct": "2 of 3",
  "wrong_kind_names": [],
- "mean_centre_error_m": 0.033,
- "mean_bottom_error_m": 0.018,
- "mean_height_error_m": 0.016,
- "mean_overlap": 0.718,
- "mean_distance_error_m": 0.017,
+ "mean_centre_error_m": 0.053,
+ "mean_bottom_error_m": 0.013,
+ "mean_height_error_m": 0.019,
+ "mean_overlap": 0.68,
+ "mean_distance_error_m": 0.012,
  "false_alarms": [],
  "unverifiable_reported": [],
  "unverifiable_listed": [],
@@ -28,22 +26,22 @@
    "name": "armchair",
    "name_ok": true,
    "head_noun_ok": true,
-   "shape_position_error_m": 0.072,
+   "shape_position_error_m": 0.067,
    "before": {
-    "centre_error_m": 0.077,
-    "bottom_error_m": -0.033,
-    "height_error_m": -0.018,
-    "overlap": 0.73
+    "centre_error_m": 0.094,
+    "bottom_error_m": -0.018,
+    "height_error_m": -0.035,
+    "overlap": 0.72
    },
    "after": {
-    "centre_error_m": 0.027,
+    "centre_error_m": 0.039,
     "bottom_error_m": -0.008,
-    "height_error_m": 0.007,
-    "overlap": 0.86
+    "height_error_m": -0.008,
+    "overlap": 0.84
    },
    "true_distance_m": 1.656,
-   "reported_distance_m": 1.68,
-   "distance_error_m": 0.024,
+   "reported_distance_m": 1.67,
+   "distance_error_m": 0.014,
    "true_turn_deg": -90
   },
   {
@@ -53,18 +51,18 @@
    "name": "wooden stool",
    "name_ok": false,
    "head_noun_ok": true,
-   "shape_position_error_m": 0.028,
+   "shape_position_error_m": 0.052,
    "before": {
-    "centre_error_m": 0.014,
-    "bottom_error_m": -0.033,
-    "height_error_m": 0.001,
-    "overlap": 0.66
+    "centre_error_m": 0.038,
+    "bottom_error_m": -0.017,
+    "height_error_m": -0.012,
+    "overlap": 0.65
    },
    "after": {
-    "centre_error_m": 0.021,
-    "bottom_error_m": -0.012,
-    "height_error_m": 0.02,
-    "overlap": 0.74
+    "centre_error_m": 0.05,
+    "bottom_error_m": -0.011,
+    "height_error_m": 0.005,
+    "overlap": 0.68
    },
    "true_distance_m": 2.6,
    "reported_distance_m": 2.59,
@@ -74,32 +72,21 @@
   {
    "truth": "wooden crate",
    "type": "removed",
-   "found": null,
-   "name": "object",
-   "name_ok": false,
-   "head_noun_ok": false,
-   "shape_position_error_m": 0.226,
-   "before": {
-    "centre_error_m": 0.221,
-    "bottom_error_m": -0.016,
-    "height_error_m": 0.035,
-    "overlap": 0.16
-   },
-   "partial": "c3"
+   "found": null
   },
   {
    "truth": "brass pot",
    "type": "added",
-   "found": "c4",
-   "name": "copper pot",
+   "found": "c3",
+   "name": "small object",
    "name_ok": false,
-   "head_noun_ok": true,
-   "shape_position_error_m": 0.027,
+   "head_noun_ok": false,
+   "shape_position_error_m": 0.049,
    "after": {
-    "centre_error_m": 0.028,
-    "bottom_error_m": -0.003,
-    "height_error_m": -0.033,
-    "overlap": 0.6
+    "centre_error_m": 0.043,
+    "bottom_error_m": -0.012,
+    "height_error_m": -0.035,
+    "overlap": 0.51
    }
   }
  ],

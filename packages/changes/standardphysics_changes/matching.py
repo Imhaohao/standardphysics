@@ -29,9 +29,10 @@ class Move:
     similarity: float
 
 
-def appearance(a: Region, b: Region) -> float:
+def appearance(a: Region, b: Region) -> float | None:
+    """How alike the two look, or None when either has no appearance fingerprint."""
     if a.descriptor is None or b.descriptor is None:
-        return 0.0
+        return None
     return float(a.descriptor @ b.descriptor)
 
 
@@ -42,6 +43,7 @@ def _size_ratio(a: Region, b: Region) -> float:
 
 
 PLAIN_NOUNS = frozenset({"object", "small object", "large object"})
+ON_TOP_M = 0.05
 
 
 def _same_name(a: Region, b: Region) -> bool:
@@ -50,8 +52,16 @@ def _same_name(a: Region, b: Region) -> bool:
 
 
 def pair_score(a: Region, b: Region, rules: MatchRules) -> float | None:
-    """How alike two regions are, or None when they cannot be the same object."""
-    score = appearance(a, b) + (rules.name_bonus if _same_name(a, b) else 0.0)
+    """How alike two regions are, or None when they cannot be the same object.
+
+    Without a fingerprint on both, the same specific name has to stand in for looks, and
+    such a pair ranks at the bar, below any pair whose fingerprints agree.
+    """
+    similarity, named = appearance(a, b), _same_name(a, b)
+    if similarity is None:
+        score = rules.min_appearance if named else -1.0
+    else:
+        score = similarity + (rules.name_bonus if named else 0.0)
     distance = float(np.linalg.norm(a.box.center[:2] - b.box.center[:2]))
     if score < rules.min_appearance or _size_ratio(a, b) > rules.max_size_ratio or distance < rules.min_move_m:
         return None
@@ -122,10 +132,18 @@ def _touches(a: Box, b: Box, reach_m: float) -> bool:
 
 
 def _belongs(region: Region, host: Region, points: np.ndarray, reach_m: float) -> bool:
+    """A piece of the same kind touching the host, or a piece under its footprint that does not rest on top of it.
+
+    Something lying on the host's top is a different thing set down on it, such as a lamp
+    on a table that also moved, and is reported on its own.
+    """
     if _head(host) == _head(region) and _touches(host.box, region.box, reach_m):
         return True
+    piece = points[region.point_ids]
+    if float(np.median(piece[:, 2])) > _top(host.box) + ON_TOP_M:
+        return False
     footprint = Box(host.box.center, np.array([*host.box.size[:2], 100.0]), host.box.yaw)
-    return float(inside_box(points[region.point_ids], footprint, margin_m=0.05).mean()) >= 0.5
+    return float(inside_box(piece, footprint, margin_m=0.05).mean()) >= 0.5
 
 
 def _grown(old: Box, refit: Box) -> Box:

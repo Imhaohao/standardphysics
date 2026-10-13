@@ -1,23 +1,23 @@
 {
- "detector": "bb49e7320ebf",
+ "detector": "bf484abba956",
  "camera_alignment": {
-  "scale": 0.983,
-  "rmse_m": 0.015
+  "scale": 0.959,
+  "rmse_m": 0.02
  },
- "recall": 1.0,
+ "recall": 0.8,
  "precision": 1.0,
  "partial": [],
- "names_correct": "1 of 5",
- "head_nouns_correct": "2 of 5",
+ "names_correct": "1 of 4",
+ "head_nouns_correct": "1 of 4",
  "wrong_kind_names": [
   "oil drum",
   "wooden crate"
  ],
- "mean_centre_error_m": 0.046,
- "mean_bottom_error_m": 0.01,
- "mean_height_error_m": 0.011,
- "mean_overlap": 0.691,
- "mean_distance_error_m": 0.071,
+ "mean_centre_error_m": 0.08,
+ "mean_bottom_error_m": 0.008,
+ "mean_height_error_m": 0.015,
+ "mean_overlap": 0.653,
+ "mean_distance_error_m": 0.056,
  "false_alarms": [],
  "unverifiable_reported": [],
  "unverifiable_listed": [],
@@ -29,22 +29,22 @@
    "name": "chair",
    "name_ok": true,
    "head_noun_ok": true,
-   "shape_position_error_m": 0.074,
+   "shape_position_error_m": 0.085,
    "before": {
-    "centre_error_m": 0.106,
-    "bottom_error_m": -0.003,
-    "height_error_m": -0.004,
-    "overlap": 0.67
+    "centre_error_m": 0.14,
+    "bottom_error_m": 0.008,
+    "height_error_m": -0.024,
+    "overlap": 0.61
    },
    "after": {
-    "centre_error_m": 0.082,
-    "bottom_error_m": -0.02,
-    "height_error_m": 0.002,
-    "overlap": 0.74
+    "centre_error_m": 0.107,
+    "bottom_error_m": -0.017,
+    "height_error_m": -0.011,
+    "overlap": 0.62
    },
    "true_distance_m": 2.642,
-   "reported_distance_m": 2.73,
-   "distance_error_m": 0.088,
+   "reported_distance_m": 2.68,
+   "distance_error_m": 0.038,
    "true_turn_deg": 40,
    "turn_error_deg": 0
   },
@@ -55,22 +55,22 @@
    "name": "oil drum",
    "name_ok": false,
    "head_noun_ok": false,
-   "shape_position_error_m": 0.095,
+   "shape_position_error_m": 0.15,
    "before": {
-    "centre_error_m": 0.072,
-    "bottom_error_m": -0.02,
-    "height_error_m": 0.015,
-    "overlap": 0.61
+    "centre_error_m": 0.089,
+    "bottom_error_m": -0.013,
+    "height_error_m": 0.002,
+    "overlap": 0.62
    },
    "after": {
-    "centre_error_m": 0.006,
-    "bottom_error_m": -0.007,
-    "height_error_m": 0.011,
-    "overlap": 0.72
+    "centre_error_m": 0.053,
+    "bottom_error_m": -0.005,
+    "height_error_m": -0.002,
+    "overlap": 0.74
    },
    "true_distance_m": 2.425,
-   "reported_distance_m": 2.37,
-   "distance_error_m": 0.055,
+   "reported_distance_m": 2.35,
+   "distance_error_m": 0.075,
    "true_turn_deg": 0
   },
   {
@@ -80,43 +80,33 @@
    "name": "wooden crate",
    "name_ok": false,
    "head_noun_ok": false,
-   "shape_position_error_m": 0.029,
+   "shape_position_error_m": 0.07,
    "before": {
-    "centre_error_m": 0.02,
-    "bottom_error_m": -0.003,
-    "height_error_m": 0.008,
-    "overlap": 0.88
+    "centre_error_m": 0.065,
+    "bottom_error_m": 0.001,
+    "height_error_m": -0.002,
+    "overlap": 0.71
    }
   },
   {
    "truth": "trash bag",
    "type": "added",
    "found": "c4",
-   "name": "plastic bag",
+   "name": "object",
    "name_ok": false,
-   "head_noun_ok": true,
-   "shape_position_error_m": 0.04,
+   "head_noun_ok": false,
+   "shape_position_error_m": 0.029,
    "after": {
-    "centre_error_m": 0.024,
-    "bottom_error_m": -0.011,
-    "height_error_m": -0.04,
-    "overlap": 0.63
+    "centre_error_m": 0.023,
+    "bottom_error_m": -0.006,
+    "height_error_m": -0.051,
+    "overlap": 0.62
    }
   },
   {
    "truth": "wicker basket",
    "type": "added",
-   "found": "c5",
-   "name": "object",
-   "name_ok": false,
-   "head_noun_ok": false,
-   "shape_position_error_m": 0.05,
-   "after": {
-    "centre_error_m": 0.013,
-    "bottom_error_m": 0.007,
-    "height_error_m": -0.0,
-    "overlap": 0.59
-   }
+   "found": null
   }
  ],
  "unobservable": [],

@@ -2,7 +2,7 @@
 
 Give it two phone videos of the same room, one filmed before you rearranged it and one after. It builds a single 3D model from both and finds the things that moved, appeared or disappeared, then describes each one in a plain sentence. The viewer at `/changes` in the web app shows the shared model with every change boxed, the photos each box came from, and the parts of the room that only one video saw.
 
-![The /changes viewer: the shared point cloud with the moved armchair and stool, the removed plant and the new box and basket boxed in their type colours, and the change list with before and after crops](viewer.jpg)
+![The /changes viewer: the shared point cloud with the moved armchair and stool, the removed plant and the new cardboard box boxed in their type colours, the basket on the coffee table marked as not counted, and the change list with before and after crops](viewer.jpg)
 
 ## Run it
 
@@ -15,7 +15,15 @@ packages/changes/.venv/bin/room-changes run before.mov after.mov \
   --camera-height 1.4 \
   --out apps/web/public/changes/my-room         # two to four minutes on an M-series laptop
 
-cd apps/web && npm run dev                      # then open http://localhost:3000/changes?room=my-room
+cd apps/web && npm install && npm run dev      # then open http://localhost:3000/changes?room=my-room
+```
+
+To reproduce a checked-in example instead, point it at the rendered pair:
+
+```bash
+packages/changes/.venv/bin/room-changes run datasets/changes/living-room/before.mp4 datasets/changes/living-room/after.mp4 \
+  --camera-height 1.4 --out apps/web/public/changes/living-room
+packages/changes/.venv/bin/room-changes evaluate apps/web/public/changes/living-room datasets/changes/living-room/truth.json
 ```
 
 The terminal prints the same sentences the viewer shows. This is the living-room example:
@@ -31,7 +39,7 @@ The terminal prints the same sentences the viewer shows. This is the living-room
 
 | Option | What it does |
 |---|---|
-| `--camera-height 1.4` | How high you held the phone, in metres. It corrects the reconstruction's scale, which otherwise ran 6 to 17% large on the examples. Leave it out if you don't know. |
+| `--camera-height 1.4` | How high you held the phone, in metres. It corrects the reconstruction's scale, which otherwise came out 4 to 40% large on the rendered rooms (the study 40%, the lounge and kitchen 25%) and 17% large on the real counter. Leaving it out costs that much accuracy in every distance and size. |
 | `--fov 69` | The video's horizontal field of view in degrees, if you know it. Left out, the model estimates it. |
 | `--rotate 90` | Turn every frame clockwise by this many degrees, for a video that doesn't record which way is up. Videos from the iPhone camera app do. |
 | `--frames 32` | Frames taken from each video, each the sharpest of its stretch. |
@@ -52,7 +60,7 @@ Every rule in the detector was written against rooms it could see, so a room onl
 
 | First run | Detector | Found | False alarms | Names exactly right | What it led to |
 |---|---|---|---|---|---|
-| [Office](held-out/office-first-run.json) | `590b3d4af243` | 3 of 5, 1 partly, 1 never in view | 0 | 1 of 3 | Scoring a change neither video saw as unobservable, not missed |
+| [Office](held-out/office-first-run.json) | `590b3d4af243` | 3 of 5, 1 partly, 1 missed (a later scorer counts it as never in view) | 0 | 1 of 3 | Scoring a change neither video saw as unobservable, not missed |
 | [Bedroom](held-out/bedroom-first-run.json) | `a6be5c8aefba` | 5 of 5 | 1, a bed post | 1 of 5 | Leftovers of added regions, plural grammar, then the support rule and two-view naming |
 | [Kitchen](held-out/kitchen-first-run.json) | `6eeaae48a55e` | 5 of 5 | 1, half of the moved chair | 1 of 5 | Joining one object split into two regions |
 | [Workshop](held-out/workshop-first-run.json) | `2104cbd57afb` | 3 of 5, 1 partly, 1 missed | 1, the second suitcase | 3 of 3 | Re-filing and splitting furniture; a truth box for each piece of a model |
@@ -63,20 +71,22 @@ Across the six first runs, 23 of 33 changes were found with a box covering the o
 
 The workshop's suitcase model turned out to be a pair of suitcases, which its first truth file boxed as one object, so the detector's two correct suitcases scored as one partial find and one false alarm. The renderer now writes a truth box for each separate piece of a model. Re-scored against that corrected answer key, the first run found 5 of 6 with no false alarms and 5 of 5 names right ([`workshop-first-run-corrected-truth.json`](held-out/workshop-first-run-corrected-truth.json)). Only the answer key changed for that figure, not the detector. The lounge was the first room rendered with per-piece truth, which is why its military crate model counts as two crates.
 
-Every checked-in result now comes from one detector, recorded in each `scene.json`:
+Every checked-in result comes from one detector, recorded in each `scene.json`, and was regenerated from the videos committed in [`datasets/changes`](../../datasets/changes). The reconstruction is deterministic, so rerunning the command below reproduces these files exactly:
 
 | Room | What it tests | Found | False | Exact names | Right kind |
 |---|---|---|---|---|---|
-| Living room | Two moves, a removal and two additions, one of them on a table | 5 of 5 | 0 | 5 of 5 | 5 of 5 |
-| Studio | A second room, furniture and pair of paths | 4 of 5, 1 partly | 0 | 3 of 4 | 4 of 4 |
-| Office | Held out first; the plastic container was never in view of the before video | 3 of 5, 1 partly | 0 | 1 of 3 | 3 of 3 |
-| Bedroom | Held out first; a moved chair and barrel, a trash bag, and a basket set on the nightstand | 5 of 5 | 0 | 1 of 5 | 2 of 5 |
+| Living room | Two moves, a removal and two additions, one of them on a table | 4 of 5 | 0 | 4 of 4 | 4 of 4 |
+| Studio | A second room, furniture and pair of paths | 4 of 5 | 1, the crate's box | 3 of 4 | 4 of 4 |
+| Office | Held out first; the plastic container was never in view of the before video | 3 of 5 | 0 | 1 of 3 | 2 of 3 |
+| Bedroom | Held out first; a moved chair and barrel, a trash bag, and a basket set on the nightstand | 4 of 5 | 0 | 1 of 4 | 1 of 4 |
 | Kitchen | Held out first; a moved plastic chair and stool, a barrel taken away | 5 of 5 | 0 | 1 of 5 | 4 of 5 |
-| Workshop | Held out first; a moved tool cart and school chair, two suitcases set on the desk | 5 of 6 | 0 | 5 of 5 | 5 of 5 |
-| Lounge | Held out first; a moved lounge chair and stool, a boombox taken off the coffee table | 4 of 6 | 0 | 2 of 4 | 3 of 4 |
-| Study | Held out first; a moved chair and stool, a pot and a jug taken away, two trash cans and a vase set down | 4 of 7, 1 partly | 0 | 2 of 4 | 3 of 4 |
+| Workshop | Held out first; a moved tool cart and school chair, two suitcases set on the desk | 5 of 6 | 0 | 4 of 5 | 5 of 5 |
+| Lounge | Held out first; a moved lounge chair and stool, a boombox taken off the coffee table | 4 of 6 | 0 | 1 of 4 | 2 of 4 |
+| Study | Held out first; a moved chair and stool, a pot and a jug taken away, two trash cans and a vase set down | 3 of 7, 1 partly | 0 | 2 of 3 | 3 of 3 |
 | No changes | The living room twice from different paths | Nothing reported | 0 | | |
 | Blind spot | The before walk never looks at half the room, and a crate appears there | The armchair's move; the crate listed as seen by one video only | 0 | 1 of 1 | 1 of 1 |
+
+These replace an earlier set of results that could not be reproduced. Two fresh reconstructions of the same pair are identical to the bit, but none of the reconstructions cached behind the earlier files matched the committed videos, so those files came from inputs that are no longer in the repository. On the reproducible runs every room scored the same or worse: three changes fewer were found (the living room's basket, the bedroom's basket and one of the study's trash cans), the studio's partly found crate became a false alarm, and the mean 3D overlap fell by 0.01 to 0.14 per room. Across these nine rooms the reproducible runs find 33 of 44 changes and 1 more partly, with 1 false alarm; the earlier files, scored by the same scorer, found 36 and 3 more partly, with none.
 
 A rendered room comes with exact answers. `truth.json` records every object's box in both videos and every camera pose, and `room-changes evaluate` scores a result against it. It lines the estimated camera path up with the true one and matches each true change to a reported one of the same type within 50 cm whose box covers at least a quarter of the object; a report nearby that covers less is counted as partial. It also checks four things about what is not reported. Every piece of furniture a sentence can cite must stand where a real unchanged object stands. Nothing listed as seen by one video only may be an unchanged object, or stand where no object ever stood; the second check was added after a review found a 1.7 m "wooden chair" listed at the study's wall corner, and entries must now also have a plausible shape for what they are called. And nothing set aside as hanging in the air may sit where a real change happened; that check caught a regression during this work, when a settling change briefly set aside the living room's basket. Errors are measured in the reconstruction's own metres, after the camera-height correction, as a person reading the sentences would meet them. The figures below average every before and after box:
 
@@ -86,25 +96,27 @@ packages/changes/.venv/bin/room-changes evaluate apps/web/public/changes/lounge 
 
 | Measure | Office | Bedroom | Kitchen | Workshop | Lounge | Study | Living room | Studio |
 |---|---|---|---|---|---|---|---|---|
-| Box centre error on the floor | 3.3 cm | 4.6 cm | 4.7 cm | 7.6 cm | 11.8 cm | 4.8 cm | 4.9 cm | 8.2 cm |
-| Box bottom error | 1.8 cm | 1.0 cm | 1.5 cm | 1.6 cm | 4.5 cm | 1.5 cm | 2.1 cm | 2.5 cm |
-| Box height error | 1.6 cm | 1.1 cm | 1.2 cm | 4.5 cm | 9.7 cm | 1.8 cm | 4.4 cm | 2.6 cm |
-| 3D overlap with the true box | 0.72 | 0.69 | 0.61 | 0.57 | 0.58 | 0.74 | 0.69 | 0.62 |
-| Distance moved, error | 1.7 cm | 7.1 cm | 2.8 cm | 6.4 cm | 28 cm | 2.4 cm | 6.0 cm | 5.5 cm |
-| Camera path error | 2.9 cm | 1.5 cm | 1.7 cm | 2.9 cm | 2.8 cm | 2.1 cm | 1.9 cm | 2.5 cm |
+| Box centre error on the floor | 5.3 cm | 8.0 cm | 5.3 cm | 9.6 cm | 11.2 cm | 12.2 cm | 11.9 cm | 9.7 cm |
+| Box bottom error | 1.3 cm | 0.8 cm | 1.4 cm | 1.3 cm | 13.9 cm | 1.6 cm | 1.0 cm | 1.5 cm |
+| Box height error | 1.9 cm | 1.5 cm | 1.5 cm | 6.9 cm | 18.4 cm | 3.9 cm | 6.3 cm | 2.8 cm |
+| 3D overlap with the true box | 0.68 | 0.65 | 0.60 | 0.53 | 0.51 | 0.63 | 0.55 | 0.57 |
+| Distance moved, error | 1.2 cm | 5.6 cm | 3.4 cm | 7.4 cm | 25 cm | 3.7 cm | 4.5 cm | 3.3 cm |
+| Camera path error | 2.8 cm | 2.0 cm | 1.8 cm | 3.3 cm | 3.3 cm | 2.7 cm | 3.5 cm | 3.0 cm |
 
-Turns are stated only when they can be checked. Where one is stated, it is within 5° of the truth, as for the armchairs in the living room and the studio, the bedroom's chair, the kitchen's plastic chair and the lounge chair. A turn is left out when the shape search finds no clear best turn or the footprint disagrees with it, as for the office armchair, the studio ottoman and both moves in the workshop. It is also left out for anything round, such as a stool or a barrel, which looks the same however far it turned.
+Turns are stated only when the shape search finds one clear best yaw that the footprint agrees with. Four of the five stated turns are within 10° of the truth: the armchairs in the living room (10°) and the studio, the bedroom's chair and the lounge chair. The fifth is wrong: the studio ottoman is said to have turned when its stated angle is 125° off, because its near-square footprint gave the agreement check little to go on. Turns are left out for the office armchair, both moves in the workshop and the study's chair, and for anything round, such as a stool or a barrel, which looks the same however far it turned.
 
 These misses are known and left in:
 
-- In the office, the plastic container that appeared in the corner was in view in none of the before video's 96 frames, so nothing could say whether it was new, and the scorer lists it as unobservable rather than missed. The wooden crate beside both walks' paths was only partly seen. Its box covers that part and its sentence says so, but the vision model calls it "a brown wooden suitcase".
-- In the studio the before video only ever saw one end of the wooden crate, so its box overlaps the crate by 0.16 and the vision model called it "a wooden step"; the sentence ends "only part of it was ever in view, so it may be larger".
-- In the bedroom, the truth file has a chair and a barrel moving, a planter box taken away, a trash bag set down, and a wicker basket set on the nightstand. The detector calls them a chair, an oil drum, a wooden crate, a plastic bag and a woven basket, and calls the nightstand a side table. Its first run also reported "a dark wooden bed post appeared", which did not happen. That box has unchanged surface under only 38% of its footprint, where every real raised change has at least 86%. Boxes under 75% are now listed as not counted, with that reason. The cause of the bed post itself has not been pinned down.
-- In the kitchen, the furniture list includes "a chair" beside the stove, where no chair stands; both the segmenter and the vision model took part of the white stove for one. The viewer labels only furniture a sentence cites, and a change is never placed against furniture of its own kind, so nothing shows or cites it. The pantry cupboard is listed as a "bookshelf", and the sack was named "a gray metal bucket"; both are wrong.
-- In the workshop, the jerry can that was taken away is missed. Of the 270 points on its surface, the after video saw through 105 and its depth agreed with 108, so the spot was about half empty, far short of the 85% a region needs. A tighter test for agreement does not recover it: across all the rooms and both real pairs it found one change fewer and added 7 false regions, 5 of them on the real shop footage, so it was not adopted. A colour check was tried next: a sightline whose depth agreed but whose colour clearly differed from the point's stopped counting as "still there". At either of two thresholds it still missed the can, lost a real change in the bedroom, and added 3 to 4 false regions on the shop pair, so it was not adopted either. Neither rule separates the can's spot from the floor around it, so the miss is left as a limit of the depth the reconstruction gives. The metal rack is listed as a "bookshelf".
-- In the lounge, the stool's two views disagreed (one called it "a toy truck"), so it is reported as "the object moved 1.9 m". Its new box is too large, so its distance is 44 cm off against 12 cm for the chair. Of the two crates set down side by side, the open wooden one is found and the closed green one is missed. The brass vase on the side table is missed. The side table itself is listed as a "bench", which is the wrong kind, and the coffee table is missing from the furniture list, so the boombox taken off it is placed "between the bench and the bookshelf".
-- In the study's first run, the moved chair's new box had grown through the unseen floor into the trash can set down a few centimetres away, so one can was missed and the chair was boxed 1.3 m long. A region too big for the kind of thing it is named is now re-cut on a grid half as fine, and small pieces of the cut rejoin the piece they touch (the can's leaning lid), so both cans are found. Two misses remain, each with a measured cause. The after video never looked at the clay pot's spot: 323 of its 341 points were never seen by it. The brass vase was seen through clearly, with 216 points read as empty, but it is 8.2 cm across, under the 10 cm minimum thickness that keeps silhouette slivers out. The jug taken off the console is found, but its box covers too little of it to count fully.
-- Names that abstain only catch a mistake the views disagree about. Where both views agree on the wrong thing, the name stays: the studio's crate is "a wooden step", the bedroom's planter box "a wooden crate" and the kitchen's sack "a gray metal bucket". Three pieces of furniture that sentences cite are also the wrong kind: the kitchen's cupboard and the workshop's metal rack are both called "bookshelf", and the lounge's side table "bench". The scorer also counts the bedroom's "oil drum" for a barrel as the wrong kind, because the strict list has no "drum".
+- In the living room, the wicker basket set on the coffee table is found and named "a light brown bamboo basket", then set aside as hanging in the air: unchanged table top lies under only 54% of its footprint, against the 75% the support rule needs, because the before video sampled that patch of table top sparsely. Loosening the rule for this one case was not tried, since the false alarms it exists to stop (the bedroom's bed post, the shop's monitor) cannot be re-checked against a new threshold here.
+
+- In the office, the plastic container that appeared in the corner was in view in none of the before video's frames, so nothing could say whether it was new, and the scorer lists it as unobservable rather than missed. The wooden crate beside both walks' paths, which was only partly seen, is missed.
+- In the studio the before video only ever saw one end of the wooden crate. Its box covers too little of the crate to match it, so the scorer counts the report as a false alarm and the crate as missed; the vision model calls it "a wooden step", and the sentence ends "only part of it was ever in view, so it may be larger".
+- In the bedroom, the truth file has a chair and a barrel moving, a planter box taken away, a trash bag set down, and a wicker basket set on the nightstand. The detector calls them a chair, an oil drum, a wooden crate, a plastic bag and a woven basket, and calls the nightstand a side table. Its first run also reported "a dark wooden bed post appeared", which did not happen. That box has unchanged surface under only 38% of its footprint, where every real raised change has at least 86%. Boxes under 75% are now listed as not counted, with that reason. The cause of the bed post itself has not been pinned down, and the rule still sets it aside. The wicker basket on the nightstand forms no region at all in the reproducible run and is missed.
+- In the kitchen, the furniture list includes "a white chair" beside the stove, where no chair stands; both the segmenter and the vision model took part of the white stove for one. The viewer labels only furniture a sentence cites, and a change is never placed against furniture of its own kind, so nothing shows or cites it. The pantry cupboard is listed as a "bookshelf", and the sack was named "a gray metal bucket"; both are wrong.
+- In the workshop, the jerry can that was taken away is missed. In the earlier reconstruction, of the 270 points on its surface, the after video saw through 105 and its depth agreed with 108, so the spot was about half empty, far short of the 85% a region needs. A tighter test for agreement does not recover it: across all the rooms and both real pairs it found one change fewer and added 7 false regions, 5 of them on the real shop footage, so it was not adopted. A colour check was tried next: a sightline whose depth agreed but whose colour clearly differed from the point's stopped counting as "still there". At either of two thresholds it still missed the can, lost a real change in the bedroom, and added 3 to 4 false regions on the shop pair, so it was not adopted either. Neither rule separates the can's spot from the floor around it, so the miss is left as a limit of the depth the reconstruction gives. The metal rack is listed as a "bookshelf".
+- In the lounge, the stool's two views gave names of different kinds in the earlier run, so it was reported as "the object"; in the reproducible run both views say "toy truck", so it moves as "the toy truck". Its new box is too large, and the moved things' boxes sit 13.9 cm off the floor on average, the worst of any room. Of the two crates set down side by side, one is found and called "an object", and the other is missed. The brass vase on the side table is missed.
+- In the study's first run, the moved chair's new box grew through the unseen floor into the trash can set down a few centimetres away, so one can was missed and the chair was boxed 1.3 m long. Regions too big for their name are now re-cut on a grid half as fine, which found both cans on the earlier reconstruction, but on the reproducible one the chair's box is again 1.3 m by 90 cm and one can is missed again. The clay pot is missed because the after video never looked at its spot, and the brass vase because it is 8.2 cm across, under the 10 cm minimum thickness that keeps silhouette slivers out. The jug taken off the console is found as "the small object", but its box covers too little of it to count fully.
+- Names that abstain only catch a mistake the views disagree about. Where both views agree on the wrong thing, the name stays: the studio's crate is "a wooden step", the bedroom's planter box "a wooden crate" and the kitchen's sack "a gray metal bucket". Pieces of furniture that sentences cite can also be the wrong kind: the kitchen's cupboard and the workshop's metal rack are both called "bookshelf". The scorer also counts the bedroom's "oil drum" for a barrel as the wrong kind, because the strict list has no "drum".
 
 [`tests/test_change_examples.py`](tests/test_change_examples.py) re-scores all ten checked-in results on every test run, including that each was made by the same detector. It checks what is found, partial and not counted, how many false alarms there are, both name scores, which changes are worded as partly seen, which furniture stands on no real object, and that nothing set aside was a real change. It also checks that every file in [`held-out`](held-out) is listed in its `index.json` with the detector that made it; the scorer now writes that fingerprint into every evaluation, and the index holds it for the older files. The known misses above are pinned as numbers, so a fix shows up as a failing test to update and a regression as a failing test to fix.
 
@@ -147,7 +159,7 @@ flowchart LR
 
 - **A change needs a second look.** It counts only where the other video saw through the old or new spot, from several frames. That keeps false alarms down, but a change the second video never pointed at goes unreported. `coverage` in `scene.json` and the bars in the viewer say how much of each video the other one checked.
 - **Thin and small things are filtered out.** Regions under 10 cm across their footprint or under about 150 surface points are dropped, along with pixels at the frame edge and within 40 cm of the lens. Each of these filters removed a false alarm on the living room, where every one was a sliver along a silhouette or a smear at the frame edge. A broom or a frame leaning on a wall would be missed.
-- **The scale needs a hint.** MapAnything predicts metric depth, but its scale came out 6 to 11% large on the rendered rooms and 17% large on the real counter. A phone height is easy to know and fixes most of that; a measured length in the room would fix the rest, and is not an option yet.
+- **The scale needs a hint.** MapAnything predicts metric depth, but its scale came out 4 to 40% large on the rendered rooms and 17% large on the real counter. A phone height is easy to know and fixes most of that; a measured length in the room would fix the rest, and is not an option yet.
 - **Glass, mirrors and screens can fake a change.** Depth through glass lands behind it, so an object in front of a display case can read as new or gone. The support rule catches it when the object hangs in the air, as the shop's monitor did, but not when it stands on the floor.
 - **Repeated open-frame furniture is hard.** Stools and chairs made of thin rails read as partly empty from some angles. The 85% rule handles the real counter above, but a pair of chairs swapped for identical ones would not be seen as a change at all.
 - **The vision model is local and Apple-only.** Qwen3-VL runs through MLX. On other machines `--namer none` still finds and measures every change and places it against the furniture.
@@ -161,5 +173,5 @@ flowchart LR
 The geometry, evidence test, regions, matching, furniture relations and sentences have unit tests that need only numpy and scipy, and the ten examples are re-scored, all in the repository's normal suite:
 
 ```bash
-.venv/bin/python -m pytest packages/changes/tests
+packages/changes/.venv/bin/python -m pytest packages/changes/tests
 ```

@@ -269,3 +269,37 @@ def test_a_chair_grown_into_the_bin_beside_it_is_cut_apart():
     merged = Region("added", 1, np.arange(len(points)), fit_box(points), len(points))
     pieces = _finer_pieces(scene, merged, RegionRules())
     assert sorted(len(piece.point_ids) for piece in pieces) == [30000, 34000]
+
+
+def test_without_appearance_fingerprints_a_move_still_pairs_on_the_same_specific_name():
+    from standardphysics_changes.matching import pair_moves
+
+    rng = np.random.default_rng(17)
+    old = rng.uniform([0.0, 0.0, 0.0], [0.5, 0.5, 0.8], (200, 3))
+    new = rng.uniform([3.0, 0.0, 0.0], [3.5, 0.5, 0.8], (200, 3))
+    plain_old = rng.uniform([6.0, 0.0, 0.0], [6.4, 0.4, 0.4], (100, 3))
+    plain_new = rng.uniform([9.0, 0.0, 0.0], [9.4, 0.4, 0.4], (100, 3))
+    points = np.vstack([old, new, plain_old, plain_new])
+    gone = Region("removed", 0, np.arange(200), fit_box(old), 200, names={"name": "plastic chair"})
+    came = Region("added", 1, np.arange(200, 400), fit_box(new), 200, names={"name": "plastic chair"})
+    vague_gone = Region("removed", 0, np.arange(400, 500), fit_box(plain_old), 100, names={"name": "object"})
+    vague_came = Region("added", 1, np.arange(500, 600), fit_box(plain_new), 100, names={"name": "object"})
+    moves = pair_moves([gone, vague_gone], [came, vague_came], points)
+    assert [(move.removed, move.added) for move in moves] == [(gone, came)]
+
+
+def test_something_set_on_top_of_a_moved_table_is_not_folded_into_the_move():
+    from standardphysics_changes.matching import Move, absorb_fragments
+
+    rng = np.random.default_rng(19)
+    table = rng.uniform([0.0, 0.0, 0.0], [1.2, 0.8, 0.75], (600, 3))
+    lamp = rng.uniform([0.4, 0.3, 0.76], [0.6, 0.5, 1.2], (150, 3))
+    old = rng.uniform([4.0, 0.0, 0.0], [5.2, 0.8, 0.75], (600, 3))
+    points = np.vstack([table, lamp, old])
+    moved_to = Region("added", 1, np.arange(600), fit_box(table), 600, names={"name": "wooden table"})
+    set_down = Region("added", 1, np.arange(600, 750), fit_box(lamp), 150, names={"name": "desk lamp"})
+    moved_from = Region("removed", 0, np.arange(750, 1350), fit_box(old), 600, names={"name": "wooden table"})
+    move = Move(moved_from, moved_to, 4.0, None, 1.0)
+    _, loose_added = absorb_fragments([move], [], [set_down], points)
+    assert loose_added == [set_down]
+    assert len(move.added.point_ids) == 600

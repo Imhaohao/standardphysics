@@ -353,7 +353,7 @@ def _load_embedder(log) -> Embedder | None:
     try:
         return Embedder()
     except ImportError as error:
-        log(f"no appearance model ({error}); moves are matched on size and name only")
+        log(f"no appearance model ({error}); a move is paired only when both ends get the same specific name")
         return None
 
 
