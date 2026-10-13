@@ -1,0 +1,84 @@
+{
+  "capture": "Moffett A-102 library floor, two private iPhone captures kept out of git because they show students",
+  "role": "a real pair taken about 15 to 25 minutes apart with nothing staged; no rule was tuned on it",
+  "detector": "bf484abba956",
+  "built_by": "python scripts/changes/cross_capture_pair.py --before left --after top",
+  "photos": {
+    "before": 182,
+    "after": 164,
+    "fps": 4
+  },
+  "shared_floor_cells": 55,
+  "true_phone_height_m": {
+    "before": 1.329,
+    "after": 1.567
+  },
+  "run": "room-changes run before.mp4 after.mp4 --camera-height 1.45",
+  "summary": "3 things changed between the videos: a large object appeared, a floor stain appeared and an object appeared.",
+  "changes": [
+    {
+      "id": "c1",
+      "type": "added",
+      "sentence": "A large object appeared on the open floor.",
+      "checked_by_eye": "false alarm: its after photo shows a wall and carpet corner, not the open floor the before photo shows, so the two walks were misregistered here"
+    },
+    {
+      "id": "c2",
+      "type": "added",
+      "sentence": "A dark brown floor stain appeared on the open floor.",
+      "checked_by_eye": "false alarm: the same misregistration, read as a floor stain"
+    },
+    {
+      "id": "c3",
+      "type": "added",
+      "sentence": "An object appeared near the round table.",
+      "checked_by_eye": "real: people sat down at the round table between the walks, bringing a yellow rolling chair"
+    }
+  ],
+  "coverage": {
+    "before_checked_by_other": 0.642,
+    "after_checked_by_other": 0.577
+  },
+  "scale": {
+    "factor": 0.8778,
+    "from": "camera height"
+  },
+  "evaluation": {
+    "camera_alignment": {
+      "scale": 1.027,
+      "rmse_m": 0.673
+    }
+  },
+  "not_counted": [
+    {
+      "reason": "one video",
+      "name": "door frame",
+      "count": 1
+    },
+    {
+      "reason": "one video",
+      "name": "glass partition",
+      "count": 2
+    },
+    {
+      "reason": "one video",
+      "name": "green lamp shade",
+      "count": 1
+    },
+    {
+      "reason": "one video",
+      "name": "laptop",
+      "count": 1
+    },
+    {
+      "reason": "one video",
+      "name": "large object",
+      "count": 3
+    },
+    {
+      "reason": "one video",
+      "name": "whiteboard",
+      "count": 1
+    }
+  ]
+}
