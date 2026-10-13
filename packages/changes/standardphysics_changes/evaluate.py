@@ -187,11 +187,23 @@ def _reported_unverifiable(truth: dict, predictions: list[dict], fit: Fit) -> li
     return hits
 
 
+def _listed_unverifiable(truth: dict, scene: dict, fit: Fit) -> list[str]:
+    """True changes the before video never saw that the result lists as seen by one video only."""
+    listed = []
+    for item in truth.get("unverifiable", []):
+        spot = _truth_centre(item["after"] or item["before"])
+        for thing in scene.get("unchecked", []):
+            if _floor_distance(spot, fit.point(thing["box"]["center"])) <= CLOSE_M:
+                listed.append(f"{thing['id']} lists the {item['label']} as seen once")
+    return listed
+
+
 def _mean(values: list[float]) -> float | None:
     return round(float(np.mean(values)), 3) if values else None
 
 
-def _totals(rows: list[dict], scene: dict, fits: dict[str, Fit], rmse: float, unverifiable: list[str]) -> dict:
+def _totals(rows: list[dict], scene: dict, fits: dict[str, Fit], rmse: float, unverifiable: list[str],
+            listed: list[str]) -> dict:
     found = [row for row in rows if row["found"]]
     partial = [row for row in rows if row.get("partial")]
     sides = [row[side] for row in found for side in ("before", "after") if side in row]
@@ -210,6 +222,7 @@ def _totals(rows: list[dict], scene: dict, fits: dict[str, Fit], rmse: float, un
         "mean_distance_error_m": _mean([row["distance_error_m"] for row in moves]),
         "false_alarms": [c["id"] for c in scene["changes"] if c["id"] not in matched],
         "unverifiable_reported": unverifiable,
+        "unverifiable_listed": listed,
         "changes": rows,
     }
 
@@ -218,7 +231,8 @@ def score(scene: dict, truth: dict) -> dict:
     fits, rmse = camera_fits(scene, truth)
     used: set = set()
     rows = [_score_one(item, scene["changes"], fits, used) for item in truth["changes"]]
-    return _totals(rows, scene, fits, rmse, _reported_unverifiable(truth, scene["changes"], fits["shape"]))
+    reported = _reported_unverifiable(truth, scene["changes"], fits["shape"])
+    return _totals(rows, scene, fits, rmse, reported, _listed_unverifiable(truth, scene, fits["shape"]))
 
 
 def evaluate(result_dir: Path, truth_path: Path) -> dict:

@@ -32,6 +32,11 @@ class Change:
         return [region for region in (self.before, self.after) if region is not None]
 
     @property
+    def partly_seen(self) -> bool:
+        """Never seen whole: a moved object seen whole at either end has shown its full extent."""
+        return all(region.cut_off for region in self.regions)
+
+    @property
     def subject(self) -> Region:
         return max(self.regions, key=lambda region: region.seed_count)
 
@@ -82,6 +87,8 @@ def assemble(moves: list[Move], removed: list[Region], added: list[Region],
     changes += [_added(r) for r in sorted(added, key=lambda r: -r.box.volume) if id(r) not in paired]
     for number, change in enumerate(changes, start=1):
         change.id = f"c{number}"
+        if change.partly_seen:
+            change.sentence = language.partly_seen(change.sentence)
     return changes
 
 

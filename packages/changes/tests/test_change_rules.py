@@ -2,13 +2,15 @@
 
 import numpy as np
 import pytest
+from standardphysics_changes import language
 from standardphysics_changes.evidence import GONE, KEPT, UNSEEN
 from standardphysics_changes.export import frames_seeing_empty
 from standardphysics_changes.geometry import Cloud
-from standardphysics_changes.landmarks import Landmark
+from standardphysics_changes.landmarks import Landmark, merge_touching
 from standardphysics_changes.matching import consistent_turn, long_axis_deg
-from standardphysics_changes.pipeline import Scene, distinguish, empty_share, regions_of
-from standardphysics_changes.regions import Box, OneSidedRules, Region, RegionRules, one_sided_regions
+from standardphysics_changes.pictures import touches_edge
+from standardphysics_changes.pipeline import Scene, distinguish, empty_share, objects_only, regions_of
+from standardphysics_changes.regions import Box, OneSidedRules, Region, RegionRules, fit_box, one_sided_regions
 from test_change_geometry import camera_at, floor_and_box
 
 
@@ -63,6 +65,36 @@ def test_an_elongated_object_keeps_a_turn_only_when_its_long_side_agrees():
     assert consistent_turn(-60.0, before, quarter) is None
     square = Box(np.zeros(3), np.array([0.8, 0.75, 1.0]), 0.0)
     assert consistent_turn(165.0, square, square) == 165.0
+
+
+def test_two_chairs_side_by_side_stay_two_chairs():
+    rng = np.random.default_rng(5)
+    left = rng.uniform([0.0, 0.0, 0.0], [0.7, 0.5, 0.9], (300, 3))
+    right = rng.uniform([0.8, 0.0, 0.0], [1.5, 0.5, 0.9], (300, 3))
+    points = np.vstack([left, right])
+    first = Landmark(np.arange(300), fit_box(left), "chair", "chair")
+    second = Landmark(np.arange(300, 600), fit_box(right), "chair", "chair")
+    assert len(merge_touching([first, second], points)) == 2
+
+
+def test_without_a_vision_model_every_seen_once_clump_is_kept():
+    def clump(name):
+        return Region("unchecked", 1, np.arange(1), Box(np.zeros(3), np.ones(3), 0.0), 1, names={"name": name})
+
+    clumps = [clump("object"), clump("wall section"), clump("black pillar"), clump("plastic crate")]
+    assert len(objects_only(clumps, named_by_model=False)) == 4
+    assert [c.names["name"] for c in objects_only(clumps, named_by_model=True)] == ["object", "plastic crate"]
+
+
+def test_a_region_cut_by_the_frame_edge_says_it_was_only_partly_seen():
+    mask = np.zeros((100, 140), dtype=bool)
+    mask[40:60, 50:80] = True
+    assert not touches_edge(mask)
+    mask[40:60, 130:140] = True
+    assert touches_edge(mask)
+    assert language.partly_seen("The wooden crate is gone.") == (
+        "The wooden crate is gone; only part of it was ever in view, so it may be larger."
+    )
 
 
 def test_only_an_object_in_an_unchecked_part_of_the_room_is_listed_as_seen_once():

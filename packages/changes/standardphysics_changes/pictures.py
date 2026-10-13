@@ -62,13 +62,24 @@ def sightings(points: np.ndarray, views: list[View], tolerance: Tolerance = Tole
     return sorted(found, key=lambda s: s.score, reverse=True)
 
 
+def touches_edge(mask: np.ndarray, margin_px: int = 12) -> bool:
+    """Whether a region runs into the frame's edge, where the picture may have cut part of it off.
+
+    The margin is wider than the pixels left out of the cloud at the edge, so a region that
+    stops there because its points were dropped still counts as touching.
+    """
+    rows, cols = np.nonzero(mask)
+    height, width = mask.shape
+    return bool(rows.min() <= margin_px or cols.min() <= margin_px or rows.max() >= height - 1 - margin_px
+                or cols.max() >= width - 1 - margin_px)
+
+
 def _framing_score(mask: np.ndarray, visible: int) -> float:
     """Many visible points, away from the frame edge, so the object is whole in the picture."""
     rows, cols = np.nonzero(mask)
     height, width = mask.shape
-    touches_edge = rows.min() <= 2 or cols.min() <= 2 or rows.max() >= height - 3 or cols.max() >= width - 3
     centre = np.hypot(cols.mean() / width - 0.5, rows.mean() / height - 0.5)
-    return visible * (0.5 if touches_edge else 1.0) * (1.0 - centre)
+    return visible * (0.5 if touches_edge(mask) else 1.0) * (1.0 - centre)
 
 
 def empty_spot_view(points: np.ndarray, views: list[View], tolerance: Tolerance = Tolerance()) -> View | None:

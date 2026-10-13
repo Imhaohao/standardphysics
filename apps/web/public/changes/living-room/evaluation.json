@@ -14,6 +14,7 @@
  "mean_distance_error_m": 0.055,
  "false_alarms": [],
  "unverifiable_reported": [],
+ "unverifiable_listed": [],
  "changes": [
   {
    "truth": "armchair",

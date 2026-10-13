@@ -14,6 +14,9 @@
  "mean_distance_error_m": 0.019,
  "false_alarms": [],
  "unverifiable_reported": [],
+ "unverifiable_listed": [
+  "u1 lists the plastic crate as seen once"
+ ],
  "changes": [
   {
    "truth": "armchair",

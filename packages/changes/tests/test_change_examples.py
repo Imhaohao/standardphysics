@@ -37,6 +37,7 @@ def test_each_example_finds_its_changes_and_nothing_else(room, found, partial, s
     assert report["false_alarms"] == []
     assert report["unverifiable_reported"] == []
     assert len(scene["unchecked"]) == seen_once
+    assert len(report["unverifiable_listed"]) == len(json.loads((TRUTH / room / "truth.json").read_text())["unverifiable"])
 
 
 @pytest.mark.parametrize("room", ["living-room", "studio", "living-room-blind-spot"])

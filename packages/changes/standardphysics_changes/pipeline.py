@@ -25,8 +25,8 @@ from .landmarks import (
     vote_classes,
 )
 from .matching import MatchRules, pair_moves
-from .naming import Embedder, Namer, Segmenter, make_namer
-from .pictures import isolated, outlined, sightings
+from .naming import Embedder, Namer, PlainNamer, Segmenter, make_namer
+from .pictures import isolated, outlined, sightings, touches_edge
 from .regions import Region, RegionRules, find_regions, finish_regions, one_sided_regions, settle
 from .views import AFTER, BEFORE, View, load_views, of_epoch, save_views
 
@@ -170,6 +170,7 @@ def describe_regions(scene: Scene, regions: list[Region], namer: Namer, embedder
             region.names = {"name": "object", "detail": "object", "where": ""}
             continue
         region.names = namer.name(outlined(seen[0], margin=1.2))
+        region.cut_off = all(touches_edge(sighting.mask) for sighting in seen[:3])
         if embedder is not None:
             region.descriptor = embedder.embed([isolated(s) for s in seen[:3]])
 
@@ -213,7 +214,16 @@ def locate_regions(regions: list[Region], landmarks: list[Landmark]) -> None:
             region.names["where"] = measured
 
 
-NOT_OBJECTS = {"wall", "floor", "ceiling", "window", "door", "curtain", "shadow", "light", "corner", "object"}
+# Words that make a name part of the building rather than a thing in it.
+STRUCTURE = {"wall", "floor", "ceiling", "window", "door", "curtain", "shadow", "corner", "section", "counter",
+             "pillar", "column", "beam", "pipe", "rail", "railing", "stairs", "staircase", "reflection", "glass"}
+
+
+def objects_only(regions: list[Region], named_by_model: bool) -> list[Region]:
+    """Drop clumps a vision model called part of the room. With no model, every clump stays."""
+    if not named_by_model:
+        return regions
+    return [region for region in regions if not set(region.names.get("name", "").split()) & STRUCTURE]
 
 
 def unchecked_regions(scene: Scene, changed: list[Region]) -> list[Region]:
@@ -251,7 +261,7 @@ def run(before: Path, after: Path, out: Path, settings: Settings = Settings(), l
     unchecked = unchecked_regions(scene, removed + added)
     describe_regions(scene, removed + added, namer, _load_embedder(log))
     describe_regions(scene, unchecked, namer, None)
-    unchecked = [region for region in unchecked if region.names.get("name") not in NOT_OBJECTS]
+    unchecked = objects_only(unchecked, not isinstance(namer, PlainNamer))
     landmarks = name_landmarks(scene, namer, _load_segmenter(log), removed + added + unchecked)
     distinguish(landmarks, removed + added + unchecked)
     locate_regions(removed + added + unchecked, landmarks)

@@ -14,6 +14,8 @@ type MarkProps = {
   view: CloudView;
   selected: boolean;
   dimmed: boolean;
+  /** Its card is the one being read, so the label spells the name out even on a phone. */
+  reading: boolean;
   onSelect: (id: string) => void;
 };
 
@@ -48,15 +50,16 @@ function topOf(place: ChangePlace): Vec3 {
   return [center[0], center[1], center[2] + size[2] / 2 + 0.12];
 }
 
-function ChangeLabel({ change, place, selected, onSelect }: {
-  change: RoomChange; place: ChangePlace; selected: boolean; onSelect: (id: string) => void;
+/** A change's name over its box. On a phone only the change being read or picked spells its name out. */
+function ChangeLabel({ change, place, selected, named, onSelect }: {
+  change: RoomChange; place: ChangePlace; selected: boolean; named: boolean; onSelect: (id: string) => void;
 }) {
   return (
     <Html position={topOf(place)} center zIndexRange={[20, 0]}>
-      <Button variant="chip" aria-pressed={selected} onClick={() => onSelect(change.id)}
+      <Button variant="chip" aria-pressed={selected} aria-label={change.name} onClick={() => onSelect(change.id)}
         className={`change-tone-${change.type} py-1 pl-2`}>
         <ChangeTypeIcon type={change.type} />
-        <span className={selected ? "" : "sr-only sm:not-sr-only"}>{change.name}</span>
+        <span aria-hidden className={named ? "inline" : "hidden sm:inline"}>{change.name}</span>
       </Button>
     </Html>
   );
@@ -112,7 +115,7 @@ function Route({ change, colour, width }: Omit<PartProps, "side">) {
  * One change drawn in the room. Whatever the shown video has is drawn solid; a spot the shown
  * video has nothing at, such as a removed object seen with the after video, is a dashed ghost.
  */
-export function ChangeMark({ change, colour, view, selected, dimmed, onSelect }: MarkProps) {
+export function ChangeMark({ change, colour, view, selected, dimmed, reading, onSelect }: MarkProps) {
   const drawing = DRAWINGS[modeOf(view)][change.type];
   const width = markWidth(selected, dimmed);
   const labelSide = drawing.solid ?? drawing.ghost;
@@ -122,7 +125,7 @@ export function ChangeMark({ change, colour, view, selected, dimmed, onSelect }:
       <SideBox change={change} side={drawing.solid} colour={colour} width={width} dashed={false} />
       <SideBox change={change} side={drawing.ghost} colour={colour} width={width} dashed />
       {drawing.arrow && <Route change={change} colour={colour} width={width} />}
-      {place && <ChangeLabel change={change} place={place} selected={selected} onSelect={onSelect} />}
+      {place && <ChangeLabel change={change} place={place} selected={selected} named={selected || reading} onSelect={onSelect} />}
     </group>
   );
 }

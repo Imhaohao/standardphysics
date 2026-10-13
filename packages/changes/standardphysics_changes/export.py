@@ -90,6 +90,7 @@ def change_record(change: Change, scene, folder: Path) -> dict:
         "name": change.name,
         "detail": change.detail,
         "sentence": change.sentence,
+        "partly_seen": change.partly_seen,
         "size": _round(subject.box.size, 2),
         "size_text": language.size_phrase(subject.box.size),
         "confidence": confidence(subject, scene.through[ids], scene.agree[ids]),

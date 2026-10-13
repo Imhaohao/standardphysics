@@ -16,6 +16,7 @@
    "name": "armchair",
    "detail": "white upholstered with dark wood frame",
    "sentence": "The armchair moved 2.8 m from between the bookshelf and the coffee table to the other side of the coffee table and turned about 165\u00b0 clockwise.",
+   "partly_seen": false,
    "size": [
     0.87,
     0.88,
@@ -244,6 +245,7 @@
    "name": "stool",
    "detail": "metal stool with worn seat",
    "sentence": "The stool moved 2.9 m from near the coffee table to beside the bookshelf.",
+   "partly_seen": false,
    "size": [
     0.43,
     0.39,
@@ -472,6 +474,7 @@
    "name": "potted plant",
    "detail": "green leafy plant in terracotta pot",
    "sentence": "The green leafy plant in terracotta pot beside the bookshelf is gone.",
+   "partly_seen": false,
    "size": [
     0.57,
     0.53,
@@ -636,6 +639,7 @@
    "name": "cardboard box",
    "detail": "beige cardboard box",
    "sentence": "A beige cardboard box appeared beside the coffee table.",
+   "partly_seen": false,
    "size": [
     0.43,
     0.54,
@@ -800,6 +804,7 @@
    "name": "basket",
    "detail": "woven natural fibre basket",
    "sentence": "A woven natural fibre basket appeared on the coffee table.",
+   "partly_seen": false,
    "size": [
     0.29,
     0.37,
@@ -2757,9 +2762,9 @@
   }
  ],
  "seconds": {
-  "reconstruction": 47.5,
-  "change evidence": 7.5,
-  "naming": 47.9
+  "reconstruction": 39.5,
+  "change evidence": 5.9,
+  "naming": 37.4
  },
  "scale": {
   "factor": 0.9035,

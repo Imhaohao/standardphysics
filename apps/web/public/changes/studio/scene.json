@@ -8,14 +8,15 @@
   "before": "before.mp4",
   "after": "after.mp4"
  },
- "summary": "5 things changed between the videos: the armchair moved 1.7 m, the ottoman moved 90 cm, the wooden step was removed, a plastic crate appeared and a vase appeared.",
+ "summary": "5 things changed between the videos: the armchair moved 1.7 m, the ottoman moved 90 cm, the wooden step was removed, a plastic crate appeared and a glass vase appeared.",
  "changes": [
   {
    "id": "c1",
    "type": "moved",
    "name": "armchair",
    "detail": "dark wood frame with green cushion",
-   "sentence": "The armchair moved 1.7 m from near the sideboard to near the brown leather chair and turned about 90\u00b0 clockwise.",
+   "sentence": "The armchair moved 1.7 m from beside the dark wood antique armchair to near the chair and turned about 90\u00b0 clockwise.",
+   "partly_seen": false,
    "size": [
     0.8,
     0.75,
@@ -92,7 +93,7 @@
       ]
      ]
     },
-    "where": "near the sideboard"
+    "where": "beside the dark wood antique armchair"
    },
    "after": {
     "box": {
@@ -150,7 +151,7 @@
       ]
      ]
     },
-    "where": "near the brown leather chair"
+    "where": "near the chair"
    },
    "pictures": {
     "before": {
@@ -243,7 +244,8 @@
    "type": "moved",
    "name": "ottoman",
    "detail": "brown leather ottoman",
-   "sentence": "The ottoman moved 90 cm from near the sideboard to between the brown leather chair and the sideboard.",
+   "sentence": "The ottoman moved 90 cm from between the chair and the wooden chair to between the chair and the sideboard.",
+   "partly_seen": false,
    "size": [
     0.71,
     0.99,
@@ -320,7 +322,7 @@
       ]
      ]
     },
-    "where": "near the sideboard"
+    "where": "between the chair and the wooden chair"
    },
    "after": {
     "box": {
@@ -378,7 +380,7 @@
       ]
      ]
     },
-    "where": "between the brown leather chair and the sideboard"
+    "where": "between the chair and the sideboard"
    },
    "pictures": {
     "before": {
@@ -470,8 +472,9 @@
    "id": "c3",
    "type": "removed",
    "name": "wooden step",
-   "detail": "light brown wooden step",
-   "sentence": "The light brown wooden step beside the brown leather chair is gone.",
+   "detail": "brown wooden step",
+   "sentence": "The brown wooden step beside the chair is gone; only part of it was ever in view, so it may be larger.",
+   "partly_seen": true,
    "size": [
     0.46,
     0.26,
@@ -544,47 +547,47 @@
       ]
      ]
     },
-    "where": "beside the brown leather chair"
+    "where": "beside the chair"
    },
    "after": null,
    "pictures": {
     "before": {
      "file": "pictures/c3-before.jpg",
      "video": "before",
-     "time_s": 1.5,
+     "time_s": 1.25,
      "aspect": 1.0,
      "box": [
       [
-       0.911,
-       0.813
+       0.96,
+       0.811
       ],
       [
-       0.829,
-       0.565
+       0.863,
+       0.567
       ],
       [
-       0.647,
-       0.753
+       0.689,
+       0.758
       ],
       [
-       0.61,
-       0.522
+       0.639,
+       0.529
       ],
       [
-       1.042,
-       0.423
+       1.083,
+       0.407
       ],
       [
-       0.93,
-       0.224
+       0.957,
+       0.215
       ],
       [
-       0.748,
-       0.372
+       0.783,
+       0.364
       ],
       [
-       0.69,
-       0.188
+       0.712,
+       0.186
       ]
      ]
     },
@@ -635,7 +638,8 @@
    "type": "added",
    "name": "plastic crate",
    "detail": "brown plastic crate",
-   "sentence": "A brown plastic crate appeared on the open floor.",
+   "sentence": "A brown plastic crate appeared near the dark wood antique armchair.",
+   "partly_seen": false,
    "size": [
     0.44,
     0.56,
@@ -709,7 +713,7 @@
       ]
      ]
     },
-    "where": "on the open floor"
+    "where": "near the dark wood antique armchair"
    },
    "pictures": {
     "before": {
@@ -797,9 +801,10 @@
   {
    "id": "c5",
    "type": "added",
-   "name": "vase",
-   "detail": "gold metallic vase",
-   "sentence": "A gold metallic vase appeared on the sideboard.",
+   "name": "glass vase",
+   "detail": "tall golden glass vase",
+   "sentence": "A tall golden glass vase appeared on the sideboard; only part of it was ever in view, so it may be larger.",
+   "partly_seen": true,
    "size": [
     0.21,
     0.23,
@@ -919,40 +924,40 @@
     "after": {
      "file": "pictures/c5-after.jpg",
      "video": "after",
-     "time_s": 5.94,
-     "aspect": 1.0,
+     "time_s": 2.94,
+     "aspect": 1.007,
      "box": [
       [
-       0.352,
-       0.646
+       0.555,
+       0.627
       ],
       [
-       0.353,
-       0.637
+       0.691,
+       0.617
       ],
       [
-       0.132,
-       0.656
+       0.388,
+       0.62
       ],
       [
-       0.151,
-       0.646
+       0.529,
+       0.611
       ],
       [
-       0.272,
-       0.049
+       0.485,
+       -0.107
       ],
       [
-       0.28,
-       0.089
+       0.636,
+       -0.071
       ],
       [
-       0.032,
-       0.032
+       0.307,
+       -0.089
       ],
       [
-       0.061,
-       0.075
+       0.464,
+       -0.055
       ]
      ]
     }
@@ -1019,58 +1024,58 @@
    }
   },
   {
-   "name": "chair",
+   "name": "wooden chair",
    "box": {
     "center": [
-     0.087,
-     2.419,
+     0.142,
+     3.019,
      0.514
     ],
     "size": [
-     2.275,
-     0.956,
+     0.954,
+     0.992,
      0.923
     ],
-    "yaw_deg": 85.4,
+    "yaw_deg": 0.9,
     "corners": [
      [
-      0.471,
-      1.247,
+      -0.327,
+      2.515,
       0.053
      ],
      [
-      0.655,
-      3.514,
+      0.627,
+      2.53,
       0.053
      ],
      [
-      -0.482,
-      1.324,
+      -0.343,
+      3.507,
       0.053
      ],
      [
-      -0.298,
-      3.591,
+      0.61,
+      3.523,
       0.053
      ],
      [
-      0.471,
-      1.247,
+      -0.327,
+      2.515,
       0.976
      ],
      [
-      0.655,
-      3.514,
+      0.627,
+      2.53,
       0.976
      ],
      [
-      -0.482,
-      1.324,
+      -0.343,
+      3.507,
       0.976
      ],
      [
-      -0.298,
-      3.591,
+      0.61,
+      3.523,
       0.976
      ]
     ]
@@ -1135,7 +1140,7 @@
    }
   },
   {
-   "name": "brown leather chair",
+   "name": "chair",
    "box": {
     "center": [
      3.165,
@@ -1188,6 +1193,64 @@
       2.933,
       2.089,
       0.988
+     ]
+    ]
+   }
+  },
+  {
+   "name": "dark wood antique armchair",
+   "box": {
+    "center": [
+     -0.295,
+     1.838,
+     0.515
+    ],
+    "size": [
+     0.299,
+     1.27,
+     0.919
+    ],
+    "yaw_deg": 2.9,
+    "corners": [
+     [
+      -0.412,
+      1.196,
+      0.056
+     ],
+     [
+      -0.113,
+      1.211,
+      0.056
+     ],
+     [
+      -0.476,
+      2.465,
+      0.056
+     ],
+     [
+      -0.177,
+      2.48,
+      0.056
+     ],
+     [
+      -0.412,
+      1.196,
+      0.975
+     ],
+     [
+      -0.113,
+      1.211,
+      0.975
+     ],
+     [
+      -0.476,
+      2.465,
+      0.975
+     ],
+     [
+      -0.177,
+      2.48,
+      0.975
      ]
     ]
    }
@@ -2757,9 +2820,9 @@
   }
  ],
  "seconds": {
-  "reconstruction": 47.8,
-  "change evidence": 7.3,
-  "naming": 45.9
+  "reconstruction": 43.7,
+  "change evidence": 5.7,
+  "naming": 37.5
  },
  "scale": {
   "factor": 0.9406,

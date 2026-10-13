@@ -1,5 +1,6 @@
 {
  "capture": "Share Tea walkthrough, a private iPhone capture kept out of git",
+ "role": "held out: cut from another part of the walk and run with the finished detector",
  "clips_s": {
   "before": [
    69.0,
@@ -30,6 +31,24 @@
      "video": "before"
     }
    }
+  }
+ ],
+ "seen_by_one_video_only": [
+  {
+   "video": "before",
+   "name": "wooden chair"
+  },
+  {
+   "video": "after",
+   "name": "bar stool"
+  },
+  {
+   "video": "after",
+   "name": "person"
+  },
+  {
+   "video": "after",
+   "name": "person"
   }
  ],
  "coverage": {

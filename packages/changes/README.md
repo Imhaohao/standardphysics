@@ -51,7 +51,7 @@ Each example is a pair of six-second handheld walkthroughs rendered in Blender f
 | Room | What it tests | Result |
 |---|---|---|
 | Living room | Two moves, a removal and two additions, one of them on a table | 5 of 5 found, none false, 5 of 5 named right |
-| Studio | A different room, furniture and pair of paths, held out until the detector was finished | 4 of 5 found and 1 only partly, none false, all 4 named right |
+| Studio | A different room, furniture and pair of paths, held out until the detector was finished | 4 of 5 found and 1 only partly, none false, all 4 named right; the partial one is worded as partly seen |
 | Nothing changed | The living room twice from different paths | Nothing reported |
 | Blind spot | The before walk never looks at half the room, and a crate appears in that half | The armchair's move found; the crate listed as seen by one video only, not as a change |
 
@@ -72,7 +72,7 @@ packages/changes/.venv/bin/room-changes evaluate apps/web/public/changes/studio 
 | Turn of the stool and the ottoman | left out | left out |
 | Camera path error | 1.9 cm | 2.5 cm |
 
-The studio's weak spot is the wooden crate. It sat right beside the before walk's path, so that video only ever saw one end of it. The box covers that end and overlaps the crate by 0.16, so the scorer counts it as partial, and the vision model called the end "a wooden step". The stool and the ottoman turned too, but a stool looks the same after a quarter turn and the ottoman's shape and footprint disagreed about its turn, so neither sentence states one rather than guess.
+The studio's weak spot is the wooden crate. It sat right beside the before walk's path, so that video only ever saw one end of it. The box covers that end and overlaps the crate by 0.16, so the scorer counts it as partial. The vision model called the end "a wooden step", and because every view of it ran into the frame's edge, its sentence ends "only part of it was ever in view, so it may be larger". The stool and the ottoman turned too, but a stool looks the same after a quarter turn and the ottoman's shape and footprint disagreed about its turn, so neither sentence states one rather than guess.
 
 [`tests/test_change_examples.py`](tests/test_change_examples.py) re-scores all four checked-in results on every test run, so regenerating an example with a worse detector fails the build.
 
@@ -85,7 +85,7 @@ The rendered rooms are the only footage with exact answers. As a check on real v
 | Counter, at 168 s and 198 s | Tuning: it led to the 85% rule | 8.9 cm | 2.8% (17% with no height given) | Nothing |
 | Shop, at 69 s and 104 s | Held out, run once with the finished detector | 13.3 cm | 2.6% | One false alarm |
 
-On the counter, the first version of the detector reported two open-frame bar stools as removed. From some angles the after video sees through the gaps between a stool's rails, so it reads as partly empty; requiring 85% of all sightlines into a region to see empty space removed both. The held-out shop pair reports one change that did not happen: "a black computer monitor appeared". The monitor is in both videos. It stands in front of a glass display case, and the likeliest cause is that the before video's depth went through the glass to the case's back, so the monitor's spot read as empty. It is left in rather than tuned away, because a rule chosen after seeing this pair would no longer be tested by it. A real pair with staged changes and hand-measured truth is the next example to add.
+On the counter, the first version of the detector reported two open-frame bar stools as removed. From some angles the after video sees through the gaps between a stool's rails, so it reads as partly empty; requiring 85% of all sightlines into a region to see empty space removed both. The held-out shop pair reports one change that did not happen: "a black computer monitor appeared". The monitor is in both videos. It stands in front of a glass display case, and the likeliest cause is that the before video's depth went through the glass to the case's back, so the monitor's spot read as empty. It is left in rather than tuned away, because a rule chosen after seeing this pair would no longer be tested by it. On both real pairs the walks overlap less than the rendered ones, and the "seen by one video only" lists name the chairs, stools and passing people that one walk filmed and the other did not. A real pair with staged changes and hand-measured truth is the next example to add.
 
 ## How it works
 

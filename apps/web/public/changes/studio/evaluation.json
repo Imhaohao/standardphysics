@@ -8,7 +8,7 @@
  "partial": [
   "c3 points at the wooden crate but covers too little of it"
  ],
- "names_correct": "4 of 4",
+ "names_correct": "3 of 4",
  "mean_centre_error_m": 0.082,
  "mean_bottom_error_m": 0.027,
  "mean_height_error_m": 0.027,
@@ -16,6 +16,7 @@
  "mean_distance_error_m": 0.055,
  "false_alarms": [],
  "unverifiable_reported": [],
+ "unverifiable_listed": [],
  "changes": [
   {
    "truth": "armchair",
@@ -99,8 +100,8 @@
    "truth": "brass vase",
    "type": "added",
    "found": "c5",
-   "name": "vase",
-   "name_ok": true,
+   "name": "glass vase",
+   "name_ok": false,
    "shape_position_error_m": 0.027,
    "after": {
     "centre_error_m": 0.101,

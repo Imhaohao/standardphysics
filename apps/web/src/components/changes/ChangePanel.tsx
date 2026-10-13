@@ -120,7 +120,8 @@ export function ChangePanel({ room, base, scene, selectedId, onSelect, cardRefs,
           </li>
         ))}
       </ol>
-      <UncheckedList base={base} things={scene.unchecked ?? []} />
+      <UncheckedList base={base} things={scene.unchecked ?? []} selectedId={selectedId} onSelect={onSelect}
+        cardRefs={cardRefs} />
       <BlindSpots scene={scene} shown={blindSpots} onToggle={onBlindSpots} />
     </div>
   );

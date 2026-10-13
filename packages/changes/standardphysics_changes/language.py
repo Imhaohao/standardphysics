@@ -68,6 +68,11 @@ def added_sentence(detail: str, where: str) -> str:
     return f"{article(detail).capitalize()} {detail} appeared{_where(where)}."
 
 
+def partly_seen(sentence: str) -> str:
+    """The same sentence, admitting that the video only ever saw part of the object."""
+    return f"{sentence[:-1]}; only part of it was ever in view, so it may be larger."
+
+
 def unchecked_sentence(detail: str, where: str, video: str) -> str:
     other = "before" if video == "after" else "after"
     return (f"{article(detail).capitalize()} {detail}{_where(where)} shows only in the {video} video; "

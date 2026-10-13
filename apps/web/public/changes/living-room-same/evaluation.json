@@ -14,5 +14,6 @@
  "mean_distance_error_m": null,
  "false_alarms": [],
  "unverifiable_reported": [],
+ "unverifiable_listed": [],
  "changes": []
 }

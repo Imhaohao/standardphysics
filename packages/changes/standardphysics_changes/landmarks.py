@@ -161,6 +161,12 @@ def _belongs_to(piece: Landmark, host: Landmark, points: np.ndarray) -> bool:
     return piece.category == host.category and footprint_gap(piece.box, host.box) <= 0.15
 
 
+def _fits_together(piece: Landmark, host: Landmark, points: np.ndarray) -> bool:
+    """Two dining chairs side by side would merge into one long "chair"; the size cap refuses that."""
+    joined = fit_box(points[np.concatenate([host.point_ids, piece.point_ids])])
+    return float(joined.size[:2].max()) <= LONGEST_SIDE_M.get(host.category, 3.0)
+
+
 def merge_touching(landmarks: list[Landmark], points: np.ndarray) -> list[Landmark]:
     """One piece of furniture the segmenter split up, such as a side table seen as table and cabinet.
 
@@ -171,7 +177,7 @@ def merge_touching(landmarks: list[Landmark], points: np.ndarray) -> list[Landma
     pieces = sorted(landmarks, key=lambda landmark: -len(landmark.point_ids))
     merged: list[Landmark] = []
     for piece in pieces:
-        host = next((m for m in merged if _belongs_to(piece, m, points)), None)
+        host = next((m for m in merged if _belongs_to(piece, m, points) and _fits_together(piece, m, points)), None)
         if host is None:
             merged.append(piece)
             continue

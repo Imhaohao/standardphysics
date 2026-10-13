@@ -14,8 +14,9 @@
    "id": "c1",
    "type": "moved",
    "name": "armchair",
-   "detail": "white upholstered with gray wooden frame",
+   "detail": "white upholstered with silver frame",
    "sentence": "The armchair moved 1.1 m from between the bookshelf and the coffee table to beside the coffee table.",
+   "partly_seen": false,
    "size": [
     0.84,
     0.79,
@@ -196,47 +197,47 @@
     "after": {
      "file": "pictures/c1-after.jpg",
      "video": "after",
-     "time_s": 1.75,
+     "time_s": 1.5,
      "aspect": 1.0,
      "box": [
       [
-       0.043,
-       0.708
+       0.141,
+       0.644
       ],
       [
-       0.191,
-       0.871
+       0.217,
+       0.822
       ],
       [
-       0.344,
-       0.593
+       0.461,
+       0.562
       ],
       [
-       0.525,
-       0.695
-      ],
-      [
-       -0.076,
-       0.291
+       0.605,
+       0.687
       ],
       [
        0.064,
-       0.348
+       0.222
       ],
       [
-       0.288,
-       0.246
-      ],
-      [
-       0.485,
+       0.125,
        0.277
+      ],
+      [
+       0.428,
+       0.197
+      ],
+      [
+       0.58,
+       0.234
       ]
      ]
     }
    },
    "distance_m": 1.05,
    "turn_deg": null,
-   "similarity": 1.03
+   "similarity": 1.0
   }
  ],
  "furniture": [
@@ -1979,9 +1980,9 @@
   }
  ],
  "seconds": {
-  "reconstruction": 46.7,
-  "change evidence": 6.2,
-  "naming": 36.0
+  "reconstruction": 43.1,
+  "change evidence": 4.9,
+  "naming": 28.1
  },
  "scale": {
   "factor": 0.9212,

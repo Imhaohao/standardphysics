@@ -59,6 +59,8 @@ class Region:
     seed_count: int
     names: dict = field(default_factory=dict)
     descriptor: np.ndarray | None = None
+    cut_off: bool = False
+    """Every clear view of it runs into the frame's edge, so part of it may never have been in view."""
 
 
 def _grid(points: np.ndarray, voxel: float) -> tuple[np.ndarray, np.ndarray, tuple]:

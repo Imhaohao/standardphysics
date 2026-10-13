@@ -7,7 +7,7 @@ import { Color, type PerspectiveCamera, Spherical, Vector3 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { easeOutCubic, TWEEN_MS } from "@/lib/camera";
 import {
-  CHANGE_TOKEN, type ChangeScene, type Cloud, type RoomChange, type Vec3, changeCentre, changeReach,
+  CHANGE_TOKEN, type ChangeScene, type Cloud, type RoomChange, type UncheckedThing, type Vec3, changeCentre, changeReach,
 } from "@/lib/room-changes";
 import { CameraPaths } from "./CameraPaths";
 import { ChangeCloud, type CloudView } from "./ChangeCloud";
@@ -16,7 +16,8 @@ import { FurnitureNames } from "./FurnitureNames";
 import { UncheckedMarks } from "./UncheckedMarks";
 
 /** What the camera should look at; `nonce` lets the same request be made twice. */
-export type Focus = { kind: "overview"; nonce: number } | { kind: "change"; id: string; nonce: number };
+/** `id` names a change ("c1") or a thing only one video saw ("u1"). */
+export type Focus = { kind: "overview"; nonce: number } | { kind: "item"; id: string; nonce: number };
 /** Turn the camera around what it looks at: radians across, radians up, and a zoom factor. */
 export type Orbit = (across: number, up: number, zoom: number) => void;
 type Pose = { position: Vector3; target: Vector3 };
@@ -66,15 +67,23 @@ function overviewPose(scene: ChangeScene, camera: PerspectiveCamera): Pose {
   return { position: target.clone().addScaledVector(direction, distance), target };
 }
 
-/** Closer in on one change, keeping the angle the viewer is already looking from. */
-export function changePose(change: RoomChange, camera: PerspectiveCamera, around: Vector3): Pose {
-  const target = new Vector3(...changeCentre(change));
+/** Closer in on a spot, keeping the angle the viewer is already looking from. */
+function closerPose(centre: Vec3, reach: number, cap: number, camera: PerspectiveCamera, around: Vector3): Pose {
+  const target = new Vector3(...centre);
   const direction = camera.position.clone().sub(around).normalize();
-  const cap = change.type === "moved" ? 9 : 4.5;
-  const distance = Math.min(cap, Math.max(1.6, (changeReach(change) / Math.sin(narrowFov(camera) / 2)) * 1.15));
+  const distance = Math.min(cap, Math.max(1.6, (reach / Math.sin(narrowFov(camera) / 2)) * 1.15));
   const position = target.clone().addScaledVector(direction, distance);
   position.z = Math.max(position.z, target.z + 0.8);
   return { position, target };
+}
+
+export function changePose(change: RoomChange, camera: PerspectiveCamera, around: Vector3): Pose {
+  return closerPose(changeCentre(change), changeReach(change), change.type === "moved" ? 9 : 4.5, camera, around);
+}
+
+function thingPose(thing: UncheckedThing, camera: PerspectiveCamera, around: Vector3): Pose {
+  const reach = Math.max(0.4, Math.hypot(...thing.box.size) / 2);
+  return closerPose(thing.box.center, reach, 4.5, camera, around);
 }
 
 function prefersReducedMotion(): boolean {
@@ -86,7 +95,9 @@ type Tween = { from: Pose; to: Pose; startedAt: number };
 function poseFor(focus: Focus, scene: ChangeScene, camera: PerspectiveCamera, controls: OrbitControlsImpl): Pose | null {
   if (focus.kind === "overview") return overviewPose(scene, camera);
   const change = scene.changes.find((item) => item.id === focus.id);
-  return change ? changePose(change, camera, controls.target) : null;
+  if (change) return changePose(change, camera, controls.target);
+  const thing = (scene.unchecked ?? []).find((item) => item.id === focus.id);
+  return thing ? thingPose(thing, camera, controls.target) : null;
 }
 
 function FocusRig({ focus, scene }: { focus: Focus; scene: ChangeScene }) {
@@ -147,13 +158,14 @@ type StageProps = {
   cloud: Cloud;
   view: CloudView & { paths: boolean };
   selectedId: string | null;
+  readingId: string | null;
   focus: Focus;
   onSelect: (id: string) => void;
   onClear: () => void;
   onOrbit: (orbit: Orbit) => void;
 };
 
-export function ChangeStage({ scene, cloud, view, selectedId, focus, onSelect, onClear, onOrbit }: StageProps) {
+export function ChangeStage({ scene, cloud, view, selectedId, readingId, focus, onSelect, onClear, onOrbit }: StageProps) {
   const palette = usePalette(scene.changes);
   const selectedIndex = scene.changes.findIndex((change) => change.id === selectedId) + 1;
   const cutHeight = Math.min(2.2, scene.room.high[2] - 0.3);
@@ -168,7 +180,7 @@ export function ChangeStage({ scene, cloud, view, selectedId, focus, onSelect, o
       {scene.changes.map((change, index) => (
         <ChangeMark key={change.id} change={change} colour={palette.tints[index]} view={view}
           selected={change.id === selectedId} dimmed={selectedId !== null && change.id !== selectedId}
-          onSelect={onSelect} />
+          reading={change.id === readingId} onSelect={onSelect} />
       ))}
       <UncheckedMarks things={scene.unchecked ?? []} colour={palette.hatch} before={view.before} after={view.after} />
       <CameraPaths cameras={scene.cameras} before={view.paths && view.before} after={view.paths && view.after}

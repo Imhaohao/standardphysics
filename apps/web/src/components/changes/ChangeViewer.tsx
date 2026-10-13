@@ -19,9 +19,10 @@ function useSelection(scene: ChangeScene) {
   const cardRefs = useRef(new Map<string, HTMLButtonElement>());
 
   const select = useCallback((id: string) => {
-    if (!scene.changes.some((change) => change.id === id)) return;
+    const known = [...scene.changes, ...(scene.unchecked ?? [])].some((item) => item.id === id);
+    if (!known) return;
     setSelectedId(id);
-    setFocus((current) => ({ kind: "change", id, nonce: current.nonce + 1 }));
+    setFocus((current) => ({ kind: "item", id, nonce: current.nonce + 1 }));
     cardRefs.current.get(id)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [scene]);
 
@@ -43,6 +44,28 @@ function useEscapeToClear(clear: () => void) {
   }, [clear]);
 }
 
+/** On a phone the 3D view stays pinned over the top 52% of the screen, so cards under it are not being read. */
+const STAGE_COVERS = "-52% 0px 0px 0px";
+
+/** The change whose card is most in view, so a phone's 3D view can name the one being read. */
+function useReading(cardRefs: { current: Map<string, HTMLButtonElement> }, scene: ChangeScene) {
+  const [readingId, setReadingId] = useState<string | null>(null);
+  useEffect(() => {
+    const shares = new Map<string, number>();
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => shares.set((entry.target as HTMLElement).dataset.changeId ?? "", entry.intersectionRatio));
+      const [best] = [...shares.entries()].filter(([, share]) => share > 0.4).sort((a, b) => b[1] - a[1]);
+      setReadingId(best ? best[0] : null);
+    }, { threshold: [0, 0.25, 0.5, 0.75, 1], rootMargin: STAGE_COVERS });
+    cardRefs.current.forEach((card, id) => {
+      card.dataset.changeId = id;
+      observer.observe(card);
+    });
+    return () => observer.disconnect();
+  }, [cardRefs, scene]);
+  return readingId;
+}
+
 function useKeyboardOrbit() {
   const orbit = useRef<Orbit | null>(null);
   const onOrbit = useCallback((next: Orbit) => {
@@ -60,6 +83,7 @@ function useKeyboardOrbit() {
 function ReadyViewer({ room, base, scene, cloud }: { room: string; base: string; scene: ChangeScene; cloud: Cloud }) {
   const { selectedId, setSelectedId, focus, select, reset, cardRefs } = useSelection(scene);
   const { onOrbit, onKeyDown } = useKeyboardOrbit();
+  const readingId = useReading(cardRefs, scene);
   const [showing, setShowing] = useState<Showing>("both");
   const [paths, setPaths] = useState(false);
   const [blindSpots, setBlindSpots] = useState(false);
@@ -83,7 +107,7 @@ function ReadyViewer({ room, base, scene, cloud }: { room: string; base: string;
               blindSpots={blindSpots} onBlindSpots={toggleBlindSpots} onReset={reset} />
           </div>
         </div>
-        <ChangeStage scene={scene} cloud={cloud} view={view} selectedId={selectedId} focus={focus}
+        <ChangeStage scene={scene} cloud={cloud} view={view} selectedId={selectedId} readingId={readingId} focus={focus}
           onSelect={select} onClear={clear} onOrbit={onOrbit} />
       </section>
       <aside className="bg-paper lg:w-[440px] lg:shrink-0 lg:overflow-y-auto lg:shadow-[-1px_0_0_var(--color-rule)]">
