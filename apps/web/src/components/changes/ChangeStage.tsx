@@ -7,7 +7,7 @@ import { Color, type PerspectiveCamera, Spherical, Vector3 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { easeOutCubic, TWEEN_MS } from "@/lib/camera";
 import {
-  CHANGE_TOKEN, type ChangeScene, type Cloud, type RoomChange, type UncheckedThing, type Vec3, changeCentre, changeReach,
+  CHANGE_TOKEN, type ChangeScene, type Cloud, type RoomChange, type UncheckedThing, type Vec3, changeCentre, changeReach, citedFurniture,
 } from "@/lib/room-changes";
 import { CameraPaths } from "./CameraPaths";
 import { ChangeCloud, type CloudView } from "./ChangeCloud";
@@ -169,14 +169,13 @@ export function ChangeStage({ scene, cloud, view, selectedId, readingId, focus, 
   const palette = usePalette(scene.changes);
   const selectedIndex = scene.changes.findIndex((change) => change.id === selectedId) + 1;
   const cutHeight = Math.min(2.2, scene.room.high[2] - 0.3);
-  const changedNames = new Set(scene.changes.map((change) => change.name));
   return (
     <Canvas camera={{ up: [0, 0, 1], fov: 45, near: 0.05, far: 80, position: [0, -6, 5] as Vec3 }} dpr={[1, 2]}
       onPointerMissed={onClear}>
       <color attach="background" args={[palette.paper]} />
       <ChangeCloud cloud={cloud} view={view} tints={palette.tints} moved={palette.moved} hatch={palette.hatch}
         paper={palette.paper} selected={selectedIndex} cutHeight={cutHeight} />
-      <FurnitureNames furniture={(scene.furniture ?? []).filter((piece) => !changedNames.has(piece.name))} />
+      <FurnitureNames furniture={citedFurniture(scene)} />
       {scene.changes.map((change, index) => (
         <ChangeMark key={change.id} change={change} colour={palette.tints[index]} view={view}
           selected={change.id === selectedId} dimmed={selectedId !== null && change.id !== selectedId}

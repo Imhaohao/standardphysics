@@ -1,6 +1,6 @@
 {
  "format": 1,
- "detector": "6d29accc7676",
+ "detector": "875704297675",
  "inputs": {
   "before": "before.mp4",
   "after": "after.mp4"
@@ -244,7 +244,7 @@
    "id": "c2",
    "type": "moved",
    "name": "stool",
-   "detail": "metal stool with worn seat",
+   "detail": "metallic grey stool",
    "sentence": "The stool moved 2.9 m from near the coffee table to beside the bookshelf.",
    "partly_seen": false,
    "size": [
@@ -473,8 +473,8 @@
    "id": "c3",
    "type": "removed",
    "name": "potted plant",
-   "detail": "green leafy plant in terracotta pot",
-   "sentence": "The green leafy plant in terracotta pot beside the bookshelf is gone.",
+   "detail": "terracotta pot with green leaves",
+   "sentence": "The terracotta pot with green leaves beside the bookshelf is gone.",
    "partly_seen": false,
    "size": [
     0.57,
@@ -638,8 +638,8 @@
    "id": "c4",
    "type": "added",
    "name": "cardboard box",
-   "detail": "beige cardboard box",
-   "sentence": "A beige cardboard box appeared beside the coffee table.",
+   "detail": "brown cardboard box",
+   "sentence": "A brown cardboard box appeared beside the coffee table.",
    "partly_seen": false,
    "size": [
     0.43,
@@ -803,8 +803,8 @@
    "id": "c5",
    "type": "added",
    "name": "basket",
-   "detail": "woven natural fibre basket",
-   "sentence": "A woven natural fibre basket appeared on the coffee table.",
+   "detail": "light brown woven basket",
+   "sentence": "A light brown woven basket appeared on the coffee table.",
    "partly_seen": false,
    "size": [
     0.29,
@@ -2765,7 +2765,7 @@
  "seconds": {
   "reconstruction": 35.5,
   "change evidence": 4.2,
-  "naming": 27.4
+  "naming": 29.1
  },
  "scale": {
   "factor": 0.9035,

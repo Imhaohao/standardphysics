@@ -1,6 +1,6 @@
 {
  "format": 1,
- "detector": "6d29accc7676",
+ "detector": "875704297675",
  "inputs": {
   "before": "before.mp4",
   "after": "after.mp4"
@@ -9,13 +9,13 @@
   "before": "before.mp4",
   "after": "after.mp4"
  },
- "summary": "4 things changed between the videos: the armchair moved 1.7 m, the wooden stool moved 2.6 m, the wooden crate was removed and a copper pot appeared.",
+ "summary": "4 things changed between the videos: the armchair moved 1.7 m, the wooden stool moved 2.6 m, the wooden suitcase was removed and a copper pot appeared.",
  "changes": [
   {
    "id": "c1",
    "type": "moved",
    "name": "armchair",
-   "detail": "black leather wooden armchair",
+   "detail": "dark leather wooden armchair",
    "sentence": "The armchair moved 1.7 m from between the console table and the wooden bench to beside the wooden table.",
    "partly_seen": false,
    "size": [
@@ -472,9 +472,9 @@
   {
    "id": "c3",
    "type": "removed",
-   "name": "wooden crate",
-   "detail": "brown wooden crate",
-   "sentence": "The brown wooden crate beside the wooden bench is gone; only part of it was ever in view, so it may be larger.",
+   "name": "wooden suitcase",
+   "detail": "brown wooden suitcase",
+   "sentence": "The brown wooden suitcase beside the wooden bench is gone; only part of it was ever in view, so it may be larger.",
    "partly_seen": true,
    "size": [
     0.57,
@@ -638,8 +638,8 @@
    "id": "c4",
    "type": "added",
    "name": "copper pot",
-   "detail": "shiny copper pot with lid",
-   "sentence": "A shiny copper pot with lid appeared on the wooden table.",
+   "detail": "shiny copper cooking pot",
+   "sentence": "A shiny copper cooking pot appeared on the wooden table.",
    "partly_seen": false,
    "size": [
     0.26,
@@ -2598,9 +2598,9 @@
   }
  ],
  "seconds": {
-  "reconstruction": 37.0,
-  "change evidence": 4.6,
-  "naming": 27.2
+  "reconstruction": 37.2,
+  "change evidence": 4.5,
+  "naming": 29.7
  },
  "scale": {
   "factor": 0.8758,

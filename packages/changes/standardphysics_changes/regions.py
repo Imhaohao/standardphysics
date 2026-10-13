@@ -61,6 +61,8 @@ class Region:
     descriptor: np.ndarray | None = None
     cut_off: bool = False
     """Every clear view of it runs into the frame's edge, so part of it may never have been in view."""
+    doubt: str = ""
+    """Why it is listed instead of reported: "" for a change, "one video" or "unsupported"."""
 
 
 def _grid(points: np.ndarray, voxel: float) -> tuple[np.ndarray, np.ndarray, tuple]:
@@ -105,6 +107,24 @@ def settle(box: Box, supports: list[float], reach_m: float = 0.3) -> Box:
     size = box.size.copy()
     size[2] = top - base
     return Box(centre, size, box.yaw)
+
+
+def support_share(box: Box, points: np.ndarray, cell_m: float = 0.05, below_m: float = 0.15) -> float:
+    """How much of a raised box's footprint has a surface just under its bottom; 1 for a box on the floor.
+
+    `points` should leave out every changed point, so a basket's own weave can't hold it up.
+    The footprint is shrunk by a fifth so a table edge just outside the box doesn't count.
+    """
+    bottom = float(box.center[2] - box.size[2] / 2)
+    if bottom < 0.1:
+        return 1.0
+    c, s = np.cos(box.yaw), np.sin(box.yaw)
+    local = (points[:, :2] - box.center[:2]) @ np.array([[c, -s], [s, c]])
+    half = box.size[:2] / 2 * 0.8
+    under = (np.abs(local) <= half).all(axis=1) & (points[:, 2] >= bottom - below_m) & (points[:, 2] <= bottom + 0.03)
+    cells = {tuple(cell) for cell in np.floor(local[under] / cell_m).astype(int)}
+    across = np.floor(half / cell_m).astype(int) - np.floor(-half / cell_m).astype(int) + 1
+    return len(cells) / int(np.prod(across))
 
 
 def fit_box(points: np.ndarray) -> Box:

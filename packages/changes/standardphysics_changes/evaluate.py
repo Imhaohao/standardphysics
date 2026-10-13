@@ -24,6 +24,11 @@ SAME_THING = {
     "wooden crate": {"crate", "wooden crate", "wooden box"},
     "plastic crate": {"crate", "plastic crate", "plastic box", "storage bin", "storage crate"},
     "brass vase": {"vase", "brass vase"},
+    "tool cart": {"tool cart", "cart", "rolling cart", "utility cart", "tool trolley", "trolley", "service cart"},
+    "school chair": {"school chair", "chair", "metal chair", "wooden chair", "student chair", "desk chair"},
+    "jerry can": {"jerry can", "jerrycan", "fuel can", "gas can", "petrol can", "metal can", "fuel container"},
+    "bucket": {"bucket", "wooden bucket", "pail"},
+    "suitcase": {"suitcase", "vintage suitcase", "luggage", "travel case"},
 }
 CLOSE_M = 0.5
 
@@ -199,7 +204,7 @@ def _listed_unverifiable(truth: dict, scene: dict, fit: Fit) -> list[str]:
     listed = []
     for item in truth.get("unverifiable", []):
         spot = _truth_centre(item["after"] or item["before"])
-        for thing in scene.get("unchecked", []):
+        for thing in _seen_once(scene):
             if _floor_distance(spot, fit.point(thing["box"]["center"])) <= CLOSE_M:
                 listed.append(f"{thing['id']} lists the {item['label']} as seen once")
     return listed
@@ -239,12 +244,24 @@ def observable(item: dict, truth: dict) -> bool:
     return all(frames_in_view(box, cameras[walk], k) >= MIN_FRAMES_IN_VIEW for box, walk in needs if box)
 
 
+def _seen_once(scene: dict) -> list[dict]:
+    return [thing for thing in scene.get("unchecked", []) if thing.get("reason", "one video") == "one video"]
+
+
+def doubted_real_changes(scene: dict, truth: dict, fit: Fit) -> list[str]:
+    """Entries set aside as unsupported that sit where a true change happened, so a real change was lost."""
+    spots = [_truth_centre(side) for item in truth["changes"] for side in (item["before"], item["after"]) if side]
+    return [f"{thing['id']} set aside a real change" for thing in scene.get("unchecked", [])
+            if thing.get("reason") == "unsupported"
+            and any(_floor_distance(fit.point(thing["box"]["center"]), spot) <= CLOSE_M for spot in spots)]
+
+
 def seen_once_on_unchanged(scene: dict, truth: dict, fit: Fit) -> list[str]:
     """Seen-once entries that are really part of an object that never changed."""
     still = [item["before"] for item in truth.get("objects", {}).values()
              if item["before"] and item["after"] and item["before"]["center"] == item["after"]["center"]]
     flagged = []
-    for thing in scene.get("unchecked", []):
+    for thing in _seen_once(scene):
         centre = fit.point(thing["box"]["center"])
         for box in still:
             if _floor_distance(centre, box["center"]) <= max(0.3, 0.5 * float(np.hypot(*box["size"][:2]))):
@@ -313,6 +330,7 @@ def score(scene: dict, truth: dict) -> dict:
                          f"{MIN_FRAMES_IN_VIEW} frames of the other video" for item in unseeable],
         "seen_once_on_unchanged": seen_once_on_unchanged(scene, truth, fits["shape"]),
         "phantom_furniture": phantom_furniture(scene, truth, fits["shape"]),
+        "doubted_real_changes": doubted_real_changes(scene, truth, fits["shape"]),
     }
 
 

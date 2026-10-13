@@ -1,6 +1,6 @@
 {
  "format": 1,
- "detector": "6d29accc7676",
+ "detector": "875704297675",
  "inputs": {
   "before": "before.mp4",
   "after": "after.mp4"
@@ -244,7 +244,7 @@
    "id": "c2",
    "type": "moved",
    "name": "stool",
-   "detail": "black metal stool",
+   "detail": "black metal stool with round top",
    "sentence": "The stool moved 2.7 m from beside the wooden table to the other side of the wooden table.",
    "partly_seen": false,
    "size": [
@@ -2647,9 +2647,9 @@
   }
  ],
  "seconds": {
-  "reconstruction": 37.5,
-  "change evidence": 5.1,
-  "naming": 28.8
+  "reconstruction": 37.3,
+  "change evidence": 5.0,
+  "naming": 29.9
  },
  "scale": {
   "factor": 0.8004,

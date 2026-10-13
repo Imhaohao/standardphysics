@@ -30,6 +30,8 @@ export type RoomChange = {
 export type UncheckedThing = {
   id: string;
   video: Video;
+  /** "one video": the other video never looked there; "unsupported": it hangs in the air. */
+  reason?: "one video" | "unsupported";
   name: string;
   detail: string;
   sentence: string;
@@ -140,9 +142,16 @@ export const EXAMPLE_ROOMS = [
   { room: "office", label: "Office" },
   { room: "bedroom", label: "Bedroom" },
   { room: "kitchen", label: "Kitchen" },
+  { room: "workshop", label: "Workshop" },
   { room: "living-room-same", label: "Nothing changed" },
   { room: "living-room-blind-spot", label: "Blind spot" },
 ] as const;
+
+/** The furniture some sentence places a change against; the rest stays unlabelled so a misread piece can't mislead. */
+export function citedFurniture(scene: Pick<ChangeScene, "changes" | "furniture">): NonNullable<ChangeScene["furniture"]> {
+  const sentences = scene.changes.map((change) => change.sentence);
+  return (scene.furniture ?? []).filter((piece) => sentences.some((sentence) => sentence.includes(`the ${piece.name}`)));
+}
 
 /** Positive yaw turns counterclockwise when the room is seen from above. */
 export function formatTurn(degrees: number | null | undefined): string | null {

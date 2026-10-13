@@ -185,8 +185,14 @@ def playable_copy(source: Path, target: Path) -> str | None:
     return target.name if subprocess.run(command, check=False).returncode == 0 else None
 
 
+def _unchecked_sentence(region: Region, detail: str, where: str) -> str:
+    if region.doubt == "unsupported":
+        return language.unsupported_sentence(detail, region.kind, float(region.box.center[2] - region.box.size[2] / 2))
+    return language.unchecked_sentence(detail, where, EPOCH_NAMES[region.epoch])
+
+
 def unchecked_records(scene, regions: list[Region], out: Path) -> list[dict]:
-    """Things only one video saw. They are listed, never counted as changes."""
+    """Things only one video saw, or that hang in the air. They are listed, never counted as changes."""
     folder = out / "pictures"
     folder.mkdir(parents=True, exist_ok=True)
     records = []
@@ -197,7 +203,7 @@ def unchecked_records(scene, regions: list[Region], out: Path) -> list[dict]:
         shot = picture(view, region.box, folder / f"{identifier}.jpg") if view is not None else None
         records.append({
             "id": identifier, "video": video, "name": name or "object", "detail": detail or "object",
-            "sentence": language.unchecked_sentence(detail or name or "object", where, video),
+            "reason": region.doubt or "one video", "sentence": _unchecked_sentence(region, detail or name or "object", where),
             "box": box_record(region.box), "size_text": language.size_phrase(region.box.size), "picture": shot,
         })
     return records

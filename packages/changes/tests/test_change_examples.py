@@ -16,7 +16,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[3]
 RESULTS = ROOT / "apps" / "web" / "public" / "changes"
 TRUTH = ROOT / "datasets" / "changes"
 
-# room, changes found with a box covering the object, changes only partly found, things listed as seen once,
+# room, changes found with a box covering the object, changes only partly found, things listed as not counted,
 # and reports of changes that did not happen, which are known misses kept visible rather than tuned away
 EXPECTED = [
     ("living-room", 5, 0, 0, 0),
@@ -24,17 +24,19 @@ EXPECTED = [
     ("living-room-same", 0, 0, 0, 0),
     ("living-room-blind-spot", 1, 0, 1, 0),
     ("office", 3, 1, 0, 0),
-    ("bedroom", 5, 0, 0, 1),
+    ("bedroom", 5, 0, 1, 0),
     ("kitchen", 5, 0, 0, 0),
+    ("workshop", 3, 1, 0, 1),
 ]
 # room, names that match the object exactly, names whose kind of thing is right, and which changes admit being partly seen
 NAMES_AND_HEDGES = [
     ("living-room", "5 of 5", "5 of 5", []),
-    ("studio", "3 of 4", "4 of 4", ["wooden crate"]),
+    ("studio", "4 of 4", "4 of 4", ["wooden crate"]),
     ("living-room-blind-spot", "1 of 1", "1 of 1", []),
     ("office", "1 of 3", "3 of 3", ["wooden crate"]),
-    ("bedroom", "1 of 5", "2 of 5", []),
+    ("bedroom", "2 of 5", "3 of 5", []),
     ("kitchen", "1 of 5", "4 of 5", []),
+    ("workshop", "3 of 3", "3 of 3", []),
 ]
 # furniture the sentences may cite that stands on no real object: the kitchen's stove read as a white plastic chair
 KNOWN_PHANTOMS = {"kitchen": ["white plastic chair"]}
@@ -72,12 +74,19 @@ def test_every_checked_in_result_came_from_this_detector():
 
 
 @pytest.mark.parametrize("room", [room for room, *_ in EXPECTED])
+def test_nothing_set_aside_as_hanging_in_the_air_was_a_real_change(room):
+    _, report = scored(room)
+    assert report["doubted_real_changes"] == []
+
+
+@pytest.mark.parametrize("room", [room for room, *_ in EXPECTED])
 def test_furniture_the_sentences_can_cite_is_real_apart_from_known_misses(room):
     _, report = scored(room)
     assert report["phantom_furniture"] == KNOWN_PHANTOMS.get(room, [])
 
 
-@pytest.mark.parametrize("room", ["living-room", "studio", "living-room-blind-spot", "office"])
+@pytest.mark.parametrize("room", ["living-room", "studio", "living-room-blind-spot", "office", "bedroom", "kitchen",
+                                  "workshop"])
 def test_boxes_stand_on_what_holds_them_up(room):
     _, report = scored(room)
     assert report["mean_bottom_error_m"] < 0.05

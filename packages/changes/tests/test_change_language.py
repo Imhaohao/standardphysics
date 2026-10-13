@@ -89,3 +89,15 @@ def test_a_round_thing_never_claims_a_turn():
 
     assert visible_turn("oil drum", 120.0) is None
     assert visible_turn("armchair", 90.0) == 90.0
+
+
+def test_a_hanging_box_is_described_as_not_counted():
+    sentence = language.unsupported_sentence("dark wooden bed post", "added", 0.78)
+    assert sentence.startswith("A dark wooden bed post seems to have appeared 80 cm above the floor")
+    assert sentence.endswith("is not counted.")
+
+
+def test_number_follows_the_noun_the_phrase_is_about():
+    assert language.some("green suitcase with photos") == "a green suitcase with photos"
+    assert language.is_plural("white ceramic plates")
+    assert not language.is_plural("brown wooden seat with black metal legs")

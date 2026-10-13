@@ -4,18 +4,16 @@
   "rmse_m": 0.015
  },
  "recall": 1.0,
- "precision": 0.833,
+ "precision": 1.0,
  "partial": [],
- "names_correct": "1 of 5",
- "head_nouns_correct": "2 of 5",
+ "names_correct": "2 of 5",
+ "head_nouns_correct": "3 of 5",
  "mean_centre_error_m": 0.046,
  "mean_bottom_error_m": 0.017,
  "mean_height_error_m": 0.018,
  "mean_overlap": 0.654,
  "mean_distance_error_m": 0.071,
- "false_alarms": [
-  "c5"
- ],
+ "false_alarms": [],
  "unverifiable_reported": [],
  "unverifiable_listed": [],
  "changes": [
@@ -103,10 +101,10 @@
   {
    "truth": "wicker basket",
    "type": "added",
-   "found": "c6",
-   "name": "stacked plates",
-   "name_ok": false,
-   "head_noun_ok": false,
+   "found": "c5",
+   "name": "woven basket",
+   "name_ok": true,
+   "head_noun_ok": true,
    "shape_position_error_m": 0.05,
    "after": {
     "centre_error_m": 0.013,
@@ -118,5 +116,6 @@
  ],
  "unobservable": [],
  "seen_once_on_unchanged": [],
- "phantom_furniture": []
+ "phantom_furniture": [],
+ "doubted_real_changes": []
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  BOX_EDGES, type RoomChange, type Vec3, cameraPath, changeCentre, changeReach, edgePositions, formatLength,
+  BOX_EDGES, type RoomChange, type Vec3, cameraPath, changeCentre, changeReach, citedFurniture, edgePositions, formatLength,
   formatTurn, moveArc, parseCloud, percent, phoneHeight, placeOf, sentenceCase,
 } from "./room-changes";
 
@@ -94,5 +94,16 @@ describe("paths", () => {
     expect(arc[0]).toEqual([0, 0, 1]);
     expect(arc[arc.length - 1]).toEqual([2, 0, 1]);
     expect(Math.max(...arc.map((p) => p[2]))).toBeGreaterThan(1.2);
+  });
+});
+
+describe("citedFurniture", () => {
+  it("labels only furniture a sentence places a change against", () => {
+    const box = { center: [0, 0, 0], size: [1, 1, 1], yaw_deg: 0, corners: [] };
+    const scene = {
+      changes: [{ sentence: "A basket appeared on the coffee table." }],
+      furniture: [{ name: "coffee table", box }, { name: "white plastic chair", box }],
+    } as unknown as Parameters<typeof citedFurniture>[0];
+    expect(citedFurniture(scene).map((piece) => piece.name)).toEqual(["coffee table"]);
   });
 });

@@ -13,8 +13,11 @@ from PIL import Image
 
 QWEN_ID = "mlx-community/Qwen3-VL-8B-Instruct-4bit"
 DINO_ID = "facebook/dinov2-large"
-PROMPT = (
-    "This is a photo of a room. We traced one object with an orange outline; the outline is ours and "
+ONE_VIEW = "This is a photo of a room. We traced one object with an orange outline; "
+TWO_VIEWS = ("These are two photos of one room from different angles. In both we traced the same object with an "
+             "orange outline, so use both to tell what it is; ")
+REQUEST = (
+    "the outline is ours and "
     "is not part of the object. Reply with only a JSON object with three keys: "
     '"name": the everyday name of the outlined object in one to three lowercase words; '
     '"detail": a short lowercase noun phrase naming it with its colour or material, at most six words, '
@@ -27,14 +30,17 @@ PROMPT = (
 FALLBACK = {"name": "object", "detail": "object", "where": ""}
 
 
+PROMPT = ONE_VIEW + REQUEST
+
+
 class Namer(Protocol):
-    def name(self, image: Image.Image) -> dict: ...
+    def name(self, *images: Image.Image) -> dict: ...
 
 
 class PlainNamer:
     """No model: every region is an object, and the geometry still says where and how big."""
 
-    def name(self, image: Image.Image) -> dict:
+    def name(self, *images: Image.Image) -> dict:
         return dict(FALLBACK)
 
 
@@ -46,15 +52,18 @@ class QwenNamer:
 
         self.model, self.processor = load(model_id)
 
-    def name(self, image: Image.Image) -> dict:
+    def name(self, *images: Image.Image) -> dict:
         from mlx_vlm import generate
         from mlx_vlm.prompt_utils import apply_chat_template
 
-        prompt = apply_chat_template(self.processor, self.model.config, PROMPT, num_images=1)
+        request = (TWO_VIEWS if len(images) > 1 else ONE_VIEW) + REQUEST
+        prompt = apply_chat_template(self.processor, self.model.config, request, num_images=len(images))
         with tempfile.TemporaryDirectory() as folder:
-            path = Path(folder) / "crop.jpg"
-            image.convert("RGB").save(path, quality=92)
-            result = generate(self.model, self.processor, prompt, image=[str(path)], max_tokens=96,
+            paths = []
+            for number, image in enumerate(images):
+                paths.append(str(Path(folder) / f"crop{number}.jpg"))
+                image.convert("RGB").save(paths[-1], quality=92)
+            result = generate(self.model, self.processor, prompt, image=paths, max_tokens=96,
                               temperature=0.0, verbose=False)
         return parse_names(getattr(result, "text", str(result)))
 

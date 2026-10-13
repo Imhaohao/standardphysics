@@ -218,6 +218,41 @@ KITCHEN = {
     "unverifiable": [],
 }
 
+# Held out: written before its first run, with furniture
+# types no earlier room has, and scored once before anything was changed.
+WORKSHOP = {
+    "room": {"half_x": 2.5, "half_y": 2.1, "height": 2.7, "floor": "laminate_floor_02", "wall": "grey_plaster",
+             "rug": ("fabric_pattern_07", (1.6, 1.1), (0.1, -0.2))},
+    "objects": [
+        ("desk", "metal_office_desk", "desk", (-0.3, 1.65, 0), (-0.3, 1.65, 0)),
+        ("rack", "worn_metal_rack", "shelving rack", (-2.2, 0.4, 90), (-2.2, 0.4, 90)),
+        ("bench", "painted_wooden_bench", "bench", (1.6, 1.8, 0), (1.6, 1.8, 0)),
+        ("cupboard", "vintage_cabinet_01", "cupboard", (2.25, -0.2, -90), (2.25, -0.2, -90)),
+        ("cart", "tool_cart", "tool cart", (1.0, 0.6, 0), (-0.8, -0.9, 30)),
+        ("school_chair", "SchoolChair_01", "school chair", (-0.3, 0.95, 180), (1.2, -0.8, 90)),
+        ("jerrycan", "metal_jerrycan", "jerry can", (-1.3, -1.3, 15), None),
+        ("bucket", "wooden_bucket_01", "bucket", None, (-1.2, 0.1, 0)),
+        ("suitcase", "vintage_suitcase", "suitcase", None, (-0.5, 1.65, 10, "desk")),
+    ],
+    "walks": {
+        "before": [
+            ((-1.9, -1.6, 1.44), (0.8, 1.2, 0.4)),
+            ((-0.6, -1.7, 1.46), (0.6, 0.8, 0.2)),
+            ((0.6, -1.7, 1.45), (-0.8, 0.9, 0.3)),
+            ((1.7, -1.5, 1.43), (-0.5, 1.0, 0.3)),
+            ((1.9, -0.6, 1.41), (-1.4, 0.4, 0.4)),
+        ],
+        "after": [
+            ((1.7, 1.0, 1.35), (-1.2, -0.8, 0.3)),
+            ((1.6, -1.6, 1.36), (-1.2, 0.6, 0.25)),
+            ((0.0, -1.75, 1.37), (0.6, 1.0, 0.3)),
+            ((-1.8, -1.5, 1.35), (1.0, 0.8, 0.35)),
+            ((-1.7, -0.3, 1.34), (1.6, -0.3, 0.4)),
+        ],
+    },
+    "unverifiable": [],
+}
+
 SCENES = {
     "living-room": LIVING_ROOM,
     "living-room-same": LIVING_ROOM_SAME,
@@ -226,4 +261,5 @@ SCENES = {
     "office": OFFICE,
     "bedroom": BEDROOM,
     "kitchen": KITCHEN,
+    "workshop": WORKSHOP,
 }

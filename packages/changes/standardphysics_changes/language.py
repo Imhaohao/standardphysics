@@ -24,9 +24,19 @@ def article(phrase: str) -> str:
     return "an" if phrase[:1].lower() in "aeiou" else "a"
 
 
+QUALIFIERS = frozenset({"with", "of", "in", "on", "from", "for", "near", "under", "and"})
+
+
+def head_noun(phrase: str) -> str:
+    """The word the phrase is about: "seat" in "wooden seat with black metal legs"."""
+    words = phrase.lower().split()
+    cut = next((index for index, word in enumerate(words) if word in QUALIFIERS and index > 0), len(words))
+    return words[cut - 1] if words else ""
+
+
 def is_plural(phrase: str) -> bool:
-    last = phrase.split()[-1].lower() if phrase.split() else ""
-    return last.endswith("s") and not last.endswith(("ss", "us", "is"))
+    head = head_noun(phrase)
+    return head.endswith("s") and not head.endswith(("ss", "us", "is"))
 
 
 def some(phrase: str) -> str:
@@ -104,6 +114,13 @@ def unchecked_sentence(detail: str, where: str, video: str) -> str:
     shows, it = ("show", "they") if is_plural(detail) else ("shows", "it")
     return (f"{_capital(some(detail))}{_where(where)} {shows} only in the {video} video; "
             f"the {other} video never looked there, so {it} {doubt}.")
+
+
+def unsupported_sentence(detail: str, kind: str, bottom_m: float) -> str:
+    """A box with nothing under it: worth showing, not worth counting."""
+    verb = ("seem" if is_plural(detail) else "seems") + (" to have appeared" if kind == "added" else " to have gone")
+    return (f"{_capital(some(detail))} {verb} {length(bottom_m)} above the floor with nothing under most of it, "
+            "so it is more likely a misread surface than a change and is not counted.")
 
 
 def short_clause(change: dict) -> str:

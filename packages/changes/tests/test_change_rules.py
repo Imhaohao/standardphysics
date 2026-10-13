@@ -167,3 +167,26 @@ def test_a_seat_that_lost_its_legs_borrows_the_height_of_its_other_end():
     match_heights([Move(standing, seat, 2.0, None, 1.0), Move(standing, lifted, 2.0, None, 1.0)])
     assert seat.box.size[2] == pytest.approx(0.5) and seat.box.center[2] == pytest.approx(0.25)
     assert lifted.box.center[2] == pytest.approx(1.0)
+
+
+def test_a_box_hanging_over_empty_space_has_little_support():
+    from standardphysics_changes.regions import support_share
+
+    rng = np.random.default_rng(3)
+    table_top = np.column_stack([rng.uniform(-0.5, 0.5, 4000), rng.uniform(-0.5, 0.5, 4000), np.full(4000, 0.75)])
+    on_table = Box(np.array([0.0, 0.0, 0.85]), np.array([0.3, 0.3, 0.2]), 0.0)
+    over_edge = Box(np.array([0.5, 0.0, 0.85]), np.array([0.4, 0.3, 0.2]), 0.0)
+    on_floor = Box(np.array([3.0, 0.0, 0.2]), np.array([0.3, 0.3, 0.4]), 0.0)
+    assert support_share(on_table, table_top) > 0.9
+    assert support_share(over_edge, table_top) < 0.6
+    assert support_share(on_floor, table_top) == 1.0
+
+
+def test_the_namer_gets_a_second_view_only_when_it_shows_enough():
+    from types import SimpleNamespace
+
+    from standardphysics_changes.pipeline import clearest_two
+
+    views = [SimpleNamespace(visible=1.0), SimpleNamespace(visible=0.6), SimpleNamespace(visible=0.5)]
+    assert len(clearest_two(views)) == 2
+    assert len(clearest_two([views[0], SimpleNamespace(visible=0.3)])) == 1

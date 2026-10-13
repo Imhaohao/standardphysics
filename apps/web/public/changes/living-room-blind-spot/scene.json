@@ -1,6 +1,6 @@
 {
  "format": 1,
- "detector": "6d29accc7676",
+ "detector": "875704297675",
  "inputs": {
   "before": "before.mp4",
   "after": "after.mp4"
@@ -1981,9 +1981,9 @@
   }
  ],
  "seconds": {
-  "reconstruction": 37.7,
-  "change evidence": 3.6,
-  "naming": 20.8
+  "reconstruction": 36.7,
+  "change evidence": 3.7,
+  "naming": 21.9
  },
  "scale": {
   "factor": 0.9212,
@@ -1995,6 +1995,7 @@
    "video": "after",
    "name": "plastic crate",
    "detail": "brown plastic crate",
+   "reason": "one video",
    "sentence": "A brown plastic crate near the sofa shows only in the after video; the before video never looked there, so it may or may not be new.",
    "box": {
     "center": [

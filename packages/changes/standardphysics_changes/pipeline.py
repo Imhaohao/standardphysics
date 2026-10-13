@@ -28,7 +28,7 @@ from .landmarks import (
 from .matching import MatchRules, absorb_fragments, match_heights, pair_moves
 from .naming import Embedder, Namer, PlainNamer, Segmenter, make_namer
 from .pictures import isolated, outlined, runs_off_frame, sightings
-from .regions import Region, RegionRules, find_regions, finish_regions, one_sided_regions, settle
+from .regions import Region, RegionRules, find_regions, finish_regions, one_sided_regions, settle, support_share
 from .views import AFTER, BEFORE, View, load_views, of_epoch, save_views
 
 
@@ -170,10 +170,33 @@ def describe_regions(scene: Scene, regions: list[Region], namer: Namer, embedder
         if not seen:
             region.names = {"name": "object", "detail": "object", "where": ""}
             continue
-        region.names = namer.name(outlined(seen[0], margin=1.2))
+        region.names = namer.name(*(outlined(sighting, margin=1.2) for sighting in clearest_two(seen)))
         region.cut_off = never_seen_whole(seen)
         if embedder is not None:
             region.descriptor = embedder.embed([isolated(s) for s in seen[:3]])
+
+
+def clearest_two(seen: list) -> list:
+    """The best view, and the next one when it shows at least half as much, so the namer can cross-check."""
+    return seen[:1] + [sighting for sighting in seen[1:2] if sighting.visible >= 0.5 * seen[0].visible]
+
+
+def unsupported(regions: list[Region], points: np.ndarray, changed_ids: np.ndarray,
+                min_share: float = 0.75) -> tuple[list[Region], list[Region]]:
+    """Split off raised regions with nothing under most of their footprint; things rest on something.
+
+    A box hanging in the air is more likely a misread surface than a new object, so it is
+    listed as not counted, with the reason, instead of being reported.
+    """
+    still = np.delete(points, changed_ids, axis=0)
+    kept, doubted = [], []
+    for region in regions:
+        if support_share(region.box, still) >= min_share:
+            kept.append(region)
+            continue
+        region.doubt = "unsupported"
+        doubted.append(region)
+    return kept, doubted
 
 
 def never_seen_whole(seen: list) -> bool:
@@ -302,6 +325,8 @@ def run(before: Path, after: Path, out: Path, settings: Settings = Settings(), l
     distinguish(landmarks, removed + added + unchecked)
     locate_regions(removed + added + unchecked, landmarks)
     log(f"seen by one video only: {', '.join(r.names.get('name', 'object') for r in unchecked) or 'nothing'}")
+    for region in unchecked:
+        region.doubt = region.doubt or "one video"
     log(f"furniture that stayed: {', '.join(lm.name for lm in landmarks) or 'none named'}")
     timer.lap("naming")
     moves = pair_moves(removed, added, scene.cloud.points, settings.matching)
@@ -309,6 +334,10 @@ def run(before: Path, after: Path, out: Path, settings: Settings = Settings(), l
     loose_removed, loose_added = absorb_fragments(moves, [r for r in removed if id(r) not in paired],
                                                   [r for r in added if id(r) not in paired], scene.cloud.points)
     match_heights(moves)
+    changed_ids = np.unique(np.concatenate([region.point_ids for region in removed + added] or [np.array([], int)]))
+    loose_removed, doubted_removed = unsupported(loose_removed, scene.cloud.points, changed_ids)
+    loose_added, doubted_added = unsupported(loose_added, scene.cloud.points, changed_ids)
+    unchecked += doubted_removed + doubted_added
     found = change_records.assemble(moves, loose_removed, loose_added, landmarks)
     for change in found:
         log(f"  {change.id} {change.type}: {change.sentence}")
