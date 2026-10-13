@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "standardphysics-changes"
+version = "0.1.0"
+description = "Compare two phone walkthroughs of one room and report what moved, appeared or disappeared in 3D."
+requires-python = ">=3.11"
+# The change reasoning is numpy and scipy, so it installs and tests anywhere.
+dependencies = ["numpy>=1.26", "scipy>=1.11", "Pillow>=10.0"]
+
+[project.optional-dependencies]
+# The models: MapAnything for the shared reconstruction, DINOv2 for matching what
+# moved, and a local Qwen3-VL through mlx-vlm for names. scripts/changes/setup.sh
+# installs these with the pins that were tested; mapanything and uniception come in
+# with --no-deps there, because their metadata asks for a second torch.
+models = [
+  "torch>=2.4",
+  "opencv-python-headless>=4.10",
+  "transformers>=4.57",
+  "huggingface_hub>=0.30",
+  "mlx-vlm>=0.3.9; sys_platform == 'darwin'",
+]
+
+[project.scripts]
+room-changes = "standardphysics_changes.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["standardphysics_changes"]

@@ -28,8 +28,11 @@ FIXTURES = "standardphysics_fixtures"
 PIPELINE = "standardphysics_pipeline"
 AGENTS = "standardphysics_agents"
 API = "standardphysics_api"
+# The room-change detector stands alone: it reads two videos and writes files the web app shows.
+CHANGES = "standardphysics_changes"
 
 ALLOWED_DEPENDENCIES: dict[str, frozenset[str]] = {
+    CHANGES: frozenset(),
     CONTRACTS: frozenset(),
     FIXTURES: frozenset({CONTRACTS}),
     PIPELINE: frozenset({CONTRACTS}),

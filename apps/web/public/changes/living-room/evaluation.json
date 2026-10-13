@@ -1,0 +1,60 @@
+{
+ "camera_alignment": {
+  "scale": 0.89,
+  "rmse_m": 0.019
+ },
+ "recall": 1.0,
+ "precision": 1.0,
+ "names_correct": 5,
+ "mean_position_error_m": 0.035,
+ "changes": [
+  {
+   "truth": "armchair",
+   "type": "moved",
+   "found": "c1",
+   "name": "armchair",
+   "name_ok": true,
+   "position_error_m": 0.039,
+   "distance_error_m": 0.029,
+   "true_turn_deg": -160,
+   "turn_reported": true,
+   "turn_error_deg": 10
+  },
+  {
+   "truth": "wooden stool",
+   "type": "moved",
+   "found": "c2",
+   "name": "wooden stool",
+   "name_ok": true,
+   "position_error_m": 0.083,
+   "distance_error_m": 0.087,
+   "true_turn_deg": 30,
+   "turn_reported": false
+  },
+  {
+   "truth": "potted plant",
+   "type": "removed",
+   "found": "c3",
+   "name": "potted plant",
+   "name_ok": true,
+   "position_error_m": 0.032
+  },
+  {
+   "truth": "cardboard box",
+   "type": "added",
+   "found": "c4",
+   "name": "cardboard box",
+   "name_ok": true,
+   "position_error_m": 0.016
+  },
+  {
+   "truth": "wicker basket",
+   "type": "added",
+   "found": "c5",
+   "name": "bamboo basket",
+   "name_ok": true,
+   "position_error_m": 0.004
+  }
+ ],
+ "false_alarms": []
+}

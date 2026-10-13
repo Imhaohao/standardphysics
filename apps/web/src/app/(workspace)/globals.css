@@ -15,6 +15,12 @@
   --color-pass: #2e7d4f;
   --color-attention: #9a6200;
 
+  /* What the room-change viewer draws each kind of change in, and the hatch over blind spots. */
+  --color-moved: var(--color-accent);
+  --color-added: var(--color-pass);
+  --color-removed: var(--color-problem);
+  --color-unseen: var(--color-attention);
+
   --font-sans: var(--font-karla), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-libre-franklin), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-atkinson-mono), ui-monospace, monospace;
@@ -73,6 +79,26 @@
     .pressable-wide:active {
       scale: none !important;
     }
+  }
+
+  .change-tone-moved {
+    --change: var(--color-moved);
+  }
+
+  .change-tone-added {
+    --change: var(--color-added);
+  }
+
+  .change-tone-removed {
+    --change: var(--color-removed);
+  }
+
+  .change-tone {
+    color: var(--change);
+  }
+
+  [aria-pressed="true"] .change-tone {
+    color: inherit;
   }
 
   .measurement {
