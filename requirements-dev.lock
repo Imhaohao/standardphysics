@@ -16,6 +16,7 @@ annotated-types==0.8.0
 anyio==4.15.1
     # via
     #   -c requirements.lock
+    #   cwevals
     #   gql
     #   httpx
     #   httpx2
@@ -73,6 +74,10 @@ cryptography==50.0.1
     #   -c requirements.lock
     #   pdfminer-six
     #   standardphysics-api
+cwevals==0.0.1b1
+    # via
+    #   -c requirements.lock
+    #   wandb
 diskcache-weave==5.6.3.post1
     # via
     #   -c requirements.lock
@@ -80,6 +85,7 @@ diskcache-weave==5.6.3.post1
 distro==1.9.0
     # via
     #   -c requirements.lock
+    #   cwevals
     #   weave
 dnspython==2.8.0
     # via
@@ -148,6 +154,7 @@ httpcore2==2.13.1 ; sys_platform != 'emscripten'
 httpx==0.28.1
     # via
     #   -c requirements.lock
+    #   cwevals
     #   gql
     #   standardphysics-api
 httpx2==2.13.1
@@ -306,6 +313,7 @@ pillow==12.3.0
     # via
     #   -c requirements.lock
     #   polyfile-weave
+    #   standardphysics-agents
     #   standardphysics-pipeline
 platformdirs==4.12.0
     # via
@@ -338,6 +346,7 @@ pycparser==3.0 ; (python_full_version < '3.15' and implementation_name == 'pypy'
 pydantic==2.13.5
     # via
     #   -c requirements.lock
+    #   cwevals
     #   fastapi
     #   openai
     #   standardphysics-agents
@@ -408,6 +417,7 @@ sentry-sdk==2.70.0
 sniffio==1.3.1
     # via
     #   -c requirements.lock
+    #   cwevals
     #   openai
     #   weave
 sortedcontainers==2.4.0
@@ -443,6 +453,7 @@ typing-extensions==4.16.0
     #   -c requirements.lock
     #   abnf
     #   anyio
+    #   cwevals
     #   fastapi
     #   httpx2
     #   marimo
@@ -476,7 +487,7 @@ uvicorn==0.52.4
     #   -c requirements.lock
     #   marimo
     #   standardphysics-api
-wandb==0.30.0
+wandb==0.31.0
     # via
     #   -c requirements.lock
     #   standardphysics-agents
