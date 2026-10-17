@@ -1,0 +1,13 @@
+# Findings the image scan in .github/workflows/ci.yml lets through. Each one
+# names a single vulnerability at a single path, says why it cannot be reached
+# here, and says what retires it. Nothing else belongs in this file.
+ignore:
+  # Blender bundles its own CPython, and Blender 5.2.2, the newest release,
+  # still ships 3.13.13. The bug needs a TLS server whose sni_callback swaps
+  # SSLSocket.context; Blender's Python only runs our bake and render scripts
+  # as a subprocess and never serves TLS. Remove this when a Blender release
+  # bundles Python 3.13.16 or later and the Dockerfile moves to it.
+  - vulnerability: CVE-2026-19445
+    package:
+      name: python
+      location: "/opt/blender/**"
