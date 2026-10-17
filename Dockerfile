@@ -54,7 +54,12 @@ RUN cd notebooks && marimo export html-wasm finetune_story.py -o /notebook/expor
 
 FROM ${NODE_IMAGE} AS runtime
 
+# The node image is rebuilt on Node's schedule, not Debian's, so it can lag
+# bookworm-security by weeks: perl-base and libexpat1 had critical fixes there
+# that the pinned digest, and even the tag's newest digest, did not carry.
+# Upgrading here is what keeps the image scan honest between base bumps.
 RUN apt-get update \
+ && apt-get upgrade -y --no-install-recommends \
  && apt-get install -y --no-install-recommends python3 python3-venv libgl1 libglib2.0-0 \
  && rm -rf /var/lib/apt/lists/*
 

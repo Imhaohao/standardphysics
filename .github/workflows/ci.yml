@@ -383,10 +383,13 @@ jobs:
       GRYPE_VERSION: 0.119.0
       GRYPE_SHA256: 3fa2dc4b924621ab65404cf08d0b8438d896d80ab949c9d5a4ca283c36004c9b
     steps:
-      # Only the local action is needed from the repository.
+      # Only the local action and the scan's ignore list are needed.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          sparse-checkout: .github/actions
+          sparse-checkout: |
+            .github/actions
+            .grype.yaml
+          sparse-checkout-cone-mode: false
       - name: Download grype
         uses: ./.github/actions/pinned-download
         with:
@@ -401,7 +404,7 @@ jobs:
           GRYPE_REGISTRY_AUTH_AUTHORITY: ghcr.io
           GRYPE_REGISTRY_AUTH_USERNAME: ${{ github.actor }}
           GRYPE_REGISTRY_AUTH_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
-        run: '"$RUNNER_TEMP/grype" "registry:$CANDIDATE" --only-fixed --fail-on critical'
+        run: '"$RUNNER_TEMP/grype" "registry:$CANDIDATE" --config .grype.yaml --only-fixed --fail-on critical'
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         if: env.CANDIDATE == ''
         with:
@@ -416,7 +419,7 @@ jobs:
             echo "the archive holds $loaded_id, but the image job tested $TESTED_IMAGE_ID" >&2
             exit 1
           fi
-          "$RUNNER_TEMP/grype" "docker:standardphysics:ci" --only-fixed --fail-on critical
+          "$RUNNER_TEMP/grype" "docker:standardphysics:ci" --config .grype.yaml --only-fixed --fail-on critical
 
   # A master commit whose every check passed gets its candidate retagged as
   # ghcr.io/<owner>/standardphysics:<sha>, the tag scripts/deploy.sh pulls.
