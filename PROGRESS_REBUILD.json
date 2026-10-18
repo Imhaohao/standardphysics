@@ -24,7 +24,18 @@
     {
       "id": 1,
       "name": "Substrate: regions and the closed operator set, tested on real scans",
-      "status": "todo"
+      "status": "segmentation done 2026-10-18; ruff clean, 2659 + 792 API tests pass on compute-box",
+      "findings": {
+        "already_existed": "substrate/regions.py (box regions from scene nodes + full operator set), frames.py, planes.py, all tested on datasets/phone",
+        "gap_closed": "regions now also come straight from the LiDAR mesh (substrate/segment.py), so unboxed matter becomes regions",
+        "method": "Felzenszwalb-Huttenlocher graph segmentation over 8 cm cells; edge weight = normal turn + step along facing; small pieces folded",
+        "rejected": "plane removal + touch clustering: phone mesh is one continuous skin, 77% of cells never join a flat run, gives one 13.9 m clump",
+        "real_scan_numbers": {
+          "test1": "3308 pieces in 2.3 s, 4.8% straddle a solid box, 15/16 boxes hold a piece",
+          "ravida": "2830 pieces in 1.8 s, 2.9% straddle, 14/15 boxes hold a piece"
+        },
+        "open": "pieces are an over-segmentation (superpoints); grouping them into whole things is layer 2 with photos. Pairwise operators over ~3000 pieces need a spatial index before composition uses them."
+      }
     },
     {
       "id": 2,

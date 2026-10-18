@@ -83,6 +83,8 @@ class _Cells:
     middle: np.ndarray
     facing: np.ndarray
     area: np.ndarray
+    of_face: np.ndarray
+    """The cell each triangle was pooled into."""
 
     def __len__(self) -> int:
         return len(self.area)
@@ -93,18 +95,19 @@ def planes_of(mesh: pathlib.Path, capture_to_room: Mat4) -> list[Plane]:
     faces = room_faces(mesh, capture_to_room)
     if not len(faces):
         return []
-    cells = _pool(*_faces(faces))
+    normals, centres, areas, _ = face_measures(faces)
+    cells = pool(normals, centres, areas)
     return sorted(_regions(cells), key=lambda plane: -plane.area)
 
 
-def _faces(faces: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """A normal, a middle and an area for every triangle."""
+def face_measures(faces: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """A normal, a middle and an area for every triangle with any area, and which those were."""
     a, b, c = faces[:, 0], faces[:, 1], faces[:, 2]
     cross = np.cross(b - a, c - a)
     lengths = np.linalg.norm(cross, axis=1)
     keep = lengths > 1e-9
     normals = cross[keep] / lengths[keep][:, None]
-    return _one_way(normals), ((a + b + c) / 3.0)[keep], lengths[keep] / 2.0
+    return _one_way(normals), ((a + b + c) / 3.0)[keep], lengths[keep] / 2.0, keep
 
 
 def _one_way(normals: np.ndarray) -> np.ndarray:
@@ -113,7 +116,7 @@ def _one_way(normals: np.ndarray) -> np.ndarray:
     return np.where(flip[:, None], -normals, normals)
 
 
-def _pool(normals: np.ndarray, centres: np.ndarray, areas: np.ndarray) -> _Cells:
+def pool(normals: np.ndarray, centres: np.ndarray, areas: np.ndarray) -> _Cells:
     """Every triangle dropped into a cell, and each cell given one facing."""
     at = np.floor(centres / CELL_METRES).astype(np.int64)
     places, index = np.unique(at, axis=0, return_inverse=True)
@@ -130,6 +133,7 @@ def _pool(normals: np.ndarray, centres: np.ndarray, areas: np.ndarray) -> _Cells
         middle=middle / np.where(weight[:, None] == 0, 1.0, weight[:, None]),
         facing=facing / safe[:, None],
         area=weight,
+        of_face=index.reshape(-1),
     )
 
 

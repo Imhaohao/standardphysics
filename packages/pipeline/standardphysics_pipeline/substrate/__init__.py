@@ -32,6 +32,7 @@ from .regions import (
     separation,
     volume,
 )
+from .segment import segment
 
 __all__ = [
     "Contact",
@@ -60,6 +61,7 @@ __all__ = [
     "region_of",
     "regions",
     "relative_offset",
+    "segment",
     "separation",
     "volume",
 ]
