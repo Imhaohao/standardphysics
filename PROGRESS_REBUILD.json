@@ -1,0 +1,84 @@
+{
+  "branch": "rebuild/ground-up",
+  "base": "origin/unified 3a3b5bd4",
+  "goal": "Rebuild everything on the three-layer design (docs/MISSION.md, docs/ARCHITECTURE.md); a whole scan, textures included, ready in under 60 s after upload",
+  "benchmark_scan": "Share Tea replay, ~/Documents/sp-data/demo/share-tea-data, scan 7262a2ab-4999-4736-9f20-2037cb0fb380",
+  "baseline_2026_09_28": {
+    "results_s": 192,
+    "textures_s": 707,
+    "per_stage": "not measured; no stage timers exist"
+  },
+  "current_pipeline": {
+    "process": "worker_handlers._process -> stages.ingest_with_report: parse_room_json, label_scan (astra.reconstruct, model call), discover_objects (detect_objects once per photo, model call, cache <scan>/detections), segment_surfaces -> save_revision",
+    "assess": "stages.assess -> agents.assess.assess (rule checks) -> queue display, texture",
+    "display": "stages.geometry (Blender export_glb) + stages.renders (Blender render per finding), offloadable to :8790",
+    "texture": "textures.run_texture -> Blender bake (box model) + painted scan, offloadable",
+    "notes": "Share Tea scan has no detections cache, so a baseline run makes paid detection and labelling calls"
+  },
+  "phases": [
+    {
+      "id": 0,
+      "name": "Per-stage timing harness on Share Tea, run on compute-box",
+      "status": "done 2026-10-18"
+    },
+    {
+      "id": 1,
+      "name": "Substrate: regions and the closed operator set, tested on real scans",
+      "status": "todo"
+    },
+    {
+      "id": 2,
+      "name": "60 s pipeline: concurrent detection and labelling, no Blender on the critical path, GPU texture projection",
+      "status": "todo"
+    },
+    {
+      "id": 3,
+      "name": "Interpretation: coined entities and relations carrying predicates",
+      "status": "todo"
+    },
+    {
+      "id": 4,
+      "name": "Composition: expression language, planner, verifier, held-out suite",
+      "status": "todo"
+    },
+    {
+      "id": 5,
+      "name": "Rules as a data pack, ADA first",
+      "status": "todo"
+    },
+    {
+      "id": 6,
+      "name": "API and worker on the new pipeline",
+      "status": "todo"
+    },
+    {
+      "id": 7,
+      "name": "Web workspace",
+      "status": "todo"
+    },
+    {
+      "id": 8,
+      "name": "iOS capture app",
+      "status": "todo"
+    }
+  ],
+  "share_tea_inputs": "439 frames, lidar_mesh, poses, room_json, room_usdz; no detections cache",
+  "baseline_2026_10_18": {
+    "where": "compute-box, worker in-thread, detection cache cleared",
+    "wall_s": 711,
+    "process_s_approx": 125,
+    "process_note": "355 photos read by Fireworks deepseek-v4p1-flash (340k in / 139k out tokens), 10 label batches (56k in / 16k out), 66 objects found",
+    "assess_and_display_s_approx": 29,
+    "texture_s": 557,
+    "texture_steps_s": {
+      "box model (Blender bake)": 39.6,
+      "mirrored completion": 469.8,
+      "unwrap": 13.3,
+      "box exposure": 10.5,
+      "photo bake": 9.5,
+      "everything else": "under 7 each"
+    },
+    "painted_scan_coverage": "50% of the scan from 439 photos",
+    "takeaway": "mirrored completion is 66% of wall time; results path is ~154 s, dominated by per-photo detection"
+  }
+}
