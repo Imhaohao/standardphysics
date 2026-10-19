@@ -150,9 +150,11 @@ nonisolated struct PresignedPart: Codable, Sendable, Equatable {
 nonisolated struct PresignResponse: Codable, Sendable, Equatable {
     let parts: [PresignedPart]
     let expiresInSecs: Int
+    /// The one storage host every part URL points at, with its port when not the default.
+    var host: String?
 
     enum CodingKeys: String, CodingKey {
-        case parts
+        case parts, host
         case expiresInSecs = "expires_in_secs"
     }
 }

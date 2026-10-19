@@ -5,7 +5,9 @@ import XCTest
 final class BackgroundUploaderTests: XCTestCase {
     private var directory: URL!
     private var storage: UploadStorage!
-    private let config = UploaderConfiguration(partSize: 1000, maxConcurrentParts: 4, maxPartAttempts: 2)
+    private let config = UploaderConfiguration(
+        partSize: 1000, maxConcurrentParts: 4, maxPartAttempts: 2, storageHosts: StorageHostPolicy(allowedHosts: ["r2.test"])
+    )
 
     override func setUpWithError() throws {
         directory = try makeTemporaryDirectory()
@@ -209,7 +211,7 @@ final class BackgroundUploaderTests: XCTestCase {
         session.finish(partLabel(id, 1), .failed(statusCode: 500, message: "boom"))
         await eventually { session.startedLabels.filter { $0 == partLabel(id, 1) }.count == 2 }
         session.finish(partLabel(id, 1), .failed(statusCode: 500, message: "boom"))
-        await eventually { await uploader.snapshot().files.first?.state.failureMessage == "boom" }
+        await eventually { await uploader.snapshot().files.first?.state.failure == .storageRejected }
 
         await uploader.retryFailed()
         await eventually { session.startedLabels.filter { $0 == partLabel(id, 1) }.count == 3 }
@@ -261,7 +263,7 @@ final class BackgroundUploaderTests: XCTestCase {
         let uploader = makeUploader(api: api, session: session)
         await uploader.start()
         _ = try await uploader.enqueue(fileURL: try source(size: 500), scanID: "scan-1")
-        await eventually { await uploader.snapshot().files.first?.state.failureMessage == APIError.forbidden.userMessage }
+        await eventually { await uploader.snapshot().files.first?.state.failure == .notAllowed }
         XCTAssertTrue(session.started.isEmpty)
     }
 
@@ -292,7 +294,7 @@ final class BackgroundUploaderTests: XCTestCase {
             try await uploader.waitUntilFinished(scanID: "scan-1")
             XCTFail("expected failure")
         } catch {
-            XCTAssertEqual(error as? UploadError, .fileFailed(name: "bad.json", message: APIError.forbidden.userMessage))
+            XCTAssertEqual(error as? UploadError, .fileFailed(name: "bad.json", message: UploadFailure.notAllowed.userMessage))
         }
     }
 

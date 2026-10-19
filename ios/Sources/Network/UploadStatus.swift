@@ -55,6 +55,7 @@ nonisolated struct UploaderConfiguration: Sendable {
     var maxPartAttempts = 5
     var urlExpirySkew: TimeInterval = 120
     var retryBackoff = Backoff(base: .seconds(2), maximum: .seconds(60))
+    var storageHosts = StorageHostPolicy.fromInfoPlist()
 }
 
 nonisolated struct PartKey: Hashable, Sendable {

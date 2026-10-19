@@ -39,18 +39,22 @@ final class UploadLedgerTests: XCTestCase {
         XCTAssertEqual(restored.state, .uploading)
         XCTAssertEqual(restored.multipart?.uploadID, "up-1")
         XCTAssertEqual(restored.multipart?.parts.map(\.etag), [nil, "\"e2\"", nil])
-        XCTAssertEqual(restored.multipart?.parts[0].expiresAt, fixedNow.addingTimeInterval(600))
-        XCTAssertEqual(restored.multipart?.parts[0].url?.absoluteString, "https://r2.test/p1")
+        XCTAssertEqual(restored.multipart?.parts[0].expiresAt, .distantPast, "expiry goes with the URL")
+        XCTAssertNil(restored.multipart?.parts[0].url, "presigned URLs are never written to disk")
+        XCTAssertTrue(restored.multipart?.parts[0].headers.isEmpty ?? false)
+        let onDisk = try String(contentsOf: ledgerURL, encoding: .utf8)
+        XCTAssertFalse(onDisk.contains("r2.test"))
         XCTAssertEqual(restored.sha256, "abc123")
     }
 
-    func testFailedStateKeepsItsMessageAcrossRelaunch() async throws {
+    func testFailedStateKeepsItsCodeAcrossRelaunch() async throws {
         let ledger = UploadLedger(fileURL: ledgerURL)
         let record = makeRecord()
         try await ledger.insert(record)
-        try await ledger.update(record.id) { $0.state = .failed(message: "Disk full") }
+        try await ledger.update(record.id) { $0.state = .failed(.storageRejected) }
         let restored = await UploadLedger(fileURL: ledgerURL).record(record.id)
-        XCTAssertEqual(restored?.state.failureMessage, "Disk full")
+        XCTAssertEqual(restored?.state.failure, .storageRejected)
+        XCTAssertEqual(restored?.state.failureMessage, UploadFailure.storageRejected.userMessage)
     }
 
     func testWritesLeaveNoTemporaryFilesBehind() async throws {

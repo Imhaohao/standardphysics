@@ -210,8 +210,8 @@ actor BackgroundUploader {
         case .succeeded(let etag):
             await markPartUploaded(key, etag: etag ?? "")
             return true
-        case .failed(let statusCode, let message):
-            await recordPartFailure(key, statusCode: statusCode, message: message)
+        case .failed(let statusCode, _):
+            await recordPartFailure(key, statusCode: statusCode)
         case .cancelled:
             break
         }
@@ -228,7 +228,7 @@ actor BackgroundUploader {
         transientFailureCount = 0
     }
 
-    private func recordPartFailure(_ key: PartKey, statusCode: Int?, message: String) async {
+    private func recordPartFailure(_ key: PartKey, statusCode: Int?) async {
         let limit = configuration.maxPartAttempts
         await persist {
             try await self.ledger.update(key.fileID) { record in
@@ -237,7 +237,7 @@ actor BackgroundUploader {
                     if statusCode == 403 { part.expiresAt = .distantPast }
                 }
                 let attempts = record.multipart?.parts.first { $0.number == key.number }?.failureCount ?? 0
-                if attempts >= limit { record.state = .failed(message: message) }
+                if attempts >= limit { record.state = .failed(UploadFailure(partStatusCode: statusCode)) }
             }
         }
     }
@@ -362,8 +362,10 @@ actor BackgroundUploader {
     private func withFreshURLs(_ batch: [UploadPart], in record: UploadRecord) async throws -> [UploadPart] {
         let stale = batch.filter { $0.needsFreshURL(at: now(), skew: configuration.urlExpirySkew) }
         guard !stale.isEmpty, let multipart = record.multipart else { return batch }
-        let response = try await api.presignParts(
-            scanID: record.scanID, uploadID: multipart.uploadID, partNumbers: stale.map(\.number)
+        let requested = stale.map(\.number)
+        let response = try PresignValidation.validate(
+            try await api.presignParts(scanID: record.scanID, uploadID: multipart.uploadID, partNumbers: requested),
+            requested: requested, policy: configuration.storageHosts
         )
         let expiry = now().addingTimeInterval(TimeInterval(response.expiresInSecs))
         let byNumber = Dictionary(response.parts.map { ($0.partNumber, $0) }, uniquingKeysWith: { $1 })
@@ -403,14 +405,18 @@ actor BackgroundUploader {
 
     private func handleStepFailure(_ error: Error, id: UUID) async {
         let apiError = (error as? APIError) ?? APIError(transportError: error)
-        switch recovery(for: apiError, isStorageError: !(error is APIError) && !(error is URLError)) {
+        switch recovery(for: apiError, isStorageError: isStorageError(error)) {
         case .retryLater:
             scheduleRepump()
         case .restartUpload:
             await restartUpload(id)
         case .giveUp:
-            await markFailed(id, message: apiError.userMessage)
+            await markFailed(id, failure: isStorageError(error) ? .fileUnreadable : UploadFailure(apiError))
         }
+    }
+
+    private func isStorageError(_ error: Error) -> Bool {
+        !(error is APIError) && !(error is URLError)
     }
 
     private enum Recovery { case retryLater, restartUpload, giveUp }
@@ -440,8 +446,8 @@ actor BackgroundUploader {
         scheduleRepump()
     }
 
-    private func markFailed(_ id: UUID, message: String) async {
-        await persist { try await self.ledger.update(id) { $0.state = .failed(message: message) } }
+    private func markFailed(_ id: UUID, failure: UploadFailure) async {
+        await persist { try await self.ledger.update(id) { $0.state = .failed(failure) } }
         await emit()
     }
 

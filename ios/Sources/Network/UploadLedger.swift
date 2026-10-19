@@ -1,5 +1,7 @@
 import Foundation
 
+/// A presigned URL is a bearer credential for one part, so it lives only in memory. After a
+/// relaunch every unfinished part asks the server for a fresh one.
 nonisolated struct UploadPart: Codable, Sendable, Equatable {
     let number: Int
     var url: URL?
@@ -7,6 +9,19 @@ nonisolated struct UploadPart: Codable, Sendable, Equatable {
     var expiresAt: Date = .distantPast
     var etag: String?
     var failureCount = 0
+
+    enum CodingKeys: String, CodingKey {
+        case number, etag, failureCount
+    }
+
+    init(number: Int, url: URL? = nil, headers: [String: String] = [:], expiresAt: Date = .distantPast, etag: String? = nil, failureCount: Int = 0) {
+        self.number = number
+        self.url = url
+        self.headers = headers
+        self.expiresAt = expiresAt
+        self.etag = etag
+        self.failureCount = failureCount
+    }
 
     var isComplete: Bool { etag != nil }
 
@@ -21,17 +36,57 @@ nonisolated struct MultipartSession: Codable, Sendable, Equatable {
     var parts: [UploadPart]
 }
 
+/// Why an upload stopped for good. Only the code is stored; the words come from the app, so
+/// nothing a server or URLSession said is written to disk or shown verbatim.
+nonisolated enum UploadFailure: String, Codable, Sendable {
+    case storageRejected
+    case network
+    case signedOut
+    case notAllowed
+    case serverRejected
+    case invalidServerResponse
+    case fileUnreadable
+
+    init(_ error: APIError) {
+        switch error {
+        case .unauthorized: self = .signedOut
+        case .forbidden: self = .notAllowed
+        case .malformedResponse, .responseTooLarge: self = .invalidServerResponse
+        case .offline, .timedOut, .transport: self = .network
+        default: self = .serverRejected
+        }
+    }
+
+    init(partStatusCode: Int?) {
+        self = partStatusCode == nil ? .network : .storageRejected
+    }
+
+    var userMessage: String {
+        switch self {
+        case .storageRejected: "Our storage kept refusing part of this file. Try the upload again later."
+        case .network: "The connection kept dropping while this file uploaded. Try again on a steadier network."
+        case .signedOut: "Your session ended. Sign in again to finish uploading."
+        case .notAllowed: "Your account can't upload to this scan."
+        case .serverRejected: "The server didn't accept this file. Try again later."
+        case .invalidServerResponse: "The server answered in a way the app didn't expect, so the upload stopped. Update the app and try again."
+        case .fileUnreadable: "This phone couldn't read the saved file, so it can't be uploaded."
+        }
+    }
+}
+
 nonisolated enum UploadFileState: Codable, Sendable, Equatable {
     case queued
     case uploading
     case completing
     case completed
-    case failed(message: String)
+    case failed(UploadFailure)
 
-    var failureMessage: String? {
-        guard case .failed(let message) = self else { return nil }
-        return message
+    var failure: UploadFailure? {
+        guard case .failed(let failure) = self else { return nil }
+        return failure
     }
+
+    var failureMessage: String? { failure?.userMessage }
 
     var isActive: Bool {
         switch self {
