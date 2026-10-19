@@ -119,6 +119,23 @@ actor BackgroundUploader {
         requestPump()
     }
 
+    /// Drops unfinished uploads of one kind, for files where only the newest copy matters,
+    /// such as the mesh, which grows with every room.
+    func discardUnfinished(scanID: String, kind: UploadKind) async {
+        let stale = await ledger.all().filter { $0.scanID == scanID && $0.kind == kind.rawValue && $0.state.isActive }
+        guard !stale.isEmpty else { return }
+        let ids = Set(stale.map(\.id))
+        let running = inFlight.filter { ids.contains($0.key.fileID) }
+        for (key, taskID) in running {
+            inFlight[key] = nil
+            sentBytes[key] = nil
+            await session.cancelTask(id: taskID)
+        }
+        await persist { try await self.ledger.remove(Array(ids)) }
+        ids.forEach(storage.removeFiles(for:))
+        await emit()
+    }
+
     func removeFinished(scanID: String) async {
         let finished = await ledger.all().filter { $0.scanID == scanID && $0.state == .completed }
         await persist { try await self.ledger.remove(finished.map(\.id)) }
@@ -280,7 +297,7 @@ actor BackgroundUploader {
             kind: record.kind, filename: record.fileName, contentType: record.contentType,
             sizeBytes: record.sizeBytes, partSize: configuration.partSize
         )
-        let upload = try await api.createUpload(scanID: record.scanID, body: body)
+        let upload = try await api.createUpload(scanID: record.scanID, body: body, idempotencyKey: record.createKey)
         let expected = PartSlicer.partCount(fileSize: record.sizeBytes, partSize: upload.partSize)
         guard upload.partSize > 0, upload.partCount == expected else { throw APIError.malformedResponse }
         let multipart = MultipartSession(
@@ -417,6 +434,7 @@ actor BackgroundUploader {
             try await self.ledger.update(id) {
                 $0.multipart = nil
                 $0.state = .queued
+                $0.restarts = ($0.restarts ?? 0) + 1
             }
         }
         scheduleRepump()

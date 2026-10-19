@@ -72,6 +72,9 @@ actor LiveChannel {
         messageContinuation.finish()
     }
 
+    /// True until the server has answered every room sent so far with findings.
+    var hasUnansweredRooms: Bool { !unanswered.isEmpty }
+
     /// Kept until the server answers with findings for the room, and re-sent after every
     /// reconnect. The server merges observations by id, so repeats are harmless.
     func sendRoom(_ update: RoomUpdate) async {

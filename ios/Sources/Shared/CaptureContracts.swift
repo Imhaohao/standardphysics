@@ -47,6 +47,9 @@ nonisolated struct ScanManifest: Codable, Sendable, Equatable {
     var relocalizationSnapshotFile: String?
     var meshFile: String?
     var remoteScanID: String?
+    /// Saved before the server is first asked to create the scan, and sent with every attempt,
+    /// so a retry after a dropped response or a relaunch never makes a second scan.
+    var remoteCreateKey: String?
 }
 
 nonisolated enum ElementSource: String, Codable, Sendable {

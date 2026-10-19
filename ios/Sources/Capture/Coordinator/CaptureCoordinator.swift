@@ -15,7 +15,8 @@ final class CaptureCoordinator: CaptureControlling {
     private(set) var finishedRoomElements: [LiveElement] = []
     private(set) var currentRoomElements: [LiveElement] = []
     var detections: [Detection] = []
-    private(set) var provisionalFindings: [Finding] = []
+    private var onDeviceFindings: [Finding] = []
+    private var serverFindings: [Finding] = []
     private(set) var guidance: String?
     private(set) var relocalizationSnapshot: Data?
     private(set) var relocalizationTimedOut = false
@@ -23,9 +24,15 @@ final class CaptureCoordinator: CaptureControlling {
     private(set) var exportedStructures: [ExportedStructure] = []
 
     /// Plug the on-device engine in here, e.g. `coordinator.onRoomFinished = engine.evaluateRoom`.
+    /// Told about each milestone once it is on disk, e.g. to stream the scan to the server.
+    @ObservationIgnored weak var observer: (any CaptureObserving)?
+
     @ObservationIgnored var onRoomFinished: (@Sendable (_ capturedRoomJSON: Data) async throws -> [Finding])?
 
     var liveElements: [LiveElement] { finishedRoomElements + currentRoomElements }
+    var provisionalFindings: [Finding] {
+        FindingMerge.preferringServer(onDevice: onDeviceFindings, server: serverFindings)
+    }
     var arSession: ARSession? { dependencies.host.arSession }
 
     @ObservationIgnored private let dependencies: CaptureDependencies
@@ -61,6 +68,7 @@ final class CaptureCoordinator: CaptureControlling {
         }
         frameLog = FrameLog()
         resetLiveState()
+        if let manifest { notify(.started(manifest)) }
         send(.start)
         send(.thermal(ThermalLevel(dependencies.thermalState())))
         await settle()
@@ -75,6 +83,7 @@ final class CaptureCoordinator: CaptureControlling {
             return
         }
         guard let manifest else { return }
+        notify(.resumed(manifest))
         send(.resume(ResumePoint(
             completedRooms: manifest.rooms.count,
             hasWorldMap: manifest.worldMapFile != nil,
@@ -312,6 +321,7 @@ final class CaptureCoordinator: CaptureControlling {
         }
         finishedRoomElements += currentRoomElements
         currentRoomElements = []
+        if let manifest { notify(.roomSaved(index: index, manifest: manifest)) }
         evaluate(roomJSON)
     }
 
@@ -320,7 +330,7 @@ final class CaptureCoordinator: CaptureControlling {
         Task { [weak self] in
             do {
                 let findings = try await onRoomFinished(roomJSON)
-                self?.provisionalFindings += findings
+                self?.onDeviceFindings += findings
             } catch {
                 self?.logger.error("Room evaluation failed: \(error.localizedDescription)")
             }
@@ -334,6 +344,7 @@ final class CaptureCoordinator: CaptureControlling {
         let data = await MeshExporter.encode(parts, carriedOver: carriedOver)
         do {
             adopt(try await dependencies.journal.saveMesh(scanID: scanID, data: data))
+            if let manifest { notify(.meshSaved(manifest)) }
         } catch {
             logger.error("Mesh export failed: \(error.localizedDescription)")
         }
@@ -375,6 +386,7 @@ final class CaptureCoordinator: CaptureControlling {
             } catch {
                 logger.error("Delete failed: \(error.localizedDescription)")
             }
+            notify(.discarded(scanID: scanID))
         }
         manifest = nil
         resetLiveState()
@@ -435,20 +447,47 @@ final class CaptureCoordinator: CaptureControlling {
         }
     }
 
-    /// The journal returns what is on disk; the phase in memory may be ahead of it.
+    /// The journal returns what is on disk; the phase and the server id in memory may be ahead of it.
     private func adopt(_ saved: ScanManifest) {
         var current = saved
         current.phase = state.phase
+        current.remoteScanID = manifest?.remoteScanID ?? saved.remoteScanID
+        current.remoteCreateKey = manifest?.remoteCreateKey ?? saved.remoteCreateKey
         manifest = current
+    }
+
+    private func notify(_ milestone: CaptureMilestone) {
+        observer?.capture(self, reached: milestone)
     }
 
     private func resetLiveState() {
         finishedRoomElements = []
         currentRoomElements = []
-        provisionalFindings = []
+        onDeviceFindings = []
+        serverFindings = []
         exportedStructures = []
         relocalizationSnapshot = nil
         instruction = .normal
+    }
+}
+
+extension CaptureCoordinator: CaptureLinking {
+    func recordRemoteCreateKey(_ key: String, forScan scanID: UUID) async {
+        guard var updated = manifest, updated.scanID == scanID, updated.remoteCreateKey == nil else { return }
+        updated.remoteCreateKey = key
+        manifest = updated
+        await save(updated)
+    }
+
+    func recordRemoteScanID(_ remoteScanID: String, forScan scanID: UUID) async {
+        guard var updated = manifest, updated.scanID == scanID, updated.remoteScanID == nil else { return }
+        updated.remoteScanID = remoteScanID
+        manifest = updated
+        await save(updated)
+    }
+
+    func mergeServerFindings(_ findings: [Finding]) {
+        serverFindings = FindingMerge.upsert(findings, into: serverFindings)
     }
 }
 

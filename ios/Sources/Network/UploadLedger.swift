@@ -52,6 +52,14 @@ nonisolated struct UploadRecord: Codable, Sendable, Equatable, Identifiable {
     let enqueuedAt: Date
     var state: UploadFileState
     var multipart: MultipartSession?
+    /// How many times the server forgot the multipart upload. Each restart needs a new
+    /// idempotency key, or the server would replay the upload it already dropped.
+    var restarts: Int?
+
+    var createKey: String {
+        let count = restarts ?? 0
+        return count == 0 ? id.uuidString : "\(id.uuidString)-restart-\(count)"
+    }
 }
 
 /// Durable record of every upload. The whole file is rewritten atomically after each change,

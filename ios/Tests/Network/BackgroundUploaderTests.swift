@@ -150,6 +150,7 @@ final class BackgroundUploaderTests: XCTestCase {
         defer { _ = secondRun }
         await eventually { api.createCalls.count == 2 }
         await eventually { secondSession.started.count == 2 }
+        XCTAssertNotEqual(api.createCalls[0].idempotencyKey, api.createCalls[1].idempotencyKey, "a restart must not replay the dropped upload")
     }
 
     func testRelaunchFindsUploadAlreadyCompleteOnServer() async throws {
@@ -250,6 +251,7 @@ final class BackgroundUploaderTests: XCTestCase {
         _ = try await uploader.enqueue(fileURL: try source(size: 500), scanID: "scan-1")
         await eventually { api.completeCalls.count == 1 }
         XCTAssertEqual(api.createCalls.count, 3)
+        XCTAssertEqual(Set(api.createCalls.map(\.idempotencyKey)).count, 1, "retries reuse one key")
     }
 
     func testPermanentCreateFailureMarksFileFailedWithUserMessage() async throws {

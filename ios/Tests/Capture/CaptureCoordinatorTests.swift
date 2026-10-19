@@ -323,4 +323,73 @@ final class CaptureCoordinatorTests: XCTestCase {
         XCTAssertEqual(second.phase, .relocalizing(room: 1))
         XCTAssertEqual(host.runModes, [.relocalize])
     }
+
+    // MARK: Observer
+
+    func testObserverHearsEachMilestoneInOrder() async throws {
+        let coordinator = makeCoordinator()
+        let observer = RecordingObserver()
+        coordinator.observer = observer
+        await coordinator.startScan(name: "Shop")
+        await coordinator.finishRoom()
+        XCTAssertEqual(observer.names, ["started", "roomSaved 0", "meshSaved"])
+        let scanID = try XCTUnwrap(coordinator.manifest?.scanID)
+
+        relaunchDevices()
+        let second = makeCoordinator()
+        second.observer = observer
+        await second.resume(scanID: scanID)
+        await second.discardScan()
+        XCTAssertEqual(observer.names.suffix(2), ["resumed", "discarded"])
+    }
+
+    func testRemoteIDsAreSavedAtOnceAndSurviveLaterSaves() async throws {
+        let coordinator = makeCoordinator()
+        await coordinator.startScan(name: "Shop")
+        let scanID = try XCTUnwrap(coordinator.manifest?.scanID)
+        await coordinator.recordRemoteCreateKey("key-1", forScan: scanID)
+        var stored = try await storedManifest(coordinator)
+        XCTAssertEqual(stored.remoteCreateKey, "key-1")
+
+        await coordinator.recordRemoteScanID("remote-1", forScan: scanID)
+        await coordinator.recordRemoteScanID("remote-2", forScan: scanID)
+        await coordinator.finishRoom()
+        stored = try await storedManifest(coordinator)
+        XCTAssertEqual(stored.remoteScanID, "remote-1", "the first id sticks and later journal writes keep it")
+        XCTAssertEqual(coordinator.manifest?.remoteScanID, "remote-1")
+    }
+
+    func testServerFindingsReplaceOnDeviceOnesForTheSameRuleAndSubject() async throws {
+        let coordinator = makeCoordinator()
+        let onDevice = Finding(ruleID: "r1", jurisdiction: .ada2010, section: "404", subjectID: "door", status: .needsInfo, measured: nil, required: "", message: "phone")
+        let other = Finding(ruleID: "r2", jurisdiction: .ada2010, section: "405", subjectID: "door", status: .pass, measured: nil, required: "", message: "phone")
+        coordinator.onRoomFinished = { _ in [onDevice, other] }
+        await coordinator.startScan(name: "Shop")
+        await coordinator.finishRoom()
+        await eventually("on-device findings") { coordinator.provisionalFindings.count == 2 }
+
+        let server = Finding(ruleID: "r1", jurisdiction: .ada2010, section: "404", subjectID: "door", status: .fail, measured: nil, required: "", message: "server")
+        coordinator.mergeServerFindings([server])
+        XCTAssertEqual(coordinator.provisionalFindings.map(\.message), ["phone", "server"])
+        XCTAssertEqual(coordinator.provisionalFindings.last?.status, .fail)
+    }
+}
+
+@MainActor
+private final class RecordingObserver: CaptureObserving {
+    var names: [String] = []
+
+    func capture(_ link: any CaptureLinking, reached milestone: CaptureMilestone) {
+        switch milestone {
+        case .started: names.append("started")
+        case .resumed: names.append("resumed")
+        case .roomSaved(let index, let manifest):
+            XCTAssertTrue(manifest.rooms.contains { $0.index == index })
+            names.append("roomSaved \(index)")
+        case .meshSaved(let manifest):
+            XCTAssertNotNil(manifest.meshFile)
+            names.append("meshSaved")
+        case .discarded: names.append("discarded")
+        }
+    }
 }

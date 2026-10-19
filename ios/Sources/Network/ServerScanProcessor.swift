@@ -30,14 +30,18 @@ final class ServerScanProcessor: ScanProcessing {
 
     private let api: APIClient
     private let uploader: BackgroundUploader
+    private let rooms: (any RoomDelivering)?
 
-    init(api: APIClient, uploader: BackgroundUploader) {
+    init(api: APIClient, uploader: BackgroundUploader, rooms: (any RoomDelivering)? = nil) {
         self.api = api
         self.uploader = uploader
+        self.rooms = rooms
     }
 
     func process(_ manifest: ScanManifest, onUpdate: @escaping (ProcessingUpdate) -> Void) async throws -> ScanReport {
         guard let remoteScanID = manifest.remoteScanID else { throw ScanProcessingError.scanNotCreatedOnServer }
+        onUpdate(ProcessingUpdate(stage: .uploading, fraction: 0))
+        try await rooms?.deliverRooms(of: manifest)
         try await uploadRemainingFiles(of: remoteScanID, onUpdate: onUpdate)
         onUpdate(ProcessingUpdate(stage: .assembling, fraction: Self.assemblingFraction))
         let report = try await finishOrFetch(remoteScanID)

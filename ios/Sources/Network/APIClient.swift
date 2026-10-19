@@ -1,7 +1,7 @@
 import Foundation
 
 nonisolated protocol UploadAPI: Sendable {
-    func createUpload(scanID: String, body: CreateUploadBody) async throws -> UploadInfo
+    func createUpload(scanID: String, body: CreateUploadBody, idempotencyKey: String) async throws -> UploadInfo
     func uploadStatus(scanID: String, uploadID: String) async throws -> UploadStatusResponse
     func presignParts(scanID: String, uploadID: String, partNumbers: [Int]) async throws -> PresignResponse
     func completeUpload(scanID: String, uploadID: String, sha256: String) async throws -> Artifact
@@ -85,8 +85,8 @@ actor APIClient: UploadAPI {
 
     // MARK: Scans
 
-    func createScan(name: String?, siteName: String? = nil) async throws -> ScanResponse {
-        try await send(APIRoutes.createScan(CreateScanRequest(name: name, siteName: siteName)))
+    func createScan(name: String?, siteName: String? = nil, idempotencyKey: String) async throws -> ScanResponse {
+        try await send(APIRoutes.createScan(CreateScanRequest(name: name, siteName: siteName), idempotencyKey: idempotencyKey))
     }
 
     /// Runs the server's finish pipeline and returns the full report (can take up to two minutes).
@@ -100,8 +100,8 @@ actor APIClient: UploadAPI {
 
     // MARK: Uploads
 
-    func createUpload(scanID: String, body: CreateUploadBody) async throws -> UploadInfo {
-        try await send(APIRoutes.createUpload(scanID: scanID, body: body))
+    func createUpload(scanID: String, body: CreateUploadBody, idempotencyKey: String) async throws -> UploadInfo {
+        try await send(APIRoutes.createUpload(scanID: scanID, body: body, idempotencyKey: idempotencyKey))
     }
 
     func uploadStatus(scanID: String, uploadID: String) async throws -> UploadStatusResponse {
@@ -184,6 +184,7 @@ actor APIClient: UploadAPI {
         request.httpMethod = endpoint.method.rawValue
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         if let timeout = endpoint.timeout { request.timeoutInterval = timeout }
+        for (name, value) in endpoint.headers { request.setValue(value, forHTTPHeaderField: name) }
         if endpoint.requiresAuth { applyAuthorization(to: &request) }
         try attachBody(endpoint.body, to: &request)
         return request

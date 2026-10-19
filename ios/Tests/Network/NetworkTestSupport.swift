@@ -93,7 +93,7 @@ final class RecordingSleeper: @unchecked Sendable {
 // MARK: Uploads
 
 final class FakeUploadAPI: UploadAPI, @unchecked Sendable {
-    struct CreateCall { let scanID: String; let body: CreateUploadBody }
+    struct CreateCall { let scanID: String; let body: CreateUploadBody; var idempotencyKey = "" }
     struct CompleteCall { let uploadID: String; let sha256: String }
 
     private let state = Locked(State())
@@ -122,8 +122,8 @@ final class FakeUploadAPI: UploadAPI, @unchecked Sendable {
         }
     }
 
-    func createUpload(scanID: String, body: CreateUploadBody) async throws -> UploadInfo {
-        state.write { $0.creates.append(CreateCall(scanID: scanID, body: body)) }
+    func createUpload(scanID: String, body: CreateUploadBody, idempotencyKey: String) async throws -> UploadInfo {
+        state.write { $0.creates.append(CreateCall(scanID: scanID, body: body, idempotencyKey: idempotencyKey)) }
         if let error = state.write({ $0.createErrors.isEmpty ? nil : $0.createErrors.removeFirst() }) { throw error }
         let partSize = body.partSize ?? 8 * 1024 * 1024
         return info(scanID: scanID, size: body.sizeBytes, partSize: partSize, kind: body.kind, name: body.filename, state: "open")

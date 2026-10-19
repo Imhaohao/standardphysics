@@ -62,6 +62,23 @@ final class ServerScanProcessorTests: XCTestCase {
         XCTAssertEqual(report.findings.count, 1)
     }
 
+    func testRoomsThatNeverReachedTheServerStopTheFinish() async {
+        let transport = ScriptedTransport([jsonResponse(200, reportJSON)])
+        let api = APIClient(baseURL: URL(string: "https://api.test")!, tokenStore: InMemoryTokenStore(token: "t"), transport: transport, retryPolicy: .none)
+        let storage = UploadStorage(root: directory.appendingPathComponent("uploads"))
+        let uploader = BackgroundUploader(
+            api: FakeUploadAPI(), ledger: UploadLedger(fileURL: storage.ledgerURL), session: FakeUploadSession(), storage: storage
+        )
+        let processor = ServerScanProcessor(api: api, uploader: uploader, rooms: UndeliverableRooms())
+        do {
+            _ = try await processor.process(manifest()) { _ in }
+            XCTFail("expected failure")
+        } catch {
+            XCTAssertEqual(error as? ScanStreamingError, .roomsNotDelivered)
+        }
+        XCTAssertTrue(transport.requests.isEmpty, "finish is never called on a partial scan")
+    }
+
     func testScanNeverRegisteredWithServerIsAnError() async {
         let (processor, _) = makeProcessor([])
         do {
@@ -70,5 +87,12 @@ final class ServerScanProcessorTests: XCTestCase {
         } catch {
             XCTAssertEqual(error as? ScanProcessingError, .scanNotCreatedOnServer)
         }
+    }
+}
+
+@MainActor
+private final class UndeliverableRooms: RoomDelivering {
+    func deliverRooms(of manifest: ScanManifest) async throws {
+        throw ScanStreamingError.roomsNotDelivered
     }
 }

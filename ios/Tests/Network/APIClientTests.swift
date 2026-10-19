@@ -50,18 +50,14 @@ final class APIClientTests: XCTestCase {
     private let scanJSON = #"{"id":"6f1c3a52-0000-4000-8000-000000000001","name":"Cafe","site_name":null,"status":"capturing","created_at":"2026-10-19T10:00:00.123456Z","updated_at":"2026-10-19T10:00:00Z"}"#
     private let authJSON = #"{"token":"fresh","expires_at":"2030-01-01T00:00:00Z","user":{"id":"u1","email":"a@b.co"}}"#
 
-    func testCreateScanSendsNameAndIsNeverRetried() async throws {
-        let (failing, failingTransport, _, _) = makeClient([jsonResponse(503, "{}")])
-        do {
-            _ = try await failing.createScan(name: "Cafe")
-            XCTFail("expected failure")
-        } catch {
-            XCTAssertEqual(error as? APIError, .server(status: 503, message: nil))
-        }
-        XCTAssertEqual(failingTransport.requests.count, 1, "a retried create would make a second scan")
+    func testCreateScanRetriesWithTheSameIdempotencyKey() async throws {
+        let (retrying, retryingTransport, _, _) = makeClient([jsonResponse(503, "{}"), jsonResponse(201, scanJSON)])
+        _ = try await retrying.createScan(name: "Cafe", idempotencyKey: "key-1")
+        XCTAssertEqual(retryingTransport.requests.count, 2)
+        XCTAssertEqual(retryingTransport.requests.map { $0.value(forHTTPHeaderField: "Idempotency-Key") }, ["key-1", "key-1"])
 
         let (client, transport, _, _) = makeClient([jsonResponse(201, scanJSON)])
-        let scan = try await client.createScan(name: "Cafe", siteName: "Main St")
+        let scan = try await client.createScan(name: "Cafe", siteName: "Main St", idempotencyKey: "key-2")
         XCTAssertEqual(scan.status, "capturing")
         XCTAssertNil(scan.siteName)
         XCTAssertEqual(transport.requests[0].url?.path, "/v1/scans")
@@ -229,9 +225,11 @@ final class APIClientTests: XCTestCase {
         let json = #"{"id":"u1","scan_id":"s","kind":"room","filename":"r.json","content_type":"application/json","size_bytes":10,"part_size":8388608,"part_count":1,"state":"open","created_at":"2026-10-19T10:00:00Z"}"#
         let (client, transport, _, _) = makeClient([jsonResponse(201, json)])
         let upload = try await client.createUpload(
-            scanID: "s", body: CreateUploadBody(kind: "room", filename: "r.json", contentType: "application/json", sizeBytes: 10, partSize: 8_388_608)
+            scanID: "s", body: CreateUploadBody(kind: "room", filename: "r.json", contentType: "application/json", sizeBytes: 10, partSize: 8_388_608),
+            idempotencyKey: "upload-key"
         )
         XCTAssertEqual(upload.partCount, 1)
+        XCTAssertEqual(transport.requests[0].value(forHTTPHeaderField: "Idempotency-Key"), "upload-key")
         XCTAssertEqual(transport.requests[0].url?.path, "/v1/scans/s/uploads")
         let body = String(decoding: transport.requests[0].httpBody!, as: UTF8.self)
         XCTAssertEqual(body, #"{"content_type":"application\/json","filename":"r.json","kind":"room","part_size":8388608,"size_bytes":10}"#)
