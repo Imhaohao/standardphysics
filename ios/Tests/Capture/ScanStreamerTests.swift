@@ -181,6 +181,30 @@ final class ScanStreamerTests: XCTestCase {
         XCTAssertNotNil(sent.first?.capturedRoom)
     }
 
+    func testDetectorObjectsTravelAsObservationsWithTheRoom() async throws {
+        let streamer = makeStreamer()
+        let empty = try manifest()
+        streamer.capture(link, reached: .started(empty))
+        let saved = try manifest(rooms: 1)
+        let fridge = DetectedObject(
+            id: "detector-1", category: "refrigerator", label: "refrigerator",
+            center: ScenePoint(x: 1, y: 0.85, z: 2), size: ScenePoint(x: 0.7, y: 1.7, z: 0.7), confidence: 0.8, hits: 4
+        )
+        try JSONEncoder().encode(DetectedObjectFile(objects: [fridge])).write(to: directory.appending(path: "room-0.detections.json"))
+        let withRoom = ScanManifest(
+            scanID: empty.scanID, name: empty.name, startedAt: empty.startedAt, phase: saved.phase, rooms: saved.rooms,
+            meshFile: "mesh.spm", remoteScanID: "remote-1"
+        )
+        streamer.capture(link, reached: .roomSaved(index: 0, manifest: withRoom))
+        await streamer.settle()
+
+        let allSent = await channels[0].sent
+        let sent = try XCTUnwrap(allSent.first)
+        XCTAssertEqual(sent.roomID, "room-0", "the room id rule is unchanged")
+        XCTAssertEqual(sent.observations, [try XCTUnwrap(fridge.observation)])
+        XCTAssertEqual(uploader.calls.map(\.file), ["room-0.json"], "the server does not take the sidecar as an upload")
+    }
+
     func testLiveRoomAndUploadedRoomShareOneServerID() async throws {
         let streamer = makeStreamer()
         let empty = try manifest()
