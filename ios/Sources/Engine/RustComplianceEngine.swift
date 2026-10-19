@@ -97,6 +97,7 @@ extension Finding {
             message: finding.message,
             title: finding.title.isEmpty ? nil : finding.title,
             severity: FindingSeverity(rawValue: finding.severity),
+            counterpartRuleID: finding.counterpart,
             range: finding.measured.flatMap(MeasuredRange.init)
         )
     }

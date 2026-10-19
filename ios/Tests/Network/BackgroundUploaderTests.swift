@@ -172,6 +172,23 @@ final class BackgroundUploaderTests: XCTestCase {
         XCTAssertTrue(api.completeCalls.isEmpty)
     }
 
+    func testReplacingAMeshAbortsTheOldUploadOnTheServer() async throws {
+        let api = FakeUploadAPI()
+        let session = FakeUploadSession()
+        let uploader = makeUploader(api: api, session: session)
+        await uploader.start()
+        _ = try await uploader.enqueue(fileURL: try source(size: 1500, name: "mesh.spm"), scanID: "scan-1", kind: .mesh, contentType: "application/octet-stream")
+        await eventually { !session.started.isEmpty }
+        let records = await UploadLedger(fileURL: storage.ledgerURL).all()
+        let oldUploadID = try XCTUnwrap(records.first?.multipart?.uploadID)
+
+        await uploader.discardUnfinished(scanID: "scan-1", kind: .mesh)
+
+        XCTAssertEqual(api.abortedUploadIDs, [oldUploadID])
+        let remaining = await UploadLedger(fileURL: storage.ledgerURL).all()
+        XCTAssertTrue(remaining.isEmpty)
+    }
+
     func testForbiddenPartMarksURLExpiredAndPresignsOnlyThatPart() async throws {
         let api = FakeUploadAPI()
         let session = FakeUploadSession()

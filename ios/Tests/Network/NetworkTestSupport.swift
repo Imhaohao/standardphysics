@@ -105,6 +105,7 @@ final class FakeUploadAPI: UploadAPI, @unchecked Sendable {
         var createErrors: [APIError] = []
         var uploadState = "open"
         var storedParts: [Int] = []
+        var aborts: [String] = []
     }
 
     var urlTimeToLive = 3600
@@ -113,6 +114,11 @@ final class FakeUploadAPI: UploadAPI, @unchecked Sendable {
     var presignCalls: [[Int]] { state.read { $0.presigns } }
     var statusCallCount: Int { state.read { $0.statusCalls } }
     var completeCalls: [CompleteCall] { state.read { $0.completions } }
+    var abortedUploadIDs: [String] { state.read { $0.aborts } }
+
+    func abortUpload(scanID: String, uploadID: String) async throws {
+        state.write { $0.aborts.append(uploadID) }
+    }
 
     func failNextCreates(with errors: [APIError]) { state.write { $0.createErrors = errors } }
     func setServerUpload(state uploadState: String, storedParts: [Int]) {

@@ -137,6 +137,15 @@ actor BackgroundUploader {
         await persist { try await self.ledger.remove(Array(ids)) }
         ids.forEach(storage.removeFiles(for:))
         await emit()
+        await abortOnServer(stale)
+    }
+
+    /// Best effort: an upload the server never hears about expires on its own.
+    private func abortOnServer(_ records: [UploadRecord]) async {
+        for record in records {
+            guard let uploadID = record.multipart?.uploadID else { continue }
+            try? await api.abortUpload(scanID: record.scanID, uploadID: uploadID)
+        }
     }
 
     func removeFinished(scanID: String) async {

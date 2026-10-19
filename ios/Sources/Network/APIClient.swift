@@ -5,6 +5,7 @@ nonisolated protocol UploadAPI: Sendable {
     func uploadStatus(scanID: String, uploadID: String) async throws -> UploadStatusResponse
     func presignParts(scanID: String, uploadID: String, partNumbers: [Int]) async throws -> PresignResponse
     func completeUpload(scanID: String, uploadID: String, sha256: String) async throws -> Artifact
+    func abortUpload(scanID: String, uploadID: String) async throws
 }
 
 nonisolated enum APIConfiguration {
