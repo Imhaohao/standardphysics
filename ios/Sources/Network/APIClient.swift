@@ -193,13 +193,15 @@ actor APIClient: UploadAPI {
     private func perform(_ request: URLRequest) async throws -> HTTPResponse {
         let response = try await transport.send(request)
         guard response.isSuccess else {
-            if response.status == 401, request.value(forHTTPHeaderField: "Authorization") != nil { endSession() }
+            if response.status == 401, let sent = request.value(forHTTPHeaderField: "Authorization") { endSession(ifStillUsing: sent) }
             throw APIError(response: response)
         }
         return response
     }
 
-    private func endSession() {
+    /// A slow request that fails after a fresh sign-in must not throw away the new session.
+    private func endSession(ifStillUsing sentAuthorization: String) {
+        guard let token = tokenStore.token(), sentAuthorization == "Bearer \(token)" else { return }
         tokenStore.clear()
         sessionEndedContinuation.yield()
     }

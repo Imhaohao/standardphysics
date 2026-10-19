@@ -127,7 +127,7 @@ final class ScanStreamer: CaptureObserving, RoomDelivering {
         do {
             try await dependencies.uploader.enqueue(fileURL: url, scanID: remoteScanID, kind: .room, contentType: "application/json")
         } catch {
-            logger.error("Room upload could not be queued: \(error.localizedDescription, privacy: .public)")
+            logger.error("Room upload could not be queued: \(String(describing: type(of: error)))")
         }
     }
 
@@ -138,7 +138,7 @@ final class ScanStreamer: CaptureObserving, RoomDelivering {
         do {
             try await dependencies.uploader.enqueue(fileURL: url, scanID: remoteScanID, kind: .mesh, contentType: "application/octet-stream")
         } catch {
-            logger.error("Mesh upload could not be queued: \(error.localizedDescription, privacy: .public)")
+            logger.error("Mesh upload could not be queued: \(String(describing: type(of: error)))")
         }
     }
 
@@ -157,7 +157,7 @@ final class ScanStreamer: CaptureObserving, RoomDelivering {
             } catch let error as APIError where Self.isWorthRetrying(error) && attempt < dependencies.createAttempts {
                 try? await dependencies.sleep(dependencies.createRetryDelay)
             } catch {
-                logger.error("Scan was not created on the server: \(error.localizedDescription, privacy: .public)")
+                logger.error("Scan was not created on the server: \(String(describing: type(of: error)))")
                 return
             }
         }

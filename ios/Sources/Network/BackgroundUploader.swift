@@ -27,6 +27,9 @@ actor BackgroundUploader {
     private var persistenceError: String?
     private var reconciled: Set<UUID> = []
 
+    /// S3's own limit; a server asking for more parts than this is broken or hostile.
+    static let maximumPartCount = 10_000
+
     init(
         api: any UploadAPI,
         ledger: UploadLedger,
@@ -299,7 +302,9 @@ actor BackgroundUploader {
         )
         let upload = try await api.createUpload(scanID: record.scanID, body: body, idempotencyKey: record.createKey)
         let expected = PartSlicer.partCount(fileSize: record.sizeBytes, partSize: upload.partSize)
-        guard upload.partSize > 0, upload.partCount == expected else { throw APIError.malformedResponse }
+        guard upload.partSize > 0, upload.partCount == expected, expected <= Self.maximumPartCount else {
+            throw APIError.malformedResponse
+        }
         let multipart = MultipartSession(
             uploadID: upload.id, partSize: upload.partSize, parts: (1...expected).map { UploadPart(number: $0) }
         )

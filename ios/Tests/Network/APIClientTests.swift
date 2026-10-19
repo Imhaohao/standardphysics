@@ -109,6 +109,18 @@ final class APIClientTests: XCTestCase {
         XCTAssertNotNil(signal)
     }
 
+    func testLateRejectionOfAnOldTokenKeepsTheNewSession() async throws {
+        let store = InMemoryTokenStore(token: "old")
+        let transport = DelayedTransport(status: 401)
+        let client = APIClient(baseURL: URL(string: "https://api.test")!, tokenStore: store, transport: transport, retryPolicy: .none)
+        async let pending: Report? = try? client.assessment(scanID: "s")
+        await transport.waitForRequest()
+        try store.save("new")
+        transport.release()
+        _ = await pending
+        XCTAssertEqual(store.token(), "new")
+    }
+
     func testWrongPasswordKeepsNoSessionSignal() async throws {
         let (client, _, store, _) = makeClient([jsonResponse(401, "{}")], token: "kept")
         _ = try? await client.signIn(email: "a@b.co", password: "nope")
@@ -314,5 +326,35 @@ final class KeychainTokenStoreTests: XCTestCase {
         XCTAssertEqual(store.token(), "two")
         store.clear()
         XCTAssertNil(store.token())
+    }
+}
+
+private final class DelayedTransport: HTTPTransport, @unchecked Sendable {
+    private let status: Int
+    private let state = Locked<(started: Bool, gate: CheckedContinuation<Void, Never>?)>((false, nil))
+
+    init(status: Int) { self.status = status }
+
+    func waitForRequest() async {
+        while !state.read({ $0.started }) { await Task.yield() }
+    }
+
+    func release() {
+        let gate = state.write { state -> CheckedContinuation<Void, Never>? in
+            let gate = state.gate
+            state.gate = nil
+            return gate
+        }
+        gate?.resume()
+    }
+
+    func send(_ request: URLRequest) async throws -> HTTPResponse {
+        await withCheckedContinuation { continuation in
+            state.write {
+                $0.gate = continuation
+                $0.started = true
+            }
+        }
+        return HTTPResponse(status: status, headers: [:], body: Data("{}".utf8))
     }
 }
