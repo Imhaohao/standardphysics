@@ -20,7 +20,17 @@ final class LiveServices {
         let coordinator = CaptureCoordinator()
         let journal = FileScanJournal()
         coordinator.onRoomFinished = { roomJSON in
-            try await RustComplianceEngine().evaluateRoom(capturedRoomJSON: roomJSON)
+            let clock = ContinuousClock()
+            let start = clock.now
+            let findings = try await RustComplianceEngine().evaluateRoom(capturedRoomJSON: roomJSON)
+            let elapsed = clock.now - start
+            Diagnostics.shared.record("room_checked", [
+                "ms": Double(elapsed.components.seconds) * 1000 + Double(elapsed.components.attoseconds) / 1e15,
+                "findings": Double(findings.count),
+                "fails": Double(findings.filter { $0.status == .fail }.count),
+                "room_bytes": Double(roomJSON.count),
+            ])
+            return findings
         }
         self.coordinator = coordinator
         let api = try? APIClient.fromInfoPlist()
@@ -31,11 +41,11 @@ final class LiveServices {
         self.uploader = uploader
         appModel = AppModel(
             capture: coordinator,
-            processor: Self.makeProcessor(journal: journal, api: api, uploader: uploader, streamer: streamer),
+            processor: TimedProcessor(base: Self.makeProcessor(journal: journal, api: api, uploader: uploader, streamer: streamer)),
             journal: journal,
             account: AccountModel(service: api)
         )
-        detection = LiveDetectionPipeline(detector: CoreMLDetector()) { [weak coordinator] detections in
+        detection = LiveDetectionPipeline(detector: TimedDetector(base: CoreMLDetector())) { [weak coordinator] detections in
             await MainActor.run { coordinator?.detections = detections }
         }
     }
@@ -82,6 +92,7 @@ final class LiveServices {
             while !Task.isCancelled {
                 guard let self else { return }
                 self.sceneModel.update(from: self.coordinator)
+                self.recordPhaseChange()
                 try? await Task.sleep(for: .milliseconds(100))
             }
         }
@@ -92,6 +103,18 @@ final class LiveServices {
         sceneSync?.cancel()
         frameFeed = nil
         sceneSync = nil
+    }
+
+    private var lastRecordedPhase: CapturePhase?
+
+    private func recordPhaseChange() {
+        let phase = coordinator.phase
+        guard phase != lastRecordedPhase else { return }
+        lastRecordedPhase = phase
+        Diagnostics.shared.record("phase", [
+            "elements": Double(coordinator.liveElements.count),
+            "findings": Double(coordinator.provisionalFindings.count),
+        ], note: String(describing: phase))
     }
 
     private func feedCurrentFrame() {

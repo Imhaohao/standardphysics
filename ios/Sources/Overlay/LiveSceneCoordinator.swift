@@ -13,6 +13,7 @@ final class LiveSceneCoordinator {
     private let meshTint = MeshTintLayer()
     private let worldAnchor = AnchorEntity(world: .zero)
     private var frameCount = 0
+    private let frameRate = RateMeter(event: "overlay_fps")
     private var updateSubscription: (any Cancellable)?
     private weak var arView: ARView?
 
@@ -42,6 +43,7 @@ final class LiveSceneCoordinator {
     }
 
     private func renderedFrame() {
+        frameRate.tick()
         frameCount += 1
         if frameCount.isMultiple(of: Self.projectionFrameInterval) {
             projectLabels()
