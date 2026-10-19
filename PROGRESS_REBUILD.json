@@ -269,6 +269,14 @@
       "disk full at 97%",
       "throughput unmeasured",
       "prod commands run by the user (the classifier blocks Claude on the Droplet)"
-    ]
+    ],
+    "step_1_done_2026_10_19": {
+      "where": "compute-box ~/sp-prod: repo (clean, detached at prod's 19ab6c89 read from https://api.standardphysics.app/health/details), venv (uv, Python 3.11, requirements.lock + editable packages, pip check clean, 290 MB), data (empty), logs/api.log",
+      "service": "launchd agent ~/Library/LaunchAgents/app.standardphysics.prod-api.plist (RunAtLoad, KeepAlive, ThrottleInterval 10) runs start.sh: prod.env + secrets.env, caffeinate, python -m standardphysics_api",
+      "listens": "http://100.85.119.16:8800 (Tailscale only); FORWARDED_ALLOW_IPS=100.79.57.24 (the Droplet's Caddy)",
+      "proved": "/health ok from another tailnet machine; /health/details commit 19ab6c89, all five worker loops idle; killed the process and launchd had it serving again in 2 s",
+      "not_done": "secrets.env holds only the list of names to copy from the Droplet's .env; a launchd agent runs only while the user is logged in; production untouched",
+      "found": "the offload server for prod (:8791, ~/sp-offload/repo-master) is pinned at e97d98b4 while prod runs 19ab6c89, so it refuses prod's calls and prod's Blender steps run on the Droplet"
+    }
   }
 }
