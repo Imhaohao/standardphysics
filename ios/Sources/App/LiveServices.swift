@@ -23,12 +23,26 @@ final class LiveServices {
         self.coordinator = coordinator
         appModel = AppModel(
             capture: coordinator,
-            processor: OnDeviceScanProcessor(journal: journal),
+            processor: Self.makeProcessor(journal: journal),
             journal: journal
         )
         detection = LiveDetectionPipeline(detector: CoreMLDetector()) { [weak coordinator] detections in
             await MainActor.run { coordinator?.detections = detections }
         }
+    }
+
+    private static func makeProcessor(journal: some ScanJournaling) -> any ScanProcessing {
+        let local = OnDeviceScanProcessor(journal: journal)
+        let tokens = KeychainTokenStore()
+        guard let api = try? APIClient.fromInfoPlist(), let uploader = try? BackgroundUploader.makeDefault(api: api) else {
+            return local
+        }
+        Task { await uploader.start() }
+        return PreferredScanProcessor(
+            remote: ServerScanProcessor(api: api, uploader: uploader),
+            local: local,
+            isSignedIn: { tokens.token() != nil }
+        )
     }
 
     /// Polls the session's current frame rather than taking the delegate, which RoomPlan may own.
