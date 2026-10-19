@@ -6,9 +6,9 @@ It needs three outside services, each free to start:
 
 | Service | What it does for us | Status |
 | --- | --- | --- |
-| Neon | The database: accounts, scans, rooms and findings | Account and project made (`odd-field-89983844`); not yet connected |
-| Cloudflare R2 | File storage: room scans and 3D meshes uploaded from the phone | Bucket `standard-physics-scans` made; access key made; keys go in `server/.env.local` |
-| Modal | Runs the server on the internet so the phone can reach it | Not started |
+| Neon | The database: accounts, scans, rooms and findings | Connected (project `odd-field-89983844`, branch `production`) |
+| Cloudflare R2 | File storage: room scans and 3D meshes uploaded from the phone | Connected (bucket `standard-physics-scans`) |
+| Modal | Runs the server on the internet so the phone can reach it | Live at `https://tyadgirkar--sp-server-serve.us-east.modal.run`, sleeping when idle |
 
 Every secret (passwords, keys) lives in a file called `.env.local` on your Mac or in Modal's secret settings. Git ignores every `.env` and `.env.*` file in this repository, so they never reach GitHub. Never paste a secret into chat, an issue or a commit.
 
@@ -113,7 +113,7 @@ A healthy server answers `{"database":true,"storage":true}`. A `false` points at
 2. Install the Modal tool and sign in. The second command opens a browser to approve the login:
 
    ```sh
-   uv tool install modal
+   uv tool install modal --with python-dotenv
    modal setup
    ```
 
@@ -125,11 +125,13 @@ A healthy server answers `{"database":true,"storage":true}`. A `false` points at
 
    To change a value later, edit `server/.env.local` and run the same command with `--force` added.
 
-4. Deploy. `MIN_CONTAINERS=1` keeps one copy always running, so a scan never waits for the server to wake up:
+4. Deploy. With `MIN_CONTAINERS=0` the server sleeps when nobody uses it and costs nothing then; the first request after a sleep takes about 7 seconds. `MIN_CONTAINERS=1` keeps one copy always running (roughly $30 to $35 of Modal credit a month):
 
    ```sh
-   MIN_CONTAINERS=1 modal deploy server/deploy/modal_app.py
+   MIN_CONTAINERS=0 modal deploy server/deploy/modal_app.py
    ```
+
+   Modal builds `server/Dockerfile.modal`, a copy of the server image on Debian slim, because Modal needs a shell inside the image.
 
    Modal prints the server's web address, which looks like `https://YOUR-WORKSPACE--sp-server-serve.modal.run`.
 

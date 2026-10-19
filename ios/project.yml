@@ -66,10 +66,10 @@ targets:
       # also allows its subdomains.
       configs:
         Debug:
-          SP_API_BASE_URL: http://localhost:8080
+          SP_API_BASE_URL: https://tyadgirkar--sp-server-serve.us-east.modal.run
           SP_STORAGE_HOSTS: localhost 127.0.0.1 .r2.cloudflarestorage.com
         Release:
-          SP_API_BASE_URL: https://api.standardphysics.app
+          SP_API_BASE_URL: https://tyadgirkar--sp-server-serve.us-east.modal.run
           SP_STORAGE_HOSTS: 3a62492c4b6146cecd61f746a9ee2707.r2.cloudflarestorage.com
     entitlements:
       path: Resources/StandardPhysics.entitlements

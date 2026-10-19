@@ -16,14 +16,16 @@ from pathlib import Path
 import modal
 
 PORT = 8080
-REPO_ROOT = Path(__file__).resolve().parents[2]
+HERE = Path(__file__).resolve()
+# Inside the container this file sits at /root/modal_app.py; the repo path only matters when deploying.
+REPO_ROOT = HERE.parents[2] if len(HERE.parents) > 2 else HERE.parent
 MIN_CONTAINERS = int(os.environ.get("MIN_CONTAINERS", "0"))
 MAX_CONTAINERS = int(os.environ.get("MAX_CONTAINERS", "10"))
 SCALEDOWN_SECONDS = int(os.environ.get("SCALEDOWN_SECONDS", "300"))
 SECRET_NAME = os.environ.get("SP_SERVER_SECRET", "sp-server")
 
 image = modal.Image.from_dockerfile(
-    str(REPO_ROOT / "server" / "Dockerfile"),
+    str(REPO_ROOT / "server" / "Dockerfile.modal"),
     context_dir=str(REPO_ROOT),
     add_python="3.12",
 )
