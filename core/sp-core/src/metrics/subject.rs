@@ -61,11 +61,12 @@ impl Tagging {
         if let Some(canonical) = self.canonical.get(category) {
             tags.insert(canonical.clone());
         }
-        let has = |set: &BTreeSet<String>| tags.iter().any(|t| set.contains(t));
-        if has(&self.clear_floor_space) {
+        let has_clear_floor = tags.iter().any(|t| self.clear_floor_space.contains(t));
+        let has_operable_part = tags.iter().any(|t| self.operable_part.contains(t));
+        if has_clear_floor {
             tags.insert("clear_floor_space".into());
         }
-        if has(&self.operable_part) {
+        if has_operable_part {
             tags.insert("operable_part".into());
         }
         tags

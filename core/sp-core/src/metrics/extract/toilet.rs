@@ -128,7 +128,7 @@ fn obstruction_points(room: &Room, wc: &Object, frame: &WcFrame) -> Vec<Vec2> {
 }
 
 fn clear_extent(points: &[Vec2], along: impl Fn(&Vec2) -> f64, across: impl Fn(&Vec2) -> f64, band: f64) -> f64 {
-    points.iter().filter(|p| across(p) > 0.01 && across(p) < band && along(p) > 0.01).map(along).fold(SEARCH_LIMIT, f64::min)
+    points.iter().filter(|p| across(p) > 0.01 && across(p) < band && along(p) > 0.01).map(&along).fold(SEARCH_LIMIT, f64::min)
 }
 
 fn clearance_width(ctx: &EvalContext, subject: &Subject) -> Extraction {

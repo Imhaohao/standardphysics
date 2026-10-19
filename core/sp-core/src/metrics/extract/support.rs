@@ -72,14 +72,6 @@ pub fn objects_of<'a>(room: &'a Room, categories: &'a [&'a str]) -> impl Iterato
     room.objects.iter().filter(move |o| categories.contains(&o.category.as_str()))
 }
 
-pub fn nearest_of<'a>(room: &'a Room, categories: &'a [&'a str], point: Vec2, within: f64) -> Option<&'a Object> {
-    objects_of(room, categories)
-        .map(|o| (o, o.footprint().distance_to(point)))
-        .filter(|(_, d)| *d <= within)
-        .min_by(|a, b| a.1.total_cmp(&b.1))
-        .map(|(o, _)| o)
-}
-
 /// The object this one sits on (a counter under a card reader), if any.
 pub fn supporting_object<'a>(room: &'a Room, object: &Object) -> Option<&'a Object> {
     let bottom = object.bottom_height();
@@ -104,8 +96,4 @@ pub fn projected_span(footprint: &OrientedBox2, origin: Vec2, axis: Vec2) -> (f6
 pub fn adjoining<'a>(room: &'a Room, object: &'a Object, categories: &'a [&'a str], gap: f64) -> impl Iterator<Item = &'a Object> + 'a {
     let grown = object.footprint().grown(gap);
     objects_of(room, categories).filter(move |o| o.id != object.id && o.footprint().overlaps(&grown))
-}
-
-pub fn ceiling_height(room: &Room) -> f64 {
-    room.ceiling_height
 }

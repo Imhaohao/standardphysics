@@ -43,3 +43,4 @@ test-reports/
 web/test-results/
 web/playwright-report/
 *.tsbuildinfo
+core/build/

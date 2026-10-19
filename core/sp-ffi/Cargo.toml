@@ -1,6 +1,28 @@
 [package]
 name = "sp-ffi"
-version = "0.1.0"
-edition = "2024"
+description = "UniFFI bindings (Swift) for the Standard Physics engine."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["lib", "staticlib", "cdylib"]
+name = "sp_ffi"
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "src/bin/uniffi-bindgen.rs"
+required-features = ["bindgen"]
+
+[features]
+bindgen = ["uniffi/cli"]
 
 [dependencies]
+sp-core = { path = "../sp-core" }
+uniffi.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true
