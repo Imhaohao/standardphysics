@@ -1064,6 +1064,7 @@
           "content_type",
           "size_bytes",
           "sha256",
+          "sha256_verified",
           "created_at"
         ],
         "properties": {
@@ -1090,6 +1091,10 @@
           },
           "sha256": {
             "type": "string"
+          },
+          "sha256_verified": {
+            "type": "boolean",
+            "description": "True only when the server re-hashed the stored object and it matched `sha256`;\nfalse means `sha256` is the client's claim (objects above the verification limit)."
           },
           "size_bytes": {
             "type": "integer",

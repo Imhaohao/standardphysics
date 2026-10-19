@@ -27,6 +27,7 @@ pub struct TestOptions {
     pub label_concurrency: usize,
     pub label_key: Option<&'static str>,
     pub public_host_alias: bool,
+    pub verify_max_bytes: Option<u64>,
 }
 
 impl Default for TestOptions {
@@ -36,6 +37,7 @@ impl Default for TestOptions {
             label_concurrency: 4,
             label_key: Some("test-key"),
             public_host_alias: false,
+            verify_max_bytes: None,
         }
     }
 }
@@ -108,6 +110,9 @@ fn test_config(
             "S3_PUBLIC_ENDPOINT",
             s3_base.replace("127.0.0.1", "localhost"),
         );
+    }
+    if let Some(limit) = opts.verify_max_bytes {
+        env.insert("UPLOAD_VERIFY_MAX_BYTES", limit.to_string());
     }
     if let Some(key) = opts.label_key {
         env.insert("LABEL_API_KEY", key.to_string());

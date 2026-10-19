@@ -7,6 +7,9 @@ use crate::error::{ApiError, ApiResult};
 const UPLOAD_COLUMNS: &str = "id, scan_id, kind, filename, content_type, size_bytes, part_size,
      part_count, s3_key, s3_upload_id, state, created_at";
 
+const ARTIFACT_COLUMNS: &str =
+    "id, scan_id, upload_id, kind, filename, content_type, size_bytes, sha256, sha256_verified, created_at";
+
 pub async fn insert_upload(db: &PgPool, record: &UploadRecord) -> ApiResult<()> {
     sqlx::query(
         "INSERT INTO uploads (id, scan_id, kind, filename, content_type, size_bytes, part_size,
@@ -52,6 +55,7 @@ pub async fn finish_upload_with_artifact(
     db: &PgPool,
     upload: &UploadRecord,
     sha256: &str,
+    sha256_verified: bool,
 ) -> ApiResult<Artifact> {
     let mut tx = db.begin().await?;
     let claimed = sqlx::query(
@@ -66,12 +70,12 @@ pub async fn finish_upload_with_artifact(
             .await?
             .ok_or_else(|| ApiError::Conflict("upload is no longer open".into()));
     }
-    let artifact = sqlx::query_as(
+    let artifact = sqlx::query_as(&format!(
         "INSERT INTO artifacts (id, scan_id, upload_id, kind, filename, content_type, s3_key,
-                                size_bytes, sha256)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-         RETURNING id, scan_id, upload_id, kind, filename, content_type, size_bytes, sha256, created_at",
-    )
+                                size_bytes, sha256, sha256_verified)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         RETURNING {ARTIFACT_COLUMNS}"
+    ))
     .bind(Uuid::new_v4())
     .bind(upload.scan_id)
     .bind(upload.id)
@@ -81,6 +85,7 @@ pub async fn finish_upload_with_artifact(
     .bind(&upload.s3_key)
     .bind(upload.size_bytes)
     .bind(sha256)
+    .bind(sha256_verified)
     .fetch_one(&mut *tx)
     .await?;
     tx.commit().await?;
@@ -88,10 +93,9 @@ pub async fn finish_upload_with_artifact(
 }
 
 pub async fn artifact_for_upload(db: &PgPool, upload_id: Uuid) -> ApiResult<Option<Artifact>> {
-    let artifact = sqlx::query_as(
-        "SELECT id, scan_id, upload_id, kind, filename, content_type, size_bytes, sha256, created_at
-         FROM artifacts WHERE upload_id = $1",
-    )
+    let artifact = sqlx::query_as(&format!(
+        "SELECT {ARTIFACT_COLUMNS} FROM artifacts WHERE upload_id = $1"
+    ))
     .bind(upload_id)
     .fetch_optional(db)
     .await?;
@@ -99,10 +103,9 @@ pub async fn artifact_for_upload(db: &PgPool, upload_id: Uuid) -> ApiResult<Opti
 }
 
 pub async fn list_artifacts(db: &PgPool, scan_id: Uuid) -> ApiResult<Vec<Artifact>> {
-    let artifacts = sqlx::query_as(
-        "SELECT id, scan_id, upload_id, kind, filename, content_type, size_bytes, sha256, created_at
-         FROM artifacts WHERE scan_id = $1 ORDER BY created_at",
-    )
+    let artifacts = sqlx::query_as(&format!(
+        "SELECT {ARTIFACT_COLUMNS} FROM artifacts WHERE scan_id = $1 ORDER BY created_at"
+    ))
     .bind(scan_id)
     .fetch_all(db)
     .await?;

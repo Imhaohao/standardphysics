@@ -32,6 +32,15 @@ fn xml(body: String) -> Response {
     (StatusCode::OK, [("content-type", "application/xml")], body).into_response()
 }
 
+fn no_such_upload() -> Response {
+    (
+        StatusCode::NOT_FOUND,
+        [("content-type", "application/xml")],
+        "<Error><Code>NoSuchUpload</Code><Message>gone</Message></Error>",
+    )
+        .into_response()
+}
+
 fn etag_of(data: &[u8]) -> String {
     format!("\"{}\"", hex::encode(&Sha256::digest(data)[..16]))
 }
@@ -74,7 +83,7 @@ async fn handle(
         }
         ("GET", false, Some(id)) => {
             let Some(parts) = store.uploads.get(&id) else {
-                return StatusCode::NOT_FOUND.into_response();
+                return no_such_upload();
             };
             let items: String = parts
                 .iter()

@@ -46,6 +46,9 @@ pub struct Artifact {
     pub content_type: String,
     pub size_bytes: i64,
     pub sha256: String,
+    /// True only when the server re-hashed the stored object and it matched `sha256`;
+    /// false means `sha256` is the client's claim (objects above the verification limit).
+    pub sha256_verified: bool,
     pub created_at: DateTime<Utc>,
 }
 

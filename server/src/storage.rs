@@ -4,6 +4,7 @@ use anyhow::{anyhow, Context, Result};
 use aws_sdk_s3::config::{
     BehaviorVersion, Credentials, Region, RequestChecksumCalculation, ResponseChecksumValidation,
 };
+use aws_sdk_s3::error::ProvideErrorMetadata;
 use aws_sdk_s3::presigning::PresigningConfig;
 use aws_sdk_s3::types::{CompletedMultipartUpload, CompletedPart};
 use aws_sdk_s3::Client;
@@ -22,6 +23,10 @@ pub struct Storage {
     bucket: String,
     presign_ttl: Duration,
 }
+
+#[derive(Debug, thiserror::Error)]
+#[error("multipart upload no longer exists in storage")]
+pub struct NoSuchUpload;
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct PresignedPart {
@@ -156,7 +161,10 @@ impl Storage {
                 .set_part_number_marker(marker.clone())
                 .send()
                 .await
-                .map_err(|e| anyhow!("list_parts failed: {e:?}"))?;
+                .map_err(|e| match e.code() {
+                    Some("NoSuchUpload") => anyhow::Error::new(NoSuchUpload),
+                    _ => anyhow!("list_parts failed: {e:?}"),
+                })?;
             parts.extend(out.parts().iter().map(uploaded_part));
             if !out.is_truncated().unwrap_or(false) {
                 return Ok(parts);

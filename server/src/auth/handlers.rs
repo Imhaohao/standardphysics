@@ -4,7 +4,9 @@ use axum::Json;
 
 use super::extractor::{AuthUser, BearerToken};
 use super::models::{AppleSignIn, AuthResponse, Credentials, User};
-use super::password::{hash_password, password_is_acceptable, verify_password};
+use super::password::{
+    hash_password, password_is_acceptable, verify_against_dummy, verify_password,
+};
 use super::repo::{self, NewUser};
 use super::session::{issue_session, revoke_session};
 use crate::error::{ApiError, ApiResult, ErrorBody};
@@ -71,6 +73,7 @@ pub async fn login(
 ) -> ApiResult<Json<AuthResponse>> {
     let found = repo::find_credentials(&state.db, body.email.trim()).await?;
     let Some((user, hash)) = found else {
+        verify_against_dummy(body.password).await?;
         return Err(ApiError::Unauthorized);
     };
     if !verify_password(body.password, hash).await? {

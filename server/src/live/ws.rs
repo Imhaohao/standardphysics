@@ -4,6 +4,7 @@ use axum::http::HeaderMap;
 use axum::response::Response;
 use serde::Deserialize;
 use tokio::sync::broadcast::error::RecvError;
+use tokio::sync::broadcast::Receiver;
 use uuid::Uuid;
 
 use super::hub::LiveSession;
@@ -85,8 +86,8 @@ async fn send(socket: &mut WebSocket, message: &ServerMessage) -> bool {
 }
 
 async fn run_connection(state: AppState, scan_id: Uuid, role: Role, mut socket: WebSocket) {
-    let session = match state.hub.session(&state.db, scan_id).await {
-        Ok(session) => session,
+    let (session, updates) = match state.hub.join(&state.db, scan_id).await {
+        Ok(joined) => joined,
         Err(err) => {
             tracing::error!(error = ?err, %scan_id, "could not open live session");
             let _ = send(
@@ -103,12 +104,17 @@ async fn run_connection(state: AppState, scan_id: Uuid, role: Role, mut socket: 
             return;
         }
     };
-    serve_socket(&state, &session, role, &mut socket).await;
+    serve_socket(&state, &session, updates, role, &mut socket).await;
     state.hub.release(scan_id).await;
 }
 
-async fn serve_socket(state: &AppState, session: &LiveSession, role: Role, socket: &mut WebSocket) {
-    let mut updates = session.subscribe();
+async fn serve_socket(
+    state: &AppState,
+    session: &LiveSession,
+    mut updates: Receiver<ServerMessage>,
+    role: Role,
+    socket: &mut WebSocket,
+) {
     if !send(socket, &session.snapshot()).await {
         return;
     }

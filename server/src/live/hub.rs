@@ -127,10 +127,17 @@ pub struct LiveHub {
 }
 
 impl LiveHub {
-    pub async fn session(&self, db: &PgPool, scan_id: Uuid) -> Result<Arc<LiveSession>> {
+    /// Fetches (or opens) the session and subscribes under the same lock, so `release`
+    /// can never see this connection's session as idle in between.
+    pub async fn join(
+        &self,
+        db: &PgPool,
+        scan_id: Uuid,
+    ) -> Result<(Arc<LiveSession>, broadcast::Receiver<ServerMessage>)> {
         let mut sessions = self.sessions.lock().await;
         if let Some(existing) = sessions.get(&scan_id) {
-            return Ok(Arc::clone(existing));
+            let updates = existing.subscribe();
+            return Ok((Arc::clone(existing), updates));
         }
         let rooms = load_rooms(db, scan_id).await?;
         let session = tokio::task::spawn_blocking(move || -> Result<LiveSession> {
@@ -140,8 +147,9 @@ impl LiveHub {
         })
         .await??;
         let session = Arc::new(session);
+        let updates = session.subscribe();
         sessions.insert(scan_id, Arc::clone(&session));
-        Ok(session)
+        Ok((session, updates))
     }
 
     pub async fn peek(&self, scan_id: Uuid) -> Option<Arc<LiveSession>> {
