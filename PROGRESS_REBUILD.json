@@ -40,7 +40,7 @@
     {
       "id": 2,
       "name": "60 s pipeline: concurrent detection and labelling, no Blender on the critical path, GPU texture projection",
-      "status": "70.1 s to painted scan on a fresh Share Tea upload (compute-box); exact cuts exhausted",
+      "status": "closed 2026-10-19 at 70.1 s to painted scan on compute-box; user chose to run the whole job on compute-box rather than cut further",
       "log": [
         {
           "date": "2026-10-18",
@@ -242,5 +242,33 @@
     },
     "painted_scan_coverage": "50% of the scan from 439 photos",
     "takeaway": "mirrored completion is 66% of wall time; results path is ~154 s, dominated by per-photo detection"
+  },
+  "production_on_compute_box_plan": {
+    "decided": "2026-10-19: leave the pipeline as is; run the whole scan job on compute-box in production",
+    "shape": "compute-box runs the API, worker, SQLite and artifact store natively; the Droplet stays the public edge (Caddy TLS, reverse proxy over Tailscale to compute-box) and keeps the web container",
+    "why_not_job_offload": "a job-level offload would ship ~300 MB of photos per walk over Tailscale after the last byte; with the server on compute-box they arrive during the walk as the phone streams them",
+    "facts_2026_10_19": {
+      "latency_to_droplet_ms": "11-33 (avg 17), direct Tailscale path",
+      "disk_free_gb": 16,
+      "disk_used_pct": 97,
+      "cpu": "8-core M1 Pro, 16 GB",
+      "power": "laptop on AC, battery 80%; sleep held off only by caffeinate; standby and powernap on; autorestart not set",
+      "docker": "none; runs native venv like the offload server",
+      "blender": "5.2.1 installed"
+    },
+    "steps": [
+      "0 decisions and machine prep (user, needs admin): dedicate the machine; free ~100 GB or attach an SSD; pmset sleep 0 / autorestart 1 / standby 0; Tailscale and the server start without a login (FileVault blocks this after a power cut)",
+      "1 prepare compute-box (no prod impact): clean checkout of the deployed master commit at ~/sp-prod, venv from requirements.lock, prod .env copied from the Droplet, launchd agent with KeepAlive bound to the Tailscale IP, SP_OFFLOAD_URL unset",
+      "2 rehearse: restore last night's prod backup into it, measure Droplet<->compute-box throughput (needs >= ~3 MB/s for a live walk), replay a real upload through the Droplet proxy, time milestones",
+      "3 migrate in a short maintenance window: stop the Droplet API, sqlite .backup + rsync artifact store, verify row and file counts, start compute-box, point Caddy at it",
+      "4 deploys and backups: deploy = fetch + venv sync + launchd restart on compute-box; nightly sqlite .backup + artifact rsync back to the Droplet, which becomes the cold standby",
+      "5 verify with a real TestFlight walk; rollback = Caddy back to the Droplet's API container plus the latest backup"
+    ],
+    "risks": [
+      "home laptop uptime and power cuts",
+      "disk full at 97%",
+      "throughput unmeasured",
+      "prod commands run by the user (the classifier blocks Claude on the Droplet)"
+    ]
   }
 }
