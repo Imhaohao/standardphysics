@@ -44,6 +44,14 @@ pub enum ServerMessage {
         summary: Summary,
         elapsed_ms: u64,
     },
+    Room {
+        #[schema(value_type = Object)]
+        room: Value,
+    },
+    Scene {
+        #[schema(value_type = Object)]
+        scene: Value,
+    },
     Report {
         report: Box<Report>,
     },

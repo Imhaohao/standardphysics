@@ -156,6 +156,19 @@ impl Extraction {
         }
     }
 
+    /// Apply `f` to both ends of a numeric measurement.
+    pub fn map_value(self, f: impl Fn(f64) -> f64) -> Self {
+        match self {
+            Self::Measured(mut m) => {
+                if let Value::Number { lo, hi } = m.value {
+                    m.value = Value::range(f(lo), f(hi));
+                }
+                Self::Measured(m)
+            }
+            other => other,
+        }
+    }
+
     pub fn is_known(&self) -> bool {
         matches!(self, Self::Measured(_))
     }

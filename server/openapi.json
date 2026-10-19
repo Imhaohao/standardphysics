@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Standard Physics server",
-    "description": "Scans, uploads, live findings and assessments.",
+    "description": "Scans, uploads, live findings and assessments.\n\nUploads: artifact kind `mesh` carries the binary `mesh.spm`; `crop` carries detector crops (JPEG); `photo`, `video` and `other` are free-form. RoomPlan rooms are not uploaded as files: they stream as CapturedRoom JSON per room over the live WebSocket (`GET /v1/scans/{scan_id}/live`, JSON text frames). Client frames are `ClientMessage` (`room`, `ping`); server frames are `ServerMessage` (`hello`, `scene` (merged Scene, sent after hello and after finish), `room` (one converted sp-core Room, on every room update), `findings`, `report`, `error`, `pong`). Both are defined under components/schemas.",
     "license": {
       "name": ""
     },
@@ -577,6 +577,52 @@
         ]
       }
     },
+    "/v1/scans/{scan_id}/scene": {
+      "get": {
+        "tags": [
+          "scans"
+        ],
+        "operationId": "get_scene",
+        "parameters": [
+          {
+            "name": "scan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Merged sp-core Scene JSON (rooms, connections, observations)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not your scan, or no room has been captured yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/v1/scans/{scan_id}/uploads": {
       "post": {
         "tags": [
@@ -1118,19 +1164,36 @@
           "rule_id",
           "jurisdiction",
           "section",
+          "title",
           "subject_id",
           "status",
-          "message"
+          "required",
+          "message",
+          "evidence",
+          "severity"
         ],
         "properties": {
-          "evidence": {
+          "counterpart": {
             "type": [
-              "object",
+              "string",
               "null"
             ]
           },
+          "evidence": {
+            "type": "string"
+          },
           "jurisdiction": {
             "type": "string"
+          },
+          "location": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Point3"
+              }
+            ]
           },
           "measured": {
             "oneOf": [
@@ -1146,8 +1209,11 @@
             "type": "string"
           },
           "required": {
+            "type": "string"
+          },
+          "room_id": {
             "type": [
-              "object",
+              "string",
               "null"
             ]
           },
@@ -1157,10 +1223,16 @@
           "section": {
             "type": "string"
           },
+          "severity": {
+            "type": "string"
+          },
           "status": {
             "$ref": "#/components/schemas/FindingStatus"
           },
           "subject_id": {
+            "type": "string"
+          },
+          "title": {
             "type": "string"
           }
         }
@@ -1173,6 +1245,40 @@
           "needs_info",
           "not_applicable"
         ]
+      },
+      "Governing": {
+        "type": "object",
+        "required": [
+          "subject_id",
+          "status",
+          "governing_rule_id",
+          "governing_jurisdiction",
+          "rule_ids",
+          "message"
+        ],
+        "properties": {
+          "governing_jurisdiction": {
+            "type": "string"
+          },
+          "governing_rule_id": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "rule_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "$ref": "#/components/schemas/FindingStatus"
+          },
+          "subject_id": {
+            "type": "string"
+          }
+        }
       },
       "Health": {
         "type": "object",
@@ -1192,14 +1298,56 @@
       "Measured": {
         "type": "object",
         "required": [
-          "value",
+          "text",
           "unit"
         ],
         "properties": {
+          "hi": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "lo": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "text": {
+            "type": "string"
+          },
           "unit": {
             "type": "string"
           },
           "value": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          }
+        }
+      },
+      "Point3": {
+        "type": "object",
+        "required": [
+          "x",
+          "y",
+          "z"
+        ],
+        "properties": {
+          "x": {
+            "type": "number",
+            "format": "double"
+          },
+          "y": {
+            "type": "number",
+            "format": "double"
+          },
+          "z": {
             "type": "number",
             "format": "double"
           }
@@ -1495,6 +1643,42 @@
           {
             "type": "object",
             "required": [
+              "room",
+              "type"
+            ],
+            "properties": {
+              "room": {
+                "type": "object"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "room"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "scene",
+              "type"
+            ],
+            "properties": {
+              "scene": {
+                "type": "object"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "scene"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
               "report",
               "type"
             ],
@@ -1627,6 +1811,15 @@
             "propertyNames": {
               "type": "string"
             }
+          },
+          "governing": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Governing"
+            }
+          },
+          "governing_counts": {
+            "$ref": "#/components/schemas/StatusCounts"
           },
           "total": {
             "$ref": "#/components/schemas/StatusCounts"

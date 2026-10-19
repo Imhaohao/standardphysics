@@ -181,7 +181,7 @@ fn approach(ctx: &EvalContext, subject: &Subject) -> Extraction {
 
 /// Depth over which free floor in front of the element stays bounded on both sides, and the
 /// narrowest width between those sides.
-fn alcove(analysis: &StoreyAnalysis, object: &Object) -> (f64, Option<f64>) {
+pub(super) fn alcove(analysis: &StoreyAnalysis, object: &Object) -> (f64, Option<f64>) {
     let grid = &analysis.grid;
     let c = clear_floor(analysis, object);
     let reach = c.approach.footprint().0 / 2.0 + 0.3;

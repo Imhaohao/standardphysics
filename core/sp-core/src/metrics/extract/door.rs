@@ -12,13 +12,18 @@ use crate::units::inches;
 pub const EXTRACTORS: &[(&str, Extractor)] = &[
     ("door.clear_width", clear_width),
     ("door.opening_depth", opening_depth),
-    ("door.approach", approach),
+    ("door.approach_pull_side", approach),
+    ("door.approach_push_side", approach),
     ("door.maneuvering_clearance_pull_side_depth", pull_side_depth),
     ("door.maneuvering_clearance_pull_side_latch_extension", pull_side_latch_extension),
     ("door.maneuvering_clearance_pull_side_hinge_extension", pull_side_hinge_extension),
     ("door.maneuvering_clearance_push_side_depth", push_side_depth),
     ("door.maneuvering_clearance_push_side_latch_extension", push_side_latch_extension),
+    ("door.maneuvering_clearance_push_side_hinge_extension", push_side_latch_extension),
     ("door.maneuvering_clearance_slope", needs_mesh),
+    ("door.pull_side_is_exterior", pull_side_is_exterior),
+    ("door.recess_depth", recess_depth),
+    ("doorway.maneuvering_depth", doorway_maneuvering_depth),
     ("door.maneuvering_clearance_width_doorway", doorway_maneuvering_width),
     ("door.hardware_height", hardware_height),
     ("door.is_exterior", is_exterior),
@@ -114,6 +119,8 @@ fn facing_wall_gap(ctx: &EvalContext, site: &DoorSite) -> Option<f64> {
         .reduce(f64::min)
 }
 
+/// A route crossing the door square-on approaches it from the front on both sides, whichever
+/// way it swings; a side approach needs the hinge side, which the scan does not capture.
 fn approach(ctx: &EvalContext, subject: &Subject) -> Extraction {
     let site = match door_site(ctx, subject) {
         Ok(site) => site,
@@ -397,4 +404,49 @@ fn threshold_height(ctx: &EvalContext, subject: &Subject) -> Extraction {
         Some(t) => Extraction::metres(t.size.y).located(Some(t.center)),
         None => needs_mesh(ctx, subject),
     }
+}
+
+fn pull_side_is_exterior(ctx: &EvalContext, subject: &Subject) -> Extraction {
+    if subject.has_tag("toilet_compartment") {
+        return Extraction::boolean(false);
+    }
+    is_exterior(ctx, subject)
+}
+
+/// How far a wall or object beside the door (within 18 in of either edge) stands out past the
+/// wall face; the latch edge is unknown, so the range covers both edges and both sides.
+fn recess_depth(ctx: &EvalContext, subject: &Subject) -> Extraction {
+    let site = match leaf_door(ctx, subject) {
+        Ok(site) => site,
+        Err(e) => return e,
+    };
+    let face = wall_face_offset(&site);
+    let depths = [1.0, -1.0].into_iter().flat_map(|side| [1.0, -1.0].map(|edge| (side, edge))).map(|(side, edge)| {
+        let beside = site.gap.center + site.gap.along * (edge * (site.gap.width / 2.0 + inches(9.0)));
+        let normal = site.gap.normal * side;
+        let probe = Probe::new(beside + normal * face, normal, inches(9.0) - 0.01);
+        blocked_run(&site, probe)
+    });
+    range(hull(depths.map(|d| (d, d)))).located(Some(site.opening.center))
+}
+
+/// Distance the probe travels through non-free floor before it reaches free floor (max 1 m).
+fn blocked_run(site: &DoorSite, probe: Probe) -> f64 {
+    let grid = &site.analysis.grid;
+    let step = grid.spec.cell / 2.0;
+    let mut travelled = 0.0;
+    while travelled < 1.0 && !probe.is_clear_at(grid, travelled) {
+        travelled += step;
+    }
+    travelled
+}
+
+/// The shallower side of a doorway without a leaf.
+fn doorway_maneuvering_depth(ctx: &EvalContext, subject: &Subject) -> Extraction {
+    let site = match door_site(ctx, subject) {
+        Ok(site) => site,
+        Err(e) => return e,
+    };
+    let (a, b) = (measure_side(&site, 1.0).depth, measure_side(&site, -1.0).depth);
+    range((a.0.min(b.0), a.1.min(b.1))).located(Some(site.opening.center))
 }

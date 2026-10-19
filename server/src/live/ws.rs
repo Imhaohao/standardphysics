@@ -99,6 +99,11 @@ async fn serve_socket(state: &AppState, session: &LiveSession, role: Role, socke
     if !send(socket, &session.snapshot()).await {
         return;
     }
+    if let Some(scene) = session.scene_message() {
+        if !send(socket, &scene).await {
+            return;
+        }
+    }
     loop {
         let keep_going = tokio::select! {
             incoming = socket.recv() => handle_incoming(state, session, role, socket, incoming).await,
@@ -174,8 +179,10 @@ async fn accept_room_update(
     update: RoomUpdate,
 ) -> Option<ServerMessage> {
     match process_room_update(state, session, update).await {
-        Ok(findings) => {
-            session.publish(findings);
+        Ok(messages) => {
+            messages
+                .into_iter()
+                .for_each(|message| session.publish(message));
             None
         }
         Err(message) => Some(ServerMessage::error(message)),
@@ -186,7 +193,7 @@ async fn process_room_update(
     state: &AppState,
     session: &LiveSession,
     update: RoomUpdate,
-) -> Result<ServerMessage, String> {
+) -> Result<Vec<ServerMessage>, String> {
     validate_update(&update)?;
     let scan_id = session.scan_id();
     match scan_accepts_updates(&state.db, scan_id).await {

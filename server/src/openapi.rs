@@ -19,7 +19,7 @@ impl Modify for BearerAuth {
 #[openapi(
     info(
         title = "Standard Physics server",
-        description = "Scans, uploads, live findings and assessments.",
+        description = "Scans, uploads, live findings and assessments.\n\nUploads: artifact kind `mesh` carries the binary `mesh.spm`; `crop` carries detector crops (JPEG); `photo`, `video` and `other` are free-form. RoomPlan rooms are not uploaded as files: they stream as CapturedRoom JSON per room over the live WebSocket (`GET /v1/scans/{scan_id}/live`, JSON text frames). Client frames are `ClientMessage` (`room`, `ping`); server frames are `ServerMessage` (`hello`, `scene` (merged Scene, sent after hello and after finish), `room` (one converted sp-core Room, on every room update), `findings`, `report`, `error`, `pong`). Both are defined under components/schemas.",
         version = "1.0.0"
     ),
     paths(
@@ -34,6 +34,7 @@ impl Modify for BearerAuth {
         scans::handlers::list_scans,
         scans::handlers::get_scan,
         scans::handlers::get_assessment,
+        scans::handlers::get_scene,
         finish::finish_scan,
         uploads::handlers::create_upload,
         uploads::handlers::upload_status,

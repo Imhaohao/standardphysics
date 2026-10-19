@@ -33,7 +33,7 @@ async fn job_row(db: &PgPool, id: Uuid) -> (String, i32, Option<String>) {
 async fn drain(worker: &JobWorker) {
     for _ in 0..200 {
         if !worker.run_once().await.unwrap() {
-            tokio::time::sleep(Duration::from_millis(15)).await;
+            tokio::time::sleep(Duration::from_millis(120)).await;
             if !worker.run_once().await.unwrap() {
                 return;
             }

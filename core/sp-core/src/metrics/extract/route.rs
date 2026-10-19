@@ -28,6 +28,8 @@ pub const EXTRACTORS: &[(&str, Extractor)] = &[
     ("headroom.guarded_below_80", guarded_below_80),
     ("floor.change_in_level", change_in_level),
     ("floor.change_in_level_bevel_slope", needs_mesh),
+    ("floor.dropoff_height", needs_mesh),
+    ("route.kind", route_kind),
 ];
 
 /// Metres the accessible route may stray from the general circulation path and still be "in the same area".
@@ -260,4 +262,17 @@ fn change_in_level(ctx: &EvalContext, subject: &Subject) -> Extraction {
         Some(object) => Extraction::metres(object.size.y).located(Some(object.center)),
         None => needs_mesh(ctx, subject),
     }
+}
+
+/// Width exceptions depend on where the leg runs: a corridor, a toilet room or general interior.
+fn route_kind(ctx: &EvalContext, subject: &Subject) -> Extraction {
+    if ctx.route(subject).is_none() {
+        return wrong_subject();
+    }
+    let kind = match ctx.room(subject).map(|r| r.kind) {
+        Some(crate::scene::RoomKind::Corridor) => "corridor",
+        Some(crate::scene::RoomKind::Restroom) => "toilet_room_path",
+        _ => "interior_path",
+    };
+    Extraction::text(kind)
 }

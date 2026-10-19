@@ -1,3 +1,5 @@
 StandardPhysics.xcodeproj/
 build/
 *.xcresult
+Resources/Models/*.mlpackage
+Resources/Models/*.mlmodel

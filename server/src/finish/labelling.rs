@@ -5,7 +5,7 @@ use serde_json::{json, Value};
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::engine::SceneEngine;
+use crate::engine::object_categories;
 use crate::live::rooms::RoomState;
 use crate::state::AppState;
 use crate::vision::{group_by_id, LabelRequest};
@@ -34,13 +34,17 @@ fn crop_artifact_id(observation: &Value) -> Option<Uuid> {
     observation.get("crop_artifact_id")?.as_str()?.parse().ok()
 }
 
+fn needs_label(observation: &Value) -> bool {
+    !has_category(observation) && observation.get("metric").is_none()
+}
+
 pub fn pending_observations(rooms: &[RoomState]) -> Vec<PendingObservation> {
     rooms
         .iter()
         .flat_map(|room| {
             room.observations
                 .iter()
-                .filter(|(_, observation)| !has_category(observation))
+                .filter(|(_, observation)| needs_label(observation))
                 .map(|(id, observation)| PendingObservation {
                     room_id: room.room_id.clone(),
                     observation_id: id.clone(),
@@ -106,10 +110,10 @@ pub async fn run_label_stage(
     }
     let locations = crop_locations(&state.db, scan_id, &pending).await?;
     let requests = label_requests(&pending, &locations);
-    let categories = SceneEngine::object_categories();
+    let categories = object_categories();
     let outcome = state
         .labeller
-        .label_all(&state.storage, &categories, requests)
+        .label_all(&state.storage, categories, requests)
         .await;
     if outcome.deadline_hit {
         tracing::warn!(%scan_id, missing = outcome.unlabelled.len(), "vision labelling hit its deadline");
