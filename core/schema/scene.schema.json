@@ -1,0 +1,429 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Scene",
+  "type": "object",
+  "properties": {
+    "connections": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/RoomConnection"
+      }
+    },
+    "observations": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Observation"
+      }
+    },
+    "rooms": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Room"
+      }
+    },
+    "version": {
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0
+    }
+  },
+  "required": [
+    "version"
+  ],
+  "$defs": {
+    "DoorSwing": {
+      "type": "object",
+      "properties": {
+        "hinge": {
+          "description": "Hinge side as seen from the side the door swings into.",
+          "$ref": "#/$defs/HingeSide"
+        },
+        "leaves": {
+          "description": "Leaf count (1 or 2).",
+          "type": "integer",
+          "format": "uint32",
+          "default": 1,
+          "minimum": 0
+        },
+        "swings_in": {
+          "description": "True when the door swings into this room.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "hinge",
+        "swings_in"
+      ]
+    },
+    "HingeSide": {
+      "type": "string",
+      "enum": [
+        "left",
+        "right"
+      ]
+    },
+    "Object": {
+      "type": "object",
+      "properties": {
+        "attributes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {}
+        },
+        "category": {
+          "description": "Category from `rules/metrics.json` `object_categories`.",
+          "type": "string"
+        },
+        "center": {
+          "description": "Centre of the bounding box; `y` is height above the floor.",
+          "$ref": "#/$defs/Vec3"
+        },
+        "confidence": {
+          "type": "number",
+          "format": "double",
+          "default": 1.0
+        },
+        "id": {
+          "type": "string"
+        },
+        "size": {
+          "description": "Box size (width along local X, height, depth along local Z).",
+          "$ref": "#/$defs/Vec3"
+        },
+        "source": {
+          "$ref": "#/$defs/ObjectSource",
+          "default": "roomplan"
+        },
+        "top_height": {
+          "description": "Height of the top surface above the floor (usually `center.y + size.y / 2`).",
+          "type": "number",
+          "format": "double"
+        },
+        "yaw": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "center",
+        "size",
+        "yaw",
+        "top_height"
+      ]
+    },
+    "ObjectSource": {
+      "type": "string",
+      "enum": [
+        "roomplan",
+        "detector",
+        "mesh",
+        "owner"
+      ]
+    },
+    "Observation": {
+      "description": "A fact that cannot be derived from boxes: sign text, Braille present, door opening force reported\nby the owner, a tape-measured height.",
+      "type": "object",
+      "properties": {
+        "confidence": {
+          "type": "number",
+          "format": "double",
+          "default": 1.0
+        },
+        "id": {
+          "type": "string"
+        },
+        "metric": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/ObservationSource"
+        },
+        "subject_id": {
+          "type": "string"
+        },
+        "unit": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "value": {
+          "$ref": "#/$defs/ObservationValue"
+        }
+      },
+      "required": [
+        "id",
+        "subject_id",
+        "metric",
+        "value",
+        "source"
+      ]
+    },
+    "ObservationSource": {
+      "type": "string",
+      "enum": [
+        "measured",
+        "photo",
+        "owner"
+      ]
+    },
+    "ObservationValue": {
+      "description": "Value of an observation: a number (with `unit`), a yes/no answer, or text.",
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "number",
+          "format": "double"
+        },
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "Opening": {
+      "type": "object",
+      "properties": {
+        "center": {
+          "description": "Centre of the opening; `y` is the height of its middle above the floor.",
+          "$ref": "#/$defs/Vec3"
+        },
+        "hardware": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "height": {
+          "type": "number",
+          "format": "double"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/OpeningKind"
+        },
+        "swing": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DoorSwing"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "wall_id": {
+          "type": "string"
+        },
+        "width": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "wall_id",
+        "center",
+        "width",
+        "height"
+      ]
+    },
+    "OpeningKind": {
+      "type": "string",
+      "enum": [
+        "door",
+        "window",
+        "opening"
+      ]
+    },
+    "Polygon2": {
+      "description": "A simple polygon in plan (XZ). Winding may be either direction.",
+      "type": "object",
+      "properties": {
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Vec2"
+          }
+        }
+      },
+      "required": [
+        "points"
+      ]
+    },
+    "Room": {
+      "type": "object",
+      "properties": {
+        "ceiling_height": {
+          "type": "number",
+          "format": "double"
+        },
+        "floor": {
+          "description": "Floor outline in plan (x = world X, y = world Z).",
+          "$ref": "#/$defs/Polygon2"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/RoomKind",
+          "default": "other"
+        },
+        "name": {
+          "type": "string"
+        },
+        "objects": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Object"
+          }
+        },
+        "openings": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Opening"
+          }
+        },
+        "storey": {
+          "description": "Storey index; rooms sharing a storey share one floor plane and one occupancy grid.",
+          "type": "integer",
+          "format": "int32",
+          "default": 0
+        },
+        "walls": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Wall"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "floor",
+        "ceiling_height"
+      ]
+    },
+    "RoomConnection": {
+      "type": "object",
+      "properties": {
+        "from_room": {
+          "type": "string"
+        },
+        "opening_id": {
+          "description": "The door or opening shared by both rooms, when known.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "to_room": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "from_room",
+        "to_room"
+      ]
+    },
+    "RoomKind": {
+      "type": "string",
+      "enum": [
+        "shop",
+        "restaurant",
+        "restroom",
+        "office",
+        "corridor",
+        "kitchen",
+        "storage",
+        "other"
+      ]
+    },
+    "Vec2": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number",
+          "format": "double"
+        },
+        "y": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ]
+    },
+    "Vec3": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number",
+          "format": "double"
+        },
+        "y": {
+          "type": "number",
+          "format": "double"
+        },
+        "z": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "z"
+      ]
+    },
+    "Wall": {
+      "type": "object",
+      "properties": {
+        "end": {
+          "$ref": "#/$defs/Vec2"
+        },
+        "height": {
+          "type": "number",
+          "format": "double"
+        },
+        "id": {
+          "type": "string"
+        },
+        "start": {
+          "$ref": "#/$defs/Vec2"
+        },
+        "thickness": {
+          "type": "number",
+          "format": "double",
+          "default": 0.1
+        }
+      },
+      "required": [
+        "id",
+        "start",
+        "end",
+        "height"
+      ]
+    }
+  }
+}

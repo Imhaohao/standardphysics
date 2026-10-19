@@ -1,0 +1,5060 @@
+{
+  "version": "2.0.0",
+  "units_note": "Lengths in inches (core converts from scene metres: in = m / 0.0254). Slopes are rise/run ratios (1:12 = 0.08333). Forces in lbf, times in seconds, distances along routes in feet where noted.",
+  "evidence_kinds": {
+    "measured": "Derivable from scan geometry (RoomPlan boxes, openings, mesh, occupancy grid, routes).",
+    "photo": "Needs a photo the app asks for, labelled by the vision model or the user.",
+    "owner": "Needs an answer from the owner/operator."
+  },
+  "elements": [
+    {
+      "id": "site",
+      "description": "Whole facility / business; holds owner answers"
+    },
+    {
+      "id": "room",
+      "description": "Room from the scene model"
+    },
+    {
+      "id": "toilet_room",
+      "description": "Room with kind=restroom"
+    },
+    {
+      "id": "wall",
+      "description": "Wall"
+    },
+    {
+      "id": "floor",
+      "description": "Floor surface of a room or route"
+    },
+    {
+      "id": "door",
+      "description": "Opening with kind=door"
+    },
+    {
+      "id": "doorway",
+      "description": "Opening with kind=opening (no leaf)"
+    },
+    {
+      "id": "window",
+      "description": "Window"
+    },
+    {
+      "id": "entrance",
+      "description": "Door or doorway used as a public entrance"
+    },
+    {
+      "id": "route",
+      "description": "Accessible route leg computed by core (402, 403)"
+    },
+    {
+      "id": "clear_floor_space",
+      "description": "30x48 clear floor space core places in front of an element (305)"
+    },
+    {
+      "id": "operable_part",
+      "description": "Operable part of an element (309)"
+    }
+  ],
+  "object_categories": [
+    {
+      "id": "storage",
+      "origin": "roomplan",
+      "roomplan_class": "storage",
+      "canonical": "storage",
+      "description": "Cabinets, shelving units, display fixtures RoomPlan reports as storage"
+    },
+    {
+      "id": "refrigerator",
+      "origin": "roomplan",
+      "roomplan_class": "refrigerator",
+      "canonical": "refrigerator",
+      "description": "Refrigerator or reach-in cooler"
+    },
+    {
+      "id": "stove",
+      "origin": "roomplan",
+      "roomplan_class": "stove",
+      "canonical": "stove",
+      "description": "Cooktop or range"
+    },
+    {
+      "id": "bed",
+      "origin": "roomplan",
+      "roomplan_class": "bed",
+      "canonical": "bed",
+      "description": "Bed"
+    },
+    {
+      "id": "sink",
+      "origin": "roomplan",
+      "roomplan_class": "sink",
+      "canonical": "sink",
+      "description": "Sink basin; in a toilet room core reclassifies it as lavatory"
+    },
+    {
+      "id": "washer_dryer",
+      "origin": "roomplan",
+      "roomplan_class": "washerDryer",
+      "canonical": "washer_dryer",
+      "description": "Washer or dryer"
+    },
+    {
+      "id": "toilet",
+      "origin": "roomplan",
+      "roomplan_class": "toilet",
+      "canonical": "water_closet",
+      "description": "RoomPlan toilet; canonical category is water_closet"
+    },
+    {
+      "id": "bathtub",
+      "origin": "roomplan",
+      "roomplan_class": "bathtub",
+      "canonical": "bathtub",
+      "description": "Bathtub"
+    },
+    {
+      "id": "oven",
+      "origin": "roomplan",
+      "roomplan_class": "oven",
+      "canonical": "oven",
+      "description": "Oven"
+    },
+    {
+      "id": "dishwasher",
+      "origin": "roomplan",
+      "roomplan_class": "dishwasher",
+      "canonical": "dishwasher",
+      "description": "Dishwasher"
+    },
+    {
+      "id": "table",
+      "origin": "roomplan",
+      "roomplan_class": "table",
+      "canonical": "table",
+      "description": "Table; core may refine to dining_table or work_surface"
+    },
+    {
+      "id": "sofa",
+      "origin": "roomplan",
+      "roomplan_class": "sofa",
+      "canonical": "sofa",
+      "description": "Sofa or bench seating"
+    },
+    {
+      "id": "chair",
+      "origin": "roomplan",
+      "roomplan_class": "chair",
+      "canonical": "chair",
+      "description": "Chair or stool"
+    },
+    {
+      "id": "fireplace",
+      "origin": "roomplan",
+      "roomplan_class": "fireplace",
+      "canonical": "fireplace",
+      "description": "Fireplace"
+    },
+    {
+      "id": "television",
+      "origin": "roomplan",
+      "roomplan_class": "television",
+      "canonical": "television",
+      "description": "Television or wall display"
+    },
+    {
+      "id": "stairs",
+      "origin": "roomplan",
+      "roomplan_class": "stairs",
+      "canonical": "stairs",
+      "description": "Stairway"
+    },
+    {
+      "id": "counter",
+      "origin": "detector",
+      "canonical": "counter",
+      "description": "Generic counter or countertop"
+    },
+    {
+      "id": "service_counter",
+      "origin": "detector",
+      "canonical": "service_counter",
+      "description": "Counter where customers are served or order (904.4)"
+    },
+    {
+      "id": "sales_counter",
+      "origin": "detector",
+      "canonical": "sales_counter",
+      "description": "Sales/checkout counter with a register (904.4)"
+    },
+    {
+      "id": "checkout_aisle",
+      "origin": "detector",
+      "canonical": "checkout_aisle",
+      "description": "Check-out aisle with a counter (904.3)"
+    },
+    {
+      "id": "point_of_sale_device",
+      "origin": "detector",
+      "canonical": "point_of_sale_device",
+      "description": "Card reader / payment terminal customers operate"
+    },
+    {
+      "id": "dining_table",
+      "origin": "detector",
+      "canonical": "dining_table",
+      "description": "Dining surface for customers (226, 902)"
+    },
+    {
+      "id": "bar_counter",
+      "origin": "detector",
+      "canonical": "bar_counter",
+      "description": "Bar or high-top dining counter (226, 902)"
+    },
+    {
+      "id": "work_surface",
+      "origin": "detector",
+      "canonical": "work_surface",
+      "description": "Work surface used by the public (902)"
+    },
+    {
+      "id": "food_service_line",
+      "origin": "detector",
+      "canonical": "food_service_line",
+      "description": "Self-service food line, tray slide (904.5)"
+    },
+    {
+      "id": "self_service_shelf",
+      "origin": "detector",
+      "canonical": "self_service_shelf",
+      "description": "Self-service condiment/utensil/merchandise shelf (225, 811, 904.5)"
+    },
+    {
+      "id": "shelf",
+      "origin": "detector",
+      "canonical": "shelf",
+      "description": "Shelf or display shelf"
+    },
+    {
+      "id": "display_rack",
+      "origin": "detector",
+      "canonical": "display_rack",
+      "description": "Merchandise rack, gondola, display table on a route"
+    },
+    {
+      "id": "grab_bar",
+      "origin": "detector",
+      "canonical": "grab_bar",
+      "description": "Grab bar (609)"
+    },
+    {
+      "id": "water_closet",
+      "origin": "detector",
+      "canonical": "water_closet",
+      "description": "Water closet / toilet (604)"
+    },
+    {
+      "id": "urinal",
+      "origin": "detector",
+      "canonical": "urinal",
+      "description": "Urinal (605)"
+    },
+    {
+      "id": "lavatory",
+      "origin": "detector",
+      "canonical": "lavatory",
+      "description": "Lavatory / hand-wash sink (606)"
+    },
+    {
+      "id": "toilet_compartment",
+      "origin": "detector",
+      "canonical": "toilet_compartment",
+      "description": "Toilet compartment / stall partitions (604.8)"
+    },
+    {
+      "id": "mirror",
+      "origin": "detector",
+      "canonical": "mirror",
+      "description": "Mirror (603.3)"
+    },
+    {
+      "id": "dispenser",
+      "origin": "detector",
+      "canonical": "dispenser",
+      "description": "Soap, towel, seat-cover, sanitary product or toilet-paper dispenser (603.5, 604.7)"
+    },
+    {
+      "id": "toilet_paper_dispenser",
+      "origin": "detector",
+      "canonical": "toilet_paper_dispenser",
+      "description": "Toilet paper dispenser (604.7)"
+    },
+    {
+      "id": "hand_dryer",
+      "origin": "detector",
+      "canonical": "hand_dryer",
+      "description": "Hand dryer (603.5, 307)"
+    },
+    {
+      "id": "baby_changing_table",
+      "origin": "detector",
+      "canonical": "baby_changing_table",
+      "description": "Baby changing station (CBC 11B-309/603.5 accessory)"
+    },
+    {
+      "id": "coat_hook",
+      "origin": "detector",
+      "canonical": "coat_hook",
+      "description": "Coat hook (603.4)"
+    },
+    {
+      "id": "sign",
+      "origin": "detector",
+      "canonical": "sign",
+      "description": "Wall or door sign (216, 703)"
+    },
+    {
+      "id": "door_hardware",
+      "origin": "detector",
+      "canonical": "door_hardware",
+      "description": "Door handle, pull, lever, lock or panic bar (404.2.7)"
+    },
+    {
+      "id": "door_closer",
+      "origin": "detector",
+      "canonical": "door_closer",
+      "description": "Door closer or overhead stop (307.4 exception, 404.2.8)"
+    },
+    {
+      "id": "light_switch",
+      "origin": "detector",
+      "canonical": "light_switch",
+      "description": "Light switch or other user control (205, 309)"
+    },
+    {
+      "id": "outlet",
+      "origin": "detector",
+      "canonical": "outlet",
+      "description": "Electrical receptacle intended for public use (205, 309)"
+    },
+    {
+      "id": "thermostat",
+      "origin": "detector",
+      "canonical": "thermostat",
+      "description": "Thermostat or environmental control (205, 309)"
+    },
+    {
+      "id": "kiosk",
+      "origin": "detector",
+      "canonical": "kiosk",
+      "description": "Self-service kiosk / ordering screen (228, 707)"
+    },
+    {
+      "id": "atm",
+      "origin": "detector",
+      "canonical": "atm",
+      "description": "Automatic teller machine (228, 707)"
+    },
+    {
+      "id": "depository",
+      "origin": "detector",
+      "canonical": "depository",
+      "description": "Depository, drop box, mail box, vending or change machine (228)"
+    },
+    {
+      "id": "drinking_fountain",
+      "origin": "detector",
+      "canonical": "drinking_fountain",
+      "description": "Drinking fountain (211, 602)"
+    },
+    {
+      "id": "bottle_filler",
+      "origin": "detector",
+      "canonical": "bottle_filler",
+      "description": "Bottle filling station (CBC 11B-602)"
+    },
+    {
+      "id": "ramp",
+      "origin": "detector",
+      "canonical": "ramp",
+      "description": "Ramp run (405)"
+    },
+    {
+      "id": "curb_ramp",
+      "origin": "detector",
+      "canonical": "curb_ramp",
+      "description": "Curb ramp (406)"
+    },
+    {
+      "id": "handrail",
+      "origin": "detector",
+      "canonical": "handrail",
+      "description": "Handrail (505)"
+    },
+    {
+      "id": "threshold",
+      "origin": "detector",
+      "canonical": "threshold",
+      "description": "Door threshold or saddle (303, 404.2.5)"
+    },
+    {
+      "id": "mat",
+      "origin": "detector",
+      "canonical": "mat",
+      "description": "Floor mat or rug (302.2)"
+    },
+    {
+      "id": "floor_grating",
+      "origin": "detector",
+      "canonical": "floor_grating",
+      "description": "Grating or floor opening (302.3)"
+    },
+    {
+      "id": "fire_alarm_strobe",
+      "origin": "detector",
+      "canonical": "fire_alarm_strobe",
+      "description": "Visible alarm appliance (215, 702)"
+    },
+    {
+      "id": "telephone",
+      "origin": "detector",
+      "canonical": "telephone",
+      "description": "Public telephone (217, 704)"
+    },
+    {
+      "id": "locker",
+      "origin": "detector",
+      "canonical": "locker",
+      "description": "Storage locker (225, 811)"
+    },
+    {
+      "id": "fitting_room",
+      "origin": "detector",
+      "canonical": "fitting_room",
+      "description": "Dressing/fitting room (222, 803)"
+    },
+    {
+      "id": "bench",
+      "origin": "detector",
+      "canonical": "bench",
+      "description": "Bench in a fitting room or waiting area (903)"
+    },
+    {
+      "id": "wall_mounted_object",
+      "origin": "detector",
+      "canonical": "wall_mounted_object",
+      "description": "Any wall-mounted object (TV bracket, fire extinguisher, shelf, sign) checked as a protrusion (307)"
+    },
+    {
+      "id": "post_mounted_object",
+      "origin": "detector",
+      "canonical": "post_mounted_object",
+      "description": "Sign or object on posts/pylons (307.3)"
+    },
+    {
+      "id": "overhead_object",
+      "origin": "detector",
+      "canonical": "overhead_object",
+      "description": "Object overhanging a circulation path, underside of stairs, low beam (307.4)"
+    },
+    {
+      "id": "detectable_warning",
+      "origin": "detector",
+      "canonical": "detectable_warning",
+      "description": "Truncated-dome detectable warning surface (705, CBC 11B-247)"
+    },
+    {
+      "id": "parking_space",
+      "origin": "detector",
+      "canonical": "parking_space",
+      "description": "Accessible parking space (208, 502)"
+    },
+    {
+      "id": "access_aisle",
+      "origin": "detector",
+      "canonical": "access_aisle",
+      "description": "Parking access aisle (502.3)"
+    },
+    {
+      "id": "passenger_loading_zone",
+      "origin": "detector",
+      "canonical": "passenger_loading_zone",
+      "description": "Passenger loading zone (209, 503)"
+    },
+    {
+      "id": "elevator",
+      "origin": "detector",
+      "canonical": "elevator",
+      "description": "Passenger elevator (206.6, 407)"
+    },
+    {
+      "id": "platform_lift",
+      "origin": "detector",
+      "canonical": "platform_lift",
+      "description": "Platform lift (206.7, 410)"
+    },
+    {
+      "id": "tactile_exit_sign",
+      "origin": "detector",
+      "canonical": "tactile_exit_sign",
+      "description": "Tactile exit sign (CBC 11B-216.4.1, CBC 1013.4)"
+    }
+  ],
+  "metrics": [
+    {
+      "id": "site.facility_type",
+      "unit": "enum",
+      "value_type": "enum",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Owner selects the business type at scan start.",
+      "enum_values": [
+        "retail",
+        "restaurant",
+        "cafe",
+        "bar",
+        "office",
+        "service",
+        "other"
+      ]
+    },
+    {
+      "id": "site.construction_era",
+      "unit": "enum",
+      "value_type": "enum",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "When the facility was built or last altered: before 1993-01-26 (existing, readily achievable barrier removal), 1993-2012 (1991 Standards), after 2012-03-15 (2010 Standards).",
+      "enum_values": [
+        "pre_1993",
+        "1993_to_2012",
+        "post_2012",
+        "unknown"
+      ]
+    },
+    {
+      "id": "site.altered_since_2012",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Owner: has the space been altered (remodel, tenant improvement) since 2012-03-15?"
+    },
+    {
+      "id": "site.has_customer_parking",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Owner: does the business provide on-site parking for customers?"
+    },
+    {
+      "id": "site.parking_total_spaces",
+      "unit": "count",
+      "value_type": "integer",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Owner: total parking spaces in the lot serving the business."
+    },
+    {
+      "id": "site.accessible_parking_spaces",
+      "unit": "count",
+      "value_type": "integer",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Owner: number of accessible parking spaces."
+    },
+    {
+      "id": "site.van_accessible_spaces",
+      "unit": "count",
+      "value_type": "integer",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Owner: number of van-accessible spaces."
+    },
+    {
+      "id": "site.public_entrances_total",
+      "unit": "count",
+      "value_type": "integer",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Count of openings tagged entrance in the scene; owner confirms."
+    },
+    {
+      "id": "site.public_entrances_accessible",
+      "unit": "count",
+      "value_type": "integer",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Count of entrances whose every entrance rule passes."
+    },
+    {
+      "id": "site.has_multiple_stories_public",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [
+        "measured"
+      ],
+      "derivation": "Owner: are there public areas on more than one storey?"
+    },
+    {
+      "id": "site.has_elevator",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [
+        "measured"
+      ],
+      "derivation": "Owner: is there a passenger elevator?"
+    },
+    {
+      "id": "site.has_fire_alarm_system",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Owner: is there a building fire alarm system?"
+    },
+    {
+      "id": "site.has_public_telephone",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Owner: are public pay telephones provided?"
+    },
+    {
+      "id": "site.has_fitting_rooms",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [
+        "measured"
+      ],
+      "derivation": "Owner: are dressing/fitting rooms provided?"
+    },
+    {
+      "id": "site.has_assembly_seating",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Owner: is there fixed seating for an audience (stage, performance, lecture)?"
+    },
+    {
+      "id": "site.has_atm_or_depository",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [
+        "measured"
+      ],
+      "derivation": "Owner: ATM, depository, vending or change machine for public use?"
+    },
+    {
+      "id": "site.has_drive_up_or_walk_up_window",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Owner: walk-up or drive-up service window?"
+    },
+    {
+      "id": "site.has_self_service_storage",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Owner: lockers or self-service storage for customers?"
+    },
+    {
+      "id": "site.has_exterior_route_scanned",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "True when the scan includes exterior ground from the site arrival point to the entrance."
+    },
+    {
+      "id": "site.employee_only_areas_excluded",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Owner confirms which rooms are employee-only work areas (203.9)."
+    },
+    {
+      "id": "site.alteration_valuation_usd",
+      "unit": "usd",
+      "value_type": "number",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Owner: adjusted construction cost of the current alteration project (CBC 11B-202.4 Exception 8 valuation threshold)."
+    },
+    {
+      "id": "site.path_of_travel_spend_usd",
+      "unit": "usd",
+      "value_type": "number",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Owner: amount spent on path-of-travel accessibility upgrades for the alteration."
+    },
+    {
+      "id": "site.has_written_maintenance_practice",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Owner: do staff keep routes, counters and restroom clearances free of movable items (28 CFR 36.211)?"
+    },
+    {
+      "id": "site.dining_seating_count",
+      "unit": "count",
+      "value_type": "integer",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Count of seating spaces at dining surfaces (chairs around dining_table/bar_counter); owner confirms."
+    },
+    {
+      "id": "site.dining_surfaces_total",
+      "unit": "count",
+      "value_type": "integer",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Count of dining_table + bar_counter seating positions grouped as dining surfaces."
+    },
+    {
+      "id": "site.dining_surfaces_accessible",
+      "unit": "count",
+      "value_type": "integer",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Count of dining surfaces whose 902 rules all pass."
+    },
+    {
+      "id": "site.dining_areas_with_accessible_surface_ratio",
+      "unit": "ratio",
+      "value_type": "number",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Fraction of distinct dining areas (rooms, levels, indoor/outdoor, bar) that contain at least one accessible dining surface (226.2 dispersion)."
+    },
+    {
+      "id": "site.toilet_rooms_public_total",
+      "unit": "count",
+      "value_type": "integer",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Count of toilet rooms available to customers."
+    },
+    {
+      "id": "site.checkout_aisles_total",
+      "unit": "count",
+      "value_type": "integer",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Count of checkout_aisle objects; owner confirms."
+    },
+    {
+      "id": "site.checkout_aisles_accessible",
+      "unit": "count",
+      "value_type": "integer",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Count of checkout aisles whose 904.3 rules pass."
+    },
+    {
+      "id": "site.isa_signage_at_inaccessible_entrances",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Photo: inaccessible entrances carry directional signs to the accessible entrance (216.6)."
+    },
+    {
+      "id": "floor.surface_firm_stable_slip_resistant",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "floor",
+      "applies_to": [
+        "floor",
+        "route"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Photo of floor finish classified as firm, stable and slip resistant (not loose gravel, deep carpet, wet tile)."
+    },
+    {
+      "id": "floor.carpet_pile_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "floor",
+      "applies_to": [
+        "floor",
+        "mat"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Pile height of carpet on the route, from close-up photo with a scale reference or owner answer."
+    },
+    {
+      "id": "floor.carpet_edge_trim_present",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "floor",
+      "applies_to": [
+        "floor",
+        "mat"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Exposed carpet edges fastened with trim along the entire length."
+    },
+    {
+      "id": "floor.carpet_secured",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "floor",
+      "applies_to": [
+        "floor",
+        "mat"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Carpet or mat is securely attached (not loose, not curling)."
+    },
+    {
+      "id": "floor.opening_width",
+      "unit": "in",
+      "value_type": "number",
+      "element": "floor",
+      "applies_to": [
+        "floor",
+        "floor_grating"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Largest opening in a grating or floor surface on the route (sphere that passes)."
+    },
+    {
+      "id": "floor.grating_elongated_perpendicular",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "floor",
+      "applies_to": [
+        "floor_grating"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Elongated grating openings are perpendicular to dominant direction of travel."
+    },
+    {
+      "id": "floor.change_in_level",
+      "unit": "in",
+      "value_type": "number",
+      "element": "floor",
+      "applies_to": [
+        "floor",
+        "route",
+        "threshold",
+        "mat"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Largest abrupt vertical discontinuity on the route found by scanning the floor mesh height field along the route centreline and edges (steps between adjacent cells with no ramped transition)."
+    },
+    {
+      "id": "floor.change_in_level_bevel_slope",
+      "unit": "ratio",
+      "value_type": "number",
+      "element": "floor",
+      "applies_to": [
+        "floor",
+        "route",
+        "threshold",
+        "mat"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Slope (rise/run) of a beveled change in level between 1/4 and 1/2 inch."
+    },
+    {
+      "id": "floor.slope_at_clear_floor_space",
+      "unit": "ratio",
+      "value_type": "number",
+      "element": "clear_floor_space",
+      "applies_to": [
+        "clear_floor_space",
+        "room",
+        "door"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Max slope of a plane fit to floor mesh inside the clear floor space or turning space."
+    },
+    {
+      "id": "room.turning_space_diameter",
+      "unit": "in",
+      "value_type": "number",
+      "element": "room",
+      "applies_to": [
+        "room",
+        "toilet_room",
+        "fitting_room"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Diameter of the largest circle that fits in the room's walkable free space (floor polygon minus object footprints, except knee/toe clearance under objects >= 27 in high), via distance transform on the occupancy grid."
+    },
+    {
+      "id": "room.turning_space_t_shape",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "room",
+      "applies_to": [
+        "room",
+        "toilet_room"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "True when a 60x60 T-shaped turning space (36 in arms) fits in the free space."
+    },
+    {
+      "id": "room.turning_space_overlaps_door_swing_only",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "room",
+      "applies_to": [
+        "toilet_room"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "True when the turning space found is free of fixtures; door swing overlap permitted."
+    },
+    {
+      "id": "clear_floor.width",
+      "unit": "in",
+      "value_type": "number",
+      "element": "clear_floor_space",
+      "applies_to": [
+        "clear_floor_space"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Width of the largest rectangle of free floor positioned at the element for its approach (forward: parallel to element face; parallel: along element)."
+    },
+    {
+      "id": "clear_floor.depth",
+      "unit": "in",
+      "value_type": "number",
+      "element": "clear_floor_space",
+      "applies_to": [
+        "clear_floor_space"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Depth of that rectangle perpendicular to the element."
+    },
+    {
+      "id": "clear_floor.alcove_depth",
+      "unit": "in",
+      "value_type": "number",
+      "element": "clear_floor_space",
+      "applies_to": [
+        "clear_floor_space"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Depth of the alcove (walls/fixtures on three sides) the clear floor space sits in; 0 when not in an alcove."
+    },
+    {
+      "id": "clear_floor.alcove_width",
+      "unit": "in",
+      "value_type": "number",
+      "element": "clear_floor_space",
+      "applies_to": [
+        "clear_floor_space"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Width of that alcove between its side obstructions."
+    },
+    {
+      "id": "clear_floor.adjoins_route",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "clear_floor_space",
+      "applies_to": [
+        "clear_floor_space"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "True when the clear floor space touches or overlaps an accessible route leg."
+    },
+    {
+      "id": "clear_floor.approach",
+      "unit": "enum",
+      "value_type": "enum",
+      "element": "clear_floor_space",
+      "applies_to": [
+        "clear_floor_space"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Approach used for the element: forward or parallel, chosen from element type and geometry.",
+      "enum_values": [
+        "forward",
+        "parallel"
+      ]
+    },
+    {
+      "id": "knee_clearance.height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "clear_floor_space",
+      "applies_to": [
+        "dining_table",
+        "bar_counter",
+        "work_surface",
+        "lavatory",
+        "sink",
+        "service_counter",
+        "sales_counter",
+        "counter",
+        "drinking_fountain",
+        "table",
+        "kiosk"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Height above floor of the underside of the element at the front edge (and at 8 in depth), from object box bottom / mesh."
+    },
+    {
+      "id": "knee_clearance.depth",
+      "unit": "in",
+      "value_type": "number",
+      "element": "clear_floor_space",
+      "applies_to": [
+        "dining_table",
+        "bar_counter",
+        "work_surface",
+        "lavatory",
+        "sink",
+        "service_counter",
+        "sales_counter",
+        "counter",
+        "drinking_fountain",
+        "table"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Horizontal depth under the element available at 27 in above the floor."
+    },
+    {
+      "id": "knee_clearance.depth_at_9in",
+      "unit": "in",
+      "value_type": "number",
+      "element": "clear_floor_space",
+      "applies_to": [
+        "lavatory",
+        "sink",
+        "dining_table",
+        "work_surface",
+        "drinking_fountain"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Horizontal depth under the element available at 9 in above the floor."
+    },
+    {
+      "id": "knee_clearance.width",
+      "unit": "in",
+      "value_type": "number",
+      "element": "clear_floor_space",
+      "applies_to": [
+        "dining_table",
+        "bar_counter",
+        "work_surface",
+        "lavatory",
+        "sink",
+        "service_counter",
+        "sales_counter",
+        "counter",
+        "drinking_fountain",
+        "table"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Clear width between legs/pedestals/cabinet sides under the element."
+    },
+    {
+      "id": "toe_clearance.height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "clear_floor_space",
+      "applies_to": [
+        "dining_table",
+        "work_surface",
+        "lavatory",
+        "sink",
+        "service_counter",
+        "sales_counter",
+        "counter",
+        "table"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Clear height under the element at the toe zone (needs 9 in)."
+    },
+    {
+      "id": "toe_clearance.depth",
+      "unit": "in",
+      "value_type": "number",
+      "element": "clear_floor_space",
+      "applies_to": [
+        "dining_table",
+        "work_surface",
+        "lavatory",
+        "sink",
+        "counter",
+        "table"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Depth of toe space under the element at 9 in high."
+    },
+    {
+      "id": "dining_table.pedestal_center_obstructs",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "dining_table",
+      "applies_to": [
+        "dining_table",
+        "table"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "measured"
+      ],
+      "derivation": "Central pedestal/base intrudes into 30 in knee width."
+    },
+    {
+      "id": "protrusion.leading_edge_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "wall_mounted_object",
+      "applies_to": [
+        "wall_mounted_object",
+        "television",
+        "sign",
+        "hand_dryer",
+        "dispenser",
+        "drinking_fountain",
+        "shelf",
+        "storage",
+        "fire_alarm_strobe",
+        "telephone",
+        "mirror",
+        "overhead_object"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Height of the lowest leading edge of an object protruding into a circulation path."
+    },
+    {
+      "id": "protrusion.depth_between_27_80",
+      "unit": "in",
+      "value_type": "number",
+      "element": "wall_mounted_object",
+      "applies_to": [
+        "wall_mounted_object",
+        "television",
+        "sign",
+        "hand_dryer",
+        "dispenser",
+        "drinking_fountain",
+        "shelf",
+        "storage",
+        "fire_alarm_strobe",
+        "telephone",
+        "mirror",
+        "kiosk"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Horizontal projection from the wall plane of an object whose leading edge is above 27 in and not more than 80 in above the floor, adjacent to a circulation path."
+    },
+    {
+      "id": "protrusion.post_mounted_overhang",
+      "unit": "in",
+      "value_type": "number",
+      "element": "post_mounted_object",
+      "applies_to": [
+        "post_mounted_object",
+        "sign"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Overhang beyond the post of an object on a single post with leading edge 27-80 in."
+    },
+    {
+      "id": "protrusion.between_posts_clear_distance",
+      "unit": "in",
+      "value_type": "number",
+      "element": "post_mounted_object",
+      "applies_to": [
+        "post_mounted_object"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Clear distance between two posts/pylons carrying a sign or obstruction."
+    },
+    {
+      "id": "protrusion.between_posts_lowest_edge",
+      "unit": "in",
+      "value_type": "number",
+      "element": "post_mounted_object",
+      "applies_to": [
+        "post_mounted_object"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Lowest edge height of a sign or obstruction mounted between posts."
+    },
+    {
+      "id": "headroom.vertical_clearance",
+      "unit": "in",
+      "value_type": "number",
+      "element": "route",
+      "applies_to": [
+        "route",
+        "overhead_object",
+        "stairs",
+        "door",
+        "doorway"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Min clear height over the circulation path (ceiling, soffit, stair underside, overhead objects) from the ceiling/mesh height field."
+    },
+    {
+      "id": "headroom.guarded_below_80",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "route",
+      "applies_to": [
+        "route",
+        "overhead_object",
+        "stairs"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Where headroom < 80 in, a barrier with leading edge <= 27 in is present (cane detectable)."
+    },
+    {
+      "id": "door_closer.height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "door_closer",
+      "applies_to": [
+        "door_closer",
+        "door"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Height above floor of the lowest point of door closer or stop within the opening."
+    },
+    {
+      "id": "operable_part.height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "operable_part",
+      "applies_to": [
+        "light_switch",
+        "outlet",
+        "thermostat",
+        "dispenser",
+        "toilet_paper_dispenser",
+        "hand_dryer",
+        "coat_hook",
+        "kiosk",
+        "atm",
+        "depository",
+        "point_of_sale_device",
+        "door_hardware",
+        "self_service_shelf",
+        "shelf",
+        "locker",
+        "telephone",
+        "drinking_fountain",
+        "baby_changing_table",
+        "water_closet",
+        "urinal",
+        "lavatory"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Height above floor of the highest operable part (button, handle, coin slot, outlet face, switch, dispenser lever, screen top used) of the element."
+    },
+    {
+      "id": "operable_part.low_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "operable_part",
+      "applies_to": [
+        "light_switch",
+        "outlet",
+        "thermostat",
+        "dispenser",
+        "toilet_paper_dispenser",
+        "hand_dryer",
+        "coat_hook",
+        "kiosk",
+        "atm",
+        "depository",
+        "point_of_sale_device",
+        "self_service_shelf",
+        "shelf",
+        "locker",
+        "telephone"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Height above floor of the lowest operable part of the element."
+    },
+    {
+      "id": "reach.high_forward_unobstructed",
+      "unit": "in",
+      "value_type": "number",
+      "element": "operable_part",
+      "applies_to": [
+        "light_switch",
+        "outlet",
+        "thermostat",
+        "dispenser",
+        "hand_dryer",
+        "coat_hook",
+        "kiosk",
+        "atm",
+        "depository",
+        "self_service_shelf",
+        "shelf",
+        "locker",
+        "point_of_sale_device"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "operable_part.height for elements reached with a forward approach and no obstruction in front."
+    },
+    {
+      "id": "reach.high_side_unobstructed",
+      "unit": "in",
+      "value_type": "number",
+      "element": "operable_part",
+      "applies_to": [
+        "light_switch",
+        "outlet",
+        "thermostat",
+        "dispenser",
+        "hand_dryer",
+        "coat_hook",
+        "kiosk",
+        "atm",
+        "depository",
+        "self_service_shelf",
+        "shelf",
+        "locker",
+        "point_of_sale_device"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "operable_part.height for elements reached with a parallel approach and no obstruction (or obstruction <=10 in deep)."
+    },
+    {
+      "id": "reach.high_forward_obstructed",
+      "unit": "in",
+      "value_type": "number",
+      "element": "operable_part",
+      "applies_to": [
+        "light_switch",
+        "outlet",
+        "dispenser",
+        "kiosk",
+        "self_service_shelf",
+        "point_of_sale_device",
+        "counter"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "operable_part.height for elements reached forward over an obstruction (counter, sink)."
+    },
+    {
+      "id": "reach.high_side_obstructed",
+      "unit": "in",
+      "value_type": "number",
+      "element": "operable_part",
+      "applies_to": [
+        "light_switch",
+        "outlet",
+        "dispenser",
+        "kiosk",
+        "self_service_shelf",
+        "point_of_sale_device",
+        "counter"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "operable_part.height for elements reached sideways over an obstruction."
+    },
+    {
+      "id": "reach.obstruction_depth",
+      "unit": "in",
+      "value_type": "number",
+      "element": "operable_part",
+      "applies_to": [
+        "operable_part"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Depth of the obstruction between the clear floor space and the operable part (e.g. counter depth)."
+    },
+    {
+      "id": "reach.obstruction_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "operable_part",
+      "applies_to": [
+        "operable_part"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Height of the obstruction between the clear floor space and the operable part."
+    },
+    {
+      "id": "operable_part.requires_tight_grasp",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "operable_part",
+      "applies_to": [
+        "door_hardware",
+        "lavatory",
+        "dispenser",
+        "light_switch",
+        "thermostat",
+        "kiosk",
+        "drinking_fountain",
+        "water_closet",
+        "urinal",
+        "locker"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Operable part requires tight grasping, pinching or twisting of the wrist (e.g. round knob, small toggle lock)."
+    },
+    {
+      "id": "operable_part.operating_force",
+      "unit": "lbf",
+      "value_type": "number",
+      "element": "operable_part",
+      "applies_to": [
+        "door_hardware",
+        "lavatory",
+        "dispenser",
+        "light_switch",
+        "kiosk",
+        "drinking_fountain",
+        "water_closet",
+        "urinal"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Force needed to activate the operable part, from owner measurement with a force gauge."
+    },
+    {
+      "id": "route.min_clear_width",
+      "unit": "in",
+      "value_type": "number",
+      "element": "route",
+      "applies_to": [
+        "route"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Minimum clear width along the route leg: 2 x medial-axis distance on the occupancy grid of walls and objects (including movable furniture and displays)."
+    },
+    {
+      "id": "route.reduced_width_run_length",
+      "unit": "in",
+      "value_type": "number",
+      "element": "route",
+      "applies_to": [
+        "route"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Longest continuous length along the route where clear width is below 36 in."
+    },
+    {
+      "id": "route.reduced_width_separation_length",
+      "unit": "in",
+      "value_type": "number",
+      "element": "route",
+      "applies_to": [
+        "route"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Shortest length of full-width (>=36 in wide) route between two reduced-width segments."
+    },
+    {
+      "id": "route.turn_around_element_width",
+      "unit": "in",
+      "value_type": "number",
+      "element": "route",
+      "applies_to": [
+        "route"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Width of the element (wall, display, island) a 180-degree turn is made around."
+    },
+    {
+      "id": "route.turn_clear_width_approach",
+      "unit": "in",
+      "value_type": "number",
+      "element": "route",
+      "applies_to": [
+        "route"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Clear width of route leg approaching a 180-degree turn."
+    },
+    {
+      "id": "route.turn_clear_width_at_turn",
+      "unit": "in",
+      "value_type": "number",
+      "element": "route",
+      "applies_to": [
+        "route"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Clear width at the 180-degree turn."
+    },
+    {
+      "id": "route.turn_clear_width_leaving",
+      "unit": "in",
+      "value_type": "number",
+      "element": "route",
+      "applies_to": [
+        "route"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Clear width of the route leg leaving a 180-degree turn."
+    },
+    {
+      "id": "route.max_distance_between_passing_spaces",
+      "unit": "ft",
+      "value_type": "number",
+      "element": "route",
+      "applies_to": [
+        "route"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Longest stretch of a route narrower than 60 in without a 60x60 passing space or T-intersection."
+    },
+    {
+      "id": "route.running_slope",
+      "unit": "ratio",
+      "value_type": "number",
+      "element": "route",
+      "applies_to": [
+        "route"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Max running slope (rise/run) along the route from the floor mesh height field, sampled over 24 in windows."
+    },
+    {
+      "id": "route.cross_slope",
+      "unit": "ratio",
+      "value_type": "number",
+      "element": "route",
+      "applies_to": [
+        "route"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Max cross slope (rise/run) perpendicular to travel."
+    },
+    {
+      "id": "route.contains_stairs_or_escalator",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "route",
+      "applies_to": [
+        "route",
+        "site"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "True when the only path between two public spaces/levels includes stairs or an escalator."
+    },
+    {
+      "id": "route.connects_entrance",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "route",
+      "applies_to": [
+        "route",
+        "room",
+        "toilet_room",
+        "dining_table",
+        "service_counter",
+        "sales_counter",
+        "checkout_aisle",
+        "kiosk",
+        "self_service_shelf",
+        "drinking_fountain",
+        "fitting_room"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "True when an accessible route exists from an accessible entrance to the element/space (routing graph over occupancy grid with door widths)."
+    },
+    {
+      "id": "route.same_area_as_general_circulation",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "route",
+      "applies_to": [
+        "route"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "True when the accessible route coincides with or is in the same area as the general circulation path."
+    },
+    {
+      "id": "route.length_ratio_vs_general",
+      "unit": "ratio",
+      "value_type": "number",
+      "element": "route",
+      "applies_to": [
+        "route"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Length of accessible route divided by length of the shortest general circulation path between the same points."
+    },
+    {
+      "id": "element.on_accessible_route",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "clear_floor_space",
+      "applies_to": [
+        "clear_floor_space"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "True when the element's clear floor space is reachable over a route whose rules pass."
+    },
+    {
+      "id": "door.clear_width",
+      "unit": "in",
+      "value_type": "number",
+      "element": "door",
+      "applies_to": [
+        "door",
+        "doorway",
+        "entrance",
+        "toilet_compartment"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Clear opening at 90 degrees: opening width minus door thickness and stop/hardware projection (core subtracts a configurable allowance when hardware is not resolved)."
+    },
+    {
+      "id": "door.opening_depth",
+      "unit": "in",
+      "value_type": "number",
+      "element": "door",
+      "applies_to": [
+        "doorway",
+        "door"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Depth of the doorway/opening without a door (wall thickness)."
+    },
+    {
+      "id": "door.projection_below_34",
+      "unit": "in",
+      "value_type": "number",
+      "element": "door",
+      "applies_to": [
+        "door",
+        "doorway"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "measured"
+      ],
+      "derivation": "Max projection into clear opening width below 34 in."
+    },
+    {
+      "id": "door.projection_34_80",
+      "unit": "in",
+      "value_type": "number",
+      "element": "door",
+      "applies_to": [
+        "door",
+        "doorway"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "measured"
+      ],
+      "derivation": "Max projection into clear opening width between 34 and 80 in."
+    },
+    {
+      "id": "door.approach_pull_side",
+      "unit": "enum",
+      "value_type": "enum",
+      "element": "door",
+      "applies_to": [
+        "door",
+        "entrance",
+        "toilet_compartment"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Approach to the door on its pull side, derived from the route leg direction relative to the hinge/latch edges (Fig. 404.2.4.1).",
+      "enum_values": [
+        "front",
+        "hinge",
+        "latch",
+        "none"
+      ]
+    },
+    {
+      "id": "door.approach_push_side",
+      "unit": "enum",
+      "value_type": "enum",
+      "element": "door",
+      "applies_to": [
+        "door",
+        "entrance",
+        "toilet_compartment"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Approach to the door on its push side.",
+      "enum_values": [
+        "front",
+        "hinge",
+        "latch",
+        "none"
+      ]
+    },
+    {
+      "id": "door.pull_side_is_exterior",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "door",
+      "applies_to": [
+        "door",
+        "entrance"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "The pull side of an exterior door faces the exterior (CBC Table 11B-404.2.4.1 footnote 5)."
+    },
+    {
+      "id": "door.recess_depth",
+      "unit": "in",
+      "value_type": "number",
+      "element": "door",
+      "applies_to": [
+        "door",
+        "entrance"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Depth an obstruction within 18 in (24 in exterior, CBC) of the latch side projects beyond the face of the door (404.2.4.3)."
+    },
+    {
+      "id": "door.maneuvering_clearance_push_side_hinge_extension",
+      "unit": "in",
+      "value_type": "number",
+      "element": "door",
+      "applies_to": [
+        "door",
+        "entrance"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Clear floor parallel to the doorway beyond the hinge edge on the push side."
+    },
+    {
+      "id": "doorway.maneuvering_depth",
+      "unit": "in",
+      "value_type": "number",
+      "element": "doorway",
+      "applies_to": [
+        "doorway",
+        "door"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Clear floor depth perpendicular to a doorway without a door (or sliding/folding door) on each side; the smaller side is reported."
+    },
+    {
+      "id": "door.automatic_complies",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "door",
+      "applies_to": [
+        "door",
+        "entrance"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Owner confirms the power-operated door meets ANSI/BHMA A156.10 or A156.19 and stays usable on power failure."
+    },
+    {
+      "id": "door.maneuvering_clearance_pull_side_depth",
+      "unit": "in",
+      "value_type": "number",
+      "element": "door",
+      "applies_to": [
+        "door",
+        "entrance",
+        "toilet_compartment"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Clear floor depth perpendicular to the doorway on the pull side."
+    },
+    {
+      "id": "door.maneuvering_clearance_pull_side_latch_extension",
+      "unit": "in",
+      "value_type": "number",
+      "element": "door",
+      "applies_to": [
+        "door",
+        "entrance",
+        "toilet_compartment"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Clear floor parallel to the doorway beyond the latch edge on the pull side."
+    },
+    {
+      "id": "door.maneuvering_clearance_pull_side_hinge_extension",
+      "unit": "in",
+      "value_type": "number",
+      "element": "door",
+      "applies_to": [
+        "door",
+        "entrance"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Clear floor parallel to the doorway beyond the hinge edge on the pull side."
+    },
+    {
+      "id": "door.maneuvering_clearance_push_side_depth",
+      "unit": "in",
+      "value_type": "number",
+      "element": "door",
+      "applies_to": [
+        "door",
+        "entrance",
+        "toilet_compartment"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Clear floor depth perpendicular to the doorway on the push side."
+    },
+    {
+      "id": "door.maneuvering_clearance_push_side_latch_extension",
+      "unit": "in",
+      "value_type": "number",
+      "element": "door",
+      "applies_to": [
+        "door",
+        "entrance",
+        "toilet_compartment"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Clear floor parallel to the doorway beyond the latch edge on the push side."
+    },
+    {
+      "id": "door.maneuvering_clearance_slope",
+      "unit": "ratio",
+      "value_type": "number",
+      "element": "door",
+      "applies_to": [
+        "door",
+        "entrance"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Max slope of the floor within the maneuvering clearance."
+    },
+    {
+      "id": "door.maneuvering_clearance_width_doorway",
+      "unit": "in",
+      "value_type": "number",
+      "element": "doorway",
+      "applies_to": [
+        "doorway"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Clear width of the maneuvering space across a doorway without a door (opening depth > 24 in)."
+    },
+    {
+      "id": "door.has_closer",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "door",
+      "applies_to": [
+        "door",
+        "entrance"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "measured",
+        "owner"
+      ],
+      "derivation": "Door has a closer."
+    },
+    {
+      "id": "door.has_latch",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "door",
+      "applies_to": [
+        "door",
+        "entrance"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Door has a latch."
+    },
+    {
+      "id": "door.hardware_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "door_hardware",
+      "applies_to": [
+        "door_hardware",
+        "door",
+        "entrance"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Height above floor of the operable part of door hardware (handle, pull, push bar, lock)."
+    },
+    {
+      "id": "door.hardware_requires_tight_grasp",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "door_hardware",
+      "applies_to": [
+        "door_hardware",
+        "door",
+        "entrance"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Door hardware requires tight grasping, pinching or twisting (round knob, thumb-turn requiring pinch)."
+    },
+    {
+      "id": "door.opening_force",
+      "unit": "lbf",
+      "value_type": "number",
+      "element": "door",
+      "applies_to": [
+        "door",
+        "entrance"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Force to push or pull the door open (excluding force to overcome latch/inertia), measured with a door pressure gauge by owner."
+    },
+    {
+      "id": "door.closing_speed_90_to_12",
+      "unit": "s",
+      "value_type": "number",
+      "element": "door",
+      "applies_to": [
+        "door",
+        "entrance"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Seconds for the door to move from 90 degrees open to 12 degrees from the latch."
+    },
+    {
+      "id": "door.is_exterior",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "door",
+      "applies_to": [
+        "door",
+        "entrance"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Door is in the building envelope (exterior side not scanned as interior room)."
+    },
+    {
+      "id": "door.is_fire_door",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "door",
+      "applies_to": [
+        "door"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Door is a rated fire door."
+    },
+    {
+      "id": "door.is_revolving_or_turnstile",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "door",
+      "applies_to": [
+        "door",
+        "entrance"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Door is a revolving door, revolving gate or turnstile."
+    },
+    {
+      "id": "door.is_automatic",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "door",
+      "applies_to": [
+        "door",
+        "entrance"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Door is power-operated."
+    },
+    {
+      "id": "door.bottom_smooth_surface_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "door",
+      "applies_to": [
+        "door",
+        "entrance"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "measured"
+      ],
+      "derivation": "Height of smooth surface on the push side bottom of the door (kick plate zone)."
+    },
+    {
+      "id": "door.vision_lite_bottom_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "door",
+      "applies_to": [
+        "door",
+        "entrance"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Height above floor of the bottom of the lowest glazing in a door or sidelite."
+    },
+    {
+      "id": "door.series_distance",
+      "unit": "in",
+      "value_type": "number",
+      "element": "door",
+      "applies_to": [
+        "door",
+        "entrance"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Clear distance between two hinged doors in series, measured between them minus the width of any door swinging into the space."
+    },
+    {
+      "id": "door.series_swing_direction",
+      "unit": "enum",
+      "value_type": "enum",
+      "element": "door",
+      "applies_to": [
+        "door",
+        "entrance"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Swing relationship of doors in series.",
+      "enum_values": [
+        "same",
+        "toward",
+        "away",
+        "none"
+      ]
+    },
+    {
+      "id": "door.swings_into_fixture_clear_floor",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "door",
+      "applies_to": [
+        "door",
+        "toilet_room",
+        "toilet_compartment"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Door swing arc overlaps the clear floor space of a fixture in a toilet room."
+    },
+    {
+      "id": "door.swings_into_route_reduces_width",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "door",
+      "applies_to": [
+        "door"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Door in open position reduces the required clear width of an accessible route."
+    },
+    {
+      "id": "threshold.height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "threshold",
+      "applies_to": [
+        "threshold",
+        "door",
+        "entrance"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Height of the threshold above the floor on either side, from the floor mesh at the door line."
+    },
+    {
+      "id": "threshold.beveled",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "threshold",
+      "applies_to": [
+        "threshold",
+        "door",
+        "entrance"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "measured"
+      ],
+      "derivation": "Edges of the threshold above 1/4 in are beveled at 1:2 or less."
+    },
+    {
+      "id": "ramp.running_slope",
+      "unit": "ratio",
+      "value_type": "number",
+      "element": "ramp",
+      "applies_to": [
+        "ramp"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Running slope (rise/run) of a ramp run from the floor mesh."
+    },
+    {
+      "id": "ramp.cross_slope",
+      "unit": "ratio",
+      "value_type": "number",
+      "element": "ramp",
+      "applies_to": [
+        "ramp"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Cross slope of a ramp run."
+    },
+    {
+      "id": "ramp.rise",
+      "unit": "in",
+      "value_type": "number",
+      "element": "ramp",
+      "applies_to": [
+        "ramp"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Rise of a single ramp run between landings."
+    },
+    {
+      "id": "ramp.clear_width",
+      "unit": "in",
+      "value_type": "number",
+      "element": "ramp",
+      "applies_to": [
+        "ramp"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Clear width between handrails or edges of a ramp run."
+    },
+    {
+      "id": "ramp.landing_length",
+      "unit": "in",
+      "value_type": "number",
+      "element": "ramp",
+      "applies_to": [
+        "ramp"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Clear length of top/bottom landing in the direction of travel."
+    },
+    {
+      "id": "ramp.landing_width",
+      "unit": "in",
+      "value_type": "number",
+      "element": "ramp",
+      "applies_to": [
+        "ramp"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Width of landing."
+    },
+    {
+      "id": "ramp.landing_slope",
+      "unit": "ratio",
+      "value_type": "number",
+      "element": "ramp",
+      "applies_to": [
+        "ramp"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Max slope of landing surface."
+    },
+    {
+      "id": "ramp.change_direction_landing_size",
+      "unit": "in",
+      "value_type": "number",
+      "element": "ramp",
+      "applies_to": [
+        "ramp"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Min dimension of an intermediate landing where the ramp changes direction."
+    },
+    {
+      "id": "ramp.change_direction_landing_length",
+      "unit": "in",
+      "value_type": "number",
+      "element": "ramp",
+      "applies_to": [
+        "ramp"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Landing length in the direction of downward travel from the upper run at a change of direction."
+    },
+    {
+      "id": "ramp.has_handrails_both_sides",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "ramp",
+      "applies_to": [
+        "ramp"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Handrails present on both sides of the ramp run."
+    },
+    {
+      "id": "ramp.edge_protection_present",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "ramp",
+      "applies_to": [
+        "ramp"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "measured"
+      ],
+      "derivation": "Edge protection (curb, barrier or extended floor surface) on ramp runs and landings with drop-offs."
+    },
+    {
+      "id": "ramp.curb_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "ramp",
+      "applies_to": [
+        "ramp"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Height of curb or barrier along the ramp edge."
+    },
+    {
+      "id": "ramp.door_swing_into_landing",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "ramp",
+      "applies_to": [
+        "ramp"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "A door swings into the landing and reduces it below the required area."
+    },
+    {
+      "id": "curb_ramp.running_slope",
+      "unit": "ratio",
+      "value_type": "number",
+      "element": "curb_ramp",
+      "applies_to": [
+        "curb_ramp"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Running slope of a curb ramp."
+    },
+    {
+      "id": "curb_ramp.counter_slope",
+      "unit": "ratio",
+      "value_type": "number",
+      "element": "curb_ramp",
+      "applies_to": [
+        "curb_ramp"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Counter slope of adjoining gutter/road."
+    },
+    {
+      "id": "curb_ramp.flare_slope",
+      "unit": "ratio",
+      "value_type": "number",
+      "element": "curb_ramp",
+      "applies_to": [
+        "curb_ramp"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Slope of flared sides."
+    },
+    {
+      "id": "curb_ramp.clear_width",
+      "unit": "in",
+      "value_type": "number",
+      "element": "curb_ramp",
+      "applies_to": [
+        "curb_ramp"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Width of curb ramp exclusive of flared sides."
+    },
+    {
+      "id": "curb_ramp.landing_length",
+      "unit": "in",
+      "value_type": "number",
+      "element": "curb_ramp",
+      "applies_to": [
+        "curb_ramp"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Length of landing at top of curb ramp."
+    },
+    {
+      "id": "curb_ramp.detectable_warning_present",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "curb_ramp",
+      "applies_to": [
+        "curb_ramp"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Detectable warning surface present at the curb ramp."
+    },
+    {
+      "id": "detectable_warning.depth",
+      "unit": "in",
+      "value_type": "number",
+      "element": "detectable_warning",
+      "applies_to": [
+        "detectable_warning"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Depth of the truncated dome field in the direction of travel."
+    },
+    {
+      "id": "detectable_warning.dome_diameter",
+      "unit": "in",
+      "value_type": "number",
+      "element": "detectable_warning",
+      "applies_to": [
+        "detectable_warning"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Base diameter of truncated domes."
+    },
+    {
+      "id": "detectable_warning.dome_spacing",
+      "unit": "in",
+      "value_type": "number",
+      "element": "detectable_warning",
+      "applies_to": [
+        "detectable_warning"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Center-to-center spacing of domes."
+    },
+    {
+      "id": "detectable_warning.dome_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "detectable_warning",
+      "applies_to": [
+        "detectable_warning"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Dome height."
+    },
+    {
+      "id": "detectable_warning.color_contrast_yellow",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "detectable_warning",
+      "applies_to": [
+        "detectable_warning"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Domes contrast visually; CBC requires yellow conforming to FS 33538 at curb ramps and hazardous vehicular areas."
+    },
+    {
+      "id": "detectable_warning.present_at_hazardous_vehicular_area",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site",
+        "route"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Where a walk crosses or adjoins a vehicular way with no curb or other element separating them, detectable warnings are present."
+    },
+    {
+      "id": "stairs.riser_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "stairs",
+      "applies_to": [
+        "stairs"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Riser height (max and uniformity across flight) from mesh."
+    },
+    {
+      "id": "stairs.riser_uniform",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "stairs",
+      "applies_to": [
+        "stairs"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "All risers in a flight within tolerance of each other."
+    },
+    {
+      "id": "stairs.tread_depth",
+      "unit": "in",
+      "value_type": "number",
+      "element": "stairs",
+      "applies_to": [
+        "stairs"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Tread depth (min) from mesh."
+    },
+    {
+      "id": "stairs.open_risers",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "stairs",
+      "applies_to": [
+        "stairs"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "measured"
+      ],
+      "derivation": "Stair has open risers."
+    },
+    {
+      "id": "stairs.nosing_radius",
+      "unit": "in",
+      "value_type": "number",
+      "element": "stairs",
+      "applies_to": [
+        "stairs"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Radius of curvature at the leading edge of tread."
+    },
+    {
+      "id": "stairs.nosing_projection",
+      "unit": "in",
+      "value_type": "number",
+      "element": "stairs",
+      "applies_to": [
+        "stairs"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Nosing projection beyond the riser."
+    },
+    {
+      "id": "stairs.has_handrails_both_sides",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "stairs",
+      "applies_to": [
+        "stairs"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Handrails on both sides of the stair."
+    },
+    {
+      "id": "stairs.contrasting_stripe_present",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "stairs",
+      "applies_to": [
+        "stairs"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Contrasting stripe (2-4 in wide) at upper approach and the lower tread of each flight (CBC 11B-504.4.1)."
+    },
+    {
+      "id": "handrail.height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "handrail",
+      "applies_to": [
+        "handrail"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Height to top of gripping surface measured vertically from ramp surface or stair nosings."
+    },
+    {
+      "id": "handrail.gripping_diameter",
+      "unit": "in",
+      "value_type": "number",
+      "element": "handrail",
+      "applies_to": [
+        "handrail",
+        "grab_bar"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Outside diameter of circular gripping surface."
+    },
+    {
+      "id": "handrail.wall_clearance",
+      "unit": "in",
+      "value_type": "number",
+      "element": "handrail",
+      "applies_to": [
+        "handrail",
+        "grab_bar"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Clear space between handrail gripping surface and adjacent wall."
+    },
+    {
+      "id": "handrail.continuous",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "handrail",
+      "applies_to": [
+        "handrail"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Handrail is continuous within the full length of each run/flight."
+    },
+    {
+      "id": "handrail.top_extension",
+      "unit": "in",
+      "value_type": "number",
+      "element": "handrail",
+      "applies_to": [
+        "handrail"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Horizontal extension beyond the top of the ramp run or top riser."
+    },
+    {
+      "id": "handrail.bottom_extension",
+      "unit": "in",
+      "value_type": "number",
+      "element": "handrail",
+      "applies_to": [
+        "handrail"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Extension beyond the bottom of the ramp run (horizontal) or at the slope of the flight for stairs (one tread depth)."
+    },
+    {
+      "id": "parking_space.width",
+      "unit": "in",
+      "value_type": "number",
+      "element": "parking_space",
+      "applies_to": [
+        "parking_space"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Width of accessible car/van space measured to centerline of marking."
+    },
+    {
+      "id": "parking_space.length",
+      "unit": "in",
+      "value_type": "number",
+      "element": "parking_space",
+      "applies_to": [
+        "parking_space"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Length of the accessible parking space."
+    },
+    {
+      "id": "access_aisle.width",
+      "unit": "in",
+      "value_type": "number",
+      "element": "access_aisle",
+      "applies_to": [
+        "access_aisle",
+        "parking_space"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Width of the access aisle adjacent to the space."
+    },
+    {
+      "id": "access_aisle.marked_no_parking",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "access_aisle",
+      "applies_to": [
+        "access_aisle"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Access aisle hatched/marked to discourage parking (CBC: 'NO PARKING' in 12 in letters)."
+    },
+    {
+      "id": "parking_space.surface_slope",
+      "unit": "ratio",
+      "value_type": "number",
+      "element": "parking_space",
+      "applies_to": [
+        "parking_space",
+        "access_aisle"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Max slope of the space and aisle surface."
+    },
+    {
+      "id": "parking_space.sign_present",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "parking_space",
+      "applies_to": [
+        "parking_space"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "ISA sign at the head of the space."
+    },
+    {
+      "id": "parking_space.sign_van_accessible",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "parking_space",
+      "applies_to": [
+        "parking_space"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "'Van Accessible' designation on van space sign."
+    },
+    {
+      "id": "parking_space.sign_bottom_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "parking_space",
+      "applies_to": [
+        "parking_space"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "measured"
+      ],
+      "derivation": "Height from ground to the bottom of the sign."
+    },
+    {
+      "id": "parking_space.surface_isa_marking",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "parking_space",
+      "applies_to": [
+        "parking_space"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "ISA painted on the surface of the space (CBC 11B-502.6.4)."
+    },
+    {
+      "id": "parking_space.tow_away_sign_present",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Tow-away warning sign at each entrance to the lot or adjacent to each space (CBC 11B-502.8)."
+    },
+    {
+      "id": "parking_space.vertical_clearance_van",
+      "unit": "in",
+      "value_type": "number",
+      "element": "parking_space",
+      "applies_to": [
+        "parking_space"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Vertical clearance at van spaces, aisles and vehicular routes to them."
+    },
+    {
+      "id": "parking_space.distance_to_entrance_shortest",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "parking_space",
+      "applies_to": [
+        "parking_space"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Accessible spaces are on the shortest accessible route to an accessible entrance."
+    },
+    {
+      "id": "water_closet.centerline_from_side_wall",
+      "unit": "in",
+      "value_type": "number",
+      "element": "water_closet",
+      "applies_to": [
+        "water_closet"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Horizontal distance from the water closet centerline to the nearest side wall or partition."
+    },
+    {
+      "id": "water_closet.clearance_width",
+      "unit": "in",
+      "value_type": "number",
+      "element": "water_closet",
+      "applies_to": [
+        "water_closet"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Clearance around the water closet measured perpendicular from the side wall."
+    },
+    {
+      "id": "water_closet.clearance_depth",
+      "unit": "in",
+      "value_type": "number",
+      "element": "water_closet",
+      "applies_to": [
+        "water_closet"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Clearance around the water closet measured perpendicular from the rear wall."
+    },
+    {
+      "id": "water_closet.clearance_has_other_fixture",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "water_closet",
+      "applies_to": [
+        "water_closet"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "A lavatory or other fixture (other than grab bars, dispensers, coat hooks, shelves) sits in the water closet clearance."
+    },
+    {
+      "id": "water_closet.seat_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "water_closet",
+      "applies_to": [
+        "water_closet"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Height above floor to top of the seat (box top of seat region; photo fallback)."
+    },
+    {
+      "id": "water_closet.flush_control_open_side",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "water_closet",
+      "applies_to": [
+        "water_closet"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Flush control is on the open (wide) side of the clearance."
+    },
+    {
+      "id": "water_closet.flush_control_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "water_closet",
+      "applies_to": [
+        "water_closet"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "measured"
+      ],
+      "derivation": "Height of the flush control above floor."
+    },
+    {
+      "id": "water_closet.seat_spring_return",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "water_closet",
+      "applies_to": [
+        "water_closet"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Seat is sprung to return to a lifted position."
+    },
+    {
+      "id": "grab_bar.side_length",
+      "unit": "in",
+      "value_type": "number",
+      "element": "grab_bar",
+      "applies_to": [
+        "grab_bar"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Length of the side-wall grab bar."
+    },
+    {
+      "id": "grab_bar.side_distance_from_rear_wall",
+      "unit": "in",
+      "value_type": "number",
+      "element": "grab_bar",
+      "applies_to": [
+        "grab_bar"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Distance from the rear wall to the near end of the side-wall grab bar."
+    },
+    {
+      "id": "grab_bar.side_extension_from_rear_wall",
+      "unit": "in",
+      "value_type": "number",
+      "element": "grab_bar",
+      "applies_to": [
+        "grab_bar"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Distance from the rear wall to the far end of the side-wall grab bar."
+    },
+    {
+      "id": "grab_bar.rear_length",
+      "unit": "in",
+      "value_type": "number",
+      "element": "grab_bar",
+      "applies_to": [
+        "grab_bar"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Length of the rear-wall grab bar."
+    },
+    {
+      "id": "grab_bar.rear_extension_side_wall_side",
+      "unit": "in",
+      "value_type": "number",
+      "element": "grab_bar",
+      "applies_to": [
+        "grab_bar"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Extension of rear grab bar from the water closet centerline toward the side wall."
+    },
+    {
+      "id": "grab_bar.rear_extension_open_side",
+      "unit": "in",
+      "value_type": "number",
+      "element": "grab_bar",
+      "applies_to": [
+        "grab_bar"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Extension of rear grab bar from the water closet centerline toward the open side."
+    },
+    {
+      "id": "grab_bar.height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "grab_bar",
+      "applies_to": [
+        "grab_bar"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Height above floor to the top of the gripping surface."
+    },
+    {
+      "id": "grab_bar.clearance_above",
+      "unit": "in",
+      "value_type": "number",
+      "element": "grab_bar",
+      "applies_to": [
+        "grab_bar"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Clear space above the grab bar to any projecting object."
+    },
+    {
+      "id": "grab_bar.clearance_below",
+      "unit": "in",
+      "value_type": "number",
+      "element": "grab_bar",
+      "applies_to": [
+        "grab_bar"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Clear space below the grab bar to any projecting object (e.g. toilet paper dispenser)."
+    },
+    {
+      "id": "grab_bar.present_side",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "water_closet",
+      "applies_to": [
+        "water_closet"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "A side-wall grab bar is detected at the water closet."
+    },
+    {
+      "id": "grab_bar.present_rear",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "water_closet",
+      "applies_to": [
+        "water_closet"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "A rear-wall grab bar is detected at the water closet."
+    },
+    {
+      "id": "grab_bar.rotates_in_fittings",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "grab_bar",
+      "applies_to": [
+        "grab_bar"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Grab bar rotates within its fittings."
+    },
+    {
+      "id": "grab_bar.structural_250lbf",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "grab_bar",
+      "applies_to": [
+        "grab_bar"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Owner confirms grab bar installation withstands 250 lbf."
+    },
+    {
+      "id": "toilet_paper_dispenser.centerline_from_wc_front",
+      "unit": "in",
+      "value_type": "number",
+      "element": "toilet_paper_dispenser",
+      "applies_to": [
+        "toilet_paper_dispenser"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Horizontal distance from front of water closet to centerline of the dispenser (positive = in front of the bowl)."
+    },
+    {
+      "id": "toilet_paper_dispenser.outlet_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "toilet_paper_dispenser",
+      "applies_to": [
+        "toilet_paper_dispenser"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Height of the dispenser outlet above floor."
+    },
+    {
+      "id": "toilet_paper_dispenser.controls_delivery",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "toilet_paper_dispenser",
+      "applies_to": [
+        "toilet_paper_dispenser"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Dispenser controls delivery or does not allow continuous paper flow."
+    },
+    {
+      "id": "toilet_compartment.width",
+      "unit": "in",
+      "value_type": "number",
+      "element": "toilet_compartment",
+      "applies_to": [
+        "toilet_compartment"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Inside width of the compartment measured perpendicular to side walls."
+    },
+    {
+      "id": "toilet_compartment.depth",
+      "unit": "in",
+      "value_type": "number",
+      "element": "toilet_compartment",
+      "applies_to": [
+        "toilet_compartment"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Inside depth measured perpendicular to the rear wall."
+    },
+    {
+      "id": "toilet_compartment.wc_mounting",
+      "unit": "enum",
+      "value_type": "enum",
+      "element": "toilet_compartment",
+      "applies_to": [
+        "toilet_compartment",
+        "water_closet"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "measured"
+      ],
+      "derivation": "Water closet mounting type in the compartment.",
+      "enum_values": [
+        "wall_hung",
+        "floor_mounted"
+      ]
+    },
+    {
+      "id": "toilet_compartment.toe_clearance_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "toilet_compartment",
+      "applies_to": [
+        "toilet_compartment"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Toe clearance under the front partition and one side partition."
+    },
+    {
+      "id": "toilet_compartment.door_self_closing",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "toilet_compartment",
+      "applies_to": [
+        "toilet_compartment"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Compartment door is self-closing."
+    },
+    {
+      "id": "toilet_compartment.door_pull_both_sides",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "toilet_compartment",
+      "applies_to": [
+        "toilet_compartment"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Door pulls on both sides of the door near the latch."
+    },
+    {
+      "id": "toilet_compartment.door_location_from_side",
+      "unit": "in",
+      "value_type": "number",
+      "element": "toilet_compartment",
+      "applies_to": [
+        "toilet_compartment"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Distance from the side wall/partition farthest from the water closet to the door opening edge."
+    },
+    {
+      "id": "toilet_compartment.kind",
+      "unit": "enum",
+      "value_type": "enum",
+      "element": "toilet_compartment",
+      "applies_to": [
+        "toilet_compartment"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Classified as wheelchair or ambulatory compartment from width.",
+      "enum_values": [
+        "wheelchair",
+        "ambulatory",
+        "other"
+      ]
+    },
+    {
+      "id": "toilet_room.compartment_count",
+      "unit": "count",
+      "value_type": "integer",
+      "element": "toilet_room",
+      "applies_to": [
+        "toilet_room"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Number of water closet compartments plus urinals in the toilet room."
+    },
+    {
+      "id": "toilet_room.urinal_count",
+      "unit": "count",
+      "value_type": "integer",
+      "element": "toilet_room",
+      "applies_to": [
+        "toilet_room"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Number of urinals in the toilet room."
+    },
+    {
+      "id": "toilet_room.is_single_user",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "toilet_room",
+      "applies_to": [
+        "toilet_room"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Toilet room has one water closet and one lavatory and a lockable door."
+    },
+    {
+      "id": "toilet_room.single_user_signed_all_gender",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "toilet_room",
+      "applies_to": [
+        "toilet_room"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Single-user toilet room is identified as all-gender (CA Health & Safety Code 118600)."
+    },
+    {
+      "id": "toilet_room.door_lockable_from_inside",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "toilet_room",
+      "applies_to": [
+        "toilet_room"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Single-user toilet room door has privacy latch operable without tight grasp."
+    },
+    {
+      "id": "urinal.rim_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "urinal",
+      "applies_to": [
+        "urinal"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Height of the urinal rim above floor."
+    },
+    {
+      "id": "urinal.rim_depth",
+      "unit": "in",
+      "value_type": "number",
+      "element": "urinal",
+      "applies_to": [
+        "urinal"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Depth of the urinal measured from the outer face of the rim to the back of the fixture."
+    },
+    {
+      "id": "lavatory.rim_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "lavatory",
+      "applies_to": [
+        "lavatory",
+        "sink"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Height of the front of the higher of the rim or counter surface above floor."
+    },
+    {
+      "id": "lavatory.pipes_insulated",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "lavatory",
+      "applies_to": [
+        "lavatory",
+        "sink"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Water supply and drain pipes under the lavatory are insulated or configured to protect against contact."
+    },
+    {
+      "id": "lavatory.faucet_operable",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "lavatory",
+      "applies_to": [
+        "lavatory",
+        "sink"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Faucet is automatic or lever/push type operable with one hand without tight grasp; self-closing faucets stay open 10 s min."
+    },
+    {
+      "id": "lavatory.sink_depth",
+      "unit": "in",
+      "value_type": "number",
+      "element": "lavatory",
+      "applies_to": [
+        "sink",
+        "lavatory"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Depth of the sink bowl."
+    },
+    {
+      "id": "lavatory.distance_from_wc_centerline",
+      "unit": "in",
+      "value_type": "number",
+      "element": "lavatory",
+      "applies_to": [
+        "lavatory"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Distance from the water closet centerline to the nearest edge of an adjacent lavatory."
+    },
+    {
+      "id": "mirror.reflecting_surface_bottom_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "mirror",
+      "applies_to": [
+        "mirror"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Height of the bottom edge of the reflecting surface above floor."
+    },
+    {
+      "id": "mirror.above_lavatory",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "mirror",
+      "applies_to": [
+        "mirror"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Mirror is mounted above a lavatory or countertop."
+    },
+    {
+      "id": "coat_hook.height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "coat_hook",
+      "applies_to": [
+        "coat_hook"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Height of the hook above floor."
+    },
+    {
+      "id": "toilet_room.accessory_operable_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "dispenser",
+      "applies_to": [
+        "dispenser",
+        "hand_dryer",
+        "baby_changing_table"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Height of the operable part of toilet room accessories (towel, soap, seat cover, sanitary napkin, waste receptacle, hand dryer)."
+    },
+    {
+      "id": "toilet_room.has_accessible_baby_changing",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "toilet_room",
+      "applies_to": [
+        "toilet_room",
+        "baby_changing_table"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Baby changing station (if provided) is on an accessible route with operable parts in reach."
+    },
+    {
+      "id": "toilet_room.signage_geometric_symbol",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "toilet_room",
+      "applies_to": [
+        "toilet_room",
+        "door"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Door carries the CBC geometric symbol (circle men, triangle women, circle with triangle all-gender)."
+    },
+    {
+      "id": "toilet_room.geometric_symbol_center_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "toilet_room",
+      "applies_to": [
+        "toilet_room",
+        "door"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "measured"
+      ],
+      "derivation": "Height of the center of the geometric symbol above floor."
+    },
+    {
+      "id": "toilet_room.geometric_symbol_size",
+      "unit": "in",
+      "value_type": "number",
+      "element": "toilet_room",
+      "applies_to": [
+        "toilet_room",
+        "door"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Size of the geometric symbol (diameter/side)."
+    },
+    {
+      "id": "drinking_fountain.spout_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "drinking_fountain",
+      "applies_to": [
+        "drinking_fountain",
+        "bottle_filler"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Height of the spout outlet above floor."
+    },
+    {
+      "id": "drinking_fountain.spout_location_from_front",
+      "unit": "in",
+      "value_type": "number",
+      "element": "drinking_fountain",
+      "applies_to": [
+        "drinking_fountain"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "measured"
+      ],
+      "derivation": "Spout distance from the vertical support / front edge."
+    },
+    {
+      "id": "drinking_fountain.count_wheelchair",
+      "unit": "count",
+      "value_type": "integer",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Number of fountains complying for wheelchair users."
+    },
+    {
+      "id": "drinking_fountain.count_standing",
+      "unit": "count",
+      "value_type": "integer",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Number of fountains complying for standing persons."
+    },
+    {
+      "id": "sign.mounting_height_baseline",
+      "unit": "in",
+      "value_type": "number",
+      "element": "sign",
+      "applies_to": [
+        "sign",
+        "tactile_exit_sign"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Height above floor of the baseline of the highest tactile character (and lowest tactile character) on a room-identification sign."
+    },
+    {
+      "id": "sign.lowest_baseline_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "sign",
+      "applies_to": [
+        "sign",
+        "tactile_exit_sign"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Height above floor of the baseline of the lowest tactile character."
+    },
+    {
+      "id": "sign.location_latch_side",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "sign",
+      "applies_to": [
+        "sign",
+        "tactile_exit_sign"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Sign is beside the door on the latch side (or nearest adjacent wall when no space)."
+    },
+    {
+      "id": "sign.clear_floor_18x18",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "sign",
+      "applies_to": [
+        "sign",
+        "tactile_exit_sign"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "18x18 in clear floor centered on the tactile characters beyond the arc of any door swing between closed and 45 degrees."
+    },
+    {
+      "id": "sign.raised_characters_present",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "sign",
+      "applies_to": [
+        "sign",
+        "tactile_exit_sign"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Sign has raised (tactile) characters."
+    },
+    {
+      "id": "sign.braille_present",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "sign",
+      "applies_to": [
+        "sign",
+        "tactile_exit_sign"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Sign has Grade 2 braille below the text."
+    },
+    {
+      "id": "sign.raised_character_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "sign",
+      "applies_to": [
+        "sign",
+        "tactile_exit_sign"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Height of uppercase I of the raised characters."
+    },
+    {
+      "id": "sign.uppercase_sans_serif",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "sign",
+      "applies_to": [
+        "sign",
+        "tactile_exit_sign"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Tactile characters are uppercase sans serif."
+    },
+    {
+      "id": "sign.nonglare_contrast",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "sign",
+      "applies_to": [
+        "sign",
+        "tactile_exit_sign"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Characters and background are non-glare and contrast (light on dark or dark on light)."
+    },
+    {
+      "id": "sign.visual_character_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "sign",
+      "applies_to": [
+        "sign"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Height of visual characters, compared with viewing distance and mounting height."
+    },
+    {
+      "id": "sign.pictogram_field_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "sign",
+      "applies_to": [
+        "sign"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Height of the pictogram field."
+    },
+    {
+      "id": "sign.pictogram_has_text_descriptor",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "sign",
+      "applies_to": [
+        "sign"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Pictogram has a text descriptor directly below it."
+    },
+    {
+      "id": "sign.isa_present",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "sign",
+      "applies_to": [
+        "sign",
+        "entrance",
+        "toilet_room",
+        "parking_space"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "International Symbol of Accessibility is displayed."
+    },
+    {
+      "id": "sign.room_id_present",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "door",
+      "applies_to": [
+        "door",
+        "toilet_room"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "A permanent room identification sign exists at the door of a permanent room (e.g. restroom, exit)."
+    },
+    {
+      "id": "sign.directional_to_accessible_present",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "sign",
+      "applies_to": [
+        "entrance",
+        "toilet_room",
+        "sign"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Directional sign to the nearest accessible element (entrance/restroom) at inaccessible ones."
+    },
+    {
+      "id": "tactile_exit_sign.present",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "door",
+      "applies_to": [
+        "door",
+        "entrance"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Tactile exit sign ('EXIT', 'EXIT ROUTE', 'EXIT STAIR DOWN', etc.) at each exit door required by CBC."
+    },
+    {
+      "id": "dining_table.top_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "dining_table",
+      "applies_to": [
+        "dining_table",
+        "table",
+        "bar_counter",
+        "work_surface"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Height of the top of the dining or work surface above floor (box top)."
+    },
+    {
+      "id": "counter.top_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "counter",
+      "applies_to": [
+        "counter",
+        "service_counter",
+        "sales_counter",
+        "checkout_aisle",
+        "food_service_line"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Height of the accessible portion of the sales/service counter top above floor."
+    },
+    {
+      "id": "counter.accessible_length",
+      "unit": "in",
+      "value_type": "number",
+      "element": "counter",
+      "applies_to": [
+        "counter",
+        "service_counter",
+        "sales_counter",
+        "checkout_aisle"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Length of the counter top at or below the accessible height that is clear of registers, displays, tip jars and other items."
+    },
+    {
+      "id": "counter.accessible_portion_same_depth",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "counter",
+      "applies_to": [
+        "counter",
+        "service_counter",
+        "sales_counter"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Accessible portion extends the same depth as the rest of the counter top."
+    },
+    {
+      "id": "counter.approach",
+      "unit": "enum",
+      "value_type": "enum",
+      "element": "counter",
+      "applies_to": [
+        "counter",
+        "service_counter",
+        "sales_counter"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Approach provided at the accessible portion: parallel or forward (with knee clearance).",
+      "enum_values": [
+        "parallel",
+        "forward"
+      ]
+    },
+    {
+      "id": "counter.accessible_portion_on_customer_side",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "counter",
+      "applies_to": [
+        "counter",
+        "service_counter",
+        "sales_counter"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "The low portion is on the customer side and adjoins an accessible route."
+    },
+    {
+      "id": "checkout_aisle.clear_width",
+      "unit": "in",
+      "value_type": "number",
+      "element": "checkout_aisle",
+      "applies_to": [
+        "checkout_aisle"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Clear width of the check-out aisle."
+    },
+    {
+      "id": "checkout_aisle.counter_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "checkout_aisle",
+      "applies_to": [
+        "checkout_aisle"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Height of the check-out aisle counter top."
+    },
+    {
+      "id": "checkout_aisle.counter_edge_protection_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "checkout_aisle",
+      "applies_to": [
+        "checkout_aisle"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Height of any edge protection at the counter top."
+    },
+    {
+      "id": "checkout_aisle.identified_isa",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "checkout_aisle",
+      "applies_to": [
+        "checkout_aisle"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Accessible check-out aisle identified by ISA sign above the aisle."
+    },
+    {
+      "id": "food_service_line.tray_slide_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "food_service_line",
+      "applies_to": [
+        "food_service_line"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Height of the tray slide top."
+    },
+    {
+      "id": "food_service_line.clear_width",
+      "unit": "in",
+      "value_type": "number",
+      "element": "food_service_line",
+      "applies_to": [
+        "food_service_line"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Clear width of the self-service line queue."
+    },
+    {
+      "id": "bar_counter.accessible_section_present",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "bar_counter",
+      "applies_to": [
+        "bar_counter"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "A portion of the bar 60 in long min at 28-34 in high is provided or service available at accessible tables in the same area."
+    },
+    {
+      "id": "dining.accessible_table_faces_room",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "dining_table",
+      "applies_to": [
+        "dining_table"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "An accessible interior table lets a wheelchair user sit facing into the room rather than the wall (Kalani v. Starbucks remedy)."
+    },
+    {
+      "id": "shelf.highest_shelf_used_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "self_service_shelf",
+      "applies_to": [
+        "self_service_shelf",
+        "shelf",
+        "food_service_line"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Height of the highest self-service shelf/condiment that customers must reach."
+    },
+    {
+      "id": "shelf.lowest_shelf_used_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "self_service_shelf",
+      "applies_to": [
+        "self_service_shelf",
+        "shelf"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Height of the lowest self-service shelf customers must reach."
+    },
+    {
+      "id": "kiosk.display_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "kiosk",
+      "applies_to": [
+        "kiosk",
+        "atm",
+        "point_of_sale_device"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Height of the center of the display screen above floor."
+    },
+    {
+      "id": "kiosk.tactile_keypad_present",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "kiosk",
+      "applies_to": [
+        "kiosk",
+        "atm",
+        "point_of_sale_device"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Kiosk/ATM/POS has tactilely discernible input controls or an equivalent non-visual input."
+    },
+    {
+      "id": "kiosk.speech_output_present",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "kiosk",
+      "applies_to": [
+        "kiosk",
+        "atm"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Machine is speech enabled with a private-listening jack."
+    },
+    {
+      "id": "point_of_sale_device.mounted_movable",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "point_of_sale_device",
+      "applies_to": [
+        "point_of_sale_device"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "POS device is tethered/movable so it can be handed to a seated customer."
+    },
+    {
+      "id": "point_of_sale_device.tactile_keypad",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "point_of_sale_device",
+      "applies_to": [
+        "point_of_sale_device"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "POS device has a tactile keypad or provides an equivalent for blind users (CBC 11B-707.9)."
+    },
+    {
+      "id": "locker.count_accessible",
+      "unit": "count",
+      "value_type": "integer",
+      "element": "site",
+      "applies_to": [
+        "site",
+        "locker"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Number of accessible lockers."
+    },
+    {
+      "id": "fitting_room.turning_space_diameter",
+      "unit": "in",
+      "value_type": "number",
+      "element": "fitting_room",
+      "applies_to": [
+        "fitting_room"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Turning space inside the dressing room (same derivation as room.turning_space_diameter)."
+    },
+    {
+      "id": "bench.length",
+      "unit": "in",
+      "value_type": "number",
+      "element": "bench",
+      "applies_to": [
+        "bench"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Length of bench."
+    },
+    {
+      "id": "bench.depth",
+      "unit": "in",
+      "value_type": "number",
+      "element": "bench",
+      "applies_to": [
+        "bench"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Depth of bench seat."
+    },
+    {
+      "id": "bench.seat_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "bench",
+      "applies_to": [
+        "bench"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Height of the top of the bench seat."
+    },
+    {
+      "id": "bench.has_back_support",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "bench",
+      "applies_to": [
+        "bench"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "measured"
+      ],
+      "derivation": "Bench is affixed to a wall or has back support 42 in long min."
+    },
+    {
+      "id": "fitting_room.count_accessible",
+      "unit": "count",
+      "value_type": "integer",
+      "element": "site",
+      "applies_to": [
+        "site",
+        "fitting_room"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [
+        "measured"
+      ],
+      "derivation": "Number of accessible fitting rooms in each cluster."
+    },
+    {
+      "id": "alarm.visible_appliance_present",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "room",
+      "applies_to": [
+        "room",
+        "toilet_room"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Visible (strobe) alarm appliance present in public/common use rooms including toilet rooms."
+    },
+    {
+      "id": "telephone.operable_part_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "telephone",
+      "applies_to": [
+        "telephone"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Height of the highest operable part of the public telephone."
+    },
+    {
+      "id": "telephone.volume_control",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "telephone",
+      "applies_to": [
+        "telephone"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Telephone has volume control."
+    },
+    {
+      "id": "assembly.wheelchair_space_count",
+      "unit": "count",
+      "value_type": "integer",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [
+        "measured"
+      ],
+      "derivation": "Number of wheelchair spaces in the assembly area."
+    },
+    {
+      "id": "assembly.seat_count",
+      "unit": "count",
+      "value_type": "integer",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Number of fixed seats in the assembly area."
+    },
+    {
+      "id": "assembly.wheelchair_space_width",
+      "unit": "in",
+      "value_type": "number",
+      "element": "room",
+      "applies_to": [
+        "room"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Width of a single wheelchair space."
+    },
+    {
+      "id": "assembly.wheelchair_space_depth",
+      "unit": "in",
+      "value_type": "number",
+      "element": "room",
+      "applies_to": [
+        "room"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Depth of wheelchair space (front/rear entry)."
+    },
+    {
+      "id": "assembly.companion_seat_present",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Companion seat beside each wheelchair space."
+    },
+    {
+      "id": "assembly.listening_system_present",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Assistive listening system where audible communication is integral and amplification is provided."
+    },
+    {
+      "id": "elevator.complies_407",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "elevator",
+      "applies_to": [
+        "elevator"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Owner/inspector confirms elevator meets 407 (car size, controls, signals); scan reports car interior dimensions as evidence."
+    },
+    {
+      "id": "elevator.car_inside_width",
+      "unit": "in",
+      "value_type": "number",
+      "element": "elevator",
+      "applies_to": [
+        "elevator"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Car interior width."
+    },
+    {
+      "id": "elevator.car_inside_depth",
+      "unit": "in",
+      "value_type": "number",
+      "element": "elevator",
+      "applies_to": [
+        "elevator"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Car interior depth."
+    },
+    {
+      "id": "elevator.door_clear_width",
+      "unit": "in",
+      "value_type": "number",
+      "element": "elevator",
+      "applies_to": [
+        "elevator"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Elevator door clear width."
+    },
+    {
+      "id": "platform_lift.complies_410",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "platform_lift",
+      "applies_to": [
+        "platform_lift"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Platform lift meets 410 and ASME A18.1, usable without assistance."
+    },
+    {
+      "id": "site.service_window_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Height of walk-up/drive-up service window counter."
+    },
+    {
+      "id": "site.arrival_route_accessible",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo",
+        "owner"
+      ],
+      "derivation": "An accessible route exists from site arrival points (parking, sidewalk, transit stop) to an accessible entrance; measured when the exterior is scanned, else owner/photo."
+    },
+    {
+      "id": "site.vertical_access_provided",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Owner: an elevator, platform lift or ramp connects every public level, or the building qualifies for the elevator exception (fewer than 3 stories or under 3,000 sq ft per story, and not a shopping center or health care provider office)."
+    },
+    {
+      "id": "site.dining_seating_accessible",
+      "unit": "count",
+      "value_type": "integer",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Count of seating spaces at dining surfaces whose 902 rules all pass."
+    },
+    {
+      "id": "site.fitting_rooms_total",
+      "unit": "count",
+      "value_type": "integer",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Count of dressing/fitting rooms of each type."
+    },
+    {
+      "id": "site.path_of_travel_upgraded",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Owner: when the primary function area was altered, was the path of travel (entrance, route, restrooms, drinking fountains, phones) made accessible, spending at least 20% of the alteration cost where full compliance was disproportionate?"
+    },
+    {
+      "id": "site.barrier_removal_plan",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Owner: does the business have a plan and ongoing practice for removing barriers where readily achievable (28 CFR 36.304)?"
+    },
+    {
+      "id": "site.walk_separated_from_vehicles",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Walks next to vehicular traffic in the parking area are raised 4 in or otherwise separated (CBC 11B-250)."
+    },
+    {
+      "id": "site.selling_space_sqft",
+      "unit": "sqft",
+      "value_type": "number",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Selling floor area in square feet (227.2 exception); from room areas, owner confirms."
+    },
+    {
+      "id": "site.tactile_exit_signs_complete",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Every exit door required to have a tactile exit sign has one."
+    },
+    {
+      "id": "floor.dropoff_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "floor",
+      "applies_to": [
+        "floor",
+        "route"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Height of an abrupt drop between a walk and an adjacent surface (CBC 11B-303.5)."
+    },
+    {
+      "id": "floor.warning_curb_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "floor",
+      "applies_to": [
+        "floor",
+        "route"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "measured"
+      ],
+      "derivation": "Height of a warning curb at a drop-off."
+    },
+    {
+      "id": "toilet_room.has_ambulatory_compartment",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "toilet_room",
+      "applies_to": [
+        "toilet_room"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Toilet room contains an ambulatory accessible compartment (604.8.2)."
+    },
+    {
+      "id": "toilet_room.accessible_urinal_count",
+      "unit": "count",
+      "value_type": "integer",
+      "element": "toilet_room",
+      "applies_to": [
+        "toilet_room"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Number of urinals in the room whose 605 rules pass."
+    },
+    {
+      "id": "toilet_room.door_encroachment_into_turning_space",
+      "unit": "in",
+      "value_type": "number",
+      "element": "toilet_room",
+      "applies_to": [
+        "toilet_room"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "How far the entry door, in any position, encroaches into the required turning space (CBC 11B-603.2.3)."
+    },
+    {
+      "id": "route.kind",
+      "unit": "enum",
+      "value_type": "enum",
+      "element": "route",
+      "applies_to": [
+        "route"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Classification of the route leg for CBC width exceptions.",
+      "enum_values": [
+        "interior_path",
+        "corridor",
+        "aisle_one_side",
+        "aisle_two_sides",
+        "exterior_walk",
+        "toilet_room_path"
+      ]
+    },
+    {
+      "id": "handrail.bottom_horizontal_extension",
+      "unit": "in",
+      "value_type": "number",
+      "element": "handrail",
+      "applies_to": [
+        "handrail"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Horizontal portion of the bottom stair handrail extension beyond the sloped portion (CBC 11B-505.10.3)."
+    },
+    {
+      "id": "grab_bar.side_front_beyond_wc",
+      "unit": "in",
+      "value_type": "number",
+      "element": "grab_bar",
+      "applies_to": [
+        "grab_bar"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Distance the front end of the side grab bar extends in front of the water closet (CBC 11B-604.5.1)."
+    },
+    {
+      "id": "water_closet.front_maneuvering_depth",
+      "unit": "in",
+      "value_type": "number",
+      "element": "water_closet",
+      "applies_to": [
+        "water_closet"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Depth of 60 in wide clear maneuvering space in front of the water closet (CBC 11B-604.3.1)."
+    },
+    {
+      "id": "parking_space.is_van_space",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "parking_space",
+      "applies_to": [
+        "parking_space"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "The accessible space is designated van accessible."
+    },
+    {
+      "id": "parking_space.sign_min_fine_present",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "parking_space",
+      "applies_to": [
+        "parking_space"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Sign states 'Minimum Fine $250' (CBC 11B-502.6.2)."
+    },
+    {
+      "id": "drinking_fountain.unit_role",
+      "unit": "enum",
+      "value_type": "enum",
+      "element": "drinking_fountain",
+      "applies_to": [
+        "drinking_fountain"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Whether the unit serves wheelchair users (low) or standing persons (high), from spout height.",
+      "enum_values": [
+        "wheelchair",
+        "standing"
+      ]
+    },
+    {
+      "id": "drinking_fountain.in_alcove_or_protected",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "drinking_fountain",
+      "applies_to": [
+        "drinking_fountain"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Fountain sits in an alcove or between wing walls so it does not protrude into the circulation path (CBC 11B-602.9)."
+    },
+    {
+      "id": "lavatory.centerline_from_side_wall",
+      "unit": "in",
+      "value_type": "number",
+      "element": "lavatory",
+      "applies_to": [
+        "lavatory"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Distance from the lavatory centerline to the adjacent side wall or partition."
+    },
+    {
+      "id": "sign.visual_character_baseline_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "sign",
+      "applies_to": [
+        "sign"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Height above floor of the baseline of the lowest visual character."
+    },
+    {
+      "id": "fitting_room.door_swing_into_turning",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "fitting_room",
+      "applies_to": [
+        "fitting_room"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "The door swings into the dressing room over its required turning space."
+    },
+    {
+      "id": "fitting_room.mirror_full_length",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "fitting_room",
+      "applies_to": [
+        "fitting_room",
+        "mirror"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "measured"
+      ],
+      "derivation": "A full-length mirror at least 18 in wide by 54 in high is provided (CBC 11B-803.6)."
+    },
+    {
+      "id": "coat_hook.above_bench",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "coat_hook",
+      "applies_to": [
+        "coat_hook"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Coat hook is located above the bench or other seating (CBC 11B-803.5)."
+    },
+    {
+      "id": "dining_table.clear_floor_overlaps_route",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "dining_table",
+      "applies_to": [
+        "dining_table",
+        "bar_counter",
+        "table"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "The clear floor space at the dining surface overlaps the accessible route (CBC 11B-902.2.1)."
+    },
+    {
+      "id": "kiosk.display_tilt_deg",
+      "unit": "deg",
+      "value_type": "number",
+      "element": "kiosk",
+      "applies_to": [
+        "kiosk",
+        "atm",
+        "point_of_sale_device"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Tilt of the display screen from vertical in degrees."
+    },
+    {
+      "id": "bench.back_support_length",
+      "unit": "in",
+      "value_type": "number",
+      "element": "bench",
+      "applies_to": [
+        "bench"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Length of the back support or wall the bench is affixed to."
+    },
+    {
+      "id": "ramp.bottom_landing_length",
+      "unit": "in",
+      "value_type": "number",
+      "element": "ramp",
+      "applies_to": [
+        "ramp"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Clear length of the bottom landing in the direction of the run."
+    },
+    {
+      "id": "ramp.top_landing_width",
+      "unit": "in",
+      "value_type": "number",
+      "element": "ramp",
+      "applies_to": [
+        "ramp"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Width of the top landing."
+    }
+  ]
+}

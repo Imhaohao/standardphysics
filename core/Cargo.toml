@@ -1,0 +1,28 @@
+[workspace]
+resolver = "3"
+members = ["sp-core", "sp-ffi", "sp-bench"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "UNLICENSED"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+schemars = "1.2"
+thiserror = "2"
+uniffi = "0.32"
+criterion = "0.8"
+proptest = "1"
+
+[workspace.lints.clippy]
+cognitive_complexity = "warn"
+too_many_lines = "warn"
+
+[profile.release]
+debug = 1
+
+[profile.bench]
+debug = 1
