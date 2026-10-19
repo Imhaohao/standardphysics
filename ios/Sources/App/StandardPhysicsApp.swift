@@ -2,8 +2,10 @@ import SwiftUI
 
 @main
 struct StandardPhysicsApp: App {
-    @State private var launch = LaunchMode.fromProcess()
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @Environment(\.scenePhase) private var scenePhase
+
+    private var launch: LaunchMode { delegate.launch }
 
     var body: some Scene {
         WindowGroup {
