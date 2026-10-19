@@ -19,6 +19,7 @@ import json
 import logging
 import pathlib
 import threading
+import time
 from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass, field
 
@@ -234,12 +235,17 @@ class Stages:
         legitimately found nothing.
         """
         graph = parse_room_json(json.loads(room_json.read_bytes()), scan_id=scan_id)
+        started = time.perf_counter()
         graph = self.label_scan(graph, frame_paths=frame_paths, poses_path=poses_path, lidar_mesh_path=lidar_mesh_path)
+        log.info("labelling %s took %.1f s", scan_id, time.perf_counter() - started)
         if not run_discovery:
             return graph, DiscoveryOutcome()
-        return self.discover_scan_with_report(
+        started = time.perf_counter()
+        found = self.discover_scan_with_report(
             graph, frame_paths=frame_paths, poses_path=poses_path, lidar_mesh_path=lidar_mesh_path
         )
+        log.info("discovery %s took %.1f s", scan_id, time.perf_counter() - started)
+        return found
 
     def discover_scan(
         self,

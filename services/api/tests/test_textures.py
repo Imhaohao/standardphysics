@@ -386,3 +386,31 @@ def test_a_running_build_says_which_step_it_is_on_and_how_far_through(make_clien
         finished = client.get(f'/api/scans/{scan}/textures').json()
         assert finished['state'] == 'complete' and finished['progress'] is None
         assert not list((client.app.state.store.scan_dir(scan) / 'textures').glob('*.progress.json'))
+
+
+def test_two_steps_running_side_by_side_can_both_report_progress(tmp_path, monkeypatch):
+    """The box model and the painted scan run at once and report through one progress file."""
+    import threading
+    import time as clock
+
+    from standardphysics_pipeline.textures.stages import StepProgress
+
+    from standardphysics_api import textures
+    monkeypatch.setattr(textures._ProgressFile, 'SECONDS_BETWEEN_COUNTS', 0.0)
+    reported = textures._ProgressFile(tmp_path / 'build.progress.json')
+    failures = []
+
+    def report(step):
+        try:
+            for done in range(300):
+                reported(StepProgress(step, done, 300, clock.time()))
+        except OSError as error:
+            failures.append(error)
+
+    threads = [threading.Thread(target=report, args=(step,)) for step in ('box model', 'painted scan')]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert not failures
+    assert json.loads((tmp_path / 'build.progress.json').read_text())['step'] in {'box model', 'painted scan'}

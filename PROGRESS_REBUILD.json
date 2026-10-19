@@ -60,9 +60,29 @@
             "with_sampling_s": 17.6
           },
           "output": "74/74 planes; one offset moved 0.08->0.06 on node 127, +49 vertices of 24,736"
+        },
+        {
+          "date": "2026-10-18",
+          "run": "warm detection cache, after mirror fix",
+          "wall_s": 174.2,
+          "process_s": 72.1,
+          "labelling_s": 41.9,
+          "discovery_s": 28.5,
+          "texture_s": 101.3
+        },
+        {
+          "date": "2026-10-18",
+          "change": "10 label batches in flight (was 3); box model beside painted scan; per-thread texture steps; locked progress file",
+          "run": "warm detection cache",
+          "wall_s": 125.6,
+          "process_s": 44.8,
+          "labelling_s": 13.8,
+          "discovery_s": 29.3,
+          "texture_s": 80.0,
+          "painted_coverage": "50%, unchanged"
         }
       ],
-      "next": "process job 166 s (355 photo detections + 10 label batches), then box model 44 s, unwrap 13 s"
+      "next": "Still 125.6 s warm, ~220 s cold (photo detection ~94 s uncached). Critical path: painted scan 79 s (mirrored 27, unwrap 14.5, photo bake 12), discovery 29 s, labelling 14 s. Levers: read photos during upload (live reader), label and discover concurrently, start texture work that needs no graph before process ends."
     },
     {
       "id": 3,

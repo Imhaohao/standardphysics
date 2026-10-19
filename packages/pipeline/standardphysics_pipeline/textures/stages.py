@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 import time
 from collections.abc import Callable
 from contextlib import contextmanager
@@ -21,7 +22,8 @@ class StepProgress:
     """Seconds since the epoch when the step began."""
 
 
-_steps: list[tuple[str, float]] = []
+_threads = threading.local()
+"""Each thread's own stack of steps, so a step running beside another never ends the other's."""
 _listeners: list[Callable[[StepProgress], None]] = []
 
 
@@ -43,6 +45,7 @@ def timed(step: str):
     then the outer one is current again, with no count of its own.
     """
     started = time.time()
+    _steps = _stack()
     _steps.append((step, started))
     _tell(StepProgress(step, None, None, started))
     try:
@@ -57,9 +60,16 @@ def timed(step: str):
 
 def advanced(done: int, total: int) -> None:
     """Report that `done` of the current step's `total` items are finished."""
+    _steps = _stack()
     if _steps and _listeners:
         step, started = _steps[-1]
         _tell(StepProgress(step, done, total, started))
+
+
+def _stack() -> list[tuple[str, float]]:
+    if not hasattr(_threads, "steps"):
+        _threads.steps = []
+    return _threads.steps
 
 
 def _tell(progress: StepProgress) -> None:

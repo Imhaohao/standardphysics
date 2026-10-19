@@ -34,7 +34,10 @@ from .mesh_evidence import object_mesh_profiles
 logger = logging.getLogger(__name__)
 
 
-MAX_RECONSTRUCTION_WORKERS = 3
+MAX_RECONSTRUCTION_WORKERS = 10
+"""Label batches in flight at once: every batch of a typical scan. Share Tea's ten batches took 42 s three
+at a time. A batch generates about 2,000 tokens, so ten at once stay far under the 87,890 a minute the
+Fireworks account allows (see DETECTION_WORKERS), and labelling never runs beside detection."""
 RECONSTRUCTION_WALL_TIMEOUT_SECONDS = 150.0
 
 

@@ -8,8 +8,10 @@ import pathlib
 import re
 import shutil
 import tempfile
+import threading
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -355,8 +357,14 @@ class _ProgressFile:
         self.path = path
         self.last_step: str | None = None
         self.last_write = 0.0
+        self.writing = threading.Lock()
+        """The box model and the painted scan report from two threads, and both write through one partial file."""
 
     def __call__(self, progress: StepProgress) -> None:
+        with self.writing:
+            self._write(progress)
+
+    def _write(self, progress: StepProgress) -> None:
         now = time.monotonic()
         if progress.step == self.last_step and now - self.last_write < self.SECONDS_BETWEEN_COUNTS:
             return
@@ -508,17 +516,28 @@ def retry_furniture(database, store, worker, scan_id, revision):
     return read_furniture_status(database, store, scan_id, revision)
 
 
+def _box_model(database, store, stages, scan_id, graph, inputs, box_key, temporary: pathlib.Path):
+    """The textured box model, reused from an earlier build of the same photos and layout when there is one.
+
+    It runs beside the painted scan: the bake is mostly Blender in its own
+    process, and neither reads what the other writes."""
+    with timed("box model"):
+        return _reused_boxes(database, store, scan_id, box_key, temporary) or _baked_boxes(
+            store, stages, scan_id, graph, inputs, temporary
+        )
+
+
 def _new_build(database, store, stages, scan_id, row, destination: pathlib.Path) -> TextureBuild:
     graph = SceneGraph.model_validate_json(row["graph_json"])
     inputs = json.loads(row["inputs_json"])
     box_key = box_bake_key(graph, inputs["digest"])
     temporary = staged_build_dir(store, scan_id)
     try:
-        boxes = _reused_boxes(database, store, scan_id, box_key, temporary)
-        with timed("box model"):
-            boxes = boxes or _baked_boxes(store, stages, scan_id, graph, inputs, temporary)
-        with timed("painted scan"):
-            scan_glb = _paint_the_scan(store, scan_id, graph, inputs, temporary)
+        with ThreadPoolExecutor(max_workers=1) as beside:
+            boxes_later = beside.submit(_box_model, database, store, stages, scan_id, graph, inputs, box_key, temporary)
+            with timed("painted scan"):
+                scan_glb = _paint_the_scan(store, scan_id, graph, inputs, temporary)
+            boxes = boxes_later.result()
         prefix = build_prefix(scan_id, row["build_key"])
         result = TextureBuild(
             build_id=row["build_key"], glb_url=prefix + "/scene.glb",
