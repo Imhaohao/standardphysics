@@ -1,5 +1,5 @@
 use crate::geometry::{OrientedBox2, Vec2, yaw_axes};
-use crate::grid::{ClearanceField, OccupancyGrid, area_is_free};
+use crate::grid::{ClearanceField, OccupancyGrid, area_is_clear};
 use crate::units::inches;
 
 /// Diameter of the largest circle of free floor centred inside the room (304.3.1).
@@ -16,11 +16,15 @@ pub fn t_turn_fits(grid: &OccupancyGrid, clearance: &ClearanceField, room: u16, 
     let candidates = (0..grid.spec.len())
         .step_by(stride)
         .filter(|&i| grid.room[i] == room && clearance.at(i) >= half_arm - grid.spec.cell);
-    candidates.into_iter().any(|i| (0..4).any(|k| t_shape_is_free(grid, grid.spec.center(i), axis_yaw + k as f64 * std::f64::consts::FRAC_PI_2)))
+    candidates.into_iter().any(|i| {
+        (0..4).any(|k| {
+            t_shape_is_free(grid, clearance, grid.spec.center(i), axis_yaw + k as f64 * std::f64::consts::FRAC_PI_2)
+        })
+    })
 }
 
 /// T centred in its 60 in square at `centre`: base towards local -Z of `yaw`, bar across +Z.
-fn t_shape_is_free(grid: &OccupancyGrid, centre: Vec2, yaw: f64) -> bool {
+fn t_shape_is_free(grid: &OccupancyGrid, clearance: &ClearanceField, centre: Vec2, yaw: f64) -> bool {
     let (_, ahead) = yaw_axes(yaw);
     let (stem_len, bar_depth, square) = (inches(24.0), inches(36.0), inches(60.0));
     let stem_root = centre - ahead * (square / 2.0);
@@ -28,7 +32,7 @@ fn t_shape_is_free(grid: &OccupancyGrid, centre: Vec2, yaw: f64) -> bool {
     let bar_centre = stem_root + ahead * (stem_len + bar_depth / 2.0);
     let stem = OrientedBox2::new(stem_centre, inches(36.0), stem_len, yaw);
     let bar = OrientedBox2::new(bar_centre, square, bar_depth, yaw);
-    area_is_free(grid, &stem) && area_is_free(grid, &bar)
+    area_is_clear(grid, clearance, &bar) && area_is_clear(grid, clearance, &stem)
 }
 
 #[cfg(test)]
@@ -47,7 +51,9 @@ mod tests {
             storey: 0,
             floor: Polygon2::new(c.to_vec()),
             ceiling_height: 2.5,
-            walls: (0..4).map(|i| Wall { id: format!("w{i}"), start: c[i], end: c[(i + 1) % 4], height: 2.5, thickness: 0.0 }).collect(),
+            walls: (0..4)
+                .map(|i| Wall { id: format!("w{i}"), start: c[i], end: c[(i + 1) % 4], height: 2.5, thickness: 0.0 })
+                .collect(),
             openings: vec![],
             objects: vec![],
         }

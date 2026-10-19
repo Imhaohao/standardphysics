@@ -13,12 +13,12 @@ pub fn resolve(ctx: &EvalContext, subject: &Subject, metric: &MetricDef) -> Extr
     let unit = metric.unit();
     let observed = ctx.observation(&subject.id, &metric.id).map(|o| observation_measurement(o, &unit));
     if let Some(m) = observed.as_ref().filter(|m| !is_photo(m)) {
-        return in_unit(Extraction::Measured(m.clone()), &unit);
+        return in_unit(Extraction::measured(m.clone()), &unit);
     }
     let geometric = extractor(&metric.id).map(|f| in_unit(f(ctx, subject), &unit));
     match (geometric, observed) {
         (Some(Extraction::Measured(m)), _) if m.value.is_exact() => Extraction::Measured(m),
-        (_, Some(photo)) => in_unit(Extraction::Measured(photo), &unit),
+        (_, Some(photo)) => in_unit(Extraction::measured(photo), &unit),
         (Some(other), None) => other,
         (None, None) => Extraction::unknown(missing_observation_reason(metric)),
     }
@@ -39,7 +39,7 @@ fn missing_observation_reason(metric: &MetricDef) -> String {
 fn in_unit(extraction: Extraction, unit: &Unit) -> Extraction {
     match extraction {
         Extraction::Measured(m) => match m.converted_to(unit) {
-            Some(converted) => Extraction::Measured(converted),
+            Some(converted) => Extraction::measured(converted),
             None => Extraction::unknown(format!("value in {} cannot be compared in {}", m.unit, unit)),
         },
         other => other,

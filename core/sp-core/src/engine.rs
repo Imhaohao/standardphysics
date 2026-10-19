@@ -1,7 +1,10 @@
 //! The engine: a scene, a catalog and rulepacks, with full and incremental evaluation.
 
 use crate::analysis::{AnalysisOptions, StoreyAnalysis};
-use crate::metrics::subject::{SITE_ID, Subject, SubjectRef, Tagging, enumerate_subjects, room_subjects, route_subjects, site_subject};
+use crate::mesh::ScanMesh;
+use crate::metrics::subject::{
+    SITE_ID, Subject, SubjectRef, Tagging, enumerate_subjects, room_subjects, route_subjects, site_subject,
+};
 use crate::metrics::{Catalog, EvalContext, SubjectOutcome};
 use crate::roomplan::detect_connections;
 use crate::rules::{Evaluator, Finding, Report, Rule, RuleLoadError, RulePack, Status};
@@ -23,6 +26,8 @@ pub struct Engine {
     options: AnalysisOptions,
     scene: Scene,
     analyses: HashMap<i32, StoreyAnalysis>,
+    /// Scan meshes by the id of the room they were captured with.
+    meshes: HashMap<String, ScanMesh>,
     /// Findings per subject id, from the last evaluation that touched the subject.
     findings: BTreeMap<String, Vec<Finding>>,
 }
@@ -31,8 +36,18 @@ impl Engine {
     pub fn new(catalog_json: &str, rulepack_jsons: &[&str]) -> Result<Engine, EngineError> {
         let catalog = Catalog::from_json(catalog_json).map_err(EngineError::Catalog)?;
         let packs = rulepack_jsons.iter().map(|json| RulePack::from_json(json)).collect::<Result<Vec<_>, _>>()?;
-        let options = AnalysisOptions { destination_categories: catalog.destination_categories(), ..AnalysisOptions::default() };
-        Ok(Engine { tagging: Tagging::from_catalog(&catalog), catalog, packs, options, scene: Scene::default(), analyses: HashMap::new(), findings: BTreeMap::new() })
+        let options =
+            AnalysisOptions { destination_categories: catalog.destination_categories(), ..AnalysisOptions::default() };
+        Ok(Engine {
+            tagging: Tagging::from_catalog(&catalog),
+            catalog,
+            packs,
+            options,
+            scene: Scene::default(),
+            analyses: HashMap::new(),
+            meshes: HashMap::new(),
+            findings: BTreeMap::new(),
+        })
     }
 
     pub fn catalog(&self) -> &Catalog {
@@ -64,7 +79,7 @@ impl Engine {
 
     /// Analyse every storey and evaluate every rule on every applicable subject.
     pub fn evaluate_all(&mut self) -> Report {
-        self.analyses = self.scene.storeys().into_iter().map(|s| (s, StoreyAnalysis::build(&self.scene, s, &self.options))).collect();
+        self.analyses = self.scene.storeys().into_iter().map(|s| (s, self.analyse(s))).collect();
         let subjects = enumerate_subjects(&self.scene, &self.analyses, &self.tagging);
         self.findings.clear();
         self.evaluate_subjects(&subjects);
@@ -83,13 +98,25 @@ impl Engine {
         let mut subjects = Vec::new();
         for s in storeys {
             self.drop_storey_findings(s);
-            self.analyses.insert(s, StoreyAnalysis::build(&self.scene, s, &self.options));
+            self.analyses.insert(s, self.analyse(s));
             subjects.extend(self.storey_subjects(s));
         }
         self.evaluate_subjects(&subjects);
-        let mut touched: Vec<Finding> = subjects.iter().flat_map(|s| self.findings.get(&s.id).cloned().unwrap_or_default()).collect();
+        let mut touched: Vec<Finding> =
+            subjects.iter().flat_map(|s| self.findings.get(&s.id).cloned().unwrap_or_default()).collect();
         touched.extend(self.findings.get(SITE_ID).cloned().unwrap_or_default());
         touched
+    }
+
+    /// Attach the scan mesh captured with a room; it is used from the next evaluation or update.
+    pub fn set_room_mesh(&mut self, room_id: &str, mesh: ScanMesh) {
+        self.meshes.insert(room_id.to_string(), mesh);
+    }
+
+    fn analyse(&self, storey: i32) -> StoreyAnalysis {
+        let on_storey = |id: &String| self.scene.room(id).is_some_and(|r| r.storey == storey);
+        let meshes: Vec<&ScanMesh> = self.meshes.iter().filter(|(id, _)| on_storey(id)).map(|(_, m)| m).collect();
+        StoreyAnalysis::build_with_meshes(&self.scene, storey, &self.options, &meshes)
     }
 
     fn storey_subjects(&self, storey: i32) -> Vec<Subject> {
@@ -102,7 +129,8 @@ impl Engine {
     }
 
     fn drop_storey_findings(&mut self, storey: i32) {
-        let is_on_storey = |f: &Finding| f.room_id.as_deref().and_then(|id| self.scene.room(id)).is_none_or(|r| r.storey == storey);
+        let is_on_storey =
+            |f: &Finding| f.room_id.as_deref().and_then(|id| self.scene.room(id)).is_none_or(|r| r.storey == storey);
         self.findings.retain(|id, findings| id == SITE_ID || !findings.iter().all(is_on_storey));
     }
 
@@ -139,7 +167,8 @@ impl Engine {
 
     /// The current findings of every subject, per jurisdiction and governing.
     pub fn report(&self) -> Report {
-        let rules: HashMap<String, &Rule> = self.packs.iter().flat_map(|p| &p.rules).map(|r| (r.id.clone(), r)).collect();
+        let rules: HashMap<String, &Rule> =
+            self.packs.iter().flat_map(|p| &p.rules).map(|r| (r.id.clone(), r)).collect();
         Report::build(self.findings.values().flatten().cloned().collect(), &rules)
     }
 
@@ -158,13 +187,18 @@ fn rule_index(packs: &[RulePack]) -> HashMap<&str, Vec<&Rule>> {
     index
 }
 
-fn evaluate_each<'s>(evaluator: &Evaluator, rules: &HashMap<&str, Vec<&Rule>>, subjects: impl Iterator<Item = &'s Subject>) -> Vec<(String, Vec<Finding>)> {
+fn evaluate_each<'s>(
+    evaluator: &Evaluator,
+    rules: &HashMap<&str, Vec<&Rule>>,
+    subjects: impl Iterator<Item = &'s Subject>,
+) -> Vec<(String, Vec<Finding>)> {
     subjects.map(|subject| (subject.id.clone(), evaluate_subject(evaluator, rules, subject))).collect()
 }
 
 /// Every rule whose `applies_to` names one of the subject's tags, each rule once.
 fn evaluate_subject(evaluator: &Evaluator, rules: &HashMap<&str, Vec<&Rule>>, subject: &Subject) -> Vec<Finding> {
     let mut seen = std::collections::HashSet::new();
-    let applicable = subject.tags.iter().filter_map(|t| rules.get(t.as_str())).flatten().filter(|r| seen.insert(r.id.as_str()));
+    let applicable =
+        subject.tags.iter().filter_map(|t| rules.get(t.as_str())).flatten().filter(|r| seen.insert(r.id.as_str()));
     applicable.map(|rule| evaluator.evaluate(rule, subject)).collect()
 }

@@ -10,7 +10,8 @@ use sp_core::rules::{Answer, Condition, Operand, Test};
 fn every_catalog_metric_has_an_extractor_or_observation_source() {
     let Some(engine) = common::repo_engine() else { return };
     let catalog = engine.catalog();
-    let missing: Vec<&str> = catalog.metrics.iter().filter(|m| metric_source(m) == MetricSource::Missing).map(|m| m.id.as_str()).collect();
+    let missing: Vec<&str> =
+        catalog.metrics.iter().filter(|m| metric_source(m) == MetricSource::Missing).map(|m| m.id.as_str()).collect();
     assert!(missing.is_empty(), "measured metrics without an extractor: {missing:?}");
     let extractors = catalog.metrics.iter().filter(|m| metric_source(m) == MetricSource::Extractor).count();
     let observations = catalog.metrics.len() - extractors;
@@ -20,7 +21,8 @@ fn every_catalog_metric_has_an_extractor_or_observation_source() {
 #[test]
 fn every_extractor_names_a_catalog_metric() {
     let Some(engine) = common::repo_engine() else { return };
-    let stale: Vec<&str> = registered_metric_ids().into_iter().filter(|id| engine.catalog().metric(id).is_none()).collect();
+    let stale: Vec<&str> =
+        registered_metric_ids().into_iter().filter(|id| engine.catalog().metric(id).is_none()).collect();
     assert!(stale.is_empty(), "extractors for metrics not in the catalog: {stale:?}");
 }
 
@@ -31,7 +33,12 @@ fn every_rule_references_known_metrics() {
         .rulepacks()
         .iter()
         .flat_map(|p| &p.rules)
-        .flat_map(|r| r.metrics().into_iter().filter(|m| engine.catalog().metric(m).is_none()).map(move |m| format!("{} -> {m}", r.id)))
+        .flat_map(|r| {
+            r.metrics()
+                .into_iter()
+                .filter(|m| engine.catalog().metric(m).is_none())
+                .map(move |m| format!("{} -> {m}", r.id))
+        })
         .collect();
     assert!(unknown.is_empty(), "rules reference unknown metrics: {unknown:?}");
 }
@@ -40,9 +47,17 @@ fn every_rule_references_known_metrics() {
 fn every_rule_applies_to_a_known_element_or_category() {
     let Some(engine) = common::repo_engine() else { return };
     let catalog = engine.catalog();
-    let known = |t: &str| catalog.elements.iter().any(|e| e.id == t) || catalog.is_known_category(t) || catalog.object_categories.iter().any(|c| c.canonical.as_deref() == Some(t));
-    let unknown: Vec<String> =
-        engine.rulepacks().iter().flat_map(|p| &p.rules).flat_map(|r| r.applies_to.iter().filter(|t| !known(t)).map(move |t| format!("{} -> {t}", r.id))).collect();
+    let known = |t: &str| {
+        catalog.elements.iter().any(|e| e.id == t)
+            || catalog.is_known_category(t)
+            || catalog.object_categories.iter().any(|c| c.canonical.as_deref() == Some(t))
+    };
+    let unknown: Vec<String> = engine
+        .rulepacks()
+        .iter()
+        .flat_map(|p| &p.rules)
+        .flat_map(|r| r.applies_to.iter().filter(|t| !known(t)).map(move |t| format!("{} -> {t}", r.id)))
+        .collect();
     assert!(unknown.is_empty(), "unknown applies_to: {unknown:?}");
 }
 

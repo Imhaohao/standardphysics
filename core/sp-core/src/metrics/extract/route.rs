@@ -1,9 +1,13 @@
 //! Route-leg metrics (402, 403), headroom (307.4) and changes in level (303).
 
-use super::support::{floor_point, needs_mesh, vertical_extent, wrong_subject};
+use super::support::{
+    box_along, floor_point, floor_surface, mesh_height, mesh_slope, needs_mesh, not_covered_by_mesh, vertical_extent,
+    wrong_subject,
+};
 use crate::analysis::{RouteRecord, StoreyAnalysis};
 use crate::geometry::Vec2;
 use crate::grid::BLOCKS_FLOOR_BELOW;
+use crate::mesh::{FloorPlane, FloorSurface};
 use crate::metrics::subject::{Subject, SubjectRef};
 use crate::metrics::{EvalContext, Extraction, Extractor};
 use crate::routes::{ROUTE_MIN_CLEAR_WIDTH, RouteLeg, Turn180};
@@ -18,8 +22,8 @@ pub const EXTRACTORS: &[(&str, Extractor)] = &[
     ("route.turn_clear_width_at_turn", turn_width),
     ("route.turn_clear_width_leaving", turn_leaving_width),
     ("route.max_distance_between_passing_spaces", max_distance_between_passing_spaces),
-    ("route.running_slope", needs_mesh),
-    ("route.cross_slope", needs_mesh),
+    ("route.running_slope", running_slope),
+    ("route.cross_slope", cross_slope),
     ("route.contains_stairs_or_escalator", contains_stairs),
     ("route.connects_entrance", connects_entrance),
     ("route.same_area_as_general_circulation", same_area_as_general),
@@ -31,6 +35,11 @@ pub const EXTRACTORS: &[(&str, Extractor)] = &[
     ("floor.dropoff_height", needs_mesh),
     ("route.kind", route_kind),
 ];
+
+/// Route slopes are judged over stretches this long, and only when the mesh saw most of them.
+const SLOPE_WINDOW: f64 = 1.0;
+const MIN_SLOPE_WINDOW: f64 = 0.3;
+const MIN_MESH_COVERAGE: f64 = 0.8;
 
 /// Metres the accessible route may stray from the general circulation path and still be "in the same area".
 const SAME_AREA_DISTANCE: f64 = 3.0;
@@ -115,7 +124,9 @@ fn turn_leaving_width(ctx: &EvalContext, subject: &Subject) -> Extraction {
 }
 
 fn max_distance_between_passing_spaces(ctx: &EvalContext, subject: &Subject) -> Extraction {
-    leg(ctx, subject).map(|(_, _, l)| Extraction::metres(l.max_distance_between_passing_spaces)).unwrap_or_else(not_reached)
+    leg(ctx, subject)
+        .map(|(_, _, l)| Extraction::metres(l.max_distance_between_passing_spaces))
+        .unwrap_or_else(not_reached)
 }
 
 fn contains_stairs(ctx: &EvalContext, subject: &Subject) -> Extraction {
@@ -161,7 +172,8 @@ fn connects_entrance(ctx: &EvalContext, subject: &Subject) -> Extraction {
     if analysis.entrances.is_empty() {
         return Extraction::unknown("no entrance on this storey to start a route from");
     }
-    let wide_enough = record.leg.as_ref().is_some_and(|leg| leg.min_clear_width.is_none_or(|w| w >= ROUTE_MIN_CLEAR_WIDTH - 1e-9));
+    let wide_enough =
+        record.leg.as_ref().is_some_and(|leg| leg.min_clear_width.is_none_or(|w| w >= ROUTE_MIN_CLEAR_WIDTH - 1e-9));
     Extraction::boolean(wide_enough)
 }
 
@@ -170,14 +182,19 @@ fn same_area_as_general(ctx: &EvalContext, subject: &Subject) -> Extraction {
         Ok(found) => found,
         Err(e) => return not_reached(e),
     };
-    let Some((_, walking)) = analysis.walking_route(record) else { return Extraction::unknown("no walking path to compare") };
+    let Some((_, walking)) = analysis.walking_route(record) else {
+        return Extraction::unknown("no walking path to compare");
+    };
     Extraction::boolean(directed_hausdorff(&leg.points, &walking) <= SAME_AREA_DISTANCE)
 }
 
 /// Largest distance from a point of `from` to the nearest point of `to`, on every 4th point.
 fn directed_hausdorff(from: &[Vec2], to: &[Vec2]) -> f64 {
     let sampled: Vec<Vec2> = to.iter().step_by(4).copied().collect();
-    from.iter().step_by(4).map(|p| sampled.iter().map(|q| p.distance(*q)).fold(f64::INFINITY, f64::min)).fold(0.0, f64::max)
+    from.iter()
+        .step_by(4)
+        .map(|p| sampled.iter().map(|q| p.distance(*q)).fold(f64::INFINITY, f64::min))
+        .fold(0.0, f64::max)
 }
 
 fn length_ratio_vs_general(ctx: &EvalContext, subject: &Subject) -> Extraction {
@@ -258,10 +275,97 @@ fn guarded_below_80(ctx: &EvalContext, subject: &Subject) -> Extraction {
 
 /// Thresholds and mats from their box height; floors and routes need the floor mesh.
 fn change_in_level(ctx: &EvalContext, subject: &Subject) -> Extraction {
-    match ctx.object(subject) {
-        Some(object) => Extraction::metres(object.size.y).located(Some(object.center)),
-        None => needs_mesh(ctx, subject),
+    if let Some(object) = ctx.object(subject) {
+        return Extraction::metres(object.size.y).located(Some(object.center));
     }
+    if let SubjectRef::Floor { .. } = subject.reference {
+        return floor_level_change(ctx, subject);
+    }
+    let (_, _, leg) = match leg(ctx, subject) {
+        Ok(found) => found,
+        Err(e) => return not_reached(e),
+    };
+    let surface = match floor_surface(ctx, subject.storey) {
+        Ok(surface) => surface,
+        Err(e) => return e,
+    };
+    match surface.level_change_along(&leg.points) {
+        Some(change) => mesh_height(change.height, change.at),
+        None => not_covered_by_mesh(),
+    }
+}
+
+/// The largest level change on any route leg where it crosses the room's floor.
+fn floor_level_change(ctx: &EvalContext, subject: &Subject) -> Extraction {
+    let Some(room) = ctx.room(subject) else { return wrong_subject() };
+    let (surface, analysis) = match (floor_surface(ctx, room.storey), ctx.analysis(room.storey)) {
+        (Ok(surface), Some(analysis)) => (surface, analysis),
+        (Err(e), _) => return e,
+        (_, None) => return Extraction::unknown("storey not analysed"),
+    };
+    let in_room = |leg: &RouteLeg| leg.points.iter().copied().filter(|p| room.floor.contains(*p)).collect::<Vec<_>>();
+    let changes = analysis
+        .routes
+        .iter()
+        .filter_map(|r| r.leg.as_ref())
+        .filter_map(|leg| surface.level_change_along(&in_room(leg)));
+    match changes.max_by(|a, b| a.height.total_cmp(&b.height)) {
+        Some(change) => mesh_height(change.height, change.at),
+        None => Extraction::unknown("no route crosses this floor where the scan mesh saw it"),
+    }
+}
+
+/// One floor plane per stretch of the leg, with the stretch's direction and midpoint.
+struct Stretch {
+    plane: Option<FloorPlane>,
+    direction: Vec2,
+    at: Vec2,
+}
+
+fn stretches(surface: &FloorSurface, leg: &RouteLeg) -> Vec<Stretch> {
+    let mut stretches = Vec::new();
+    let mut start = 0;
+    for end in 1..leg.points.len() {
+        let length = leg.distances[end] - leg.distances[start];
+        let last = end + 1 == leg.points.len();
+        if length >= SLOPE_WINDOW || (last && length >= MIN_SLOPE_WINDOW) {
+            let (a, b) = (leg.points[start], leg.points[end]);
+            let direction = (b - a).normalized();
+            let at = a.lerp(b, 0.5);
+            let area = box_along(at, direction, a.distance(b), ROUTE_MIN_CLEAR_WIDTH);
+            stretches.push(Stretch { plane: surface.plane_in(&area), direction, at });
+            start = end;
+        }
+    }
+    stretches
+}
+
+/// The steepest stretch by `measure`, provided the mesh covered most of the leg.
+fn steepest(ctx: &EvalContext, subject: &Subject, measure: fn(&FloorPlane, Vec2) -> f64) -> Extraction {
+    let (_, _, leg) = match leg(ctx, subject) {
+        Ok(found) => found,
+        Err(e) => return not_reached(e),
+    };
+    let surface = match floor_surface(ctx, subject.storey) {
+        Ok(surface) => surface,
+        Err(e) => return e,
+    };
+    let stretches = stretches(surface, leg);
+    let covered: Vec<(f64, Vec2)> =
+        stretches.iter().filter_map(|s| Some((measure(s.plane.as_ref()?, s.direction), s.at))).collect();
+    if covered.is_empty() || (covered.len() as f64) < MIN_MESH_COVERAGE * stretches.len() as f64 {
+        return not_covered_by_mesh();
+    }
+    let (slope, at) = covered.into_iter().max_by(|a, b| a.0.total_cmp(&b.0)).expect("non-empty");
+    mesh_slope(slope, at)
+}
+
+fn running_slope(ctx: &EvalContext, subject: &Subject) -> Extraction {
+    steepest(ctx, subject, |plane, direction| plane.slope_along(direction))
+}
+
+fn cross_slope(ctx: &EvalContext, subject: &Subject) -> Extraction {
+    steepest(ctx, subject, |plane, direction| plane.slope_along(direction.perpendicular()))
 }
 
 /// Width exceptions depend on where the leg runs: a corridor, a toilet room or general interior.

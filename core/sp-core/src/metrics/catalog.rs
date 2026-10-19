@@ -96,7 +96,13 @@ impl Catalog {
     pub fn from_json(json: &str) -> serde_json::Result<Catalog> {
         let raw: RawCatalog = serde_json::from_str(json)?;
         let by_id = raw.metrics.iter().enumerate().map(|(i, m)| (m.id.clone(), i)).collect();
-        Ok(Catalog { version: raw.version, elements: raw.elements, object_categories: raw.object_categories, metrics: raw.metrics, by_id })
+        Ok(Catalog {
+            version: raw.version,
+            elements: raw.elements,
+            object_categories: raw.object_categories,
+            metrics: raw.metrics,
+            by_id,
+        })
     }
 
     pub fn metric(&self, id: &str) -> Option<&MetricDef> {

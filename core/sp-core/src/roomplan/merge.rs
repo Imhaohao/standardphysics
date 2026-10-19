@@ -68,7 +68,13 @@ mod tests {
 
     fn room(id: &str, min_x: f64, door_x: Option<f64>) -> Room {
         let max_x = min_x + 3.0;
-        let wall = Wall { id: format!("{id}-east"), start: Vec2::new(3.0, 0.0), end: Vec2::new(3.0, 3.0), height: 2.5, thickness: 0.1 };
+        let wall = Wall {
+            id: format!("{id}-east"),
+            start: Vec2::new(3.0, 0.0),
+            end: Vec2::new(3.0, 3.0),
+            height: 2.5,
+            thickness: 0.1,
+        };
         let openings = door_x
             .map(|x| Opening {
                 id: format!("{id}-door"),

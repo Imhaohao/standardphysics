@@ -147,12 +147,33 @@ pub struct TableRow {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Test {
-    Measure { comparison: Comparison, unit: String },
-    Presence { metric: String, expected: bool },
+    Measure {
+        comparison: Comparison,
+        unit: String,
+    },
+    Presence {
+        metric: String,
+        expected: bool,
+    },
     /// An owner answer (question) or photo label compared with the passing answer.
-    Answer { metric: String, prompt: String, pass: Answer, photo: bool },
-    Ratio { metric: String, basis: String, min_fraction: f64, min_count: i64, rounding: String },
-    Table { metric: String, basis: String, rows: Vec<TableRow> },
+    Answer {
+        metric: String,
+        prompt: String,
+        pass: Answer,
+        photo: bool,
+    },
+    Ratio {
+        metric: String,
+        basis: String,
+        min_fraction: f64,
+        min_count: i64,
+        rounding: String,
+    },
+    Table {
+        metric: String,
+        basis: String,
+        rows: Vec<TableRow>,
+    },
     AllOf(Vec<Test>),
     AnyOf(Vec<Test>),
     Unsupported(Json),
@@ -177,7 +198,10 @@ fn text(json: &Json, key: &str) -> String {
 }
 
 fn strings(json: &Json, key: &str) -> Vec<String> {
-    json.get(key).and_then(Json::as_array).map(|a| a.iter().filter_map(Json::as_str).map(str::to_string).collect()).unwrap_or_default()
+    json.get(key)
+        .and_then(Json::as_array)
+        .map(|a| a.iter().filter_map(Json::as_str).map(str::to_string).collect())
+        .unwrap_or_default()
 }
 
 impl RulePack {
@@ -196,7 +220,8 @@ impl RulePack {
 
 impl Rule {
     fn parse(json: &Json, pack_jurisdiction: &str) -> Rule {
-        let jurisdiction = Some(text(json, "jurisdiction")).filter(|j| !j.is_empty()).unwrap_or_else(|| pack_jurisdiction.to_string());
+        let jurisdiction =
+            Some(text(json, "jurisdiction")).filter(|j| !j.is_empty()).unwrap_or_else(|| pack_jurisdiction.to_string());
         Rule {
             id: text(json, "id"),
             jurisdiction,
@@ -236,7 +261,10 @@ fn parse_scoping(json: Option<&Json>) -> Scoping {
     Scoping {
         text: text(json, "text"),
         when: json.get("when").filter(|w| !w.is_null()).map(parse_condition),
-        when_unknown: json.get("when_unknown").and_then(|w| serde_json::from_value(w.clone()).ok()).unwrap_or(WhenUnknown::NeedsInfo),
+        when_unknown: json
+            .get("when_unknown")
+            .and_then(|w| serde_json::from_value(w.clone()).ok())
+            .unwrap_or(WhenUnknown::NeedsInfo),
     }
 }
 
@@ -279,7 +307,9 @@ fn parse_answer(json: Option<&Json>) -> Answer {
     let json = json.cloned().unwrap_or(Json::Bool(true));
     let compare = json.get("op").and_then(Json::as_str).and_then(Op::parse);
     match compare {
-        Some(op) => Answer::Compare { op, value: json.get("value").map(Operand::parse).unwrap_or(Operand::Literal(Json::Null)) },
+        Some(op) => {
+            Answer::Compare { op, value: json.get("value").map(Operand::parse).unwrap_or(Operand::Literal(Json::Null)) }
+        }
         None => Answer::Equals(json),
     }
 }
@@ -295,9 +325,21 @@ fn parse_test_body(kind: &str, body: &Json) -> Option<Test> {
     let metric = || text(body, "metric");
     Some(match kind {
         "measure" => Test::Measure { comparison: parse_comparison(body)?, unit: text(body, "unit") },
-        "presence" => Test::Presence { metric: metric(), expected: body.get("expected").and_then(Json::as_bool).unwrap_or(true) },
-        "question" => Test::Answer { metric: metric(), prompt: text(body, "prompt"), pass: parse_answer(body.get("pass_answer")), photo: false },
-        "photo" => Test::Answer { metric: metric(), prompt: text(body, "prompt"), pass: parse_answer(body.get("expected")), photo: true },
+        "presence" => {
+            Test::Presence { metric: metric(), expected: body.get("expected").and_then(Json::as_bool).unwrap_or(true) }
+        }
+        "question" => Test::Answer {
+            metric: metric(),
+            prompt: text(body, "prompt"),
+            pass: parse_answer(body.get("pass_answer")),
+            photo: false,
+        },
+        "photo" => Test::Answer {
+            metric: metric(),
+            prompt: text(body, "prompt"),
+            pass: parse_answer(body.get("expected")),
+            photo: true,
+        },
         "ratio" => Test::Ratio {
             metric: metric(),
             basis: text(body, "basis_metric"),
@@ -305,7 +347,11 @@ fn parse_test_body(kind: &str, body: &Json) -> Option<Test> {
             min_count: body.get("min_count").and_then(Json::as_i64).unwrap_or(0),
             rounding: text(body, "rounding"),
         },
-        "table" => Test::Table { metric: metric(), basis: text(body, "basis_metric"), rows: serde_json::from_value(body.get("rows")?.clone()).ok()? },
+        "table" => Test::Table {
+            metric: metric(),
+            basis: text(body, "basis_metric"),
+            rows: serde_json::from_value(body.get("rows")?.clone()).ok()?,
+        },
         "all_of" => Test::AllOf(body.as_array()?.iter().map(parse_test).collect()),
         "any_of" => Test::AnyOf(body.as_array()?.iter().map(parse_test).collect()),
         _ => return None,
@@ -343,7 +389,9 @@ impl Test {
                     out.push(m);
                 }
             }
-            Test::Ratio { metric, basis, .. } | Test::Table { metric, basis, .. } => out.extend([metric.as_str(), basis.as_str()]),
+            Test::Ratio { metric, basis, .. } | Test::Table { metric, basis, .. } => {
+                out.extend([metric.as_str(), basis.as_str()])
+            }
             Test::AllOf(tests) | Test::AnyOf(tests) => tests.iter().for_each(|t| t.collect_metrics(out)),
             Test::Unsupported(_) => {}
         }

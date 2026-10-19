@@ -156,8 +156,8 @@ mod tests {
             let tree = WidestTree::grow(&spec, &field, &[source]);
             for threshold in 1u16..6 {
                 let reach = flood(&spec, &values, source, threshold);
-                for cell in 0..49 {
-                    prop_assert_eq!(reach[cell], tree.bottleneck(cell) >= threshold);
+                for (cell, reached) in reach.iter().enumerate() {
+                    prop_assert_eq!(*reached, tree.bottleneck(cell) >= threshold);
                 }
             }
         }
@@ -165,7 +165,9 @@ mod tests {
 
     fn flood(spec: &GridSpec, values: &[u16], source: usize, threshold: u16) -> Vec<bool> {
         let mut seen = vec![false; values.len()];
-        if values[source] < threshold { return seen; }
+        if values[source] < threshold {
+            return seen;
+        }
         let mut stack = vec![source];
         seen[source] = true;
         while let Some(cell) = stack.pop() {

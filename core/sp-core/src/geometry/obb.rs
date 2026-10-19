@@ -73,7 +73,10 @@ impl OrientedBox2 {
     }
 
     fn project_onto(&self, axis: Vec2) -> (f64, f64) {
-        self.corners().iter().map(|c| c.dot(axis)).fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), v| (lo.min(v), hi.max(v)))
+        self.corners()
+            .iter()
+            .map(|c| c.dot(axis))
+            .fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), v| (lo.min(v), hi.max(v)))
     }
 
     /// Points along the boundary, at most `spacing` apart.

@@ -9,9 +9,16 @@ use serde::{Deserialize, Serialize};
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Value {
     /// A number known to lie in `[lo, hi]`; exact when `lo == hi`. `hi` may be infinite.
-    Number { lo: f64, hi: f64 },
-    Bool { value: bool },
-    Text { value: String },
+    Number {
+        lo: f64,
+        hi: f64,
+    },
+    Bool {
+        value: bool,
+    },
+    Text {
+        value: String,
+    },
 }
 
 impl Value {
@@ -58,7 +65,10 @@ pub fn format_number(value: f64) -> String {
 pub enum Provenance {
     /// Derived by `sp-core` from scan geometry.
     Geometry,
-    Observation { id: String, source: ObservationSource },
+    Observation {
+        id: String,
+        source: ObservationSource,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -97,7 +107,7 @@ impl Measurement {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Extraction {
-    Measured(Measurement),
+    Measured(Box<Measurement>),
     /// The value cannot be determined from what was captured; the reason says what is missing.
     Unknown(String),
     /// The metric does not apply to this subject (the reason says why).
@@ -105,32 +115,40 @@ pub enum Extraction {
 }
 
 impl Extraction {
+    pub fn measured(measurement: Measurement) -> Self {
+        Self::Measured(Box::new(measurement))
+    }
+
     pub fn metres(value: f64) -> Self {
-        Self::Measured(Measurement::geometry(Value::exact(value), crate::units::Unit::Metre))
+        Self::measured(Measurement::geometry(Value::exact(value), crate::units::Unit::Metre))
     }
 
     pub fn metres_range(lo: f64, hi: f64) -> Self {
-        Self::Measured(Measurement::geometry(Value::range(lo, hi), crate::units::Unit::Metre))
+        Self::measured(Measurement::geometry(Value::range(lo, hi), crate::units::Unit::Metre))
     }
 
     pub fn boolean(value: bool) -> Self {
-        Self::Measured(Measurement::geometry(Value::Bool { value }, crate::units::Unit::Boolean))
+        Self::measured(Measurement::geometry(Value::Bool { value }, crate::units::Unit::Boolean))
     }
 
     pub fn count(value: usize) -> Self {
-        Self::Measured(Measurement::geometry(Value::exact(value as f64), crate::units::Unit::Count))
+        Self::measured(Measurement::geometry(Value::exact(value as f64), crate::units::Unit::Count))
     }
 
     pub fn count_range(lo: usize, hi: usize) -> Self {
-        Self::Measured(Measurement::geometry(Value::range(lo as f64, hi as f64), crate::units::Unit::Count))
+        Self::measured(Measurement::geometry(Value::range(lo as f64, hi as f64), crate::units::Unit::Count))
     }
 
     pub fn ratio(value: f64) -> Self {
-        Self::Measured(Measurement::geometry(Value::exact(value), crate::units::Unit::Ratio))
+        Self::measured(Measurement::geometry(Value::exact(value), crate::units::Unit::Ratio))
+    }
+
+    pub fn ratio_range(lo: f64, hi: f64) -> Self {
+        Self::measured(Measurement::geometry(Value::range(lo, hi), crate::units::Unit::Ratio))
     }
 
     pub fn text(value: impl Into<String>) -> Self {
-        Self::Measured(Measurement::geometry(Value::Text { value: value.into() }, crate::units::Unit::Text))
+        Self::measured(Measurement::geometry(Value::Text { value: value.into() }, crate::units::Unit::Text))
     }
 
     pub fn unknown(reason: impl Into<String>) -> Self {
@@ -144,14 +162,14 @@ impl Extraction {
     /// Attach a plan location (at floor height) to a measurement.
     pub fn located(self, location: Option<Vec3>) -> Self {
         match self {
-            Self::Measured(m) => Self::Measured(m.at(location)),
+            Self::Measured(m) => Self::measured(m.at(location)),
             other => other,
         }
     }
 
     pub fn noted(self, note: impl Into<String>) -> Self {
         match self {
-            Self::Measured(m) => Self::Measured(m.with_note(note)),
+            Self::Measured(m) => Self::measured(m.with_note(note)),
             other => other,
         }
     }

@@ -1,7 +1,10 @@
 //! Operable parts and reach ranges (308, 309), protruding objects (307) and mounted accessories.
 
 use super::clear_floor::front_face;
-use super::support::{LAVATORIES, needs_detail, nearest_boundary, object_in_room, supporting_object, vertical_extent, within_box_height, wrong_subject};
+use super::support::{
+    LAVATORIES, nearest_boundary, needs_detail, object_in_room, supporting_object, vertical_extent, within_box_height,
+    wrong_subject,
+};
 use crate::metrics::subject::Subject;
 use crate::metrics::{EvalContext, Extraction, Extractor};
 use crate::scene::{Object, Room};
@@ -151,7 +154,9 @@ fn protrusion_depth(ctx: &EvalContext, subject: &Subject) -> Extraction {
     if bottom > inches(80.0) {
         return Extraction::not_applicable("leading edge is above 80 in");
     }
-    let Some(wall) = nearest_boundary(room, object.center.plan()) else { return Extraction::unknown("no wall captured") };
+    let Some(wall) = nearest_boundary(room, object.center.plan()) else {
+        return Extraction::unknown("no wall captured");
+    };
     let projection = object.footprint().corners().iter().map(|c| wall.distance_to(*c)).fold(0.0, f64::max);
     Extraction::metres(projection).located(Some(object.center))
 }
@@ -183,7 +188,9 @@ fn mirror_above_lavatory(ctx: &EvalContext, subject: &Subject) -> Extraction {
         Err(e) => return e,
     };
     let below = room.objects.iter().filter(|o| matches!(o.category.as_str(), "lavatory" | "sink" | "counter"));
-    let above = below.into_iter().any(|o| o.footprint().distance_to(mirror.center.plan()) < 0.3 && o.top_height <= mirror.bottom_height() + 0.05);
+    let above = below.into_iter().any(|o| {
+        o.footprint().distance_to(mirror.center.plan()) < 0.3 && o.top_height <= mirror.bottom_height() + 0.05
+    });
     Extraction::boolean(above)
 }
 
@@ -207,10 +214,12 @@ fn spout_range(object: &Object) -> (f64, f64) {
 }
 
 fn spout_height(ctx: &EvalContext, subject: &Subject) -> Extraction {
-    object(ctx, subject).map(|o| {
-        let (lo, hi) = spout_range(o);
-        Extraction::metres_range(lo, hi).located(Some(o.center))
-    }).unwrap_or_else(|e| e)
+    object(ctx, subject)
+        .map(|o| {
+            let (lo, hi) = spout_range(o);
+            Extraction::metres_range(lo, hi).located(Some(o.center))
+        })
+        .unwrap_or_else(|e| e)
 }
 
 fn fountain_role(ctx: &EvalContext, subject: &Subject) -> Extraction {
@@ -240,8 +249,9 @@ fn coat_hook_above_bench(ctx: &EvalContext, subject: &Subject) -> Extraction {
         Ok(found) => found,
         Err(e) => return e,
     };
-    let above = room.objects.iter().filter(|o| matches!(o.category.as_str(), "bench" | "chair" | "sofa")).any(|seat| {
-        seat.footprint().distance_to(hook.center.plan()) < 0.3 && seat.top_height <= hook.bottom_height()
-    });
+    let above =
+        room.objects.iter().filter(|o| matches!(o.category.as_str(), "bench" | "chair" | "sofa")).any(|seat| {
+            seat.footprint().distance_to(hook.center.plan()) < 0.3 && seat.top_height <= hook.bottom_height()
+        });
     Extraction::boolean(above)
 }

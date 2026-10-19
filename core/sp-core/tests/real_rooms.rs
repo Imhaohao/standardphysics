@@ -1,10 +1,10 @@
 mod common;
 
 use common::{fixture, repo_engine};
+use sp_core::roomplan::{import_captured_json, merge_rooms};
 use sp_core::rules::{Finding, Status};
 use sp_core::scene::{OpeningKind, Room, Scene};
 use sp_core::units::to_inches;
-use sp_core::roomplan::{import_captured_json, merge_rooms};
 use std::time::Instant;
 
 const FIXTURES: [&str; 2] = ["apple_bedroom3.room.json", "apple_livingroom.room.json"];
@@ -51,7 +51,12 @@ fn assert_sane(findings: &[Finding]) {
     assert!(findings.iter().any(|f| f.status == Status::Pass));
     assert!(findings.iter().any(|f| f.status == Status::NeedsInfo));
     for f in findings.iter().filter(|f| f.status == Status::Fail) {
-        assert!(f.measured.is_some() || !f.message.is_empty(), "{} on {} fails without evidence", f.rule_id, f.subject_id);
+        assert!(
+            f.measured.is_some() || !f.message.is_empty(),
+            "{} on {} fails without evidence",
+            f.rule_id,
+            f.subject_id
+        );
     }
 }
 
@@ -90,4 +95,22 @@ fn every_finding_names_a_known_rule_and_subject() {
         assert!(rule_ids.contains(&f.rule_id), "unknown rule {}", f.rule_id);
         assert!(!f.subject_id.is_empty());
     }
+}
+
+#[test]
+fn livingroom_entrances_are_approachable_and_slivers_are_dropped() {
+    let Some(mut engine) = repo_engine() else { return };
+    let rooms = import("apple_livingroom.room.json");
+    assert!(rooms.iter().flat_map(|r| &r.openings).all(|o| o.width >= 0.15));
+    engine.set_scene(merge_rooms(rooms));
+    let report = engine.evaluate_all();
+    let findings = engine.findings();
+    assert!(!findings.iter().any(|f| f.message.contains("no route reaches this door")));
+    assert!(report.governing_counts.needs_info <= 70, "{:?}", report.governing_counts);
+    let unverified_level: Vec<_> = findings
+        .iter()
+        .filter(|f| f.status == Status::NeedsInfo && f.message.contains("no scan mesh was captured"))
+        .collect();
+    assert!(!unverified_level.is_empty());
+    assert!(unverified_level.iter().all(|f| f.severity == "advisory"));
 }

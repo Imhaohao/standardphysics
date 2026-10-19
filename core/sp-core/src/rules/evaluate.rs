@@ -4,7 +4,11 @@ use super::finding::{Finding, MeasuredValue, Status};
 use super::model::{Answer, Comparison, Condition, Op, Operand, Rule, TableRow, Test, WhenUnknown};
 use crate::geometry::Vec3;
 use crate::metrics::subject::{Subject, SubjectRef};
-use crate::metrics::{EvalContext, Extraction, Measurement, Provenance, Value, format_number, resolve};
+use crate::metrics::{
+    EvalContext, Extraction, LEVEL_FLOOR_ASSUMED, Measurement, Provenance, Value, format_number, resolve,
+};
+
+const ADVISORY: &str = "advisory";
 use crate::units::Unit;
 use serde_json::Value as Json;
 use std::cell::RefCell;
@@ -57,7 +61,14 @@ impl<'a> Evaluator<'a> {
             return Extraction::unknown(format!("metric {metric_id} is not in the catalog"));
         };
         let is_site_metric = def.element == "site" || metric_id.starts_with("site.");
-        let target = if is_site_metric && subject.reference != SubjectRef::Site && !def.applies_to.iter().any(|t| subject.has_tag(t)) { self.site } else { subject };
+        let target = if is_site_metric
+            && subject.reference != SubjectRef::Site
+            && !def.applies_to.iter().any(|t| subject.has_tag(t))
+        {
+            self.site
+        } else {
+            subject
+        };
         let key = (target.id.clone(), metric_id.to_string());
         if let Some(hit) = self.cache.borrow().get(&key) {
             return hit.clone();
@@ -79,11 +90,17 @@ impl<'a> Evaluator<'a> {
         let when = rule.scoping.when.as_ref()?;
         match self.condition(when, subject) {
             Truth::Yes => None,
-            Truth::No => Some(Outcome::new(Status::NotApplicable, String::new()).because(format!("out of scope: {}", rule.scoping.text))),
+            Truth::No => Some(
+                Outcome::new(Status::NotApplicable, String::new())
+                    .because(format!("out of scope: {}", rule.scoping.text)),
+            ),
             Truth::Unknown(reason) => match rule.scoping.when_unknown {
                 WhenUnknown::Apply => None,
                 WhenUnknown::NotApplicable => Some(Outcome::new(Status::NotApplicable, String::new()).because(reason)),
-                WhenUnknown::NeedsInfo => Some(Outcome::new(Status::NeedsInfo, rule.scoping.text.clone()).because(format!("scope unknown: {reason}"))),
+                WhenUnknown::NeedsInfo => Some(
+                    Outcome::new(Status::NeedsInfo, rule.scoping.text.clone())
+                        .because(format!("scope unknown: {reason}")),
+                ),
             },
         }
     }
@@ -112,7 +129,9 @@ impl<'a> Evaluator<'a> {
     }
 
     fn category_present(&self, category: &str) -> bool {
-        self.ctx.objects().any(|(_, o)| o.category == category || self.ctx.catalog.canonical_category(&o.category) == Some(category))
+        self.ctx
+            .objects()
+            .any(|(_, o)| o.category == category || self.ctx.catalog.canonical_category(&o.category) == Some(category))
     }
 
     fn room_kind_in(&self, kinds: &[String], subject: &Subject) -> Truth {
@@ -137,16 +156,26 @@ impl<'a> Evaluator<'a> {
 
     fn test(&self, test: &Test, rule: &Rule, subject: &Subject) -> Outcome {
         match test {
-            Test::Measure { comparison, unit } => self.compare(comparison, &Unit::parse(unit), tolerance_in(rule, unit), subject),
-            Test::Presence { metric, expected } => self.compare(&equals(metric, Json::Bool(*expected)), &Unit::Boolean, None, subject),
+            Test::Measure { comparison, unit } => {
+                self.compare(comparison, &Unit::parse(unit), tolerance_in(rule, unit), subject)
+            }
+            Test::Presence { metric, expected } => {
+                self.compare(&equals(metric, Json::Bool(*expected)), &Unit::Boolean, None, subject)
+            }
             Test::Answer { metric, pass, .. } => self.answer(metric, pass, subject),
             Test::Ratio { metric, basis, min_fraction, min_count, rounding } => {
-                self.required_count(metric, basis, subject, |n| ratio_requirement(n, *min_fraction, *min_count, rounding))
+                self.required_count(metric, basis, subject, |n| {
+                    ratio_requirement(n, *min_fraction, *min_count, rounding)
+                })
             }
-            Test::Table { metric, basis, rows } => self.required_count(metric, basis, subject, |n| table_requirement(n, rows)),
+            Test::Table { metric, basis, rows } => {
+                self.required_count(metric, basis, subject, |n| table_requirement(n, rows))
+            }
             Test::AllOf(tests) => combine_all(tests.iter().map(|t| self.test(t, rule, subject)).collect()),
             Test::AnyOf(tests) => combine_any(tests.iter().map(|t| self.test(t, rule, subject)).collect()),
-            Test::Unsupported(json) => Outcome::new(Status::NeedsInfo, String::new()).because(format!("unsupported test {json}")),
+            Test::Unsupported(json) => {
+                Outcome::new(Status::NeedsInfo, String::new()).because(format!("unsupported test {json}"))
+            }
         }
     }
 
@@ -164,10 +193,13 @@ impl<'a> Evaluator<'a> {
         let measurement = match self.metric(subject, &comparison.metric) {
             Extraction::Measured(m) => m,
             Extraction::Unknown(reason) => return Outcome::new(Status::NeedsInfo, String::new()).because(reason),
-            Extraction::NotApplicable(reason) => return Outcome::new(Status::NotApplicable, String::new()).because(reason),
+            Extraction::NotApplicable(reason) => {
+                return Outcome::new(Status::NotApplicable, String::new()).because(reason);
+            }
         };
         let Some(measurement) = measurement.converted_to(unit) else {
-            return Outcome::new(Status::NeedsInfo, String::new()).because(format!("{} is not in {unit}", comparison.metric));
+            return Outcome::new(Status::NeedsInfo, String::new())
+                .because(format!("{} is not in {unit}", comparison.metric));
         };
         let limit = match &comparison.value {
             Operand::Metric(other) => match self.metric(subject, other) {
@@ -186,15 +218,31 @@ impl<'a> Evaluator<'a> {
         outcome
     }
 
-    fn required_count(&self, metric: &str, basis: &str, subject: &Subject, requirement: impl Fn(f64) -> Option<f64>) -> Outcome {
+    fn required_count(
+        &self,
+        metric: &str,
+        basis: &str,
+        subject: &Subject,
+        requirement: impl Fn(f64) -> Option<f64>,
+    ) -> Outcome {
         let basis_value = match self.metric(subject, basis) {
-            Extraction::Measured(Measurement { value: Value::Number { lo, hi }, .. }) if lo == hi => lo,
-            Extraction::Measured(_) | Extraction::Unknown(_) => return Outcome::new(Status::NeedsInfo, String::new()).because(format!("{basis} unknown")),
-            Extraction::NotApplicable(reason) => return Outcome::new(Status::NotApplicable, String::new()).because(reason),
+            Extraction::NotApplicable(reason) => {
+                return Outcome::new(Status::NotApplicable, String::new()).because(reason);
+            }
+            other => match exact_number(&other) {
+                Some(value) => value,
+                None => return Outcome::new(Status::NeedsInfo, String::new()).because(format!("{basis} unknown")),
+            },
         };
         match requirement(basis_value) {
-            None => Outcome::new(Status::NotApplicable, String::new()).because(format!("{basis} is {}", format_number(basis_value))),
-            Some(required) => self.compare(&Comparison { metric: metric.to_string(), op: Op::Ge, value: Operand::Literal(Json::from(required)) }, &Unit::Count, None, subject),
+            None => Outcome::new(Status::NotApplicable, String::new())
+                .because(format!("{basis} is {}", format_number(basis_value))),
+            Some(required) => self.compare(
+                &Comparison { metric: metric.to_string(), op: Op::Ge, value: Operand::Literal(Json::from(required)) },
+                &Unit::Count,
+                None,
+                subject,
+            ),
         }
     }
 }
@@ -283,7 +331,10 @@ fn judge_number(lo: f64, hi: f64, op: Op, limit: &Json) -> Status {
 fn judge_in_numbers(lo: f64, hi: f64, limit: &Json) -> Status {
     let options: Vec<f64> = limit.as_array().map(|a| a.iter().filter_map(Json::as_f64).collect()).unwrap_or_default();
     let exact = (hi - lo).abs() < 1e-9;
-    decided(exact && options.iter().any(|v| (v - lo).abs() < 1e-9), !options.iter().any(|v| *v >= lo - 1e-9 && *v <= hi + 1e-9))
+    decided(
+        exact && options.iter().any(|v| (v - lo).abs() < 1e-9),
+        !options.iter().any(|v| *v >= lo - 1e-9 && *v <= hi + 1e-9),
+    )
 }
 
 fn judge_exact(measured: &Json, op: Op, limit: &Json) -> Status {
@@ -338,7 +389,8 @@ fn combine_all(outcomes: Vec<Outcome>) -> Outcome {
 }
 
 fn combine_any(outcomes: Vec<Outcome>) -> Outcome {
-    let required = outcomes.iter().map(|o| o.required.clone()).filter(|r| !r.is_empty()).collect::<Vec<_>>().join(" or ");
+    let required =
+        outcomes.iter().map(|o| o.required.clone()).filter(|r| !r.is_empty()).collect::<Vec<_>>().join(" or ");
     let applicable: Vec<&Outcome> = outcomes.iter().filter(|o| o.status != Status::NotApplicable).collect();
     let pick = applicable
         .iter()
@@ -389,13 +441,24 @@ fn measured_value(m: &Measurement, op: Op, unit: &Unit) -> MeasuredValue {
         Op::Le | Op::Lt => hi,
         _ => lo,
     };
-    MeasuredValue { text: m.value.describe(), value: nearest.filter(|v| v.is_finite()), lo, hi: hi.filter(|v| v.is_finite()), unit: unit.symbol() }
+    MeasuredValue {
+        text: m.value.describe(),
+        value: nearest.filter(|v| v.is_finite()),
+        lo,
+        hi: hi.filter(|v| v.is_finite()),
+        unit: unit.symbol(),
+    }
 }
 
 fn range_reason(m: &Measurement, tolerance: Option<f64>) -> String {
-    let base = if m.value.is_exact() { "within the measurement tolerance of the limit".to_string() } else { format!("measured range {} straddles the limit", m.value.describe()) };
+    let base = if m.value.is_exact() {
+        "within the measurement tolerance of the limit".to_string()
+    } else {
+        format!("measured range {} straddles the limit", m.value.describe())
+    };
     let note = m.note.as_ref().map(|n| format!(" ({n})")).unwrap_or_default();
-    let tolerance = tolerance.filter(|t| *t > 0.0).map(|t| format!("; tolerance {}", format_number(t))).unwrap_or_default();
+    let tolerance =
+        tolerance.filter(|t| *t > 0.0).map(|t| format!("; tolerance {}", format_number(t))).unwrap_or_default();
     format!("{base}{note}{tolerance}")
 }
 
@@ -408,6 +471,7 @@ fn provenance(m: &Measurement) -> String {
 
 fn finding(rule: &Rule, subject: &Subject, outcome: Outcome) -> Finding {
     let message = message(rule, &outcome);
+    let severity = severity(rule, &outcome);
     let evidence = match &outcome.provenance {
         Some(p) => format!("{}: {p}", rule.evidence),
         None => rule.evidence.clone(),
@@ -424,10 +488,23 @@ fn finding(rule: &Rule, subject: &Subject, outcome: Outcome) -> Finding {
         required: outcome.required,
         message,
         evidence,
-        severity: rule.severity.clone(),
+        severity,
         location: outcome.location.or(subject.location),
         counterpart: rule.counterpart.clone(),
     }
+}
+
+fn exact_number(extraction: &Extraction) -> Option<f64> {
+    match extraction.measurement()?.value {
+        Value::Number { lo, hi } if lo == hi => Some(lo),
+        _ => None,
+    }
+}
+
+fn severity(rule: &Rule, outcome: &Outcome) -> String {
+    let unverified_level = outcome.status == Status::NeedsInfo
+        && outcome.reason.as_deref().is_some_and(|r| r.contains(LEVEL_FLOOR_ASSUMED));
+    if unverified_level { ADVISORY.to_string() } else { rule.severity.clone() }
 }
 
 fn message(rule: &Rule, outcome: &Outcome) -> String {
@@ -437,8 +514,14 @@ fn message(rule: &Rule, outcome: &Outcome) -> String {
         (Status::Pass, None) => format!("{}: meets the requirement.", rule.title),
         (Status::Fail, Some(m)) => format!("{}: measured {m}, required {}.", rule.title, outcome.required),
         (Status::Fail, None) => format!("{}: does not meet {}.", rule.title, outcome.required),
-        (Status::NeedsInfo, _) => format!("{}: needs more information ({}).", rule.title, outcome.reason.as_deref().unwrap_or("value unknown")),
-        (Status::NotApplicable, _) => format!("{}: not applicable ({}).", rule.title, outcome.reason.as_deref().unwrap_or("out of scope")),
+        (Status::NeedsInfo, _) => format!(
+            "{}: needs more information ({}).",
+            rule.title,
+            outcome.reason.as_deref().unwrap_or("value unknown")
+        ),
+        (Status::NotApplicable, _) => {
+            format!("{}: not applicable ({}).", rule.title, outcome.reason.as_deref().unwrap_or("out of scope"))
+        }
     }
 }
 

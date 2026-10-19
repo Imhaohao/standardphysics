@@ -4,6 +4,7 @@ mod common;
 
 use sp_core::Engine;
 use sp_core::geometry::{Polygon2, Vec2, Vec3};
+use sp_core::mesh::{MeshClass, MeshPart, ScanMesh};
 use sp_core::rules::{Finding, Status};
 use sp_core::scene::{Object, ObjectSource, Opening, OpeningKind, Room, RoomKind, Scene, Wall};
 use sp_core::units::{inches, to_inches};
@@ -18,7 +19,9 @@ fn rect_room(id: &str, kind: RoomKind, width: f64, depth: f64) -> Room {
         storey: 0,
         floor: Polygon2::new(c.to_vec()),
         ceiling_height: 2.7,
-        walls: (0..4).map(|i| Wall { id: format!("{id}-w{i}"), start: c[i], end: c[(i + 1) % 4], height: 2.7, thickness: 0.1 }).collect(),
+        walls: (0..4)
+            .map(|i| Wall { id: format!("{id}-w{i}"), start: c[i], end: c[(i + 1) % 4], height: 2.7, thickness: 0.1 })
+            .collect(),
         openings: vec![],
         objects: vec![],
     }
@@ -26,7 +29,16 @@ fn rect_room(id: &str, kind: RoomKind, width: f64, depth: f64) -> Room {
 
 /// A door in the south wall centred at `x`, with frame width `width`.
 fn south_door(room: &Room, id: &str, x: f64, width: f64) -> Opening {
-    Opening { id: id.into(), kind: OpeningKind::Door, wall_id: format!("{}-w0", room.id), center: Vec3::new(x, 1.0, 0.0), width, height: 2.03, swing: None, hardware: None }
+    Opening {
+        id: id.into(),
+        kind: OpeningKind::Door,
+        wall_id: format!("{}-w0", room.id),
+        center: Vec3::new(x, 1.0, 0.0),
+        width,
+        height: 2.03,
+        swing: None,
+        hardware: None,
+    }
 }
 
 fn object(id: &str, category: &str, center: Vec2, size: Vec3, bottom: f64) -> Object {
@@ -52,7 +64,10 @@ fn evaluate(rooms: Vec<Room>) -> Option<(Engine, Vec<Finding>)> {
 }
 
 fn finding<'a>(findings: &'a [Finding], rule_id: &str, subject: &str) -> &'a Finding {
-    findings.iter().find(|f| f.rule_id == rule_id && f.subject_id == subject).unwrap_or_else(|| panic!("no {rule_id} finding for {subject}"))
+    findings
+        .iter()
+        .find(|f| f.rule_id == rule_id && f.subject_id == subject)
+        .unwrap_or_else(|| panic!("no {rule_id} finding for {subject}"))
 }
 
 fn shop_with_door(frame_width: f64) -> Room {
@@ -101,8 +116,20 @@ fn pinched_corridor(pinch: f64) -> Room {
     let mut corridor = rect_room("corridor", RoomKind::Corridor, 1.5, 8.0);
     corridor.openings.push(south_door(&corridor, "entry", 0.75, inches(38.0)));
     let cabinet_width = 1.5 - 0.1 - pinch;
-    corridor.objects.push(object("cabinet", "storage", Vec2::new(1.5 - 0.05 - cabinet_width / 2.0, 4.0), Vec3::new(cabinet_width, 0.9, 0.6), 0.0));
-    corridor.objects.push(object("fountain", "drinking_fountain", Vec2::new(0.75, 7.75), Vec3::new(0.5, 0.9, 0.4), 0.0));
+    corridor.objects.push(object(
+        "cabinet",
+        "storage",
+        Vec2::new(1.5 - 0.05 - cabinet_width / 2.0, 4.0),
+        Vec3::new(cabinet_width, 0.9, 0.6),
+        0.0,
+    ));
+    corridor.objects.push(object(
+        "fountain",
+        "drinking_fountain",
+        Vec2::new(0.75, 7.75),
+        Vec3::new(0.5, 0.9, 0.4),
+        0.0,
+    ));
     corridor
 }
 
@@ -151,7 +178,11 @@ fn turning_space_does_not_fit_in_a_54_inch_restroom() {
 #[test]
 fn unknowns_are_never_reported_as_pass() {
     let Some((_, findings)) = evaluate(vec![shop_with_door(inches(38.0))]) else { return };
-    let passes_without_value = findings.iter().filter(|f| f.status == Status::Pass && f.measured.is_none()).map(|f| &f.rule_id).collect::<Vec<_>>();
+    let passes_without_value = findings
+        .iter()
+        .filter(|f| f.status == Status::Pass && f.measured.is_none())
+        .map(|f| &f.rule_id)
+        .collect::<Vec<_>>();
     assert!(passes_without_value.is_empty(), "{passes_without_value:?}");
 }
 
@@ -159,7 +190,11 @@ fn unknowns_are_never_reported_as_pass() {
 fn stricter_jurisdiction_governs() {
     let Some((engine, _)) = evaluate(vec![shop_with_door(inches(30.0))]) else { return };
     let report = engine.report();
-    let governing = report.governing.iter().find(|g| g.subject_id == "entry" && g.rule_ids.iter().any(|r| r == "ADA-404.2.3-clear-width")).unwrap();
+    let governing = report
+        .governing
+        .iter()
+        .find(|g| g.subject_id == "entry" && g.rule_ids.iter().any(|r| r == "ADA-404.2.3-clear-width"))
+        .unwrap();
     assert_eq!(governing.status, Status::Fail);
     assert_eq!(report.jurisdictions.len(), 2);
 }
@@ -182,4 +217,73 @@ fn update_room_matches_full_evaluation() {
     let expected = fresh.evaluate_all();
     assert_eq!(incremental.governing_counts, expected.governing_counts);
     assert_ne!(full.governing_counts, expected.governing_counts);
+}
+
+/// A floor mesh over `width` x `depth` metres of 10 cm triangles, with height given by `height_at(x, z)`.
+fn floor_mesh(width: f64, depth: f64, height_at: impl Fn(f64, f64) -> f64) -> ScanMesh {
+    const STEP: f64 = 0.1;
+    let (nx, nz) = ((width / STEP).round() as u32, (depth / STEP).round() as u32);
+    let vertex = |i: u32, j: u32| {
+        let (x, z) = (f64::from(i) * STEP, f64::from(j) * STEP);
+        Vec3::new(x, height_at(x, z), z)
+    };
+    let vertices = (0..=nz).flat_map(|j| (0..=nx).map(move |i| (i, j))).map(|(i, j)| vertex(i, j)).collect();
+    let at = |i: u32, j: u32| j * (nx + 1) + i;
+    let faces = (0..nz)
+        .flat_map(|j| (0..nx).map(move |i| (i, j)))
+        .flat_map(|(i, j)| [[at(i, j), at(i + 1, j), at(i + 1, j + 1)], [at(i, j), at(i + 1, j + 1), at(i, j + 1)]])
+        .collect::<Vec<_>>();
+    let classes = Some(vec![MeshClass::Floor; faces.len()]);
+    let identity = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0];
+    ScanMesh { floor_y: 0.0, parts: vec![MeshPart { id: [1; 16], transform: identity, vertices, faces, classes }] }
+}
+
+fn evaluate_with_mesh(room: Room, mesh: ScanMesh) -> Option<Vec<Finding>> {
+    let mut engine = common::repo_engine()?;
+    let decoded = ScanMesh::from_bytes(&mesh.to_bytes()).expect("synthetic mesh decodes");
+    engine.set_room_mesh(&room.id, decoded);
+    engine.set_scene(Scene { rooms: vec![room], ..Scene::default() });
+    engine.evaluate_all();
+    Some(engine.findings())
+}
+
+#[test]
+fn route_slope_needs_a_mesh_and_is_judged_from_one() {
+    let Some((_, findings)) = evaluate(vec![pinched_corridor(inches(40.0))]) else { return };
+    assert_eq!(finding(&findings, "ADA-402.2-running-slope", "route:fountain").status, Status::NeedsInfo);
+    let Some(flat) = evaluate_with_mesh(pinched_corridor(inches(40.0)), floor_mesh(1.5, 8.0, |_, _| 0.0)) else {
+        return;
+    };
+    assert_eq!(finding(&flat, "ADA-402.2-running-slope", "route:fountain").status, Status::Pass);
+    assert_eq!(finding(&flat, "ADA-303.2-level-change", "route:fountain").status, Status::Pass);
+    let ramp = floor_mesh(1.5, 8.0, |_, z| z / 12.0);
+    let Some(sloped) = evaluate_with_mesh(pinched_corridor(inches(40.0)), ramp) else { return };
+    let f = finding(&sloped, "ADA-402.2-running-slope", "route:fountain");
+    assert_eq!(f.status, Status::Fail, "{}", f.message);
+    let tilted = floor_mesh(1.5, 8.0, |x, _| x / 30.0);
+    let Some(tilted) = evaluate_with_mesh(pinched_corridor(inches(40.0)), tilted) else { return };
+    assert_eq!(finding(&tilted, "ADA-403.3-cross-slope", "route:fountain").status, Status::Fail);
+    assert_eq!(finding(&tilted, "ADA-402.2-running-slope", "route:fountain").status, Status::Pass);
+}
+
+#[test]
+fn a_one_inch_step_in_the_corridor_fails_the_level_change_rule() {
+    let step = floor_mesh(1.5, 8.0, |_, z| if z > 2.05 { inches(1.0) } else { 0.0 });
+    let Some(findings) = evaluate_with_mesh(pinched_corridor(inches(40.0)), step) else { return };
+    let f = finding(&findings, "ADA-303.2-level-change", "route:fountain");
+    assert_eq!(f.status, Status::Fail, "{}", f.message);
+    assert!(f.location.is_some_and(|l| (l.z - 2.05).abs() < 0.15), "{:?}", f.location);
+    assert_eq!(finding(&findings, "ADA-303.2-level-change", "floor:corridor").status, Status::Fail);
+}
+
+#[test]
+fn seat_geometry_from_the_mesh_narrows_the_route() {
+    let mut mesh = floor_mesh(1.5, 8.0, |_, _| 0.0);
+    let mut chair = floor_mesh(0.9, 0.5, |_, _| 0.45);
+    chair.parts[0].vertices.iter_mut().for_each(|v| (v.x, v.z) = (v.x + 0.05, v.z + 5.5));
+    chair.parts[0].classes = Some(vec![MeshClass::Seat; chair.parts[0].faces.len()]);
+    mesh.parts.extend(chair.parts);
+    let Some(findings) = evaluate_with_mesh(pinched_corridor(inches(40.0)), mesh) else { return };
+    let f = finding(&findings, "ADA-403.5.1-clear-width", "route:fountain");
+    assert_eq!(f.status, Status::Fail, "{}", f.message);
 }

@@ -1,9 +1,12 @@
 //! Doors, doorways and their maneuvering clearances (404).
 
-use super::support::{needs_detail, needs_mesh, objects_of, vertical_extent, within_box_height, wrong_subject};
+use super::support::{
+    box_along, floor_surface, mesh_height, mesh_slope, needs_detail, not_covered_by_mesh, objects_of, vertical_extent,
+    within_box_height, wrong_subject,
+};
 use crate::analysis::{StoreyAnalysis, estimated_clear_width};
 use crate::geometry::{OrientedBox2, Vec2};
-use crate::grid::{DoorGap, Probe, door_gap};
+use crate::grid::{CellState, DoorGap, Probe, door_gap};
 use crate::metrics::subject::Subject;
 use crate::metrics::{EvalContext, Extraction, Extractor};
 use crate::scene::{Opening, OpeningKind, Room};
@@ -20,7 +23,7 @@ pub const EXTRACTORS: &[(&str, Extractor)] = &[
     ("door.maneuvering_clearance_push_side_depth", push_side_depth),
     ("door.maneuvering_clearance_push_side_latch_extension", push_side_latch_extension),
     ("door.maneuvering_clearance_push_side_hinge_extension", push_side_latch_extension),
-    ("door.maneuvering_clearance_slope", needs_mesh),
+    ("door.maneuvering_clearance_slope", maneuvering_clearance_slope),
     ("door.pull_side_is_exterior", pull_side_is_exterior),
     ("door.recess_depth", recess_depth),
     ("doorway.maneuvering_depth", doorway_maneuvering_depth),
@@ -89,7 +92,9 @@ fn clear_width(ctx: &EvalContext, subject: &Subject) -> Extraction {
     let Some(opening) = ctx.opening(subject).filter(|o| o.kind.is_passable()) else { return wrong_subject() };
     let estimate = estimated_clear_width(opening, 0.0);
     let measured = match opening.kind {
-        OpeningKind::Door => range((estimate - CLEAR_WIDTH_ALLOWANCE_RANGE.1, estimate - CLEAR_WIDTH_ALLOWANCE_RANGE.0)),
+        OpeningKind::Door => {
+            range((estimate - CLEAR_WIDTH_ALLOWANCE_RANGE.1, estimate - CLEAR_WIDTH_ALLOWANCE_RANGE.0))
+        }
         _ => Extraction::metres(estimate),
     };
     measured.located(Some(opening.center)).noted("frame width less an allowance for the leaf and stop")
@@ -110,7 +115,8 @@ fn opening_depth(ctx: &EvalContext, subject: &Subject) -> Extraction {
 
 fn facing_wall_gap(ctx: &EvalContext, site: &DoorSite) -> Option<f64> {
     let neighbours = ctx.scene.connections.iter().filter(|c| c.opening_id.as_deref() == Some(site.opening.id.as_str()));
-    let other_rooms = neighbours.filter_map(|c| ctx.scene.room(if c.from_room == site.room.id { &c.to_room } else { &c.from_room }));
+    let other_rooms =
+        neighbours.filter_map(|c| ctx.scene.room(if c.from_room == site.room.id { &c.to_room } else { &c.from_room }));
     other_rooms
         .flat_map(|r| r.walls.iter())
         .filter(|w| w.segment().direction().dot(site.gap.along).abs() > 0.95)
@@ -136,16 +142,45 @@ fn approach(ctx: &EvalContext, subject: &Subject) -> Extraction {
 
 /// Direction of travel over the last (or, from an entrance, first) half metre of a route at the door.
 fn arrival_heading(site: &DoorSite) -> Option<Vec2> {
-    let id = &site.opening.id;
-    if let Some(leg) = site.analysis.route_to(id).and_then(|r| r.leg.as_ref()) {
-        let end = *leg.points.last()?;
-        let before = leg.points.iter().rev().find(|p| p.distance(end) >= 0.5)?;
-        return Some((end - *before).normalized());
+    arriving_heading(site).or_else(|| leaving_heading(site)).or_else(|| entering_heading(site))
+}
+
+fn arriving_heading(site: &DoorSite) -> Option<Vec2> {
+    let leg = site.analysis.route_to(&site.opening.id)?.leg.as_ref()?;
+    let end = *leg.points.last()?;
+    let before = leg.points.iter().rev().find(|p| p.distance(end) >= 0.5)?;
+    Some((end - *before).normalized())
+}
+
+fn leaving_heading(site: &DoorSite) -> Option<Vec2> {
+    let id = Some(site.opening.id.as_str());
+    let legs = site.analysis.routes.iter().filter(|r| r.entrance.as_deref() == id).filter_map(|r| r.leg.as_ref());
+    legs.filter_map(|leg| {
+        let start = *leg.points.first()?;
+        let after = leg.points.iter().find(|p| p.distance(start) >= 0.5)?;
+        Some((*after - start).normalized())
+    })
+    .next()
+}
+
+/// An entrance no route was traced from is still entered square-on, provided the floor just
+/// inside it (past the wall band) is free.
+fn entering_heading(site: &DoorSite) -> Option<Vec2> {
+    if !site.analysis.entrances.contains(&site.opening.id) {
+        return None;
     }
-    let leaving = site.analysis.routes.iter().filter(|r| r.entrance.as_deref() == Some(id.as_str())).find_map(|r| r.leg.as_ref())?;
-    let start = *leaving.points.first()?;
-    let after = leaving.points.iter().find(|p| p.distance(start) >= 0.5)?;
-    Some((*after - start).normalized())
+    let inward = if site.room.floor.contains(site.gap.center + site.gap.normal * 0.3) {
+        site.gap.normal
+    } else {
+        -site.gap.normal
+    };
+    let face = wall_face_offset(site);
+    let is_free = |p: Vec2| site.analysis.grid.state_at(p) == CellState::Free;
+    let enters_at = |across: f64| {
+        let start = site.gap.center + site.gap.along * (across * site.gap.width);
+        [face + 0.15, face + 0.45].iter().all(|d| is_free(start + inward * *d))
+    };
+    [0.0, -0.25, 0.25, -0.4, 0.4].into_iter().any(enters_at).then_some(inward)
 }
 
 struct Side {
@@ -249,9 +284,14 @@ fn hardware_height(ctx: &EvalContext, subject: &Subject) -> Extraction {
     nearby_part(ctx, subject, &["door_hardware"]).unwrap_or_else(|e| e)
 }
 
-fn nearby_part(ctx: &EvalContext, subject: &Subject, categories: &'static [&'static str]) -> Result<Extraction, Extraction> {
+fn nearby_part(
+    ctx: &EvalContext,
+    subject: &Subject,
+    categories: &'static [&'static str],
+) -> Result<Extraction, Extraction> {
     let site = door_site(ctx, subject)?;
-    let part = objects_of(site.room, categories).find(|o| o.center.plan().distance(site.gap.center) <= site.gap.width / 2.0 + NEAR_DOOR);
+    let part = objects_of(site.room, categories)
+        .find(|o| o.center.plan().distance(site.gap.center) <= site.gap.width / 2.0 + NEAR_DOOR);
     part.map(within_box_height).ok_or_else(|| needs_detail(ctx, subject))
 }
 
@@ -291,7 +331,11 @@ fn series_distance(ctx: &EvalContext, subject: &Subject) -> Extraction {
     let clear = across - (site.gap.wall_thickness + partner.wall_thickness) / 2.0;
     let both_swings_known = site.opening.swing.is_some() && other.swing.is_some();
     let worst = clear - site.opening.width - other.width;
-    let measured = if both_swings_known { (clear - swing_into(&site, other), clear - swing_into(&site, other)) } else { (worst, clear) };
+    let measured = if both_swings_known {
+        (clear - swing_into(&site, other), clear - swing_into(&site, other))
+    } else {
+        (worst, clear)
+    };
     range(measured).located(Some(site.opening.center))
 }
 
@@ -340,11 +384,15 @@ fn swings_into_fixture_clear_floor(ctx: &EvalContext, subject: &Subject) -> Extr
     }
     let zone = swing_zone(&site, room_side(&site));
     let fixtures = site.room.objects.iter().filter(|o| super::clear_floor::needs_clear_floor(ctx, o));
-    let overlaps = fixtures.filter_map(|o| super::clear_floor::clear_floor_area(ctx, site.room, o)).any(|area| area.overlaps(&zone));
+    let overlaps = fixtures
+        .filter_map(|o| super::clear_floor::clear_floor_area(ctx, site.room, o))
+        .any(|area| area.overlaps(&zone));
     match (overlaps, site.opening.swing.is_some()) {
         (false, _) => Extraction::boolean(false),
         (true, true) => Extraction::boolean(true),
-        (true, false) => Extraction::unknown("overlaps a fixture's clear floor if the door swings in; swing not captured"),
+        (true, false) => {
+            Extraction::unknown("overlaps a fixture's clear floor if the door swings in; swing not captured")
+        }
     }
 }
 
@@ -357,7 +405,11 @@ fn swings_into_route(ctx: &EvalContext, subject: &Subject) -> Extraction {
     };
     let needed = site.gap.width + inches(36.0);
     let reduces = |side: f64| {
-        let along = Probe::new(site.gap.center + site.gap.normal * side * wall_face_offset(&site), site.gap.normal * side, 0.05);
+        let along = Probe::new(
+            site.gap.center + site.gap.normal * side * wall_face_offset(&site),
+            site.gap.normal * side,
+            0.05,
+        );
         along.sweep(&site.analysis.grid, needed).upper_bound() < needed
     };
     match pull_side(&site) {
@@ -399,10 +451,56 @@ fn threshold_height(ctx: &EvalContext, subject: &Subject) -> Extraction {
         Ok(site) => site,
         Err(e) => return e,
     };
-    let threshold = objects_of(site.room, &["threshold"]).find(|o| o.center.plan().distance(site.gap.center) < site.gap.width);
+    let threshold =
+        objects_of(site.room, &["threshold"]).find(|o| o.center.plan().distance(site.gap.center) < site.gap.width);
     match threshold {
         Some(t) => Extraction::metres(t.size.y).located(Some(t.center)),
-        None => needs_mesh(ctx, subject),
+        None => mesh_threshold(ctx, &site),
+    }
+}
+
+/// Highest floor point across the door throat above the lower of the floors on either side.
+fn mesh_threshold(ctx: &EvalContext, site: &DoorSite) -> Extraction {
+    let surface = match floor_surface(ctx, site.room.storey) {
+        Ok(surface) => surface,
+        Err(e) => return e,
+    };
+    let reach = site.gap.wall_thickness / 2.0 + inches(6.0);
+    let step = surface.spec().cell;
+    let count = (2.0 * reach / step).ceil() as usize;
+    let profile: Vec<f64> = (0..=count)
+        .filter_map(|i| surface.smoothed_height(site.gap.center + site.gap.normal * (i as f64 * step - reach)))
+        .collect();
+    let (Some(first), Some(last)) = (profile.first(), profile.last()) else { return not_covered_by_mesh() };
+    if profile.len() < count / 2 {
+        return not_covered_by_mesh();
+    }
+    let top = profile.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+    mesh_height(top - first.min(*last), site.gap.center)
+}
+
+/// Steepest floor plane in the 48 in deep areas on both sides of the door, beyond its threshold.
+fn maneuvering_clearance_slope(ctx: &EvalContext, subject: &Subject) -> Extraction {
+    let site = match door_site(ctx, subject) {
+        Ok(site) => site,
+        Err(e) => return e,
+    };
+    let surface = match floor_surface(ctx, site.room.storey) {
+        Ok(surface) => surface,
+        Err(e) => return e,
+    };
+    let depth = inches(48.0);
+    let offset = site.gap.wall_thickness / 2.0 + depth / 2.0;
+    let sides = [site.gap.center + site.gap.normal * offset, site.gap.center - site.gap.normal * offset];
+    let width = site.gap.width + 2.0 * inches(12.0);
+    let planes: Option<Vec<_>> =
+        sides.iter().map(|&c| surface.plane_in(&box_along(c, site.gap.along, width, depth))).collect();
+    match planes {
+        Some(planes) => {
+            let steepest = planes.iter().map(|p| p.slope()).fold(0.0, f64::max);
+            mesh_slope(steepest, site.gap.center)
+        }
+        None => not_covered_by_mesh(),
     }
 }
 

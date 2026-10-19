@@ -6,8 +6,7 @@ use crate::scene::RoomKind;
 /// `CapturedRoom.Object.Category` case and its attributes. RoomPlan classes keep their catalog id
 /// (`washerDryer` becomes `washer_dryer`); a dining table is refined to the detector category.
 pub fn object_category(roomplan_case: &str, attributes: &[(String, String)]) -> String {
-    let is_dining_table =
-        roomplan_case == "table" && attributes.iter().any(|(k, v)| k == "TableType" && v == "dining");
+    let is_dining_table = roomplan_case == "table" && attributes.iter().any(|(k, v)| k == "TableType" && v == "dining");
     if is_dining_table { "dining_table".to_string() } else { snake_case(roomplan_case) }
 }
 

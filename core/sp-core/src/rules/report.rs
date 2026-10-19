@@ -64,7 +64,11 @@ impl Report {
         }
         let jurisdictions = by_jurisdiction
             .into_iter()
-            .map(|(jurisdiction, findings)| JurisdictionReport { counts: StatusCounts::of(findings.iter().map(|f| f.status)), jurisdiction, findings })
+            .map(|(jurisdiction, findings)| JurisdictionReport {
+                counts: StatusCounts::of(findings.iter().map(|f| f.status)),
+                jurisdiction,
+                findings,
+            })
             .collect();
         Report { governing_counts: StatusCounts::of(governing.iter().map(|g| g.status)), jurisdictions, governing }
     }
@@ -88,7 +92,8 @@ fn governing(findings: &[Finding], rules: &HashMap<String, &Rule>) -> Vec<Govern
 
 /// Worst status wins; among equals, the rule declared stricter than the others wins.
 fn govern(group: &[&Finding], rules: &HashMap<String, &Rule>) -> GoverningFinding {
-    let stricter = |f: &Finding| rules.get(&f.rule_id).is_some_and(|r| group.iter().any(|g| r.stricter_than.contains(&g.rule_id)));
+    let stricter =
+        |f: &Finding| rules.get(&f.rule_id).is_some_and(|r| group.iter().any(|g| r.stricter_than.contains(&g.rule_id)));
     let winner = group
         .iter()
         .max_by_key(|f| (f.status.rank(), stricter(f), f.jurisdiction.clone()))

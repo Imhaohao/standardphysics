@@ -17,7 +17,9 @@ pub fn fixture(name: &str) -> String {
 
 /// The engine over the repo's rules, or `None` (with a message) while rules/ is not written yet.
 pub fn repo_engine() -> Option<Engine> {
-    let (Some(catalog), Some(ada), Some(cbc)) = (read("rules/metrics.json"), read("rules/ada2010.json"), read("rules/cbc11b.json")) else {
+    let (Some(catalog), Some(ada), Some(cbc)) =
+        (read("rules/metrics.json"), read("rules/ada2010.json"), read("rules/cbc11b.json"))
+    else {
         eprintln!("rules/metrics.json or a rulepack is missing; skipping");
         return None;
     };

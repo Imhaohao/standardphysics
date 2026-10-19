@@ -82,7 +82,8 @@ fn dining_seating_count(ctx: &EvalContext, subject: &Subject) -> Extraction {
         return e;
     }
     let seats = ctx.objects_of(SEATS).filter(|(room, seat)| {
-        super::support::objects_of(room, DINING_SURFACES).any(|table| table.footprint().distance_to(seat.center.plan()) < 0.75)
+        super::support::objects_of(room, DINING_SURFACES)
+            .any(|table| table.footprint().distance_to(seat.center.plan()) < 0.75)
     });
     Extraction::count(seats.count())
 }
@@ -111,8 +112,13 @@ fn dining_areas_ratio(ctx: &EvalContext, subject: &Subject) -> Extraction {
         .iter()
         .filter(|r| super::support::objects_of(r, DINING_SURFACES).next().is_some())
         .map(|r| {
-            let outcomes: Vec<SubjectOutcome> = super::support::objects_of(r, DINING_SURFACES).map(|o| ctx.outcome(&o.id).unwrap_or_default()).collect();
-            (outcomes.iter().any(|o| o.any_pass && !o.any_fail && !o.any_unresolved), outcomes.iter().any(|o| !o.any_fail))
+            let outcomes: Vec<SubjectOutcome> = super::support::objects_of(r, DINING_SURFACES)
+                .map(|o| ctx.outcome(&o.id).unwrap_or_default())
+                .collect();
+            (
+                outcomes.iter().any(|o| o.any_pass && !o.any_fail && !o.any_unresolved),
+                outcomes.iter().any(|o| !o.any_fail),
+            )
         })
         .collect();
     if areas.is_empty() {
@@ -121,7 +127,10 @@ fn dining_areas_ratio(ctx: &EvalContext, subject: &Subject) -> Extraction {
     let n = areas.len() as f64;
     let surely = areas.iter().filter(|a| a.0).count() as f64 / n;
     let possibly = areas.iter().filter(|a| a.1).count() as f64 / n;
-    Extraction::Measured(crate::metrics::Measurement::geometry(crate::metrics::Value::range(surely, possibly), crate::units::Unit::Ratio))
+    Extraction::measured(crate::metrics::Measurement::geometry(
+        crate::metrics::Value::range(surely, possibly),
+        crate::units::Unit::Ratio,
+    ))
 }
 
 fn toilet_rooms_total(ctx: &EvalContext, subject: &Subject) -> Extraction {
@@ -156,7 +165,11 @@ fn has_multiple_stories(ctx: &EvalContext, subject: &Subject) -> Extraction {
     if let Err(e) = site_only(subject) {
         return e;
     }
-    if ctx.scene.storeys().len() > 1 { Extraction::boolean(true) } else { Extraction::unknown("one storey scanned; the owner confirms") }
+    if ctx.scene.storeys().len() > 1 {
+        Extraction::boolean(true)
+    } else {
+        Extraction::unknown("one storey scanned; the owner confirms")
+    }
 }
 
 fn has_elevator(ctx: &EvalContext, subject: &Subject) -> Extraction {
@@ -191,7 +204,9 @@ fn fountains_for_standing(ctx: &EvalContext, subject: &Subject) -> Extraction {
 }
 
 fn arrival_route_accessible(_: &EvalContext, subject: &Subject) -> Extraction {
-    site_only(subject).map(|_| Extraction::unknown("the exterior arrival route was not scanned; a photo or the owner confirms")).unwrap_or_else(|e| e)
+    site_only(subject)
+        .map(|_| Extraction::unknown("the exterior arrival route was not scanned; a photo or the owner confirms"))
+        .unwrap_or_else(|e| e)
 }
 
 /// Seats beside dining surfaces, counted as accessible when their surface's rules pass.
@@ -205,7 +220,8 @@ fn dining_seating_accessible(ctx: &EvalContext, subject: &Subject) -> Extraction
     let mut surely = 0;
     let mut possibly = 0;
     for (room, seat) in ctx.objects_of(SEATS) {
-        let table = super::support::objects_of(room, DINING_SURFACES).find(|t| t.footprint().distance_to(seat.center.plan()) < 0.75);
+        let table = super::support::objects_of(room, DINING_SURFACES)
+            .find(|t| t.footprint().distance_to(seat.center.plan()) < 0.75);
         if let Some(outcome) = table.map(|t| ctx.outcome(&t.id).unwrap_or_default()) {
             surely += usize::from(outcome.any_pass && !outcome.any_fail && !outcome.any_unresolved);
             possibly += usize::from(!outcome.any_fail);
@@ -223,8 +239,13 @@ fn selling_space(ctx: &EvalContext, subject: &Subject) -> Extraction {
     if let Err(e) = site_only(subject) {
         return e;
     }
-    let area = |keep: &dyn Fn(RoomKind) -> bool| ctx.scene.rooms.iter().filter(|r| keep(r.kind)).map(|r| r.floor.area()).sum::<f64>();
+    let area = |keep: &dyn Fn(RoomKind) -> bool| {
+        ctx.scene.rooms.iter().filter(|r| keep(r.kind)).map(|r| r.floor.area()).sum::<f64>()
+    };
     let shops = area(&|k| k == RoomKind::Shop);
     let customer = area(&|k| !matches!(k, RoomKind::Restroom | RoomKind::Storage | RoomKind::Kitchen));
-    Extraction::Measured(crate::metrics::Measurement::geometry(crate::metrics::Value::range(shops, customer), crate::units::Unit::SquareMetre))
+    Extraction::measured(crate::metrics::Measurement::geometry(
+        crate::metrics::Value::range(shops, customer),
+        crate::units::Unit::SquareMetre,
+    ))
 }

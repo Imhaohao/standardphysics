@@ -53,6 +53,8 @@ impl Vec2 {
 }
 
 impl Vec3 {
+    pub const ZERO: Vec3 = Vec3 { x: 0.0, y: 0.0, z: 0.0 };
+
     pub const fn new(x: f64, y: f64, z: f64) -> Self {
         Self { x, y, z }
     }
@@ -63,8 +65,40 @@ impl Vec3 {
     }
 
     pub fn distance(self, other: Vec3) -> f64 {
-        let (dx, dy, dz) = (self.x - other.x, self.y - other.y, self.z - other.z);
-        (dx * dx + dy * dy + dz * dz).sqrt()
+        (self - other).length()
+    }
+
+    pub fn length(self) -> f64 {
+        (self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
+    }
+
+    pub fn cross(self, other: Vec3) -> Vec3 {
+        Vec3::new(
+            self.y * other.z - self.z * other.y,
+            self.z * other.x - self.x * other.z,
+            self.x * other.y - self.y * other.x,
+        )
+    }
+}
+
+impl Add for Vec3 {
+    type Output = Vec3;
+    fn add(self, rhs: Vec3) -> Vec3 {
+        Vec3::new(self.x + rhs.x, self.y + rhs.y, self.z + rhs.z)
+    }
+}
+
+impl Sub for Vec3 {
+    type Output = Vec3;
+    fn sub(self, rhs: Vec3) -> Vec3 {
+        Vec3::new(self.x - rhs.x, self.y - rhs.y, self.z - rhs.z)
+    }
+}
+
+impl Mul<f64> for Vec3 {
+    type Output = Vec3;
+    fn mul(self, rhs: f64) -> Vec3 {
+        Vec3::new(self.x * rhs, self.y * rhs, self.z * rhs)
     }
 }
 

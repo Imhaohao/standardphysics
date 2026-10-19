@@ -38,7 +38,12 @@ pub struct RouteLeg {
     pub turn: Option<Turn180>,
 }
 
-pub fn trace_leg(tree: &WidestTree, field: &RouteField, clearance: &ClearanceField, target: CellIndex) -> Option<RouteLeg> {
+pub fn trace_leg(
+    tree: &WidestTree,
+    field: &RouteField,
+    clearance: &ClearanceField,
+    target: CellIndex,
+) -> Option<RouteLeg> {
     let cells = tree.path_to(target);
     if cells.is_empty() {
         return None;
@@ -153,7 +158,14 @@ fn doubling_back(points: &[Vec2], distances: &[f64], i: usize, heading_in: Vec2)
     None
 }
 
-fn describe_turn(points: &[Vec2], widths: &[Option<f64>], distances: &[f64], i: usize, j: usize, heading_in: Vec2) -> Turn180 {
+fn describe_turn(
+    points: &[Vec2],
+    widths: &[Option<f64>],
+    distances: &[f64],
+    i: usize,
+    j: usize,
+    heading_in: Vec2,
+) -> Turn180 {
     let min_between = |a: f64, b: f64| {
         (0..points.len())
             .filter(|&k| distances[k] >= a && distances[k] <= b)

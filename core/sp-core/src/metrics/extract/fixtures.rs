@@ -1,7 +1,10 @@
 //! Work surfaces, counters, check-out aisles, food lines, benches and signs (902-904, 903, 703).
 
 use super::clear_floor::{clear_floor, faces};
-use super::support::{COUNTERS, adjoining, items_on, long_axis, long_dimension, needs_detail, object_in_room, projected_span, short_dimension, vertical_extent, within_box_height, wrong_subject};
+use super::support::{
+    COUNTERS, adjoining, items_on, long_axis, long_dimension, needs_detail, object_in_room, projected_span,
+    short_dimension, vertical_extent, within_box_height, wrong_subject,
+};
 use crate::analysis::StoreyAnalysis;
 use crate::geometry::{OrientedBox2, Vec2};
 use crate::grid::{Probe, area_is_free};
@@ -58,7 +61,11 @@ fn counter_accessible_length(ctx: &EvalContext, subject: &Subject) -> Extraction
         Ok(found) => found,
         Err(e) => return e,
     };
-    let sections: Vec<&Object> = if is_low(counter) { vec![counter] } else { adjoining(room, counter, COUNTERS, 0.1).filter(|o| is_low(o)).collect() };
+    let sections: Vec<&Object> = if is_low(counter) {
+        vec![counter]
+    } else {
+        adjoining(room, counter, COUNTERS, 0.1).filter(|o| is_low(o)).collect()
+    };
     let total: f64 = sections.iter().map(|s| clear_length(room, s)).sum();
     Extraction::metres(total).located(Some(counter.center))
 }
@@ -66,10 +73,12 @@ fn counter_accessible_length(ctx: &EvalContext, subject: &Subject) -> Extraction
 fn clear_length(room: &Room, counter: &Object) -> f64 {
     let axis = long_axis(counter);
     let origin = counter.center.plan();
-    let covered: f64 = items_on(room, counter).map(|item| {
-        let (lo, hi) = projected_span(&item.footprint(), origin, axis);
-        hi - lo
-    }).sum();
+    let covered: f64 = items_on(room, counter)
+        .map(|item| {
+            let (lo, hi) = projected_span(&item.footprint(), origin, axis);
+            hi - lo
+        })
+        .sum();
     (long_dimension(counter) - covered).max(0.0)
 }
 
@@ -172,7 +181,11 @@ fn bar_accessible_section(ctx: &EvalContext, subject: &Subject) -> Extraction {
         Ok(found) => found,
         Err(e) => return e,
     };
-    let in_band = |o: &Object| o.top_height >= inches(28.0) - 1e-6 && o.top_height <= inches(34.0) + 1e-6 && long_dimension(o) >= inches(60.0) - 1e-6;
+    let in_band = |o: &Object| {
+        o.top_height >= inches(28.0) - 1e-6
+            && o.top_height <= inches(34.0) + 1e-6
+            && long_dimension(o) >= inches(60.0) - 1e-6
+    };
     if in_band(bar) || adjoining(room, bar, &["bar_counter", "counter"], 0.1).any(in_band) {
         Extraction::boolean(true)
     } else {
@@ -191,7 +204,8 @@ fn table_faces_room(ctx: &EvalContext, subject: &Subject) -> Extraction {
     let sides = faces(&table.footprint());
     let faces_room = sides.iter().enumerate().any(|(i, seat)| {
         let opposite = sides[i ^ 1];
-        let seat_space = Probe::new(seat.centre, seat.outward, inches(15.0)).sweep(grid, inches(48.0)).length >= inches(48.0) - 0.03;
+        let seat_space =
+            Probe::new(seat.centre, seat.outward, inches(15.0)).sweep(grid, inches(48.0)).length >= inches(48.0) - 0.03;
         let view = Probe::new(opposite.centre, opposite.outward, 0.1).sweep(grid, 0.9).length >= 0.9 - 0.03;
         seat_space && view
     });
@@ -224,15 +238,22 @@ fn sign_clear_floor(ctx: &EvalContext, subject: &Subject) -> Extraction {
         Err(e) => return e,
     };
     let Some(analysis) = ctx.analysis(room.storey) else { return Extraction::unknown("storey not analysed") };
-    let Some(wall) = super::support::nearest_boundary(room, sign.center.plan()) else { return Extraction::unknown("no wall captured") };
+    let Some(wall) = super::support::nearest_boundary(room, sign.center.plan()) else {
+        return Extraction::unknown("no wall captured");
+    };
     let away = (sign.center.plan() - wall.closest_point(sign.center.plan())).normalized();
     let centre = wall.closest_point(sign.center.plan()) + away * (inches(9.0) + 0.06);
     let square = OrientedBox2::new(centre, inches(18.0), inches(18.0), (-away.y).atan2(away.x));
     if !area_is_free(&analysis.grid, &square) {
         return Extraction::boolean(false);
     }
-    let near_door = room.openings.iter().any(|o| o.kind.is_passable() && o.center.plan().distance(centre) < o.width + inches(9.0));
-    if near_door { Extraction::unknown("a door swing may cross the space; swing not captured") } else { Extraction::boolean(true) }
+    let near_door =
+        room.openings.iter().any(|o| o.kind.is_passable() && o.center.plan().distance(centre) < o.width + inches(9.0));
+    if near_door {
+        Extraction::unknown("a door swing may cross the space; swing not captured")
+    } else {
+        Extraction::boolean(true)
+    }
 }
 
 /// More than a tenth of the table's clear floor space lies in the route corridor.
@@ -245,7 +266,9 @@ fn clear_floor_overlaps_route(ctx: &EvalContext, subject: &Subject) -> Extractio
     if analysis.entrances.is_empty() {
         return Extraction::unknown("no entrance on this storey to start a route from");
     }
-    let Some(area) = super::clear_floor::clear_floor_area(ctx, room, table) else { return Extraction::unknown("storey not analysed") };
+    let Some(area) = super::clear_floor::clear_floor_area(ctx, room, table) else {
+        return Extraction::unknown("storey not analysed");
+    };
     let grid = &analysis.grid;
     let cells: Vec<usize> = grid.spec.cells_in(area.bounds()).filter(|&i| area.contains(grid.spec.center(i))).collect();
     let corridor = analysis.route_corridor();
