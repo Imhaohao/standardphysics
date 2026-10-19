@@ -1,5 +1,6 @@
 use axum::extract::{Path, State};
-use axum::http::StatusCode;
+use axum::http::{HeaderMap, StatusCode};
+use axum::response::Response;
 use axum::Json;
 use uuid::Uuid;
 
@@ -8,6 +9,7 @@ use super::repo;
 use crate::assessments;
 use crate::auth::AuthUser;
 use crate::error::{ApiError, ApiResult, ErrorBody};
+use crate::idempotency;
 use crate::state::AppState;
 
 const DEFAULT_SCAN_NAME: &str = "Untitled scan";
@@ -28,19 +30,38 @@ fn clean_text(raw: Option<String>, max: usize) -> ApiResult<Option<String>> {
 #[utoipa::path(
     post, path = "/v1/scans", tag = "scans",
     security(("bearer" = [])),
+    params(("Idempotency-Key" = Option<String>, Header, description = "Repeats with the same key and body within 24 h replay the first response; a different body is 409.")),
     request_body = CreateScan,
-    responses((status = 201, body = Scan), (status = 401, body = ErrorBody))
+    responses((status = 201, body = Scan), (status = 401, body = ErrorBody), (status = 409, body = ErrorBody))
 )]
 pub async fn create_scan(
     State(state): State<AppState>,
     AuthUser(user_id): AuthUser,
+    headers: HeaderMap,
     Json(body): Json<CreateScan>,
-) -> ApiResult<(StatusCode, Json<Scan>)> {
-    let name =
-        clean_text(body.name, MAX_NAME_LEN)?.unwrap_or_else(|| DEFAULT_SCAN_NAME.to_string());
-    let site = clean_text(body.site_name, MAX_NAME_LEN)?;
+) -> ApiResult<Response> {
+    idempotency::run(
+        &state.db,
+        user_id,
+        "POST /v1/scans",
+        &headers,
+        &body,
+        || insert_new_scan(&state, user_id, &body),
+    )
+    .await
+}
+
+async fn insert_new_scan(
+    state: &AppState,
+    user_id: Uuid,
+    body: &CreateScan,
+) -> ApiResult<(StatusCode, serde_json::Value)> {
+    let name = clean_text(body.name.clone(), MAX_NAME_LEN)?
+        .unwrap_or_else(|| DEFAULT_SCAN_NAME.to_string());
+    let site = clean_text(body.site_name.clone(), MAX_NAME_LEN)?;
     let scan = repo::insert_scan(&state.db, user_id, &name, site.as_deref()).await?;
-    Ok((StatusCode::CREATED, Json(scan)))
+    let value = serde_json::to_value(scan).map_err(|e| ApiError::Internal(e.into()))?;
+    Ok((StatusCode::CREATED, value))
 }
 
 #[utoipa::path(

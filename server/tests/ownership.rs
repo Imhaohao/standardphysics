@@ -65,7 +65,9 @@ async fn foreign_websocket_is_refused() {
     let alice = app.register("alice2@example.com").await;
     let bob = app.register("bob2@example.com").await;
     let scan_id = app.create_scan(&alice).await;
-    let url = app.ws_url(&format!("/v1/scans/{scan_id}/live?token={bob}"));
-    let err = tokio_tungstenite::connect_async(url).await.unwrap_err();
+    let err = common::try_connect_live(&app, Some(&bob), &format!("/v1/scans/{scan_id}/live"))
+        .await
+        .err()
+        .unwrap();
     assert!(err.to_string().contains("404"), "{err}");
 }

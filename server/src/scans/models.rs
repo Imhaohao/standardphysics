@@ -16,7 +16,7 @@ pub struct Scan {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Deserialize, ToSchema)]
+#[derive(Deserialize, Serialize, ToSchema)]
 pub struct CreateScan {
     pub name: Option<String>,
     pub site_name: Option<String>,

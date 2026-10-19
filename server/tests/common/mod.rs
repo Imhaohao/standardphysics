@@ -26,6 +26,7 @@ pub struct TestOptions {
     pub label_deadline_ms: u64,
     pub label_concurrency: usize,
     pub label_key: Option<&'static str>,
+    pub public_host_alias: bool,
 }
 
 impl Default for TestOptions {
@@ -34,6 +35,7 @@ impl Default for TestOptions {
             label_deadline_ms: 5_000,
             label_concurrency: 4,
             label_key: Some("test-key"),
+            public_host_alias: false,
         }
     }
 }
@@ -99,7 +101,14 @@ fn test_config(
         ("LABEL_DEADLINE_MS", opts.label_deadline_ms.to_string()),
         ("LABEL_CONCURRENCY", opts.label_concurrency.to_string()),
         ("RUN_JOB_WORKER", "false".to_string()),
+        ("S3_ALLOW_INSECURE_PUBLIC_ENDPOINT", "true".to_string()),
     ]);
+    if opts.public_host_alias {
+        env.insert(
+            "S3_PUBLIC_ENDPOINT",
+            s3_base.replace("127.0.0.1", "localhost"),
+        );
+    }
     if let Some(key) = opts.label_key {
         env.insert("LABEL_API_KEY", key.to_string());
     }
@@ -349,12 +358,31 @@ pub async fn upload_artifact(
 pub type WsStream =
     tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>;
 
+pub async fn try_connect_live(
+    app: &TestApp,
+    bearer: Option<&str>,
+    path_and_query: &str,
+) -> Result<WsStream, tokio_tungstenite::tungstenite::Error> {
+    use tokio_tungstenite::tungstenite::client::IntoClientRequest;
+    let mut request = app.ws_url(path_and_query).into_client_request().unwrap();
+    if let Some(token) = bearer {
+        request
+            .headers_mut()
+            .insert("authorization", format!("Bearer {token}").parse().unwrap());
+    }
+    tokio_tungstenite::connect_async(request)
+        .await
+        .map(|(socket, _)| socket)
+}
+
 pub async fn connect_live(app: &TestApp, token: &str, scan_id: &str, role: &str) -> WsStream {
-    let url = app.ws_url(&format!(
-        "/v1/scans/{scan_id}/live?token={token}&role={role}"
-    ));
-    let (socket, _) = tokio_tungstenite::connect_async(url).await.unwrap();
-    socket
+    try_connect_live(
+        app,
+        Some(token),
+        &format!("/v1/scans/{scan_id}/live?role={role}"),
+    )
+    .await
+    .unwrap()
 }
 
 pub async fn send_json(socket: &mut WsStream, value: Value) {

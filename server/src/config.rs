@@ -132,7 +132,9 @@ fn bind_addr<F: Fn(&str) -> Option<String>>(env: &Env<F>) -> String {
 fn storage_config<F: Fn(&str) -> Option<String>>(env: &Env<F>) -> Result<StorageConfig> {
     let endpoint = env.optional("S3_ENDPOINT");
     let force_path_style = env.flag("S3_FORCE_PATH_STYLE", endpoint.is_some())?;
-    let public_endpoint = env.optional("S3_PUBLIC_ENDPOINT").or_else(|| endpoint.clone());
+    let public_endpoint = env
+        .optional("S3_PUBLIC_ENDPOINT")
+        .or_else(|| endpoint.clone());
     let allow_insecure = env.flag("S3_ALLOW_INSECURE_PUBLIC_ENDPOINT", false)?;
     require_https(public_endpoint.as_deref(), allow_insecure)?;
     Ok(StorageConfig {
@@ -196,16 +198,30 @@ mod tests {
     fn plain_http_public_endpoint_is_rejected_unless_flagged() {
         assert!(lookup(&[("S3_ENDPOINT", "http://minio:9000")]).is_err());
         assert!(lookup(&[("S3_PUBLIC_ENDPOINT", "http://x.example")]).is_err());
-        assert!(lookup(&[("S3_ENDPOINT", "http://minio:9000"), ("S3_ALLOW_INSECURE_PUBLIC_ENDPOINT", "true")]).is_ok());
+        assert!(lookup(&[
+            ("S3_ENDPOINT", "http://minio:9000"),
+            ("S3_ALLOW_INSECURE_PUBLIC_ENDPOINT", "true")
+        ])
+        .is_ok());
         assert!(lookup(&[("S3_ENDPOINT", "https://acct.r2.cloudflarestorage.com")]).is_ok());
         assert!(lookup(&[]).is_ok());
     }
 
     #[test]
     fn public_endpoint_defaults_to_the_storage_endpoint() {
-        let cfg = lookup(&[("S3_ENDPOINT", "https://internal.example"), ("S3_PUBLIC_ENDPOINT", "https://public.example")]).unwrap();
-        assert_eq!(cfg.storage.public_endpoint.as_deref(), Some("https://public.example"));
+        let cfg = lookup(&[
+            ("S3_ENDPOINT", "https://internal.example"),
+            ("S3_PUBLIC_ENDPOINT", "https://public.example"),
+        ])
+        .unwrap();
+        assert_eq!(
+            cfg.storage.public_endpoint.as_deref(),
+            Some("https://public.example")
+        );
         let cfg = lookup(&[("S3_ENDPOINT", "https://internal.example")]).unwrap();
-        assert_eq!(cfg.storage.public_endpoint.as_deref(), Some("https://internal.example"));
+        assert_eq!(
+            cfg.storage.public_endpoint.as_deref(),
+            Some("https://internal.example")
+        );
     }
 }

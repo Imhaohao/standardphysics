@@ -7,6 +7,7 @@ pub mod error;
 pub mod findings;
 pub mod finish;
 pub mod health;
+pub mod idempotency;
 pub mod jobs;
 pub mod live;
 pub mod openapi;
@@ -59,6 +60,10 @@ fn api_routes() -> Router<AppState> {
         .route("/scans/{scan_id}/scene", get(scans::handlers::get_scene))
         .route("/scans/{scan_id}/finish", post(finish::finish_scan))
         .route("/scans/{scan_id}/live", get(live::ws::live_socket))
+        .route(
+            "/scans/{scan_id}/live-ticket",
+            post(live::tickets::create_live_ticket),
+        )
         .route(
             "/scans/{scan_id}/artifacts",
             get(uploads::handlers::list_artifacts),

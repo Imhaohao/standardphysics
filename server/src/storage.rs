@@ -82,9 +82,9 @@ impl Storage {
         }
         let host = host_with_port(&parsed);
         match &self.public_host {
-            Some(expected) if *expected != host => {
-                Err(anyhow!("presigned url host {host} differs from the configured {expected}"))
-            }
+            Some(expected) if *expected != host => Err(anyhow!(
+                "presigned url host {host} differs from the configured {expected}"
+            )),
             _ => Ok(()),
         }
     }
@@ -277,5 +277,7 @@ fn host_with_port(url: &reqwest::Url) -> String {
 }
 
 fn host_of(endpoint: &str) -> Option<String> {
-    reqwest::Url::parse(endpoint).ok().map(|u| host_with_port(&u))
+    reqwest::Url::parse(endpoint)
+        .ok()
+        .map(|u| host_with_port(&u))
 }

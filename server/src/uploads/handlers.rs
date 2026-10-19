@@ -1,5 +1,6 @@
 use axum::extract::{Path, State};
-use axum::http::StatusCode;
+use axum::http::{HeaderMap, StatusCode};
+use axum::response::Response;
 use axum::Json;
 use uuid::Uuid;
 
@@ -11,6 +12,7 @@ use super::plan::{plan_parts, safe_filename, valid_kind, valid_sha256, validate_
 use super::repo;
 use crate::auth::AuthUser;
 use crate::error::{ApiError, ApiResult, ErrorBody};
+use crate::idempotency;
 use crate::scans::repo::get_owned_scan;
 use crate::state::AppState;
 use crate::storage::UploadedPart;
@@ -60,17 +62,33 @@ fn require_open(upload: &UploadRecord) -> ApiResult<()> {
 #[utoipa::path(
     post, path = "/v1/scans/{scan_id}/uploads", tag = "uploads",
     security(("bearer" = [])),
-    params(("scan_id" = Uuid, Path)),
+    params(
+        ("scan_id" = Uuid, Path),
+        ("Idempotency-Key" = Option<String>, Header, description = "Repeats with the same key and body within 24 h replay the first response; a different body is 409."),
+    ),
     request_body = CreateUpload,
-    responses((status = 201, body = Upload), (status = 404, body = ErrorBody))
+    responses((status = 201, body = Upload), (status = 404, body = ErrorBody), (status = 409, body = ErrorBody))
 )]
 pub async fn create_upload(
     State(state): State<AppState>,
     AuthUser(user_id): AuthUser,
     Path(scan_id): Path<Uuid>,
+    headers: HeaderMap,
     Json(body): Json<CreateUpload>,
-) -> ApiResult<(StatusCode, Json<Upload>)> {
+) -> ApiResult<Response> {
     get_owned_scan(&state.db, user_id, scan_id).await?;
+    let scope = format!("POST /v1/scans/{scan_id}/uploads");
+    idempotency::run(&state.db, user_id, &scope, &headers, &body, || {
+        start_upload(&state, scan_id, body.clone())
+    })
+    .await
+}
+
+async fn start_upload(
+    state: &AppState,
+    scan_id: Uuid,
+    body: CreateUpload,
+) -> ApiResult<(StatusCode, serde_json::Value)> {
     validate_create(&body)?;
     let plan = plan_parts(body.size_bytes, body.part_size)?;
     let id = Uuid::new_v4();
@@ -95,7 +113,8 @@ pub async fn create_upload(
         created_at: chrono::Utc::now(),
     };
     repo::insert_upload(&state.db, &record).await?;
-    Ok((StatusCode::CREATED, Json(record.public())))
+    let value = serde_json::to_value(record.public()).map_err(|e| ApiError::Internal(e.into()))?;
+    Ok((StatusCode::CREATED, value))
 }
 
 #[utoipa::path(

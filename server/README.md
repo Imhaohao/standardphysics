@@ -37,6 +37,8 @@ Tests run the real router against Postgres, with in-process fakes for S3 (multip
 | `BIND_ADDR` / `PORT` | `0.0.0.0:$PORT`, 8080 | listen address |
 | `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | required | storage credentials |
 | `S3_ENDPOINT` | AWS | R2: `https://<account>.r2.cloudflarestorage.com`; MinIO URL |
+| `S3_PUBLIC_ENDPOINT` | `S3_ENDPOINT` | the one host presigned URLs point at, e.g. `https://<account>.r2.cloudflarestorage.com`; must be https |
+| `S3_ALLOW_INSECURE_PUBLIC_ENDPOINT` | false | dev only: allow an http endpoint |
 | `S3_REGION` | `auto` | |
 | `S3_FORCE_PATH_STYLE` | true when endpoint set | |
 | `S3_PRESIGN_TTL_SECS` | 3600 | lifetime of presigned part URLs |
@@ -66,7 +68,10 @@ The contract is `openapi.json` (also served at `GET /v1/openapi.json`). Everythi
   3. `GET .../uploads/{uid}` lists parts storage already has, so an interrupted upload resumes by sending only the missing parts. Resume granularity is one part, so choose a small `part_size` (5 MiB) for flaky links.
   4. `POST .../uploads/{uid}/complete` with `sha256` of the whole file. The server assembles from storage's own part list, checks size, re-hashes files up to `UPLOAD_VERIFY_MAX_BYTES`, and records the artifact. A mismatch deletes the object and returns 422.
   5. `POST .../uploads/{uid}/abort`. `GET /v1/scans/{id}/artifacts` lists artifacts.
-- Live: `GET /v1/scans/{id}/live` (WebSocket; `?token=` for browsers, `?role=viewer` for read-only).
+- Presigned URL host: every URL is path-style on the `S3_PUBLIC_ENDPOINT` host, `https://<account>.r2.cloudflarestorage.com/<bucket>/scans/...?X-Amz-...`; the presign response repeats the host as `host`. The server refuses to hand out a URL on any other host or over http (unless the dev flag is set). Keep `S3_FORCE_PATH_STYLE` consistent (default true with an endpoint).
+- Idempotency: `POST /v1/scans` and `POST /v1/scans/{id}/uploads` accept `Idempotency-Key` (1-255 chars). Same key and body within 24 h replays the stored response (header `Idempotent-Replayed: true`); same key with a different body is 409; a request still in flight is 409. Failed requests do not consume the key.
+- Apple sign-in: the body must include the raw `nonce`; the token's `nonce` claim must equal its lowercase hex SHA-256. `iss`, `aud` (= `APPLE_BUNDLE_ID`) and `exp` are verified.
+- Live: `GET /v1/scans/{id}/live` (WebSocket; native clients send `Authorization: Bearer`; browsers `POST /v1/scans/{id}/live-ticket` and pass the single-use `?ticket=` valid 30 s; session tokens in the query string are rejected; `?role=viewer` for read-only).
   - Client sends `{"type":"room","room_id","final","seq","captured_room":<RoomPlan CapturedRoom JSON>,"observations":[{"id",...}]}` per room and periodically for partials. Observations merge by `id`; `captured_room` replaces. Observations with `center`/`size`/`category` become detector objects in the room; observations with a `metric` are sp-core scene Observations. Detector observations without a `category` may carry `crop_artifact_id` (an uploaded crop) for vision labelling at finish.
   - Server sends `hello` (snapshot), `scene` (merged Scene, after hello and after finish), `room` (converted sp-core Room on every update), `findings` (room findings + running summary + `elapsed_ms`), `report` (after finish), `error`, `pong`. Schemas are in `openapi.json` under `ClientMessage`/`ServerMessage`.
   - Rooms persist per update, so a dropped or restarted connection resumes from Postgres.

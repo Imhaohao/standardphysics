@@ -19,7 +19,8 @@ pub struct Credentials {
 #[derive(Deserialize, ToSchema)]
 pub struct AppleSignIn {
     pub identity_token: String,
-    pub nonce: Option<String>,
+    /// The raw nonce; the identity token's `nonce` claim must be its hex SHA-256.
+    pub nonce: String,
 }
 
 #[derive(Serialize, ToSchema)]

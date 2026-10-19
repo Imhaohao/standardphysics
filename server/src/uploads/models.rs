@@ -49,7 +49,7 @@ pub struct Artifact {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Deserialize, ToSchema)]
+#[derive(Clone, Deserialize, Serialize, ToSchema)]
 pub struct CreateUpload {
     pub kind: String,
     pub filename: String,

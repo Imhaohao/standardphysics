@@ -200,3 +200,43 @@ async fn abort_validates_inputs_and_closes_the_upload() {
         .await;
     assert_eq!(status, StatusCode::CONFLICT);
 }
+
+#[tokio::test]
+async fn presigned_urls_use_the_single_configured_public_host() {
+    let app = TestApp::start_with(common::TestOptions {
+        public_host_alias: true,
+        ..Default::default()
+    })
+    .await;
+    let token = app.register("host@example.com").await;
+    let scan_id = app.create_scan(&token).await;
+    let upload = create_upload(&app, &token, &scan_id, MIB).await;
+    let upload_id = upload["id"].as_str().unwrap();
+    let path = format!("/v1/scans/{scan_id}/uploads/{upload_id}/parts");
+    let (_, body) = app.post(&token, &path, json!({"part_numbers": [1]})).await;
+    let host = body["host"].as_str().unwrap();
+    assert!(host.starts_with("localhost:"), "{host}");
+    let url = body["parts"][0]["url"].as_str().unwrap();
+    assert!(
+        url.starts_with(&format!("http://{host}/sp-test/scans/")),
+        "path-style on the public host: {url}"
+    );
+
+    let presigned = &body["parts"][0];
+    put_part(&app, presigned, payload(MIB)).await;
+}
+
+#[tokio::test]
+async fn presign_response_names_the_host_to_allowlist() {
+    let app = TestApp::start().await;
+    let token = app.register("host2@example.com").await;
+    let scan_id = app.create_scan(&token).await;
+    let upload = create_upload(&app, &token, &scan_id, MIB).await;
+    let path = format!(
+        "/v1/scans/{scan_id}/uploads/{}/parts",
+        upload["id"].as_str().unwrap()
+    );
+    let (_, body) = app.post(&token, &path, json!({"part_numbers": [1]})).await;
+    let url = body["parts"][0]["url"].as_str().unwrap();
+    assert!(url.contains(body["host"].as_str().unwrap()));
+}

@@ -49,11 +49,7 @@ impl AppleVerifier {
         !self.cfg.bundle_id.is_empty()
     }
 
-    pub async fn verify(
-        &self,
-        identity_token: &str,
-        raw_nonce: Option<&str>,
-    ) -> Result<AppleIdentity> {
+    pub async fn verify(&self, identity_token: &str, raw_nonce: &str) -> Result<AppleIdentity> {
         if !self.is_configured() {
             return Err(anyhow!("apple sign-in is not configured"));
         }
@@ -129,14 +125,11 @@ fn recently_fetched(cached: &CachedKeys) -> bool {
     cached.fetched_at.elapsed() < MIN_REFETCH_INTERVAL
 }
 
-fn check_nonce(claim: Option<&str>, raw_nonce: Option<&str>) -> Result<()> {
-    let Some(raw) = raw_nonce else {
-        return Ok(());
-    };
-    let hashed = hex::encode(Sha256::digest(raw.as_bytes()));
+fn check_nonce(claim: Option<&str>, raw_nonce: &str) -> Result<()> {
+    let expected = hex::encode(Sha256::digest(raw_nonce.as_bytes()));
     match claim {
-        Some(value) if value == raw || value == hashed => Ok(()),
-        _ => Err(anyhow!("nonce mismatch")),
+        Some(value) if !raw_nonce.is_empty() && value.eq_ignore_ascii_case(&expected) => Ok(()),
+        _ => Err(anyhow!("nonce missing or mismatched")),
     }
 }
 
@@ -145,12 +138,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn nonce_accepts_raw_or_sha256() {
+    fn nonce_must_be_the_sha256_hex_of_the_raw_nonce() {
         let hashed = hex::encode(Sha256::digest(b"abc"));
-        assert!(check_nonce(Some("abc"), Some("abc")).is_ok());
-        assert!(check_nonce(Some(&hashed), Some("abc")).is_ok());
-        assert!(check_nonce(Some("zzz"), Some("abc")).is_err());
-        assert!(check_nonce(None, Some("abc")).is_err());
-        assert!(check_nonce(None, None).is_ok());
+        assert!(check_nonce(Some(&hashed), "abc").is_ok());
+        assert!(check_nonce(Some(&hashed.to_uppercase()), "abc").is_ok());
+        assert!(
+            check_nonce(Some("abc"), "abc").is_err(),
+            "raw nonce in the claim is not accepted"
+        );
+        assert!(check_nonce(Some("zzz"), "abc").is_err());
+        assert!(check_nonce(None, "abc").is_err());
+        assert!(check_nonce(Some(&hashed), "").is_err());
     }
 }

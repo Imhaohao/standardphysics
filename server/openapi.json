@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Standard Physics server",
-    "description": "Scans, uploads, live findings and assessments.\n\nUploads: artifact kind `mesh` carries the binary `mesh.spm`; `crop` carries detector crops (JPEG); `photo`, `video` and `other` are free-form. RoomPlan rooms are not uploaded as files: they stream as CapturedRoom JSON per room over the live WebSocket (`GET /v1/scans/{scan_id}/live`, JSON text frames). Client frames are `ClientMessage` (`room`, `ping`); server frames are `ServerMessage` (`hello`, `scene` (merged Scene, sent after hello and after finish), `room` (one converted sp-core Room, on every room update), `findings`, `report`, `error`, `pong`). Both are defined under components/schemas.",
+    "description": "Scans, uploads, live findings and assessments.\n\nUploads: artifact kind `mesh` carries the binary `mesh.spm`; `crop` carries detector crops (JPEG); `photo`, `video` and `other` are free-form. RoomPlan rooms are not uploaded as files: they stream as CapturedRoom JSON per room over the live WebSocket (`GET /v1/scans/{scan_id}/live`, JSON text frames). Client frames are `ClientMessage` (`room`, `ping`); server frames are `ServerMessage` (`hello`, `scene` (merged Scene, sent after hello and after finish), `room` (one converted sp-core Room, on every room update), `findings`, `report`, `error`, `pong`). Both are defined under components/schemas.\n\nAuth for the socket: native clients send `Authorization: Bearer`; browsers call `POST /v1/scans/{scan_id}/live-ticket` and open the socket with the single-use `?ticket=` (valid 30 s). Session tokens in the query string are rejected.\n\nPresigned upload URLs all point at one host, returned as `host` in the presign response and equal to the host of `S3_PUBLIC_ENDPOINT` (https, path-style: `https://<host>/<bucket>/<key>?X-Amz-...`). Allowlist that host on the device.\n\nApple sign-in: send the raw `nonce`; the identity token's `nonce` claim must be its lowercase hex SHA-256.\n\n`POST /v1/scans` and `POST /v1/scans/{scan_id}/uploads` accept `Idempotency-Key`.",
     "license": {
       "name": ""
     },
@@ -294,6 +294,20 @@
           "scans"
         ],
         "operationId": "create_scan",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Repeats with the same key and body within 24 h replay the first response; a different body is 409.",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -316,6 +330,16 @@
             }
           },
           "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
             "description": "",
             "content": {
               "application/json": {
@@ -547,9 +571,9 @@
             }
           },
           {
-            "name": "token",
+            "name": "ticket",
             "in": "query",
-            "description": "Session token, for browsers that cannot set headers",
+            "description": "Single-use ticket from POST /v1/scans/{scan_id}/live-ticket, for browsers that cannot set an Authorization header. Session tokens are never accepted in the query string.",
             "required": false,
             "schema": {
               "type": "string"
@@ -568,6 +592,52 @@
         "responses": {
           "101": {
             "description": "WebSocket upgrade. Client sends ClientMessage JSON text frames, server sends ServerMessage."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/scans/{scan_id}/live-ticket": {
+      "post": {
+        "tags": [
+          "live"
+        ],
+        "operationId": "create_live_ticket",
+        "parameters": [
+          {
+            "name": "scan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveTicket"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -638,6 +708,18 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Repeats with the same key and body within 24 h replay the first response; a different body is 409.",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
           }
         ],
         "requestBody": {
@@ -662,6 +744,16 @@
             }
           },
           "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
             "description": "",
             "content": {
               "application/json": {
@@ -948,17 +1040,16 @@
       "AppleSignIn": {
         "type": "object",
         "required": [
-          "identity_token"
+          "identity_token",
+          "nonce"
         ],
         "properties": {
           "identity_token": {
             "type": "string"
           },
           "nonce": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string",
+            "description": "The raw nonce; the identity token's `nonce` claim must be its hex SHA-256."
           }
         }
       },
@@ -1295,6 +1386,23 @@
           }
         }
       },
+      "LiveTicket": {
+        "type": "object",
+        "required": [
+          "ticket",
+          "expires_in_secs"
+        ],
+        "properties": {
+          "expires_in_secs": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "ticket": {
+            "type": "string",
+            "description": "Pass as `?ticket=` when opening the WebSocket. Single use, valid for `expires_in_secs`."
+          }
+        }
+      },
       "Measured": {
         "type": "object",
         "required": [
@@ -1379,6 +1487,13 @@
             "type": "integer",
             "format": "int64",
             "minimum": 0
+          },
+          "host": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Host (with port when not default) every URL in `parts` points at; allowlist this on the device."
           },
           "parts": {
             "type": "array",

@@ -19,7 +19,7 @@ impl Modify for BearerAuth {
 #[openapi(
     info(
         title = "Standard Physics server",
-        description = "Scans, uploads, live findings and assessments.\n\nUploads: artifact kind `mesh` carries the binary `mesh.spm`; `crop` carries detector crops (JPEG); `photo`, `video` and `other` are free-form. RoomPlan rooms are not uploaded as files: they stream as CapturedRoom JSON per room over the live WebSocket (`GET /v1/scans/{scan_id}/live`, JSON text frames). Client frames are `ClientMessage` (`room`, `ping`); server frames are `ServerMessage` (`hello`, `scene` (merged Scene, sent after hello and after finish), `room` (one converted sp-core Room, on every room update), `findings`, `report`, `error`, `pong`). Both are defined under components/schemas.",
+        description = "Scans, uploads, live findings and assessments.\n\nUploads: artifact kind `mesh` carries the binary `mesh.spm`; `crop` carries detector crops (JPEG); `photo`, `video` and `other` are free-form. RoomPlan rooms are not uploaded as files: they stream as CapturedRoom JSON per room over the live WebSocket (`GET /v1/scans/{scan_id}/live`, JSON text frames). Client frames are `ClientMessage` (`room`, `ping`); server frames are `ServerMessage` (`hello`, `scene` (merged Scene, sent after hello and after finish), `room` (one converted sp-core Room, on every room update), `findings`, `report`, `error`, `pong`). Both are defined under components/schemas.\n\nAuth for the socket: native clients send `Authorization: Bearer`; browsers call `POST /v1/scans/{scan_id}/live-ticket` and open the socket with the single-use `?ticket=` (valid 30 s). Session tokens in the query string are rejected.\n\nPresigned upload URLs all point at one host, returned as `host` in the presign response and equal to the host of `S3_PUBLIC_ENDPOINT` (https, path-style: `https://<host>/<bucket>/<key>?X-Amz-...`). Allowlist that host on the device.\n\nApple sign-in: send the raw `nonce`; the identity token's `nonce` claim must be its lowercase hex SHA-256.\n\n`POST /v1/scans` and `POST /v1/scans/{scan_id}/uploads` accept `Idempotency-Key`.",
         version = "1.0.0"
     ),
     paths(
@@ -42,6 +42,7 @@ impl Modify for BearerAuth {
         uploads::handlers::complete_upload,
         uploads::handlers::abort_upload,
         uploads::handlers::list_artifacts,
+        live::tickets::create_live_ticket,
         live::ws::live_socket,
     ),
     components(schemas(
