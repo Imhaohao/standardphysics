@@ -55,6 +55,21 @@ final class OnDeviceScanProcessorTests: XCTestCase {
         XCTAssertTrue(unnamed.isEmpty, "\(unnamed.prefix(3).map(\.subjectID))")
     }
 
+    func testSavedDetectorObjectsAreCheckedAndNamed() async throws {
+        let (journal, manifest) = try await savedScan(rooms: [("test1", "Dorm room")])
+        let sink = DetectedObject(
+            id: "detector-sink", category: "sink", label: "sink",
+            center: ScenePoint(x: -5.0, y: 0.8, z: 0.2), size: ScenePoint(x: 0.6, y: 0.2, z: 0.5), confidence: 0.8, hits: 4
+        )
+        try await journal.saveDetectedObjects([sink], scanID: manifest.scanID, roomIndex: 0)
+
+        let report = try await OnDeviceScanProcessor(journal: journal).process(manifest) { _ in }
+
+        XCTAssertTrue(report.findings.contains { $0.subjectID == "detector-sink" })
+        XCTAssertEqual(report.subjects["detector-sink"]?.label, "Sink")
+        XCTAssertEqual(report.subjects["detector-sink"]?.roomName, "Dorm room")
+    }
+
     func testAScanWithNoRoomsIsRefused() async throws {
         let (journal, manifest) = try await savedScan(rooms: [])
         do {

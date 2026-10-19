@@ -207,3 +207,41 @@ impl SceneEngine {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const ROOM_JSON: &str = include_str!("../../datasets/phone/test1/room.json");
+
+    /// Exactly what the iOS app sends for a detector object (`DetectedObject` encoded as JSON).
+    fn phone_detector_observation() -> Value {
+        json!({
+            "id": "detector-fridge", "category": "refrigerator", "label": "refrigerator",
+            "center": {"x": -4.9, "y": 0.85, "z": -1.0}, "size": {"x": 0.7, "y": 1.7, "z": 0.7},
+            "yaw": 0.0, "top_height": 1.7, "confidence": 0.8, "hits": 4
+        })
+    }
+
+    #[test]
+    fn phone_detector_observations_become_detector_objects() {
+        let mut engine = SceneEngine::new().unwrap();
+        let updated = engine
+            .update_room(RoomInput {
+                room_id: "0".into(),
+                captured_room: Some(serde_json::from_str(ROOM_JSON).unwrap()),
+                observations: vec![phone_detector_observation()],
+            })
+            .unwrap();
+        let room = updated.room.unwrap();
+        let objects = room["objects"].as_array().unwrap();
+        let fridge = objects
+            .iter()
+            .find(|o| o["id"] == "detector-fridge")
+            .unwrap();
+        assert_eq!(fridge["source"], "detector");
+        assert_eq!(fridge["category"], "refrigerator");
+        assert_eq!(fridge["top_height"], 1.7);
+        assert_eq!(objects.len(), 17);
+    }
+}

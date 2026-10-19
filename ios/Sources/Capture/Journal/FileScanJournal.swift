@@ -14,6 +14,8 @@ nonisolated protocol ScanStore: ScanJournaling, ScanRetaining {
     func carryOverMesh(scanID: UUID) async throws
     func frameLog(scanID: UUID) async -> FrameLog
     func saveFrameLog(_ log: FrameLog, scanID: UUID) async throws
+    /// Detector objects for a saved room, in `rooms/<n>.detections.json`.
+    func saveDetectedObjects(_ objects: [DetectedObject], scanID: UUID, roomIndex: Int) async throws
 }
 
 nonisolated enum ScanJournalError: Error, Equatable {
@@ -32,6 +34,7 @@ nonisolated enum ScanFiles {
     static let heavy = [mesh, carriedOverMesh, worldMap, relocalizationSnapshot]
 
     static func room(_ index: Int) -> String { "\(roomsDirectory)/\(index).json" }
+    static func detections(_ index: Int) -> String { DetectedObjectFile.path(forRoomFile: room(index)) }
 }
 
 /// `Application Support/Scans/<uuid>/`. Every file is written atomically and rooms are written
@@ -132,6 +135,12 @@ actor FileScanJournal: ScanStore {
 
     func saveFrameLog(_ log: FrameLog, scanID: UUID) async throws {
         try writer.write(try JSONEncoder().encode(log), to: url(scanID, ScanFiles.frameLog))
+    }
+
+    func saveDetectedObjects(_ objects: [DetectedObject], scanID: UUID, roomIndex: Int) async throws {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        try writer.write(try encoder.encode(DetectedObjectFile(objects: objects)), to: url(scanID, ScanFiles.detections(roomIndex)))
     }
 
     /// Once the server holds the finished scan, the mesh, world map and camera snapshot only

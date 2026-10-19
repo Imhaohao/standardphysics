@@ -14,7 +14,10 @@ final class CaptureCoordinator: CaptureControlling {
     private(set) var manifest: ScanManifest?
     private(set) var finishedRoomElements: [LiveElement] = []
     private(set) var currentRoomElements: [LiveElement] = []
-    var detections: [Detection] = []
+    /// Confirmed detector objects: those kept with finished rooms plus the room in progress.
+    private(set) var detections: [Detection] = []
+    @ObservationIgnored private var finishedRoomDetections: [Detection] = []
+    @ObservationIgnored private var detectionAccumulator = DetectionAccumulator()
     private var onDeviceFindings: [Finding] = []
     private var serverFindings: [Finding] = []
     private(set) var guidance: String?
@@ -27,7 +30,7 @@ final class CaptureCoordinator: CaptureControlling {
     /// Told about each milestone once it is on disk, e.g. to stream the scan to the server.
     @ObservationIgnored weak var observer: (any CaptureObserving)?
 
-    @ObservationIgnored var onRoomFinished: (@Sendable (_ capturedRoomJSON: Data) async throws -> [Finding])?
+    @ObservationIgnored var onRoomFinished: (@Sendable (_ capturedRoomJSON: Data, _ detectedObjects: [DetectedObject]) async throws -> [Finding])?
 
     var liveElements: [LiveElement] { finishedRoomElements + currentRoomElements }
     var provisionalFindings: [Finding] {
@@ -120,6 +123,24 @@ final class CaptureCoordinator: CaptureControlling {
     func discardScan() async {
         send(.discard)
         await settle()
+    }
+
+    /// Feeds one batch of world-lifted detections to the room in progress.
+    func ingest(_ batch: [Detection]) {
+        guard case .scanning = phase else { return }
+        detectionAccumulator = detectionAccumulator.adding(batch)
+        publishDetections()
+    }
+
+    private func publishDetections() {
+        let current = detectionAccumulator.confirmed.map(\.asDetection)
+        let next = finishedRoomDetections + current
+        if next != detections { detections = next }
+    }
+
+    private func resetRoomDetections() {
+        detectionAccumulator = DetectionAccumulator(configuration: detectionAccumulator.configuration)
+        publishDetections()
     }
 
     func handleScenePhase(_ scenePhase: ScenePhase) {
@@ -298,6 +319,7 @@ final class CaptureCoordinator: CaptureControlling {
     private func startRoomCapture() {
         Diagnostics.shared.record("room_capture_started", ["elements_dropped": Double(currentRoomElements.count)])
         currentRoomElements = []
+        resetRoomDetections()
         instruction = .normal
         dependencies.scanner.start()
         recordSessionConfiguration()
@@ -316,6 +338,7 @@ final class CaptureCoordinator: CaptureControlling {
     private func cancelRoomCapture() {
         dependencies.scanner.cancel()
         currentRoomElements = []
+        resetRoomDetections()
     }
 
     private func saveCheckpoint() async {
@@ -344,17 +367,34 @@ final class CaptureCoordinator: CaptureControlling {
             send(.sessionFailed(message: "Couldn't save the room to this phone."))
             return
         }
+        let detectedObjects = await persistDetectedObjects(scanID: scanID, index: index, roomJSON: roomJSON)
         finishedRoomElements += currentRoomElements
         currentRoomElements = []
         if let manifest { notify(.roomSaved(index: index, manifest: manifest)) }
-        evaluate(roomJSON)
+        evaluate(roomJSON, detectedObjects: detectedObjects)
     }
 
-    private func evaluate(_ roomJSON: Data) {
+    /// RoomPlan stays the source of truth: tracks it already reported are dropped here.
+    private func persistDetectedObjects(scanID: UUID, index: Int, roomJSON: Data) async -> [DetectedObject] {
+        let room = CapturedRoomGeometry(capturedRoomJSON: roomJSON) ?? CapturedRoomGeometry(floorLevel: 0, objects: [])
+        let finished = DetectedObjects.finished(tracks: detectionAccumulator.confirmed, room: room)
+        finishedRoomDetections += finished.kept.map(\.asDetection)
+        resetRoomDetections()
+        guard !finished.objects.isEmpty else { return [] }
+        do {
+            try await dependencies.journal.saveDetectedObjects(finished.objects, scanID: scanID, roomIndex: index)
+        } catch {
+            logger.error("Detector objects were not saved: \(error.localizedDescription)")
+        }
+        Diagnostics.shared.record("room_detector_objects", ["count": Double(finished.objects.count)])
+        return finished.objects
+    }
+
+    private func evaluate(_ roomJSON: Data, detectedObjects: [DetectedObject]) {
         guard let onRoomFinished else { return }
         Task { [weak self] in
             do {
-                let findings = try await onRoomFinished(roomJSON)
+                let findings = try await onRoomFinished(roomJSON, detectedObjects)
                 self?.onDeviceFindings += findings
             } catch {
                 self?.logger.error("Room evaluation failed: \(error.localizedDescription)")
@@ -492,6 +532,8 @@ final class CaptureCoordinator: CaptureControlling {
     private func resetLiveState() {
         finishedRoomElements = []
         currentRoomElements = []
+        finishedRoomDetections = []
+        resetRoomDetections()
         onDeviceFindings = []
         serverFindings = []
         exportedStructures = []

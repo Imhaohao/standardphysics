@@ -149,7 +149,7 @@ final class CaptureCoordinatorTests: XCTestCase {
     func testFinishRoomSavesRoomMeshAndFindings() async throws {
         let coordinator = makeCoordinator()
         let finding = Finding(ruleID: "r1", jurisdiction: .ada2010, section: "404", subjectID: "door", status: .fail, measured: nil, required: ">= 32 in", message: "Too narrow")
-        coordinator.onRoomFinished = { _ in [finding] }
+        coordinator.onRoomFinished = { _, _ in [finding] }
         host.parts = [MeshPart(id: UUID(), transform: matrix_identity_float4x4, vertices: Data(count: 36), indices: Data(count: 12), classification: nil)]
         await coordinator.startScan(name: "Shop")
         await coordinator.finishRoom()
@@ -172,6 +172,49 @@ final class CaptureCoordinatorTests: XCTestCase {
         XCTAssertEqual(coordinator.phase, .scanning(room: 1))
         XCTAssertEqual(scanner.starts, 2)
         XCTAssertEqual(host.runModes, [.fresh])
+    }
+
+    func testConfirmedDetectionsAreSavedWithTheRoomAndChecked() async throws {
+        let coordinator = makeCoordinator()
+        scanner.roomJSONOnFinish = try RepoFixtures.room()
+        let received = Locked<[DetectedObject]>([])
+        coordinator.onRoomFinished = { _, objects in
+            received.write { $0 = objects }
+            return []
+        }
+        await coordinator.startScan(name: "Dorm")
+        let fridge = liftedDetection("refrigerator", at: RepoFixtures.test1Fridge)
+        let tableRoomPlanFound = liftedDetection("table", at: SIMD3(-5.0, -0.86, 1.98), size: SIMD3(1.9, 0.8, 0.9))
+        coordinator.ingest([fridge, tableRoomPlanFound])
+        coordinator.ingest([fridge, tableRoomPlanFound])
+        XCTAssertTrue(coordinator.detections.isEmpty, "two sightings do not count yet")
+        coordinator.ingest([fridge, tableRoomPlanFound])
+        XCTAssertEqual(coordinator.detections.map(\.category), ["refrigerator", "table"])
+
+        await coordinator.finishRoom()
+
+        let directory = FileScanJournal(root: root).directory(for: try XCTUnwrap(coordinator.manifest?.scanID))
+        let saved = DetectedObjectFile.objects(forRoomAt: directory.appending(path: "rooms/0.json"))
+        XCTAssertEqual(saved.map(\.category), ["refrigerator"])
+        XCTAssertEqual(saved.first?.center.y ?? 0, 0.85, accuracy: 1e-4)
+        await eventually("objects reach the engine") { received.read { $0 } == saved }
+        XCTAssertEqual(coordinator.detections.map(\.category), ["refrigerator"], "the finished room keeps its box on screen")
+    }
+
+    func testDetectionsResetWhenTheRoomRestartsAndAreIgnoredWhilePaused() async throws {
+        let coordinator = makeCoordinator()
+        await coordinator.startScan(name: "Dorm")
+        let fridge = liftedDetection("refrigerator", at: SIMD3(1, 0.85, 2))
+        for _ in 0..<3 { coordinator.ingest([fridge]) }
+        XCTAssertEqual(coordinator.detections.count, 1)
+
+        coordinator.restartRoom()
+        await coordinator.settle()
+        XCTAssertTrue(coordinator.detections.isEmpty)
+
+        coordinator.pause()
+        for _ in 0..<3 { coordinator.ingest([fridge]) }
+        XCTAssertTrue(coordinator.detections.isEmpty)
     }
 
     func testRestartRoomRescansInPlace() async {
@@ -369,7 +412,7 @@ final class CaptureCoordinatorTests: XCTestCase {
         let coordinator = makeCoordinator()
         let onDevice = Finding(ruleID: "r1", jurisdiction: .ada2010, section: "404", subjectID: "door", status: .needsInfo, measured: nil, required: "", message: "phone")
         let other = Finding(ruleID: "r2", jurisdiction: .ada2010, section: "405", subjectID: "door", status: .pass, measured: nil, required: "", message: "phone")
-        coordinator.onRoomFinished = { _ in [onDevice, other] }
+        coordinator.onRoomFinished = { _, _ in [onDevice, other] }
         await coordinator.startScan(name: "Shop")
         await coordinator.finishRoom()
         await eventually("on-device findings") { coordinator.provisionalFindings.count == 2 }

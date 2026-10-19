@@ -15,8 +15,14 @@ nonisolated enum ComplianceEngineError: Error, Equatable {
 
 /// Evaluates rooms as they are finished, then the whole scan, with the shared Rust engine.
 nonisolated protocol RoomComplianceEvaluating: Sendable {
-    func evaluateRoom(capturedRoomJSON: Data) async throws -> [Finding]
+    func evaluateRoom(capturedRoomJSON: Data, detectedObjects: [DetectedObject]) async throws -> [Finding]
     func evaluateScan() async throws -> ComplianceReport
+}
+
+extension RoomComplianceEvaluating {
+    nonisolated func evaluateRoom(capturedRoomJSON: Data) async throws -> [Finding] {
+        try await evaluateRoom(capturedRoomJSON: capturedRoomJSON, detectedObjects: [])
+    }
 }
 
 nonisolated struct ComplianceReport: Sendable, Equatable {
@@ -45,15 +51,29 @@ actor RustComplianceEngine: RoomComplianceEvaluating {
         }
     }
 
-    func evaluateRoom(capturedRoomJSON: Data) throws -> [Finding] {
+    /// Detector objects join the first room of the capture before it is checked.
+    func evaluateRoom(capturedRoomJSON: Data, detectedObjects: [DetectedObject]) throws -> [Finding] {
         guard let json = String(data: capturedRoomJSON, encoding: .utf8) else {
             throw ComplianceEngineError.unreadableRoom
         }
         do {
-            return try engine.updateRoomplanRoom(capturedRoomJson: json).map(Finding.init)
+            guard !detectedObjects.isEmpty else {
+                return try engine.updateRoomplanRoom(capturedRoomJson: json).map(Finding.init)
+            }
+            let rooms = try importRoomplan(json: json)
+            let extraObjects = detectedObjects.map(SpObject.init)
+            return rooms.enumerated().flatMap { index, room in
+                var updated = room
+                if index == 0 { updated.objects += extraObjects }
+                return engine.updateRoom(room: updated)
+            }.map(Finding.init)
         } catch {
             throw ComplianceEngineError.engine(String(describing: error))
         }
+    }
+
+    func sceneJSON() -> String {
+        engine.sceneJson()
     }
 
     func evaluateScan() -> ComplianceReport {
@@ -99,6 +119,22 @@ extension Finding {
             severity: FindingSeverity(rawValue: finding.severity),
             counterpartRuleID: finding.counterpart,
             range: finding.measured.flatMap(MeasuredRange.init)
+        )
+    }
+}
+
+extension SpObject {
+    nonisolated init(_ object: DetectedObject) {
+        self.init(
+            id: object.id,
+            category: object.category,
+            center: SpVec3(x: object.center.x, y: object.center.y, z: object.center.z),
+            size: SpVec3(x: object.size.x, y: object.size.y, z: object.size.z),
+            yaw: object.yaw,
+            topHeight: object.topHeight,
+            confidence: object.confidence,
+            source: .detector,
+            attributes: ["detector_label": object.label, "detector_hits": String(object.hits)]
         )
     }
 }

@@ -27,7 +27,7 @@ final class OnDeviceScanProcessor: ScanProcessing {
         onUpdate(ProcessingUpdate(stage: .checking, fraction: 0.4))
         let engine = try makeEngine()
         for room in rooms {
-            _ = try await engine.evaluateRoom(capturedRoomJSON: room)
+            _ = try await engine.evaluateRoom(capturedRoomJSON: room.json, detectedObjects: room.detectedObjects)
         }
         let result = try await engine.evaluateScan()
 
@@ -37,14 +37,14 @@ final class OnDeviceScanProcessor: ScanProcessing {
         return report
     }
 
-    private func loadRooms(of manifest: ScanManifest) async throws -> [Data] {
+    private func loadRooms(of manifest: ScanManifest) async throws -> [(json: Data, detectedObjects: [DetectedObject])] {
         let directory = journal.directory(for: manifest.scanID)
         return try manifest.rooms.sorted { $0.index < $1.index }.map { record in
             let url = directory.appending(path: record.capturedRoomFile)
             guard let data = try? Data(contentsOf: url) else {
                 throw OnDeviceProcessingError.unreadableRoom(record.capturedRoomFile)
             }
-            return data
+            return (data, DetectedObjectFile.objects(forRoomAt: url))
         }
     }
 

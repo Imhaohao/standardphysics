@@ -201,7 +201,10 @@ final class ScanStreamer: CaptureObserving, RoomDelivering {
         do {
             let data = try Data(contentsOf: url)
             let roomID = RoomIdentity.roomID(capturedRoomJSON: data, fileName: url.lastPathComponent)
-            await channel.sendRoom(RoomUpdate(roomID: roomID, isFinal: true, capturedRoom: try JSONValue(jsonData: data)))
+            let observations = DetectedObjectFile.objects(forRoomAt: url).compactMap(\.observation)
+            await channel.sendRoom(RoomUpdate(
+                roomID: roomID, isFinal: true, capturedRoom: try JSONValue(jsonData: data), observations: observations
+            ))
         } catch {
             logger.error("Room \(index) could not be read for streaming")
         }

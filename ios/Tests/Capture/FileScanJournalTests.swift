@@ -79,6 +79,24 @@ final class FileScanJournalProtectionTests: XCTestCase {
         XCTAssertEqual(recorder.protection(of: "0.json"), .completeUntilFirstUserAuthentication)
     }
 
+    func testDetectorObjectsAreStoredLikeTheirRoom() async throws {
+        let recorder = ProtectionRecorder()
+        let journal = FileScanJournal(root: root, writer: recorder)
+        let scan = try await journal.create(name: "Dorm")
+        _ = try await journal.appendRoom(scanID: scan.scanID, capturedRoomJSON: Data("{}".utf8), name: "Room 1")
+        let fridge = DetectedObject(
+            id: "detector-1", category: "refrigerator", label: "refrigerator",
+            center: ScenePoint(x: 0, y: 0.85, z: 0), size: ScenePoint(x: 0.7, y: 1.7, z: 0.7), confidence: 0.8, hits: 3
+        )
+        try await journal.saveDetectedObjects([fridge], scanID: scan.scanID, roomIndex: 0)
+
+        XCTAssertEqual(recorder.protection(of: "0.detections.json"), .completeUntilFirstUserAuthentication)
+        let roomURL = journal.directory(for: scan.scanID).appending(path: ScanFiles.room(0))
+        XCTAssertEqual(DetectedObjectFile.objects(forRoomAt: roomURL), [fridge])
+        let reloaded = try await FileScanJournal(root: root).load(scanID: scan.scanID)
+        XCTAssertEqual(reloaded.rooms.count, 1, "the sidecar is never adopted as a room")
+    }
+
     func testScansFolderIsExcludedFromBackup() async throws {
         let journal = FileScanJournal(root: root)
         _ = try await journal.create(name: "Shop")
