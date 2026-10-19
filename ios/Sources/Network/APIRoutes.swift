@@ -12,59 +12,63 @@ nonisolated struct Endpoint<Response: Decodable & Sendable>: Sendable {
     var body: (any Encodable & Sendable)?
     var requiresAuth = true
     var isIdempotent: Bool
-    var idempotencyKey: String?
+    var timeout: TimeInterval?
 }
 
-/// The single place that knows server paths. Swapping to the generated OpenAPI contract
+/// The single place that knows server paths (server/openapi.json). Swapping contracts
 /// changes only this file and APIModels.swift.
 nonisolated enum APIRoutes {
     static let apiPrefix = "/v1"
-    static let idempotencyHeader = "Idempotency-Key"
-    static let lastEventIDQueryItem = "last_event_id"
+    static let finishTimeout: TimeInterval = 120
 
-    static func signIn(_ body: SignInRequest) -> Endpoint<AuthSession> {
-        Endpoint(method: .post, path: "\(apiPrefix)/auth/sign-in", body: body, requiresAuth: false, isIdempotent: false)
+    static func register(_ body: Credentials) -> Endpoint<AuthSession> {
+        Endpoint(method: .post, path: "\(apiPrefix)/auth/register", body: body, requiresAuth: false, isIdempotent: false)
+    }
+
+    static func login(_ body: Credentials) -> Endpoint<AuthSession> {
+        Endpoint(method: .post, path: "\(apiPrefix)/auth/login", body: body, requiresAuth: false, isIdempotent: false)
     }
 
     static func signInWithApple(_ body: AppleSignInRequest) -> Endpoint<AuthSession> {
         Endpoint(method: .post, path: "\(apiPrefix)/auth/apple", body: body, requiresAuth: false, isIdempotent: false)
     }
 
+    static func logout() -> Endpoint<EmptyResponse> {
+        Endpoint(method: .post, path: "\(apiPrefix)/auth/logout", isIdempotent: true)
+    }
+
+    /// Not idempotent: the server has no client id, so a retried create makes a second scan.
     static func createScan(_ body: CreateScanRequest) -> Endpoint<ScanResponse> {
-        Endpoint(
-            method: .post, path: "\(apiPrefix)/scans", body: body,
-            isIdempotent: true, idempotencyKey: body.clientID
-        )
+        Endpoint(method: .post, path: "\(apiPrefix)/scans", body: body, isIdempotent: false)
     }
 
-    static func requestUpload(scanID: String, body: RequestUploadBody, clientFileID: UUID) -> Endpoint<MultipartUploadGrant> {
-        Endpoint(
-            method: .post, path: "\(apiPrefix)/scans/\(scanID)/uploads", body: body,
-            isIdempotent: true, idempotencyKey: clientFileID.uuidString
-        )
+    static func assessment(scanID: String) -> Endpoint<Report> {
+        Endpoint(method: .get, path: "\(apiPrefix)/scans/\(scanID)/assessment", isIdempotent: true)
     }
 
-    static func refreshParts(scanID: String, uploadID: String, body: RefreshPartsRequest) -> Endpoint<PartsResponse> {
-        Endpoint(
-            method: .post, path: "\(apiPrefix)/scans/\(scanID)/uploads/\(uploadID)/parts/refresh",
-            body: body, isIdempotent: true
-        )
+    static func finishScan(scanID: String) -> Endpoint<Report> {
+        Endpoint(method: .post, path: "\(apiPrefix)/scans/\(scanID)/finish", isIdempotent: false, timeout: finishTimeout)
     }
 
-    static func completeUpload(scanID: String, uploadID: String, body: CompleteUploadRequest) -> Endpoint<CompleteUploadResponse> {
-        Endpoint(
-            method: .post, path: "\(apiPrefix)/scans/\(scanID)/uploads/\(uploadID)/complete",
-            body: body, isIdempotent: true
-        )
+    /// Retried despite not being idempotent: a duplicate only leaves an unused open upload.
+    static func createUpload(scanID: String, body: CreateUploadBody) -> Endpoint<UploadInfo> {
+        Endpoint(method: .post, path: "\(apiPrefix)/scans/\(scanID)/uploads", body: body, isIdempotent: true)
     }
 
-    static func completeScan(scanID: String) -> Endpoint<CompleteScanResponse> {
-        Endpoint(method: .post, path: "\(apiPrefix)/scans/\(scanID)/complete", isIdempotent: true)
+    static func uploadStatus(scanID: String, uploadID: String) -> Endpoint<UploadStatusResponse> {
+        Endpoint(method: .get, path: "\(apiPrefix)/scans/\(scanID)/uploads/\(uploadID)", isIdempotent: true)
     }
 
-    static func findings(scanID: String, afterEventID: Int?) -> Endpoint<FindingsResponse> {
-        let query = afterEventID.map { [URLQueryItem(name: "after", value: String($0))] } ?? []
-        return Endpoint(method: .get, path: "\(apiPrefix)/scans/\(scanID)/findings", query: query, isIdempotent: true)
+    static func presignParts(scanID: String, uploadID: String, body: PresignRequest) -> Endpoint<PresignResponse> {
+        Endpoint(method: .post, path: "\(apiPrefix)/scans/\(scanID)/uploads/\(uploadID)/parts", body: body, isIdempotent: true)
+    }
+
+    static func completeUpload(scanID: String, uploadID: String, body: CompleteUploadRequest) -> Endpoint<Artifact> {
+        Endpoint(method: .post, path: "\(apiPrefix)/scans/\(scanID)/uploads/\(uploadID)/complete", body: body, isIdempotent: true)
+    }
+
+    static func abortUpload(scanID: String, uploadID: String) -> Endpoint<EmptyResponse> {
+        Endpoint(method: .post, path: "\(apiPrefix)/scans/\(scanID)/uploads/\(uploadID)/abort", isIdempotent: true)
     }
 
     static func livePath(scanID: String) -> String {

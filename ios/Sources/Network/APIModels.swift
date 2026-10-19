@@ -1,92 +1,112 @@
 import Foundation
 
+// Wire types for sp-server (server/openapi.json). Field names match the spec exactly.
+
+nonisolated struct EmptyResponse: Decodable, Sendable {}
+
+// MARK: Auth
+
+nonisolated struct ServerUser: Codable, Sendable, Equatable {
+    let id: String
+    let email: String?
+}
+
 nonisolated struct AuthSession: Codable, Sendable, Equatable {
-    let accessToken: String
-    let expiresAt: Date?
+    let token: String
+    let expiresAt: Date
+    let user: ServerUser
 
     enum CodingKeys: String, CodingKey {
-        case accessToken = "access_token"
+        case token
         case expiresAt = "expires_at"
+        case user
     }
 }
 
-nonisolated struct SignInRequest: Encodable, Sendable {
+nonisolated struct Credentials: Encodable, Sendable {
     let email: String
     let password: String
 }
 
 nonisolated struct AppleSignInRequest: Encodable, Sendable {
     let identityToken: String
-    let fullName: String?
+    let nonce: String?
 
     enum CodingKeys: String, CodingKey {
         case identityToken = "identity_token"
-        case fullName = "full_name"
+        case nonce
     }
 }
 
+// MARK: Scans
+
 nonisolated struct CreateScanRequest: Encodable, Sendable {
-    let clientID: String
-    let name: String
+    let name: String?
+    let siteName: String?
 
     enum CodingKeys: String, CodingKey {
-        case clientID = "client_id"
         case name
+        case siteName = "site_name"
     }
 }
 
 nonisolated struct ScanResponse: Codable, Sendable, Equatable {
     let id: String
-    let clientID: String
     let name: String
+    let siteName: String?
     let status: String
+    let createdAt: Date
+    let updatedAt: Date
 
     enum CodingKeys: String, CodingKey {
-        case id
-        case clientID = "client_id"
-        case name, status
+        case id, name, status
+        case siteName = "site_name"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
     }
 }
 
-nonisolated struct RequestUploadBody: Encodable, Sendable {
-    let fileName: String
+// MARK: Uploads
+
+nonisolated struct CreateUploadBody: Encodable, Sendable {
+    let kind: String
+    let filename: String
     let contentType: String
     let sizeBytes: Int64
-    let partSize: Int
+    let partSize: Int?
 
     enum CodingKeys: String, CodingKey {
-        case fileName = "file_name"
+        case kind, filename
         case contentType = "content_type"
         case sizeBytes = "size_bytes"
         case partSize = "part_size"
     }
 }
 
-nonisolated struct PresignedPart: Codable, Sendable, Equatable {
-    let partNumber: Int
-    let url: URL
-    let expiresAt: Date
-
-    enum CodingKeys: String, CodingKey {
-        case partNumber = "part_number"
-        case url
-        case expiresAt = "expires_at"
-    }
-}
-
-nonisolated struct MultipartUploadGrant: Codable, Sendable, Equatable {
-    let uploadID: String
+nonisolated struct UploadInfo: Codable, Sendable, Equatable {
+    let id: String
+    let scanID: String
+    let kind: String
+    let filename: String
+    let contentType: String
+    let sizeBytes: Int64
     let partSize: Int
-    let parts: [PresignedPart]
+    let partCount: Int
+    let state: String
+    let createdAt: Date
 
     enum CodingKeys: String, CodingKey {
-        case uploadID = "upload_id"
+        case id, kind, filename, state
+        case scanID = "scan_id"
+        case contentType = "content_type"
+        case sizeBytes = "size_bytes"
         case partSize = "part_size"
-        case parts
+        case partCount = "part_count"
+        case createdAt = "created_at"
     }
 }
 
-nonisolated struct RefreshPartsRequest: Encodable, Sendable {
+nonisolated struct PresignRequest: Encodable, Sendable {
     let partNumbers: [Int]
 
     enum CodingKeys: String, CodingKey {
@@ -94,149 +114,367 @@ nonisolated struct RefreshPartsRequest: Encodable, Sendable {
     }
 }
 
-nonisolated struct PartsResponse: Codable, Sendable, Equatable {
-    let parts: [PresignedPart]
-}
-
-nonisolated struct CompletedPart: Codable, Sendable, Equatable {
+/// `headers` arrive as `[[name, value]]` and must be sent on the PUT unchanged.
+nonisolated struct PresignedPart: Codable, Sendable, Equatable {
     let partNumber: Int
-    let etag: String
+    let url: URL
+    let headers: [String: String]
 
     enum CodingKeys: String, CodingKey {
         case partNumber = "part_number"
-        case etag
-    }
-}
-
-nonisolated struct CompleteUploadRequest: Encodable, Sendable {
-    let parts: [CompletedPart]
-}
-
-nonisolated struct CompleteUploadResponse: Codable, Sendable, Equatable {
-    let fileKey: String
-
-    enum CodingKeys: String, CodingKey {
-        case fileKey = "file_key"
-    }
-}
-
-nonisolated struct CompleteScanResponse: Codable, Sendable, Equatable {
-    let jobID: String
-    let status: String
-
-    enum CodingKeys: String, CodingKey {
-        case jobID = "job_id"
-        case status
-    }
-}
-
-nonisolated struct FindingsResponse: Codable, Sendable, Equatable {
-    let findings: [Finding]
-    let lastEventID: Int?
-    let status: String
-
-    enum CodingKeys: String, CodingKey {
-        case findings
-        case lastEventID = "last_event_id"
-        case status
-    }
-}
-
-nonisolated struct APIErrorBody: Decodable, Sendable {
-    let message: String?
-}
-
-// MARK: - Live channel wire format
-
-nonisolated struct RoomFinishedEvent: Codable, Sendable, Equatable {
-    let clientEventID: UUID
-    let roomIndex: Int
-    let name: String
-    let fileKey: String?
-
-    enum CodingKeys: String, CodingKey {
-        case type
-        case clientEventID = "client_event_id"
-        case roomIndex = "room_index"
-        case name
-        case fileKey = "file_key"
+        case url, headers
     }
 
-    static let wireType = "room_finished"
-
-    init(clientEventID: UUID = UUID(), roomIndex: Int, name: String, fileKey: String?) {
-        self.clientEventID = clientEventID
-        self.roomIndex = roomIndex
-        self.name = name
-        self.fileKey = fileKey
+    init(partNumber: Int, url: URL, headers: [String: String] = [:]) {
+        self.partNumber = partNumber
+        self.url = url
+        self.headers = headers
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        clientEventID = try container.decode(UUID.self, forKey: .clientEventID)
-        roomIndex = try container.decode(Int.self, forKey: .roomIndex)
-        name = try container.decode(String.self, forKey: .name)
-        fileKey = try container.decodeIfPresent(String.self, forKey: .fileKey)
+        partNumber = try container.decode(Int.self, forKey: .partNumber)
+        url = try container.decode(URL.self, forKey: .url)
+        let pairs = try container.decode([[String]].self, forKey: .headers)
+        headers = Dictionary(pairs.compactMap { $0.count == 2 ? ($0[0], $0[1]) : nil }, uniquingKeysWith: { $1 })
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(partNumber, forKey: .partNumber)
+        try container.encode(url, forKey: .url)
+        try container.encode(headers.sorted { $0.key < $1.key }.map { [$0.key, $0.value] }, forKey: .headers)
+    }
+}
+
+nonisolated struct PresignResponse: Codable, Sendable, Equatable {
+    let parts: [PresignedPart]
+    let expiresInSecs: Int
+
+    enum CodingKeys: String, CodingKey {
+        case parts
+        case expiresInSecs = "expires_in_secs"
+    }
+}
+
+nonisolated struct UploadedPart: Codable, Sendable, Equatable {
+    let partNumber: Int
+    let etag: String
+    let sizeBytes: Int64
+
+    enum CodingKeys: String, CodingKey {
+        case etag
+        case partNumber = "part_number"
+        case sizeBytes = "size_bytes"
+    }
+}
+
+nonisolated struct UploadStatusResponse: Codable, Sendable, Equatable {
+    let upload: UploadInfo
+    let uploadedParts: [UploadedPart]
+
+    enum CodingKeys: String, CodingKey {
+        case upload
+        case uploadedParts = "uploaded_parts"
+    }
+}
+
+nonisolated struct CompleteUploadRequest: Encodable, Sendable {
+    let sha256: String
+}
+
+nonisolated struct Artifact: Codable, Sendable, Equatable {
+    let id: String
+    let scanID: String
+    let uploadID: String
+    let kind: String
+    let filename: String
+    let contentType: String
+    let sizeBytes: Int64
+    let sha256: String
+    let createdAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case id, kind, filename, sha256
+        case scanID = "scan_id"
+        case uploadID = "upload_id"
+        case contentType = "content_type"
+        case sizeBytes = "size_bytes"
+        case createdAt = "created_at"
+    }
+}
+
+// MARK: Findings and report
+
+nonisolated enum JSONValue: Codable, Sendable, Equatable {
+    case null
+    case bool(Bool)
+    case number(Double)
+    case string(String)
+    case array([JSONValue])
+    case object([String: JSONValue])
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if container.decodeNil() { self = .null }
+        else if let value = try? container.decode(Bool.self) { self = .bool(value) }
+        else if let value = try? container.decode(Double.self) { self = .number(value) }
+        else if let value = try? container.decode(String.self) { self = .string(value) }
+        else if let value = try? container.decode([JSONValue].self) { self = .array(value) }
+        else { self = .object(try container.decode([String: JSONValue].self)) }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch self {
+        case .null: try container.encodeNil()
+        case .bool(let value): try container.encode(value)
+        case .number(let value): try container.encode(value)
+        case .string(let value): try container.encode(value)
+        case .array(let value): try container.encode(value)
+        case .object(let value): try container.encode(value)
+        }
+    }
+
+    init(jsonData: Data) throws {
+        self = try JSONDecoder().decode(JSONValue.self, from: jsonData)
+    }
+}
+
+/// A finding exactly as sp-server sends it. `required` and `evidence` are free-form JSON and
+/// `jurisdiction` may be "SYSTEM", which the shared `Finding` cannot hold; see `asFinding`.
+nonisolated struct ServerFinding: Codable, Sendable, Equatable, Identifiable {
+    let ruleID: String
+    let jurisdiction: String
+    let section: String
+    let subjectID: String
+    let status: FindingStatus
+    let measured: MeasuredValue?
+    let required: JSONValue?
+    let message: String
+    let evidence: JSONValue?
+
+    var id: String { "\(ruleID)#\(subjectID)" }
+
+    enum CodingKeys: String, CodingKey {
+        case ruleID = "rule_id"
+        case jurisdiction, section
+        case subjectID = "subject_id"
+        case status, measured, required, message, evidence
+    }
+
+    /// Nil for jurisdictions the app has no type for (e.g. SYSTEM label findings).
+    var asFinding: Finding? {
+        guard let jurisdiction = Jurisdiction(rawValue: jurisdiction) else { return nil }
+        return Finding(
+            ruleID: ruleID, jurisdiction: jurisdiction, section: section, subjectID: subjectID,
+            status: status, measured: measured, required: requirementText, message: message
+        )
+    }
+
+    private var requirementText: String {
+        guard case .object(let fields)? = required else {
+            if case .string(let text)? = required { return text }
+            return ""
+        }
+        return Self.describe(fields)
+    }
+
+    private static func describe(_ fields: [String: JSONValue]) -> String {
+        guard case .string(let op)? = fields["op"], let value = fields["value"] else { return "" }
+        let unit: String
+        if case .string(let name)? = fields["unit"] { unit = " \(name)" } else { unit = "" }
+        return "\(op) \(display(value))\(unit)"
+    }
+
+    private static func display(_ value: JSONValue) -> String {
+        switch value {
+        case .number(let number): number.formatted(.number.precision(.fractionLength(0...3)))
+        case .array(let items): items.map(display).joined(separator: " to ")
+        case .string(let text): text
+        default: ""
+        }
+    }
+}
+
+nonisolated struct StatusCounts: Codable, Sendable, Equatable {
+    let pass: Int
+    let fail: Int
+    let needsInfo: Int
+    let notApplicable: Int
+
+    enum CodingKeys: String, CodingKey {
+        case pass, fail
+        case needsInfo = "needs_info"
+        case notApplicable = "not_applicable"
+    }
+}
+
+nonisolated struct FindingsSummary: Codable, Sendable, Equatable {
+    let total: StatusCounts
+    let byJurisdiction: [String: StatusCounts]
+
+    enum CodingKeys: String, CodingKey {
+        case total
+        case byJurisdiction = "by_jurisdiction"
+    }
+}
+
+nonisolated struct StageTimings: Codable, Sendable, Equatable {
+    let loadMs: Int
+    let labellingMs: Int
+    let evaluationMs: Int
+    let persistMs: Int
+    let totalMs: Int
+
+    enum CodingKeys: String, CodingKey {
+        case loadMs = "load_ms"
+        case labellingMs = "labelling_ms"
+        case evaluationMs = "evaluation_ms"
+        case persistMs = "persist_ms"
+        case totalMs = "total_ms"
+    }
+}
+
+nonisolated struct Report: Codable, Sendable, Equatable {
+    let scanID: String
+    let assessmentID: String
+    let createdAt: Date
+    let summary: FindingsSummary
+    let findings: [ServerFinding]
+    let timings: StageTimings
+    let labelledByVision: Int
+    let unlabelledObjects: Int
+
+    enum CodingKeys: String, CodingKey {
+        case summary, findings, timings
+        case scanID = "scan_id"
+        case assessmentID = "assessment_id"
+        case createdAt = "created_at"
+        case labelledByVision = "labelled_by_vision"
+        case unlabelledObjects = "unlabelled_objects"
+    }
+}
+
+nonisolated struct APIErrorBody: Decodable, Sendable {
+    let error: String?
+    let message: String?
+}
+
+// MARK: Live channel
+
+/// Sent per room as it is captured, and again when the room is finished (`isFinal`).
+/// The server merges observations by id and replaces `capturedRoom`.
+nonisolated struct RoomUpdate: Codable, Sendable, Equatable {
+    let roomID: String
+    let isFinal: Bool
+    let seq: Int?
+    let capturedRoom: JSONValue?
+    let observations: [JSONValue]
+
+    static let wireType = "room"
+
+    enum CodingKeys: String, CodingKey {
+        case type
+        case roomID = "room_id"
+        case isFinal = "final"
+        case seq
+        case capturedRoom = "captured_room"
+        case observations
+    }
+
+    init(roomID: String, isFinal: Bool, seq: Int? = nil, capturedRoom: JSONValue? = nil, observations: [JSONValue] = []) {
+        self.roomID = roomID
+        self.isFinal = isFinal
+        self.seq = seq
+        self.capturedRoom = capturedRoom
+        self.observations = observations
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        roomID = try container.decode(String.self, forKey: .roomID)
+        isFinal = try container.decodeIfPresent(Bool.self, forKey: .isFinal) ?? false
+        seq = try container.decodeIfPresent(Int.self, forKey: .seq)
+        capturedRoom = try container.decodeIfPresent(JSONValue.self, forKey: .capturedRoom)
+        observations = try container.decodeIfPresent([JSONValue].self, forKey: .observations) ?? []
     }
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(Self.wireType, forKey: .type)
-        try container.encode(clientEventID, forKey: .clientEventID)
-        try container.encode(roomIndex, forKey: .roomIndex)
-        try container.encode(name, forKey: .name)
-        try container.encodeIfPresent(fileKey, forKey: .fileKey)
+        try container.encode(roomID, forKey: .roomID)
+        try container.encode(isFinal, forKey: .isFinal)
+        try container.encodeIfPresent(seq, forKey: .seq)
+        try container.encodeIfPresent(capturedRoom, forKey: .capturedRoom)
+        try container.encode(observations, forKey: .observations)
     }
 }
 
-nonisolated struct ScanProgress: Codable, Sendable, Equatable {
-    let stage: String
-    let fraction: Double
-    let message: String?
+nonisolated struct RoomFindings: Sendable, Equatable {
+    let roomID: String
+    let seq: Int?
+    let isFinal: Bool
+    let findings: [ServerFinding]
+    let summary: FindingsSummary
+    let elapsedMs: Int
 }
 
-nonisolated enum LiveMessageKind: Sendable, Equatable {
-    case finding(Finding)
-    case progress(ScanProgress)
-    case roomAcknowledged(clientEventID: UUID)
-    case scanCompleted
+nonisolated struct LiveSnapshot: Sendable, Equatable {
+    let scanID: String
+    let rooms: [String]
+    let findings: [ServerFinding]
+    let summary: FindingsSummary
+}
+
+nonisolated enum LiveMessage: Sendable, Equatable {
+    /// Full state of the scan. Sent on every (re)connect; replace what you hold.
+    case hello(LiveSnapshot)
+    case findings(RoomFindings)
+    case report(Report)
     case serverError(message: String)
-    case heartbeat
+    case pong
     case unknown(type: String)
-}
-
-nonisolated struct LiveMessage: Sendable, Equatable {
-    let eventID: Int?
-    let kind: LiveMessageKind
 }
 
 extension LiveMessage: Decodable {
     private enum CodingKeys: String, CodingKey {
-        case type
-        case eventID = "event_id"
-        case finding, message
-        case clientEventID = "client_event_id"
+        case type, message, report, findings, summary, rooms, seq, final
+        case scanID = "scan_id"
+        case roomID = "room_id"
+        case elapsedMs = "elapsed_ms"
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        let type = try container.decode(String.self, forKey: .type)
-        eventID = try container.decodeIfPresent(Int.self, forKey: .eventID)
-        kind = try Self.decodeKind(type: type, container: container, decoder: decoder)
+        switch try container.decode(String.self, forKey: .type) {
+        case "hello": self = .hello(try Self.snapshot(from: container))
+        case "findings": self = .findings(try Self.roomFindings(from: container))
+        case "report": self = .report(try container.decode(Report.self, forKey: .report))
+        case "error": self = .serverError(message: try container.decodeIfPresent(String.self, forKey: .message) ?? "")
+        case "pong": self = .pong
+        case let other: self = .unknown(type: other)
+        }
     }
 
-    private static func decodeKind(
-        type: String, container: KeyedDecodingContainer<CodingKeys>, decoder: Decoder
-    ) throws -> LiveMessageKind {
-        switch type {
-        case "finding": return .finding(try container.decode(Finding.self, forKey: .finding))
-        case "progress": return .progress(try ScanProgress(from: decoder))
-        case "room_ack": return .roomAcknowledged(clientEventID: try container.decode(UUID.self, forKey: .clientEventID))
-        case "scan_complete": return .scanCompleted
-        case "error": return .serverError(message: try container.decodeIfPresent(String.self, forKey: .message) ?? "")
-        case "pong": return .heartbeat
-        default: return .unknown(type: type)
-        }
+    private static func snapshot(from container: KeyedDecodingContainer<CodingKeys>) throws -> LiveSnapshot {
+        LiveSnapshot(
+            scanID: try container.decode(String.self, forKey: .scanID),
+            rooms: try container.decode([String].self, forKey: .rooms),
+            findings: try container.decode([ServerFinding].self, forKey: .findings),
+            summary: try container.decode(FindingsSummary.self, forKey: .summary)
+        )
+    }
+
+    private static func roomFindings(from container: KeyedDecodingContainer<CodingKeys>) throws -> RoomFindings {
+        RoomFindings(
+            roomID: try container.decode(String.self, forKey: .roomID),
+            seq: try container.decodeIfPresent(Int.self, forKey: .seq),
+            isFinal: try container.decode(Bool.self, forKey: .final),
+            findings: try container.decode([ServerFinding].self, forKey: .findings),
+            summary: try container.decode(FindingsSummary.self, forKey: .summary),
+            elapsedMs: try container.decode(Int.self, forKey: .elapsedMs)
+        )
     }
 }
 
