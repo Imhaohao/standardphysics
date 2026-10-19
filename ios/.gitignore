@@ -3,3 +3,4 @@ build/
 *.xcresult
 Resources/Models/*.mlpackage
 Resources/Models/*.mlmodel
+build-device/
