@@ -23,6 +23,10 @@ actor APIClient: UploadAPI {
     private let transport: any HTTPTransport
     private let retryPolicy: RetryPolicy
     private let sleep: Sleeper
+    private let sessionEndedContinuation: AsyncStream<Void>.Continuation
+
+    /// Yields when the server rejects the stored token. The token is already cleared by then.
+    nonisolated let sessionEnded: AsyncStream<Void>
 
     init(
         baseURL: URL,
@@ -36,6 +40,7 @@ actor APIClient: UploadAPI {
         self.transport = transport
         self.retryPolicy = retryPolicy
         self.sleep = sleep
+        (sessionEnded, sessionEndedContinuation) = AsyncStream.makeStream(of: Void.self, bufferingPolicy: .bufferingNewest(1))
     }
 
     static func fromInfoPlist(bundle: Bundle = .main) throws -> APIClient {
@@ -57,7 +62,7 @@ actor APIClient: UploadAPI {
     }
 
     @discardableResult
-    func signIn(appleIdentityToken: String, nonce: String? = nil) async throws -> AuthSession {
+    func signIn(appleIdentityToken: String, nonce: String) async throws -> AuthSession {
         let body = AppleSignInRequest(identityToken: appleIdentityToken, nonce: nonce)
         return try await storeSession(from: APIRoutes.signInWithApple(body))
     }
@@ -66,6 +71,10 @@ actor APIClient: UploadAPI {
     func signOut() async {
         _ = try? await send(APIRoutes.logout())
         tokenStore.clear()
+    }
+
+    func currentUser() async throws -> ServerUser {
+        try await send(APIRoutes.me())
     }
 
     private func storeSession(from endpoint: Endpoint<AuthSession>) async throws -> AuthSession {
@@ -155,8 +164,16 @@ actor APIClient: UploadAPI {
 
     private func perform(_ request: URLRequest) async throws -> HTTPResponse {
         let response = try await transport.send(request)
-        guard response.isSuccess else { throw APIError(response: response) }
+        guard response.isSuccess else {
+            if response.status == 401, request.value(forHTTPHeaderField: "Authorization") != nil { endSession() }
+            throw APIError(response: response)
+        }
         return response
+    }
+
+    private func endSession() {
+        tokenStore.clear()
+        sessionEndedContinuation.yield()
     }
 
     private func buildRequest<Response>(_ endpoint: Endpoint<Response>) throws -> URLRequest {

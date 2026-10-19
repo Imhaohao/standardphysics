@@ -30,7 +30,7 @@ nonisolated struct Credentials: Encodable, Sendable {
 
 nonisolated struct AppleSignInRequest: Encodable, Sendable {
     let identityToken: String
-    let nonce: String?
+    let nonce: String
 
     enum CodingKeys: String, CodingKey {
         case identityToken = "identity_token"

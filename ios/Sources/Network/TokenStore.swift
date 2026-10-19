@@ -32,17 +32,15 @@ nonisolated final class KeychainTokenStore: TokenStoring {
         return String(data: data, encoding: .utf8)
     }
 
+    /// Delete-then-add so the accessibility class is always the one set here, never one left
+    /// behind by an older item.
     func save(_ token: String) throws {
-        let data = Data(token.utf8)
-        let update = [kSecValueData as String: data]
-        let status = SecItemUpdate(baseQuery() as CFDictionary, update as CFDictionary)
-        if status == errSecSuccess { return }
-        guard status == errSecItemNotFound else { throw KeychainError(status: status) }
+        SecItemDelete(baseQuery() as CFDictionary)
         var insert = baseQuery()
-        insert[kSecValueData as String] = data
+        insert[kSecValueData as String] = Data(token.utf8)
         insert[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        let addStatus = SecItemAdd(insert as CFDictionary, nil)
-        guard addStatus == errSecSuccess else { throw KeychainError(status: addStatus) }
+        let status = SecItemAdd(insert as CFDictionary, nil)
+        guard status == errSecSuccess else { throw KeychainError(status: status) }
     }
 
     func clear() {

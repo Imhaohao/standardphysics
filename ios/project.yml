@@ -64,7 +64,9 @@ targets:
         SP_API_BASE_URL: http://localhost:8080
     entitlements:
       path: Resources/StandardPhysics.entitlements
-      properties: {}
+      properties:
+        com.apple.developer.applesignin:
+          - Default
 
   StandardPhysicsTests:
     type: bundle.unit-test

@@ -104,6 +104,28 @@ final class APIClientTests: XCTestCase {
         XCTAssertEqual(transport.requests.first?.url?.path, "/v1/auth/logout")
     }
 
+    func testRejectedTokenIsClearedAndEndsTheSession() async throws {
+        let (client, _, store, _) = makeClient([jsonResponse(401, "{}")])
+        var ended = client.sessionEnded.makeAsyncIterator()
+        _ = try? await client.assessment(scanID: "s")
+        XCTAssertNil(store.token())
+        let signal: Void? = await ended.next()
+        XCTAssertNotNil(signal)
+    }
+
+    func testWrongPasswordKeepsNoSessionSignal() async throws {
+        let (client, _, store, _) = makeClient([jsonResponse(401, "{}")], token: "kept")
+        _ = try? await client.signIn(email: "a@b.co", password: "nope")
+        XCTAssertEqual(store.token(), "kept", "a failed login is not an expired session")
+    }
+
+    func testCurrentUserReadsMe() async throws {
+        let (client, transport, _, _) = makeClient([jsonResponse(200, #"{"id":"u1","email":"a@b.co"}"#)])
+        let user = try await client.currentUser()
+        XCTAssertEqual(user, ServerUser(id: "u1", email: "a@b.co"))
+        XCTAssertEqual(transport.requests[0].url?.path, "/v1/me")
+    }
+
     func testNoContentResponsesNeedNoBody() async throws {
         let empty = Result<HTTPResponse, Error>.success(HTTPResponse(status: 204, headers: [:], body: Data()))
         let (client, transport, _, _) = makeClient([empty])

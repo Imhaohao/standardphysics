@@ -6,6 +6,8 @@ struct LaunchConfiguration {
     enum Screen: String, CaseIterable {
         case home
         case homeEmpty = "home-empty"
+        case homeSignedIn = "home-signed-in"
+        case account
         case before
         case capture
         case tray
@@ -32,6 +34,7 @@ struct LaunchConfiguration {
         AppModel(
             capture: capture,
             processor: PreviewScanProcessor(),
+            account: AccountModel(service: PreviewAccountService()),
             unfinishedScans: [SampleData.unfinishedManifest()],
             reports: reports
         )
@@ -45,12 +48,14 @@ struct LaunchConfiguration {
         model.route = route(for: screen)
         stageCapture(capture, for: screen)
         if screen == .processing { model.stageProcessing() }
+        if screen == .homeSignedIn { model.account.stage(.signedIn(email: "owner@cornerdeli.com")) }
+        if screen == .account { model.account.isSheetPresented = true }
         return LaunchConfiguration(model: model, trayStartsExpanded: screen == .tray)
     }
 
     private static func route(for screen: Screen) -> AppRoute {
         switch screen {
-        case .home, .homeEmpty: .home
+        case .home, .homeEmpty, .homeSignedIn, .account: .home
         case .before: .beforeYouScan
         case .capture, .tray, .paused, .relocalizing, .thermal, .roomFinished: .capture
         case .processing: .processing
@@ -67,5 +72,21 @@ struct LaunchConfiguration {
         case .roomFinished: capture.stage(.betweenRooms(completed: 2), roomsSaved: 2)
         default: break
         }
+    }
+}
+
+/// Answers every sign-in at once, so staged screens can show both account states.
+nonisolated struct PreviewAccountService: AccountService {
+    let sessionEnded = AsyncStream<Void> { _ in }
+
+    func hasStoredSession() async -> Bool { false }
+    func signIn(email: String, password: String) async throws -> AuthSession { session(email) }
+    func register(email: String, password: String) async throws -> AuthSession { session(email) }
+    func signIn(appleIdentityToken: String, nonce: String) async throws -> AuthSession { session(nil) }
+    func currentUser() async throws -> ServerUser { ServerUser(id: "preview", email: nil) }
+    func signOut() async {}
+
+    private func session(_ email: String?) -> AuthSession {
+        AuthSession(token: "preview", expiresAt: .distantFuture, user: ServerUser(id: "preview", email: email))
     }
 }

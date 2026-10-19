@@ -37,6 +37,10 @@ nonisolated enum APIRoutes {
         Endpoint(method: .post, path: "\(apiPrefix)/auth/logout", isIdempotent: true)
     }
 
+    static func me() -> Endpoint<ServerUser> {
+        Endpoint(method: .get, path: "\(apiPrefix)/me", isIdempotent: true)
+    }
+
     /// Not idempotent: the server has no client id, so a retried create makes a second scan.
     static func createScan(_ body: CreateScanRequest) -> Endpoint<ScanResponse> {
         Endpoint(method: .post, path: "\(apiPrefix)/scans", body: body, isIdempotent: false)

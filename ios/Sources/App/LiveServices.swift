@@ -21,20 +21,22 @@ final class LiveServices {
             try await RustComplianceEngine().evaluateRoom(capturedRoomJSON: roomJSON)
         }
         self.coordinator = coordinator
+        let api = try? APIClient.fromInfoPlist()
         appModel = AppModel(
             capture: coordinator,
-            processor: Self.makeProcessor(journal: journal),
-            journal: journal
+            processor: Self.makeProcessor(journal: journal, api: api),
+            journal: journal,
+            account: AccountModel(service: api)
         )
         detection = LiveDetectionPipeline(detector: CoreMLDetector()) { [weak coordinator] detections in
             await MainActor.run { coordinator?.detections = detections }
         }
     }
 
-    private static func makeProcessor(journal: some ScanJournaling) -> any ScanProcessing {
+    private static func makeProcessor(journal: some ScanJournaling, api: APIClient?) -> any ScanProcessing {
         let local = OnDeviceScanProcessor(journal: journal)
         let tokens = KeychainTokenStore()
-        guard let api = try? APIClient.fromInfoPlist(), let uploader = try? BackgroundUploader.makeDefault(api: api) else {
+        guard let api, let uploader = try? BackgroundUploader.makeDefault(api: api) else {
             return local
         }
         Task { await uploader.start() }

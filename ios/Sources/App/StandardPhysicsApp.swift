@@ -23,7 +23,10 @@ struct StandardPhysicsApp: App {
                 .environment(\.trayStartsExpanded, configuration.trayStartsExpanded)
         case .live(let services):
             RootView(model: services.appModel) { LiveCameraLayer(services: services) }
-                .task { await services.appModel.refresh() }
+                .task {
+                    await services.appModel.account.restore()
+                    await services.appModel.refresh()
+                }
         }
     }
 }
