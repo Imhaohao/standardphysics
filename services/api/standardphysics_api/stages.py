@@ -21,6 +21,7 @@ import pathlib
 import threading
 import time
 from collections.abc import Callable, Iterator, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
 from standardphysics_agents import (
@@ -53,11 +54,13 @@ from standardphysics_contracts import (
     ProposalExplanation,
     Scenario,
     SceneGraph,
+    SceneNode,
     SpaceTypology,
     Stop,
     Vec3,
 )
 from standardphysics_pipeline import PipelineMeasurements, blender, parse_room_json, reconstruct
+from standardphysics_pipeline.astra_patches import apply_patches, local_patches
 from standardphysics_pipeline.discovery import (
     Detection,
     DiscoveryError,
@@ -235,17 +238,22 @@ class Stages:
         legitimately found nothing.
         """
         graph = parse_room_json(json.loads(room_json.read_bytes()), scan_id=scan_id)
-        started = time.perf_counter()
-        graph = self.label_scan(graph, frame_paths=frame_paths, poses_path=poses_path, lidar_mesh_path=lidar_mesh_path)
-        log.info("labelling %s took %.1f s", scan_id, time.perf_counter() - started)
+        evidence = {"frame_paths": frame_paths, "poses_path": poses_path, "lidar_mesh_path": lidar_mesh_path}
         if not run_discovery:
-            return graph, DiscoveryOutcome()
+            return self._timed_labels(graph, evidence), DiscoveryOutcome()
+        with ThreadPoolExecutor(max_workers=1) as beside:
+            labelled_later = beside.submit(self._timed_labels, graph, evidence)
+            started = time.perf_counter()
+            found, outcome = self.discover_scan_with_report(apply_patches(graph, local_patches(graph)), **evidence)
+            log.info("discovery %s took %.1f s", scan_id, time.perf_counter() - started)
+            labelled = labelled_later.result()
+        return with_labels_from(found, labelled), outcome
+
+    def _timed_labels(self, graph: SceneGraph, evidence: dict) -> SceneGraph:
         started = time.perf_counter()
-        found = self.discover_scan_with_report(
-            graph, frame_paths=frame_paths, poses_path=poses_path, lidar_mesh_path=lidar_mesh_path
-        )
-        log.info("discovery %s took %.1f s", scan_id, time.perf_counter() - started)
-        return found
+        labelled = self.label_scan(graph, **evidence)
+        log.info("labelling %s took %.1f s", graph.scan_id, time.perf_counter() - started)
+        return labelled
 
     def discover_scan(
         self,
@@ -513,6 +521,31 @@ class Stages:
             return finding
         locus = finding.locus.model_copy(update={"render_url": url_for(finding.id)})
         return finding.model_copy(update={"locus": locus})
+
+
+LABEL_FIELDS = ("label", "quality", "labeled_by", "appearance", "reconstruction")
+"""What labelling decides about a scanned piece. Geometry stays as discovery measured it."""
+
+
+def with_labels_from(found: SceneGraph, labelled: SceneGraph) -> SceneGraph:
+    """Discovery's graph wearing labelling's names, which ran beside it rather than before it.
+
+    Labelling used to finish before discovery began, so a name discovery gave a
+    piece from the photos always had the last word. It still does: a piece
+    discovery renamed keeps that name. Either one may pin a piece in place, so it
+    stays movable only when both leave it movable.
+    """
+    names = {node.id: node for node in labelled.nodes}
+
+    def worn(node: SceneNode) -> SceneNode:
+        named = names.get(node.id)
+        if named is None or node.labeled_by in ("discovery", "owner"):
+            return node
+        update = {field: getattr(named, field) for field in LABEL_FIELDS}
+        update["movable"] = node.movable and named.movable
+        return node.model_copy(update=update)
+
+    return found.model_copy(update={"nodes": [worn(node) for node in found.nodes]})
 
 
 def configured_stages(settings) -> Stages:

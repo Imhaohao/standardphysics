@@ -19,6 +19,7 @@ Display only, and marked as inferred like every other added surface.
 from __future__ import annotations
 
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 import numpy as np
@@ -302,6 +303,21 @@ def _reflected_triangles(
     return mirrored, corners[keep][:, ::-1], used
 
 
+PLANE_WORKERS = 8
+"""Objects whose planes are judged at once. Judging reads the scan and the photos and changes neither, so
+objects never wait on each other; filling the planes in afterwards still goes one object at a time."""
+
+
+def _planes_of_every_object(graph: SceneGraph, scan: _IndexedScan, seen_through: SeenThrough):
+    """Each object with the planes it is symmetric across, in graph order."""
+    judged = [(index, node) for index, node in enumerate(graph.nodes) if not bounds_the_room(node)]
+    with ThreadPoolExecutor(max_workers=PLANE_WORKERS) as pool:
+        planes = pool.map(lambda pair: symmetry_planes(pair[0], pair[1], scan, seen_through), judged)
+        for done, ((index, node), node_planes) in enumerate(zip(judged, planes, strict=True), start=1):
+            advanced(done, len(judged))
+            yield index, node, node_planes
+
+
 def mirrored_completion(
     vertices: np.ndarray, triangles: np.ndarray, graph: SceneGraph, seen_through: SeenThrough,
 ) -> Completed:
@@ -316,11 +332,8 @@ def mirrored_completion(
     planes: list[MirrorPlane] = []
     next_index = len(vertices)
     scan = _IndexedScan.of(vertices, triangles)
-    for index, node in enumerate(graph.nodes):
-        advanced(index + 1, len(graph.nodes))
-        if bounds_the_room(node):
-            continue
-        for plane in symmetry_planes(index, node, scan, seen_through):
+    for index, node, node_planes in _planes_of_every_object(graph, scan, seen_through):
+        for plane in node_planes:
             distance = scan.distance_to_surface(new_vertices)
             mirrored, faces, used = _reflected_triangles(plane, node, scan, distance, seen_through)
             if not len(faces):

@@ -80,9 +80,34 @@
           "discovery_s": 29.3,
           "texture_s": 80.0,
           "painted_coverage": "50%, unchanged"
+        },
+        {
+          "date": "2026-10-18",
+          "change": "judge symmetry planes for 8 objects at once",
+          "bench_on_captured_inputs": {
+            "before_s": 17.6,
+            "after_s": 6.5
+          },
+          "output": "identical planes and added geometry"
+        },
+        {
+          "date": "2026-10-18",
+          "change": "labelling beside discovery; labels laid onto discovery's graph, discovery renames win, movable only if both agree",
+          "check": "same Share Tea label answer both ways: 0 of 185 nodes differ in label/movable/labeled_by; one discovered soap dispenser 0.26 mm taller"
+        },
+        {
+          "date": "2026-10-18",
+          "run": "warm detection cache (stands in for photos read during the walk)",
+          "wall_s": 96.8,
+          "process_s": 31.9,
+          "labelling_s": 21.0,
+          "discovery_s": 30.2,
+          "texture_s": 64.1,
+          "painted_scan_s": 63.3,
+          "box_model_s": 57.4
         }
       ],
-      "next": "Still 125.6 s warm, ~220 s cold (photo detection ~94 s uncached). Critical path: painted scan 79 s (mirrored 27, unwrap 14.5, photo bake 12), discovery 29 s, labelling 14 s. Levers: read photos during upload (live reader), label and discover concurrently, start texture work that needs no graph before process ends."
+      "next": "96.8 s; 60 s needs ~37 s more. Cores are now shared (box model beside painted scan slows both). Candidates: discovery carving 18 s and surface segmentation 8 s; painted scan unwrap 14 s (Blender process), photo bake 12 s, occlusion 8 s."
     },
     {
       "id": 3,
