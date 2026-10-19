@@ -165,7 +165,8 @@ final class CaptureCoordinator: CaptureControlling {
             isThermalWarning: state.isThermalWarning,
             relocalizationTimedOut: state.relocalizationTimedOut,
             lastRoomCaptureError: state.lastRoomCaptureError,
-            hasSalvagedRoom: state.salvagedRoomJSON != nil
+            hasSalvagedRoom: state.salvagedRoomJSON != nil,
+            lastRoomEndedAtSceneLimit: state.lastRoomEndedAtSceneLimit
         ))
         resumeSatisfiedWaiters()
     }
@@ -240,6 +241,9 @@ final class CaptureCoordinator: CaptureControlling {
         case .salvaged(let roomJSON):
             Diagnostics.shared.record("room_capture_salvaged", ["bytes": Double(roomJSON.count), "score": Double(RoomSalvage.score(roomJSON))])
             send(.roomCaptureSalvaged(roomJSON: roomJSON))
+        case .sceneLimitReached:
+            Diagnostics.shared.record("room_capture_scene_limit")
+            send(.roomCaptureReachedSceneLimit)
         case .failed(let message):
             Diagnostics.shared.record("room_capture_failed", note: message)
             send(.roomCaptureFailed(message: message))

@@ -32,6 +32,7 @@ private nonisolated struct Transition {
         case .roomCaptureEnded(let json): roomEnded(json)
         case .roomCaptureFailed(let message): roomFailed(message)
         case .roomCaptureSalvaged(let json): salvaged(json)
+        case .roomCaptureReachedSceneLimit: sceneLimitReached()
         case .userPause: userPause()
         case .userContinue: userContinue()
         case .finishRoom: finishRoom()
@@ -196,6 +197,24 @@ private nonisolated struct Transition {
         roomEnded(salvaged)
     }
 
+    /// Saves what RoomPlan held as this room instead of silently starting the room over.
+    private mutating func sceneLimitReached() {
+        guard let salvaged = state.salvagedRoomJSON else { return }
+        switch state.activity {
+        case .capturing, .relocalizing(roomCaptureRunning: true):
+            if case .relocalizing = state.activity { effects.append(.cancelRelocalizationTimer) }
+            state.activity = .savingRoom(finishScanAfterwards: false)
+        case .savingRoom:
+            break
+        default:
+            return
+        }
+        state.heldPauseReason = nil
+        state.roomCaptureNeedsRestart = false
+        roomEnded(salvaged)
+        state.lastRoomEndedAtSceneLimit = true
+    }
+
     private mutating func salvaged(_ json: Data) {
         guard state.isRoomCaptureRunning else { return }
         state.salvagedRoomJSON = RoomSalvage.better(state.salvagedRoomJSON, json)
@@ -220,6 +239,7 @@ private nonisolated struct Transition {
         }
         effects.append(.persistRoom(index: state.currentRoom, roomJSON: RoomSalvage.better(state.salvagedRoomJSON, json)))
         state.salvagedRoomJSON = nil
+        state.lastRoomEndedAtSceneLimit = false
         state.completedRooms += 1
         state.lastRoomCaptureError = nil
         checkpointIfPossible()

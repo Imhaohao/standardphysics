@@ -15,7 +15,12 @@ struct RoomFinishedSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.l) {
                     VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-                        InkedTitle(text: "Room \(lastRoom?.index ?? 1) is saved")
+                        InkedTitle(text: "Room \((lastRoom?.index ?? 0) + 1) is saved")
+                        if let notice = model.capture.guidance {
+                            Text(notice)
+                                .font(Theme.Typography.body)
+                                .foregroundStyle(Theme.Palette.inkMuted)
+                        }
                         RoomSlots(saved: model.completedRooms)
                     }
                     nameField

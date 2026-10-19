@@ -175,7 +175,7 @@ private struct ChestHeightDiagram: View {
                     .frame(height: 132)
                     .overlay(alignment: .topLeading) { labels }
                     .accessibilityHidden(true)
-                Text("Hold the phone upright at chest height, about 4 ft up, so it sees counters, door handles and the floor in one view.")
+                Text("Hold the phone however is comfortable. Point it at the walls, floor and furniture, lower it to see under tables, and raise it to see counter tops.")
                     .font(Theme.Typography.callout)
                     .foregroundStyle(Theme.Palette.inkMuted)
                     .fixedSize(horizontal: false, vertical: true)

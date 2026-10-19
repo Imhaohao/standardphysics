@@ -63,7 +63,7 @@ struct FindingsTray: View {
     private var summary: some View {
         HStack(spacing: Theme.Spacing.s) {
             if outcomes.isEmpty {
-                Text("Nothing measured yet")
+                Text("Checks show up when you finish this room")
                     .font(Theme.Typography.callout)
                     .foregroundStyle(Theme.Palette.sheet.opacity(0.75))
             }

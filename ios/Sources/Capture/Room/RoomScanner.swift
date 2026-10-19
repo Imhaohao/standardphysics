@@ -9,6 +9,8 @@ nonisolated enum RoomScanUpdate: Sendable, Equatable {
     case ended(roomJSON: Data)
     /// What RoomPlan had when it gave up, sent just before `.failed`.
     case salvaged(roomJSON: Data)
+    /// RoomPlan reached the most it can hold for one room; whatever was salvaged is the room.
+    case sceneLimitReached
     case failed(message: String)
 }
 
@@ -85,19 +87,22 @@ nonisolated final class RoomCaptureRelay: RoomCaptureSessionDelegate, Sendable {
     func captureSession(_ session: RoomCaptureSession, didEndWith data: CapturedRoomData, error: (any Error)?) {
         if let error {
             let message = error.localizedDescription
-            Task { await self.salvage(data, thenFail: message) }
+            let isSceneLimit = (error as? RoomCaptureSession.CaptureError) == .exceedSceneSizeLimit
+            Task { await self.salvage(data, thenFail: message, atSceneLimit: isSceneLimit) }
             return
         }
         Task { await self.build(data) }
     }
 
     /// RoomPlan often gives up after an interruption; whatever it had built is still worth keeping.
-    private func salvage(_ data: CapturedRoomData, thenFail message: String) async {
+    private func salvage(_ data: CapturedRoomData, thenFail message: String, atSceneLimit: Bool) async {
         let lastLive = latestRoom.withLock { $0 }
-        if let json = await Self.salvagedJSON(from: data, lastLive: lastLive) {
-            publish(.salvaged(roomJSON: json))
+        guard let json = await Self.salvagedJSON(from: data, lastLive: lastLive) else {
+            publish(.failed(message: message))
+            return
         }
-        publish(.failed(message: message))
+        publish(.salvaged(roomJSON: json))
+        publish(atSceneLimit ? .sceneLimitReached : .failed(message: message))
     }
 
     private static func salvagedJSON(from data: CapturedRoomData, lastLive: CapturedRoom?) async -> Data? {

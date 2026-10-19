@@ -13,6 +13,9 @@ struct CaptureView<Camera: View>: View {
             CaptureCameraLayer(content: camera)
             phaseOverlay
         }
+        // A stray finger near an edge shouldn't open Control Center mid-scan; a second swipe still does.
+        .defersSystemGestures(on: .all)
+        .persistentSystemOverlays(.hidden)
         .sheet(isPresented: roomFinishedBinding) {
             RoomFinishedSheet()
                 .environment(\.colorScheme, .light)

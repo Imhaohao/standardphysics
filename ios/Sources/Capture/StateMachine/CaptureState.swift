@@ -31,6 +31,8 @@ nonisolated struct CaptureState: Sendable, Equatable {
     var lastRoomCaptureError: String?
     /// The room in progress as RoomPlan last had it before failing; kept until the room is saved.
     var salvagedRoomJSON: Data?
+    /// The last room was saved early because RoomPlan could not hold any more of it.
+    var lastRoomEndedAtSceneLimit = false
     var isARSessionRunning = false
     var isIdleTimerDisabled = false
 

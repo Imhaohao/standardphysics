@@ -10,9 +10,12 @@ nonisolated enum RoomSalvage {
         return surfaceKeys.reduce(0) { total, key in total + ((room[key] as? [Any])?.count ?? 0) }
     }
 
-    /// A tie goes to `latest`, the capture that ran to the end.
+    /// More surfaces wins; on equal counts the more detailed capture (larger encoding) wins, and a
+    /// full tie goes to `latest`, the capture that ran to the end.
     static func better(_ salvaged: Data?, _ latest: Data) -> Data {
-        guard let salvaged, score(salvaged) > score(latest) else { return latest }
-        return salvaged
+        guard let salvaged else { return latest }
+        let salvagedScore = score(salvaged), latestScore = score(latest)
+        if salvagedScore != latestScore { return salvagedScore > latestScore ? salvaged : latest }
+        return salvaged.count > latest.count ? salvaged : latest
     }
 }

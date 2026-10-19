@@ -40,6 +40,7 @@ nonisolated struct GuidanceInput: Sendable, Equatable {
     var relocalizationTimedOut = false
     var lastRoomCaptureError: String?
     var hasSalvagedRoom = false
+    var lastRoomEndedAtSceneLimit = false
 }
 
 /// One short line for the person holding the phone. The capture state outranks RoomPlan's coaching.
@@ -49,9 +50,12 @@ nonisolated enum GuidanceText {
         case .relocalizing: relocalizingMessage(timedOut: input.relocalizationTimedOut)
         case .paused(_, let reason): pausedMessage(reason)
         case .scanning: scanningMessage(input)
+        case .betweenRooms: input.lastRoomEndedAtSceneLimit ? sceneLimitMessage : nil
         default: nil
         }
     }
+
+    static let sceneLimitMessage = "That's as much as one scan can hold, so we saved it. Scan the rest of the space as another room."
 
     private static func relocalizingMessage(timedOut: Bool) -> String {
         timedOut
