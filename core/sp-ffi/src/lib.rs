@@ -172,6 +172,21 @@ mod tests {
     }
 
     #[test]
+    fn findings_carry_the_paired_counterpart_id() {
+        let Ok(catalog) = std::fs::read_to_string(format!("{}/../../rules/metrics.json", env!("CARGO_MANIFEST_DIR")))
+        else {
+            return;
+        };
+        let packs = vec![read("rules/ada2010.json"), read("rules/cbc11b.json")];
+        let engine = SpEngine::new(catalog, packs).unwrap();
+        let capture = read("packages/fixtures/standardphysics_fixtures/data/real/apple_livingroom.room.json");
+        let findings = engine.update_roomplan_room(capture).unwrap();
+        let paired: Vec<_> = findings.iter().filter(|f| f.counterpart.is_some()).collect();
+        assert!(!paired.is_empty(), "some findings pair an ADA rule with its CBC counterpart");
+        assert!(findings.iter().any(|f| f.counterpart.is_none()));
+    }
+
+    #[test]
     fn rejects_a_mesh_that_is_not_spm1() {
         let Ok(catalog) = std::fs::read_to_string(format!("{}/../../rules/metrics.json", env!("CARGO_MANIFEST_DIR")))
         else {

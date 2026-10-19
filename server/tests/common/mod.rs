@@ -326,6 +326,19 @@ pub async fn upload_artifact(
     kind: &str,
     data: &[u8],
 ) -> String {
+    let (status, artifact) = try_upload_artifact(app, token, scan_id, kind, data).await;
+    assert_eq!(status, StatusCode::OK, "{artifact}");
+    artifact["id"].as_str().unwrap().to_string()
+}
+
+/// Runs the whole single-part upload flow and returns the response of `complete`.
+pub async fn try_upload_artifact(
+    app: &TestApp,
+    token: &str,
+    scan_id: &str,
+    kind: &str,
+    data: &[u8],
+) -> (StatusCode, Value) {
     let body = json!({
         "kind": kind, "filename": format!("{kind}.bin"), "content_type": "image/jpeg",
         "size_bytes": data.len(),
@@ -344,15 +357,12 @@ pub async fn upload_artifact(
     let url = presigned["parts"][0]["url"].as_str().unwrap();
     let resp = app.http.put(url).body(data.to_vec()).send().await.unwrap();
     assert!(resp.status().is_success());
-    let (status, artifact) = app
-        .post(
-            token,
-            &format!("{base}/{upload_id}/complete"),
-            json!({"sha256": sha256_hex(data)}),
-        )
-        .await;
-    assert_eq!(status, StatusCode::OK, "{artifact}");
-    artifact["id"].as_str().unwrap().to_string()
+    app.post(
+        token,
+        &format!("{base}/{upload_id}/complete"),
+        json!({"sha256": sha256_hex(data)}),
+    )
+    .await
 }
 
 pub type WsStream =

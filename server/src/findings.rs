@@ -28,6 +28,17 @@ pub struct Point3 {
     pub z: f64,
 }
 
+/// Every value `Finding.severity` can take. `violation` and `advisory` come from the rulepack
+/// (`advisory` also replaces `violation` when a level floor is only assumed); `info` is used
+/// by server-generated findings such as unresolved labels.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum Severity {
+    Violation,
+    Advisory,
+    Info,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct Finding {
     pub rule_id: String,
@@ -41,6 +52,7 @@ pub struct Finding {
     pub required: String,
     pub message: String,
     pub evidence: String,
+    #[schema(value_type = Severity)]
     pub severity: String,
     pub location: Option<Point3>,
     pub counterpart: Option<String>,

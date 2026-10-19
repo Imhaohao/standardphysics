@@ -10,6 +10,7 @@ use super::models::{
 };
 use super::plan::{plan_parts, safe_filename, valid_kind, valid_sha256, validate_part_numbers};
 use super::repo;
+use super::room_artifact::{apply_room_upload, is_room, require_scan_capturing};
 use crate::auth::AuthUser;
 use crate::error::{ApiError, ApiResult, ErrorBody};
 use crate::idempotency;
@@ -238,6 +239,15 @@ async fn verify_object(state: &AppState, upload: &UploadRecord, sha256: &str) ->
     Ok(())
 }
 
+async fn ingest_room(state: &AppState, upload: &UploadRecord) -> ApiResult<()> {
+    match apply_room_upload(state, upload).await {
+        Err(ApiError::Unprocessable(reason)) => {
+            Err(discard_bad_object(state, upload, reason).await)
+        }
+        other => other,
+    }
+}
+
 #[utoipa::path(
     post, path = "/v1/scans/{scan_id}/uploads/{upload_id}/complete", tag = "uploads",
     security(("bearer" = [])),
@@ -262,6 +272,9 @@ pub async fn complete_upload(
         return existing.map(Json).ok_or(ApiError::NotFound);
     }
     require_open(&upload)?;
+    if is_room(&upload) {
+        require_scan_capturing(&state, scan_id).await?;
+    }
     let sha256 = body.sha256.to_lowercase();
     if !valid_sha256(&sha256) {
         return Err(ApiError::bad_request("sha256 must be 64 hex characters"));
@@ -278,6 +291,9 @@ pub async fn complete_upload(
         .await
         .map_err(storage_error)?;
     verify_object(&state, &upload, &sha256).await?;
+    if is_room(&upload) {
+        ingest_room(&state, &upload).await?;
+    }
     let artifact = repo::finish_upload_with_artifact(&state.db, &upload, &sha256).await?;
     Ok(Json(artifact))
 }

@@ -4,8 +4,8 @@ use std::sync::atomic::Ordering;
 use std::time::Instant;
 
 use common::{
-    connect_live, door_id, door_room_at, findings_for, next_of_type, send_json, upload_artifact,
-    TestApp, TestOptions,
+    connect_live, door_id, door_room_at, findings_for, next_of_type, send_json,
+    try_upload_artifact, upload_artifact, TestApp, TestOptions,
 };
 use reqwest::StatusCode;
 use serde_json::{json, Value};
@@ -292,4 +292,88 @@ async fn scene_is_404_until_a_room_exists() {
     send_room(&app, &token, &scan_id, door_room_at("r1", 0.9, 0), vec![]).await;
     let (status, _) = app.get(&other, &format!("/v1/scans/{scan_id}/scene")).await;
     assert_eq!(status, StatusCode::NOT_FOUND);
+}
+
+fn room_count(scene: &Value) -> usize {
+    scene["rooms"].as_array().unwrap().len()
+}
+
+#[tokio::test]
+async fn uploaded_room_is_applied_like_a_live_room_and_counted_at_finish() {
+    let app = TestApp::start().await;
+    let token = app.register("roomup@example.com").await;
+    let scan_id = app.create_scan(&token).await;
+    let mut viewer = connect_live(&app, &token, &scan_id, "viewer").await;
+    next_of_type(&mut viewer, "hello").await;
+
+    let narrow = serde_json::to_vec(&door_room_at("r1", 0.7, 1)).unwrap();
+    upload_artifact(&app, &token, &scan_id, "room", &narrow).await;
+    let pushed = next_of_type(&mut viewer, "room").await;
+    assert_eq!(pushed["room"]["id"], "r1");
+    let findings = next_of_type(&mut viewer, "findings").await;
+    assert_eq!(findings["room_id"], "r1");
+    assert_eq!(findings["final"], true);
+
+    let (_, scene) = app.get(&token, &format!("/v1/scans/{scan_id}/scene")).await;
+    assert_eq!(room_count(&scene), 1);
+
+    let report = finish(&app, &token, &scan_id).await;
+    let door = door_id("r1");
+    let verdict = findings_for(&report["findings"], &door)
+        .into_iter()
+        .find(|f| f["rule_id"] == "ADA-404.2.3-clear-width")
+        .map(|f| f["status"].clone());
+    assert_eq!(verdict, Some(json!("fail")));
+}
+
+#[tokio::test]
+async fn the_same_room_by_socket_and_by_upload_is_one_room() {
+    let app = TestApp::start().await;
+    let token = app.register("roomdup@example.com").await;
+    let scan_id = app.create_scan(&token).await;
+    send_room(&app, &token, &scan_id, door_room_at("r1", 0.7, 1), vec![]).await;
+
+    let wider = serde_json::to_vec(&door_room_at("r1", 0.95, 1)).unwrap();
+    upload_artifact(&app, &token, &scan_id, "room", &wider).await;
+    upload_artifact(&app, &token, &scan_id, "room", &wider).await;
+
+    let (_, scene) = app.get(&token, &format!("/v1/scans/{scan_id}/scene")).await;
+    assert_eq!(room_count(&scene), 1, "no duplicate room");
+    let stored: i64 = sqlx::query_scalar("SELECT count(*) FROM scan_rooms")
+        .fetch_one(&app.db)
+        .await
+        .unwrap();
+    assert_eq!(stored, 1);
+
+    let report = finish(&app, &token, &scan_id).await;
+    let door = door_id("r1");
+    let widths: Vec<_> = findings_for(&report["findings"], &door)
+        .into_iter()
+        .filter(|f| f["rule_id"] == "ADA-404.2.3-clear-width")
+        .collect();
+    assert_eq!(widths.len(), 1);
+    assert_eq!(widths[0]["status"], "pass", "latest capture wins");
+}
+
+#[tokio::test]
+async fn invalid_or_late_room_uploads_are_rejected() {
+    let app = TestApp::start().await;
+    let token = app.register("roombad@example.com").await;
+    let scan_id = app.create_scan(&token).await;
+
+    let (status, body) = try_upload_artifact(&app, &token, &scan_id, "room", b"not json").await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{body}");
+    assert!(
+        app.s3.object_keys().is_empty(),
+        "rejected object is discarded"
+    );
+    let (_, artifacts) = app
+        .get(&token, &format!("/v1/scans/{scan_id}/artifacts"))
+        .await;
+    assert!(artifacts.as_array().unwrap().is_empty());
+
+    finish(&app, &token, &scan_id).await;
+    let late = serde_json::to_vec(&door_room_at("r9", 0.9, 1)).unwrap();
+    let (status, _) = try_upload_artifact(&app, &token, &scan_id, "room", &late).await;
+    assert_eq!(status, StatusCode::CONFLICT);
 }

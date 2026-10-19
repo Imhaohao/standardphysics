@@ -180,6 +180,7 @@ pub struct SpFinding {
     pub evidence: String,
     pub severity: String,
     pub location: Option<SpVec3>,
+    pub counterpart: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]
@@ -418,6 +419,7 @@ impl From<Finding> for SpFinding {
             evidence: f.evidence,
             severity: f.severity,
             location: f.location.map(Into::into),
+            counterpart: f.counterpart,
         }
     }
 }

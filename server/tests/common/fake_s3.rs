@@ -140,6 +140,10 @@ impl FakeS3 {
         self.store.lock().unwrap().objects.get(key).cloned()
     }
 
+    pub fn open_multipart_count(&self) -> usize {
+        self.store.lock().unwrap().uploads.len()
+    }
+
     pub fn object_keys(&self) -> Vec<String> {
         self.store.lock().unwrap().objects.keys().cloned().collect()
     }

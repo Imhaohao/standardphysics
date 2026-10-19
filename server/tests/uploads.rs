@@ -240,3 +240,38 @@ async fn presign_response_names_the_host_to_allowlist() {
     let url = body["parts"][0]["url"].as_str().unwrap();
     assert!(url.contains(body["host"].as_str().unwrap()));
 }
+
+#[tokio::test]
+async fn aborting_an_in_progress_mesh_upload_releases_it() {
+    let app = TestApp::start().await;
+    let token = app.register("release@example.com").await;
+    let scan_id = app.create_scan(&token).await;
+    let data = payload(6 * MIB);
+    let upload = create_upload(&app, &token, &scan_id, data.len()).await;
+    let upload_id = upload["id"].as_str().unwrap();
+    let urls = presign(&app, &token, &scan_id, upload_id, &[1]).await;
+    put_part(&app, &urls[0], data[..5 * MIB].to_vec()).await;
+    assert_eq!(app.s3.open_multipart_count(), 1);
+
+    let abort = format!("/v1/scans/{scan_id}/uploads/{upload_id}/abort");
+    let (status, _) = app.post(&token, &abort, json!({})).await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+    assert_eq!(app.s3.open_multipart_count(), 0, "multipart is released");
+    assert!(app.s3.object_keys().is_empty());
+
+    let (status, _) = app.post(&token, &abort, json!({})).await;
+    assert_eq!(
+        status,
+        StatusCode::NO_CONTENT,
+        "aborting twice is idempotent"
+    );
+    let (_, status_body) = app
+        .get(&token, &format!("/v1/scans/{scan_id}/uploads/{upload_id}"))
+        .await;
+    assert_eq!(status_body["upload"]["state"], "aborted");
+    let complete = format!("/v1/scans/{scan_id}/uploads/{upload_id}/complete");
+    let (status, _) = app
+        .post(&token, &complete, json!({"sha256": sha256_hex(&data)}))
+        .await;
+    assert_eq!(status, StatusCode::CONFLICT);
+}

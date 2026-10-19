@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Standard Physics server",
-    "description": "Scans, uploads, live findings and assessments.\n\nUploads: artifact kind `mesh` carries the binary `mesh.spm`; `crop` carries detector crops (JPEG); `photo`, `video` and `other` are free-form. RoomPlan rooms are not uploaded as files: they stream as CapturedRoom JSON per room over the live WebSocket (`GET /v1/scans/{scan_id}/live`, JSON text frames). Client frames are `ClientMessage` (`room`, `ping`); server frames are `ServerMessage` (`hello`, `scene` (merged Scene, sent after hello and after finish), `room` (one converted sp-core Room, on every room update), `findings`, `report`, `error`, `pong`). Both are defined under components/schemas.\n\nAuth for the socket: native clients send `Authorization: Bearer`; browsers call `POST /v1/scans/{scan_id}/live-ticket` and open the socket with the single-use `?ticket=` (valid 30 s). Session tokens in the query string are rejected.\n\nPresigned upload URLs all point at one host, returned as `host` in the presign response and equal to the host of `S3_PUBLIC_ENDPOINT` (https, path-style: `https://<host>/<bucket>/<key>?X-Amz-...`). Allowlist that host on the device.\n\nApple sign-in: send the raw `nonce`; the identity token's `nonce` claim must be its lowercase hex SHA-256.\n\n`POST /v1/scans` and `POST /v1/scans/{scan_id}/uploads` accept `Idempotency-Key`.",
+    "description": "Scans, uploads, live findings and assessments.\n\nUploads: artifact kind `mesh` carries the binary `mesh.spm`; `crop` carries detector crops (JPEG); `photo`, `video` and `other` are free-form. `room` carries one RoomPlan CapturedRoom JSON document (`application/json`, at most 16 MiB) and is the offline-safe path for rooms: on `complete` it is parsed and applied to the scan exactly like a live `room` message (room id = the CapturedRoom `identifier`, falling back to the filename stem; final; the same room id arriving by socket and by upload replaces, never duplicates), and it is included at finish. A room upload is rejected with 409 once the scan is no longer capturing and with 422 (object discarded) if it is not a valid CapturedRoom. Rooms may also stream live over the WebSocket (`GET /v1/scans/{scan_id}/live`, JSON text frames). Client frames are `ClientMessage` (`room`, `ping`); server frames are `ServerMessage` (`hello`, `scene` (merged Scene, sent after hello and after finish), `room` (one converted sp-core Room, on every room update), `findings`, `report`, `error`, `pong`). Both are defined under components/schemas.\n\nAuth for the socket: native clients send `Authorization: Bearer`; browsers call `POST /v1/scans/{scan_id}/live-ticket` and open the socket with the single-use `?ticket=` (valid 30 s). Session tokens in the query string are rejected.\n\nPresigned upload URLs all point at one host, returned as `host` in the presign response and equal to the host of `S3_PUBLIC_ENDPOINT` (https, path-style: `https://<host>/<bucket>/<key>?X-Amz-...`). Allowlist that host on the device.\n\nApple sign-in: send the raw `nonce`; the identity token's `nonce` claim must be its lowercase hex SHA-256.\n\n`POST /v1/scans` and `POST /v1/scans/{scan_id}/uploads` accept `Idempotency-Key`.",
     "license": {
       "name": ""
     },
@@ -1315,7 +1315,7 @@
             "type": "string"
           },
           "severity": {
-            "type": "string"
+            "$ref": "#/components/schemas/Severity"
           },
           "status": {
             "$ref": "#/components/schemas/FindingStatus"
@@ -1841,6 +1841,15 @@
               }
             }
           }
+        ]
+      },
+      "Severity": {
+        "type": "string",
+        "description": "Every value `Finding.severity` can take. `violation` and `advisory` come from the rulepack\n(`advisory` also replaces `violation` when a level floor is only assumed); `info` is used\nby server-generated findings such as unresolved labels.",
+        "enum": [
+          "violation",
+          "advisory",
+          "info"
         ]
       },
       "StageTimings": {
