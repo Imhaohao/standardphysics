@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 nonisolated enum LiveConnectionState: Sendable, Equatable {
     case connecting
@@ -28,6 +29,8 @@ actor LiveChannel {
     private let heartbeatInterval: Duration
     private let pongTimeout: Duration
     private let sleep: Sleeper
+    private let maximumConsecutiveFailures: Int
+    private let logger = Logger(subsystem: "com.tarunyadgirkar.standardphysics", category: "live")
 
     private var runTask: Task<Void, Never>?
     private var activeConnection: (any WebSocketConnection)?
@@ -41,8 +44,10 @@ actor LiveChannel {
         backoff: Backoff = Backoff(base: .seconds(1), maximum: .seconds(30)),
         heartbeatInterval: Duration = .seconds(20),
         pongTimeout: Duration = .seconds(10),
+        maximumConsecutiveFailures: Int = 10,
         sleep: @escaping Sleeper = DefaultSleeper.sleep
     ) {
+        self.maximumConsecutiveFailures = maximumConsecutiveFailures
         (messages, messageContinuation) = AsyncStream.makeStream(of: LiveMessage.self, bufferingPolicy: .unbounded)
         (states, stateContinuation) = AsyncStream.makeStream(of: LiveConnectionState.self, bufferingPolicy: .bufferingNewest(8))
         self.requestProvider = requestProvider
@@ -85,25 +90,39 @@ actor LiveChannel {
 
     // MARK: Connection loop
 
+    /// Gives up for good when the server refuses the session (401 or 403), since retrying
+    /// cannot fix that, or after `maximumConsecutiveFailures` attempts in a row fail.
     private func runLoop() async {
         var attempt = 0
         while !isClosed {
             stateContinuation.yield(attempt == 0 ? .connecting : .reconnecting(attempt: attempt))
             becameConnected = false
-            await runOneConnection()
+            let outcome = await runOneConnection()
             guard !isClosed else { return }
             attempt = becameConnected ? 1 : attempt + 1
+            if outcome == .refused || attempt >= maximumConsecutiveFailures {
+                close()
+                return
+            }
             try? await sleep(backoff.delay(forAttempt: attempt - 1))
         }
     }
 
-    private func runOneConnection() async {
+    private enum ConnectionOutcome { case dropped, refused }
+
+    private func runOneConnection() async -> ConnectionOutcome {
+        let request: URLRequest
         do {
-            let connection = connector.connect(try await requestProvider())
-            defer {
-                connection.close()
-                activeConnection = nil
-            }
+            request = try await requestProvider()
+        } catch {
+            return .dropped
+        }
+        let connection = connector.connect(request)
+        defer {
+            connection.close()
+            activeConnection = nil
+        }
+        do {
             try await pingWithTimeout(connection)
             activeConnection = connection
             becameConnected = true
@@ -111,9 +130,12 @@ actor LiveChannel {
             try await resendUnanswered(over: connection)
             try await serve(connection)
         } catch {
-            return
+            return Self.refusedStatuses.contains(connection.rejectionStatus ?? 0) ? .refused : .dropped
         }
+        return .dropped
     }
+
+    private static let refusedStatuses: Set<Int> = [401, 403]
 
     private func serve(_ connection: any WebSocketConnection) async throws {
         try await withThrowingTaskGroup(of: Void.self) { group in
@@ -180,8 +202,9 @@ actor LiveChannel {
     }
 
     private func decode(_ text: String) -> LiveMessage {
-        let decoded = try? WireCoding.decoder().decode(LiveMessage.self, from: Data(text.utf8))
-        return decoded ?? .unknown(type: "undecodable")
+        if let decoded = try? WireCoding.decoder().decode(LiveMessage.self, from: Data(text.utf8)) { return decoded }
+        logger.error("Undecodable live message of \(text.utf8.count) bytes")
+        return .unknown(type: "undecodable")
     }
 
     private func resendUnanswered(over connection: any WebSocketConnection) async throws {

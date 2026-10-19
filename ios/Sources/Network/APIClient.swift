@@ -11,9 +11,35 @@ nonisolated enum APIConfiguration {
     static let baseURLInfoKey = "SPAPIBaseURL"
 
     static func baseURL(in bundle: Bundle = .main) throws -> URL {
-        guard let text = bundle.object(forInfoDictionaryKey: baseURLInfoKey) as? String,
-              let url = URL(string: text), url.host != nil else { throw APIError.notConfigured }
+        guard let text = bundle.object(forInfoDictionaryKey: baseURLInfoKey) as? String else { throw APIError.notConfigured }
+        return try validatedBaseURL(text)
+    }
+
+    static func validatedBaseURL(_ text: String, allowsLocalHTTP: Bool = TransportSecurity.isDebugBuild) throws -> URL {
+        guard let url = URL(string: text), TransportSecurity.isAllowed(url, allowsLocalHTTP: allowsLocalHTTP) else {
+            throw APIError.notConfigured
+        }
         return url
+    }
+}
+
+/// Everything leaves the phone over TLS. Debug builds may also talk plain HTTP to a server on
+/// this Mac or the simulator's host, and nothing else.
+nonisolated enum TransportSecurity {
+    static let localHosts: Set<String> = ["localhost", "127.0.0.1", "::1"]
+
+    static var isDebugBuild: Bool {
+        #if DEBUG
+        true
+        #else
+        false
+        #endif
+    }
+
+    static func isAllowed(_ url: URL, allowsLocalHTTP: Bool = isDebugBuild) -> Bool {
+        guard let scheme = url.scheme?.lowercased(), let host = url.host?.lowercased() else { return false }
+        if scheme == "https" { return true }
+        return allowsLocalHTTP && scheme == "http" && localHosts.contains(host)
     }
 }
 
@@ -124,7 +150,9 @@ actor APIClient: UploadAPI {
 
     // MARK: Live
 
+    /// `wss` always; plain `ws` only for the local debug server `TransportSecurity` allows.
     func liveSocketRequest(scanID: String) throws -> URLRequest {
+        guard TransportSecurity.isAllowed(baseURL) else { throw APIError.notConfigured }
         var components = try urlComponents(path: APIRoutes.livePath(scanID: scanID))
         components.scheme = components.scheme == "https" ? "wss" : "ws"
         guard let url = components.url else { throw APIError.notConfigured }

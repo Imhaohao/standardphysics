@@ -246,6 +246,7 @@ final class FakeSocket: WebSocketConnection, @unchecked Sendable {
         var pings = 0
         var closed = false
         var pingBehavior = PingBehavior.succeed
+        var rejectionStatus: Int?
         var inbox: [Result<String, Error>] = []
         var waiter: CheckedContinuation<String, Error>?
     }
@@ -259,6 +260,8 @@ final class FakeSocket: WebSocketConnection, @unchecked Sendable {
     var isClosed: Bool { record.read { $0.closed } }
 
     func setPingBehavior(_ behavior: PingBehavior) { record.write { $0.pingBehavior = behavior } }
+    var rejectionStatus: Int? { record.read { $0.rejectionStatus } }
+    func reject(status: Int) { record.write { $0.rejectionStatus = status } }
     func push(_ text: String) { deliver(.success(text)) }
     func fail(_ error: Error = URLError(.networkConnectionLost)) { deliver(.failure(error)) }
 
