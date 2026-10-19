@@ -2,14 +2,44 @@ import SwiftUI
 
 @main
 struct StandardPhysicsApp: App {
-    @State private var launch = LaunchConfiguration.fromProcess()
+    @State private var launch = LaunchMode.fromProcess()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
-            RootView(model: launch.model) { CameraPlaceholder() }
-                .environment(\.trayStartsExpanded, launch.trayStartsExpanded)
+            content
                 .tint(Theme.Palette.accent)
         }
+        .onChange(of: scenePhase) { _, phase in
+            guard case .live(let services) = launch else { return }
+            services.coordinator.handleScenePhase(phase)
+        }
+    }
+
+    @ViewBuilder private var content: some View {
+        switch launch {
+        case .staged(let configuration):
+            RootView(model: configuration.model) { CameraPlaceholder() }
+                .environment(\.trayStartsExpanded, configuration.trayStartsExpanded)
+        case .live(let services):
+            RootView(model: services.appModel) { LiveCameraLayer(services: services) }
+                .task { await services.appModel.refresh() }
+        }
+    }
+}
+
+/// Screenshots and unit tests run on staged data; everything else runs the real capture stack.
+enum LaunchMode {
+    case staged(LaunchConfiguration)
+    case live(LiveServices)
+
+    @MainActor
+    static func fromProcess(_ process: ProcessInfo = .processInfo) -> LaunchMode {
+        let isUnderTest = process.environment["XCTestConfigurationFilePath"] != nil
+        if isUnderTest || process.arguments.contains("-screen") {
+            return .staged(LaunchConfiguration.fromProcess(arguments: process.arguments))
+        }
+        return .live(LiveServices())
     }
 }
 

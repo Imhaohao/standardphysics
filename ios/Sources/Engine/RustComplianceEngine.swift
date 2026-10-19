@@ -21,6 +21,9 @@ nonisolated protocol RoomComplianceEvaluating: Sendable {
 
 nonisolated struct ComplianceReport: Sendable, Equatable {
     let findings: [Finding]
+    /// Room id for each finding id, where the engine knows it.
+    let findingRooms: [String: String]
+    let sceneJSON: String
     let governingFailures: Int
     let governingNeedsInfo: Int
     let governingPasses: Int
@@ -55,8 +58,15 @@ actor RustComplianceEngine: RoomComplianceEvaluating {
 
     func evaluateScan() -> ComplianceReport {
         let report = engine.evaluateAll()
+        let engineFindings = report.jurisdictions.flatMap(\.findings)
+        let findings = engineFindings.map(Finding.init)
+        let rooms = zip(findings, engineFindings).compactMap { finding, source in
+            source.roomId.map { (finding.id, $0) }
+        }
         return ComplianceReport(
-            findings: report.jurisdictions.flatMap(\.findings).map(Finding.init),
+            findings: findings,
+            findingRooms: Dictionary(rooms, uniquingKeysWith: { first, _ in first }),
+            sceneJSON: engine.sceneJson(),
             governingFailures: Int(report.governingCounts.fail),
             governingNeedsInfo: Int(report.governingCounts.needsInfo),
             governingPasses: Int(report.governingCounts.pass),
