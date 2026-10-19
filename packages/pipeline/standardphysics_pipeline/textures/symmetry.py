@@ -52,6 +52,13 @@ chair's hidden side. Two independent views agreeing is far harder to fake.
 """
 OFFSETS = np.linspace(-0.08, 0.08, 9)
 """Where the plane may sit relative to the box centre, since a measured box is not always centred."""
+SCORED_POINTS = 4000
+"""Reflected points scored per candidate plane.
+
+Agreement and contradiction are shares, so an even spread of this many points
+puts each within about one percentage point of the share over every point, well
+inside the margins a plane must clear. Scoring every point of a counter cost
+half a second per plane, and every object tries eighteen."""
 MISSING_DISTANCE = 0.05
 """A reflected triangle is added only where no scanned vertex lies this close to any of its corners."""
 
@@ -176,12 +183,26 @@ def _reflected(local: np.ndarray, axis: int, offset: float) -> np.ndarray:
     return mirrored
 
 
-def _score(own: np.ndarray, tree: cKDTree, to_room, seen_through: SeenThrough, axis: int, offset: float) -> tuple[float, float]:
-    """Agreement and contradiction of one reflection, each as a share of the reflected points."""
-    mirrored = _reflected(own, axis, offset)
-    agreement = float((tree.query(mirrored)[0] <= AGREEMENT_DISTANCE).mean())
+def _score(
+    scored: np.ndarray, tree: cKDTree, to_room, seen_through: SeenThrough, axis: int, offset: float
+) -> tuple[float, float]:
+    """Agreement and contradiction of one reflection, each as a share of the reflected points.
+
+    Agreement only asks whether scanned surface lies within reach, so the search
+    stops at that distance rather than finding the nearest point exactly.
+    """
+    mirrored = _reflected(scored, axis, offset)
+    nearest = tree.query(mirrored, distance_upper_bound=AGREEMENT_DISTANCE, workers=-1)[0]
+    agreement = float((nearest <= AGREEMENT_DISTANCE).mean())
     contradiction = float(seen_through(to_room(mirrored)).mean())
     return agreement, contradiction
+
+
+def _evenly_spread(points: np.ndarray, most: int) -> np.ndarray:
+    """At most `most` of the points, taken at an even stride so every part of the object is represented."""
+    if len(points) <= most:
+        return points
+    return points[np.linspace(0, len(points) - 1, most).astype(np.int64)]
 
 
 @dataclass(frozen=True)
@@ -237,6 +258,7 @@ def symmetry_planes(index: int, node: SceneNode, scan: _IndexedScan, seen_throug
     if len(own) < MIN_POINTS:
         return []
     tree = cKDTree(own)
+    scored = _evenly_spread(own, SCORED_POINTS)
 
     def to_room(points):
         return points @ rotation.T + centre
@@ -245,7 +267,7 @@ def symmetry_planes(index: int, node: SceneNode, scan: _IndexedScan, seen_throug
     for axis in _upright_planes(rotation):
         best = None
         for offset in OFFSETS * min(1.0, half[axis] / 0.3):
-            agreement, contradiction = _score(own, tree, to_room, seen_through, axis, float(offset))
+            agreement, contradiction = _score(scored, tree, to_room, seen_through, axis, float(offset))
             margin = agreement - contradiction
             if agreement >= MIN_AGREEMENT and margin >= MIN_MARGIN and (best is None or margin > best.margin):
                 best = MirrorPlane(index, axis, float(offset), margin)

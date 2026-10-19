@@ -40,7 +40,29 @@
     {
       "id": 2,
       "name": "60 s pipeline: concurrent detection and labelling, no Blender on the critical path, GPU texture projection",
-      "status": "todo"
+      "status": "in progress",
+      "log": [
+        {
+          "date": "2026-10-18",
+          "run": "full Share Tea rerun, fresh cache",
+          "process_s": 166,
+          "display_s": 26,
+          "texture_s": 631,
+          "mirrored_completion_s": 540,
+          "objects": 75
+        },
+        {
+          "date": "2026-10-18",
+          "change": "mirrored completion: capped all-core neighbour search + score on 4000 evenly spread points",
+          "bench_on_captured_inputs": {
+            "before_s": 551.4,
+            "exact_only_s": 142.9,
+            "with_sampling_s": 17.6
+          },
+          "output": "74/74 planes; one offset moved 0.08->0.06 on node 127, +49 vertices of 24,736"
+        }
+      ],
+      "next": "process job 166 s (355 photo detections + 10 label batches), then box model 44 s, unwrap 13 s"
     },
     {
       "id": 3,
