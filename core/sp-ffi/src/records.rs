@@ -376,13 +376,29 @@ impl From<SpRoom> for scene::Room {
 
 impl From<SpObservation> for scene::Observation {
     fn from(o: SpObservation) -> Self {
-        Self { id: o.id, subject_id: o.subject_id, metric: o.metric, value: o.value.into(), unit: o.unit, source: o.source.into(), confidence: o.confidence }
+        Self {
+            id: o.id,
+            subject_id: o.subject_id,
+            metric: o.metric,
+            value: o.value.into(),
+            unit: o.unit,
+            source: o.source.into(),
+            confidence: o.confidence,
+        }
     }
 }
 
 impl From<scene::Observation> for SpObservation {
     fn from(o: scene::Observation) -> Self {
-        Self { id: o.id, subject_id: o.subject_id, metric: o.metric, value: o.value.into(), unit: o.unit, source: o.source.into(), confidence: o.confidence }
+        Self {
+            id: o.id,
+            subject_id: o.subject_id,
+            metric: o.metric,
+            value: o.value.into(),
+            unit: o.unit,
+            source: o.source.into(),
+            confidence: o.confidence,
+        }
     }
 }
 
@@ -421,7 +437,12 @@ impl From<GoverningFinding> for SpGoverningFinding {
 
 fn counts(c: sp_core::rules::StatusCounts) -> SpStatusCounts {
     let n = |v: usize| u32::try_from(v).unwrap_or(u32::MAX);
-    SpStatusCounts { pass: n(c.pass), fail: n(c.fail), needs_info: n(c.needs_info), not_applicable: n(c.not_applicable) }
+    SpStatusCounts {
+        pass: n(c.pass),
+        fail: n(c.fail),
+        needs_info: n(c.needs_info),
+        not_applicable: n(c.not_applicable),
+    }
 }
 
 impl From<Report> for SpReport {
@@ -430,7 +451,11 @@ impl From<Report> for SpReport {
             jurisdictions: r
                 .jurisdictions
                 .into_iter()
-                .map(|j| SpJurisdictionReport { jurisdiction: j.jurisdiction, counts: counts(j.counts), findings: j.findings.into_iter().map(Into::into).collect() })
+                .map(|j| SpJurisdictionReport {
+                    jurisdiction: j.jurisdiction,
+                    counts: counts(j.counts),
+                    findings: j.findings.into_iter().map(Into::into).collect(),
+                })
                 .collect(),
             governing: r.governing.into_iter().map(Into::into).collect(),
             governing_counts: counts(r.governing_counts),

@@ -1,6 +1,9 @@
 //! Water closets, grab bars, dispensers, compartments, urinals and lavatories (603-606).
 
-use super::support::{WATER_CLOSETS, boundary_segments, long_axis, long_dimension, needs_detail, object_in_room, objects_of, projected_span, short_dimension, vertical_extent, within_box_height, wrong_subject};
+use super::support::{
+    WATER_CLOSETS, boundary_segments, long_axis, long_dimension, needs_detail, object_in_room, objects_of,
+    projected_span, short_dimension, vertical_extent, within_box_height, wrong_subject,
+};
 use crate::geometry::{Segment2, Vec2};
 use crate::metrics::subject::Subject;
 use crate::metrics::{EvalContext, Extraction, Extractor};
@@ -45,8 +48,18 @@ pub const EXTRACTORS: &[(&str, Extractor)] = &[
 ];
 
 /// Items 604.3.2 allows inside the water closet clearance.
-const ALLOWED_IN_CLEARANCE: &[&str] =
-    &["grab_bar", "dispenser", "toilet_paper_dispenser", "coat_hook", "shelf", "sign", "hand_dryer", "mirror", "toilet_compartment", "wall_mounted_object"];
+const ALLOWED_IN_CLEARANCE: &[&str] = &[
+    "grab_bar",
+    "dispenser",
+    "toilet_paper_dispenser",
+    "coat_hook",
+    "shelf",
+    "sign",
+    "hand_dryer",
+    "mirror",
+    "toilet_compartment",
+    "wall_mounted_object",
+];
 const CLEARANCE_WIDTH: f64 = 1.524;
 const CLEARANCE_DEPTH: f64 = 1.4224;
 const SEARCH_LIMIT: f64 = 3.0;
@@ -110,7 +123,8 @@ fn line_intersection(a: &Segment2, b: &Segment2) -> Vec2 {
 
 fn water_closet<'a>(ctx: &EvalContext<'a>, subject: &Subject) -> Result<(&'a Room, &'a Object, WcFrame), Extraction> {
     let (room, wc) = object_in_room(ctx, subject)?;
-    let frame = WcFrame::of(room, wc).ok_or_else(|| Extraction::unknown("no walls captured around the water closet"))?;
+    let frame =
+        WcFrame::of(room, wc).ok_or_else(|| Extraction::unknown("no walls captured around the water closet"))?;
     Ok((room, wc, frame))
 }
 
@@ -134,7 +148,11 @@ fn obstruction_points(room: &Room, wc: &Object, frame: &WcFrame) -> Vec<Vec2> {
 }
 
 fn clear_extent(points: &[Vec2], along: impl Fn(&Vec2) -> f64, across: impl Fn(&Vec2) -> f64, band: f64) -> f64 {
-    points.iter().filter(|p| across(p) > 0.01 && across(p) < band && along(p) > 0.01).map(&along).fold(SEARCH_LIMIT, f64::min)
+    points
+        .iter()
+        .filter(|p| across(p) > 0.01 && across(p) < band && along(p) > 0.01)
+        .map(&along)
+        .fold(SEARCH_LIMIT, f64::min)
 }
 
 fn clearance_width(ctx: &EvalContext, subject: &Subject) -> Extraction {
@@ -164,7 +182,8 @@ fn clearance_has_other_fixture(ctx: &EvalContext, subject: &Subject) -> Extracti
         Ok(found) => found,
         Err(e) => return e,
     };
-    let fixtures = room.objects.iter().filter(|o| o.id != wc.id && !ALLOWED_IN_CLEARANCE.contains(&o.category.as_str()));
+    let fixtures =
+        room.objects.iter().filter(|o| o.id != wc.id && !ALLOWED_IN_CLEARANCE.contains(&o.category.as_str()));
     let inside = |p: Vec2| p.x > 0.01 && p.x < CLEARANCE_WIDTH && p.y > 0.01 && p.y < CLEARANCE_DEPTH;
     let mut points = fixtures.flat_map(|o| o.footprint().boundary_points(SAMPLE_SPACING));
     Extraction::boolean(points.any(|p| inside(frame.local(p))))
@@ -184,13 +203,19 @@ enum BarWall {
     Rear,
 }
 
+/// A grab bar, the frame of its nearest water closet, the wall it is on and its span in that frame.
+type PlacedBar<'a> = (&'a Object, WcFrame, BarWall, (f64, f64));
+
 /// Which wall of the nearest water closet a grab bar is on, with the bar's span in that frame.
-fn grab_bar<'a>(ctx: &EvalContext<'a>, subject: &Subject) -> Result<(&'a Object, WcFrame, BarWall, (f64, f64)), Extraction> {
+fn grab_bar<'a>(ctx: &EvalContext<'a>, subject: &Subject) -> Result<PlacedBar<'a>, Extraction> {
     let (room, bar) = object_in_room(ctx, subject)?;
     let wc = objects_of(room, WATER_CLOSETS)
-        .min_by(|a, b| a.center.plan().distance(bar.center.plan()).total_cmp(&b.center.plan().distance(bar.center.plan())))
+        .min_by(|a, b| {
+            a.center.plan().distance(bar.center.plan()).total_cmp(&b.center.plan().distance(bar.center.plan()))
+        })
         .ok_or_else(|| Extraction::not_applicable("no water closet in the room"))?;
-    let frame = WcFrame::of(room, wc).ok_or_else(|| Extraction::unknown("no walls captured around the water closet"))?;
+    let frame =
+        WcFrame::of(room, wc).ok_or_else(|| Extraction::unknown("no walls captured around the water closet"))?;
     let local = frame.local(bar.center.plan());
     let runs_along_facing = long_axis(bar).dot(frame.facing).abs() > 0.7;
     let wall = match (runs_along_facing, local.x < NEAR_WALL, local.y < NEAR_WALL) {
@@ -203,7 +228,12 @@ fn grab_bar<'a>(ctx: &EvalContext<'a>, subject: &Subject) -> Result<(&'a Object,
     Ok((bar, frame, wall, span))
 }
 
-fn bar_metric(ctx: &EvalContext, subject: &Subject, wall: BarWall, read: fn(&Object, &WcFrame, (f64, f64)) -> Option<f64>) -> Extraction {
+fn bar_metric(
+    ctx: &EvalContext,
+    subject: &Subject,
+    wall: BarWall,
+    read: fn(&Object, &WcFrame, (f64, f64)) -> Option<f64>,
+) -> Extraction {
     match grab_bar(ctx, subject) {
         Ok((bar, frame, found, span)) if found == wall => match read(bar, &frame, span) {
             Some(value) => Extraction::metres(value).located(Some(bar.center)),
@@ -239,7 +269,9 @@ fn rear_extension_open_side(ctx: &EvalContext, subject: &Subject) -> Extraction 
 }
 
 fn grab_bar_height(ctx: &EvalContext, subject: &Subject) -> Extraction {
-    ctx.object(subject).map(|bar| Extraction::metres(bar.top_height).located(Some(bar.center))).unwrap_or_else(wrong_subject)
+    ctx.object(subject)
+        .map(|bar| Extraction::metres(bar.top_height).located(Some(bar.center)))
+        .unwrap_or_else(wrong_subject)
 }
 
 /// Vertical gaps to objects overlapping the bar in plan; the ceiling and floor bound them.
@@ -277,7 +309,11 @@ fn bar_present(ctx: &EvalContext, subject: &Subject, wall: BarWall) -> Extractio
             BarWall::Rear => !along_facing && local.y < NEAR_WALL,
         }
     });
-    if found { Extraction::boolean(true) } else { Extraction::unknown("no grab bar detected; the scan may miss them, so a photo confirms") }
+    if found {
+        Extraction::boolean(true)
+    } else {
+        Extraction::unknown("no grab bar detected; the scan may miss them, so a photo confirms")
+    }
 }
 
 fn grab_bar_present_side(ctx: &EvalContext, subject: &Subject) -> Extraction {
@@ -288,8 +324,9 @@ fn grab_bar_present_rear(ctx: &EvalContext, subject: &Subject) -> Extraction {
     bar_present(ctx, subject, BarWall::Rear)
 }
 
-fn nearest_wc<'a>(room: &'a Room, point: Vec2) -> Option<&'a Object> {
-    objects_of(room, WATER_CLOSETS).min_by(|a, b| a.center.plan().distance(point).total_cmp(&b.center.plan().distance(point)))
+fn nearest_wc(room: &Room, point: Vec2) -> Option<&Object> {
+    objects_of(room, WATER_CLOSETS)
+        .min_by(|a, b| a.center.plan().distance(point).total_cmp(&b.center.plan().distance(point)))
 }
 
 fn dispenser_from_wc_front(ctx: &EvalContext, subject: &Subject) -> Extraction {
@@ -297,8 +334,12 @@ fn dispenser_from_wc_front(ctx: &EvalContext, subject: &Subject) -> Extraction {
         Ok(found) => found,
         Err(e) => return e,
     };
-    let Some(wc) = nearest_wc(room, dispenser.center.plan()) else { return Extraction::not_applicable("no water closet in the room") };
-    let Some(frame) = WcFrame::of(room, wc) else { return Extraction::unknown("no walls captured around the water closet") };
+    let Some(wc) = nearest_wc(room, dispenser.center.plan()) else {
+        return Extraction::not_applicable("no water closet in the room");
+    };
+    let Some(frame) = WcFrame::of(room, wc) else {
+        return Extraction::unknown("no walls captured around the water closet");
+    };
     let front = projected_span(&wc.footprint(), frame.rear_origin, frame.facing).1;
     Extraction::metres(frame.local(dispenser.center.plan()).y - front).located(Some(dispenser.center))
 }
@@ -368,7 +409,9 @@ fn compartment_front_depth(ctx: &EvalContext, subject: &Subject) -> Extraction {
     let Some(wc) = objects_of(room, WATER_CLOSETS).find(|wc| footprint.contains(wc.center.plan())) else {
         return Extraction::unknown("no water closet found inside the compartment");
     };
-    let Some(frame) = WcFrame::of(room, wc) else { return Extraction::unknown("no walls captured around the water closet") };
+    let Some(frame) = WcFrame::of(room, wc) else {
+        return Extraction::unknown("no walls captured around the water closet");
+    };
     let wc_front = projected_span(&wc.footprint(), frame.rear_origin, frame.facing).1;
     let compartment_front = projected_span(&footprint, frame.rear_origin, frame.facing).1;
     Extraction::metres((compartment_front - wc_front).max(0.0)).located(Some(compartment.center))
@@ -382,8 +425,14 @@ fn dispenser_below_grab_bar(ctx: &EvalContext, subject: &Subject) -> Extraction 
     };
     let bar = objects_of(room, &["grab_bar"])
         .filter(|b| b.footprint().distance_to(dispenser.center.plan()) < 0.3)
-        .min_by(|a, b| a.footprint().distance_to(dispenser.center.plan()).total_cmp(&b.footprint().distance_to(dispenser.center.plan())));
-    let Some(bar) = bar else { return Extraction::unknown("no grab bar detected near the dispenser; a photo confirms") };
+        .min_by(|a, b| {
+            a.footprint()
+                .distance_to(dispenser.center.plan())
+                .total_cmp(&b.footprint().distance_to(dispenser.center.plan()))
+        });
+    let Some(bar) = bar else {
+        return Extraction::unknown("no grab bar detected near the dispenser; a photo confirms");
+    };
     let gap = bar.bottom_height() - dispenser.top_height;
     let along = projected_span(&bar.footprint(), bar.center.plan(), long_axis(bar));
     let offset = (dispenser.center.plan() - bar.center.plan()).dot(long_axis(bar));
@@ -420,11 +469,21 @@ fn lavatory_from_wc_centerline(ctx: &EvalContext, subject: &Subject) -> Extracti
         Ok(found) => found,
         Err(e) => return e,
     };
-    let Some(wc) = nearest_wc(room, lavatory.center.plan()) else { return Extraction::not_applicable("no water closet in the room") };
-    let Some(frame) = WcFrame::of(room, wc) else { return Extraction::unknown("no walls captured around the water closet") };
+    let Some(wc) = nearest_wc(room, lavatory.center.plan()) else {
+        return Extraction::not_applicable("no water closet in the room");
+    };
+    let Some(frame) = WcFrame::of(room, wc) else {
+        return Extraction::unknown("no walls captured around the water closet");
+    };
     let centre_x = frame.local(wc.center.plan()).x;
     let span = projected_span(&lavatory.footprint(), frame.rear_origin, frame.lateral);
-    let gap = if span.0 > centre_x { span.0 - centre_x } else if span.1 < centre_x { centre_x - span.1 } else { 0.0 };
+    let gap = if span.0 > centre_x {
+        span.0 - centre_x
+    } else if span.1 < centre_x {
+        centre_x - span.1
+    } else {
+        0.0
+    };
     Extraction::metres(gap).located(Some(lavatory.center))
 }
 
@@ -444,9 +503,12 @@ fn side_bar_beyond_wc(ctx: &EvalContext, subject: &Subject) -> Extraction {
         Ok(found) => found,
         Err(e) => return e,
     };
-    let Some(wc) = nearest_wc(room, bar.center.plan()) else { return Extraction::not_applicable("no water closet in the room") };
+    let Some(wc) = nearest_wc(room, bar.center.plan()) else {
+        return Extraction::not_applicable("no water closet in the room");
+    };
     let front = WcFrame::of(room, wc).map(|frame| projected_span(&wc.footprint(), frame.rear_origin, frame.facing).1);
-    bar_metric(ctx, subject, BarWall::Side, |_, _, span| Some(span.1)).map_value(|far_end| far_end - front.unwrap_or(far_end))
+    bar_metric(ctx, subject, BarWall::Side, |_, _, span| Some(span.1))
+        .map_value(|far_end| far_end - front.unwrap_or(far_end))
 }
 
 /// Free depth in front of the water closet across a 60 in band from the side wall.
@@ -456,7 +518,8 @@ fn wc_front_maneuvering_depth(ctx: &EvalContext, subject: &Subject) -> Extractio
         Err(e) => return e,
     };
     let front = projected_span(&wc.footprint(), frame.rear_origin, frame.facing).1;
-    let points: Vec<Vec2> = obstruction_points(room, wc, &frame).into_iter().map(|p| Vec2::new(p.x, p.y - front)).collect();
+    let points: Vec<Vec2> =
+        obstruction_points(room, wc, &frame).into_iter().map(|p| Vec2::new(p.x, p.y - front)).collect();
     let band = if frame.side.is_some() { CLEARANCE_WIDTH } else { f64::INFINITY };
     Extraction::metres(clear_extent(&points, |p| p.y, |p| p.x.abs(), band)).located(Some(wc.center))
 }

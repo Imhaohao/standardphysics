@@ -91,7 +91,9 @@ fn count_in(room: &Room, categories: &[&str]) -> usize {
 }
 
 fn compartment_count(ctx: &EvalContext, subject: &Subject) -> Extraction {
-    room_subject(ctx, subject).map(|room| Extraction::count(count_in(room, &["toilet_compartment", "urinal"]))).unwrap_or_else(|e| e)
+    room_subject(ctx, subject)
+        .map(|room| Extraction::count(count_in(room, &["toilet_compartment", "urinal"])))
+        .unwrap_or_else(|e| e)
 }
 
 fn urinal_count(ctx: &EvalContext, subject: &Subject) -> Extraction {

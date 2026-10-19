@@ -1,6 +1,6 @@
 //! Sweeping rectangles across an occupancy grid to measure free floor in a given frame.
 
-use super::{CellState, OccupancyGrid};
+use super::{CellState, ClearanceField, OccupancyGrid};
 use crate::geometry::{OrientedBox2, Vec2};
 
 /// How far free floor extends, and whether the sweep ran into unscanned space before an obstacle.
@@ -41,7 +41,11 @@ impl Probe {
         while travelled + step <= max_length {
             let line_state = self.line_state(grid, travelled + step);
             if line_state != CellState::Free {
-                return Extent { length: travelled, reached_unscanned: line_state == CellState::Outside, capped: false };
+                return Extent {
+                    length: travelled,
+                    reached_unscanned: line_state == CellState::Outside,
+                    capped: false,
+                };
             }
             travelled += step;
         }
@@ -88,6 +92,39 @@ pub fn area_is_free(grid: &OccupancyGrid, area: &OrientedBox2) -> bool {
     grid.spec.cells_in(area.bounds()).filter(|&i| area.contains(grid.spec.center(i))).all(|i| grid.is_free(i))
 }
 
+/// Spacing of the coarse samples [`area_is_clear`] tries before scanning every cell.
+const CLEAR_SAMPLE: f64 = 0.1;
+
+/// Same answer as [`area_is_free`], faster: a coarse lattice of samples either finds a blocked cell
+/// inside the area or, when every sample's clearance covers its share of the area, proves it free;
+/// only areas that graze an obstacle fall back to the cell-by-cell scan.
+pub fn area_is_clear(grid: &OccupancyGrid, clearance: &ClearanceField, area: &OrientedBox2) -> bool {
+    let cover = (CLEAR_SAMPLE + grid.spec.cell) * std::f64::consts::FRAC_1_SQRT_2;
+    let mut proven = true;
+    for point in area_lattice(area, CLEAR_SAMPLE) {
+        let Some(cell) = grid.spec.locate(point) else { return false };
+        if !grid.is_free(cell) && area.contains(grid.spec.center(cell)) {
+            return false;
+        }
+        proven &= clearance.at(cell) >= cover;
+    }
+    proven || area_is_free(grid, area)
+}
+
+/// Points spread evenly over the box, no further than `spacing` apart along either side.
+fn area_lattice(area: &OrientedBox2, spacing: f64) -> impl Iterator<Item = Vec2> + '_ {
+    let size = area.half_extents * 2.0;
+    let (nx, nz) = ((size.x / spacing).ceil().max(1.0) as usize, (size.y / spacing).ceil().max(1.0) as usize);
+    let (x_axis, z_axis) = area.axes();
+    (0..nz).flat_map(move |j| {
+        (0..nx).map(move |i| {
+            let local_x = size.x * ((i as f64 + 0.5) / nx as f64 - 0.5);
+            let local_z = size.y * ((j as f64 + 0.5) / nz as f64 - 0.5);
+            area.center + x_axis * local_x + z_axis * local_z
+        })
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -111,5 +148,16 @@ mod tests {
         let extent = Probe::new(Vec2::new(2.0, 0.5), Vec2::new(0.0, -1.0), 0.3).sweep(&grid, 5.0);
         assert!(extent.reached_unscanned);
         assert_eq!(extent.upper_bound(), f64::INFINITY);
+    }
+
+    proptest::proptest! {
+        #[test]
+        fn area_is_clear_agrees_with_the_cell_scan(x in 0.0..4.0f64, z in 0.0..3.0f64, w in 0.1..2.0f64, d in 0.1..2.0f64, yaw in 0.0..6.3f64) {
+            let room = box_room();
+            let grid = OccupancyGrid::build(&[&room], GridOptions::default());
+            let clearance = ClearanceField::compute(grid.spec, |i| !grid.is_free(i));
+            let area = OrientedBox2::new(Vec2::new(x, z), w, d, yaw);
+            proptest::prop_assert_eq!(area_is_clear(&grid, &clearance, &area), area_is_free(&grid, &area));
+        }
     }
 }

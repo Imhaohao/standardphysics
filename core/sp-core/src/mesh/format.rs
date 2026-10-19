@@ -137,14 +137,22 @@ fn read_part(reader: &mut Reader, part: usize) -> Result<MeshPart, MeshError> {
     let face_count = reader.count(part, "face")?;
     let has_classes = reader.take(1)?[0] != 0;
     let vertices = (0..vertex_count).map(|_| reader.vec3().map(|v| apply(&transform, v))).collect::<Result<_, _>>()?;
-    let faces: Vec<[u32; 3]> = (0..face_count).map(|_| Ok([reader.u32()?, reader.u32()?, reader.u32()?])).collect::<Result<_, MeshError>>()?;
+    let faces: Vec<[u32; 3]> =
+        (0..face_count).map(|_| Ok([reader.u32()?, reader.u32()?, reader.u32()?])).collect::<Result<_, MeshError>>()?;
     check_indices(part, &faces, vertex_count)?;
-    let classes = if has_classes { Some(reader.take(face_count)?.iter().map(|&b| MeshClass::from_raw(b)).collect()) } else { None };
+    let classes = if has_classes {
+        Some(reader.take(face_count)?.iter().map(|&b| MeshClass::from_raw(b)).collect())
+    } else {
+        None
+    };
     Ok(MeshPart { id, transform, vertices, faces, classes })
 }
 
 fn check_indices(part: usize, faces: &[[u32; 3]], vertices: usize) -> Result<(), MeshError> {
-    let bad = faces.iter().enumerate().find_map(|(face, f)| f.iter().find(|&&i| i as usize >= vertices).map(|&index| (face, index)));
+    let bad = faces
+        .iter()
+        .enumerate()
+        .find_map(|(face, f)| f.iter().find(|&&i| i as usize >= vertices).map(|&index| (face, index)));
     match bad {
         Some((face, index)) => Err(MeshError::BadIndex { part, face, index, vertices }),
         None => Ok(()),
@@ -170,7 +178,9 @@ fn write_part(out: &mut Vec<u8>, part: &MeshPart) {
 
 /// Column-major 4x4 times a point.
 fn apply(m: &[f32; 16], v: Vec3) -> Vec3 {
-    let at = |row: usize| f64::from(m[row]) * v.x + f64::from(m[4 + row]) * v.y + f64::from(m[8 + row]) * v.z + f64::from(m[12 + row]);
+    let at = |row: usize| {
+        f64::from(m[row]) * v.x + f64::from(m[4 + row]) * v.y + f64::from(m[8 + row]) * v.z + f64::from(m[12 + row])
+    };
     Vec3::new(at(0), at(1), at(2))
 }
 
@@ -288,7 +298,8 @@ pub(crate) mod tests {
     #[test]
     fn rejects_bad_headers_and_truncation() {
         assert_eq!(ScanMesh::from_bytes(b"PLY1xxxxxxxxxxxx"), Err(MeshError::BadMagic));
-        let mut bytes = ScanMesh { floor_y: 0.0, parts: vec![floor_patch(Vec3::ZERO, 1.0, MeshClass::Floor)] }.to_bytes();
+        let mut bytes =
+            ScanMesh { floor_y: 0.0, parts: vec![floor_patch(Vec3::ZERO, 1.0, MeshClass::Floor)] }.to_bytes();
         bytes[4] = 2;
         assert_eq!(ScanMesh::from_bytes(&bytes), Err(MeshError::UnsupportedVersion(2)));
         bytes[4] = 1;

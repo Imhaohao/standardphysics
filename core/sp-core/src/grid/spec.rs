@@ -54,7 +54,10 @@ impl GridSpec {
     }
 
     /// Inclusive cell ranges whose centres may fall inside `bounds`.
-    pub fn cell_range(&self, bounds: Bounds2) -> Option<(std::ops::RangeInclusive<usize>, std::ops::RangeInclusive<usize>)> {
+    pub fn cell_range(
+        &self,
+        bounds: Bounds2,
+    ) -> Option<(std::ops::RangeInclusive<usize>, std::ops::RangeInclusive<usize>)> {
         let to_cell = |v: f64, origin: f64, n: usize| ((v - origin) / self.cell - 0.5).clamp(0.0, (n - 1) as f64);
         if bounds.is_empty() || self.is_empty() {
             return None;
@@ -70,7 +73,7 @@ impl GridSpec {
     pub fn column_span(&self, x0: f64, x1: f64) -> Option<std::ops::RangeInclusive<usize>> {
         let first = ((x0 - self.origin.x) / self.cell - 0.5).ceil().max(0.0);
         let last = ((x1 - self.origin.x) / self.cell - 0.5).floor().min(self.nx as f64 - 1.0);
-        (first <= last).then(|| first as usize..=last as usize)
+        (first <= last).then_some(first as usize..=last as usize)
     }
 
     /// Cells whose centres lie inside `bounds`.

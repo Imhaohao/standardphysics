@@ -3,6 +3,7 @@
 
 use crate::geometry::{OrientedBox2, Vec2};
 use crate::grid::{CellIndex, ClearanceField, GridOptions, OccupancyGrid};
+use crate::mesh::{FloorSurface, ScanMesh};
 use crate::routes::{RouteField, RouteLeg, ShortestTree, WidestTree, largest_turning_circle, t_turn_fits, trace_leg};
 use crate::scene::{Opening, OpeningKind, Room, Scene};
 use crate::units::inches;
@@ -24,7 +25,11 @@ pub struct AnalysisOptions {
 
 impl Default for AnalysisOptions {
     fn default() -> Self {
-        Self { grid: GridOptions::default(), door_clear_width_allowance: DOOR_CLEAR_WIDTH_ALLOWANCE, destination_categories: BTreeSet::new() }
+        Self {
+            grid: GridOptions::default(),
+            door_clear_width_allowance: DOOR_CLEAR_WIDTH_ALLOWANCE,
+            destination_categories: BTreeSet::new(),
+        }
     }
 }
 
@@ -70,6 +75,8 @@ impl RouteRecord {
 pub struct StoreyAnalysis {
     pub storey: i32,
     pub grid: OccupancyGrid,
+    /// Floor heights and low furniture from the scan mesh, when one was captured for this storey.
+    pub surface: Option<FloorSurface>,
     pub clearance: ClearanceField,
     pub field: RouteField,
     pub entrances: Vec<String>,
@@ -78,15 +85,23 @@ pub struct StoreyAnalysis {
     route_index: HashMap<String, usize>,
     turning_diameters: Vec<f64>,
     room_axes: Vec<f64>,
-    t_turns: OnceLock<Vec<bool>>,
+    t_turns: Vec<OnceLock<bool>>,
     corridor: OnceLock<Vec<bool>>,
     walking: OnceLock<Vec<ShortestTree>>,
 }
 
 impl StoreyAnalysis {
     pub fn build(scene: &Scene, storey: i32, options: &AnalysisOptions) -> Self {
+        Self::build_with_meshes(scene, storey, options, &[])
+    }
+
+    pub fn build_with_meshes(scene: &Scene, storey: i32, options: &AnalysisOptions, meshes: &[&ScanMesh]) -> Self {
         let rooms: Vec<&Room> = scene.rooms_on(storey).collect();
-        let grid = OccupancyGrid::build(&rooms, options.grid);
+        let mut grid = OccupancyGrid::build(&rooms, options.grid);
+        let surface = (!meshes.is_empty()).then(|| FloorSurface::build(grid.spec, meshes));
+        if let Some(surface) = &surface {
+            grid.block_free_cells(surface.furniture_cells());
+        }
         let clearance = ClearanceField::compute(grid.spec, |i| !grid.is_free(i));
         let door_widths = door_clear_widths(&rooms, &grid, options.door_clear_width_allowance);
         let field = RouteField::build(&grid, &clearance, &door_widths);
@@ -97,13 +112,14 @@ impl StoreyAnalysis {
             turning_diameters: (0..rooms.len()).map(|i| largest_turning_circle(&grid, &clearance, i as u16)).collect(),
             room_axes: rooms.iter().map(|r| dominant_axis(r)).collect(),
             grid,
+            surface,
             clearance,
             field,
             entrances,
             trees,
             routes: Vec::new(),
             route_index: HashMap::new(),
-            t_turns: OnceLock::new(),
+            t_turns: rooms.iter().map(|_| OnceLock::new()).collect(),
             corridor: OnceLock::new(),
             walking: OnceLock::new(),
         };
@@ -163,10 +179,10 @@ impl StoreyAnalysis {
 
     pub fn t_turn_fits(&self, room_id: &str) -> Option<bool> {
         let index = self.grid.room_index(room_id)? as usize;
-        let fits = self.t_turns.get_or_init(|| {
-            (0..self.room_axes.len()).map(|r| t_turn_fits(&self.grid, &self.clearance, r as u16, self.room_axes[r])).collect()
-        });
-        Some(fits[index])
+        Some(
+            *self.t_turns[index]
+                .get_or_init(|| t_turn_fits(&self.grid, &self.clearance, index as u16, self.room_axes[index])),
+        )
     }
 
     /// Cells within 18 in of the centreline of a 36 in route reachable from an entrance.
@@ -189,7 +205,9 @@ impl StoreyAnalysis {
 
     /// Shortest walking trees (stairs allowed), one per entrance.
     pub fn walking_trees(&self) -> &[ShortestTree] {
-        self.walking.get_or_init(|| self.entrances.iter().map(|id| ShortestTree::grow(&self.grid, &door_cells(&self.grid, id))).collect())
+        self.walking.get_or_init(|| {
+            self.entrances.iter().map(|id| ShortestTree::grow(&self.grid, &door_cells(&self.grid, id))).collect()
+        })
     }
 
     /// Walking distance and path from the nearest entrance to the route's destination.
@@ -209,8 +227,12 @@ impl StoreyAnalysis {
 }
 
 fn door_clear_widths(rooms: &[&Room], grid: &OccupancyGrid, allowance: f64) -> Vec<f64> {
-    let openings: HashMap<&str, &Opening> = rooms.iter().flat_map(|r| &r.openings).map(|o| (o.id.as_str(), o)).collect();
-    grid.doors.iter().map(|gap| openings.get(gap.opening_id.as_str()).map(|o| estimated_clear_width(o, allowance)).unwrap_or(0.0)).collect()
+    let openings: HashMap<&str, &Opening> =
+        rooms.iter().flat_map(|r| &r.openings).map(|o| (o.id.as_str(), o)).collect();
+    grid.doors
+        .iter()
+        .map(|gap| openings.get(gap.opening_id.as_str()).map(|o| estimated_clear_width(o, allowance)).unwrap_or(0.0))
+        .collect()
 }
 
 /// Passable openings that do not join two scanned rooms: the ways in from outside the scan.
@@ -265,6 +287,8 @@ pub fn approach_cells(grid: &OccupancyGrid, footprint: &OrientedBox2) -> Vec<Cel
 /// Direction of the room's longest wall, as a yaw, so turning-space templates align with the room.
 pub fn dominant_axis(room: &Room) -> f64 {
     let longest = room.walls.iter().max_by(|a, b| a.length().total_cmp(&b.length()));
-    let along = longest.map(|w| w.segment().direction()).or_else(|| room.floor.edges().max_by(|a, b| a.length().total_cmp(&b.length())).map(|e| e.direction()));
+    let along = longest
+        .map(|w| w.segment().direction())
+        .or_else(|| room.floor.edges().max_by(|a, b| a.length().total_cmp(&b.length())).map(|e| e.direction()));
     along.map(|d| (-d.y).atan2(d.x)).unwrap_or(0.0)
 }

@@ -1,10 +1,10 @@
 //! Clear floor space at an element (305), knee and toe clearance (306).
 
-use super::support::{needs_mesh, object_in_room, wrong_subject};
+use super::support::{floor_surface, mesh_slope, not_covered_by_mesh, object_in_room, wrong_subject};
 use crate::analysis::StoreyAnalysis;
 use crate::geometry::{OrientedBox2, Vec2};
 use crate::grid::{OccupancyGrid, Probe};
-use crate::metrics::subject::Subject;
+use crate::metrics::subject::{Subject, SubjectRef};
 use crate::metrics::{EvalContext, Extraction, Extractor};
 use crate::routes::ROUTE_MIN_CLEAR_WIDTH;
 use crate::scene::{Object, Room};
@@ -17,7 +17,7 @@ pub const EXTRACTORS: &[(&str, Extractor)] = &[
     ("clear_floor.alcove_width", alcove_width),
     ("clear_floor.adjoins_route", adjoins_route),
     ("clear_floor.approach", approach),
-    ("floor.slope_at_clear_floor_space", needs_mesh),
+    ("floor.slope_at_clear_floor_space", slope_at_clear_floor),
     ("element.on_accessible_route", on_accessible_route),
     ("knee_clearance.height", knee_height),
     ("knee_clearance.depth", knee_depth),
@@ -28,7 +28,8 @@ pub const EXTRACTORS: &[(&str, Extractor)] = &[
 ];
 
 /// Elements used face-on with knees under them (305.3 forward approach).
-const FORWARD_ONLY: &[&str] = &["lavatory", "sink", "drinking_fountain", "dining_table", "table", "work_surface", "kiosk", "atm", "bar_counter"];
+const FORWARD_ONLY: &[&str] =
+    &["lavatory", "sink", "drinking_fountain", "dining_table", "table", "work_surface", "kiosk", "atm", "bar_counter"];
 const SKIP_MOUNTING: f64 = 0.15;
 const PROBE_LENGTH: f64 = 2.0;
 const SIDE_PROBE: f64 = 1.5;
@@ -70,13 +71,27 @@ pub struct Face {
 pub fn faces(footprint: &OrientedBox2) -> [Face; 4] {
     let (x_axis, z_axis) = footprint.axes();
     let h = footprint.half_extents;
-    let face = |outward: Vec2, offset: f64, length: f64| Face { centre: footprint.center + outward * offset, outward, along: outward.perpendicular(), length };
-    [face(z_axis, h.y, 2.0 * h.x), face(-z_axis, h.y, 2.0 * h.x), face(x_axis, h.x, 2.0 * h.y), face(-x_axis, h.x, 2.0 * h.y)]
+    let face = |outward: Vec2, offset: f64, length: f64| Face {
+        centre: footprint.center + outward * offset,
+        outward,
+        along: outward.perpendicular(),
+        length,
+    };
+    [
+        face(z_axis, h.y, 2.0 * h.x),
+        face(-z_axis, h.y, 2.0 * h.x),
+        face(x_axis, h.x, 2.0 * h.y),
+        face(-x_axis, h.x, 2.0 * h.y),
+    ]
 }
 
 /// The face with the most free floor in front of it (front faces first on ties).
 pub fn front_face(grid: &OccupancyGrid, footprint: &OrientedBox2) -> Face {
-    let free_depth = |f: &Face| Probe::new(f.centre, f.outward, f.length.min(inches(30.0)) / 2.0).sweep_past(grid, SKIP_MOUNTING, PROBE_LENGTH).length;
+    let free_depth = |f: &Face| {
+        Probe::new(f.centre, f.outward, f.length.min(inches(30.0)) / 2.0)
+            .sweep_past(grid, SKIP_MOUNTING, PROBE_LENGTH)
+            .length
+    };
     let all = faces(footprint);
     let mut best = all[0];
     let mut best_depth = free_depth(&best);
@@ -154,6 +169,42 @@ pub fn clear_floor_area(ctx: &EvalContext, room: &Room, object: &Object) -> Opti
     let (along, out) = c.approach.footprint();
     let yaw = (-c.face.along.y).atan2(c.face.along.x);
     Some(OrientedBox2::new(c.face.centre + c.face.outward * (out / 2.0), along, out, yaw))
+}
+
+fn slope_at_clear_floor(ctx: &EvalContext, subject: &Subject) -> Extraction {
+    if let SubjectRef::Room { .. } = subject.reference {
+        return room_floor_slope(ctx, subject);
+    }
+    let (room, object) = match object_in_room(ctx, subject) {
+        Ok(found) => found,
+        Err(e) => return e,
+    };
+    let surface = match floor_surface(ctx, room.storey) {
+        Ok(surface) => surface,
+        Err(e) => return e,
+    };
+    let Some(area) = clear_floor_area(ctx, room, object) else { return Extraction::unknown("storey not analysed") };
+    match surface.plane_in(&area) {
+        Some(plane) => mesh_slope(plane.slope(), area.center),
+        None => not_covered_by_mesh(),
+    }
+}
+
+/// Slope of the room's whole free floor, where its turning space lies.
+fn room_floor_slope(ctx: &EvalContext, subject: &Subject) -> Extraction {
+    let Some(room) = ctx.room(subject) else { return wrong_subject() };
+    let (surface, analysis) = match (floor_surface(ctx, room.storey), ctx.analysis(room.storey)) {
+        (Ok(surface), Some(analysis)) => (surface, analysis),
+        (Err(e), _) => return e,
+        (_, None) => return Extraction::unknown("storey not analysed"),
+    };
+    let Some(index) = analysis.grid.room_index(&room.id) else { return wrong_subject() };
+    let cells: Vec<_> =
+        (0..analysis.grid.spec.len()).filter(|&c| analysis.grid.room[c] == index && analysis.grid.is_free(c)).collect();
+    match surface.plane_over(&cells) {
+        Some(plane) => mesh_slope(plane.slope(), room.floor.centroid()),
+        None => not_covered_by_mesh(),
+    }
 }
 
 fn with_clear_floor(ctx: &EvalContext, subject: &Subject, read: fn(&ClearFloor) -> Extraction) -> Extraction {
@@ -239,7 +290,9 @@ fn adjoins_route(ctx: &EvalContext, subject: &Subject) -> Extraction {
     if ctx.analysis(room.storey).is_some_and(|a| a.entrances.is_empty()) {
         return Extraction::unknown("no entrance on this storey to start a route from");
     }
-    touches_route(ctx, room, object).map(Extraction::boolean).unwrap_or_else(|| Extraction::unknown("storey not analysed"))
+    touches_route(ctx, room, object)
+        .map(Extraction::boolean)
+        .unwrap_or_else(|| Extraction::unknown("storey not analysed"))
 }
 
 fn on_accessible_route(ctx: &EvalContext, subject: &Subject) -> Extraction {

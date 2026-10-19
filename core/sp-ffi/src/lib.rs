@@ -4,6 +4,7 @@ mod records;
 
 pub use records::*;
 use sp_core::Engine;
+use sp_core::mesh::ScanMesh;
 use sp_core::roomplan::{detect_connections, import_captured_json, merge_rooms};
 use sp_core::scene::Scene;
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -84,6 +85,28 @@ impl SpEngine {
         Ok(findings.into_iter().map(Into::into).collect())
     }
 
+    /// Like `update_roomplan_room`, attaching the capture's SPM1 scan mesh to its rooms first
+    /// (floor slopes, level changes and low furniture come from the mesh).
+    pub fn update_roomplan_room_with_mesh(
+        &self,
+        captured_room_json: String,
+        mesh: Vec<u8>,
+    ) -> Result<Vec<SpFinding>, SpError> {
+        let rooms = import_captured_json(&captured_room_json).map_err(invalid)?;
+        let mesh = ScanMesh::from_bytes(&mesh).map_err(invalid)?;
+        let mut engine = self.lock();
+        rooms.iter().for_each(|room| engine.set_room_mesh(&room.id, mesh.clone()));
+        let findings = rooms.into_iter().flat_map(|room| engine.update_room(room)).collect::<Vec<_>>();
+        Ok(findings.into_iter().map(Into::into).collect())
+    }
+
+    /// Attach an SPM1 scan mesh to a room (its RoomPlan identifier); used from the next update or evaluation.
+    pub fn set_room_mesh(&self, room_id: String, mesh: Vec<u8>) -> Result<(), SpError> {
+        let mesh = ScanMesh::from_bytes(&mesh).map_err(invalid)?;
+        self.lock().set_room_mesh(&room_id, mesh);
+        Ok(())
+    }
+
     /// Add owner answers, photo labels or tape measurements. Takes effect at the next evaluation.
     pub fn add_observations(&self, observations: Vec<SpObservation>) {
         let mut engine = self.lock();
@@ -123,21 +146,42 @@ mod tests {
 
     #[test]
     fn imports_apple_sample_through_the_binding() {
-        let rooms = import_roomplan(read("packages/fixtures/standardphysics_fixtures/data/real/apple_bedroom3.room.json")).unwrap();
+        let rooms =
+            import_roomplan(read("packages/fixtures/standardphysics_fixtures/data/real/apple_bedroom3.room.json"))
+                .unwrap();
         assert_eq!(rooms.len(), 1);
         assert_eq!(rooms[0].openings.iter().filter(|o| o.kind == SpOpeningKind::Door).count(), 2);
     }
 
     #[test]
     fn engine_round_trip() {
-        let Ok(catalog) = std::fs::read_to_string(format!("{}/../../rules/metrics.json", env!("CARGO_MANIFEST_DIR"))) else { return };
+        let Ok(catalog) = std::fs::read_to_string(format!("{}/../../rules/metrics.json", env!("CARGO_MANIFEST_DIR")))
+        else {
+            return;
+        };
         let packs = vec![read("rules/ada2010.json"), read("rules/cbc11b.json")];
         let engine = SpEngine::new(catalog, packs).unwrap();
-        let rooms = import_roomplan(read("packages/fixtures/standardphysics_fixtures/data/real/apple_livingroom.room.json")).unwrap();
+        let rooms =
+            import_roomplan(read("packages/fixtures/standardphysics_fixtures/data/real/apple_livingroom.room.json"))
+                .unwrap();
         let findings = engine.update_room(rooms[0].clone());
         assert!(!findings.is_empty());
         let report = engine.evaluate_all();
         assert_eq!(report.jurisdictions.len(), 2);
         assert!(engine.report_json().contains("governing"));
+    }
+
+    #[test]
+    fn rejects_a_mesh_that_is_not_spm1() {
+        let Ok(catalog) = std::fs::read_to_string(format!("{}/../../rules/metrics.json", env!("CARGO_MANIFEST_DIR")))
+        else {
+            return;
+        };
+        let engine = SpEngine::new(catalog, vec![read("rules/ada2010.json")]).unwrap();
+        let capture = read("packages/fixtures/standardphysics_fixtures/data/real/apple_bedroom3.room.json");
+        let error = engine.update_roomplan_room_with_mesh(capture, b"not a mesh".to_vec()).unwrap_err();
+        assert!(matches!(error, SpError::InvalidInput { .. }));
+        let empty = ScanMesh { floor_y: 0.0, parts: vec![] }.to_bytes();
+        assert!(engine.set_room_mesh("room".into(), empty).is_ok());
     }
 }

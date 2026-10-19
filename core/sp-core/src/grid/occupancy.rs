@@ -169,12 +169,22 @@ impl OccupancyGrid {
             let gap = door_gap(room, opening);
             let passage = gap.passage(self.options.door_gap_margin);
             let index = self.doors.len() as u16;
-            let cells: Vec<CellIndex> = self.spec.cells_in(passage.bounds()).filter(|&i| passage.contains(self.spec.center(i))).collect();
+            let cells: Vec<CellIndex> =
+                self.spec.cells_in(passage.bounds()).filter(|&i| passage.contains(self.spec.center(i))).collect();
             for cell in cells {
                 self.states[cell] = CellState::Free;
                 self.door[cell] = index;
             }
             self.doors.push(gap);
+        }
+    }
+
+    /// Mark free floor cells as blocked (furniture seen only in the scan mesh); door throats stay open.
+    pub fn block_free_cells(&mut self, cells: impl IntoIterator<Item = CellIndex>) {
+        for cell in cells {
+            if self.states[cell] == CellState::Free && self.door[cell] == NONE {
+                self.states[cell] = CellState::Blocked;
+            }
         }
     }
 
@@ -195,7 +205,8 @@ impl OccupancyGrid {
 pub fn door_gap(room: &Room, opening: &Opening) -> DoorGap {
     let center = opening.center.plan();
     let wall = room.walls.iter().find(|w| w.id == opening.wall_id).map(|w| (w.segment(), w.thickness));
-    let (segment, thickness) = wall.unwrap_or_else(|| (nearest_floor_edge(&room.floor, center), crate::scene::default_wall_thickness()));
+    let (segment, thickness) =
+        wall.unwrap_or_else(|| (nearest_floor_edge(&room.floor, center), crate::scene::default_wall_thickness()));
     let along = segment.direction();
     DoorGap {
         opening_id: opening.id.clone(),
@@ -224,7 +235,13 @@ pub(crate) mod tests {
     pub(crate) fn box_room() -> Room {
         let corners = [Vec2::new(0.0, 0.0), Vec2::new(4.0, 0.0), Vec2::new(4.0, 3.0), Vec2::new(0.0, 3.0)];
         let walls = (0..4)
-            .map(|i| Wall { id: format!("w{i}"), start: corners[i], end: corners[(i + 1) % 4], height: 2.5, thickness: 0.1 })
+            .map(|i| Wall {
+                id: format!("w{i}"),
+                start: corners[i],
+                end: corners[(i + 1) % 4],
+                height: 2.5,
+                thickness: 0.1,
+            })
             .collect();
         Room {
             id: "r".into(),

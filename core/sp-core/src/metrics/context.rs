@@ -1,5 +1,5 @@
-use super::subject::{Subject, SubjectRef};
 use super::Catalog;
+use super::subject::{Subject, SubjectRef};
 use crate::analysis::{AnalysisOptions, RouteRecord, StoreyAnalysis};
 use crate::scene::{Object, Observation, Opening, Room, Scene, Wall};
 use std::collections::{BTreeSet, HashMap};
@@ -26,7 +26,12 @@ pub struct EvalContext<'a> {
 }
 
 impl<'a> EvalContext<'a> {
-    pub fn new(scene: &'a Scene, catalog: &'a Catalog, analyses: &'a HashMap<i32, StoreyAnalysis>, options: &'a AnalysisOptions) -> Self {
+    pub fn new(
+        scene: &'a Scene,
+        catalog: &'a Catalog,
+        analyses: &'a HashMap<i32, StoreyAnalysis>,
+        options: &'a AnalysisOptions,
+    ) -> Self {
         let observations = latest_observations(scene);
         let clear_floor_categories = catalog.categories_for_element("clear_floor_space");
         Self { scene, catalog, analyses, options, observations, outcomes: None, clear_floor_categories }
@@ -45,7 +50,9 @@ impl<'a> EvalContext<'a> {
         let index = match subject.reference {
             SubjectRef::Room { room } | SubjectRef::Floor { room } => room,
             SubjectRef::Wall { room, .. } | SubjectRef::Opening { room, .. } | SubjectRef::Object { room, .. } => room,
-            SubjectRef::Site | SubjectRef::Route { .. } => return subject.room_id.as_deref().and_then(|id| self.scene.room(id)),
+            SubjectRef::Site | SubjectRef::Route { .. } => {
+                return subject.room_id.as_deref().and_then(|id| self.scene.room(id));
+            }
         };
         self.scene.rooms.get(index)
     }

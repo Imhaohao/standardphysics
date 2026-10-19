@@ -1,6 +1,9 @@
 //! Ramps, curb ramps, stairs, handrails, detectable warnings, parking and elevators (405-410, 502, 504, 505, 705).
 
-use super::support::{long_axis, long_dimension, needs_detail, needs_mesh, nearest_boundary, object_in_room, objects_of, short_dimension, wrong_subject};
+use super::support::{
+    long_axis, long_dimension, nearest_boundary, needs_detail, needs_mesh, object_in_room, objects_of, short_dimension,
+    wrong_subject,
+};
 use crate::metrics::subject::Subject;
 use crate::metrics::{EvalContext, Extraction, Extractor};
 use crate::scene::{Object, Room};
@@ -102,8 +105,15 @@ fn door_swing_into_landing(ctx: &EvalContext, subject: &Subject) -> Extraction {
         Err(e) => return e,
     };
     let reach = long_dimension(ramp) / 2.0 + 1.6;
-    let near = room.openings.iter().any(|o| o.kind.is_passable() && o.center.plan().distance(ramp.center.plan()) < reach + o.width);
-    if near { Extraction::unknown("a door is near the ramp landing; swing not captured") } else { Extraction::boolean(false) }
+    let near = room
+        .openings
+        .iter()
+        .any(|o| o.kind.is_passable() && o.center.plan().distance(ramp.center.plan()) < reach + o.width);
+    if near {
+        Extraction::unknown("a door is near the ramp landing; swing not captured")
+    } else {
+        Extraction::boolean(false)
+    }
 }
 
 fn handrail_height(ctx: &EvalContext, subject: &Subject) -> Extraction {
@@ -115,7 +125,9 @@ fn handrail_wall_clearance(ctx: &EvalContext, subject: &Subject) -> Extraction {
         Ok(found) => found,
         Err(e) => return e,
     };
-    wall_gap(room, rail).map(|gap| Extraction::metres(gap).located(Some(rail.center))).unwrap_or_else(|| Extraction::unknown("no wall captured"))
+    wall_gap(room, rail)
+        .map(|gap| Extraction::metres(gap).located(Some(rail.center)))
+        .unwrap_or_else(|| Extraction::unknown("no wall captured"))
 }
 
 fn wall_gap(room: &Room, rail: &Object) -> Option<f64> {
@@ -147,5 +159,6 @@ fn elevator_inside_depth(ctx: &EvalContext, subject: &Subject) -> Extraction {
 }
 
 fn inside(outer: f64) -> Extraction {
-    Extraction::metres_range((outer - ELEVATOR_WALL_ALLOWANCE).max(0.0), outer).noted("outer box less up to 6 in of car wall")
+    Extraction::metres_range((outer - ELEVATOR_WALL_ALLOWANCE).max(0.0), outer)
+        .noted("outer box less up to 6 in of car wall")
 }

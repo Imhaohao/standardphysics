@@ -6,6 +6,9 @@ use serde_json::Value;
 use std::collections::BTreeMap;
 
 const DEFAULT_CEILING_HEIGHT: f64 = 2.4;
+/// RoomPlan sometimes reports a sliver opening where wall segments fail to meet; nothing narrower
+/// than this is a usable door, doorway or window.
+const MIN_OPENING_WIDTH: f64 = 0.15;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ImportError {
@@ -72,7 +75,8 @@ fn floor_level(raw: &CapturedRoom) -> f64 {
 }
 
 fn floor_outline(raw: &CapturedRoom) -> Option<Polygon2> {
-    let largest = raw.floors.iter().map(floor_polygon).filter(Polygon2::is_valid).max_by(|a, b| a.area().total_cmp(&b.area()));
+    let largest =
+        raw.floors.iter().map(floor_polygon).filter(Polygon2::is_valid).max_by(|a, b| a.area().total_cmp(&b.area()));
     largest.or_else(|| outline_from_walls(&raw.walls))
 }
 
@@ -125,7 +129,8 @@ fn convert_openings(raw: &CapturedRoom, walls: &[Wall], floor_level: f64) -> Vec
     let doors = raw.doors.iter().map(|s| (OpeningKind::Door, s));
     let windows = raw.windows.iter().map(|s| (OpeningKind::Window, s));
     let openings = raw.openings.iter().map(|s| (OpeningKind::Opening, s));
-    doors.chain(openings).chain(windows).map(|(kind, s)| convert_opening(kind, s, walls, floor_level)).collect()
+    let usable = doors.chain(openings).chain(windows).filter(|(_, s)| s.dimensions[0] >= MIN_OPENING_WIDTH);
+    usable.map(|(kind, s)| convert_opening(kind, s, walls, floor_level)).collect()
 }
 
 fn convert_opening(kind: OpeningKind, surface: &Surface, walls: &[Wall], floor_level: f64) -> Opening {
@@ -162,7 +167,8 @@ fn convert_object(object: &CapturedObject, floor_level: f64) -> Object {
     let size = Vec3::new(object.dimensions[0], object.dimensions[1], object.dimensions[2]);
     let center = Vec3::new(world.x, world.y - floor_level, world.z);
     let roomplan_case = enum_case(&object.category);
-    let mut attributes: Vec<(String, String)> = object.attributes.iter().map(|(k, v)| (k.clone(), value_text(v))).collect();
+    let mut attributes: Vec<(String, String)> =
+        object.attributes.iter().map(|(k, v)| (k.clone(), value_text(v))).collect();
     let category = object_category(roomplan_case, &attributes);
     attributes.push(("roomplan_category".into(), roomplan_case.to_string()));
     Object {
@@ -220,5 +226,20 @@ mod tests {
         assert_eq!(room.openings[0].wall_id, "w1");
         assert!((room.openings[0].bottom_height()).abs() < 1e-9);
         assert!((room.ceiling_height - 2.5).abs() < 1e-9);
+    }
+
+    #[test]
+    fn drops_sliver_openings_between_wall_segments() {
+        let json = r#"{"walls":[
+          {"identifier":"w1","dimensions":[4,2.5,0],"transform":[1,0,0,0, 0,1,0,0, 0,0,1,0, 0,1.25,-1.5,1]},
+          {"identifier":"w2","dimensions":[4,2.5,0],"transform":[1,0,0,0, 0,1,0,0, 0,0,1,0, 0,1.25,1.5,1]},
+          {"identifier":"w3","dimensions":[3,2.5,0],"transform":[0,0,-1,0, 0,1,0,0, 1,0,0,0, 2,1.25,0,1]},
+          {"identifier":"w4","dimensions":[3,2.5,0],"transform":[0,0,-1,0, 0,1,0,0, 1,0,0,0, -2,1.25,0,1]}],
+          "openings":[
+            {"identifier":"sliver","parentIdentifier":"w1","category":{"opening":{}},"dimensions":[0.032,1.84,0],"transform":[1,0,0,0, 0,1,0,0, 0,0,1,0, 1,0.92,-1.5,1]},
+            {"identifier":"arch","parentIdentifier":"w1","category":{"opening":{}},"dimensions":[1.2,2.0,0],"transform":[1,0,0,0, 0,1,0,0, 0,0,1,0, -1,1.0,-1.5,1]}]}"#;
+        let rooms = import_captured_json(json).unwrap();
+        let ids: Vec<&str> = rooms[0].openings.iter().map(|o| o.id.as_str()).collect();
+        assert_eq!(ids, ["arch"]);
     }
 }

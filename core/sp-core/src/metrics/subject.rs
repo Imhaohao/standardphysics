@@ -47,7 +47,9 @@ impl Tagging {
         let canonical = catalog
             .object_categories
             .iter()
-            .filter_map(|c| c.canonical.as_ref().filter(|canon| **canon != c.id).map(|canon| (c.id.clone(), canon.clone())))
+            .filter_map(|c| {
+                c.canonical.as_ref().filter(|canon| **canon != c.id).map(|canon| (c.id.clone(), canon.clone()))
+            })
             .collect();
         Self {
             clear_floor_space: catalog.categories_for_element("clear_floor_space"),
@@ -92,13 +94,27 @@ pub fn enumerate_subjects(scene: &Scene, analyses: &HashMap<i32, StoreyAnalysis>
 }
 
 pub fn site_subject() -> Subject {
-    Subject { id: SITE_ID.into(), reference: SubjectRef::Site, tags: tags(["site"]), room_id: None, storey: 0, location: None }
+    Subject {
+        id: SITE_ID.into(),
+        reference: SubjectRef::Site,
+        tags: tags(["site"]),
+        room_id: None,
+        storey: 0,
+        location: None,
+    }
 }
 
 /// The room, its floor, walls, openings and objects.
 pub fn room_subjects(scene: &Scene, room_index: usize, tagging: &Tagging) -> Vec<Subject> {
     let room = &scene.rooms[room_index];
-    let make = |id: String, reference, tags, location| Subject { id, reference, tags, room_id: Some(room.id.clone()), storey: room.storey, location };
+    let make = |id: String, reference, tags, location| Subject {
+        id,
+        reference,
+        tags,
+        room_id: Some(room.id.clone()),
+        storey: room.storey,
+        location,
+    };
     let centre = room.floor.centroid();
     let centre = Some(Vec3::new(centre.x, 0.0, centre.y));
     let mut room_tags = tags(["room", room.kind.as_str()]);
@@ -111,13 +127,23 @@ pub fn room_subjects(scene: &Scene, room_index: usize, tagging: &Tagging) -> Vec
     ];
     out.extend(room.walls.iter().enumerate().map(|(i, w)| {
         let mid = w.segment().midpoint();
-        make(w.id.clone(), SubjectRef::Wall { room: room_index, wall: i }, tags(["wall"]), Some(Vec3::new(mid.x, 0.0, mid.y)))
+        make(
+            w.id.clone(),
+            SubjectRef::Wall { room: room_index, wall: i },
+            tags(["wall"]),
+            Some(Vec3::new(mid.x, 0.0, mid.y)),
+        )
     }));
     out.extend(room.openings.iter().enumerate().map(|(i, o)| {
         make(o.id.clone(), SubjectRef::Opening { room: room_index, opening: i }, opening_tags(scene, o), Some(o.center))
     }));
     out.extend(room.objects.iter().enumerate().map(|(i, o)| {
-        make(o.id.clone(), SubjectRef::Object { room: room_index, object: i }, tagging.object_tags(&o.category), Some(o.center))
+        make(
+            o.id.clone(),
+            SubjectRef::Object { room: room_index, object: i },
+            tagging.object_tags(&o.category),
+            Some(o.center),
+        )
     }));
     out
 }

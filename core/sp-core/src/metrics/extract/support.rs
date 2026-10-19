@@ -1,21 +1,56 @@
 //! Helpers shared by extractors.
 
 use crate::geometry::{OrientedBox2, Segment2, Vec2, Vec3};
+use crate::mesh::{FloorSurface, HEIGHT_NOISE, SLOPE_NOISE};
 use crate::metrics::subject::Subject;
 use crate::metrics::{EvalContext, Extraction};
 use crate::scene::{Object, Room};
 
 pub const WATER_CLOSETS: &[&str] = &["toilet", "water_closet"];
 pub const LAVATORIES: &[&str] = &["lavatory", "sink"];
-pub const COUNTERS: &[&str] = &["counter", "service_counter", "sales_counter", "checkout_aisle", "bar_counter", "food_service_line"];
+pub const COUNTERS: &[&str] =
+    &["counter", "service_counter", "sales_counter", "checkout_aisle", "bar_counter", "food_service_line"];
 pub const DINING_SURFACES: &[&str] = &["dining_table", "bar_counter"];
 
 pub fn wrong_subject() -> Extraction {
     Extraction::not_applicable("metric is not defined for this kind of element")
 }
 
+/// Reason given when only the scan mesh could settle a floor slope or level change. Findings left
+/// unresolved for this reason alone are advisory: RoomPlan floors are flat, but that is not a pass.
+pub const LEVEL_FLOOR_ASSUMED: &str =
+    "no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified";
+
 pub fn needs_mesh(_: &EvalContext, _: &Subject) -> Extraction {
     Extraction::unknown("needs the floor mesh height field; scan boxes assume a level floor")
+}
+
+/// The storey's mesh floor surface, or the unknown to return when no mesh was captured.
+pub fn floor_surface<'a>(ctx: &EvalContext<'a>, storey: i32) -> Result<&'a FloorSurface, Extraction> {
+    ctx.analysis(storey).and_then(|a| a.surface.as_ref()).ok_or_else(|| Extraction::unknown(LEVEL_FLOOR_ASSUMED))
+}
+
+pub fn not_covered_by_mesh() -> Extraction {
+    Extraction::unknown("the scan mesh does not cover enough of this floor; needs a level or photo")
+}
+
+/// A mesh-derived slope, widened by the mesh's noise so near-limit values stay unresolved.
+pub fn mesh_slope(slope: f64, at: Vec2) -> Extraction {
+    Extraction::ratio_range((slope - SLOPE_NOISE).max(0.0), slope + SLOPE_NOISE)
+        .located(floor_point(at))
+        .noted("from the scan mesh")
+}
+
+/// A mesh-derived height, widened by the mesh's noise.
+pub fn mesh_height(height: f64, at: Vec2) -> Extraction {
+    Extraction::metres_range((height - HEIGHT_NOISE).max(0.0), height + HEIGHT_NOISE)
+        .located(floor_point(at))
+        .noted("from the scan mesh")
+}
+
+/// A box `length` along `direction` and `width` across it, centred on `centre`.
+pub fn box_along(centre: Vec2, direction: Vec2, length: f64, width: f64) -> OrientedBox2 {
+    OrientedBox2::new(centre, length, width, (-direction.y).atan2(direction.x))
 }
 
 pub fn needs_detail(_: &EvalContext, _: &Subject) -> Extraction {
@@ -76,24 +111,38 @@ pub fn objects_of<'a>(room: &'a Room, categories: &'a [&'a str]) -> impl Iterato
 pub fn supporting_object<'a>(room: &'a Room, object: &Object) -> Option<&'a Object> {
     let bottom = object.bottom_height();
     room.objects.iter().find(|other| {
-        other.id != object.id && (other.top_height - bottom).abs() < 0.1 && other.footprint().contains(object.center.plan()) && bottom > 0.2
+        other.id != object.id
+            && (other.top_height - bottom).abs() < 0.1
+            && other.footprint().contains(object.center.plan())
+            && bottom > 0.2
     })
 }
 
 /// Objects resting on top of `surface`.
 pub fn items_on<'a>(room: &'a Room, surface: &'a Object) -> impl Iterator<Item = &'a Object> + 'a {
     room.objects.iter().filter(move |o| {
-        o.id != surface.id && (o.bottom_height() - surface.top_height).abs() < 0.1 && surface.footprint().contains(o.center.plan())
+        o.id != surface.id
+            && (o.bottom_height() - surface.top_height).abs() < 0.1
+            && surface.footprint().contains(o.center.plan())
     })
 }
 
 /// Extent of `footprint` projected on `axis`, as (min, max) relative to `origin`.
 pub fn projected_span(footprint: &OrientedBox2, origin: Vec2, axis: Vec2) -> (f64, f64) {
-    footprint.corners().iter().map(|c| (*c - origin).dot(axis)).fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), v| (lo.min(v), hi.max(v)))
+    footprint
+        .corners()
+        .iter()
+        .map(|c| (*c - origin).dot(axis))
+        .fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), v| (lo.min(v), hi.max(v)))
 }
 
 /// Objects whose footprints touch `object`'s within `gap` metres.
-pub fn adjoining<'a>(room: &'a Room, object: &'a Object, categories: &'a [&'a str], gap: f64) -> impl Iterator<Item = &'a Object> + 'a {
+pub fn adjoining<'a>(
+    room: &'a Room,
+    object: &'a Object,
+    categories: &'a [&'a str],
+    gap: f64,
+) -> impl Iterator<Item = &'a Object> + 'a {
     let grown = object.footprint().grown(gap);
     objects_of(room, categories).filter(move |o| o.id != object.id && o.footprint().overlaps(&grown))
 }
