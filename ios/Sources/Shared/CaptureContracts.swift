@@ -125,11 +125,11 @@ nonisolated struct Detection: Sendable, Equatable {
 }
 
 /// The Rust engine behind a protocol so the app runs before the XCFramework lands.
-protocol ComplianceEvaluating: Sendable {
+nonisolated protocol ComplianceEvaluating: Sendable {
     func evaluate(sceneJSON: Data) async throws -> [Finding]
 }
 
-protocol ObjectDetecting: Sendable {
+nonisolated protocol ObjectDetecting: Sendable {
     func detect(pixelBuffer: CVPixelBufferWrapper) async throws -> [Detection]
 }
 
@@ -139,7 +139,7 @@ nonisolated struct CVPixelBufferWrapper: @unchecked Sendable {
     let buffer: CVPixelBuffer
 }
 
-protocol ScanJournaling: Sendable {
+nonisolated protocol ScanJournaling: Sendable {
     func create(name: String) async throws -> ScanManifest
     func load(scanID: UUID) async throws -> ScanManifest
     func unfinishedScans() async throws -> [ScanManifest]
