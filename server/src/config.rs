@@ -4,7 +4,7 @@ use anyhow::{anyhow, Result};
 
 pub const DEFAULT_APPLE_JWKS_URL: &str = "https://appleid.apple.com/auth/keys";
 pub const DEFAULT_LABEL_API_BASE: &str = "https://openrouter.ai/api/v1";
-pub const DEFAULT_LABEL_MODEL: &str = "google/gemini-2.5-flash";
+pub const DEFAULT_LABEL_MODEL: &str = "google/gemini-3.8-flash";
 
 #[derive(Clone, Debug)]
 pub struct StorageConfig {

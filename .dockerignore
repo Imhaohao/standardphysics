@@ -13,3 +13,6 @@ apps/ios
 
 # The marimo notebook export is rebuilt in its own image stage.
 apps/web/.notebooks
+**/target
+ios
+web

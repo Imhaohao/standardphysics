@@ -49,7 +49,7 @@ Tests run the real router against Postgres, with in-process fakes for S3 (multip
 | `CORS_ALLOWED_ORIGINS` | none | comma-separated origins for the web app |
 | `LABEL_API_BASE` | `https://openrouter.ai/api/v1` | any OpenAI-compatible chat-completions API |
 | `LABEL_API_KEY` | unset (labelling off) | |
-| `LABEL_MODEL` | `google/gemini-2.5-flash` | must accept image input |
+| `LABEL_MODEL` | `google/gemini-3.8-flash` | must accept image input |
 | `LABEL_CONCURRENCY` | 8 | parallel label requests |
 | `LABEL_DEADLINE_MS` | 20000 | hard overall labelling deadline |
 | `LABEL_REQUEST_TIMEOUT_MS` | 15000 | per request |
