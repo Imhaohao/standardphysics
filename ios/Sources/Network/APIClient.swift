@@ -1,9 +1,10 @@
 import Foundation
 
 nonisolated protocol UploadAPI: Sendable {
-    func requestUpload(scanID: String, file: RequestUploadBody, clientFileID: UUID) async throws -> MultipartUploadGrant
-    func refreshPartURLs(scanID: String, uploadID: String, partNumbers: [Int]) async throws -> [PresignedPart]
-    func completeUpload(scanID: String, uploadID: String, parts: [CompletedPart]) async throws
+    func createUpload(scanID: String, body: CreateUploadBody) async throws -> UploadInfo
+    func uploadStatus(scanID: String, uploadID: String) async throws -> UploadStatusResponse
+    func presignParts(scanID: String, uploadID: String, partNumbers: [Int]) async throws -> PresignResponse
+    func completeUpload(scanID: String, uploadID: String, sha256: String) async throws -> Artifact
 }
 
 nonisolated enum APIConfiguration {
@@ -47,63 +48,76 @@ actor APIClient: UploadAPI {
 
     @discardableResult
     func signIn(email: String, password: String) async throws -> AuthSession {
-        try await storeSession(from: APIRoutes.signIn(SignInRequest(email: email, password: password)))
+        try await storeSession(from: APIRoutes.login(Credentials(email: email, password: password)))
     }
 
     @discardableResult
-    func signIn(appleIdentityToken: String, fullName: String?) async throws -> AuthSession {
-        let body = AppleSignInRequest(identityToken: appleIdentityToken, fullName: fullName)
+    func register(email: String, password: String) async throws -> AuthSession {
+        try await storeSession(from: APIRoutes.register(Credentials(email: email, password: password)))
+    }
+
+    @discardableResult
+    func signIn(appleIdentityToken: String, nonce: String? = nil) async throws -> AuthSession {
+        let body = AppleSignInRequest(identityToken: appleIdentityToken, nonce: nonce)
         return try await storeSession(from: APIRoutes.signInWithApple(body))
     }
 
-    func signOut() {
+    /// The local token is cleared even when the server cannot be reached.
+    func signOut() async {
+        _ = try? await send(APIRoutes.logout())
         tokenStore.clear()
     }
 
     private func storeSession(from endpoint: Endpoint<AuthSession>) async throws -> AuthSession {
         let session = try await send(endpoint)
-        try tokenStore.save(session.accessToken)
+        try tokenStore.save(session.token)
         return session
     }
 
     // MARK: Scans
 
-    func createScan(clientID: UUID, name: String) async throws -> ScanResponse {
-        try await send(APIRoutes.createScan(CreateScanRequest(clientID: clientID.uuidString, name: name)))
+    func createScan(name: String?, siteName: String? = nil) async throws -> ScanResponse {
+        try await send(APIRoutes.createScan(CreateScanRequest(name: name, siteName: siteName)))
     }
 
-    func completeScan(scanID: String) async throws -> CompleteScanResponse {
-        try await send(APIRoutes.completeScan(scanID: scanID))
+    /// Runs the server's finish pipeline and returns the full report (can take up to two minutes).
+    func finishScan(scanID: String) async throws -> Report {
+        try await send(APIRoutes.finishScan(scanID: scanID))
     }
 
-    func findings(scanID: String, afterEventID: Int? = nil) async throws -> FindingsResponse {
-        try await send(APIRoutes.findings(scanID: scanID, afterEventID: afterEventID))
+    func assessment(scanID: String) async throws -> Report {
+        try await send(APIRoutes.assessment(scanID: scanID))
     }
 
     // MARK: Uploads
 
-    func requestUpload(scanID: String, file: RequestUploadBody, clientFileID: UUID) async throws -> MultipartUploadGrant {
-        try await send(APIRoutes.requestUpload(scanID: scanID, body: file, clientFileID: clientFileID))
+    func createUpload(scanID: String, body: CreateUploadBody) async throws -> UploadInfo {
+        try await send(APIRoutes.createUpload(scanID: scanID, body: body))
     }
 
-    func refreshPartURLs(scanID: String, uploadID: String, partNumbers: [Int]) async throws -> [PresignedPart] {
-        let body = RefreshPartsRequest(partNumbers: partNumbers)
-        return try await send(APIRoutes.refreshParts(scanID: scanID, uploadID: uploadID, body: body)).parts
+    func uploadStatus(scanID: String, uploadID: String) async throws -> UploadStatusResponse {
+        try await send(APIRoutes.uploadStatus(scanID: scanID, uploadID: uploadID))
     }
 
-    func completeUpload(scanID: String, uploadID: String, parts: [CompletedPart]) async throws {
-        let body = CompleteUploadRequest(parts: parts.sorted { $0.partNumber < $1.partNumber })
-        _ = try await send(APIRoutes.completeUpload(scanID: scanID, uploadID: uploadID, body: body))
+    func presignParts(scanID: String, uploadID: String, partNumbers: [Int]) async throws -> PresignResponse {
+        let body = PresignRequest(partNumbers: partNumbers)
+        return try await send(APIRoutes.presignParts(scanID: scanID, uploadID: uploadID, body: body))
+    }
+
+    func completeUpload(scanID: String, uploadID: String, sha256: String) async throws -> Artifact {
+        let body = CompleteUploadRequest(sha256: sha256)
+        return try await send(APIRoutes.completeUpload(scanID: scanID, uploadID: uploadID, body: body))
+    }
+
+    func abortUpload(scanID: String, uploadID: String) async throws {
+        _ = try await send(APIRoutes.abortUpload(scanID: scanID, uploadID: uploadID))
     }
 
     // MARK: Live
 
-    func liveSocketRequest(scanID: String, lastEventID: Int?) throws -> URLRequest {
+    func liveSocketRequest(scanID: String) throws -> URLRequest {
         var components = try urlComponents(path: APIRoutes.livePath(scanID: scanID))
         components.scheme = components.scheme == "https" ? "wss" : "ws"
-        if let lastEventID {
-            components.queryItems = [URLQueryItem(name: APIRoutes.lastEventIDQueryItem, value: String(lastEventID))]
-        }
         guard let url = components.url else { throw APIError.notConfigured }
         var request = URLRequest(url: url)
         applyAuthorization(to: &request)
@@ -115,6 +129,7 @@ actor APIClient: UploadAPI {
     func send<Response>(_ endpoint: Endpoint<Response>) async throws -> Response {
         let request = try buildRequest(endpoint)
         let response = try await performWithRetry(request, idempotent: endpoint.isIdempotent)
+        if let empty = EmptyResponse() as? Response { return empty }
         do {
             return try WireCoding.decoder().decode(Response.self, from: response.body)
         } catch {
@@ -151,7 +166,7 @@ actor APIClient: UploadAPI {
         var request = URLRequest(url: url)
         request.httpMethod = endpoint.method.rawValue
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        if let key = endpoint.idempotencyKey { request.setValue(key, forHTTPHeaderField: APIRoutes.idempotencyHeader) }
+        if let timeout = endpoint.timeout { request.timeoutInterval = timeout }
         if endpoint.requiresAuth { applyAuthorization(to: &request) }
         try attachBody(endpoint.body, to: &request)
         return request

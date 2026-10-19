@@ -11,10 +11,11 @@ nonisolated enum LiveChannelError: Error, Equatable {
     case heartbeatTimedOut
 }
 
-/// Live link for one scan: sends room-finished events, receives findings and progress.
-/// Reconnects with exponential backoff and asks the server to replay from the last event it saw.
+/// Live link for one scan: sends room updates, receives findings and the final report.
+/// Reconnects with exponential backoff. The server answers every connect with a `hello`
+/// snapshot, so there is nothing to replay; updates the server has not answered yet are re-sent.
 actor LiveChannel {
-    typealias RequestProvider = @Sendable (_ lastEventID: Int?) async throws -> URLRequest
+    typealias RequestProvider = @Sendable () async throws -> URLRequest
 
     nonisolated let messages: AsyncStream<LiveMessage>
     nonisolated let states: AsyncStream<LiveConnectionState>
@@ -32,8 +33,7 @@ actor LiveChannel {
     private var activeConnection: (any WebSocketConnection)?
     private var isClosed = false
     private var becameConnected = false
-    private(set) var lastEventID: Int?
-    private var unacknowledged: [RoomFinishedEvent] = []
+    private var unanswered: [RoomUpdate] = []
 
     init(
         requestProvider: @escaping RequestProvider,
@@ -54,9 +54,7 @@ actor LiveChannel {
     }
 
     static func forScan(_ scanID: String, api: APIClient) -> LiveChannel {
-        LiveChannel(requestProvider: { lastEventID in
-            try await api.liveSocketRequest(scanID: scanID, lastEventID: lastEventID)
-        })
+        LiveChannel(requestProvider: { try await api.liveSocketRequest(scanID: scanID) })
     }
 
     func open() {
@@ -74,11 +72,12 @@ actor LiveChannel {
         messageContinuation.finish()
     }
 
-    /// Kept until the server acknowledges it, and re-sent after every reconnect.
-    func sendRoomFinished(_ event: RoomFinishedEvent) async {
-        unacknowledged.append(event)
+    /// Kept until the server answers with findings for the room, and re-sent after every
+    /// reconnect. The server merges observations by id, so repeats are harmless.
+    func sendRoom(_ update: RoomUpdate) async {
+        unanswered.append(update)
         guard let connection = activeConnection else { return }
-        try? await transmit(event, over: connection)
+        try? await transmit(update, over: connection)
     }
 
     // MARK: Connection loop
@@ -97,7 +96,7 @@ actor LiveChannel {
 
     private func runOneConnection() async {
         do {
-            let connection = connector.connect(try await requestProvider(lastEventID))
+            let connection = connector.connect(try await requestProvider())
             defer {
                 connection.close()
                 activeConnection = nil
@@ -106,7 +105,7 @@ actor LiveChannel {
             activeConnection = connection
             becameConnected = true
             stateContinuation.yield(.connected)
-            try await resendUnacknowledged(over: connection)
+            try await resendUnanswered(over: connection)
             try await serve(connection)
         } catch {
             return
@@ -163,29 +162,33 @@ actor LiveChannel {
 
     private func handle(_ text: String) {
         let message = decode(text)
-        if let eventID = message.eventID {
-            guard eventID > (lastEventID ?? Int.min) else { return }
-            lastEventID = eventID
-        }
-        if case .roomAcknowledged(let clientEventID) = message.kind {
-            unacknowledged.removeAll { $0.clientEventID == clientEventID }
+        if case .findings(let room) = message {
+            acknowledge(room)
         }
         messageContinuation.yield(message)
     }
 
-    private func decode(_ text: String) -> LiveMessage {
-        let decoded = try? WireCoding.decoder().decode(LiveMessage.self, from: Data(text.utf8))
-        return decoded ?? LiveMessage(eventID: nil, kind: .unknown(type: "undecodable"))
-    }
-
-    private func resendUnacknowledged(over connection: any WebSocketConnection) async throws {
-        for event in unacknowledged {
-            try await transmit(event, over: connection)
+    private func acknowledge(_ answer: RoomFindings) {
+        unanswered.removeAll { update in
+            guard update.roomID == answer.roomID else { return false }
+            guard let answered = answer.seq else { return true }
+            return (update.seq ?? 0) <= answered
         }
     }
 
-    private func transmit(_ event: RoomFinishedEvent, over connection: any WebSocketConnection) async throws {
-        let data = try WireCoding.encoder().encode(event)
+    private func decode(_ text: String) -> LiveMessage {
+        let decoded = try? WireCoding.decoder().decode(LiveMessage.self, from: Data(text.utf8))
+        return decoded ?? .unknown(type: "undecodable")
+    }
+
+    private func resendUnanswered(over connection: any WebSocketConnection) async throws {
+        for update in unanswered {
+            try await transmit(update, over: connection)
+        }
+    }
+
+    private func transmit(_ update: RoomUpdate, over connection: any WebSocketConnection) async throws {
+        let data = try WireCoding.encoder().encode(update)
         try await connection.send(String(decoding: data, as: UTF8.self))
     }
 }

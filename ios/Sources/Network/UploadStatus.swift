@@ -41,6 +41,14 @@ nonisolated enum UploadError: Error, Equatable, LocalizedError {
     }
 }
 
+nonisolated enum UploadKind: String, Sendable {
+    case room
+    case mesh
+    case worldMap = "world_map"
+    case crop
+    case artifact
+}
+
 nonisolated struct UploaderConfiguration: Sendable {
     var partSize = 8 * 1024 * 1024
     var maxConcurrentParts = 4

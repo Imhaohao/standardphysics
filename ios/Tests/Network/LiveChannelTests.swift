@@ -1,45 +1,61 @@
 import XCTest
 @testable import StandardPhysics
 
+private let summaryJSON = #"{"total":{"pass":0,"fail":1,"needs_info":0,"not_applicable":0},"by_jurisdiction":{}}"#
+
+private func findingJSON(subject: String = "door-1") -> String {
+    """
+    {"rule_id":"ADA-404.2.4","jurisdiction":"ADA2010","section":"404.2.4","title":"Door clearance","subject_id":"\(subject)",
+    "room_id":"room-1","status":"fail","severity":"high","measured":{"text":"0.6 m","value":0.6,"lo":null,"hi":null,"unit":"m"},
+    "required":">= 0.815 m","message":"Too narrow","evidence":"measured","location":null,"counterpart":null}
+    """
+}
+
+func findingsMessage(room: String = "room-1", seq: Int? = nil, final: Bool = false) -> String {
+    let seqText = seq.map(String.init) ?? "null"
+    return #"{"type":"findings","room_id":"\#(room)","seq":\#(seqText),"final":\#(final),"findings":[\#(findingJSON())],"summary":\#(summaryJSON),"elapsed_ms":12}"#
+}
+
 final class LiveMessageDecodingTests: XCTestCase {
     private func decode(_ json: String) throws -> LiveMessage {
         try WireCoding.decoder().decode(LiveMessage.self, from: Data(json.utf8))
     }
 
     func testDecodesEveryServerMessageKind() throws {
-        let finding = try decode(findingJSON(eventID: 3))
-        XCTAssertEqual(finding.eventID, 3)
-        guard case .finding(let value) = finding.kind else { return XCTFail("not a finding") }
-        XCTAssertEqual(value.ruleID, "ADA-404.2.4")
-        XCTAssertEqual(value.status, .fail)
+        let hello = try decode(#"{"type":"hello","scan_id":"s1","rooms":["room-1"],"findings":[\#(findingJSON())],"summary":\#(summaryJSON)}"#)
+        guard case .hello(let snapshot) = hello else { return XCTFail("not hello") }
+        XCTAssertEqual(snapshot.rooms, ["room-1"])
+        XCTAssertEqual(snapshot.findings.first?.ruleID, "ADA-404.2.4")
 
-        XCTAssertEqual(
-            try decode(#"{"type":"progress","event_id":4,"stage":"merge","fraction":0.5,"message":"Merging rooms"}"#).kind,
-            .progress(ScanProgress(stage: "merge", fraction: 0.5, message: "Merging rooms"))
+        guard case .findings(let room) = try decode(findingsMessage(seq: 7, final: true)) else { return XCTFail("not findings") }
+        XCTAssertEqual([room.roomID, "\(room.seq ?? -1)", "\(room.isFinal)", "\(room.elapsedMs)"], ["room-1", "7", "true", "12"])
+        XCTAssertEqual(room.findings.first?.status, .fail)
+
+        XCTAssertEqual(try decode(#"{"type":"error","message":"Quota"}"#), .serverError(message: "Quota"))
+        XCTAssertEqual(try decode(#"{"type":"pong"}"#), .pong)
+        XCTAssertEqual(try decode(#"{"type":"room","room":{"id":"room-1","walls":[]}}"#), .room(.object(["id": .string("room-1"), "walls": .array([])])))
+        XCTAssertEqual(try decode(#"{"type":"scene","scene":{"version":2}}"#), .scene(.object(["version": .number(2)])))
+        XCTAssertEqual(try decode(#"{"type":"future_thing"}"#), .unknown(type: "future_thing"))
+    }
+
+    func testRoomUpdateEncodesServerClientMessage() throws {
+        let update = RoomUpdate(
+            roomID: LiveRoomID.make(index: 2), isFinal: true, seq: 4,
+            capturedRoom: .object(["doors": .array([])]), observations: [.object(["id": .string("o1")])]
         )
-        let id = UUID()
-        XCTAssertEqual(try decode(#"{"type":"room_ack","event_id":5,"client_event_id":"\#(id)"}"#).kind, .roomAcknowledged(clientEventID: id))
-        XCTAssertEqual(try decode(#"{"type":"scan_complete","event_id":6}"#).kind, .scanCompleted)
-        XCTAssertEqual(try decode(#"{"type":"error","message":"Quota"}"#).kind, .serverError(message: "Quota"))
-        XCTAssertEqual(try decode(#"{"type":"pong"}"#), LiveMessage(eventID: nil, kind: .heartbeat))
-        XCTAssertEqual(try decode(#"{"type":"future_thing","event_id":9}"#).kind, .unknown(type: "future_thing"))
+        let object = try JSONSerialization.jsonObject(with: WireCoding.encoder().encode(update)) as? [String: Any]
+        XCTAssertEqual(object?["type"] as? String, "room")
+        XCTAssertEqual(object?["room_id"] as? String, "room-2")
+        XCTAssertEqual(object?["final"] as? Bool, true)
+        XCTAssertEqual(object?["seq"] as? Int, 4)
+        XCTAssertNotNil(object?["captured_room"] as? [String: Any])
+        XCTAssertEqual((object?["observations"] as? [[String: Any]])?.first?["id"] as? String, "o1")
     }
 
-    func testRoomFinishedEncodesSnakeCaseWithTypeTag() throws {
-        let event = RoomFinishedEvent(clientEventID: UUID(uuidString: "AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE")!, roomIndex: 2, name: "Kitchen", fileKey: "k/2")
-        let object = try JSONSerialization.jsonObject(with: WireCoding.encoder().encode(event)) as? [String: Any]
-        XCTAssertEqual(object?["type"] as? String, "room_finished")
-        XCTAssertEqual(object?["room_index"] as? Int, 2)
-        XCTAssertEqual(object?["file_key"] as? String, "k/2")
-        XCTAssertEqual(object?["client_event_id"] as? String, "AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE")
+    func testRoomIDsRoundTripToIndexes() {
+        XCTAssertEqual(LiveRoomID.index(of: LiveRoomID.make(index: 5)), 5)
+        XCTAssertNil(LiveRoomID.index(of: "kitchen"))
     }
-}
-
-func findingJSON(eventID: Int) -> String {
-    """
-    {"type":"finding","event_id":\(eventID),"finding":{"rule_id":"ADA-404.2.4","jurisdiction":"ADA2010","section":"404.2.4",
-    "subject_id":"door-1","status":"fail","measured":{"value":0.6,"unit":"m"},"required":">= 0.815 m","message":"Too narrow"}}
-    """
 }
 
 final class LiveChannelTests: XCTestCase {
@@ -47,9 +63,7 @@ final class LiveChannelTests: XCTestCase {
         _ connector: FakeConnector, heartbeat: Duration = .seconds(30), pongTimeout: Duration = .milliseconds(100)
     ) -> LiveChannel {
         LiveChannel(
-            requestProvider: { lastEventID in
-                URLRequest(url: URL(string: "wss://live.test/scan?last_event_id=\(lastEventID.map(String.init) ?? "none")")!)
-            },
+            requestProvider: { URLRequest(url: URL(string: "wss://live.test/v1/scans/s1/live")!) },
             connector: connector,
             backoff: Backoff(base: .milliseconds(5), maximum: .milliseconds(20), jitter: { 0 }),
             heartbeatInterval: heartbeat,
@@ -71,6 +85,10 @@ final class LiveChannelTests: XCTestCase {
         return collected
     }
 
+    private func roomUpdate(_ room: String = "room-1", seq: Int?, final: Bool = false) -> RoomUpdate {
+        RoomUpdate(roomID: room, isFinal: final, seq: seq, capturedRoom: .object(["id": .string(room)]), observations: [])
+    }
+
     func testDeliversMessagesInOrderAndReportsConnectionStates() async {
         let socket = FakeSocket()
         let channel = makeChannel(FakeConnector(queued: [socket]))
@@ -79,15 +97,15 @@ final class LiveChannelTests: XCTestCase {
         await channel.open()
         await eventually { states.read { $0.contains(.connected) } }
 
-        socket.push(findingJSON(eventID: 1))
-        socket.push(#"{"type":"progress","event_id":2,"stage":"rules","fraction":0.2}"#)
+        socket.push(#"{"type":"hello","scan_id":"s1","rooms":[],"findings":[],"summary":\#(summaryJSON)}"#)
+        socket.push(findingsMessage(seq: 1))
         await eventually { messages.read { $0.count } == 2 }
-        XCTAssertEqual(messages.read { $0.map(\.eventID) }, [1, 2])
+        guard case .hello = messages.read({ $0[0] }), case .findings = messages.read({ $0[1] }) else { return XCTFail("order") }
         XCTAssertEqual(states.read { Array($0.prefix(2)) }, [.connecting, .connected])
         await channel.close()
     }
 
-    func testReconnectsAfterDropResumesFromLastEventAndDropsReplays() async {
+    func testReconnectsAfterDropAndDeliversTheNewHelloSnapshot() async {
         let first = FakeSocket()
         let second = FakeSocket()
         let connector = FakeConnector(queued: [first, second])
@@ -95,19 +113,15 @@ final class LiveChannelTests: XCTestCase {
         let messages = collectMessages(from: channel)
         await channel.open()
         await eventually { connector.connections.count == 1 }
-        first.push(findingJSON(eventID: 4))
-        first.push(findingJSON(eventID: 5))
-        await eventually { messages.read { $0.count } == 2 }
+        first.push(findingsMessage(seq: 1))
+        await eventually { messages.read { $0.count } == 1 }
 
         first.fail()
         await eventually { connector.connections.count == 2 }
-        XCTAssertEqual(connector.requests[0].url?.query, "last_event_id=none")
-        XCTAssertEqual(connector.requests[1].url?.query, "last_event_id=5")
-
-        second.push(findingJSON(eventID: 5))
-        second.push(findingJSON(eventID: 6))
-        await eventually { messages.read { $0.count } == 3 }
-        XCTAssertEqual(messages.read { $0.map(\.eventID) }, [4, 5, 6])
+        second.push(#"{"type":"hello","scan_id":"s1","rooms":["room-1"],"findings":[],"summary":\#(summaryJSON)}"#)
+        await eventually { messages.read { $0.count } == 2 }
+        guard case .hello(let snapshot) = messages.read({ $0[1] }) else { return XCTFail("expected hello") }
+        XCTAssertEqual(snapshot.rooms, ["room-1"])
         await channel.close()
     }
 
@@ -122,7 +136,7 @@ final class LiveChannelTests: XCTestCase {
         await channel.close()
     }
 
-    func testRoomFinishedIsResentAfterReconnectUntilAcknowledged() async throws {
+    func testRoomUpdatesAreResentAfterReconnectUntilServerAnswersWithFindings() async throws {
         let first = FakeSocket()
         let second = FakeSocket()
         let third = FakeSocket()
@@ -132,21 +146,39 @@ final class LiveChannelTests: XCTestCase {
         await eventually { connector.connections.count == 1 }
         await eventually { first.pings >= 1 }
 
-        let event = RoomFinishedEvent(roomIndex: 1, name: "Entry", fileKey: "scan/room-1.json")
-        await channel.sendRoomFinished(event)
-        await eventually { first.sent.count == 1 }
-        XCTAssertTrue(first.sent[0].contains("\"room_finished\""))
+        await channel.sendRoom(roomUpdate(seq: 1))
+        await channel.sendRoom(roomUpdate(seq: 2, final: true))
+        await eventually { first.sent.count == 2 }
+        XCTAssertTrue(first.sent[0].contains("\"type\":\"room\""))
 
         first.fail()
-        await eventually { second.sent.count == 1 }
-        XCTAssertEqual(second.sent, first.sent, "unacknowledged event is replayed verbatim")
+        await eventually { second.sent.count == 2 }
+        XCTAssertEqual(second.sent, first.sent, "unanswered updates are replayed in order")
 
-        second.push(#"{"type":"room_ack","event_id":1,"client_event_id":"\#(event.clientEventID)"}"#)
+        second.push(findingsMessage(seq: 2, final: true))
         try await Task.sleep(for: .milliseconds(50))
         second.fail()
         await eventually { connector.connections.count == 3 }
         try await Task.sleep(for: .milliseconds(50))
-        XCTAssertTrue(third.sent.isEmpty, "acknowledged event is not resent")
+        XCTAssertTrue(third.sent.isEmpty, "answered updates are not resent")
+        await channel.close()
+    }
+
+    func testFindingsForAnOlderSeqKeepNewerUpdatesPending() async throws {
+        let first = FakeSocket()
+        let second = FakeSocket()
+        let connector = FakeConnector(queued: [first, second])
+        let channel = makeChannel(connector)
+        await channel.open()
+        await eventually { first.pings >= 1 }
+        await channel.sendRoom(roomUpdate(seq: 1))
+        await channel.sendRoom(roomUpdate(seq: 2))
+        await eventually { first.sent.count == 2 }
+        first.push(findingsMessage(seq: 1))
+        try await Task.sleep(for: .milliseconds(50))
+        first.fail()
+        await eventually { second.sent.count == 1 }
+        XCTAssertTrue(second.sent[0].contains("\"seq\":2"))
         await channel.close()
     }
 
@@ -178,9 +210,9 @@ final class LiveChannelTests: XCTestCase {
         await channel.open()
         await eventually { connector.connections.count == 1 }
         socket.push("{{{")
-        socket.push(findingJSON(eventID: 1))
+        socket.push(#"{"type":"pong"}"#)
         await eventually { messages.read { $0.count } == 2 }
-        XCTAssertEqual(messages.read { $0[0].kind }, .unknown(type: "undecodable"))
+        XCTAssertEqual(messages.read { $0[0] }, .unknown(type: "undecodable"))
         XCTAssertEqual(connector.connections.count, 1)
         await channel.close()
     }

@@ -2,15 +2,16 @@ import Foundation
 
 nonisolated struct UploadPart: Codable, Sendable, Equatable {
     let number: Int
-    var url: URL
-    var expiresAt: Date
+    var url: URL?
+    var headers: [String: String] = [:]
+    var expiresAt: Date = .distantPast
     var etag: String?
     var failureCount = 0
 
     var isComplete: Bool { etag != nil }
 
-    func isExpired(at date: Date, skew: TimeInterval) -> Bool {
-        expiresAt.timeIntervalSince(date) <= skew
+    func needsFreshURL(at date: Date, skew: TimeInterval) -> Bool {
+        url == nil || expiresAt.timeIntervalSince(date) <= skew
     }
 }
 
@@ -44,8 +45,10 @@ nonisolated struct UploadRecord: Codable, Sendable, Equatable, Identifiable {
     let id: UUID
     let scanID: String
     let fileName: String
+    let kind: String
     let contentType: String
     let sizeBytes: Int64
+    let sha256: String
     let enqueuedAt: Date
     var state: UploadFileState
     var multipart: MultipartSession?
