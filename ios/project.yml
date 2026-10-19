@@ -1,0 +1,61 @@
+name: StandardPhysics
+options:
+  bundleIdPrefix: com.tarunyadgirkar
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    DEVELOPMENT_TEAM: 5AKJYZ7USP
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_APPROACHABLE_CONCURRENCY: YES
+    SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    MARKETING_VERSION: "2.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+targets:
+  StandardPhysics:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+      - path: Resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tarunyadgirkar.standardphysics
+        INFOPLIST_FILE: Resources/Info.plist
+        TARGETED_DEVICE_FAMILY: "1"
+        SP_API_BASE_URL: http://localhost:8080
+    entitlements:
+      path: Resources/StandardPhysics.entitlements
+      properties: {}
+
+  StandardPhysicsTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: StandardPhysics
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tarunyadgirkar.standardphysics.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/StandardPhysics.app/StandardPhysics
+        BUNDLE_LOADER: $(TEST_HOST)
+        SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
+
+schemes:
+  StandardPhysics:
+    build:
+      targets:
+        StandardPhysics: all
+        StandardPhysicsTests: [test]
+    test:
+      targets:
+        - StandardPhysicsTests
