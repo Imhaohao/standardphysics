@@ -40,7 +40,7 @@
     {
       "id": 2,
       "name": "60 s pipeline: concurrent detection and labelling, no Blender on the critical path, GPU texture projection",
-      "status": "in progress",
+      "status": "70.1 s to painted scan on a fresh Share Tea upload (compute-box); exact cuts exhausted",
       "log": [
         {
           "date": "2026-10-18",
@@ -174,9 +174,24 @@
           "discovery_s": 17.1,
           "labelling_s": 25.2,
           "painting_s": 52
+        },
+        {
+          "date": "2026-10-19",
+          "tried": "paint with fewer photos (MAX_ATLAS_PHOTOS 439 -> 300 -> 220)",
+          "result": "47.2 -> 41.9 -> 39.2 s; painted 51.1 -> 49.8 -> 49.4%; painting is deterministic (439 twice: identical), yet 220 changes 24% of texels by >16/255. Top-down render shows blotchy floor patches and smears on tables at 220. Rejected on quality."
+        },
+        {
+          "date": "2026-10-19",
+          "tried": "prefetch photos during the Blender unwrap",
+          "result": "decoding all 439 at bake size is 2.75 s on 8 threads but 14.6 GB as floats; thumbnails would save ~1.3 s. Not worth the memory on a 4 GB server."
+        },
+        {
+          "date": "2026-10-19",
+          "tried": "replace Blender lightmap_pack with seams + pack_islands",
+          "result": "2.6 s vs 4.2 s, but even texel density (0.28 texels/cm2 median vs 1.04 for lightmap, which favours small faces). Changes how the scan looks for ~1.5 s; not taken."
         }
       ],
-      "next": "70.1 s to painted scan on a fresh upload. Next: photo-count trade-off for the painting (occlusion+exposure+bake ~18 s scale with photos), then Blender atlas packing."
+      "next": "10 s short of 60. Remaining levers each need a decision: (1) split the Blender unwrap into spatial chunks run in parallel Blender processes (~8 s, changes seams and atlas layout, needs a quality pass); (2) fewer photos (rejected on quality); (3) faster hardware or running the whole job on compute-box. Production's 2-vCPU droplet will be slower than these numbers."
     },
     {
       "id": 3,
