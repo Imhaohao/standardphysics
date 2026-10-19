@@ -8,6 +8,8 @@ nonisolated protocol ScanStore: ScanJournaling {
     func carriedOverMesh(scanID: UUID) async -> Data?
     /// Called once per relaunch: whatever mesh is on disk becomes the carried-over base.
     func carryOverMesh(scanID: UUID) async throws
+    func frameLog(scanID: UUID) async -> FrameLog
+    func saveFrameLog(_ log: FrameLog, scanID: UUID) async throws
 }
 
 nonisolated enum ScanJournalError: Error, Equatable {
@@ -21,6 +23,7 @@ nonisolated enum ScanFiles {
     static let relocalizationSnapshot = "relocalize.jpg"
     static let mesh = "mesh.spm"
     static let carriedOverMesh = "mesh-base.spm"
+    static let frameLog = "frames.json"
 
     static func room(_ index: Int) -> String { "\(roomsDirectory)/\(index).json" }
 }
@@ -114,6 +117,15 @@ actor FileScanJournal: ScanStore {
         let mesh = url(scanID, ScanFiles.mesh)
         guard FileManager.default.fileExists(atPath: mesh.path) else { return }
         try writer.write(try Data(contentsOf: mesh), to: url(scanID, ScanFiles.carriedOverMesh))
+    }
+
+    func frameLog(scanID: UUID) async -> FrameLog {
+        guard let data = try? Data(contentsOf: url(scanID, ScanFiles.frameLog)) else { return FrameLog() }
+        return (try? JSONDecoder().decode(FrameLog.self, from: data)) ?? FrameLog()
+    }
+
+    func saveFrameLog(_ log: FrameLog, scanID: UUID) async throws {
+        try writer.write(try JSONEncoder().encode(log), to: url(scanID, ScanFiles.frameLog))
     }
 
     func delete(scanID: UUID) async throws {
