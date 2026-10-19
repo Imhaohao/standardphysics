@@ -148,3 +148,29 @@ protocol ScanJournaling: Sendable {
     func saveWorldMap(scanID: UUID, data: Data, snapshotJPEG: Data?) async throws -> ScanManifest
     func directory(for scanID: UUID) -> URL
 }
+
+/// What the capture screens drive and observe. `CaptureCoordinator` is the real one; previews
+/// and tests use a fake.
+@MainActor
+protocol CaptureControlling: AnyObject, Observable {
+    var phase: CapturePhase { get }
+    var manifest: ScanManifest? { get }
+    /// What RoomPlan and the detector currently see, in world coordinates.
+    var liveElements: [LiveElement] { get }
+    var detections: [Detection] { get }
+    /// On-device findings for finished rooms plus the room in progress.
+    var provisionalFindings: [Finding] { get }
+    /// One short instruction for the person scanning ("Move closer to the wall").
+    var guidance: String? { get }
+    /// JPEG of the view at the last checkpoint, shown to line the camera up when resuming.
+    var relocalizationSnapshot: Data? { get }
+
+    func startScan(name: String) async
+    func resume(scanID: UUID) async
+    func pause()
+    func continueScanning()
+    func finishRoom() async
+    func startNextRoom()
+    func finishScan() async
+    func discardScan() async
+}
