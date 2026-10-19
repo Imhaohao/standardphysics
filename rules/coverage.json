@@ -3775,7 +3775,7 @@
     },
     {
       "jurisdiction": "CBC11B",
-      "section": "11B-303.2",
+      "section": "11B-303.4",
       "title": "Changes in level on the route",
       "status": "covered",
       "rule_ids": [
@@ -3886,7 +3886,7 @@
     },
     {
       "jurisdiction": "CBC11B",
-      "section": "11B-306.2.5",
+      "section": "11B-306.2.1",
       "title": "Toe clearance height",
       "status": "covered",
       "rule_ids": [
@@ -4461,7 +4461,7 @@
     },
     {
       "jurisdiction": "CBC11B",
-      "section": "11B-406.1",
+      "section": "11B-406.2.1",
       "title": "Curb ramp running slope 1:12",
       "status": "covered",
       "rule_ids": [
@@ -4471,7 +4471,7 @@
     },
     {
       "jurisdiction": "CBC11B",
-      "section": "11B-406.2",
+      "section": "11B-406.5.8",
       "title": "Curb ramp counter slope 1:20",
       "status": "covered",
       "rule_ids": [
@@ -4481,7 +4481,7 @@
     },
     {
       "jurisdiction": "CBC11B",
-      "section": "11B-406.3",
+      "section": "11B-406.2.2",
       "title": "Curb ramp flares 1:10",
       "status": "covered",
       "rule_ids": [
@@ -4491,7 +4491,7 @@
     },
     {
       "jurisdiction": "CBC11B",
-      "section": "11B-406.4",
+      "section": "11B-406.5.3",
       "title": "Curb ramp top landing",
       "status": "covered",
       "rule_ids": [
