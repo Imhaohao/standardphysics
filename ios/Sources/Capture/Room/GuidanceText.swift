@@ -39,6 +39,7 @@ nonisolated struct GuidanceInput: Sendable, Equatable {
     var isThermalWarning = false
     var relocalizationTimedOut = false
     var lastRoomCaptureError: String?
+    var hasSalvagedRoom = false
 }
 
 /// One short line for the person holding the phone. The capture state outranks RoomPlan's coaching.
@@ -69,6 +70,9 @@ nonisolated enum GuidanceText {
 
     private static func scanningMessage(_ input: GuidanceInput) -> String? {
         if let text = input.instruction.text { return text }
+        if input.lastRoomCaptureError != nil, input.hasSalvagedRoom {
+            return "We kept what you scanned. Keep going to fill in the rest."
+        }
         if input.lastRoomCaptureError != nil { return "That room didn't save, so scan it once more" }
         if input.isThermalWarning { return "Your phone is getting warm. Keep moving steadily." }
         return nil

@@ -7,6 +7,8 @@ nonisolated enum RoomScanUpdate: Sendable, Equatable {
     case elements([LiveElement])
     case instruction(ScanInstruction)
     case ended(roomJSON: Data)
+    /// What RoomPlan had when it gave up, sent just before `.failed`.
+    case salvaged(roomJSON: Data)
     case failed(message: String)
 }
 
@@ -61,6 +63,7 @@ final class RoomScanner: RoomScanning {
 nonisolated final class RoomCaptureRelay: RoomCaptureSessionDelegate, Sendable {
     private let continuation: AsyncStream<RoomScanUpdate>.Continuation
     private let isCancelled = Mutex(false)
+    private let latestRoom = Mutex<CapturedRoom?>(nil)
 
     init(continuation: AsyncStream<RoomScanUpdate>.Continuation) {
         self.continuation = continuation
@@ -71,6 +74,7 @@ nonisolated final class RoomCaptureRelay: RoomCaptureSessionDelegate, Sendable {
     }
 
     func captureSession(_ session: RoomCaptureSession, didUpdate room: CapturedRoom) {
+        latestRoom.withLock { $0 = room }
         publish(.elements(LiveElementMapper.elements(of: room)))
     }
 
@@ -80,10 +84,25 @@ nonisolated final class RoomCaptureRelay: RoomCaptureSessionDelegate, Sendable {
 
     func captureSession(_ session: RoomCaptureSession, didEndWith data: CapturedRoomData, error: (any Error)?) {
         if let error {
-            publish(.failed(message: error.localizedDescription))
+            let message = error.localizedDescription
+            Task { await self.salvage(data, thenFail: message) }
             return
         }
         Task { await self.build(data) }
+    }
+
+    /// RoomPlan often gives up after an interruption; whatever it had built is still worth keeping.
+    private func salvage(_ data: CapturedRoomData, thenFail message: String) async {
+        let lastLive = latestRoom.withLock { $0 }
+        if let json = await Self.salvagedJSON(from: data, lastLive: lastLive) {
+            publish(.salvaged(roomJSON: json))
+        }
+        publish(.failed(message: message))
+    }
+
+    private static func salvagedJSON(from data: CapturedRoomData, lastLive: CapturedRoom?) async -> Data? {
+        if let built = try? await roomJSON(from: data) { return built }
+        return lastLive.flatMap { try? JSONEncoder().encode($0) }
     }
 
     private func build(_ data: CapturedRoomData) async {

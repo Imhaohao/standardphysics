@@ -31,6 +31,7 @@ private nonisolated struct Transition {
         case .checkpointDue: checkpointIfPossible()
         case .roomCaptureEnded(let json): roomEnded(json)
         case .roomCaptureFailed(let message): roomFailed(message)
+        case .roomCaptureSalvaged(let json): salvaged(json)
         case .userPause: userPause()
         case .userContinue: userContinue()
         case .finishRoom: finishRoom()
@@ -121,6 +122,7 @@ private nonisolated struct Transition {
     /// Drops the room in progress. While relocalizing this also gives up on the saved frame.
     private mutating func restartRoom() {
         state.heldPauseReason = nil
+        state.salvagedRoomJSON = nil
         switch state.activity {
         case .capturing:
             state.roomCaptureNeedsRestart = false
@@ -181,7 +183,22 @@ private nonisolated struct Transition {
     private mutating func finishRoom() {
         guard state.activity == .capturing else { return }
         state.activity = .savingRoom(finishScanAfterwards: false)
-        effects.append(.finishRoomCapture)
+        endRoomCapture()
+    }
+
+    /// When RoomPlan already gave up there is no session to stop, so the salvaged room is the room.
+    private mutating func endRoomCapture() {
+        guard state.roomCaptureNeedsRestart, let salvaged = state.salvagedRoomJSON else {
+            effects.append(.finishRoomCapture)
+            return
+        }
+        state.roomCaptureNeedsRestart = false
+        roomEnded(salvaged)
+    }
+
+    private mutating func salvaged(_ json: Data) {
+        guard state.isRoomCaptureRunning else { return }
+        state.salvagedRoomJSON = RoomSalvage.better(state.salvagedRoomJSON, json)
     }
 
     private mutating func nextRoom() {
@@ -201,7 +218,8 @@ private nonisolated struct Transition {
         case .capturing: finishScanAfterwards = false
         default: return
         }
-        effects.append(.persistRoom(index: state.currentRoom, roomJSON: json))
+        effects.append(.persistRoom(index: state.currentRoom, roomJSON: RoomSalvage.better(state.salvagedRoomJSON, json)))
+        state.salvagedRoomJSON = nil
         state.completedRooms += 1
         state.lastRoomCaptureError = nil
         checkpointIfPossible()
@@ -242,7 +260,7 @@ private nonisolated struct Transition {
         switch state.activity {
         case .capturing:
             state.activity = .savingRoom(finishScanAfterwards: true)
-            effects.append(.finishRoomCapture)
+            endRoomCapture()
         case .savingRoom:
             state.activity = .savingRoom(finishScanAfterwards: true)
         case .betweenRooms where state.completedRooms > 0:

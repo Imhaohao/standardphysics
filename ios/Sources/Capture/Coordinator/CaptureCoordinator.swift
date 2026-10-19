@@ -164,7 +164,8 @@ final class CaptureCoordinator: CaptureControlling {
             instruction: instruction,
             isThermalWarning: state.isThermalWarning,
             relocalizationTimedOut: state.relocalizationTimedOut,
-            lastRoomCaptureError: state.lastRoomCaptureError
+            lastRoomCaptureError: state.lastRoomCaptureError,
+            hasSalvagedRoom: state.salvagedRoomJSON != nil
         ))
         resumeSatisfiedWaiters()
     }
@@ -236,6 +237,9 @@ final class CaptureCoordinator: CaptureControlling {
         case .ended(let roomJSON):
             Diagnostics.shared.record("room_capture_ended", ["bytes": Double(roomJSON.count)])
             send(.roomCaptureEnded(roomJSON: roomJSON))
+        case .salvaged(let roomJSON):
+            Diagnostics.shared.record("room_capture_salvaged", ["bytes": Double(roomJSON.count), "score": Double(RoomSalvage.score(roomJSON))])
+            send(.roomCaptureSalvaged(roomJSON: roomJSON))
         case .failed(let message):
             Diagnostics.shared.record("room_capture_failed", note: message)
             send(.roomCaptureFailed(message: message))

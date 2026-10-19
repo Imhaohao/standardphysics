@@ -46,6 +46,7 @@ nonisolated enum CaptureEvent: Sendable, Equatable {
     case checkpointDue
     case roomCaptureEnded(roomJSON: Data)
     case roomCaptureFailed(message: String)
+    case roomCaptureSalvaged(roomJSON: Data)
     case userPause
     case userContinue
     case finishRoom

@@ -29,6 +29,8 @@ nonisolated struct CaptureState: Sendable, Equatable {
     var relocalizationTimedOut = false
     var roomCaptureNeedsRestart = false
     var lastRoomCaptureError: String?
+    /// The room in progress as RoomPlan last had it before failing; kept until the room is saved.
+    var salvagedRoomJSON: Data?
     var isARSessionRunning = false
     var isIdleTimerDisabled = false
 
