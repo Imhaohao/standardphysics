@@ -89,4 +89,14 @@ final class UploadLedgerTests: XCTestCase {
         XCTAssertFalse(part.needsFreshURL(at: fixedNow, skew: 60))
         XCTAssertTrue(UploadPart(number: 2).needsFreshURL(at: fixedNow, skew: 0), "no URL yet")
     }
+
+    func testUploadsFolderIsExcludedFromBackup() async throws {
+        let directory = try makeTemporaryDirectory().appendingPathComponent("Uploads")
+        let ledger = UploadLedger(fileURL: directory.appendingPathComponent("upload-ledger.json"))
+        try await ledger.insert(UploadRecord(
+            id: UUID(), scanID: "s", fileName: "f", kind: "mesh", contentType: "x", sizeBytes: 1, sha256: "h",
+            enqueuedAt: fixedNow, state: .queued, multipart: nil
+        ))
+        XCTAssertEqual(try directory.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup, true)
+    }
 }

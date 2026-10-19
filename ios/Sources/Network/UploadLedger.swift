@@ -111,7 +111,7 @@ actor UploadLedger {
 
     private func commit(_ records: [UUID: UploadRecord]) throws {
         let data = try WireCoding.encoder().encode(records.values.sorted { $0.enqueuedAt < $1.enqueuedAt })
-        try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try ProtectedDirectory.create(fileURL.deletingLastPathComponent(), excludingFromBackup: true)
         try data.write(to: fileURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
         loaded = records
     }

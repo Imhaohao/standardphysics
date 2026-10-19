@@ -15,13 +15,13 @@ private final class CrashingWriter: AtomicFileWriting, @unchecked Sendable {
         self.survivingWrites = survivingWrites
     }
 
-    func write(_ data: Data, to url: URL) throws {
+    func write(_ data: Data, to url: URL, protection: FileProtectionType) throws {
         let count = lock.withLock { () -> Int in
             writes += 1
             return writes
         }
         guard count > survivingWrites else {
-            try real.write(data, to: url)
+            try real.write(data, to: url, protection: protection)
             return
         }
         let leftover = count.isMultiple(of: 2) ? data.prefix(data.count / 2) : data
@@ -37,9 +37,78 @@ private final class CountingWriter: AtomicFileWriting, @unchecked Sendable {
 
     var count: Int { lock.withLock { writes } }
 
-    func write(_ data: Data, to url: URL) throws {
+    func write(_ data: Data, to url: URL, protection: FileProtectionType) throws {
         lock.withLock { writes += 1 }
-        try real.write(data, to: url)
+        try real.write(data, to: url, protection: protection)
+    }
+}
+
+private final class ProtectionRecorder: AtomicFileWriting, @unchecked Sendable {
+    private let lock = NSLock()
+    private var recorded: [String: FileProtectionType] = [:]
+    private let real = AtomicFileWriter()
+
+    func protection(of name: String) -> FileProtectionType? { lock.withLock { recorded[name] } }
+
+    func write(_ data: Data, to url: URL, protection: FileProtectionType) throws {
+        lock.withLock { recorded[url.lastPathComponent] = protection }
+        try real.write(data, to: url, protection: protection)
+    }
+}
+
+final class FileScanJournalProtectionTests: XCTestCase {
+    private var root: URL!
+
+    override func setUpWithError() throws {
+        root = FileManager.default.temporaryDirectory.appending(path: "journal-\(UUID().uuidString)")
+    }
+
+    override func tearDownWithError() throws {
+        try? FileManager.default.removeItem(at: root)
+    }
+
+    func testCameraDerivedFilesUseCompleteProtectionAndTheRestUntilFirstUnlock() async throws {
+        let recorder = ProtectionRecorder()
+        let journal = FileScanJournal(root: root, writer: recorder)
+        let scan = try await journal.create(name: "Shop")
+        _ = try await journal.saveWorldMap(scanID: scan.scanID, data: Data("map".utf8), snapshotJPEG: Data([0xFF]))
+        _ = try await journal.appendRoom(scanID: scan.scanID, capturedRoomJSON: Data("{}".utf8), name: "Room 1")
+        XCTAssertEqual(recorder.protection(of: ScanFiles.worldMap), .complete)
+        XCTAssertEqual(recorder.protection(of: ScanFiles.relocalizationSnapshot), .complete)
+        XCTAssertEqual(recorder.protection(of: ScanFiles.manifest), .completeUntilFirstUserAuthentication)
+        XCTAssertEqual(recorder.protection(of: "0.json"), .completeUntilFirstUserAuthentication)
+    }
+
+    func testScansFolderIsExcludedFromBackup() async throws {
+        let journal = FileScanJournal(root: root)
+        _ = try await journal.create(name: "Shop")
+        let values = try root.resourceValues(forKeys: [.isExcludedFromBackupKey])
+        XCTAssertEqual(values.isExcludedFromBackup, true)
+    }
+
+    func testWriterMapsProtectionToWritingOptions() {
+        XCTAssertEqual(AtomicFileWriter.writingOptions(for: .complete), .completeFileProtection)
+        XCTAssertEqual(AtomicFileWriter.writingOptions(for: .completeUntilFirstUserAuthentication), .completeFileProtectionUntilFirstUserAuthentication)
+    }
+
+    func testReleasingHeavyFilesKeepsRoomsAndManifest() async throws {
+        let journal = FileScanJournal(root: root)
+        let scan = try await journal.create(name: "Shop")
+        _ = try await journal.appendRoom(scanID: scan.scanID, capturedRoomJSON: Data("{}".utf8), name: "Room 1")
+        _ = try await journal.saveWorldMap(scanID: scan.scanID, data: Data("map".utf8), snapshotJPEG: Data([0xFF]))
+        _ = try await journal.saveMesh(scanID: scan.scanID, data: Data([1, 2, 3]))
+
+        try await journal.releaseHeavyFiles(scanID: scan.scanID)
+        let directory = journal.directory(for: scan.scanID)
+        for file in ScanFiles.heavy {
+            XCTAssertFalse(FileManager.default.fileExists(atPath: directory.appending(path: file).path), file)
+        }
+        let stored = try await journal.load(scanID: scan.scanID)
+        XCTAssertNil(stored.meshFile)
+        XCTAssertNil(stored.worldMapFile)
+        XCTAssertNil(stored.relocalizationSnapshotFile)
+        XCTAssertEqual(stored.rooms.count, 1)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: directory.appending(path: ScanFiles.room(0)).path))
     }
 }
 

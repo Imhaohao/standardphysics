@@ -31,11 +31,13 @@ final class ServerScanProcessor: ScanProcessing {
     private let api: APIClient
     private let uploader: BackgroundUploader
     private let rooms: (any RoomDelivering)?
+    private let retention: (any ScanRetaining)?
 
-    init(api: APIClient, uploader: BackgroundUploader, rooms: (any RoomDelivering)? = nil) {
+    init(api: APIClient, uploader: BackgroundUploader, rooms: (any RoomDelivering)? = nil, retention: (any ScanRetaining)? = nil) {
         self.api = api
         self.uploader = uploader
         self.rooms = rooms
+        self.retention = retention
     }
 
     func process(_ manifest: ScanManifest, onUpdate: @escaping (ProcessingUpdate) -> Void) async throws -> ScanReport {
@@ -46,6 +48,7 @@ final class ServerScanProcessor: ScanProcessing {
         onUpdate(ProcessingUpdate(stage: .assembling, fraction: Self.assemblingFraction))
         let report = try await finishOrFetch(remoteScanID)
         onUpdate(ProcessingUpdate(stage: .checking, fraction: Self.checkingFraction))
+        try? await retention?.releaseHeavyFiles(scanID: manifest.scanID)
         onUpdate(ProcessingUpdate(stage: .writing, fraction: 1))
         return Self.scanReport(from: report, manifest: manifest)
     }

@@ -82,6 +82,22 @@ final class ServerScanProcessorTests: XCTestCase {
         XCTAssertTrue(transport.requests.isEmpty, "finish is never called on a partial scan")
     }
 
+    func testHeavyLocalFilesAreReleasedOnlyAfterTheServerFinishes() async throws {
+        let transport = ScriptedTransport([jsonResponse(500, "{}"), jsonResponse(200, reportJSON)])
+        let api = APIClient(baseURL: URL(string: "https://api.test")!, tokenStore: InMemoryTokenStore(token: "t"), transport: transport, retryPolicy: .none)
+        let storage = UploadStorage(root: directory.appendingPathComponent("uploads"))
+        let uploader = BackgroundUploader(
+            api: FakeUploadAPI(), ledger: UploadLedger(fileURL: storage.ledgerURL), session: FakeUploadSession(), storage: storage
+        )
+        let retention = RecordingRetention()
+        let processor = ServerScanProcessor(api: api, uploader: uploader, retention: retention)
+        let scan = manifest()
+        _ = try? await processor.process(scan) { _ in }
+        XCTAssertTrue(retention.released.isEmpty, "a failed finish keeps everything for a retry")
+        _ = try await processor.process(scan) { _ in }
+        XCTAssertEqual(retention.released, [scan.scanID])
+    }
+
     func testScanNeverRegisteredWithServerIsAnError() async {
         let (processor, _) = makeProcessor([])
         do {
@@ -98,4 +114,10 @@ private final class UndeliverableRooms: RoomDelivering {
     func deliverRooms(of manifest: ScanManifest) async throws {
         throw ScanStreamingError.roomsNotDelivered
     }
+}
+
+private final class RecordingRetention: ScanRetaining, @unchecked Sendable {
+    private let ids = Locked<[UUID]>([])
+    var released: [UUID] { ids.read { $0 } }
+    func releaseHeavyFiles(scanID: UUID) async throws { ids.write { $0.append(scanID) } }
 }

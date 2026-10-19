@@ -1,7 +1,31 @@
 import Foundation
 
 nonisolated protocol AtomicFileWriting: Sendable {
-    func write(_ data: Data, to url: URL) throws
+    func write(_ data: Data, to url: URL, protection: FileProtectionType) throws
+}
+
+extension AtomicFileWriting {
+    /// Readable after the first unlock, so background work can still reach the file while the
+    /// phone is locked again.
+    nonisolated func write(_ data: Data, to url: URL) throws {
+        try write(data, to: url, protection: .completeUntilFirstUserAuthentication)
+    }
+}
+
+/// Folders that hold scan data: encrypted until first unlock and never copied into iCloud or
+/// computer backups, since the server keeps the finished results.
+nonisolated enum ProtectedDirectory {
+    static func create(_ url: URL, excludingFromBackup: Bool = false) throws {
+        try FileManager.default.createDirectory(
+            at: url, withIntermediateDirectories: true,
+            attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication]
+        )
+        guard excludingFromBackup else { return }
+        var excluded = url
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try excluded.setResourceValues(values)
+    }
 }
 
 /// Writes to a sibling temp file, flushes it to disk, then renames over the destination.
@@ -18,15 +42,24 @@ nonisolated struct AtomicFileWriter: AtomicFileWriting {
         url.lastPathComponent.hasPrefix(".") && url.lastPathComponent.hasSuffix(temporarySuffix)
     }
 
-    func write(_ data: Data, to url: URL) throws {
+    func write(_ data: Data, to url: URL, protection: FileProtectionType) throws {
         let temporary = Self.temporaryURL(for: url)
         do {
-            try data.write(to: temporary)
+            try data.write(to: temporary, options: Self.writingOptions(for: protection))
             try Self.flush(temporary)
             try Self.rename(temporary, to: url)
         } catch {
             try? FileManager.default.removeItem(at: temporary)
             throw error
+        }
+    }
+
+    static func writingOptions(for protection: FileProtectionType) -> Data.WritingOptions {
+        switch protection {
+        case .complete: .completeFileProtection
+        case .completeUnlessOpen: .completeFileProtectionUnlessOpen
+        case .none: .noFileProtection
+        default: .completeFileProtectionUntilFirstUserAuthentication
         }
     }
 

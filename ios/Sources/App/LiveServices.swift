@@ -53,14 +53,14 @@ final class LiveServices {
     }
 
     private static func makeProcessor(
-        journal: some ScanJournaling, api: APIClient?, uploader: BackgroundUploader?, streamer: ScanStreamer?
+        journal: FileScanJournal, api: APIClient?, uploader: BackgroundUploader?, streamer: ScanStreamer?
     ) -> any ScanProcessing {
         let local = OnDeviceScanProcessor(journal: journal)
         let tokens = KeychainTokenStore()
         guard let api, let uploader else { return local }
         Task { await uploader.start() }
         return PreferredScanProcessor(
-            remote: ServerScanProcessor(api: api, uploader: uploader, rooms: streamer),
+            remote: ServerScanProcessor(api: api, uploader: uploader, rooms: streamer, retention: journal),
             local: local,
             isSignedIn: { tokens.token() != nil }
         )
