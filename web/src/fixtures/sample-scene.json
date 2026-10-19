@@ -1,11 +1,9 @@
 {
-  "version": 2,
+  "connections": [],
+  "observations": [],
   "rooms": [
     {
-      "id": "5F0C4D02-EDDB-40CB-95A7-DFC764BCBFBD",
-      "name": "Living room",
-      "kind": "other",
-      "storey": 0,
+      "ceiling_height": 2.4467,
       "floor": {
         "points": [
           {
@@ -26,408 +24,410 @@
           }
         ]
       },
-      "ceiling_height": 2.4467,
-      "walls": [
-        {
-          "id": "24561EDA-788C-48D8-86BF-951A1DDD71D8",
-          "start": {
-            "x": 4.1951,
-            "y": 6.2292
-          },
-          "end": {
-            "x": 3.1993,
-            "y": 12.3484
-          },
-          "height": 2.4467,
-          "thickness": 0.1
-        },
-        {
-          "id": "96C3D2D3-CCF1-4BE4-80F3-81037C663B1D",
-          "start": {
-            "x": 3.1993,
-            "y": 12.3484
-          },
-          "end": {
-            "x": -1.3194,
-            "y": 11.6131
-          },
-          "height": 2.4467,
-          "thickness": 0.1
-        },
-        {
-          "id": "E6F9790E-21A5-410F-A9DF-64E0EA05DF02",
-          "start": {
-            "x": -1.3194,
-            "y": 11.6131
-          },
-          "end": {
-            "x": -0.3236,
-            "y": 5.4938
-          },
-          "height": 2.4467,
-          "thickness": 0.1
-        },
-        {
-          "id": "8478E6F1-B300-41E3-AAA8-24AF26133953",
-          "start": {
-            "x": -0.3236,
-            "y": 5.4938
-          },
-          "end": {
-            "x": 4.1951,
-            "y": 6.2292
-          },
-          "height": 2.4467,
-          "thickness": 0.1
-        }
-      ],
-      "openings": [
-        {
-          "id": "B435D27C-8EEC-4207-B5C1-E9BEA27BCDC7",
-          "kind": "door",
-          "wall_id": "24561EDA-788C-48D8-86BF-951A1DDD71D8",
-          "center": {
-            "x": 3.705,
-            "y": 1.0252,
-            "z": 9.241
-          },
-          "width": 3.6673,
-          "height": 2.0503,
-          "swing": null,
-          "hardware": null
-        },
-        {
-          "id": "7EDE5A32-8E03-4DEA-B490-F735AF27403C",
-          "kind": "opening",
-          "wall_id": "E6F9790E-21A5-410F-A9DF-64E0EA05DF02",
-          "center": {
-            "x": -0.4412,
-            "y": 1.03,
-            "z": 6.2162
-          },
-          "width": 1.4638,
-          "height": 2.06,
-          "swing": null,
-          "hardware": null
-        },
-        {
-          "id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-          "kind": "opening",
-          "wall_id": "8478E6F1-B300-41E3-AAA8-24AF26133953",
-          "center": {
-            "x": -0.308,
-            "y": 0.92,
-            "z": 5.4963
-          },
-          "width": 0.0317,
-          "height": 1.84,
-          "swing": null,
-          "hardware": null
-        },
-        {
-          "id": "E513B016-5FD6-4384-9073-75F7D6630F46",
-          "kind": "opening",
-          "wall_id": "8478E6F1-B300-41E3-AAA8-24AF26133953",
-          "center": {
-            "x": 0.6895,
-            "y": 1.02,
-            "z": 5.6587
-          },
-          "width": 1.9895,
-          "height": 2.04,
-          "swing": null,
-          "hardware": null
-        }
-      ],
+      "id": "living-room",
+      "kind": "other",
+      "name": "Living room",
       "objects": [
         {
-          "id": "C4B1116F-52E5-4F21-B1D7-8DED62B6F012",
-          "category": "shelving",
+          "attributes": {
+            "StorageType": "shelf",
+            "roomplan_category": "storage"
+          },
+          "category": "storage",
           "center": {
             "x": -0.5362,
             "y": 1.6939,
             "z": 11.573
           },
+          "confidence": 0.9,
+          "id": "C4B1116F-52E5-4F21-B1D7-8DED62B6F012",
           "size": {
             "x": 1.5332,
             "y": 1.442,
             "z": 0.3308
           },
-          "yaw": 2.9803,
-          "top_height": 2.4149,
-          "confidence": 1,
           "source": "roomplan",
-          "attributes": {
-            "StorageType": "shelf",
-            "roomplan_category": "storage"
-          }
+          "top_height": 2.4149,
+          "yaw": 2.9803
         },
         {
-          "id": "77260FF4-9B8D-45B9-AB75-AA1D080EBB43",
+          "attributes": {
+            "roomplan_category": "television"
+          },
           "category": "television",
           "center": {
             "x": 1.0193,
             "y": 1.6344,
             "z": 11.7212
           },
+          "confidence": 0.6,
+          "id": "77260FF4-9B8D-45B9-AB75-AA1D080EBB43",
           "size": {
             "x": 1.355,
             "y": 0.844,
             "z": 0.1
           },
-          "yaw": 2.9803,
-          "top_height": 2.0564,
-          "confidence": 0.66,
           "source": "roomplan",
-          "attributes": {
-            "roomplan_category": "television"
-          }
+          "top_height": 2.0564,
+          "yaw": 2.9803
         },
         {
-          "id": "9A6B3796-FBC3-42CC-80A5-E41FC37AFA82",
+          "attributes": {
+            "SofaType": "lShapedExtension",
+            "roomplan_category": "sofa"
+          },
           "category": "sofa",
           "center": {
             "x": 1.5671,
             "y": 0.4393,
             "z": 7.522
           },
+          "confidence": 0.9,
+          "id": "9A6B3796-FBC3-42CC-80A5-E41FC37AFA82",
           "size": {
             "x": 1.3734,
             "y": 0.8786,
             "z": 1.0537
           },
-          "yaw": -0.1613,
-          "top_height": 0.8786,
-          "confidence": 1,
           "source": "roomplan",
-          "attributes": {
-            "SofaType": "lShapedExtension",
-            "roomplan_category": "sofa"
-          }
+          "top_height": 0.8786,
+          "yaw": -0.1613
         },
         {
-          "id": "73428B2A-34F5-46A4-A4AE-B2242127309C",
+          "attributes": {
+            "roomplan_category": "oven"
+          },
           "category": "oven",
           "center": {
             "x": 1.0285,
             "y": 0.4451,
             "z": 11.7016
           },
+          "confidence": 0.3,
+          "id": "73428B2A-34F5-46A4-A4AE-B2242127309C",
           "size": {
             "x": 0.5984,
             "y": 0.8903,
             "z": 0.5795
           },
-          "yaw": 2.9803,
-          "top_height": 0.8903,
-          "confidence": 0.33,
           "source": "roomplan",
-          "attributes": {
-            "roomplan_category": "oven"
-          }
+          "top_height": 0.8903,
+          "yaw": 2.9803
         },
         {
-          "id": "E6129117-A79E-42E0-A690-5AE765B244BE",
+          "attributes": {
+            "SofaType": "lShaped",
+            "roomplan_category": "sofa"
+          },
           "category": "sofa",
           "center": {
             "x": 2.5903,
             "y": 0.4393,
             "z": 8.949
           },
+          "confidence": 0.3,
+          "id": "E6129117-A79E-42E0-A690-5AE765B244BE",
           "size": {
             "x": 3.5501,
             "y": 0.8786,
             "z": 1.0635
           },
-          "yaw": -1.7321,
-          "top_height": 0.8786,
-          "confidence": 0.33,
           "source": "roomplan",
-          "attributes": {
-            "SofaType": "lShaped",
-            "roomplan_category": "sofa"
-          }
+          "top_height": 0.8786,
+          "yaw": -1.7321
         },
         {
-          "id": "F0FA693D-7A19-4278-866F-9F435E31CB9A",
-          "category": "cabinet",
+          "attributes": {
+            "StorageType": "cabinet",
+            "roomplan_category": "storage"
+          },
+          "category": "storage",
           "center": {
             "x": 3.9502,
             "y": 0.9105,
             "z": 6.5467
           },
+          "confidence": 0.3,
+          "id": "F0FA693D-7A19-4278-866F-9F435E31CB9A",
           "size": {
             "x": 0.7056,
             "y": 1.821,
             "z": 0.3815
           },
-          "yaw": -1.7321,
-          "top_height": 1.821,
-          "confidence": 0.33,
           "source": "roomplan",
-          "attributes": {
-            "StorageType": "cabinet",
-            "roomplan_category": "storage"
-          }
+          "top_height": 1.821,
+          "yaw": -1.7321
         },
         {
-          "id": "B3EF1BFD-E5F9-4E23-B010-8590DD56DB56",
+          "attributes": {
+            "roomplan_category": "fireplace"
+          },
           "category": "fireplace",
           "center": {
             "x": -0.8423,
             "y": 0.7223,
             "z": 9.4863
           },
+          "confidence": 0.3,
+          "id": "B3EF1BFD-E5F9-4E23-B010-8590DD56DB56",
           "size": {
             "x": 1.9146,
             "y": 1.4446,
             "z": 0.6104
           },
-          "yaw": 1.4095,
-          "top_height": 1.4446,
-          "confidence": 0.33,
           "source": "roomplan",
-          "attributes": {
-            "roomplan_category": "fireplace"
-          }
+          "top_height": 1.4446,
+          "yaw": 1.4095
         },
         {
-          "id": "001CCADE-A4EA-46DD-B2A2-A313B37C341E",
-          "category": "cabinet",
+          "attributes": {
+            "StorageType": "cabinet",
+            "roomplan_category": "storage"
+          },
+          "category": "storage",
           "center": {
             "x": -0.2716,
             "y": 0.4682,
             "z": 11.5017
           },
+          "confidence": 0.9,
+          "id": "001CCADE-A4EA-46DD-B2A2-A313B37C341E",
           "size": {
             "x": 2.0327,
             "y": 0.9365,
             "z": 0.5565
           },
-          "yaw": 2.9803,
-          "top_height": 0.9365,
-          "confidence": 1,
           "source": "roomplan",
+          "top_height": 0.9365,
+          "yaw": 2.9803
+        },
+        {
           "attributes": {
             "StorageType": "cabinet",
             "roomplan_category": "storage"
-          }
-        },
-        {
-          "id": "B66B176A-5931-4CB6-BC2A-034895B80999",
-          "category": "cabinet",
+          },
+          "category": "storage",
           "center": {
             "x": 2.2865,
             "y": 0.4682,
             "z": 11.8951
           },
+          "confidence": 0.9,
+          "id": "B66B176A-5931-4CB6-BC2A-034895B80999",
           "size": {
             "x": 1.9475,
             "y": 0.9365,
             "z": 0.6017
           },
-          "yaw": 2.9803,
-          "top_height": 0.9365,
-          "confidence": 1,
           "source": "roomplan",
-          "attributes": {
-            "StorageType": "cabinet",
-            "roomplan_category": "storage"
-          }
+          "top_height": 0.9365,
+          "yaw": 2.9803
         },
         {
-          "id": "29579096-6278-49A9-9E63-29271EEBCB6A",
+          "attributes": {
+            "SofaType": "lShapedExtension",
+            "roomplan_category": "sofa"
+          },
           "category": "sofa",
           "center": {
             "x": 1.5438,
             "y": 0.4393,
             "z": 10.1005
           },
+          "confidence": 0.6,
+          "id": "29579096-6278-49A9-9E63-29271EEBCB6A",
           "size": {
             "x": 0.7091,
             "y": 0.8786,
             "z": 1.0322
           },
-          "yaw": 2.9803,
-          "top_height": 0.8786,
-          "confidence": 0.66,
           "source": "roomplan",
-          "attributes": {
-            "SofaType": "lShapedExtension",
-            "roomplan_category": "sofa"
-          }
+          "top_height": 0.8786,
+          "yaw": 2.9803
         },
         {
-          "id": "470F48AA-2006-473D-B93D-E487F5D05BE3",
-          "category": "coffee_table",
+          "attributes": {
+            "TableShapeType": "circularElliptic",
+            "TableType": "coffee",
+            "roomplan_category": "table"
+          },
+          "category": "table",
           "center": {
             "x": 1.6046,
             "y": 0.2309,
             "z": 8.3107
           },
+          "confidence": 0.9,
+          "id": "470F48AA-2006-473D-B93D-E487F5D05BE3",
           "size": {
             "x": 0.8343,
             "y": 0.4617,
             "z": 0.4619
           },
-          "yaw": -0.1613,
-          "top_height": 0.4617,
-          "confidence": 1,
           "source": "roomplan",
-          "attributes": {
-            "TableShapeType": "circularElliptic",
-            "TableType": "coffee",
-            "roomplan_category": "table"
-          }
+          "top_height": 0.4617,
+          "yaw": -0.1613
         },
         {
-          "id": "CB2A702A-76B4-42BB-8FE7-6515F49F9FA6",
-          "category": "shelving",
+          "attributes": {
+            "StorageType": "shelf",
+            "roomplan_category": "storage"
+          },
+          "category": "storage",
           "center": {
             "x": 2.459,
             "y": 1.6954,
             "z": 12.0393
           },
+          "confidence": 0.9,
+          "id": "CB2A702A-76B4-42BB-8FE7-6515F49F9FA6",
           "size": {
             "x": 1.5607,
             "y": 1.4101,
             "z": 0.3724
           },
-          "yaw": 2.9803,
-          "top_height": 2.4004,
-          "confidence": 1,
           "source": "roomplan",
-          "attributes": {
-            "StorageType": "shelf",
-            "roomplan_category": "storage"
-          }
+          "top_height": 2.4004,
+          "yaw": 2.9803
         },
         {
-          "id": "488AFC52-9149-4017-8E6F-B2A5E94AC300",
-          "category": "coffee_table",
+          "attributes": {
+            "TableShapeType": "circularElliptic",
+            "TableType": "coffee",
+            "roomplan_category": "table"
+          },
+          "category": "table",
           "center": {
             "x": 0.7889,
             "y": 0.2548,
             "z": 7.5891
           },
+          "confidence": 0.9,
+          "id": "488AFC52-9149-4017-8E6F-B2A5E94AC300",
           "size": {
             "x": 0.4844,
             "y": 0.5095,
             "z": 0.4623
           },
-          "yaw": 2.9803,
-          "top_height": 0.5095,
-          "confidence": 1,
           "source": "roomplan",
-          "attributes": {
-            "TableShapeType": "circularElliptic",
-            "TableType": "coffee",
-            "roomplan_category": "table"
-          }
+          "top_height": 0.5095,
+          "yaw": 2.9803
+        }
+      ],
+      "openings": [
+        {
+          "center": {
+            "x": 3.705,
+            "y": 1.0252,
+            "z": 9.241
+          },
+          "hardware": null,
+          "height": 2.0503,
+          "id": "B435D27C-8EEC-4207-B5C1-E9BEA27BCDC7",
+          "kind": "door",
+          "swing": null,
+          "wall_id": "24561EDA-788C-48D8-86BF-951A1DDD71D8",
+          "width": 3.6673
+        },
+        {
+          "center": {
+            "x": -0.4412,
+            "y": 1.03,
+            "z": 6.2162
+          },
+          "hardware": null,
+          "height": 2.06,
+          "id": "7EDE5A32-8E03-4DEA-B490-F735AF27403C",
+          "kind": "opening",
+          "swing": null,
+          "wall_id": "E6F9790E-21A5-410F-A9DF-64E0EA05DF02",
+          "width": 1.4638
+        },
+        {
+          "center": {
+            "x": -0.308,
+            "y": 0.92,
+            "z": 5.4963
+          },
+          "hardware": null,
+          "height": 1.84,
+          "id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
+          "kind": "opening",
+          "swing": null,
+          "wall_id": "8478E6F1-B300-41E3-AAA8-24AF26133953",
+          "width": 0.0317
+        },
+        {
+          "center": {
+            "x": 0.6895,
+            "y": 1.02,
+            "z": 5.6587
+          },
+          "hardware": null,
+          "height": 2.04,
+          "id": "E513B016-5FD6-4384-9073-75F7D6630F46",
+          "kind": "opening",
+          "swing": null,
+          "wall_id": "8478E6F1-B300-41E3-AAA8-24AF26133953",
+          "width": 1.9895
+        }
+      ],
+      "storey": 0,
+      "walls": [
+        {
+          "end": {
+            "x": 3.1993,
+            "y": 12.3484
+          },
+          "height": 2.4467,
+          "id": "24561EDA-788C-48D8-86BF-951A1DDD71D8",
+          "start": {
+            "x": 4.1951,
+            "y": 6.2292
+          },
+          "thickness": 0.1
+        },
+        {
+          "end": {
+            "x": -1.3194,
+            "y": 11.6131
+          },
+          "height": 2.4467,
+          "id": "96C3D2D3-CCF1-4BE4-80F3-81037C663B1D",
+          "start": {
+            "x": 3.1993,
+            "y": 12.3484
+          },
+          "thickness": 0.1
+        },
+        {
+          "end": {
+            "x": -0.3236,
+            "y": 5.4938
+          },
+          "height": 2.4467,
+          "id": "E6F9790E-21A5-410F-A9DF-64E0EA05DF02",
+          "start": {
+            "x": -1.3194,
+            "y": 11.6131
+          },
+          "thickness": 0.1
+        },
+        {
+          "end": {
+            "x": 4.1951,
+            "y": 6.2292
+          },
+          "height": 2.4467,
+          "id": "8478E6F1-B300-41E3-AAA8-24AF26133953",
+          "start": {
+            "x": -0.3236,
+            "y": 5.4938
+          },
+          "thickness": 0.1
         }
       ]
     }
   ],
-  "connections": [],
-  "observations": []
+  "version": 2
 }

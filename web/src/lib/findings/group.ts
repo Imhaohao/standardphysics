@@ -1,4 +1,5 @@
 import type { Subject } from "@/lib/scene/describe";
+import { ownerAsk } from "./format";
 import type { Finding, FindingStatus, StatusCounts } from "./types";
 
 /** Worse first: a failure outranks an open question, which outranks a pass. */
@@ -36,8 +37,11 @@ export function governingFinding(ada: Finding | null, cbc: Finding | null): Find
   return either;
 }
 
+/** sp-core links an ADA rule and its California twin through `counterpart`; both share the smaller of the two ids. */
 function pairKey(finding: Finding) {
-  return sectionKey(finding.section) || finding.rule_id;
+  const { rule_id: ruleId, counterpart } = finding;
+  if (counterpart) return counterpart < ruleId ? counterpart : ruleId;
+  return sectionKey(finding.section) || ruleId;
 }
 
 function pairFindings(findings: readonly Finding[]): FindingPair[] {
@@ -54,16 +58,19 @@ function pairFindings(findings: readonly Finding[]): FindingPair[] {
     .sort((a, b) => STATUS_RANK[a.governing.status] - STATUS_RANK[b.governing.status] || a.key.localeCompare(b.key, undefined, { numeric: true }));
 }
 
-function groupBySubject(findings: readonly Finding[]) {
+function groupBySubject(findings: readonly Finding[], subjects: ReadonlyMap<string, Subject>) {
   const bySubject = new Map<string, Finding[]>();
-  for (const finding of findings) bySubject.set(finding.subject_id, [...(bySubject.get(finding.subject_id) ?? []), finding]);
+  for (const finding of findings) {
+    const key = subjects.get(finding.subject_id)?.groupId ?? finding.subject_id;
+    bySubject.set(key, [...(bySubject.get(key) ?? []), finding]);
+  }
   return bySubject;
 }
 
 /** Findings grouped by the element they are about, worst element first, each ADA/CBC pair side by side. */
 export function groupByElement(findings: readonly Finding[], subjects: ReadonlyMap<string, Subject>): ElementGroup[] {
   const relevant = findings.filter((finding) => finding.status !== "not_applicable");
-  return [...groupBySubject(relevant)]
+  return [...groupBySubject(relevant, subjects)]
     .map(([subjectId, subjectFindings]) => {
       const pairs = pairFindings(subjectFindings);
       const subject = subjects.get(subjectId) ?? null;
@@ -72,15 +79,25 @@ export function groupByElement(findings: readonly Finding[], subjects: ReadonlyM
     .sort((a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status] || a.name.localeCompare(b.name, undefined, { numeric: true }));
 }
 
+/** One line for a list: the worst requirement's title, and how many more share its status. */
+export function groupHeadline(group: ElementGroup) {
+  const [first, ...rest] = group.pairs;
+  const more = rest.filter((pair) => pair.governing.status === first!.governing.status).length;
+  return more > 0 ? `${first!.governing.title} and ${more} more` : first!.governing.title;
+}
+
 export function countStatuses(findings: readonly Finding[]): StatusCounts {
   const counts: StatusCounts = { pass: 0, fail: 0, needs_info: 0, not_applicable: 0 };
   for (const finding of findings) counts[finding.status] += 1;
   return counts;
 }
 
-/** Open questions for the owner, one per requirement, so a question asked under both codes is asked once. */
+/**
+ * Open questions for the owner, one entry per element so each plan pin number appears once, and one question per
+ * requirement so a question asked under both codes is asked once.
+ */
 export function ownerQuestions(groups: readonly ElementGroup[]) {
-  return groups.flatMap((group) =>
-    group.pairs.filter((pair) => pair.governing.status === "needs_info").map((pair) => ({ group, pair, question: pair.governing.message })),
-  );
+  return groups
+    .map((group) => ({ group, questions: group.pairs.filter((pair) => pair.governing.status === "needs_info").map((pair) => ({ pair, question: pair.governing.title, ask: ownerAsk(pair.governing) })) }))
+    .filter((entry) => entry.questions.length > 0);
 }

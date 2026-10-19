@@ -1,97 +1,34 @@
+import type * as Generated from "./scene.gen";
+
 /**
- * The v2 Scene contract, mirrored by hand from core/sp-core/src/scene.rs (JSON Schema in
- * core/schema/scene.schema.json). Units are metres and radians, Y is up, and the floor of each storey is y = 0.
- * Plan coordinates (Vec2) are world X and world Z.
+ * The v2 Scene as sp-server serializes it. `scene.gen.ts` is generated from core/schema/scene.schema.json, which
+ * describes input and so marks defaulted fields optional; serde always writes them, so here every field is present.
+ * Units are metres and radians, Y is up, and the floor of each storey is y = 0. Plan coordinates (Vec2) are world X and Z.
  */
-export interface Vec2 {
-  x: number;
-  y: number;
-}
+type Filled<T> = { [K in keyof T]-?: Exclude<T[K], undefined> };
 
-export interface Vec3 {
-  x: number;
-  y: number;
-  z: number;
-}
+export type Vec2 = Generated.Vec2;
+export type Vec3 = Generated.Vec3;
+export type Polygon2 = Generated.Polygon2;
+export type RoomKind = NonNullable<Generated.Room["kind"]>;
+export type OpeningKind = Generated.OpeningKind;
+export type ObjectSource = NonNullable<Generated.Object["source"]>;
+export type ObservationSource = Generated.ObservationSource;
+export type DoorSwing = Filled<Generated.DoorSwing>;
+export type Wall = Filled<Generated.Wall>;
+export type Opening = Filled<Omit<Generated.Opening, "swing">> & { swing: DoorSwing | null };
+export type SceneObject = Filled<Generated.Object>;
+export type RoomConnection = Filled<Generated.RoomConnection>;
+export type Observation = Filled<Generated.Observation>;
 
-export interface Polygon2 {
-  points: Vec2[];
-}
-
-export type RoomKind = "shop" | "restaurant" | "restroom" | "office" | "corridor" | "kitchen" | "storage" | "other";
-export type OpeningKind = "door" | "window" | "opening";
-export type ObjectSource = "roomplan" | "detector" | "mesh" | "owner";
-export type ObservationSource = "measured" | "photo" | "owner";
-
-export interface Wall {
-  id: string;
-  start: Vec2;
-  end: Vec2;
-  height: number;
-  thickness: number;
-}
-
-export interface DoorSwing {
-  hinge: "left" | "right";
-  swings_in: boolean;
-  leaves: number;
-}
-
-export interface Opening {
-  id: string;
-  kind: OpeningKind;
-  wall_id: string;
-  center: Vec3;
-  width: number;
-  height: number;
-  swing?: DoorSwing | null;
-  hardware?: string | null;
-}
-
-export interface SceneObject {
-  id: string;
-  category: string;
-  center: Vec3;
-  /** Width, height, depth. */
-  size: Vec3;
-  yaw: number;
-  top_height: number;
-  confidence: number;
-  source: ObjectSource;
-  attributes: Record<string, string>;
-}
-
-export interface Room {
-  id: string;
-  name: string;
-  kind: RoomKind;
-  storey: number;
-  floor: Polygon2;
-  ceiling_height: number;
+export type Room = Filled<Omit<Generated.Room, "walls" | "openings" | "objects">> & {
   walls: Wall[];
   openings: Opening[];
   objects: SceneObject[];
-}
+};
 
-export interface RoomConnection {
-  from_room: string;
-  to_room: string;
-  opening_id?: string | null;
-}
-
-export interface Observation {
-  id: string;
-  subject_id: string;
-  metric: string;
-  value: boolean | number | string;
-  unit?: string | null;
-  source: ObservationSource;
-  confidence: number;
-}
-
-export interface Scene {
-  version: number;
+export type Scene = Filled<Omit<Generated.Scene, "rooms" | "connections" | "observations">> & {
   rooms: Room[];
   connections: RoomConnection[];
   observations: Observation[];
-}
+};

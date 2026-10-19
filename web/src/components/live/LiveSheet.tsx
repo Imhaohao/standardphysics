@@ -7,7 +7,7 @@ import { STATUS_TOKENS } from "@/components/plan/InkedPlan";
 import { Button, buttonClassName } from "@/components/ui/Button";
 import { StatusMark } from "@/components/ui/StatusMark";
 import { liveFindings, type LiveState } from "@/lib/api/live";
-import { groupByElement, type ElementGroup } from "@/lib/findings/group";
+import { groupByElement, groupHeadline, type ElementGroup } from "@/lib/findings/group";
 import { findingPins } from "@/lib/findings/pins";
 import type { FindingStatus } from "@/lib/findings/types";
 import { readColor } from "@/lib/ink/canvas";
@@ -94,7 +94,7 @@ function FindingFeed({ groups, labels }: { groups: ElementGroup[]; labels: Reado
             </span>
             <StatusMark status={group.status} />
           </span>
-          <span className="text-sm text-ink-muted text-pretty">{group.pairs[0]!.governing.message}</span>
+          <span className="text-sm text-ink-muted text-pretty">{groupHeadline(group)}</span>
         </li>
       ))}
     </ol>

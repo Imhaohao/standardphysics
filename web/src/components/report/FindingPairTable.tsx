@@ -41,7 +41,7 @@ export function FindingPairTable({ pairs }: { pairs: FindingPair[] }) {
           return (
             <tr key={pair.key} className="border-b border-ink/20 break-inside-avoid">
               <td className="px-3 py-3 align-top text-pretty">
-                {pair.governing.message}
+                {pair.governing.title}
                 {note && <span className="mt-1 block text-sm text-ink-muted">{note}</span>}
               </td>
               <td className="measurement px-3 py-3 align-top text-lg">{formatMeasured(pair.governing.measured) ?? "Not measured"}</td>
