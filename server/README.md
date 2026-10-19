@@ -59,7 +59,7 @@ Tests run the real router against Postgres, with in-process fakes for S3 (multip
 The contract is `openapi.json` (also served at `GET /v1/openapi.json`). Everything except `/health*` and `/v1/auth/*` needs `Authorization: Bearer <token>`.
 
 - Auth: `POST /v1/auth/register|login|apple|logout`, `GET /v1/me`. Session tokens are random, returned once, stored as SHA-256.
-- Scans: `POST/GET /v1/scans`, `GET /v1/scans/{id}`, `GET /v1/scans/{id}/assessment`, `POST /v1/scans/{id}/finish`. Another user's scan is always 404.
+- Scans: `POST/GET /v1/scans`, `GET /v1/scans/{id}`, `GET /v1/scans/{id}/assessment`, `GET /v1/scans/{id}/scene` (merged sp-core Scene, 404 until a room exists), `POST /v1/scans/{id}/finish`. Another user's scan is always 404.
 - Uploads (phone to storage directly):
   1. `POST /v1/scans/{id}/uploads` with `kind, filename, content_type, size_bytes[, part_size >= 5 MiB]` returns the upload and `part_count`.
   2. `POST .../uploads/{uid}/parts` with `part_numbers` returns presigned PUT URLs (and headers to send). Upload each part with a background URLSession.
@@ -67,8 +67,8 @@ The contract is `openapi.json` (also served at `GET /v1/openapi.json`). Everythi
   4. `POST .../uploads/{uid}/complete` with `sha256` of the whole file. The server assembles from storage's own part list, checks size, re-hashes files up to `UPLOAD_VERIFY_MAX_BYTES`, and records the artifact. A mismatch deletes the object and returns 422.
   5. `POST .../uploads/{uid}/abort`. `GET /v1/scans/{id}/artifacts` lists artifacts.
 - Live: `GET /v1/scans/{id}/live` (WebSocket; `?token=` for browsers, `?role=viewer` for read-only).
-  - Client sends `{"type":"room","room_id","final","seq","captured_room":<RoomPlan CapturedRoom JSON>,"observations":[{"id",...}]}` per room and periodically for partials. Observations merge by `id`; `captured_room` replaces. Detector observations without a `category` may carry `crop_artifact_id` (an uploaded crop) for vision labelling at finish.
-  - Server sends `hello` (snapshot), `findings` (room findings + running summary + `elapsed_ms`), `report` (after finish), `error`, `pong`. Schemas are in `openapi.json` under `ClientMessage`/`ServerMessage`.
+  - Client sends `{"type":"room","room_id","final","seq","captured_room":<RoomPlan CapturedRoom JSON>,"observations":[{"id",...}]}` per room and periodically for partials. Observations merge by `id`; `captured_room` replaces. Observations with `center`/`size`/`category` become detector objects in the room; observations with a `metric` are sp-core scene Observations. Detector observations without a `category` may carry `crop_artifact_id` (an uploaded crop) for vision labelling at finish.
+  - Server sends `hello` (snapshot), `scene` (merged Scene, after hello and after finish), `room` (converted sp-core Room on every update), `findings` (room findings + running summary + `elapsed_ms`), `report` (after finish), `error`, `pong`. Schemas are in `openapi.json` under `ClientMessage`/`ServerMessage`.
   - Rooms persist per update, so a dropped or restarted connection resumes from Postgres.
 - Health: `/health`, `/health/ready` (database + bucket).
 

@@ -29,6 +29,13 @@ pub const EXTRACTORS: &[(&str, Extractor)] = &[
     ("shelf.lowest_shelf_used_height", lowest_shelf),
     ("mirror.reflecting_surface_bottom_height", mirror_bottom),
     ("mirror.above_lavatory", mirror_above_lavatory),
+    ("fitting_room.mirror_bottom_height", fitting_room_mirror),
+    ("drinking_fountain.spout_height", spout_height),
+    ("drinking_fountain.unit_role", fountain_role),
+    ("drinking_fountain.in_alcove_or_protected", fountain_in_alcove),
+    ("sign.visual_character_baseline_height", box_height),
+    ("kiosk.display_tilt_deg", needs_detail),
+    ("coat_hook.above_bench", coat_hook_above_bench),
 ];
 
 const SHELVING: &[&str] = &["shelf", "self_service_shelf", "storage", "display_rack", "food_service_line"];
@@ -177,5 +184,64 @@ fn mirror_above_lavatory(ctx: &EvalContext, subject: &Subject) -> Extraction {
     };
     let below = room.objects.iter().filter(|o| matches!(o.category.as_str(), "lavatory" | "sink" | "counter"));
     let above = below.into_iter().any(|o| o.footprint().distance_to(mirror.center.plan()) < 0.3 && o.top_height <= mirror.bottom_height() + 0.05);
+    Extraction::boolean(above)
+}
+
+fn fitting_room_mirror(ctx: &EvalContext, subject: &Subject) -> Extraction {
+    let (room, fitting_room) = match object_in_room(ctx, subject) {
+        Ok(found) => found,
+        Err(e) => return e,
+    };
+    let footprint = fitting_room.footprint().grown(0.1);
+    let mirror = room.objects.iter().find(|o| o.category == "mirror" && footprint.contains(o.center.plan()));
+    match mirror {
+        Some(m) => Extraction::metres(m.bottom_height()).located(Some(m.center)),
+        None => needs_detail(ctx, subject),
+    }
+}
+
+/// Spouts sit in the top 6 in of a fountain's box.
+fn spout_range(object: &Object) -> (f64, f64) {
+    let (bottom, top) = vertical_extent(object);
+    ((top - 0.15).max(bottom), top)
+}
+
+fn spout_height(ctx: &EvalContext, subject: &Subject) -> Extraction {
+    object(ctx, subject).map(|o| {
+        let (lo, hi) = spout_range(o);
+        Extraction::metres_range(lo, hi).located(Some(o.center))
+    }).unwrap_or_else(|e| e)
+}
+
+fn fountain_role(ctx: &EvalContext, subject: &Subject) -> Extraction {
+    let o = match object(ctx, subject) {
+        Ok(o) => o,
+        Err(e) => return e,
+    };
+    match spout_range(o) {
+        (_, hi) if hi <= inches(36.0) + 1e-6 => Extraction::text("wheelchair"),
+        (lo, _) if lo >= inches(38.0) - 1e-6 => Extraction::text("standing"),
+        _ => Extraction::unknown("spout height range spans both roles; a photo confirms"),
+    }
+}
+
+fn fountain_in_alcove(ctx: &EvalContext, subject: &Subject) -> Extraction {
+    let (room, fountain) = match object_in_room(ctx, subject) {
+        Ok(found) => found,
+        Err(e) => return e,
+    };
+    let Some(analysis) = ctx.analysis(room.storey) else { return Extraction::unknown("storey not analysed") };
+    let depth = super::clear_floor::alcove(analysis, fountain).0;
+    Extraction::boolean(depth >= super::support::short_dimension(fountain))
+}
+
+fn coat_hook_above_bench(ctx: &EvalContext, subject: &Subject) -> Extraction {
+    let (room, hook) = match object_in_room(ctx, subject) {
+        Ok(found) => found,
+        Err(e) => return e,
+    };
+    let above = room.objects.iter().filter(|o| matches!(o.category.as_str(), "bench" | "chair" | "sofa")).any(|seat| {
+        seat.footprint().distance_to(hook.center.plan()) < 0.3 && seat.top_height <= hook.bottom_height()
+    });
     Extraction::boolean(above)
 }

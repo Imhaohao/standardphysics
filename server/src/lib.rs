@@ -56,6 +56,7 @@ fn api_routes() -> Router<AppState> {
             "/scans/{scan_id}/assessment",
             get(scans::handlers::get_assessment),
         )
+        .route("/scans/{scan_id}/scene", get(scans::handlers::get_scene))
         .route("/scans/{scan_id}/finish", post(finish::finish_scan))
         .route("/scans/{scan_id}/live", get(live::ws::live_socket))
         .route(

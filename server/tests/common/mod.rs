@@ -219,11 +219,90 @@ where
     panic!("timed out waiting for {what}");
 }
 
-pub fn door_room(room_id: &str, door_width: f64) -> Value {
+fn wall_json(id: &str, length: f64, transform: [f64; 16]) -> Value {
+    json!({"identifier": id, "dimensions": [length, 2.5, 0.1], "transform": transform})
+}
+
+pub fn door_id(room_id: &str) -> String {
+    format!("{room_id}-door")
+}
+
+/// A 4 x 3 m RoomPlan CapturedRoom with one door on the north wall. Rooms are placed on a
+/// 6 m grid by `slot` so a multi-room scan does not overlap itself.
+pub fn door_room_at(room_id: &str, door_width: f64, slot: usize) -> Value {
+    let ox = 6.0 * slot as f64;
+    let wall = |name: &str, length: f64, rot: bool, x: f64, z: f64| {
+        let t = if rot {
+            [
+                0.,
+                0.,
+                -1.,
+                0.,
+                0.,
+                1.,
+                0.,
+                0.,
+                1.,
+                0.,
+                0.,
+                0.,
+                ox + x,
+                1.25,
+                z,
+                1.,
+            ]
+        } else {
+            [
+                1.,
+                0.,
+                0.,
+                0.,
+                0.,
+                1.,
+                0.,
+                0.,
+                0.,
+                0.,
+                1.,
+                0.,
+                ox + x,
+                1.25,
+                z,
+                1.,
+            ]
+        };
+        wall_json(&format!("{room_id}-{name}"), length, t)
+    };
     json!({
         "identifier": room_id,
-        "doors": [{"identifier": format!("{room_id}-door"), "dimensions": [door_width, 2.0, 0.1]}],
+        "story": 0,
+        "walls": [
+            wall("n", 4.0, false, 0.0, -1.5),
+            wall("s", 4.0, false, 0.0, 1.5),
+            wall("e", 3.0, true, 2.0, 0.0),
+            wall("w", 3.0, true, -2.0, 0.0),
+        ],
+        "doors": [{
+            "identifier": door_id(room_id),
+            "parentIdentifier": format!("{room_id}-n"),
+            "category": {"door": {"isOpen": false}},
+            "dimensions": [door_width, 2.03, 0.0],
+            "transform": [1., 0., 0., 0., 0., 1., 0., 0., 0., 0., 1., 0., ox, 1.015, -1.5, 1.],
+        }],
     })
+}
+
+pub fn door_room(room_id: &str, door_width: f64) -> Value {
+    door_room_at(room_id, door_width, 0)
+}
+
+pub fn findings_for<'a>(findings: &'a Value, subject: &str) -> Vec<&'a Value> {
+    findings
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|f| f["subject_id"] == subject)
+        .collect()
 }
 
 pub fn sha256_hex(data: &[u8]) -> String {

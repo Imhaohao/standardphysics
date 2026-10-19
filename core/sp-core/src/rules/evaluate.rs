@@ -56,7 +56,8 @@ impl<'a> Evaluator<'a> {
         let Some(def) = self.ctx.catalog.metric(metric_id) else {
             return Extraction::unknown(format!("metric {metric_id} is not in the catalog"));
         };
-        let target = if def.element == "site" && subject.reference != SubjectRef::Site && !def.applies_to.iter().any(|t| subject.has_tag(t)) { self.site } else { subject };
+        let is_site_metric = def.element == "site" || metric_id.starts_with("site.");
+        let target = if is_site_metric && subject.reference != SubjectRef::Site && !def.applies_to.iter().any(|t| subject.has_tag(t)) { self.site } else { subject };
         let key = (target.id.clone(), metric_id.to_string());
         if let Some(hit) = self.cache.borrow().get(&key) {
             return hit.clone();
@@ -104,6 +105,12 @@ impl<'a> Evaluator<'a> {
         }
     }
 
+    /// Site metrics are defined everywhere; others only for the categories in their `applies_to`.
+    fn defined_for(&self, metric_id: &str, subject: &Subject) -> bool {
+        let Some(def) = self.ctx.catalog.metric(metric_id) else { return true };
+        def.element == "site" || metric_id.starts_with("site.") || def.applies_to.iter().any(|t| subject.has_tag(t))
+    }
+
     fn category_present(&self, category: &str) -> bool {
         self.ctx.objects().any(|(_, o)| o.category == category || self.ctx.catalog.canonical_category(&o.category) == Some(category))
     }
@@ -116,6 +123,9 @@ impl<'a> Evaluator<'a> {
     }
 
     fn compare_truth(&self, comparison: &Comparison, subject: &Subject) -> Truth {
+        if !self.defined_for(&comparison.metric, subject) {
+            return Truth::No;
+        }
         let unit = self.ctx.catalog.metric(&comparison.metric).map(|m| m.unit()).unwrap_or(Unit::Text);
         let outcome = self.compare(comparison, &unit, None, subject);
         match outcome.status {
@@ -320,7 +330,7 @@ fn table_requirement(basis: f64, rows: &[TableRow]) -> Option<f64> {
 fn combine_all(outcomes: Vec<Outcome>) -> Outcome {
     let applicable: Vec<&Outcome> = outcomes.iter().filter(|o| o.status != Status::NotApplicable).collect();
     let required = join_required(&outcomes);
-    let worst = applicable.iter().max_by_key(|o| o.status.rank()).copied();
+    let worst = applicable.iter().rev().max_by_key(|o| o.status.rank()).copied();
     match worst {
         None => outcomes.into_iter().next().unwrap_or_else(|| Outcome::new(Status::NotApplicable, String::new())),
         Some(o) => Outcome { required, ..o.clone() },

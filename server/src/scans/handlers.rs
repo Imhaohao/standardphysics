@@ -88,3 +88,24 @@ pub async fn get_assessment(
         .ok_or(ApiError::NotFound)?;
     Ok(Json(report))
 }
+
+#[utoipa::path(
+    get, path = "/v1/scans/{scan_id}/scene", tag = "scans",
+    security(("bearer" = [])),
+    params(("scan_id" = Uuid, Path)),
+    responses(
+        (status = 200, description = "Merged sp-core Scene JSON (rooms, connections, observations)", body = Object),
+        (status = 404, body = ErrorBody, description = "Not your scan, or no room has been captured yet"),
+    )
+)]
+pub async fn get_scene(
+    State(state): State<AppState>,
+    AuthUser(user_id): AuthUser,
+    Path(scan_id): Path<Uuid>,
+) -> ApiResult<Json<serde_json::Value>> {
+    repo::get_owned_scan(&state.db, user_id, scan_id).await?;
+    let scene = crate::finish::pipeline::merged_scene(&state.db, scan_id)
+        .await?
+        .ok_or(ApiError::NotFound)?;
+    Ok(Json(scene))
+}

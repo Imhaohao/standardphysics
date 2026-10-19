@@ -7,7 +7,7 @@ use uuid::Uuid;
 use super::labelling::{run_label_stage, LabelStage};
 use crate::assessments::{self, NewAssessment};
 use crate::engine::SceneEngine;
-use crate::findings::{needs_info_finding, summarize, Finding};
+use crate::findings::{needs_info_finding, summarize, EvaluationReport, Finding};
 use crate::jobs::queue::{enqueue, EnqueueOptions, JobKind};
 use crate::live::protocol::ServerMessage;
 use crate::live::rooms::{load_rooms, RoomState};
@@ -18,12 +18,11 @@ fn elapsed_ms(since: Instant) -> u64 {
     since.elapsed().as_millis() as u64
 }
 
-async fn evaluate_rooms(rooms: Vec<RoomState>) -> Result<Vec<Finding>> {
+async fn evaluate_rooms(rooms: Vec<RoomState>) -> Result<EvaluationReport> {
     tokio::task::spawn_blocking(move || {
         let mut engine = SceneEngine::new()?;
-        for room in &rooms {
-            engine.update_room(room.to_input())?;
-        }
+        let inputs: Vec<_> = rooms.iter().map(RoomState::to_input).collect();
+        engine.load_rooms(&inputs)?;
         engine.evaluate_all()
     })
     .await?
@@ -55,12 +54,15 @@ pub async fn run_finish(state: &AppState, scan_id: Uuid) -> Result<Report> {
     let labelling_ms = elapsed_ms(stage_start);
 
     let stage_start = Instant::now();
-    let mut findings = evaluate_rooms(rooms).await?;
+    let evaluation = evaluate_rooms(rooms).await?;
+    let mut findings = evaluation.findings;
     findings.extend(unresolved_findings(&label_stage));
     let evaluation_ms = elapsed_ms(stage_start);
 
     let stage_start = Instant::now();
-    let summary = summarize(&findings);
+    let mut summary = summarize(&findings);
+    summary.governing = evaluation.governing;
+    summary.governing_counts = evaluation.governing_counts;
     let mut timings = StageTimings {
         load_ms,
         labelling_ms,
@@ -103,9 +105,18 @@ pub async fn after_finish(state: &AppState, report: &Report) -> Result<()> {
     .await?;
     state.job_wake.notify_one();
     if let Some(session) = state.hub.peek(report.scan_id).await {
+        if let Some(scene) = merged_scene(&state.db, report.scan_id).await? {
+            session.publish(ServerMessage::Scene { scene });
+        }
         session.publish(ServerMessage::Report {
             report: Box::new(report.clone()),
         });
     }
     Ok(())
+}
+
+pub async fn merged_scene(db: &sqlx::PgPool, scan_id: Uuid) -> Result<Option<serde_json::Value>> {
+    let rooms = load_rooms(db, scan_id).await?;
+    let inputs: Vec<_> = rooms.iter().map(RoomState::to_input).collect();
+    tokio::task::spawn_blocking(move || crate::engine::assemble_scene(&inputs)).await?
 }

@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use super::protocol::{RoomUpdate, ServerMessage};
 use super::rooms::{load_rooms, RoomState};
-use crate::engine::SceneEngine;
+use crate::engine::{SceneEngine, UpdatedRoom};
 use crate::findings::{summarize, Finding};
 
 const BROADCAST_CAPACITY: usize = 256;
@@ -17,7 +17,6 @@ const BROADCAST_CAPACITY: usize = 256;
 struct SessionState {
     engine: SceneEngine,
     rooms: BTreeMap<String, RoomState>,
-    findings: BTreeMap<String, Vec<Finding>>,
 }
 
 impl SessionState {
@@ -25,30 +24,25 @@ impl SessionState {
         Ok(Self {
             engine: SceneEngine::new()?,
             rooms: BTreeMap::new(),
-            findings: BTreeMap::new(),
         })
     }
 
-    fn apply(&mut self, update: &RoomUpdate) -> Result<Vec<Finding>> {
+    fn apply(&mut self, update: &RoomUpdate) -> Result<UpdatedRoom> {
         let room = self
             .rooms
             .entry(update.room_id.clone())
             .or_insert_with(|| RoomState::new(&update.room_id));
         room.apply(update);
-        let findings = self.engine.update_room(room.to_input())?;
-        self.findings
-            .insert(update.room_id.clone(), findings.clone());
-        Ok(findings)
+        self.engine.update_room(room.to_input())
     }
 
     fn all_findings(&self) -> Vec<Finding> {
-        self.findings.values().flatten().cloned().collect()
+        self.engine.all_findings()
     }
 
     fn restore(&mut self, rooms: Vec<RoomState>) -> Result<()> {
         for room in rooms {
-            let findings = self.engine.update_room(room.to_input())?;
-            self.findings.insert(room.room_id.clone(), findings);
+            self.engine.update_room(room.to_input())?;
             self.rooms.insert(room.room_id.clone(), room);
         }
         Ok(())
@@ -100,20 +94,27 @@ impl LiveSession {
         }
     }
 
-    pub async fn apply_update(&self, update: RoomUpdate) -> Result<ServerMessage> {
+    pub fn scene_message(&self) -> Option<ServerMessage> {
+        let scene = lock(&self.state).engine.scene_json().ok().flatten()?;
+        Some(ServerMessage::Scene { scene })
+    }
+
+    pub async fn apply_update(&self, update: RoomUpdate) -> Result<Vec<ServerMessage>> {
         let state = Arc::clone(&self.state);
         tokio::task::spawn_blocking(move || {
             let started = Instant::now();
             let mut state = lock(&state);
-            let findings = state.apply(&update)?;
-            Ok::<_, anyhow::Error>(ServerMessage::Findings {
+            let updated = state.apply(&update)?;
+            let findings = ServerMessage::Findings {
                 room_id: update.room_id,
                 seq: update.seq,
                 finalized: update.finalized,
-                findings,
+                findings: updated.findings,
                 summary: summarize(&state.all_findings()),
                 elapsed_ms: started.elapsed().as_millis() as u64,
-            })
+            };
+            let room = updated.room.map(|room| ServerMessage::Room { room });
+            Ok::<_, anyhow::Error>(room.into_iter().chain([findings]).collect())
         })
         .await
         .map_err(|e| anyhow!("engine task failed: {e}"))?
