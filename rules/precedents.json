@@ -14,14 +14,14 @@
       "holding": "An ADA plaintiff who encountered at least one barrier related to his disability, and is deterred or intends to return, has standing to challenge other unencountered barriers related to that disability, but must plead which barriers he encountered and how they affected him.",
       "informs_rule_ids": [],
       "topic": "standing and pleading: why findings must name the specific barrier and the disability it affects",
-      "source_url": "https://www.justice.gov/crt/about/app/briefs/chapmandecision.pdf",
+      "source_url": "https://openjurist.org/631/f3d/939",
       "verification": {
         "case_exists": true,
         "docket_and_date": true,
-        "reporter_citation": false,
+        "reporter_citation": true,
         "holding": true,
         "checked_at": "2026-10-19",
-        "note": "Opinion text read from the DOJ-hosted copy; the F.3d reporter citation was not shown in that copy."
+        "note": "Reporter citation 631 F.3d 939, date 2011-01-07 and docket 07-16326 confirmed on OpenJurist; holding matches the opinion (standing for related unencountered barriers; Chapman lacked standing because he never pleaded how barriers affected him)."
       },
       "verified_by": null
     },
@@ -145,7 +145,7 @@
       "court": "U.S. District Court, N.D. Cal.",
       "year": 2011,
       "decided": "2011-10-05",
-      "holding": "Findings of fact and conclusions of law in the class action over access at California Taco Bell restaurants (queue lines, counters, doors, seating, restrooms); specific holdings not re-verified in this pass.",
+      "holding": "Findings of fact and conclusions of law after a June 2011 bench trial in the class action over access at California Taco Bell restaurants: violations found for each of 12 elements at an exemplar store (parking and signage, doors, queue lines, tables, restrooms), with classwide injunctive relief appropriate.",
       "informs_rule_ids": [
         "ADA-227.5-queue-width",
         "CBC-11B-227.5-queue-width",
@@ -160,9 +160,9 @@
         "case_exists": true,
         "docket_and_date": true,
         "reporter_citation": true,
-        "holding": false,
+        "holding": true,
         "checked_at": "2026-10-19",
-        "note": "Citation, court and date confirmed from the Civil Rights Litigation Clearinghouse record; the opinion's specific holdings were not read. Needs human review before display."
+        "note": "Court, docket 4:02-cv-05849, ECF 642 and 2011-10-05 confirmed from Clearinghouse; the 816 F. Supp. 2d 831 cite appears only on Clearinghouse. Holding revised to what Clearinghouse reports: after a June 2011 bench trial the court found violations at all 12 elements of an exemplar store (parking and signage, doors, queues, tables, restrooms) and kept classwide injunctive relief. The opinion text itself was not read."
       },
       "verified_by": null
     },
@@ -187,10 +187,10 @@
       "verification": {
         "case_exists": true,
         "docket_and_date": true,
-        "reporter_citation": false,
+        "reporter_citation": true,
         "holding": true,
         "checked_at": "2026-10-19",
-        "note": "Published opinion read from CourtListener; the F.3d cite was not printed on the slip opinion."
+        "note": "Citation 985 F.3d 1173, docket 19-56497 and filed 2021-01-25 confirmed on OpenJurist; dismissal under Rule 12(b)(6) affirmed because the complaint did not say how the counters denied access."
       },
       "verified_by": null
     },
@@ -206,14 +206,14 @@
       "holding": "An ADA plaintiff must identify each barrier in the complaint to give fair notice; barriers raised first in a later expert report were properly excluded.",
       "informs_rule_ids": [],
       "topic": "each finding is a separately identified barrier (report design)",
-      "source_url": "https://wlo.willamette.edu/9thcir/2011/08/oliver-v-ralphs-grocery-company.html",
+      "source_url": "https://openjurist.org/654/f3d/903",
       "verification": {
         "case_exists": true,
         "docket_and_date": true,
-        "reporter_citation": false,
+        "reporter_citation": true,
         "holding": true,
         "checked_at": "2026-10-19",
-        "note": "Summary from Willamette Law Online; reporter citation not confirmed from the source."
+        "note": "Citation 654 F.3d 903, docket 09-56447 and filed 2011-08-17 confirmed on OpenJurist; barriers raised only in an expert report, not the complaint, were not properly before the court (Rule 8)."
       },
       "verified_by": null
     },
@@ -226,7 +226,7 @@
       "court": "U.S. Court of Appeals for the Ninth Circuit",
       "year": 2007,
       "decided": "2007-03-23",
-      "holding": "A jury verdict that a restaurant had removed readily achievable barriers was against the clear weight of the evidence; Unruh Act statutory damages of $4,000 require no proof of actual damages.",
+      "holding": "The district court abused its discretion by denying a new trial: the jury's 'No' to whether the restaurant failed to identify and remove architectural barriers had no evidentiary support (the defendant admitted the barriers existed and that no one tried to identify or remove them). Judgment vacated and remanded for new trial. The $4,000 Unruh damages question and readily-achievable removal were never reached.",
       "informs_rule_ids": [
         "ADA-28CFR36.304-barrier-removal",
         "ADA-606.5-pipes",
@@ -237,14 +237,14 @@
         "CBC-11B-604.8.1.1-compartment-size"
       ],
       "topic": "readily achievable restroom fixes (grab bars, pipe insulation, partitions, dispensers)",
-      "source_url": "https://caselaw.findlaw.com/us-9th-circuit/1099211.html",
+      "source_url": "https://law.justia.com/cases/federal/appellate-courts/F3/481/724/544067/",
       "verification": {
         "case_exists": true,
         "docket_and_date": true,
-        "reporter_citation": false,
+        "reporter_citation": true,
         "holding": true,
         "checked_at": "2026-10-19",
-        "note": "Opinion read on FindLaw; reporter citation not printed there."
+        "note": "Citation 481 F.3d 724, filed 2007-03-23, caption and CV-03-04809-DT confirmed on Justia. Holding corrected: the prior text said the jury found barriers removed and that $4,000 requires no proof of damages; the opinion does neither (it only quotes the Unruh minimum)."
       },
       "verified_by": null
     },
@@ -279,7 +279,7 @@
       "docket": "11-55265",
       "court": "U.S. Court of Appeals for the Ninth Circuit",
       "year": 2013,
-      "decided": "2013-07-22",
+      "decided": "2013-07-18",
       "holding": "A lay witness present during measurements can testify to observed conditions without an expert, and the 'readily achievable' burden applies only to facilities built before January 26, 1993.",
       "informs_rule_ids": [
         "ADA-28CFR36.304-barrier-removal",
@@ -289,14 +289,14 @@
         "CBC-11B-502.3.1-aisle-width"
       ],
       "topic": "measured evidence from a scan supports findings; construction era sets the legal standard",
-      "source_url": "https://wlo.willamette.edu/9thcir/2013/07/strong-v.-valdez-fine-foods.html",
+      "source_url": "https://openjurist.org/724/f3d/1042",
       "verification": {
         "case_exists": true,
         "docket_and_date": true,
-        "reporter_citation": false,
+        "reporter_citation": true,
         "holding": true,
         "checked_at": "2026-10-19",
-        "note": "Summary source; parking subject matter from memory, reporter citation not confirmed."
+        "note": "Citation 724 F.3d 1042 and docket 11-55265 confirmed on OpenJurist, which gives the decision date as 2013-07-18 (corrected from 2013-07-22). Holding confirmed: lay personal observations can create a fact question; readily-achievable proof not required for new construction (42 USC 12183(a)). The case concerns a restaurant, not parking."
       },
       "verified_by": null
     },
@@ -326,7 +326,7 @@
         "reporter_citation": false,
         "holding": true,
         "checked_at": "2026-10-19",
-        "note": "Read from the Ninth Circuit PDF; reporter citation not printed on the slip opinion."
+        "note": "Caption, docket 21-55183, filing date 2023-01-23 and holding confirmed from the Ninth Circuit PDF, Justia and Willamette summaries. The 57 F.4th 1085 reporter cite could not be confirmed from any source reachable here (CourtListener and Justia reporter pages blocked); remains unverified."
       },
       "verified_by": null
     },
@@ -338,18 +338,18 @@
       "docket": "05-56439",
       "court": "U.S. Court of Appeals for the Ninth Circuit",
       "year": 2008,
-      "decided": "2008",
-      "holding": "A plaintiff with standing to sue over one barrier may challenge all barriers at the place of public accommodation related to his disability, including those he did not personally encounter.",
+      "decided": "2008-05-02",
+      "holding": "A plaintiff with standing based on at least one barrier related to his disability may challenge all barriers at the facility related to that disability, including those found only through his expert's inspection; summary judgment affirmed on aisle width and the employees-only restroom (not a public accommodation); supplemental jurisdiction ruling vacated.",
       "informs_rule_ids": [],
       "topic": "why the scan checks every element, not just the plaintiff's path",
-      "source_url": "https://www.retailconsumerproductslaw.com/2007/11/ada-plaintiff-may-challenge-all-barriers-at-place-of-public-accommodation-affecting-his-or-her-disability/",
+      "source_url": "https://openjurist.org/524/f3d/1034",
       "verification": {
         "case_exists": true,
-        "docket_and_date": false,
-        "reporter_citation": false,
+        "docket_and_date": true,
+        "reporter_citation": true,
         "holding": true,
         "checked_at": "2026-10-19",
-        "note": "UNVERIFIED DETAILS: existence and holding from search results only (original opinion Nov. 9, 2007; amended opinion reported 2008). Reporter cite and amended-opinion date need checking."
+        "note": "Superseding opinion filed 2008-05-02 (panel rehearing granted, withdrawing the 2007-11-09 opinion at 506 F.3d 1191); 524 F.3d 1034 and docket 05-56439 confirmed on OpenJurist and Justia."
       },
       "verified_by": null
     },
@@ -469,28 +469,28 @@
   "statutes": [
     {
       "id": "ca-civ-55-56",
-      "citation": "Cal. Civ. Code \u00a7 55.56",
+      "citation": "Cal. Civ. Code § 55.56",
       "summary": "Statutory damages in construction-related accessibility claims are recoverable only for occasions the plaintiff personally encountered the violation or was deterred; assessed per occasion, not per violation; reducible to $1,000 (CASp-inspected, corrected within 60 days) or $2,000 (small business with 25 or fewer employees and under $3.5M receipts, corrected within 30 days).",
       "source_url": "https://law.justia.com/codes/california/code-civ/division-1/part-2-53/section-55-56",
       "verified": true
     },
     {
       "id": "ca-civ-52",
-      "citation": "Cal. Civ. Code \u00a7 52(a)",
+      "citation": "Cal. Civ. Code § 52(a)",
       "summary": "Unruh Act damages: actual damages up to three times actual damages, but no less than $4,000 per offense, plus attorney's fees.",
       "source_url": "https://law.justia.com/codes/california/code-civ/division-1/part-2/section-52/",
       "verified": true
     },
     {
       "id": "ca-civ-51f",
-      "citation": "Cal. Civ. Code \u00a7 51(f)",
+      "citation": "Cal. Civ. Code § 51(f)",
       "summary": "A violation of the right of any individual under the ADA also constitutes a violation of the Unruh Civil Rights Act.",
       "source_url": "https://law.justia.com/codes/california/code-civ/division-1/part-2/section-51/",
       "verified": false
     },
     {
       "id": "28-cfr-36-211",
-      "citation": "28 C.F.R. \u00a7 36.211",
+      "citation": "28 C.F.R. § 36.211",
       "summary": "Public accommodations must maintain accessible features in operable working condition; isolated or temporary interruptions for maintenance or repairs are not prohibited.",
       "source_url": "https://www.law.cornell.edu/cfr/text/28/36.211",
       "verified": true
