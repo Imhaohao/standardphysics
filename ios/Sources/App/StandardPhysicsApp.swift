@@ -2,8 +2,10 @@ import SwiftUI
 
 @main
 struct StandardPhysicsApp: App {
-    @State private var launch = LaunchMode.fromProcess()
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @Environment(\.scenePhase) private var scenePhase
+
+    private var launch: LaunchMode { delegate.launch }
 
     var body: some Scene {
         WindowGroup {
@@ -23,7 +25,10 @@ struct StandardPhysicsApp: App {
                 .environment(\.trayStartsExpanded, configuration.trayStartsExpanded)
         case .live(let services):
             RootView(model: services.appModel) { LiveCameraLayer(services: services) }
-                .task { await services.appModel.refresh() }
+                .task {
+                    await services.appModel.account.restore()
+                    await services.appModel.refresh()
+                }
         }
     }
 }

@@ -13,7 +13,10 @@ nonisolated enum APIError: Error, Equatable, Sendable, LocalizedError {
     case server(status: Int, message: String?)
     case rejected(status: Int, message: String?)
     case malformedResponse
+    case responseTooLarge
     case transport(code: Int)
+
+    static let maximumRetryAfter: TimeInterval = 60
 
     var errorDescription: String? { userMessage }
 
@@ -31,6 +34,7 @@ nonisolated enum APIError: Error, Equatable, Sendable, LocalizedError {
         case .server: "The server ran into a problem. Your scan is safe on this phone, try again shortly."
         case .rejected(_, let message): message ?? "The server did not accept this request."
         case .malformedResponse: "The server sent a response the app could not read. Update the app and try again."
+        case .responseTooLarge: "The server sent back far more data than expected, so the app stopped reading it. Try again later."
         case .transport: "The connection failed. Check your network and try again."
         }
     }
@@ -61,6 +65,12 @@ extension APIError {
         self = Self.fromURLError(urlError)
     }
 
+    /// A server asking for a longer pause than a minute is not waited on longer than that.
+    static func retryAfter(_ header: String?) -> TimeInterval? {
+        guard let seconds = header.flatMap(TimeInterval.init), seconds >= 0 else { return nil }
+        return min(seconds, maximumRetryAfter)
+    }
+
     private static func fromURLError(_ error: URLError) -> APIError {
         switch error.code {
         case .cancelled: .cancelled
@@ -72,15 +82,29 @@ extension APIError {
 
     init(response: HTTPResponse) {
         let message = (try? WireCoding.decoder().decode(APIErrorBody.self, from: response.body))?.message
+            .map(ServerText.sanitized)
         switch response.status {
         case 401: self = .unauthorized
         case 403: self = .forbidden
         case 404, 410: self = .notFound
         case 408: self = .timedOut
         case 409: self = .conflict(message: message)
-        case 429: self = .rateLimited(retryAfter: response.headers["retry-after"].flatMap(TimeInterval.init))
+        case 429: self = .rateLimited(retryAfter: Self.retryAfter(response.headers["retry-after"]))
         case 500...599: self = .server(status: response.status, message: message)
         default: self = .rejected(status: response.status, message: message)
         }
+    }
+}
+
+/// Text from the server shown on screen: control characters removed and the length capped,
+/// so a misbehaving server cannot fill the screen or smuggle in layout tricks.
+nonisolated enum ServerText {
+    static let maximumLength = 200
+
+    static func sanitized(_ text: String) -> String {
+        let visible = String(String.UnicodeScalarView(text.unicodeScalars.filter { !CharacterSet.controlCharacters.contains($0) }))
+        let trimmed = visible.trimmingCharacters(in: .whitespaces)
+        guard trimmed.count > maximumLength else { return trimmed }
+        return String(trimmed.prefix(maximumLength - 1)) + "…"
     }
 }

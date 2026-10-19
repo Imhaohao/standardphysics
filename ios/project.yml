@@ -61,10 +61,21 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.tarunyadgirkar.standardphysics
         INFOPLIST_FILE: Resources/Info.plist
         TARGETED_DEVICE_FAMILY: "1"
-        SP_API_BASE_URL: http://localhost:8080
+      # Change the server here. Release must be https; Debug may use a local http server.
+      # SP_STORAGE_HOSTS lists the hosts presigned upload URLs may point at; ".example.com"
+      # also allows its subdomains.
+      configs:
+        Debug:
+          SP_API_BASE_URL: http://localhost:8080
+          SP_STORAGE_HOSTS: localhost 127.0.0.1 .r2.cloudflarestorage.com
+        Release:
+          SP_API_BASE_URL: https://api.standardphysics.app
+          SP_STORAGE_HOSTS: .r2.cloudflarestorage.com
     entitlements:
       path: Resources/StandardPhysics.entitlements
-      properties: {}
+      properties:
+        com.apple.developer.applesignin:
+          - Default
 
   StandardPhysicsTests:
     type: bundle.unit-test

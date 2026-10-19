@@ -88,13 +88,16 @@ extension Finding {
     nonisolated init(_ finding: SpFinding) {
         self.init(
             ruleID: finding.ruleId,
-            jurisdiction: Jurisdiction(rawValue: finding.jurisdiction) ?? .ada2010,
+            jurisdiction: Jurisdiction(rawValue: finding.jurisdiction) ?? .system,
             section: finding.section,
             subjectID: finding.subjectId,
             status: FindingStatus(finding.status),
             measured: finding.measured.flatMap(MeasuredValue.init),
             required: finding.required,
-            message: finding.message
+            message: finding.message,
+            title: finding.title.isEmpty ? nil : finding.title,
+            severity: FindingSeverity(rawValue: finding.severity),
+            range: finding.measured.flatMap(MeasuredRange.init)
         )
     }
 }
@@ -107,6 +110,13 @@ extension FindingStatus {
         case .needsInfo: self = .needsInfo
         case .notApplicable: self = .notApplicable
         }
+    }
+}
+
+extension MeasuredRange {
+    nonisolated init?(_ measured: SpMeasured) {
+        guard let lo = measured.lo, let hi = measured.hi else { return nil }
+        self.init(lo: lo, hi: hi, unit: measured.unit)
     }
 }
 

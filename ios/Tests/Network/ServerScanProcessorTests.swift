@@ -49,7 +49,10 @@ final class ServerScanProcessorTests: XCTestCase {
         XCTAssertTrue(stages.contains(.assembling))
         XCTAssertEqual(report.name, "Cafe")
         XCTAssertEqual(report.roomNames, ["Kitchen"])
-        XCTAssertEqual(report.findings.map(\.ruleID), ["ADA-404"], "SYSTEM findings have no shared type")
+        XCTAssertEqual(report.findings.map(\.ruleID), ["ADA-404", "label.unresolved"])
+        XCTAssertEqual(report.findings.last?.jurisdiction, .system)
+        XCTAssertTrue(report.findings.last?.isOwnerQuestion ?? false)
+        XCTAssertEqual(report.findings.first?.title, "Door clear width")
         XCTAssertEqual(report.subject(for: "door-1").roomName, "Kitchen")
         XCTAssertEqual(report.subject(for: "door-1").label, "Door clear width")
     }
@@ -59,7 +62,40 @@ final class ServerScanProcessorTests: XCTestCase {
         let (processor, transport) = makeProcessor([conflict, jsonResponse(200, reportJSON)])
         let report = try await processor.process(manifest()) { _ in }
         XCTAssertEqual(transport.requests.map { $0.url?.path }, ["/v1/scans/scan-9/finish", "/v1/scans/scan-9/assessment"])
-        XCTAssertEqual(report.findings.count, 1)
+        XCTAssertEqual(report.findings.count, 2)
+    }
+
+    func testRoomsThatNeverReachedTheServerStopTheFinish() async {
+        let transport = ScriptedTransport([jsonResponse(200, reportJSON)])
+        let api = APIClient(baseURL: URL(string: "https://api.test")!, tokenStore: InMemoryTokenStore(token: "t"), transport: transport, retryPolicy: .none)
+        let storage = UploadStorage(root: directory.appendingPathComponent("uploads"))
+        let uploader = BackgroundUploader(
+            api: FakeUploadAPI(), ledger: UploadLedger(fileURL: storage.ledgerURL), session: FakeUploadSession(), storage: storage
+        )
+        let processor = ServerScanProcessor(api: api, uploader: uploader, rooms: UndeliverableRooms())
+        do {
+            _ = try await processor.process(manifest()) { _ in }
+            XCTFail("expected failure")
+        } catch {
+            XCTAssertEqual(error as? ScanStreamingError, .roomsNotDelivered)
+        }
+        XCTAssertTrue(transport.requests.isEmpty, "finish is never called on a partial scan")
+    }
+
+    func testHeavyLocalFilesAreReleasedOnlyAfterTheServerFinishes() async throws {
+        let transport = ScriptedTransport([jsonResponse(500, "{}"), jsonResponse(200, reportJSON)])
+        let api = APIClient(baseURL: URL(string: "https://api.test")!, tokenStore: InMemoryTokenStore(token: "t"), transport: transport, retryPolicy: .none)
+        let storage = UploadStorage(root: directory.appendingPathComponent("uploads"))
+        let uploader = BackgroundUploader(
+            api: FakeUploadAPI(), ledger: UploadLedger(fileURL: storage.ledgerURL), session: FakeUploadSession(), storage: storage
+        )
+        let retention = RecordingRetention()
+        let processor = ServerScanProcessor(api: api, uploader: uploader, retention: retention)
+        let scan = manifest()
+        _ = try? await processor.process(scan) { _ in }
+        XCTAssertTrue(retention.released.isEmpty, "a failed finish keeps everything for a retry")
+        _ = try await processor.process(scan) { _ in }
+        XCTAssertEqual(retention.released, [scan.scanID])
     }
 
     func testScanNeverRegisteredWithServerIsAnError() async {
@@ -71,4 +107,17 @@ final class ServerScanProcessorTests: XCTestCase {
             XCTAssertEqual(error as? ScanProcessingError, .scanNotCreatedOnServer)
         }
     }
+}
+
+@MainActor
+private final class UndeliverableRooms: RoomDelivering {
+    func deliverRooms(of manifest: ScanManifest) async throws {
+        throw ScanStreamingError.roomsNotDelivered
+    }
+}
+
+private final class RecordingRetention: ScanRetaining, @unchecked Sendable {
+    private let ids = Locked<[UUID]>([])
+    var released: [UUID] { ids.read { $0 } }
+    func releaseHeavyFiles(scanID: UUID) async throws { ids.write { $0.append(scanID) } }
 }

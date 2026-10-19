@@ -1,7 +1,11 @@
 import Foundation
 
 /// Journal operations the capture flow needs beyond the shared contract.
-nonisolated protocol ScanStore: ScanJournaling {
+nonisolated protocol ScanRetaining: Sendable {
+    func releaseHeavyFiles(scanID: UUID) async throws
+}
+
+nonisolated protocol ScanStore: ScanJournaling, ScanRetaining {
     func delete(scanID: UUID) async throws
     func saveMesh(scanID: UUID, data: Data) async throws -> ScanManifest
     /// Mesh carried over from before the last relaunch, merged into every later export.
@@ -24,6 +28,8 @@ nonisolated enum ScanFiles {
     static let mesh = "mesh.spm"
     static let carriedOverMesh = "mesh-base.spm"
     static let frameLog = "frames.json"
+
+    static let heavy = [mesh, carriedOverMesh, worldMap, relocalizationSnapshot]
 
     static func room(_ index: Int) -> String { "\(roomsDirectory)/\(index).json" }
 }
@@ -49,8 +55,8 @@ actor FileScanJournal: ScanStore {
 
     func create(name: String) async throws -> ScanManifest {
         let manifest = ScanManifest(scanID: UUID(), name: name, startedAt: .now, phase: .idle, rooms: [])
-        let roomsDirectory = directory(for: manifest.scanID).appending(path: ScanFiles.roomsDirectory)
-        try FileManager.default.createDirectory(at: roomsDirectory, withIntermediateDirectories: true)
+        try ProtectedDirectory.create(root, excludingFromBackup: true)
+        try ProtectedDirectory.create(directory(for: manifest.scanID).appending(path: ScanFiles.roomsDirectory))
         try write(manifest)
         return manifest
     }
@@ -90,11 +96,11 @@ actor FileScanJournal: ScanStore {
 
     func saveWorldMap(scanID: UUID, data: Data, snapshotJPEG: Data?) async throws -> ScanManifest {
         var manifest = try readManifest(scanID: scanID)
-        try writer.write(data, to: url(scanID, ScanFiles.worldMap))
+        try writer.write(data, to: url(scanID, ScanFiles.worldMap), protection: .complete)
         manifest.worldMapFile = ScanFiles.worldMap
         manifest.worldMapSavedAt = .now
         if let snapshotJPEG {
-            try writer.write(snapshotJPEG, to: url(scanID, ScanFiles.relocalizationSnapshot))
+            try writer.write(snapshotJPEG, to: url(scanID, ScanFiles.relocalizationSnapshot), protection: .complete)
             manifest.relocalizationSnapshotFile = ScanFiles.relocalizationSnapshot
         }
         try write(manifest)
@@ -126,6 +132,19 @@ actor FileScanJournal: ScanStore {
 
     func saveFrameLog(_ log: FrameLog, scanID: UUID) async throws {
         try writer.write(try JSONEncoder().encode(log), to: url(scanID, ScanFiles.frameLog))
+    }
+
+    /// Once the server holds the finished scan, the mesh, world map and camera snapshot only
+    /// take up space and carry a picture of the shop, so they go. Rooms and the manifest stay.
+    func releaseHeavyFiles(scanID: UUID) async throws {
+        var manifest = try readManifest(scanID: scanID)
+        for file in ScanFiles.heavy {
+            try? FileManager.default.removeItem(at: url(scanID, file))
+        }
+        manifest.meshFile = nil
+        manifest.worldMapFile = nil
+        manifest.relocalizationSnapshotFile = nil
+        try write(manifest)
     }
 
     func delete(scanID: UUID) async throws {

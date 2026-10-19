@@ -9,7 +9,7 @@ struct HomeView: View {
             SheetFrame {
                 ScrollView {
                     VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
-                        InkedTitle(text: "Your scans")
+                        HomeHeader(account: model.account)
                         content
                     }
                     .padding(Theme.Spacing.m)
@@ -22,6 +22,10 @@ struct HomeView: View {
             .padding(.vertical, Theme.Spacing.xs)
         }
         .task { await model.refresh() }
+        .sheet(isPresented: Bindable(model.account).isSheetPresented) {
+            AccountSheet(account: model.account)
+                .presentationDetents([.large])
+        }
     }
 
     @ViewBuilder private var content: some View {
@@ -56,6 +60,36 @@ struct HomeView: View {
         }
         .padding(Theme.Spacing.m)
         .background(Theme.Palette.paper.opacity(0.92))
+    }
+}
+
+/// The title, and who is signed in. Signed out, the button offers sign-in; signed in, it shows
+/// the account the scans go to.
+private struct HomeHeader: View {
+    let account: AccountModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+            HStack(alignment: .top) {
+                InkedTitle(text: "Your scans")
+                Spacer(minLength: Theme.Spacing.s)
+                if account.isAvailable {
+                    Button { account.isSheetPresented = true } label: {
+                        ButtonLabel(
+                            title: account.state.isSignedIn ? "Account" : "Sign in",
+                            systemImage: account.state.isSignedIn ? "person.crop.circle.fill" : "person.crop.circle"
+                        )
+                    }
+                    .buttonStyle(InkButtonStyle(variant: .quiet, height: Theme.Size.compactControl))
+                }
+            }
+            if case .signedIn(let email) = account.state {
+                Label(email.map { "Signed in as \($0)" } ?? "Signed in with Apple", systemImage: "checkmark.icloud")
+                    .font(Theme.Typography.callout)
+                    .foregroundStyle(Theme.Palette.inkMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 }
 

@@ -93,7 +93,7 @@ final class RecordingSleeper: @unchecked Sendable {
 // MARK: Uploads
 
 final class FakeUploadAPI: UploadAPI, @unchecked Sendable {
-    struct CreateCall { let scanID: String; let body: CreateUploadBody }
+    struct CreateCall { let scanID: String; let body: CreateUploadBody; var idempotencyKey = "" }
     struct CompleteCall { let uploadID: String; let sha256: String }
 
     private let state = Locked(State())
@@ -122,8 +122,8 @@ final class FakeUploadAPI: UploadAPI, @unchecked Sendable {
         }
     }
 
-    func createUpload(scanID: String, body: CreateUploadBody) async throws -> UploadInfo {
-        state.write { $0.creates.append(CreateCall(scanID: scanID, body: body)) }
+    func createUpload(scanID: String, body: CreateUploadBody, idempotencyKey: String) async throws -> UploadInfo {
+        state.write { $0.creates.append(CreateCall(scanID: scanID, body: body, idempotencyKey: idempotencyKey)) }
         if let error = state.write({ $0.createErrors.isEmpty ? nil : $0.createErrors.removeFirst() }) { throw error }
         let partSize = body.partSize ?? 8 * 1024 * 1024
         return info(scanID: scanID, size: body.sizeBytes, partSize: partSize, kind: body.kind, name: body.filename, state: "open")
@@ -246,6 +246,7 @@ final class FakeSocket: WebSocketConnection, @unchecked Sendable {
         var pings = 0
         var closed = false
         var pingBehavior = PingBehavior.succeed
+        var rejectionStatus: Int?
         var inbox: [Result<String, Error>] = []
         var waiter: CheckedContinuation<String, Error>?
     }
@@ -259,6 +260,8 @@ final class FakeSocket: WebSocketConnection, @unchecked Sendable {
     var isClosed: Bool { record.read { $0.closed } }
 
     func setPingBehavior(_ behavior: PingBehavior) { record.write { $0.pingBehavior = behavior } }
+    var rejectionStatus: Int? { record.read { $0.rejectionStatus } }
+    func reject(status: Int) { record.write { $0.rejectionStatus = status } }
     func push(_ text: String) { deliver(.success(text)) }
     func fail(_ error: Error = URLError(.networkConnectionLost)) { deliver(.failure(error)) }
 

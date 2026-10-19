@@ -115,7 +115,9 @@ private struct ObjectCard: View {
                     .font(Theme.Typography.headline)
                     .foregroundStyle(Theme.Palette.ink)
                 ForEach(group.issues) { outcome in
-                    if outcome.status == .needsInfo {
+                    if outcome.isOwnerQuestion {
+                        OwnerCheckView(outcome: outcome)
+                    } else if outcome.isQuestion {
                         QuestionView(outcome: outcome)
                     } else {
                         IssueView(outcome: outcome)
@@ -131,10 +133,7 @@ private struct IssueView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            Text(outcome.governing.message)
-                .font(Theme.Typography.body)
-                .foregroundStyle(Theme.Palette.ink)
-                .fixedSize(horizontal: false, vertical: true)
+            FindingText(finding: outcome.governing)
             if let measured = outcome.governing.measured, let bound = RequiredBound.parse(outcome.governing.required) {
                 FindingGauge(measured: measured, bound: bound)
             }
@@ -152,10 +151,7 @@ private struct QuestionView: View {
             HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.s) {
                 Image(systemName: StatusTone.needsInfo.symbol)
                     .foregroundStyle(Theme.Palette.attention)
-                Text(outcome.governing.message)
-                    .font(Theme.Typography.body.weight(.semibold))
-                    .foregroundStyle(Theme.Palette.ink)
-                    .fixedSize(horizontal: false, vertical: true)
+                FindingText(finding: outcome.governing)
             }
             HStack(spacing: Theme.Spacing.s) {
                 AnswerButton(title: "Yes", isSelected: model.answers[outcome.id] == true) { model.answer(outcome.id, yes: true) }
@@ -169,6 +165,51 @@ private struct QuestionView: View {
 
     private var citations: String {
         [outcome.federal, outcome.california].compactMap { $0 }.map(Citation.text(for:)).joined(separator: " and ")
+    }
+}
+
+/// A finding's rule name above what we found, or the message alone when the rule has no name.
+private struct FindingText: View {
+    let finding: Finding
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+            if let title = finding.title {
+                Text(title)
+                    .font(Theme.Typography.body.weight(.semibold))
+                    .foregroundStyle(Theme.Palette.ink)
+            }
+            Text(finding.message)
+                .font(Theme.Typography.body)
+                .foregroundStyle(finding.title == nil ? Theme.Palette.ink : Theme.Palette.inkMuted)
+        }
+        .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// Something we couldn't settle from the scan, such as an object we couldn't identify. It is
+/// not a code violation, so it shows no rule and no pass or fail, only a check to tick off.
+private struct OwnerCheckView: View {
+    @Environment(AppModel.self) private var model
+    let outcome: RuleOutcome
+
+    var body: some View {
+        let isChecked = model.answers[outcome.id] == true
+        VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.s) {
+                Image(systemName: StatusTone.needsInfo.symbol)
+                    .foregroundStyle(Theme.Palette.attention)
+                    .accessibilityHidden(true)
+                FindingText(finding: outcome.governing)
+            }
+            AnswerButton(title: isChecked ? "Checked" : "Mark as checked", isSelected: isChecked) {
+                model.answer(outcome.id, yes: !isChecked)
+            }
+            Text("This isn't a code rule. We couldn't settle it from the scan, so it needs a look from you.")
+                .font(Theme.Typography.caption)
+                .foregroundStyle(Theme.Palette.inkMuted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 }
 

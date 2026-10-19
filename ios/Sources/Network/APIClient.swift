@@ -1,7 +1,7 @@
 import Foundation
 
 nonisolated protocol UploadAPI: Sendable {
-    func createUpload(scanID: String, body: CreateUploadBody) async throws -> UploadInfo
+    func createUpload(scanID: String, body: CreateUploadBody, idempotencyKey: String) async throws -> UploadInfo
     func uploadStatus(scanID: String, uploadID: String) async throws -> UploadStatusResponse
     func presignParts(scanID: String, uploadID: String, partNumbers: [Int]) async throws -> PresignResponse
     func completeUpload(scanID: String, uploadID: String, sha256: String) async throws -> Artifact
@@ -11,9 +11,35 @@ nonisolated enum APIConfiguration {
     static let baseURLInfoKey = "SPAPIBaseURL"
 
     static func baseURL(in bundle: Bundle = .main) throws -> URL {
-        guard let text = bundle.object(forInfoDictionaryKey: baseURLInfoKey) as? String,
-              let url = URL(string: text), url.host != nil else { throw APIError.notConfigured }
+        guard let text = bundle.object(forInfoDictionaryKey: baseURLInfoKey) as? String else { throw APIError.notConfigured }
+        return try validatedBaseURL(text)
+    }
+
+    static func validatedBaseURL(_ text: String, allowsLocalHTTP: Bool = TransportSecurity.isDebugBuild) throws -> URL {
+        guard let url = URL(string: text), TransportSecurity.isAllowed(url, allowsLocalHTTP: allowsLocalHTTP) else {
+            throw APIError.notConfigured
+        }
         return url
+    }
+}
+
+/// Everything leaves the phone over TLS. Debug builds may also talk plain HTTP to a server on
+/// this Mac or the simulator's host, and nothing else.
+nonisolated enum TransportSecurity {
+    static let localHosts: Set<String> = ["localhost", "127.0.0.1", "::1"]
+
+    static var isDebugBuild: Bool {
+        #if DEBUG
+        true
+        #else
+        false
+        #endif
+    }
+
+    static func isAllowed(_ url: URL, allowsLocalHTTP: Bool = isDebugBuild) -> Bool {
+        guard let scheme = url.scheme?.lowercased(), let host = url.host?.lowercased() else { return false }
+        if scheme == "https" { return true }
+        return allowsLocalHTTP && scheme == "http" && localHosts.contains(host)
     }
 }
 
@@ -23,6 +49,10 @@ actor APIClient: UploadAPI {
     private let transport: any HTTPTransport
     private let retryPolicy: RetryPolicy
     private let sleep: Sleeper
+    private let sessionEndedContinuation: AsyncStream<Void>.Continuation
+
+    /// Yields when the server rejects the stored token. The token is already cleared by then.
+    nonisolated let sessionEnded: AsyncStream<Void>
 
     init(
         baseURL: URL,
@@ -36,6 +66,7 @@ actor APIClient: UploadAPI {
         self.transport = transport
         self.retryPolicy = retryPolicy
         self.sleep = sleep
+        (sessionEnded, sessionEndedContinuation) = AsyncStream.makeStream(of: Void.self, bufferingPolicy: .bufferingNewest(1))
     }
 
     static func fromInfoPlist(bundle: Bundle = .main) throws -> APIClient {
@@ -57,7 +88,7 @@ actor APIClient: UploadAPI {
     }
 
     @discardableResult
-    func signIn(appleIdentityToken: String, nonce: String? = nil) async throws -> AuthSession {
+    func signIn(appleIdentityToken: String, nonce: String) async throws -> AuthSession {
         let body = AppleSignInRequest(identityToken: appleIdentityToken, nonce: nonce)
         return try await storeSession(from: APIRoutes.signInWithApple(body))
     }
@@ -68,6 +99,10 @@ actor APIClient: UploadAPI {
         tokenStore.clear()
     }
 
+    func currentUser() async throws -> ServerUser {
+        try await send(APIRoutes.me())
+    }
+
     private func storeSession(from endpoint: Endpoint<AuthSession>) async throws -> AuthSession {
         let session = try await send(endpoint)
         try tokenStore.save(session.token)
@@ -76,8 +111,8 @@ actor APIClient: UploadAPI {
 
     // MARK: Scans
 
-    func createScan(name: String?, siteName: String? = nil) async throws -> ScanResponse {
-        try await send(APIRoutes.createScan(CreateScanRequest(name: name, siteName: siteName)))
+    func createScan(name: String?, siteName: String? = nil, idempotencyKey: String) async throws -> ScanResponse {
+        try await send(APIRoutes.createScan(CreateScanRequest(name: name, siteName: siteName), idempotencyKey: idempotencyKey))
     }
 
     /// Runs the server's finish pipeline and returns the full report (can take up to two minutes).
@@ -91,8 +126,8 @@ actor APIClient: UploadAPI {
 
     // MARK: Uploads
 
-    func createUpload(scanID: String, body: CreateUploadBody) async throws -> UploadInfo {
-        try await send(APIRoutes.createUpload(scanID: scanID, body: body))
+    func createUpload(scanID: String, body: CreateUploadBody, idempotencyKey: String) async throws -> UploadInfo {
+        try await send(APIRoutes.createUpload(scanID: scanID, body: body, idempotencyKey: idempotencyKey))
     }
 
     func uploadStatus(scanID: String, uploadID: String) async throws -> UploadStatusResponse {
@@ -115,7 +150,9 @@ actor APIClient: UploadAPI {
 
     // MARK: Live
 
+    /// `wss` always; plain `ws` only for the local debug server `TransportSecurity` allows.
     func liveSocketRequest(scanID: String) throws -> URLRequest {
+        guard TransportSecurity.isAllowed(baseURL) else { throw APIError.notConfigured }
         var components = try urlComponents(path: APIRoutes.livePath(scanID: scanID))
         components.scheme = components.scheme == "https" ? "wss" : "ws"
         guard let url = components.url else { throw APIError.notConfigured }
@@ -155,8 +192,18 @@ actor APIClient: UploadAPI {
 
     private func perform(_ request: URLRequest) async throws -> HTTPResponse {
         let response = try await transport.send(request)
-        guard response.isSuccess else { throw APIError(response: response) }
+        guard response.isSuccess else {
+            if response.status == 401, let sent = request.value(forHTTPHeaderField: "Authorization") { endSession(ifStillUsing: sent) }
+            throw APIError(response: response)
+        }
         return response
+    }
+
+    /// A slow request that fails after a fresh sign-in must not throw away the new session.
+    private func endSession(ifStillUsing sentAuthorization: String) {
+        guard let token = tokenStore.token(), sentAuthorization == "Bearer \(token)" else { return }
+        tokenStore.clear()
+        sessionEndedContinuation.yield()
     }
 
     private func buildRequest<Response>(_ endpoint: Endpoint<Response>) throws -> URLRequest {
@@ -167,6 +214,7 @@ actor APIClient: UploadAPI {
         request.httpMethod = endpoint.method.rawValue
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         if let timeout = endpoint.timeout { request.timeoutInterval = timeout }
+        for (name, value) in endpoint.headers { request.setValue(value, forHTTPHeaderField: name) }
         if endpoint.requiresAuth { applyAuthorization(to: &request) }
         try attachBody(endpoint.body, to: &request)
         return request

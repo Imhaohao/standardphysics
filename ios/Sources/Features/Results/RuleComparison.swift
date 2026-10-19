@@ -51,8 +51,11 @@ nonisolated struct RuleOutcome: Sendable, Equatable, Identifiable {
     let california: Finding?
     let governing: Finding
 
-    var id: String { "\(subjectID)#\(section)" }
+    var id: String { isOwnerQuestion ? governing.id : "\(subjectID)#\(section)" }
     var status: FindingStatus { governing.status }
+    /// Something only the owner can settle, such as an object we could not identify. It asks
+    /// for a check and never counts as a code violation.
+    var isOwnerQuestion: Bool { governing.isOwnerQuestion }
     var hasBothJurisdictions: Bool { federal != nil && california != nil }
 
     func governs(_ finding: Finding) -> Bool {
@@ -89,6 +92,15 @@ nonisolated enum RuleComparison {
     }
 
     static func outcomes(from findings: [Finding]) -> [RuleOutcome] {
+        codeOutcomes(from: findings.filter { !$0.isOwnerQuestion })
+            + findings.filter(\.isOwnerQuestion).map(ownerQuestion)
+    }
+
+    private static func ownerQuestion(_ finding: Finding) -> RuleOutcome {
+        RuleOutcome(subjectID: finding.subjectID, section: finding.section, federal: nil, california: nil, governing: finding)
+    }
+
+    private static func codeOutcomes(from findings: [Finding]) -> [RuleOutcome] {
         var order: [String] = []
         var pairs: [String: (federal: Finding?, california: Finding?)] = [:]
         for finding in findings {
@@ -111,6 +123,7 @@ nonisolated enum Citation {
         switch finding.jurisdiction {
         case .ada2010: return "ADA 2010 §\(section)"
         case .cbc11b: return "CBC 11B-\(section)"
+        case .system: return "Standard Physics check"
         }
     }
 
@@ -118,6 +131,7 @@ nonisolated enum Citation {
         switch jurisdiction {
         case .ada2010: "Federal"
         case .cbc11b: "California"
+        case .system: "Standard Physics"
         }
     }
 }

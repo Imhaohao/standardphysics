@@ -30,7 +30,7 @@ nonisolated struct Credentials: Encodable, Sendable {
 
 nonisolated struct AppleSignInRequest: Encodable, Sendable {
     let identityToken: String
-    let nonce: String?
+    let nonce: String
 
     enum CodingKeys: String, CodingKey {
         case identityToken = "identity_token"
@@ -150,9 +150,11 @@ nonisolated struct PresignedPart: Codable, Sendable, Equatable {
 nonisolated struct PresignResponse: Codable, Sendable, Equatable {
     let parts: [PresignedPart]
     let expiresInSecs: Int
+    /// The one storage host every part URL points at, with its port when not the default.
+    var host: String?
 
     enum CodingKeys: String, CodingKey {
-        case parts
+        case parts, host
         case expiresInSecs = "expires_in_secs"
     }
 }
@@ -282,13 +284,14 @@ nonisolated struct ServerFinding: Codable, Sendable, Equatable, Identifiable {
         case status, severity, measured, required, message, evidence, location, counterpart
     }
 
-    /// Nil for jurisdictions the app has no type for (e.g. SYSTEM label findings), so callers
-    /// that need every server finding should read the report's `findings` directly.
+    /// Nil only for a jurisdiction this version of the app does not know yet.
     var asFinding: Finding? {
         guard let jurisdiction = Jurisdiction(rawValue: jurisdiction) else { return nil }
         return Finding(
             ruleID: ruleID, jurisdiction: jurisdiction, section: section, subjectID: subjectID,
-            status: status, measured: measured?.asMeasuredValue, required: required, message: message
+            status: status, measured: measured?.asMeasuredValue, required: required, message: message,
+            title: title.isEmpty ? nil : title, severity: FindingSeverity(rawValue: severity),
+            counterpartRuleID: counterpart, range: measured?.asMeasuredRange
         )
     }
 }
@@ -298,6 +301,13 @@ nonisolated extension ServerMeasured {
     var asMeasuredValue: MeasuredValue? {
         guard let number = value ?? lo ?? hi else { return nil }
         return MeasuredValue(value: number, unit: unit)
+    }
+}
+
+nonisolated extension ServerMeasured {
+    var asMeasuredRange: MeasuredRange? {
+        guard let lo, let hi else { return nil }
+        return MeasuredRange(lo: lo, hi: hi, unit: unit)
     }
 }
 

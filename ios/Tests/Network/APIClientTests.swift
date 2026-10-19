@@ -50,18 +50,14 @@ final class APIClientTests: XCTestCase {
     private let scanJSON = #"{"id":"6f1c3a52-0000-4000-8000-000000000001","name":"Cafe","site_name":null,"status":"capturing","created_at":"2026-10-19T10:00:00.123456Z","updated_at":"2026-10-19T10:00:00Z"}"#
     private let authJSON = #"{"token":"fresh","expires_at":"2030-01-01T00:00:00Z","user":{"id":"u1","email":"a@b.co"}}"#
 
-    func testCreateScanSendsNameAndIsNeverRetried() async throws {
-        let (failing, failingTransport, _, _) = makeClient([jsonResponse(503, "{}")])
-        do {
-            _ = try await failing.createScan(name: "Cafe")
-            XCTFail("expected failure")
-        } catch {
-            XCTAssertEqual(error as? APIError, .server(status: 503, message: nil))
-        }
-        XCTAssertEqual(failingTransport.requests.count, 1, "a retried create would make a second scan")
+    func testCreateScanRetriesWithTheSameIdempotencyKey() async throws {
+        let (retrying, retryingTransport, _, _) = makeClient([jsonResponse(503, "{}"), jsonResponse(201, scanJSON)])
+        _ = try await retrying.createScan(name: "Cafe", idempotencyKey: "key-1")
+        XCTAssertEqual(retryingTransport.requests.count, 2)
+        XCTAssertEqual(retryingTransport.requests.map { $0.value(forHTTPHeaderField: "Idempotency-Key") }, ["key-1", "key-1"])
 
         let (client, transport, _, _) = makeClient([jsonResponse(201, scanJSON)])
-        let scan = try await client.createScan(name: "Cafe", siteName: "Main St")
+        let scan = try await client.createScan(name: "Cafe", siteName: "Main St", idempotencyKey: "key-2")
         XCTAssertEqual(scan.status, "capturing")
         XCTAssertNil(scan.siteName)
         XCTAssertEqual(transport.requests[0].url?.path, "/v1/scans")
@@ -102,6 +98,40 @@ final class APIClientTests: XCTestCase {
         await client.signOut()
         XCTAssertNil(store.token())
         XCTAssertEqual(transport.requests.first?.url?.path, "/v1/auth/logout")
+    }
+
+    func testRejectedTokenIsClearedAndEndsTheSession() async throws {
+        let (client, _, store, _) = makeClient([jsonResponse(401, "{}")])
+        var ended = client.sessionEnded.makeAsyncIterator()
+        _ = try? await client.assessment(scanID: "s")
+        XCTAssertNil(store.token())
+        let signal: Void? = await ended.next()
+        XCTAssertNotNil(signal)
+    }
+
+    func testLateRejectionOfAnOldTokenKeepsTheNewSession() async throws {
+        let store = InMemoryTokenStore(token: "old")
+        let transport = DelayedTransport(status: 401)
+        let client = APIClient(baseURL: URL(string: "https://api.test")!, tokenStore: store, transport: transport, retryPolicy: .none)
+        async let pending: Report? = try? client.assessment(scanID: "s")
+        await transport.waitForRequest()
+        try store.save("new")
+        transport.release()
+        _ = await pending
+        XCTAssertEqual(store.token(), "new")
+    }
+
+    func testWrongPasswordKeepsNoSessionSignal() async throws {
+        let (client, _, store, _) = makeClient([jsonResponse(401, "{}")], token: "kept")
+        _ = try? await client.signIn(email: "a@b.co", password: "nope")
+        XCTAssertEqual(store.token(), "kept", "a failed login is not an expired session")
+    }
+
+    func testCurrentUserReadsMe() async throws {
+        let (client, transport, _, _) = makeClient([jsonResponse(200, #"{"id":"u1","email":"a@b.co"}"#)])
+        let user = try await client.currentUser()
+        XCTAssertEqual(user, ServerUser(id: "u1", email: "a@b.co"))
+        XCTAssertEqual(transport.requests[0].url?.path, "/v1/me")
     }
 
     func testNoContentResponsesNeedNoBody() async throws {
@@ -179,7 +209,8 @@ final class APIClientTests: XCTestCase {
         XCTAssertGreaterThan(report.createdAt.timeIntervalSince1970, 1_700_000_000)
         XCTAssertEqual(report.findings[0].asFinding?.measured, MeasuredValue(value: 0.78, unit: "m"))
         XCTAssertEqual(report.findings[0].asFinding?.required, ">= 0.815 m")
-        XCTAssertNil(report.findings[1].asFinding, "SYSTEM findings have no shared type")
+        XCTAssertEqual(report.findings[1].asFinding?.jurisdiction, .system)
+        XCTAssertEqual(report.findings[1].asFinding?.title, "Unlabelled object")
     }
 
     func testFinishScanUsesLongTimeoutAndIsNotRetried() async throws {
@@ -207,9 +238,11 @@ final class APIClientTests: XCTestCase {
         let json = #"{"id":"u1","scan_id":"s","kind":"room","filename":"r.json","content_type":"application/json","size_bytes":10,"part_size":8388608,"part_count":1,"state":"open","created_at":"2026-10-19T10:00:00Z"}"#
         let (client, transport, _, _) = makeClient([jsonResponse(201, json)])
         let upload = try await client.createUpload(
-            scanID: "s", body: CreateUploadBody(kind: "room", filename: "r.json", contentType: "application/json", sizeBytes: 10, partSize: 8_388_608)
+            scanID: "s", body: CreateUploadBody(kind: "room", filename: "r.json", contentType: "application/json", sizeBytes: 10, partSize: 8_388_608),
+            idempotencyKey: "upload-key"
         )
         XCTAssertEqual(upload.partCount, 1)
+        XCTAssertEqual(transport.requests[0].value(forHTTPHeaderField: "Idempotency-Key"), "upload-key")
         XCTAssertEqual(transport.requests[0].url?.path, "/v1/scans/s/uploads")
         let body = String(decoding: transport.requests[0].httpBody!, as: UTF8.self)
         XCTAssertEqual(body, #"{"content_type":"application\/json","filename":"r.json","kind":"room","part_size":8388608,"size_bytes":10}"#)
@@ -293,5 +326,35 @@ final class KeychainTokenStoreTests: XCTestCase {
         XCTAssertEqual(store.token(), "two")
         store.clear()
         XCTAssertNil(store.token())
+    }
+}
+
+private final class DelayedTransport: HTTPTransport, @unchecked Sendable {
+    private let status: Int
+    private let state = Locked<(started: Bool, gate: CheckedContinuation<Void, Never>?)>((false, nil))
+
+    init(status: Int) { self.status = status }
+
+    func waitForRequest() async {
+        while !state.read({ $0.started }) { await Task.yield() }
+    }
+
+    func release() {
+        let gate = state.write { state -> CheckedContinuation<Void, Never>? in
+            let gate = state.gate
+            state.gate = nil
+            return gate
+        }
+        gate?.resume()
+    }
+
+    func send(_ request: URLRequest) async throws -> HTTPResponse {
+        await withCheckedContinuation { continuation in
+            state.write {
+                $0.gate = continuation
+                $0.started = true
+            }
+        }
+        return HTTPResponse(status: status, headers: [:], body: Data("{}".utf8))
     }
 }

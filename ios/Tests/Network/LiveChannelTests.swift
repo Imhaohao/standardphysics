@@ -60,15 +60,38 @@ final class LiveMessageDecodingTests: XCTestCase {
 
 final class LiveChannelTests: XCTestCase {
     private func makeChannel(
-        _ connector: FakeConnector, heartbeat: Duration = .seconds(30), pongTimeout: Duration = .milliseconds(100)
+        _ connector: FakeConnector, heartbeat: Duration = .seconds(30), pongTimeout: Duration = .milliseconds(100),
+        maximumFailures: Int = 10
     ) -> LiveChannel {
         LiveChannel(
             requestProvider: { URLRequest(url: URL(string: "wss://live.test/v1/scans/s1/live")!) },
             connector: connector,
             backoff: Backoff(base: .milliseconds(5), maximum: .milliseconds(20), jitter: { 0 }),
             heartbeatInterval: heartbeat,
-            pongTimeout: pongTimeout
+            pongTimeout: pongTimeout,
+            maximumConsecutiveFailures: maximumFailures
         )
+    }
+
+    func testRefusedSessionStopsReconnecting() async {
+        let refused = FakeSocket(pingBehavior: .fail)
+        refused.reject(status: 401)
+        let connector = FakeConnector(queued: [refused])
+        let channel = makeChannel(connector)
+        let states = collectStates(from: channel)
+        await channel.open()
+        await eventually { states.read { $0.contains(.closed) } }
+        XCTAssertEqual(connector.connections.count, 1)
+    }
+
+    func testGivesUpAfterTooManyFailuresInARow() async {
+        let sockets = (0..<6).map { _ in FakeSocket(pingBehavior: .fail) }
+        let connector = FakeConnector(queued: sockets)
+        let channel = makeChannel(connector, maximumFailures: 3)
+        let states = collectStates(from: channel)
+        await channel.open()
+        await eventually { states.read { $0.contains(.closed) } }
+        XCTAssertEqual(connector.connections.count, 3)
     }
 
     private func collectMessages(from channel: LiveChannel) -> Locked<[LiveMessage]> {

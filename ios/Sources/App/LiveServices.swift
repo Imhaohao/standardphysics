@@ -11,6 +11,8 @@ final class LiveServices {
     let sceneModel = LiveSceneModel()
     let appModel: AppModel
     private let detection: LiveDetectionPipeline
+    private let streamer: ScanStreamer?
+    let uploader: BackgroundUploader?
     private var frameFeed: Task<Void, Never>?
     private var sceneSync: Task<Void, Never>?
 
@@ -21,25 +23,44 @@ final class LiveServices {
             try await RustComplianceEngine().evaluateRoom(capturedRoomJSON: roomJSON)
         }
         self.coordinator = coordinator
+        let api = try? APIClient.fromInfoPlist()
+        let uploader = api.flatMap { try? BackgroundUploader.makeDefault(api: $0) }
+        let streamer = Self.makeStreamer(api: api, uploader: uploader, journal: journal)
+        coordinator.observer = streamer
+        self.streamer = streamer
+        self.uploader = uploader
         appModel = AppModel(
             capture: coordinator,
-            processor: Self.makeProcessor(journal: journal),
-            journal: journal
+            processor: Self.makeProcessor(journal: journal, api: api, uploader: uploader, streamer: streamer),
+            journal: journal,
+            account: AccountModel(service: api)
         )
         detection = LiveDetectionPipeline(detector: CoreMLDetector()) { [weak coordinator] detections in
             await MainActor.run { coordinator?.detections = detections }
         }
     }
 
-    private static func makeProcessor(journal: some ScanJournaling) -> any ScanProcessing {
+    private static func makeStreamer(api: APIClient?, uploader: BackgroundUploader?, journal: FileScanJournal) -> ScanStreamer? {
+        guard let api, let uploader else { return nil }
+        let tokens = KeychainTokenStore()
+        return ScanStreamer(dependencies: ScanStreamer.Dependencies(
+            creator: api,
+            uploader: uploader,
+            makeChannel: { LiveChannel.forScan($0, api: api) },
+            isSignedIn: { tokens.token() != nil },
+            directory: { journal.directory(for: $0) }
+        ))
+    }
+
+    private static func makeProcessor(
+        journal: FileScanJournal, api: APIClient?, uploader: BackgroundUploader?, streamer: ScanStreamer?
+    ) -> any ScanProcessing {
         let local = OnDeviceScanProcessor(journal: journal)
         let tokens = KeychainTokenStore()
-        guard let api = try? APIClient.fromInfoPlist(), let uploader = try? BackgroundUploader.makeDefault(api: api) else {
-            return local
-        }
+        guard let api, let uploader else { return local }
         Task { await uploader.start() }
         return PreferredScanProcessor(
-            remote: ServerScanProcessor(api: api, uploader: uploader),
+            remote: ServerScanProcessor(api: api, uploader: uploader, rooms: streamer, retention: journal),
             local: local,
             isSignedIn: { tokens.token() != nil }
         )

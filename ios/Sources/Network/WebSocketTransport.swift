@@ -5,6 +5,8 @@ nonisolated protocol WebSocketConnection: Sendable {
     func receive() async throws -> String
     func ping() async throws
     func close()
+    /// The HTTP status when the server refused the upgrade, e.g. 401 for an expired session.
+    var rejectionStatus: Int? { get }
 }
 
 nonisolated protocol WebSocketConnecting: Sendable {
@@ -12,6 +14,9 @@ nonisolated protocol WebSocketConnecting: Sendable {
 }
 
 nonisolated struct URLSessionWebSocketConnector: WebSocketConnecting {
+    /// Rooms are the largest frames the server sends; a few hundred kilobytes each.
+    static let maximumMessageSize = 2_000_000
+
     let session: URLSession
 
     init(session: URLSession = URLSession(configuration: .default)) {
@@ -20,6 +25,7 @@ nonisolated struct URLSessionWebSocketConnector: WebSocketConnecting {
 
     func connect(_ request: URLRequest) -> any WebSocketConnection {
         let task = session.webSocketTask(with: request)
+        task.maximumMessageSize = Self.maximumMessageSize
         task.resume()
         return URLSessionWebSocketConnection(task: task)
     }
@@ -50,5 +56,10 @@ nonisolated struct URLSessionWebSocketConnection: WebSocketConnection {
 
     func close() {
         task.cancel(with: .goingAway, reason: nil)
+    }
+
+    var rejectionStatus: Int? {
+        guard let status = (task.response as? HTTPURLResponse)?.statusCode, status >= 400 else { return nil }
+        return status
     }
 }

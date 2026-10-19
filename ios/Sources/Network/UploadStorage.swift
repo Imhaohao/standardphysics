@@ -23,9 +23,9 @@ nonisolated struct UploadStorage: Sendable {
     }
 
     func ensureDirectories() throws {
-        let attributes: [FileAttributeKey: Any] = [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication]
-        for directory in [root, stagedFileURL(for: UUID()).deletingLastPathComponent(), partsRoot] {
-            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: attributes)
+        try ProtectedDirectory.create(root, excludingFromBackup: true)
+        for directory in [stagedFileURL(for: UUID()).deletingLastPathComponent(), partsRoot] {
+            try ProtectedDirectory.create(directory)
         }
     }
 

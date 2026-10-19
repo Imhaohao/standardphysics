@@ -9,6 +9,7 @@ nonisolated struct Endpoint<Response: Decodable & Sendable>: Sendable {
     let method: HTTPMethod
     let path: String
     var query: [URLQueryItem] = []
+    var headers: [String: String] = [:]
     var body: (any Encodable & Sendable)?
     var requiresAuth = true
     var isIdempotent: Bool
@@ -20,6 +21,7 @@ nonisolated struct Endpoint<Response: Decodable & Sendable>: Sendable {
 nonisolated enum APIRoutes {
     static let apiPrefix = "/v1"
     static let finishTimeout: TimeInterval = 120
+    static let idempotencyHeader = "Idempotency-Key"
 
     static func register(_ body: Credentials) -> Endpoint<AuthSession> {
         Endpoint(method: .post, path: "\(apiPrefix)/auth/register", body: body, requiresAuth: false, isIdempotent: false)
@@ -37,9 +39,17 @@ nonisolated enum APIRoutes {
         Endpoint(method: .post, path: "\(apiPrefix)/auth/logout", isIdempotent: true)
     }
 
-    /// Not idempotent: the server has no client id, so a retried create makes a second scan.
-    static func createScan(_ body: CreateScanRequest) -> Endpoint<ScanResponse> {
-        Endpoint(method: .post, path: "\(apiPrefix)/scans", body: body, isIdempotent: false)
+    static func me() -> Endpoint<ServerUser> {
+        Endpoint(method: .get, path: "\(apiPrefix)/me", isIdempotent: true)
+    }
+
+    /// Safe to retry because the key is persisted before the first attempt; a repeat with the
+    /// same key replays the first scan instead of making a second one.
+    static func createScan(_ body: CreateScanRequest, idempotencyKey: String) -> Endpoint<ScanResponse> {
+        Endpoint(
+            method: .post, path: "\(apiPrefix)/scans", headers: [idempotencyHeader: idempotencyKey],
+            body: body, isIdempotent: true
+        )
     }
 
     static func assessment(scanID: String) -> Endpoint<Report> {
@@ -50,9 +60,11 @@ nonisolated enum APIRoutes {
         Endpoint(method: .post, path: "\(apiPrefix)/scans/\(scanID)/finish", isIdempotent: false, timeout: finishTimeout)
     }
 
-    /// Retried despite not being idempotent: a duplicate only leaves an unused open upload.
-    static func createUpload(scanID: String, body: CreateUploadBody) -> Endpoint<UploadInfo> {
-        Endpoint(method: .post, path: "\(apiPrefix)/scans/\(scanID)/uploads", body: body, isIdempotent: true)
+    static func createUpload(scanID: String, body: CreateUploadBody, idempotencyKey: String) -> Endpoint<UploadInfo> {
+        Endpoint(
+            method: .post, path: "\(apiPrefix)/scans/\(scanID)/uploads", headers: [idempotencyHeader: idempotencyKey],
+            body: body, isIdempotent: true
+        )
     }
 
     static func uploadStatus(scanID: String, uploadID: String) -> Endpoint<UploadStatusResponse> {

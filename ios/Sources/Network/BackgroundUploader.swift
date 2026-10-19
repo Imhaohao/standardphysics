@@ -27,6 +27,9 @@ actor BackgroundUploader {
     private var persistenceError: String?
     private var reconciled: Set<UUID> = []
 
+    /// S3's own limit; a server asking for more parts than this is broken or hostile.
+    static let maximumPartCount = 10_000
+
     init(
         api: any UploadAPI,
         ledger: UploadLedger,
@@ -119,6 +122,23 @@ actor BackgroundUploader {
         requestPump()
     }
 
+    /// Drops unfinished uploads of one kind, for files where only the newest copy matters,
+    /// such as the mesh, which grows with every room.
+    func discardUnfinished(scanID: String, kind: UploadKind) async {
+        let stale = await ledger.all().filter { $0.scanID == scanID && $0.kind == kind.rawValue && $0.state.isActive }
+        guard !stale.isEmpty else { return }
+        let ids = Set(stale.map(\.id))
+        let running = inFlight.filter { ids.contains($0.key.fileID) }
+        for (key, taskID) in running {
+            inFlight[key] = nil
+            sentBytes[key] = nil
+            await session.cancelTask(id: taskID)
+        }
+        await persist { try await self.ledger.remove(Array(ids)) }
+        ids.forEach(storage.removeFiles(for:))
+        await emit()
+    }
+
     func removeFinished(scanID: String) async {
         let finished = await ledger.all().filter { $0.scanID == scanID && $0.state == .completed }
         await persist { try await self.ledger.remove(finished.map(\.id)) }
@@ -193,8 +213,8 @@ actor BackgroundUploader {
         case .succeeded(let etag):
             await markPartUploaded(key, etag: etag ?? "")
             return true
-        case .failed(let statusCode, let message):
-            await recordPartFailure(key, statusCode: statusCode, message: message)
+        case .failed(let statusCode, _):
+            await recordPartFailure(key, statusCode: statusCode)
         case .cancelled:
             break
         }
@@ -211,7 +231,7 @@ actor BackgroundUploader {
         transientFailureCount = 0
     }
 
-    private func recordPartFailure(_ key: PartKey, statusCode: Int?, message: String) async {
+    private func recordPartFailure(_ key: PartKey, statusCode: Int?) async {
         let limit = configuration.maxPartAttempts
         await persist {
             try await self.ledger.update(key.fileID) { record in
@@ -220,7 +240,7 @@ actor BackgroundUploader {
                     if statusCode == 403 { part.expiresAt = .distantPast }
                 }
                 let attempts = record.multipart?.parts.first { $0.number == key.number }?.failureCount ?? 0
-                if attempts >= limit { record.state = .failed(message: message) }
+                if attempts >= limit { record.state = .failed(UploadFailure(partStatusCode: statusCode)) }
             }
         }
     }
@@ -280,9 +300,11 @@ actor BackgroundUploader {
             kind: record.kind, filename: record.fileName, contentType: record.contentType,
             sizeBytes: record.sizeBytes, partSize: configuration.partSize
         )
-        let upload = try await api.createUpload(scanID: record.scanID, body: body)
+        let upload = try await api.createUpload(scanID: record.scanID, body: body, idempotencyKey: record.createKey)
         let expected = PartSlicer.partCount(fileSize: record.sizeBytes, partSize: upload.partSize)
-        guard upload.partSize > 0, upload.partCount == expected else { throw APIError.malformedResponse }
+        guard upload.partSize > 0, upload.partCount == expected, expected <= Self.maximumPartCount else {
+            throw APIError.malformedResponse
+        }
         let multipart = MultipartSession(
             uploadID: upload.id, partSize: upload.partSize, parts: (1...expected).map { UploadPart(number: $0) }
         )
@@ -345,8 +367,10 @@ actor BackgroundUploader {
     private func withFreshURLs(_ batch: [UploadPart], in record: UploadRecord) async throws -> [UploadPart] {
         let stale = batch.filter { $0.needsFreshURL(at: now(), skew: configuration.urlExpirySkew) }
         guard !stale.isEmpty, let multipart = record.multipart else { return batch }
-        let response = try await api.presignParts(
-            scanID: record.scanID, uploadID: multipart.uploadID, partNumbers: stale.map(\.number)
+        let requested = stale.map(\.number)
+        let response = try PresignValidation.validate(
+            try await api.presignParts(scanID: record.scanID, uploadID: multipart.uploadID, partNumbers: requested),
+            requested: requested, policy: configuration.storageHosts
         )
         let expiry = now().addingTimeInterval(TimeInterval(response.expiresInSecs))
         let byNumber = Dictionary(response.parts.map { ($0.partNumber, $0) }, uniquingKeysWith: { $1 })
@@ -386,14 +410,18 @@ actor BackgroundUploader {
 
     private func handleStepFailure(_ error: Error, id: UUID) async {
         let apiError = (error as? APIError) ?? APIError(transportError: error)
-        switch recovery(for: apiError, isStorageError: !(error is APIError) && !(error is URLError)) {
+        switch recovery(for: apiError, isStorageError: isStorageError(error)) {
         case .retryLater:
             scheduleRepump()
         case .restartUpload:
             await restartUpload(id)
         case .giveUp:
-            await markFailed(id, message: apiError.userMessage)
+            await markFailed(id, failure: isStorageError(error) ? .fileUnreadable : UploadFailure(apiError))
         }
+    }
+
+    private func isStorageError(_ error: Error) -> Bool {
+        !(error is APIError) && !(error is URLError)
     }
 
     private enum Recovery { case retryLater, restartUpload, giveUp }
@@ -417,13 +445,14 @@ actor BackgroundUploader {
             try await self.ledger.update(id) {
                 $0.multipart = nil
                 $0.state = .queued
+                $0.restarts = ($0.restarts ?? 0) + 1
             }
         }
         scheduleRepump()
     }
 
-    private func markFailed(_ id: UUID, message: String) async {
-        await persist { try await self.ledger.update(id) { $0.state = .failed(message: message) } }
+    private func markFailed(_ id: UUID, failure: UploadFailure) async {
+        await persist { try await self.ledger.update(id) { $0.state = .failed(failure) } }
         await emit()
     }
 

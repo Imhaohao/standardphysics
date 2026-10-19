@@ -25,6 +25,7 @@ final class AppModel {
     private(set) var answers: [String: Bool] = [:]
 
     let capture: any CaptureControlling
+    let account: AccountModel
     private let processor: any ScanProcessing
     private let journal: (any ScanJournaling)?
 
@@ -32,12 +33,14 @@ final class AppModel {
         capture: any CaptureControlling,
         processor: any ScanProcessing,
         journal: (any ScanJournaling)? = nil,
+        account: AccountModel = AccountModel(service: nil),
         unfinishedScans: [ScanManifest] = [],
         reports: [ScanReport] = []
     ) {
         self.capture = capture
         self.processor = processor
         self.journal = journal
+        self.account = account
         self.unfinishedScans = unfinishedScans
         self.reports = reports
     }
