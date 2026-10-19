@@ -230,8 +230,12 @@ class Stages:
         poses_path: pathlib.Path | None = None,
         lidar_mesh_path: pathlib.Path | None = None,
         run_discovery: bool = True,
+        on_discovered: Callable[[SceneGraph], object] | None = None,
     ) -> tuple[SceneGraph, DiscoveryOutcome]:
         """Ingest like `ingest`, plus what the discovery pass actually saw.
+
+        `on_discovered` hears the layout as soon as discovery has placed it, while
+        labelling may still be running, for work that needs only the geometry.
 
         The outcome lets the worker record why a graph has no new nodes: the
         photos are still uploading, discovery could not run, or it ran and
@@ -246,6 +250,8 @@ class Stages:
             started = time.perf_counter()
             found, outcome = self.discover_scan_with_report(apply_patches(graph, local_patches(graph)), **evidence)
             log.info("discovery %s took %.1f s", scan_id, time.perf_counter() - started)
+            if on_discovered is not None:
+                on_discovered(found)
             labelled = labelled_later.result()
         return with_labels_from(found, labelled), outcome
 

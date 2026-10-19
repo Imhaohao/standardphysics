@@ -1,6 +1,7 @@
 """Immutable photo builds, independent of measured room revisions and assessments."""
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import json
 import logging
@@ -8,6 +9,7 @@ import pathlib
 import re
 import shutil
 import tempfile
+import threading
 import time
 import uuid
 from dataclasses import dataclass
@@ -32,6 +34,7 @@ from standardphysics_pipeline.textures import (
     BakeInputs,
     bake_graph_for,
     box_bake_key,
+    paint_key,
     stale_node_ids,
     texture_build_key,
 )
@@ -450,21 +453,91 @@ def run_texture(database, store, stages, scan_id, build_id):
 def _painted_build(store, scan_id, row, destination: pathlib.Path) -> TextureBuild:
     graph = SceneGraph.model_validate_json(row["graph_json"])
     inputs = json.loads(row["inputs_json"])
+    with timed("painted scan"):
+        painted = painted_scan(store, scan_id, graph, inputs)
+    result = TextureBuild(
+        build_id=row["build_key"],
+        scan_glb_url=build_prefix(scan_id, painted) + "/scan.glb" if painted else None,
+        bake_graph=graph,
+        box_key=box_bake_key(graph, inputs["digest"]),
+        paint_key=painted,
+    )
     temporary = staged_build_dir(store, scan_id)
     try:
-        with timed("painted scan"):
-            scan_glb = _paint_the_scan(store, scan_id, graph, inputs, temporary)
-        result = TextureBuild(
-            build_id=row["build_key"],
-            scan_glb_url=build_prefix(scan_id, row["build_key"]) + "/scan.glb" if scan_glb else None,
-            bake_graph=graph,
-            box_key=box_bake_key(graph, inputs["digest"]),
-        )
         finish_build(temporary, destination, result)
         return result
     finally:
         if temporary.exists():
             shutil.rmtree(temporary)
+
+
+PAINTED_RECORD = "painted.json"
+
+
+def paint_ahead(database, store, scan_id, discovered: SceneGraph) -> threading.Thread | None:
+    """Start painting a scan's first layout as soon as discovery has placed everything in it.
+
+    Labelling runs beside discovery and often finishes after it, and the painted
+    scan reads only where things are, so it need not wait for the labels or for
+    the texture job. The thread is not a daemon: a job run in its own process
+    stays alive until the painting is done rather than abandoning it halfway.
+    Whatever it paints is found by its key when the texture job asks
+    (`painted_scan`), and if the layout changed in between, the key differs and
+    the texture job paints its own.
+    """
+    with database.connect() as connection:
+        if revisions_repo.get_revision(connection, scan_id, 0) is not None:
+            return None
+        _, inputs, _ = _inputs(connection, store, scan_id)
+    if inputs is None or not inputs["lidar"] or discovered.capture_to_room is None:
+        return None
+    thread = threading.Thread(
+        target=_paint_quietly, args=(store, scan_id, discovered, inputs), name=f"paint-ahead-{scan_id}"
+    )
+    thread.start()
+    return thread
+
+
+def _paint_quietly(store, scan_id, discovered: SceneGraph, inputs: dict) -> None:
+    try:
+        painted_scan(store, scan_id, discovered, inputs)
+    except Exception:
+        log.exception("painting %s ahead of its texture job failed; the texture job paints it instead", scan_id)
+
+
+def painted_scan(store, scan_id, bake_graph: SceneGraph, inputs: dict) -> str | None:
+    """The key of this layout's painted scan, painting it unless it already is; None when there is nothing to paint.
+
+    Painting can start as soon as discovery has placed everything (`paint_ahead`),
+    while the labels are still being written, and the texture job asks again
+    later. A lock on the key means whichever asks second waits for the first
+    and takes what it painted, rather than painting the same scan twice.
+    """
+    if not inputs["lidar"]:
+        return None
+    key = paint_key(bake_graph, inputs["digest"])
+    folder = build_dir(store, scan_id) / key
+    with open(build_dir(store, scan_id) / f"{key}.painting", "a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        if not (folder / PAINTED_RECORD).is_file():
+            _paint_into(store, scan_id, bake_graph, inputs, folder)
+    return key if (folder / "scan.glb").is_file() else None
+
+
+def _paint_into(store, scan_id, bake_graph: SceneGraph, inputs: dict, folder: pathlib.Path) -> None:
+    temporary = staged_build_dir(store, scan_id)
+    try:
+        painted = _paint_the_scan(store, scan_id, bake_graph, inputs, temporary)
+        (temporary / PAINTED_RECORD).write_text(json.dumps({"painted": painted}))
+        temporary.rename(folder)
+    finally:
+        if temporary.exists():
+            shutil.rmtree(temporary)
+
+
+def painted_scan_path(store, scan_id, build: TextureBuild) -> pathlib.Path:
+    """Where a build's painted scan lies: under its own paint key, or inside a build made before it had one."""
+    return build_dir(store, scan_id) / (build.paint_key or build.build_id) / "scan.glb"
 
 
 def run_boxes(database, store, stages, scan_id, build_id):
@@ -638,12 +711,13 @@ def _checked_bake(baked, temporary: pathlib.Path) -> _Boxes:
 
 
 def _published(connection, scan_id, key: str) -> bool:
-    """Whether `key` names a published build, or the boxes a published build carries."""
+    """Whether `key` names a published build, or the painted scan or boxes a published build carries."""
     row = connection.execute(
         "SELECT 1 FROM texture_builds WHERE scan_id=? AND result_json IS NOT NULL AND (build_key=?"
+        " OR json_extract(result_json, '$.paint_key')=?"
         " OR (json_extract(result_json, '$.box_key')=? AND json_extract(result_json, '$.glb_url') IS NOT NULL))"
         " LIMIT 1",
-        (str(scan_id), key, key),
+        (str(scan_id), key, key, key),
     ).fetchone()
     return row is not None
 

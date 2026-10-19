@@ -148,9 +148,35 @@
           "wall_with_boxes_s": 117.6,
           "suites": "2661 + 797 passed; test_a_kill_reaches_what_the_child_started failed once under load, passed 3/3 alone",
           "known_gap": "a boxes job that fails after the painted scan is up stays failed; the build reads complete without the box model and nothing retries it automatically"
+        },
+        {
+          "date": "2026-10-19",
+          "change": "discovery: VertexIndex prefilter for claimed/structure/owners, height slab for tops, sorted grouping for pieces, cached name words and box ranges",
+          "bench_discovery_alone": {
+            "before_s": 22.9,
+            "after_s": 14.8
+          },
+          "output": "185 nodes byte-identical"
+        },
+        {
+          "date": "2026-10-19",
+          "tried": "label one object per call (32 in flight)",
+          "result": "no faster (20.7 s vs 17.7 s), one run stalled 123 s and fell back to local labels, names agreed 26/29 vs 28/29 run-to-run; rejected"
+        },
+        {
+          "date": "2026-10-19",
+          "change": "paint ahead: painted scan keyed on geometry alone (paint_key), started in a thread as soon as discovery returns on a scan's first processing, flock-shared with the texture job; process job joins it last; texture queued before display",
+          "finding": "a fresh upload's display job exports the scene through Blender (28 s) on the same lane as textures; earlier warm runs reused an old export and understated a fresh upload by ~27 s",
+          "run": "threaded worker, as-new copy, warm detection cache",
+          "painted_scan_published_s": 70.1,
+          "display_done_s": 98.4,
+          "boxes_published_s": 140.7,
+          "discovery_s": 17.1,
+          "labelling_s": 25.2,
+          "painting_s": 52
         }
       ],
-      "next": "77.5 s to painted scan. Exact cuts in progress: discovery spatial index + merge caches. Then measure a photo-count trade-off for the painted scan."
+      "next": "70.1 s to painted scan on a fresh upload. Next: photo-count trade-off for the painting (occlusion+exposure+bake ~18 s scale with photos), then Blender atlas packing."
     },
     {
       "id": 3,

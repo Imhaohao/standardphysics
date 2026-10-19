@@ -2011,6 +2011,7 @@ export interface TextureBuild {
   coverage_mask_urls: string[];
   frames_used: number | null;
   glb_url: string | null;
+  paint_key: string | null;
   scan_glb_url: string | null;
   seconds: number | null;
 }

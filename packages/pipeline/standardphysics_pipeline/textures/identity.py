@@ -44,16 +44,27 @@ def box_bake_key(bake_graph: SceneGraph, manifest_sha256: str) -> str:
     return _key(BOX_BAKE_VERSION, bake_graph, manifest_sha256)
 
 
+def paint_key(bake_graph: SceneGraph, manifest_sha256: str) -> str:
+    """Names the painted scan alone, which reads only where things are and never what they look like.
+
+    Labelling sets each node's appearance after discovery has placed it, so a key
+    without appearance is known as soon as discovery is done, and the scan can be
+    painted while the labels are still being written.
+    """
+    return _key(SCAN_PAINT_VERSION, bake_graph, manifest_sha256, _geometry_fingerprint)
+
+
 def texture_build_key(bake_graph: SceneGraph, manifest_sha256: str) -> str:
     return _key(TEXTURE_PIPELINE_VERSION, bake_graph, manifest_sha256)
 
 
-def _key(version: str, bake_graph: SceneGraph, manifest_sha256: str) -> str:
+def _key(version: str, bake_graph: SceneGraph, manifest_sha256: str, fingerprint=None) -> str:
+    fingerprint = fingerprint or _placed_fingerprint
     payload = {
         "version": version,
         "manifest": manifest_sha256,
         "capture_to_room": _rounded(bake_graph.capture_to_room.m) if bake_graph.capture_to_room else None,
-        "nodes": sorted(_placed_fingerprint(node) for node in bake_graph.nodes),
+        "nodes": sorted(fingerprint(node) for node in bake_graph.nodes),
     }
     encoded = json.dumps(payload, separators=(",", ":"), sort_keys=True)
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
@@ -86,6 +97,11 @@ def _portal_fingerprints(graph: SceneGraph) -> list:
 
 def _placed_fingerprint(node: SceneNode) -> str:
     parts = [str(node.id), node.kind, node.raw_category, _rounded(node.dimensions.as_tuple()), _rounded(node.transform.m), _visual_parts(node)]
+    return json.dumps(parts, separators=(",", ":"))
+
+
+def _geometry_fingerprint(node: SceneNode) -> str:
+    parts = [str(node.id), node.kind, node.raw_category, _rounded(node.dimensions.as_tuple()), _rounded(node.transform.m)]
     return json.dumps(parts, separators=(",", ":"))
 
 

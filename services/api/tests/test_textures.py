@@ -426,3 +426,42 @@ def test_the_painted_scan_is_published_before_the_boxes_are_baked(make_client, m
         assert after['coverage']['textured_fraction'] == 0.5
         with client.app.state.database.connect() as connection:
             assert connection.execute("SELECT state FROM jobs WHERE kind='boxes'").fetchone()[0] == 'done'
+
+
+def test_a_scan_painted_ahead_of_its_texture_job_is_not_painted_twice(make_client, monkeypatch):
+    """Discovery hands over the layout while labels are still being written; the texture job takes that painting."""
+    from uuid import UUID
+
+    from standardphysics_api import textures
+
+    painted = []
+
+    def painting(store, scan_id, graph, inputs, out_dir):
+        painted.append(scan_id)
+        return bool(shutil.copyfile(FIXTURE_DATA / 'shop.glb', out_dir / 'scan.glb'))
+
+    monkeypatch.setattr(textures, '_paint_the_scan', painting)
+    with make_client(stages=no_blender_stages(bake_textures=_bake)) as client:
+        scan_id = create_scan(client)
+        lidar = json.dumps({'parts': [{
+            'id': '00000000-0000-0000-0000-000000000001',
+            'transform': Mat4.identity().m,
+            'vertices': [0, 0, 0, 1, 0, 0, 0, 1, 0],
+            'triangles': [0, 1, 2],
+        }]}).encode()
+        assert put_artifact(client, scan_id, 'lidar-mesh', lidar, 'lidar_mesh').status_code == 201
+        _photos(client, scan_id)
+        discovered = build_graph().model_copy(update={'scan_id': UUID(scan_id), 'capture_to_room': Mat4.identity()})
+
+        ahead = textures.paint_ahead(client.app.state.database, client.app.state.store, UUID(scan_id), discovered)
+        ahead.join()
+        with client.app.state.database.transaction() as connection:
+            revisions_repo.save_revision(connection, discovered, source='ingest')
+        assert textures.paint_ahead(client.app.state.database, client.app.state.store, UUID(scan_id), discovered) is None
+        client.get(f'/api/scans/{scan_id}/textures')
+        drain(client)
+
+        build = client.get(f'/api/scans/{scan_id}/textures').json()['build']
+        assert len(painted) == 1
+        assert build['scan_glb_url'].endswith(f"/{build['paint_key']}/scan.glb")
+        assert client.get(build['scan_glb_url']).status_code == 200

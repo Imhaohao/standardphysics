@@ -25,7 +25,7 @@ from standardphysics_pipeline.textures.surface_materials import room_owners
 
 from . import repository_jobs as jobs_repo
 from .settings import Settings
-from .textures import build_dir, build_prefix
+from .textures import build_dir, build_prefix, painted_scan_path
 
 FURNITURE = "furniture"
 FURNITURE_CLASSES = frozenset({"chair", "sofa", "table", "bed", "stool"})
@@ -199,7 +199,8 @@ def run_furniture(database, store, scan_id: uuid.UUID, build_id: int, runtime: F
     ]
     output = directory / "scan-furniture.glb"
     if accepted:
-        _accepted_mesh(directory / "scan.glb", graph, accepted, output)
+        painted = painted_scan_path(store, scan_id, TextureBuild.model_validate_json(row["result_json"]))
+        _accepted_mesh(painted, graph, accepted, output)
     report = {"scan_id": str(scan_id), "build_id": row["build_key"], "objects": reports, "accepted": len(accepted)}
     (directory / "furniture.json").write_text(json.dumps(report, indent=2) + "\n")
     if accepted:

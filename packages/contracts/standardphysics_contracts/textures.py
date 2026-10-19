@@ -141,6 +141,9 @@ class TextureBuild(BaseModel):
     coverage: TextureCoverage | None = None
     frames_used: int | None = None
     seconds: float | None = None
+    paint_key: str | None = None
+    """Which painting of the scan this build carries. It names the layout's geometry
+    alone, so a painting started before labelling finished still fits the build."""
     box_key: str | None = None
     """Which bake of the photographed boxes this build carries. Builds with the same
     layout and photos share one bake, so a build that changes only the painted scan

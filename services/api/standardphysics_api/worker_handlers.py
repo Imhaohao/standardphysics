@@ -37,7 +37,7 @@ from .settings import Settings
 from .simulations import SIMULATE, queue_simulation, run_simulation
 from .stages import DiscoveryOutcome, Stages, configured_stages
 from .store import ArtifactStore, ScanQuota
-from .textures import BOXES, TEXTURE, maybe_queue_texture, queue_boxes, run_boxes, run_texture
+from .textures import BOXES, TEXTURE, maybe_queue_texture, paint_ahead, queue_boxes, run_boxes, run_texture
 from .worker_child import in_own_process
 from .worker_pulse import RunningJob
 
@@ -175,6 +175,7 @@ class JobHandlers:
         # With a declared manifest every state except not_started means the
         # pairing is unfilled or broken; such a run never counts as semantic.
         run_discovery = not declared or association_state == "not_started"
+        painting: list = []
         graph, outcome = self.stages.ingest_with_report(
             self.store.artifact_path(scan_id, room_json.id),
             scan_id,
@@ -182,6 +183,7 @@ class JobHandlers:
             poses_path=poses_path,
             lidar_mesh_path=lidar_mesh_path,
             run_discovery=run_discovery,
+            on_discovered=lambda found: painting.append(paint_ahead(self.database, self.store, scan_id, found)),
         )
         if not run_discovery:
             outcome = DiscoveryOutcome(deferred_reason=association_failure or association_state)
@@ -207,6 +209,7 @@ class JobHandlers:
                     ),
                 )
         self._assess(scan_id=scan_id, revision=graph.revision)
+        _finish_painting(painting)
         return self._newer_bundle_is_due(scan_id, consumed)
 
     def _with_floor_coverage(self, scan_id: uuid.UUID, graph):
@@ -257,6 +260,8 @@ class JobHandlers:
         self._checkpoint()
         with self.database.transaction() as connection:
             revisions_repo.save_assessment(connection, assessment)
+        # Ahead of display, so the painted scan the owner sees is not queued behind the stills.
+        maybe_queue_texture(self.database, self.store, self, scan_id, revision)
         with self.database.transaction() as connection:
             repo.set_state(connection, scan_id, "ready")
             # A fresh assessment has fresh finding ids, so the stills drawn for
@@ -264,7 +269,6 @@ class JobHandlers:
             # rather than once means a re-check redraws them.
             jobs_repo.queue_job_again(connection, scan_id, DISPLAY, revision)
         self._tell_results_ready(scan_id)
-        maybe_queue_texture(self.database, self.store, self, scan_id, revision)
         self._maybe_queue_deep_simulation(scan_id, revision, scenario is not None)
         self.wake()
         return False
@@ -381,6 +385,17 @@ class JobHandlers:
             return "room.metadata"
         head = self.store.artifact_path(scan_id, mapping.id).read_bytes()[:8]
         return "room.metadata.plist" if head.startswith(b"bplist") else "room.metadata.json"
+
+
+def _finish_painting(painting: list) -> None:
+    """Wait for the scan painted ahead of its texture job, after everything the owner waits on is saved.
+
+    A job run in a process of its own ends that process when it returns, and a
+    process shutting down refuses the thread pools the painting works through.
+    """
+    for thread in painting:
+        if thread is not None:
+            thread.join()
 
 
 def bake_photos(settings: Settings, scan_id: uuid.UUID, build_id: int) -> None:
