@@ -344,6 +344,11 @@ export interface components {
             /** Format: uuid */
             scan_id: string;
             sha256: string;
+            /**
+             * @description True only when the server re-hashed the stored object and it matched `sha256`;
+             *     false means `sha256` is the client's claim (objects above the verification limit).
+             */
+            sha256_verified: boolean;
             /** Format: int64 */
             size_bytes: number;
             /** Format: uuid */

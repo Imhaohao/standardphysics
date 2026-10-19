@@ -16,7 +16,7 @@ use crate::error::{ApiError, ApiResult, ErrorBody};
 use crate::idempotency;
 use crate::scans::repo::get_owned_scan;
 use crate::state::AppState;
-use crate::storage::UploadedPart;
+use crate::storage::{NoSuchUpload, UploadedPart};
 
 fn storage_error(err: anyhow::Error) -> ApiError {
     ApiError::Storage(format!("{err:#}"))
@@ -211,7 +211,8 @@ async fn discard_bad_object(state: &AppState, upload: &UploadRecord, reason: Str
     ApiError::Unprocessable(reason)
 }
 
-async fn verify_object(state: &AppState, upload: &UploadRecord, sha256: &str) -> ApiResult<()> {
+/// Returns whether the server hashed the object itself; large objects are only size-checked.
+async fn verify_object(state: &AppState, upload: &UploadRecord, sha256: &str) -> ApiResult<bool> {
     let size = state
         .storage
         .object_size(&upload.s3_key)
@@ -225,7 +226,7 @@ async fn verify_object(state: &AppState, upload: &UploadRecord, sha256: &str) ->
         return Err(discard_bad_object(state, upload, reason).await);
     }
     if size > state.cfg.storage.verify_max_bytes {
-        return Ok(());
+        return Ok(false);
     }
     let actual = state
         .storage
@@ -236,7 +237,45 @@ async fn verify_object(state: &AppState, upload: &UploadRecord, sha256: &str) ->
         let reason = "sha256 does not match the uploaded bytes".to_string();
         return Err(discard_bad_object(state, upload, reason).await);
     }
-    Ok(())
+    Ok(true)
+}
+
+async fn seal_object(state: &AppState, upload: &UploadRecord) -> ApiResult<()> {
+    let listed = state
+        .storage
+        .list_parts(&upload.s3_key, &upload.s3_upload_id)
+        .await;
+    match listed {
+        Ok(parts) => {
+            let etags = ordered_etags(&parts, upload)?;
+            state
+                .storage
+                .complete_multipart(&upload.s3_key, &upload.s3_upload_id, &etags)
+                .await
+                .map_err(storage_error)
+        }
+        Err(err) if err.is::<NoSuchUpload>() => require_sealed_object(state, upload).await,
+        Err(err) => Err(storage_error(err)),
+    }
+}
+
+/// A previous complete reached storage but not the database; the finished object is the proof.
+async fn require_sealed_object(state: &AppState, upload: &UploadRecord) -> ApiResult<()> {
+    let size = state
+        .storage
+        .object_size(&upload.s3_key)
+        .await
+        .map_err(|_| {
+            ApiError::Conflict("upload no longer exists in storage; start a new upload".into())
+        })?;
+    if size as i64 == upload.size_bytes {
+        return Ok(());
+    }
+    let reason = format!(
+        "stored object is {size} bytes, expected {}",
+        upload.size_bytes
+    );
+    Err(discard_bad_object(state, upload, reason).await)
 }
 
 async fn ingest_room(state: &AppState, upload: &UploadRecord) -> ApiResult<()> {
@@ -279,22 +318,13 @@ pub async fn complete_upload(
     if !valid_sha256(&sha256) {
         return Err(ApiError::bad_request("sha256 must be 64 hex characters"));
     }
-    let parts = state
-        .storage
-        .list_parts(&upload.s3_key, &upload.s3_upload_id)
-        .await
-        .map_err(storage_error)?;
-    let etags = ordered_etags(&parts, &upload)?;
-    state
-        .storage
-        .complete_multipart(&upload.s3_key, &upload.s3_upload_id, &etags)
-        .await
-        .map_err(storage_error)?;
-    verify_object(&state, &upload, &sha256).await?;
+    seal_object(&state, &upload).await?;
+    let sha256_verified = verify_object(&state, &upload, &sha256).await?;
     if is_room(&upload) {
         ingest_room(&state, &upload).await?;
     }
-    let artifact = repo::finish_upload_with_artifact(&state.db, &upload, &sha256).await?;
+    let artifact =
+        repo::finish_upload_with_artifact(&state.db, &upload, &sha256, sha256_verified).await?;
     Ok(Json(artifact))
 }
 

@@ -294,13 +294,104 @@ async fn a_losing_concurrent_complete_never_records_a_second_artifact() {
         .await
         .unwrap();
     stale.state = "open".into();
-    let again =
-        sp_server::uploads::repo::finish_upload_with_artifact(&app.db, &stale, &sha256_hex(&data))
-            .await
-            .unwrap();
+    let again = sp_server::uploads::repo::finish_upload_with_artifact(
+        &app.db,
+        &stale,
+        &sha256_hex(&data),
+        true,
+    )
+    .await
+    .unwrap();
     assert_eq!(again.id.to_string(), artifact_id);
     let (_, artifacts) = app
         .get(&token, &format!("/v1/scans/{scan_id}/artifacts"))
         .await;
     assert_eq!(artifacts.as_array().unwrap().len(), 1);
+}
+
+#[tokio::test]
+async fn sha256_verified_is_true_only_when_the_server_hashed_the_object() {
+    let app = TestApp::start_with(common::TestOptions {
+        verify_max_bytes: Some(1024),
+        ..Default::default()
+    })
+    .await;
+    let token = app.register("verified@example.com").await;
+    let scan_id = app.create_scan(&token).await;
+
+    let small = payload(1000);
+    let (_, small_artifact) =
+        common::try_upload_artifact(&app, &token, &scan_id, "photo", &small).await;
+    assert_eq!(small_artifact["sha256_verified"], true);
+
+    let large = payload(2000);
+    let (status, large_artifact) =
+        common::try_upload_artifact(&app, &token, &scan_id, "photo", &large).await;
+    assert_eq!(status, StatusCode::OK, "{large_artifact}");
+    assert_eq!(large_artifact["sha256"], sha256_hex(&large));
+    assert_eq!(large_artifact["sha256_verified"], false);
+
+    let (_, listed) = app
+        .get(&token, &format!("/v1/scans/{scan_id}/artifacts"))
+        .await;
+    let flags: Vec<bool> = listed
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|a| a["sha256_verified"].as_bool().unwrap())
+        .collect();
+    assert_eq!(flags, vec![true, false]);
+}
+
+#[tokio::test]
+async fn complete_recovers_when_storage_finished_but_the_database_did_not() {
+    let app = TestApp::start().await;
+    let token = app.register("recover@example.com").await;
+    let scan_id = app.create_scan(&token).await;
+    let data = payload(MIB);
+    let upload = create_upload(&app, &token, &scan_id, data.len()).await;
+    let upload_id = upload["id"].as_str().unwrap();
+    let urls = presign(&app, &token, &scan_id, upload_id, &[1]).await;
+    put_part(&app, &urls[0], data.clone()).await;
+
+    let scan = uuid::Uuid::parse_str(&scan_id).unwrap();
+    let record = sp_server::uploads::repo::get_upload(&app.db, scan, upload_id.parse().unwrap())
+        .await
+        .unwrap();
+    let parts = app
+        .state
+        .storage
+        .list_parts(&record.s3_key, &record.s3_upload_id)
+        .await
+        .unwrap();
+    let etags: Vec<(i32, String)> = parts.into_iter().map(|p| (p.part_number, p.etag)).collect();
+    app.state
+        .storage
+        .complete_multipart(&record.s3_key, &record.s3_upload_id, &etags)
+        .await
+        .unwrap();
+    assert_eq!(app.s3.open_multipart_count(), 0);
+
+    let path = format!("/v1/scans/{scan_id}/uploads/{upload_id}/complete");
+    let (status, artifact) = app
+        .post(&token, &path, json!({"sha256": sha256_hex(&data)}))
+        .await;
+    assert_eq!(status, StatusCode::OK, "{artifact}");
+    assert_eq!(artifact["size_bytes"], data.len());
+    assert_eq!(artifact["sha256_verified"], true);
+}
+
+#[tokio::test]
+async fn complete_with_a_vanished_upload_and_no_object_conflicts() {
+    let app = TestApp::start().await;
+    let token = app.register("vanished@example.com").await;
+    let scan_id = app.create_scan(&token).await;
+    let upload = create_upload(&app, &token, &scan_id, MIB).await;
+    let upload_id = upload["id"].as_str().unwrap();
+    app.s3.store.lock().unwrap().uploads.clear();
+    let path = format!("/v1/scans/{scan_id}/uploads/{upload_id}/complete");
+    let (status, _) = app
+        .post(&token, &path, json!({"sha256": sha256_hex(b"x")}))
+        .await;
+    assert_eq!(status, StatusCode::CONFLICT);
 }

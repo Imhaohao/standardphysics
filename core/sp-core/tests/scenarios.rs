@@ -287,3 +287,35 @@ fn seat_geometry_from_the_mesh_narrows_the_route() {
     let f = finding(&findings, "ADA-403.5.1-clear-width", "route:fountain");
     assert_eq!(f.status, Status::Fail, "{}", f.message);
 }
+
+#[test]
+fn updating_one_storey_keeps_the_route_findings_of_the_others() {
+    let Some(mut engine) = common::repo_engine() else { return };
+    let ground = pinched_corridor(inches(30.0));
+    let mut upper = rect_room("upper-corridor", RoomKind::Corridor, 1.5, 8.0);
+    upper.storey = 1;
+    upper.openings.push(south_door(&upper, "upper-entry", 0.75, inches(38.0)));
+    upper.objects.push(object(
+        "upper-fountain",
+        "drinking_fountain",
+        Vec2::new(0.75, 7.75),
+        Vec3::new(0.5, 0.9, 0.4),
+        0.0,
+    ));
+    engine.set_scene(Scene { rooms: vec![ground.clone(), upper.clone()], ..Scene::default() });
+    engine.evaluate_all();
+    let route_findings =
+        |engine: &Engine, subject: &str| engine.findings().into_iter().filter(|f| f.subject_id == subject).count();
+    let ground_routes = route_findings(&engine, "route:fountain");
+    let upper_routes = route_findings(&engine, "route:upper-fountain");
+    assert!(ground_routes > 0 && upper_routes > 0);
+
+    upper.name = "renamed".into();
+    engine.update_room(upper);
+    assert_eq!(route_findings(&engine, "route:fountain"), ground_routes, "other storey kept");
+    assert_eq!(route_findings(&engine, "route:upper-fountain"), upper_routes, "updated storey rebuilt");
+
+    engine.update_room(ground);
+    assert_eq!(route_findings(&engine, "route:fountain"), ground_routes);
+    assert_eq!(route_findings(&engine, "route:upper-fountain"), upper_routes, "other storey kept");
+}

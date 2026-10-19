@@ -144,3 +144,29 @@ async fn reconnect_restores_state_from_the_database() {
         "partial updates merge instead of replacing"
     );
 }
+
+#[tokio::test]
+async fn release_never_drops_a_session_another_connection_just_joined() {
+    let app = TestApp::start().await;
+    let token = app.register("hub@example.com").await;
+    let scan_id = uuid::Uuid::parse_str(&app.create_scan(&token).await).unwrap();
+    let hub = &app.state.hub;
+    for _ in 0..200 {
+        let (first, first_updates) = hub.join(&app.db, scan_id).await.unwrap();
+        drop(first_updates);
+        let (second, ()) = tokio::join!(hub.join(&app.db, scan_id), hub.release(scan_id));
+        let (second, _second_updates) = second.unwrap();
+        let current = hub
+            .peek(scan_id)
+            .await
+            .expect("session with a subscriber stays registered");
+        assert!(
+            std::sync::Arc::ptr_eq(&second, &current),
+            "second connection must share the registered session"
+        );
+        drop(first);
+        drop(_second_updates);
+        hub.release(scan_id).await;
+        assert!(hub.peek(scan_id).await.is_none());
+    }
+}

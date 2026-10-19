@@ -30,6 +30,8 @@ pub struct Engine {
     meshes: HashMap<String, ScanMesh>,
     /// Findings per subject id, from the last evaluation that touched the subject.
     findings: BTreeMap<String, Vec<Finding>>,
+    /// Storey of each subject in `findings` (the site is not tied to one).
+    finding_storeys: HashMap<String, i32>,
 }
 
 impl Engine {
@@ -47,6 +49,7 @@ impl Engine {
             analyses: HashMap::new(),
             meshes: HashMap::new(),
             findings: BTreeMap::new(),
+            finding_storeys: HashMap::new(),
         })
     }
 
@@ -75,6 +78,7 @@ impl Engine {
         self.scene = scene;
         self.analyses.clear();
         self.findings.clear();
+        self.finding_storeys.clear();
     }
 
     /// Analyse every storey and evaluate every rule on every applicable subject.
@@ -82,6 +86,7 @@ impl Engine {
         self.analyses = self.scene.storeys().into_iter().map(|s| (s, self.analyse(s))).collect();
         let subjects = enumerate_subjects(&self.scene, &self.analyses, &self.tagging);
         self.findings.clear();
+        self.finding_storeys.clear();
         self.evaluate_subjects(&subjects);
         self.report()
     }
@@ -129,19 +134,24 @@ impl Engine {
     }
 
     fn drop_storey_findings(&mut self, storey: i32) {
-        let is_on_storey =
-            |f: &Finding| f.room_id.as_deref().and_then(|id| self.scene.room(id)).is_none_or(|r| r.storey == storey);
-        self.findings.retain(|id, findings| id == SITE_ID || !findings.iter().all(is_on_storey));
+        let stale: Vec<String> =
+            self.finding_storeys.iter().filter(|(_, s)| **s == storey).map(|(id, _)| id.clone()).collect();
+        for id in stale {
+            self.finding_storeys.remove(&id);
+            self.findings.remove(&id);
+        }
     }
 
     /// Evaluate the given subjects, then the site (whose counts read the subjects' outcomes).
     fn evaluate_subjects(&mut self, subjects: &[Subject]) {
         let site = site_subject();
         let rules = rule_index(&self.packs);
+        let element_subjects = || subjects.iter().filter(|s| s.reference != SubjectRef::Site);
+        self.finding_storeys.extend(element_subjects().map(|s| (s.id.clone(), s.storey)));
         let element_findings = {
             let ctx = EvalContext::new(&self.scene, &self.catalog, &self.analyses, &self.options);
             let evaluator = Evaluator::new(&ctx, &site);
-            evaluate_each(&evaluator, &rules, subjects.iter().filter(|s| s.reference != SubjectRef::Site))
+            evaluate_each(&evaluator, &rules, element_subjects())
         };
         self.findings.extend(element_findings);
         let outcomes = self.outcomes();
