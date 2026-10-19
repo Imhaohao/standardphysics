@@ -53,7 +53,7 @@ async fn phone_room_update_returns_findings_to_phone_and_viewer() {
     );
     assert_eq!(on_phone["room_id"], "r1");
     assert_eq!(on_phone["seq"], 1);
-    assert_eq!(width_status(&on_phone["findings"], "r1"), "fail");
+    assert_eq!(width_status(&on_phone["findings"], "r1"), "needs_info");
     assert!(on_phone["summary"]["total"]["fail"].as_u64().unwrap() >= 1);
 
     let on_viewer = next_of_type(&mut viewer, "findings").await;
@@ -131,7 +131,7 @@ async fn reconnect_restores_state_from_the_database() {
     let mut resumed = connect_live(&app, &token, &scan_id, "writer").await;
     let hello = next_of_type(&mut resumed, "hello").await;
     assert_eq!(hello["rooms"], json!(["r1"]));
-    assert_eq!(width_status(&hello["findings"], "r1"), "fail");
+    assert_eq!(width_status(&hello["findings"], "r1"), "needs_info");
 
     let observations: serde_json::Value =
         sqlx::query_scalar("SELECT observations FROM scan_rooms WHERE room_id = 'r1'")

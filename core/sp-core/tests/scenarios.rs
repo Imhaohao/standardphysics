@@ -6,7 +6,7 @@ use sp_core::Engine;
 use sp_core::geometry::{Polygon2, Vec2, Vec3};
 use sp_core::mesh::{MeshClass, MeshPart, ScanMesh};
 use sp_core::rules::{Finding, Status};
-use sp_core::scene::{Object, ObjectSource, Opening, OpeningKind, Room, RoomKind, Scene, Wall};
+use sp_core::scene::{Object, ObjectSource, Opening, OpeningKind, Room, RoomConnection, RoomKind, Scene, Wall};
 use sp_core::units::{inches, to_inches};
 
 /// Rectangular room with walls w0 (south, y = min) .. w3 (west), going counter-clockwise.
@@ -86,9 +86,27 @@ fn thirty_six_inch_door_passes_clear_width() {
 }
 
 #[test]
-fn thirty_inch_door_fails_clear_width() {
+fn narrow_door_with_nothing_scanned_behind_it_is_a_question() {
     let Some((_, findings)) = evaluate(vec![shop_with_door(inches(30.0))]) else { return };
-    assert_eq!(finding(&findings, "ADA-404.2.3-clear-width", "entry").status, Status::Fail);
+    let f = finding(&findings, "ADA-404.2.3-clear-width", "entry");
+    assert_eq!(f.status, Status::NeedsInfo, "{}", f.message);
+}
+
+/// A shop whose entry door leads into a scanned hall, so the door is known to be walked through.
+fn shop_and_hall(frame_width: f64) -> Option<Engine> {
+    let mut engine = common::repo_engine()?;
+    let rooms = vec![shop_with_door(frame_width), rect_room("hall", RoomKind::Corridor, 6.0, 2.0)];
+    let connections =
+        vec![RoomConnection { from_room: "shop".into(), to_room: "hall".into(), opening_id: Some("entry".into()) }];
+    engine.set_scene(Scene { rooms, connections, ..Scene::default() });
+    engine.evaluate_all();
+    Some(engine)
+}
+
+#[test]
+fn thirty_inch_door_between_scanned_rooms_fails_clear_width() {
+    let Some(engine) = shop_and_hall(inches(30.0)) else { return };
+    assert_eq!(finding(&engine.findings(), "ADA-404.2.3-clear-width", "entry").status, Status::Fail);
 }
 
 #[test]
@@ -188,7 +206,7 @@ fn unknowns_are_never_reported_as_pass() {
 
 #[test]
 fn stricter_jurisdiction_governs() {
-    let Some((engine, _)) = evaluate(vec![shop_with_door(inches(30.0))]) else { return };
+    let Some(engine) = shop_and_hall(inches(30.0)) else { return };
     let report = engine.report();
     let governing = report
         .governing

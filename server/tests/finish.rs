@@ -61,7 +61,7 @@ async fn finish_stores_the_assessment_and_pushes_the_report() {
             .map(|f| f["status"].clone())
             .unwrap()
     };
-    assert_eq!(status_of("r1"), "fail");
+    assert_eq!(status_of("r1"), "needs_info");
     assert_eq!(status_of("r2"), "pass");
     assert!(
         report["summary"]["governing_counts"]["fail"]
@@ -323,7 +323,7 @@ async fn uploaded_room_is_applied_like_a_live_room_and_counted_at_finish() {
         .into_iter()
         .find(|f| f["rule_id"] == "ADA-404.2.3-clear-width")
         .map(|f| f["status"].clone());
-    assert_eq!(verdict, Some(json!("fail")));
+    assert_eq!(verdict, Some(json!("needs_info")));
 }
 
 #[tokio::test]
