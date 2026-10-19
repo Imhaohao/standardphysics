@@ -19,6 +19,8 @@ outline is the object.
 from __future__ import annotations
 
 import numpy as np
+from scipy.sparse import coo_matrix
+from scipy.sparse.csgraph import connected_components
 
 from .detect import Detection
 
@@ -42,33 +44,24 @@ def voxel_components(points: np.ndarray, voxel: float | None = None) -> np.ndarr
         return np.zeros(0, dtype=np.int64)
     cells = np.floor(points / (CLUSTER_VOXEL if voxel is None else voxel)).astype(np.int64)
     unique, inverse = np.unique(cells, axis=0, return_inverse=True)
-    parent = np.arange(len(unique))
-    lookup = {tuple(cell): index for index, cell in enumerate(unique)}
+    keys = _keys(unique)
+    firsts, seconds = [], []
     for offset in NEIGHBOURS:
-        _join_along(parent, unique, lookup, offset)
-    roots = np.asarray([_root(parent, index) for index in range(len(unique))])
-    return roots[inverse]
+        wanted = _keys(unique + np.asarray(offset, dtype=np.int64))
+        slot = np.clip(np.searchsorted(keys, wanted), 0, len(keys) - 1)
+        found = keys[slot] == wanted
+        firsts.append(np.flatnonzero(found))
+        seconds.append(slot[found])
+    first, second = np.concatenate(firsts), np.concatenate(seconds)
+    touching = coo_matrix((np.ones(len(first), dtype=np.int8), (first, second)), shape=(len(unique), len(unique)))
+    _, labels = connected_components(touching, directed=False)
+    return labels[inverse.reshape(-1)].astype(np.int64)
 
 
-def _join_along(parent: np.ndarray, unique: np.ndarray, lookup: dict, offset: tuple[int, int, int]) -> None:
-    shifted = unique + np.asarray(offset, dtype=np.int64)
-    for index, cell in enumerate(shifted):
-        neighbour = lookup.get(tuple(cell))
-        if neighbour is not None:
-            _union(parent, index, neighbour)
-
-
-def _root(parent: np.ndarray, index: int) -> int:
-    while parent[index] != index:
-        parent[index] = parent[parent[index]]
-        index = parent[index]
-    return int(index)
-
-
-def _union(parent: np.ndarray, first: int, second: int) -> None:
-    first_root, second_root = _root(parent, first), _root(parent, second)
-    if first_root != second_root:
-        parent[first_root] = second_root
+def _keys(cells: np.ndarray) -> np.ndarray:
+    """One sortable number per cell. `np.unique` already sorted the cells, so their keys come out sorted too."""
+    shifted = cells + (1 << 20)
+    return (shifted[:, 0] << 42) | (shifted[:, 1] << 21) | shifted[:, 2]
 
 
 SURFACE_BIN = 0.015

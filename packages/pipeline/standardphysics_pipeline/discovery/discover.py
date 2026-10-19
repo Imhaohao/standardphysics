@@ -165,7 +165,7 @@ def discover_objects(inputs: DiscoveryInputs, *, transport: Transport | None = N
     detections, failures = _detect_all(
         cameras, inputs.frame_paths, transport, _cache_for(inputs), orientations, recorded=requests,
     )
-    buffers = {camera.frame_id: depth_buffer(camera, points) for camera in cameras}
+    buffers = _depth_buffers(cameras, points)
     views: list[PhotoView] = [(camera, detections.get(camera.frame_id, []), buffers[camera.frame_id])
                               for camera in cameras]
     removal = without_people(points, graph, views)
@@ -234,7 +234,7 @@ def _carved_objects(
     detector drew.
     """
     points, people = removal.points, removal.volumes
-    clear_view = {camera.frame_id: depth_buffer(camera, points) for camera in cameras}
+    clear_view = _depth_buffers(cameras, points)
     unclaimed = points[~claimed_by_any(points, graph)]
     candidates = _carve_all(cameras, detections, unclaimed, clear_view)
     found = [
@@ -436,17 +436,30 @@ def _carve_all(
     points: np.ndarray,
     buffers: dict[str, np.ndarray],
 ) -> list[Candidate]:
-    candidates = []
-    for camera in cameras:
+    def carved_in(camera: PhotoCamera) -> list[Candidate]:
         wanted = [one for one in detections.get(camera.frame_id, []) if not one.is_person and not one.is_attachable_target]
         if not wanted:
-            continue
+            return []
         view = FrameView.of(points, camera, buffers[camera.frame_id])
-        for detection in wanted:
-            box = carve(view, detection)
-            if box is not None and box.volume >= MIN_VOLUME:
-                candidates.append(Candidate(detection=detection, box=box))
-    return candidates
+        boxes = [(detection, carve(view, detection)) for detection in wanted]
+        return [Candidate(detection=detection, box=box) for detection, box in boxes if box is not None and box.volume >= MIN_VOLUME]
+
+    return [candidate for found in _per_photo(carved_in, cameras) for candidate in found]
+
+
+PHOTO_WORKERS = 8
+"""Photos worked on at once. Each photo's depth buffer and carving read the mesh and change nothing shared."""
+
+
+def _per_photo(work, cameras: list[PhotoCamera]) -> list:
+    """`work` done for every photo, several at once, with the answers in the photos' order."""
+    with concurrent.futures.ThreadPoolExecutor(max_workers=PHOTO_WORKERS) as pool:
+        return list(pool.map(work, cameras))
+
+
+def _depth_buffers(cameras: list[PhotoCamera], points: np.ndarray) -> dict[str, np.ndarray]:
+    buffers = _per_photo(lambda camera: depth_buffer(camera, points), cameras)
+    return {camera.frame_id: buffer for camera, buffer in zip(cameras, buffers, strict=True)}
 
 
 def _viewpoints(

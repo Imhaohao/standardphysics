@@ -105,9 +105,40 @@
           "texture_s": 64.1,
           "painted_scan_s": 63.3,
           "box_model_s": 57.4
+        },
+        {
+          "date": "2026-10-18",
+          "tried": "hand Blender's unwrap less of the scan (BLENDER_FACE_FACTOR 6 -> 2/3/4)",
+          "result": "Blender part 12.7 -> 7.1 s and Share Tea quality held, but test_thinning_a_patched_scan_keeps_its_surface (test1, real scan) fails below 6x: 96.2% of area kept vs the 97% bar. Reverted; unwrap unchanged at ~14 s.",
+          "also": "pure quadric thinning (0.46 s) left 3x the needle triangles and 17x the >5 cm surface error; rejected"
+        },
+        {
+          "date": "2026-10-18",
+          "change": "discovery: depth buffers and carving per photo on 8 threads; voxel clustering via scipy connected_components",
+          "bench_discovery_alone": {
+            "before_s": 29.9,
+            "after_threads_s": 25.9,
+            "after_components_s": 22.9
+          },
+          "output": "185 nodes byte-identical"
+        },
+        {
+          "date": "2026-10-18",
+          "run": "warm detection cache",
+          "wall_s": 90.7,
+          "process_s": 26.1,
+          "labelling_s": 20.4,
+          "discovery_s": 24.4,
+          "texture_s": 63.9,
+          "painted_scan_s": 63.1,
+          "box_model_s": 54.1
+        },
+        {
+          "date": "2026-10-18",
+          "note": "compute-box suite now runs with BLENDER on PATH; before this, Blender-gated tests were skipped there. Ran them separately on f318e51f: 85 + 45 passed."
         }
       ],
-      "next": "96.8 s; 60 s needs ~37 s more. Cores are now shared (box model beside painted scan slows both). Candidates: discovery carving 18 s and surface segmentation 8 s; painted scan unwrap 14 s (Blender process), photo bake 12 s, occlusion 8 s."
+      "next": "90.7 s. Texture is the critical path: painted scan and box model share 8 cores and slow each other ~50%. The owner view shows the painted scan first; letting it publish before the box model finishes is a contract change awaiting a decision."
     },
     {
       "id": 3,
