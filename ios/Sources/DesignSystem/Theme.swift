@@ -16,6 +16,12 @@ enum Theme {
         static let attention = Color(hex: 0x9A6200)
         static let gridMinor = Color(hex: 0xECEBE5)
         static let gridMajor = Color(hex: 0xE0DED6)
+        static let problemWash = Color(hex: 0xF7E4E1)
+        static let passWash = Color(hex: 0xE1EEE5)
+        static let attentionWash = Color(hex: 0xF6EBD5)
+        static let accentWash = Color(hex: 0xE2E9F3)
+        static let camera = Color(hex: 0x15171A)
+        static let cameraLine = Color(hex: 0x3A3F46)
     }
 
     enum Typography {
@@ -31,6 +37,37 @@ enum Theme {
         static let caption = Font.custom(bodyFamily, size: 13, relativeTo: .caption)
         static let measurement = Font.custom(figureFamily, size: 15, relativeTo: .callout).weight(.medium)
         static let measurementLarge = Font.custom(figureFamily, size: 22, relativeTo: .title3).weight(.bold)
+        static let measurementSmall = Font.custom(figureFamily, size: 12, relativeTo: .caption).weight(.medium)
+        static let hero = Font.custom(displayFamily, size: 64, relativeTo: .largeTitle).weight(.heavy)
+        static let label = Font.custom(bodyFamily, size: 15, relativeTo: .subheadline).weight(.bold)
+    }
+
+    enum Grid {
+        static let minor: CGFloat = 24
+        static let major: CGFloat = 120
+        static let grainDensity: CGFloat = 0.0035
+    }
+
+    enum Stroke {
+        static let hairline: CGFloat = 1
+        static let frame: CGFloat = 2
+        static let inkWeight: CGFloat = 3
+        static let inkBold: CGFloat = 5.5
+        static let inkFine: CGFloat = 1.6
+    }
+
+    enum Size {
+        static let control: CGFloat = 52
+        static let compactControl: CGFloat = 44
+        static let zoneBand: CGFloat = 18
+        static let readable: CGFloat = 560
+    }
+
+    enum Elevation {
+        static let cardColor = Color(hex: 0x1B1C1E).opacity(0.08)
+        static let cardRadius: CGFloat = 14
+        static let cardY: CGFloat = 4
+        static let ringColor = Color(hex: 0x1B1C1E).opacity(0.06)
     }
 
     enum Spacing {
@@ -44,10 +81,13 @@ enum Theme {
     enum Radius {
         static let control: CGFloat = 12
         static let card: CGFloat = 20
+        static let pill: CGFloat = 999
     }
 
     enum Motion {
         static let settle = Animation.timingCurve(0.22, 1, 0.36, 1, duration: 0.45)
+        static let inkDraw = Animation.timingCurve(0.45, 0.05, 0.25, 1, duration: 1.1)
+        static let inkDrawDelay: Double = 0.25
     }
 }
 
