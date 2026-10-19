@@ -9,6 +9,7 @@ use uuid::Uuid;
 use super::hub::LiveSession;
 use super::protocol::{validate_update, ClientMessage, RoomUpdate, ServerMessage};
 use super::rooms::{scan_accepts_updates, upsert_room};
+use super::tickets::consume_ticket;
 use crate::auth::extractor::{authenticate, bearer_from_headers};
 use crate::error::{ApiError, ApiResult};
 use crate::scans::repo::get_owned_scan;
@@ -19,7 +20,7 @@ const CLOSE_INTERNAL: CloseCode = 1011;
 
 #[derive(Deserialize)]
 pub struct LiveQuery {
-    pub token: Option<String>,
+    pub ticket: Option<String>,
     pub role: Option<String>,
 }
 
@@ -41,7 +42,7 @@ fn role_from(query: &LiveQuery) -> Role {
     security(("bearer" = [])),
     params(
         ("scan_id" = Uuid, Path),
-        ("token" = Option<String>, Query, description = "Session token, for browsers that cannot set headers"),
+        ("ticket" = Option<String>, Query, description = "Single-use ticket from POST /v1/scans/{scan_id}/live-ticket, for browsers that cannot set an Authorization header. Session tokens are never accepted in the query string."),
         ("role" = Option<String>, Query, description = "`viewer` for a read-only subscription"),
     ),
     responses((status = 101, description = "WebSocket upgrade. Client sends ClientMessage JSON text frames, server sends ServerMessage."))
@@ -53,15 +54,27 @@ pub async fn live_socket(
     headers: HeaderMap,
     upgrade: WebSocketUpgrade,
 ) -> ApiResult<Response> {
-    let token = bearer_from_headers(&headers)
-        .or_else(|| query.token.clone())
-        .ok_or(ApiError::Unauthorized)?;
-    let user_id = authenticate(&state, &token).await?;
+    let user_id = socket_user(&state, &headers, &query, scan_id).await?;
     get_owned_scan(&state.db, user_id, scan_id).await?;
     let role = role_from(&query);
     Ok(upgrade
         .max_message_size(MAX_MESSAGE_BYTES)
         .on_upgrade(move |socket| run_connection(state, scan_id, role, socket)))
+}
+
+async fn socket_user(
+    state: &AppState,
+    headers: &HeaderMap,
+    query: &LiveQuery,
+    scan_id: Uuid,
+) -> ApiResult<Uuid> {
+    if let Some(token) = bearer_from_headers(headers) {
+        return authenticate(state, &token).await;
+    }
+    let ticket = query.ticket.as_deref().ok_or(ApiError::Unauthorized)?;
+    consume_ticket(&state.db, ticket, scan_id)
+        .await?
+        .ok_or(ApiError::Unauthorized)
 }
 
 async fn send(socket: &mut WebSocket, message: &ServerMessage) -> bool {

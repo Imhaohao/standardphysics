@@ -91,9 +91,12 @@ pub async fn apple_sign_in(
     if !state.apple.is_configured() {
         return Err(ApiError::bad_request("apple sign-in is not configured"));
     }
+    if body.nonce.is_empty() {
+        return Err(ApiError::bad_request("nonce is required"));
+    }
     let identity = state
         .apple
-        .verify(&body.identity_token, body.nonce.as_deref())
+        .verify(&body.identity_token, &body.nonce)
         .await
         .map_err(|err| {
             tracing::warn!(error = %err, "apple identity token rejected");

@@ -49,7 +49,7 @@ pub struct Artifact {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Deserialize, ToSchema)]
+#[derive(Clone, Deserialize, Serialize, ToSchema)]
 pub struct CreateUpload {
     pub kind: String,
     pub filename: String,
@@ -71,6 +71,8 @@ pub struct PresignRequest {
 
 #[derive(Serialize, ToSchema)]
 pub struct PresignResponse {
+    /// Host (with port when not default) every URL in `parts` points at; allowlist this on the device.
+    pub host: Option<String>,
     pub parts: Vec<PresignedPart>,
     pub expires_in_secs: u64,
 }

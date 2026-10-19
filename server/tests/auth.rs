@@ -5,6 +5,13 @@ use common::TestApp;
 use reqwest::{Method, StatusCode};
 use serde_json::json;
 
+const RAW_NONCE: &str = "raw-nonce-123";
+
+fn nonce_hash(raw: &str) -> String {
+    use sha2::{Digest, Sha256};
+    hex::encode(Sha256::digest(raw.as_bytes()))
+}
+
 fn apple_claims(sub: &str, exp_offset: i64) -> serde_json::Value {
     let now = chrono::Utc::now().timestamp();
     json!({
@@ -12,6 +19,7 @@ fn apple_claims(sub: &str, exp_offset: i64) -> serde_json::Value {
         "aud": BUNDLE_ID,
         "sub": sub,
         "email": "apple.user@example.com",
+        "nonce": nonce_hash(RAW_NONCE),
         "exp": now + exp_offset,
         "iat": now,
     })
@@ -124,7 +132,7 @@ async fn apple_sign_in_creates_then_reuses_the_user() {
                 Method::POST,
                 None,
                 "/v1/auth/apple",
-                Some(json!({"identity_token": token})),
+                Some(json!({"identity_token": token, "nonce": RAW_NONCE})),
             )
             .await
         }
@@ -149,36 +157,50 @@ async fn apple_sign_in_rejects_bad_tokens() {
                 .0
         }
     };
+    let with_nonce = |token: String| json!({"identity_token": token, "nonce": RAW_NONCE});
     let expired = app.apple.token(apple_claims("s", -3600));
-    assert_eq!(
-        post(json!({"identity_token": expired})).await,
-        StatusCode::UNAUTHORIZED
-    );
+    assert_eq!(post(with_nonce(expired)).await, StatusCode::UNAUTHORIZED);
 
     let mut wrong_audience = apple_claims("s", 600);
     wrong_audience["aud"] = json!("com.someone.else");
     let token = app.apple.token(wrong_audience);
-    assert_eq!(
-        post(json!({"identity_token": token})).await,
-        StatusCode::UNAUTHORIZED
-    );
+    assert_eq!(post(with_nonce(token)).await, StatusCode::UNAUTHORIZED);
 
     let mut wrong_issuer = apple_claims("s", 600);
     wrong_issuer["iss"] = json!("https://evil.example.com");
     let token = app.apple.token(wrong_issuer);
-    assert_eq!(
-        post(json!({"identity_token": token})).await,
-        StatusCode::UNAUTHORIZED
-    );
+    assert_eq!(post(with_nonce(token)).await, StatusCode::UNAUTHORIZED);
 
     assert_eq!(
-        post(json!({"identity_token": "garbage"})).await,
+        post(with_nonce("garbage".to_string())).await,
         StatusCode::UNAUTHORIZED
     );
 
     let good = app.apple.token(apple_claims("s", 600));
     assert_eq!(
-        post(json!({"identity_token": good, "nonce": "not-the-nonce"})).await,
+        post(json!({"identity_token": good.clone(), "nonce": "not-the-nonce"})).await,
+        StatusCode::UNAUTHORIZED
+    );
+    assert_eq!(
+        post(json!({"identity_token": good.clone(), "nonce": ""})).await,
+        StatusCode::BAD_REQUEST
+    );
+    assert_eq!(
+        post(json!({"identity_token": good})).await.as_u16(),
+        422,
+        "nonce is a required field"
+    );
+
+    let mut no_nonce = apple_claims("s", 600);
+    no_nonce.as_object_mut().unwrap().remove("nonce");
+    assert_eq!(
+        post(with_nonce(app.apple.token(no_nonce))).await,
+        StatusCode::UNAUTHORIZED
+    );
+    let mut raw_in_claim = apple_claims("s", 600);
+    raw_in_claim["nonce"] = json!(RAW_NONCE);
+    assert_eq!(
+        post(with_nonce(app.apple.token(raw_in_claim))).await,
         StatusCode::UNAUTHORIZED
     );
 }

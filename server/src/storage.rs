@@ -16,6 +16,9 @@ use crate::config::StorageConfig;
 #[derive(Clone)]
 pub struct Storage {
     client: Client,
+    presign_client: Client,
+    public_host: Option<String>,
+    allow_insecure: bool,
     bucket: String,
     presign_ttl: Duration,
 }
@@ -34,7 +37,7 @@ pub struct UploadedPart {
     pub size_bytes: i64,
 }
 
-fn build_client(cfg: &StorageConfig) -> Client {
+fn build_client(cfg: &StorageConfig, endpoint: Option<&String>) -> Client {
     let credentials = Credentials::new(
         cfg.access_key_id.clone(),
         cfg.secret_access_key.clone(),
@@ -49,7 +52,7 @@ fn build_client(cfg: &StorageConfig) -> Client {
         .force_path_style(cfg.force_path_style)
         .request_checksum_calculation(RequestChecksumCalculation::WhenRequired)
         .response_checksum_validation(ResponseChecksumValidation::WhenRequired);
-    if let Some(endpoint) = &cfg.endpoint {
+    if let Some(endpoint) = endpoint {
         builder = builder.endpoint_url(endpoint.clone());
     }
     Client::from_conf(builder.build())
@@ -58,9 +61,31 @@ fn build_client(cfg: &StorageConfig) -> Client {
 impl Storage {
     pub fn new(cfg: &StorageConfig) -> Self {
         Self {
-            client: build_client(cfg),
+            client: build_client(cfg, cfg.endpoint.as_ref()),
+            presign_client: build_client(cfg, cfg.public_endpoint.as_ref()),
+            public_host: cfg.public_endpoint.as_deref().and_then(host_of),
+            allow_insecure: cfg.allow_insecure_public_endpoint,
             bucket: cfg.bucket.clone(),
             presign_ttl: cfg.presign_ttl,
+        }
+    }
+
+    /// The host presigned URLs point at when an explicit endpoint is configured.
+    pub fn public_host(&self) -> Option<&str> {
+        self.public_host.as_deref()
+    }
+
+    fn check_presigned_url(&self, url: &str) -> Result<()> {
+        let parsed = reqwest::Url::parse(url)?;
+        if parsed.scheme() != "https" && !self.allow_insecure {
+            return Err(anyhow!("presigned url is not https"));
+        }
+        let host = host_with_port(&parsed);
+        match &self.public_host {
+            Some(expected) if *expected != host => Err(anyhow!(
+                "presigned url host {host} differs from the configured {expected}"
+            )),
+            _ => Ok(()),
         }
     }
 
@@ -97,7 +122,7 @@ impl Storage {
     ) -> Result<PresignedPart> {
         let presign = PresigningConfig::expires_in(self.presign_ttl)?;
         let request = self
-            .client
+            .presign_client
             .upload_part()
             .bucket(&self.bucket)
             .key(key)
@@ -106,9 +131,11 @@ impl Storage {
             .presigned(presign)
             .await
             .map_err(|e| anyhow!("presign failed: {e:?}"))?;
+        let url = request.uri().to_string();
+        self.check_presigned_url(&url)?;
         Ok(PresignedPart {
             part_number,
-            url: request.uri().to_string(),
+            url,
             headers: request
                 .headers()
                 .map(|(k, v)| (k.to_string(), v.to_string()))
@@ -239,4 +266,18 @@ fn uploaded_part(part: &aws_sdk_s3::types::Part) -> UploadedPart {
         etag: part.e_tag().unwrap_or_default().to_string(),
         size_bytes: part.size().unwrap_or(0),
     }
+}
+
+fn host_with_port(url: &reqwest::Url) -> String {
+    match (url.host_str(), url.port()) {
+        (Some(host), Some(port)) => format!("{host}:{port}"),
+        (Some(host), None) => host.to_string(),
+        _ => String::new(),
+    }
+}
+
+fn host_of(endpoint: &str) -> Option<String> {
+    reqwest::Url::parse(endpoint)
+        .ok()
+        .map(|u| host_with_port(&u))
 }
