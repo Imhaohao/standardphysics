@@ -292,7 +292,17 @@ final class CaptureCoordinator: CaptureControlling {
         currentRoomElements = []
         instruction = .normal
         dependencies.scanner.start()
+        recordSessionConfiguration()
         publish()
+    }
+
+    /// RoomPlan may swap the shared session's configuration; this shows whether LiDAR meshing survived.
+    private func recordSessionConfiguration() {
+        let configuration = arSession?.configuration as? ARWorldTrackingConfiguration
+        Diagnostics.shared.record("session_configuration", [
+            "scene_reconstruction": Double(configuration?.sceneReconstruction.rawValue ?? 0),
+            "scene_depth": configuration?.frameSemantics.contains(.sceneDepth) == true ? 1 : 0,
+        ], note: configuration.map { String(describing: type(of: $0)) } ?? "none")
     }
 
     private func cancelRoomCapture() {
@@ -302,6 +312,7 @@ final class CaptureCoordinator: CaptureControlling {
 
     private func saveCheckpoint() async {
         guard let scanID = manifest?.scanID else { return }
+        recordSessionConfiguration()
         let token = dependencies.application.beginProtectedWork(named: "Save scan checkpoint")
         defer { dependencies.application.endProtectedWork(token) }
         do {
@@ -346,6 +357,10 @@ final class CaptureCoordinator: CaptureControlling {
     private func exportMesh() async {
         guard let scanID = manifest?.scanID else { return }
         let parts = dependencies.host.meshParts()
+        Diagnostics.shared.record("mesh_export", [
+            "parts": Double(parts.count),
+            "vertices": Double(parts.reduce(0) { $0 + $1.vertices.count / MeshPart.bytesPerVertex }),
+        ])
         let carriedOver = await dependencies.journal.carriedOverMesh(scanID: scanID)
         let data = await MeshExporter.encode(parts, carriedOver: carriedOver)
         do {
