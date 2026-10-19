@@ -19,12 +19,43 @@ settings:
     CURRENT_PROJECT_VERSION: "1"
 
 targets:
+  SPEngineKit:
+    type: framework
+    platform: iOS
+    sources:
+      - path: ../core/build/swift/sp_ffi.swift
+        group: Engine
+    dependencies:
+      - framework: ../core/build/SPCore.xcframework
+        embed: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tarunyadgirkar.standardphysics.engine
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "5.0"
+        SWIFT_STRICT_CONCURRENCY: minimal
+        SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
+        SWIFT_APPROACHABLE_CONCURRENCY: NO
+        DEFINES_MODULE: YES
+        SKIP_INSTALL: YES
+
   StandardPhysics:
     type: application
     platform: iOS
     sources:
       - path: Sources
       - path: Resources
+      - path: ../rules/metrics.json
+        group: Rules
+        buildPhase: resources
+      - path: ../rules/ada2010.json
+        group: Rules
+        buildPhase: resources
+      - path: ../rules/cbc11b.json
+        group: Rules
+        buildPhase: resources
+    dependencies:
+      - target: SPEngineKit
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.tarunyadgirkar.standardphysics
