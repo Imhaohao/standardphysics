@@ -93,54 +93,82 @@ final class RecordingSleeper: @unchecked Sendable {
 // MARK: Uploads
 
 final class FakeUploadAPI: UploadAPI, @unchecked Sendable {
-    struct RequestCall { let scanID: String; let body: RequestUploadBody; let clientFileID: UUID }
-    struct CompleteCall { let uploadID: String; let parts: [CompletedPart] }
+    struct CreateCall { let scanID: String; let body: CreateUploadBody }
+    struct CompleteCall { let uploadID: String; let sha256: String }
 
     private let state = Locked(State())
     private struct State {
-        var requests: [RequestCall] = []
-        var refreshes: [[Int]] = []
+        var creates: [CreateCall] = []
+        var presigns: [[Int]] = []
+        var statusCalls = 0
         var completions: [CompleteCall] = []
-        var requestErrors: [APIError] = []
+        var createErrors: [APIError] = []
+        var uploadState = "open"
+        var storedParts: [Int] = []
     }
 
-    var urlTimeToLive: TimeInterval = 3600
-    var now: Date = fixedNow
+    var urlTimeToLive = 3600
 
-    var requestCalls: [RequestCall] { state.read { $0.requests } }
-    var refreshCalls: [[Int]] { state.read { $0.refreshes } }
+    var createCalls: [CreateCall] { state.read { $0.creates } }
+    var presignCalls: [[Int]] { state.read { $0.presigns } }
+    var statusCallCount: Int { state.read { $0.statusCalls } }
     var completeCalls: [CompleteCall] { state.read { $0.completions } }
 
-    func failNextRequests(with errors: [APIError]) { state.write { $0.requestErrors = errors } }
-
-    func requestUpload(scanID: String, file: RequestUploadBody, clientFileID: UUID) async throws -> MultipartUploadGrant {
-        state.write { $0.requests.append(RequestCall(scanID: scanID, body: file, clientFileID: clientFileID)) }
-        if let error = state.write({ $0.requestErrors.isEmpty ? nil : $0.requestErrors.removeFirst() }) { throw error }
-        let count = PartSlicer.partCount(fileSize: file.sizeBytes, partSize: file.partSize)
-        let parts = (1...count).map { presigned(upload: "up-\(clientFileID.uuidString.prefix(4))", number: $0, label: "granted") }
-        return MultipartUploadGrant(uploadID: "up-\(clientFileID.uuidString.prefix(4))", partSize: file.partSize, parts: parts)
+    func failNextCreates(with errors: [APIError]) { state.write { $0.createErrors = errors } }
+    func setServerUpload(state uploadState: String, storedParts: [Int]) {
+        state.write {
+            $0.uploadState = uploadState
+            $0.storedParts = storedParts
+        }
     }
 
-    func refreshPartURLs(scanID: String, uploadID: String, partNumbers: [Int]) async throws -> [PresignedPart] {
-        state.write { $0.refreshes.append(partNumbers) }
-        return partNumbers.map { presigned(upload: uploadID, number: $0, label: "refreshed", ttl: 3600) }
+    func createUpload(scanID: String, body: CreateUploadBody) async throws -> UploadInfo {
+        state.write { $0.creates.append(CreateCall(scanID: scanID, body: body)) }
+        if let error = state.write({ $0.createErrors.isEmpty ? nil : $0.createErrors.removeFirst() }) { throw error }
+        let partSize = body.partSize ?? 8 * 1024 * 1024
+        return info(scanID: scanID, size: body.sizeBytes, partSize: partSize, kind: body.kind, name: body.filename, state: "open")
     }
 
-    func completeUpload(scanID: String, uploadID: String, parts: [CompletedPart]) async throws {
-        state.write { $0.completions.append(CompleteCall(uploadID: uploadID, parts: parts)) }
+    func uploadStatus(scanID: String, uploadID: String) async throws -> UploadStatusResponse {
+        let (uploadState, stored, call) = state.write { state -> (String, [Int], CreateCall?) in
+            state.statusCalls += 1
+            return (state.uploadState, state.storedParts, state.creates.last)
+        }
+        let size = call?.body.sizeBytes ?? 0
+        let partSize = call?.body.partSize ?? 1
+        let upload = info(scanID: scanID, size: size, partSize: partSize, kind: "room", name: "x", state: uploadState)
+        let parts = stored.map {
+            UploadedPart(partNumber: $0, etag: "\"server-\($0)\"", sizeBytes: PartSlicer.partLength(partNumber: $0, fileSize: size, partSize: partSize))
+        }
+        return UploadStatusResponse(upload: upload, uploadedParts: parts)
     }
 
-    private func presigned(upload: String, number: Int, label: String, ttl: TimeInterval? = nil) -> PresignedPart {
-        PresignedPart(
-            partNumber: number,
-            url: URL(string: "https://r2.test/\(upload)/\(label)/part-\(number)")!,
-            expiresAt: now.addingTimeInterval(ttl ?? urlTimeToLive)
+    func presignParts(scanID: String, uploadID: String, partNumbers: [Int]) async throws -> PresignResponse {
+        state.write { $0.presigns.append(partNumbers) }
+        let parts = partNumbers.map {
+            PresignedPart(partNumber: $0, url: URL(string: "https://r2.test/\(uploadID)/presigned/part-\($0)")!, headers: ["x-amz-test": "1"])
+        }
+        return PresignResponse(parts: parts, expiresInSecs: urlTimeToLive)
+    }
+
+    func completeUpload(scanID: String, uploadID: String, sha256: String) async throws -> Artifact {
+        state.write { $0.completions.append(CompleteCall(uploadID: uploadID, sha256: sha256)) }
+        return Artifact(
+            id: "a1", scanID: scanID, uploadID: uploadID, kind: "room", filename: "x", contentType: "x",
+            sizeBytes: 1, sha256: sha256, createdAt: fixedNow
+        )
+    }
+
+    private func info(scanID: String, size: Int64, partSize: Int, kind: String, name: String, state: String) -> UploadInfo {
+        UploadInfo(
+            id: "up-1", scanID: scanID, kind: kind, filename: name, contentType: "application/json", sizeBytes: size,
+            partSize: partSize, partCount: PartSlicer.partCount(fileSize: size, partSize: partSize), state: state, createdAt: fixedNow
         )
     }
 }
 
 final class FakeUploadSession: UploadTaskSession, @unchecked Sendable {
-    struct Started { let id: Int; let label: String; let url: URL; let body: Data }
+    struct Started { let id: Int; let label: String; let url: URL; let body: Data; let headers: [String: String] }
 
     let events: AsyncStream<UploadTaskEvent>
     private let continuation: AsyncStream<UploadTaskEvent>.Continuation
@@ -168,7 +196,7 @@ final class FakeUploadSession: UploadTaskSession, @unchecked Sendable {
         let (id, autoSucceed) = state.write { state -> (Int, Bool) in
             let id = state.nextID
             state.nextID += 1
-            state.started.append(Started(id: id, label: label, url: request.url!, body: body))
+            state.started.append(Started(id: id, label: label, url: request.url!, body: body, headers: request.allHTTPHeaderFields ?? [:]))
             state.live.append(LiveUploadTask(id: id, label: label))
             return (id, state.autoSucceed)
         }

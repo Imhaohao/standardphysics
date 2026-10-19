@@ -10,8 +10,8 @@ final class UploadLedgerTests: XCTestCase {
 
     private func makeRecord(name: String = "room-1.json") -> UploadRecord {
         UploadRecord(
-            id: UUID(), scanID: "scan-1", fileName: name, contentType: "application/json", sizeBytes: 2500,
-            enqueuedAt: fixedNow, state: .queued, multipart: nil
+            id: UUID(), scanID: "scan-1", fileName: name, kind: "room", contentType: "application/json", sizeBytes: 2500,
+            sha256: "abc123", enqueuedAt: fixedNow, state: .queued, multipart: nil
         )
     }
 
@@ -40,7 +40,8 @@ final class UploadLedgerTests: XCTestCase {
         XCTAssertEqual(restored.multipart?.uploadID, "up-1")
         XCTAssertEqual(restored.multipart?.parts.map(\.etag), [nil, "\"e2\"", nil])
         XCTAssertEqual(restored.multipart?.parts[0].expiresAt, fixedNow.addingTimeInterval(600))
-        XCTAssertEqual(restored.multipart?.parts[0].url.absoluteString, "https://r2.test/p1")
+        XCTAssertEqual(restored.multipart?.parts[0].url?.absoluteString, "https://r2.test/p1")
+        XCTAssertEqual(restored.sha256, "abc123")
     }
 
     func testFailedStateKeepsItsMessageAcrossRelaunch() async throws {
@@ -84,7 +85,8 @@ final class UploadLedgerTests: XCTestCase {
 
     func testPartExpiryUsesSafetySkew() {
         let part = UploadPart(number: 1, url: URL(string: "https://r2.test")!, expiresAt: fixedNow.addingTimeInterval(100))
-        XCTAssertTrue(part.isExpired(at: fixedNow, skew: 120))
-        XCTAssertFalse(part.isExpired(at: fixedNow, skew: 60))
+        XCTAssertTrue(part.needsFreshURL(at: fixedNow, skew: 120))
+        XCTAssertFalse(part.needsFreshURL(at: fixedNow, skew: 60))
+        XCTAssertTrue(UploadPart(number: 2).needsFreshURL(at: fixedNow, skew: 0), "no URL yet")
     }
 }

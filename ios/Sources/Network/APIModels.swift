@@ -241,59 +241,63 @@ nonisolated enum JSONValue: Codable, Sendable, Equatable {
     }
 }
 
-/// A finding exactly as sp-server sends it. `required` and `evidence` are free-form JSON and
-/// `jurisdiction` may be "SYSTEM", which the shared `Finding` cannot hold; see `asFinding`.
+nonisolated struct ServerMeasured: Codable, Sendable, Equatable {
+    let text: String
+    let value: Double?
+    let lo: Double?
+    let hi: Double?
+    let unit: String
+}
+
+nonisolated struct Point3: Codable, Sendable, Equatable {
+    let x: Double
+    let y: Double
+    let z: Double
+}
+
+/// A finding exactly as sp-server sends it. The shared `Finding` is a subset; see `asFinding`.
 nonisolated struct ServerFinding: Codable, Sendable, Equatable, Identifiable {
     let ruleID: String
     let jurisdiction: String
     let section: String
+    let title: String
     let subjectID: String
+    let roomID: String?
     let status: FindingStatus
-    let measured: MeasuredValue?
-    let required: JSONValue?
+    let severity: String
+    let measured: ServerMeasured?
+    let required: String
     let message: String
-    let evidence: JSONValue?
+    let evidence: String
+    let location: Point3?
+    let counterpart: String?
 
     var id: String { "\(ruleID)#\(subjectID)" }
 
     enum CodingKeys: String, CodingKey {
         case ruleID = "rule_id"
-        case jurisdiction, section
+        case jurisdiction, section, title
         case subjectID = "subject_id"
-        case status, measured, required, message, evidence
+        case roomID = "room_id"
+        case status, severity, measured, required, message, evidence, location, counterpart
     }
 
-    /// Nil for jurisdictions the app has no type for (e.g. SYSTEM label findings).
+    /// Nil for jurisdictions the app has no type for (e.g. SYSTEM label findings), so callers
+    /// that need every server finding should read the report's `findings` directly.
     var asFinding: Finding? {
         guard let jurisdiction = Jurisdiction(rawValue: jurisdiction) else { return nil }
         return Finding(
             ruleID: ruleID, jurisdiction: jurisdiction, section: section, subjectID: subjectID,
-            status: status, measured: measured, required: requirementText, message: message
+            status: status, measured: measured?.asMeasuredValue, required: required, message: message
         )
     }
+}
 
-    private var requirementText: String {
-        guard case .object(let fields)? = required else {
-            if case .string(let text)? = required { return text }
-            return ""
-        }
-        return Self.describe(fields)
-    }
-
-    private static func describe(_ fields: [String: JSONValue]) -> String {
-        guard case .string(let op)? = fields["op"], let value = fields["value"] else { return "" }
-        let unit: String
-        if case .string(let name)? = fields["unit"] { unit = " \(name)" } else { unit = "" }
-        return "\(op) \(display(value))\(unit)"
-    }
-
-    private static func display(_ value: JSONValue) -> String {
-        switch value {
-        case .number(let number): number.formatted(.number.precision(.fractionLength(0...3)))
-        case .array(let items): items.map(display).joined(separator: " to ")
-        case .string(let text): text
-        default: ""
-        }
+nonisolated extension ServerMeasured {
+    /// The shared type holds one number; a range reports its lower bound.
+    var asMeasuredValue: MeasuredValue? {
+        guard let number = value ?? lo ?? hi else { return nil }
+        return MeasuredValue(value: number, unit: unit)
     }
 }
 
@@ -313,10 +317,31 @@ nonisolated struct StatusCounts: Codable, Sendable, Equatable {
 nonisolated struct FindingsSummary: Codable, Sendable, Equatable {
     let total: StatusCounts
     let byJurisdiction: [String: StatusCounts]
+    let governing: [Governing]?
+    let governingCounts: StatusCounts?
 
     enum CodingKeys: String, CodingKey {
-        case total
+        case total, governing
         case byJurisdiction = "by_jurisdiction"
+        case governingCounts = "governing_counts"
+    }
+}
+
+/// Where ADA and California disagree about a subject, the stricter result governs.
+nonisolated struct Governing: Codable, Sendable, Equatable {
+    let subjectID: String
+    let status: FindingStatus
+    let governingRuleID: String
+    let governingJurisdiction: String
+    let ruleIDs: [String]
+    let message: String
+
+    enum CodingKeys: String, CodingKey {
+        case status, message
+        case subjectID = "subject_id"
+        case governingRuleID = "governing_rule_id"
+        case governingJurisdiction = "governing_jurisdiction"
+        case ruleIDs = "rule_ids"
     }
 }
 
@@ -433,13 +458,16 @@ nonisolated enum LiveMessage: Sendable, Equatable {
     case findings(RoomFindings)
     case report(Report)
     case serverError(message: String)
+    /// Geometry of one room as the server holds it, for live drawing.
+    case room(JSONValue)
+    case scene(JSONValue)
     case pong
     case unknown(type: String)
 }
 
 extension LiveMessage: Decodable {
     private enum CodingKeys: String, CodingKey {
-        case type, message, report, findings, summary, rooms, seq, final
+        case type, message, report, findings, summary, rooms, seq, final, room, scene
         case scanID = "scan_id"
         case roomID = "room_id"
         case elapsedMs = "elapsed_ms"
@@ -452,6 +480,8 @@ extension LiveMessage: Decodable {
         case "findings": self = .findings(try Self.roomFindings(from: container))
         case "report": self = .report(try container.decode(Report.self, forKey: .report))
         case "error": self = .serverError(message: try container.decodeIfPresent(String.self, forKey: .message) ?? "")
+        case "room": self = .room(try container.decode(JSONValue.self, forKey: .room))
+        case "scene": self = .scene(try container.decode(JSONValue.self, forKey: .scene))
         case "pong": self = .pong
         case let other: self = .unknown(type: other)
         }

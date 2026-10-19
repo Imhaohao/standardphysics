@@ -25,6 +25,7 @@ actor BackgroundUploader {
     private var emitTicket = 0
     private var lastProgressEmit = Date.distantPast
     private var persistenceError: String?
+    private var reconciled: Set<UUID> = []
 
     init(
         api: any UploadAPI,
@@ -66,14 +67,17 @@ actor BackgroundUploader {
     /// Copies the file (an APFS clone, so cheap) and queues it. The copy means the caller may
     /// keep appending to or deleting the original, e.g. a mesh checkpoint, without corrupting parts.
     @discardableResult
-    func enqueue(fileURL: URL, scanID: String, contentType: String = "application/octet-stream") async throws -> UUID {
+    func enqueue(
+        fileURL: URL, scanID: String, kind: UploadKind = .artifact, contentType: String = "application/octet-stream"
+    ) async throws -> UUID {
         let size = try fileSize(of: fileURL)
         guard size > 0 else { throw UploadError.emptyFile }
         let id = UUID()
         try await storage.stage(fileURL, as: id)
+        let digest = try await FileDigest.sha256Hex(of: storage.stagedFileURL(for: id))
         let record = UploadRecord(
-            id: id, scanID: scanID, fileName: fileURL.lastPathComponent, contentType: contentType,
-            sizeBytes: size, enqueuedAt: now(), state: .queued, multipart: nil
+            id: id, scanID: scanID, fileName: fileURL.lastPathComponent, kind: kind.rawValue, contentType: contentType,
+            sizeBytes: size, sha256: digest, enqueuedAt: now(), state: .queued, multipart: nil
         )
         try await ledger.insert(record)
         await emit()
@@ -186,11 +190,9 @@ actor BackgroundUploader {
 
     private func apply(_ outcome: UploadTaskOutcome, to key: PartKey) async -> Bool {
         switch outcome {
-        case .succeeded(let etag?) where !etag.isEmpty:
-            await markPartUploaded(key, etag: etag)
+        case .succeeded(let etag):
+            await markPartUploaded(key, etag: etag ?? "")
             return true
-        case .succeeded:
-            await recordPartFailure(key, statusCode: nil, message: "The storage service did not return an ETag")
         case .failed(let statusCode, let message):
             await recordPartFailure(key, statusCode: statusCode, message: message)
         case .cancelled:
@@ -260,7 +262,12 @@ actor BackgroundUploader {
     private func advance(_ id: UUID) async {
         do {
             guard var record = await ledger.record(id), record.state.isActive else { return }
-            if record.multipart == nil { record = try await beginMultipart(record) }
+            if record.multipart == nil {
+                record = try await beginMultipart(record)
+            } else if !reconciled.contains(id) {
+                record = try await reconcileWithServer(record)
+            }
+            guard record.state.isActive, record.multipart != nil else { return }
             try await uploadMissingParts(of: record)
             try await completeIfFinished(id)
         } catch {
@@ -269,18 +276,17 @@ actor BackgroundUploader {
     }
 
     private func beginMultipart(_ record: UploadRecord) async throws -> UploadRecord {
-        let body = RequestUploadBody(
-            fileName: record.fileName, contentType: record.contentType,
+        let body = CreateUploadBody(
+            kind: record.kind, filename: record.fileName, contentType: record.contentType,
             sizeBytes: record.sizeBytes, partSize: configuration.partSize
         )
-        let grant = try await api.requestUpload(scanID: record.scanID, file: body, clientFileID: record.id)
-        let expected = PartSlicer.partCount(fileSize: record.sizeBytes, partSize: grant.partSize)
-        guard grant.partSize > 0, grant.parts.count == expected else { throw APIError.malformedResponse }
+        let upload = try await api.createUpload(scanID: record.scanID, body: body)
+        let expected = PartSlicer.partCount(fileSize: record.sizeBytes, partSize: upload.partSize)
+        guard upload.partSize > 0, upload.partCount == expected else { throw APIError.malformedResponse }
         let multipart = MultipartSession(
-            uploadID: grant.uploadID, partSize: grant.partSize,
-            parts: grant.parts.sorted { $0.partNumber < $1.partNumber }
-                .map { UploadPart(number: $0.partNumber, url: $0.url, expiresAt: $0.expiresAt) }
+            uploadID: upload.id, partSize: upload.partSize, parts: (1...expected).map { UploadPart(number: $0) }
         )
+        reconciled.insert(record.id)
         let updated = try await ledger.update(record.id) {
             $0.multipart = multipart
             $0.state = .uploading
@@ -289,10 +295,45 @@ actor BackgroundUploader {
         return updated ?? record
     }
 
+    /// Storage is the source of truth for which parts exist. After a relaunch this adopts parts
+    /// whose tasks finished while the app was dead and forgets parts storage no longer has.
+    private func reconcileWithServer(_ record: UploadRecord) async throws -> UploadRecord {
+        guard let multipart = record.multipart else { return record }
+        let status = try await api.uploadStatus(scanID: record.scanID, uploadID: multipart.uploadID)
+        reconciled.insert(record.id)
+        switch status.upload.state {
+        case "complete": return try await markCompleted(record.id) ?? record
+        case "open": return try await adoptStoredParts(status.uploadedParts, in: record) ?? record
+        default: throw APIError.notFound
+        }
+    }
+
+    private func adoptStoredParts(_ stored: [UploadedPart], in record: UploadRecord) async throws -> UploadRecord? {
+        let etags = Dictionary(stored.map { ($0.partNumber, $0.etag) }, uniquingKeysWith: { $1 })
+        let updated = try await ledger.update(record.id) { record in
+            let numbers = record.multipart?.parts.map(\.number) ?? []
+            for number in numbers {
+                record.multipart?.updatePart(number) { $0.etag = etags[number] }
+            }
+        }
+        await emit()
+        return updated
+    }
+
+    private func markCompleted(_ id: UUID) async throws -> UploadRecord? {
+        let updated = try await ledger.update(id) { $0.state = .completed }
+        storage.removeFiles(for: id)
+        transientFailureCount = 0
+        await emit()
+        return updated
+    }
+
     private func uploadMissingParts(of record: UploadRecord) async throws {
         guard let missing = missingParts(of: record), !missing.isEmpty else { return }
-        let fresh = try await refreshExpiredURLs(of: record, among: missing)
-        for part in fresh where inFlight.count < configuration.maxConcurrentParts {
+        let freeSlots = max(0, configuration.maxConcurrentParts - inFlight.count)
+        let batch = Array(missing.prefix(freeSlots))
+        guard !batch.isEmpty else { return }
+        for part in try await withFreshURLs(batch, in: record) {
             try await startUpload(of: part, in: record)
         }
     }
@@ -301,33 +342,37 @@ actor BackgroundUploader {
         record.multipart?.parts.filter { !$0.isComplete && inFlight[PartKey(fileID: record.id, number: $0.number)] == nil }
     }
 
-    private func refreshExpiredURLs(of record: UploadRecord, among missing: [UploadPart]) async throws -> [UploadPart] {
-        let expired = missing.filter { $0.isExpired(at: now(), skew: configuration.urlExpirySkew) }
-        guard !expired.isEmpty, let multipart = record.multipart else { return missing }
-        let replacements = try await api.refreshPartURLs(
-            scanID: record.scanID, uploadID: multipart.uploadID, partNumbers: expired.map(\.number)
+    private func withFreshURLs(_ batch: [UploadPart], in record: UploadRecord) async throws -> [UploadPart] {
+        let stale = batch.filter { $0.needsFreshURL(at: now(), skew: configuration.urlExpirySkew) }
+        guard !stale.isEmpty, let multipart = record.multipart else { return batch }
+        let response = try await api.presignParts(
+            scanID: record.scanID, uploadID: multipart.uploadID, partNumbers: stale.map(\.number)
         )
-        let byNumber = Dictionary(replacements.map { ($0.partNumber, $0) }, uniquingKeysWith: { $1 })
+        let expiry = now().addingTimeInterval(TimeInterval(response.expiresInSecs))
+        let byNumber = Dictionary(response.parts.map { ($0.partNumber, $0) }, uniquingKeysWith: { $1 })
         let updated = try await ledger.update(record.id) { record in
-            for (number, replacement) in byNumber {
+            for (number, presigned) in byNumber {
                 record.multipart?.updatePart(number) {
-                    $0.url = replacement.url
-                    $0.expiresAt = replacement.expiresAt
+                    $0.url = presigned.url
+                    $0.headers = presigned.headers
+                    $0.expiresAt = expiry
                 }
             }
         }
-        return updated.flatMap(missingParts(of:)) ?? missing
+        let wanted = Set(batch.map(\.number))
+        return updated?.multipart?.parts.filter { wanted.contains($0.number) } ?? batch
     }
 
     private func startUpload(of part: UploadPart, in record: UploadRecord) async throws {
-        guard let partSize = record.multipart?.partSize else { return }
+        guard let partSize = record.multipart?.partSize, let url = part.url else { throw APIError.malformedResponse }
         let key = PartKey(fileID: record.id, number: part.number)
         let partFile = storage.partFileURL(for: record.id, partNumber: part.number)
         _ = try await slicer.slice(
             source: storage.stagedFileURL(for: record.id), partNumber: part.number, partSize: partSize, to: partFile
         )
-        var request = URLRequest(url: part.url)
+        var request = URLRequest(url: url)
         request.httpMethod = "PUT"
+        part.headers.forEach { request.setValue($0.value, forHTTPHeaderField: $0.key) }
         inFlight[key] = session.startUpload(request: request, fileURL: partFile, label: key.label)
     }
 
@@ -335,12 +380,8 @@ actor BackgroundUploader {
         guard let record = await ledger.record(id), let multipart = record.multipart, record.state.isActive,
               multipart.parts.allSatisfy(\.isComplete) else { return }
         try await ledger.update(id) { $0.state = .completing }
-        let parts = multipart.parts.compactMap { part in part.etag.map { CompletedPart(partNumber: part.number, etag: $0) } }
-        try await api.completeUpload(scanID: record.scanID, uploadID: multipart.uploadID, parts: parts)
-        try await ledger.update(id) { $0.state = .completed }
-        storage.removeFiles(for: id)
-        transientFailureCount = 0
-        await emit()
+        _ = try await api.completeUpload(scanID: record.scanID, uploadID: multipart.uploadID, sha256: record.sha256)
+        _ = try await markCompleted(id)
     }
 
     private func handleStepFailure(_ error: Error, id: UUID) async {
@@ -371,6 +412,7 @@ actor BackgroundUploader {
             let key = PartKey(fileID: id, number: number)
             if let taskID = inFlight.removeValue(forKey: key) { await session.cancelTask(id: taskID) }
         }
+        reconciled.remove(id)
         await persist {
             try await self.ledger.update(id) {
                 $0.multipart = nil
@@ -386,6 +428,7 @@ actor BackgroundUploader {
     }
 
     private func resetFailedRecord(_ id: UUID) async {
+        reconciled.remove(id)
         await persist {
             try await self.ledger.update(id) { record in
                 let numbers = record.multipart?.parts.map(\.number) ?? []
