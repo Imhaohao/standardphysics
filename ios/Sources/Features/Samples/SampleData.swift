@@ -16,14 +16,15 @@ nonisolated enum SampleData {
         "grab-1": ReportSubject(id: "grab-1", roomName: restroom, label: "Rear grab bar"),
         "mirror-1": ReportSubject(id: "mirror-1", roomName: restroom, label: "Mirror"),
         "sink-1": ReportSubject(id: "sink-1", roomName: restroom, label: "Sink"),
+        "object-7": ReportSubject(id: "object-7", roomName: salesFloor, label: "Object by the window"),
     ]
 
     static let findings: [Finding] = salesFloorFindings + restroomFindings
 
     static let salesFloorFindings: [Finding] = [
-        pair("904.4.1", "counter-1", inches: 35.5, federal: ("≤ 36 in", .pass), california: ("≤ 34 in", .fail),
+        pair("904.4.1", "counter-1", title: "Sales counter height", inches: 35.5, federal: ("≤ 36 in", .pass), california: ("≤ 34 in", .fail),
              message: "The counter is 35.5 in high. Lower a 36 in long stretch of it to 34 in or less."),
-        pair("404.2.4.1", "door-entry", inches: 12, federal: ("≥ 18 in", .fail), california: ("≥ 18 in", .fail),
+        pair("404.2.4.1", "door-entry", title: "Clear space beside the latch", inches: 12, federal: ("≥ 18 in", .fail), california: ("≥ 18 in", .fail),
              message: "There's 12 in of clear wall beside the latch on the pull side. Clear at least 18 in so someone in a wheelchair can pull the door open."),
         pair("404.2.3", "door-entry", inches: 34, federal: ("≥ 32 in", .pass), california: ("≥ 32 in", .pass),
              message: "The doorway is 34 in clear when the door is open."),
@@ -34,7 +35,7 @@ nonisolated enum SampleData {
     ].flatMap { $0 }
 
     static let restroomFindings: [Finding] = [
-        pair("404.2.3", "door-restroom", inches: 30.5, federal: ("≥ 32 in", .fail), california: ("≥ 32 in", .fail),
+        pair("404.2.3", "door-restroom", title: "Door clear width", inches: 30.5, federal: ("≥ 32 in", .fail), california: ("≥ 32 in", .fail),
              message: "The doorway is 30.5 in clear. Swap in offset hinges or a wider door to reach 32 in."),
         question("703.4.1", "door-restroom", "Is there a sign with raised letters and Braille on the wall beside the door's latch side?"),
         question("404.2.7", "door-restroom", "Can you open the door with a closed fist, without gripping or twisting the handle?"),
@@ -47,6 +48,15 @@ nonisolated enum SampleData {
         pair("606.3", "sink-1", inches: 33.5, federal: ("≤ 34 in", .pass), california: ("≤ 34 in", .pass),
              message: "The sink rim is 33.5 in high."),
     ].flatMap { $0 }
+
+    /// Server findings with no code behind them, asking the owner to look at something.
+    static let ownerChecks: [Finding] = [
+        Finding(
+            ruleID: "label.unresolved", jurisdiction: .system, section: "", subjectID: "object-7", status: .needsInfo,
+            measured: nil, required: "", message: "This object could not be identified in time, so rules that depend on it need a manual check.",
+            title: "Object not identified", severity: .info
+        ),
+    ]
 
     static let provisionalFindings: [Finding] = salesFloorFindings
 
@@ -68,7 +78,7 @@ nonisolated enum SampleData {
         completedAt: Date(timeIntervalSinceNow: -26 * 3600),
         roomNames: [salesFloor, restroom],
         subjects: subjects,
-        findings: findings
+        findings: findings + ownerChecks
     )
 
     static let earlierReport = ScanReport(
@@ -98,11 +108,22 @@ nonisolated enum SampleData {
 
     private typealias Requirement = (required: String, status: FindingStatus)
 
-    private static func pair(_ section: String, _ subject: String, inches: Double, federal: Requirement, california: Requirement, message: String) -> [Finding] {
+    private static func pair(
+        _ section: String, _ subject: String, title: String? = nil, inches: Double,
+        federal: Requirement, california: Requirement, message: String
+    ) -> [Finding] {
         let measured = MeasuredValue(value: inches, unit: "in")
         return [
-            Finding(ruleID: "ADA2010-\(section)", jurisdiction: .ada2010, section: section, subjectID: subject, status: federal.status, measured: measured, required: federal.required, message: message),
-            Finding(ruleID: "CBC11B-\(section)", jurisdiction: .cbc11b, section: "11B-\(section)", subjectID: subject, status: california.status, measured: measured, required: california.required, message: message),
+            Finding(
+                ruleID: "ADA2010-\(section)", jurisdiction: .ada2010, section: section, subjectID: subject, status: federal.status,
+                measured: measured, required: federal.required, message: message, title: title, severity: .violation,
+                counterpartRuleID: "CBC11B-\(section)"
+            ),
+            Finding(
+                ruleID: "CBC11B-\(section)", jurisdiction: .cbc11b, section: "11B-\(section)", subjectID: subject, status: california.status,
+                measured: measured, required: california.required, message: message, title: title, severity: .violation,
+                counterpartRuleID: "ADA2010-\(section)"
+            ),
         ]
     }
 

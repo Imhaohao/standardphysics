@@ -49,7 +49,10 @@ final class ServerScanProcessorTests: XCTestCase {
         XCTAssertTrue(stages.contains(.assembling))
         XCTAssertEqual(report.name, "Cafe")
         XCTAssertEqual(report.roomNames, ["Kitchen"])
-        XCTAssertEqual(report.findings.map(\.ruleID), ["ADA-404"], "SYSTEM findings have no shared type")
+        XCTAssertEqual(report.findings.map(\.ruleID), ["ADA-404", "label.unresolved"])
+        XCTAssertEqual(report.findings.last?.jurisdiction, .system)
+        XCTAssertTrue(report.findings.last?.isOwnerQuestion ?? false)
+        XCTAssertEqual(report.findings.first?.title, "Door clear width")
         XCTAssertEqual(report.subject(for: "door-1").roomName, "Kitchen")
         XCTAssertEqual(report.subject(for: "door-1").label, "Door clear width")
     }
@@ -59,7 +62,7 @@ final class ServerScanProcessorTests: XCTestCase {
         let (processor, transport) = makeProcessor([conflict, jsonResponse(200, reportJSON)])
         let report = try await processor.process(manifest()) { _ in }
         XCTAssertEqual(transport.requests.map { $0.url?.path }, ["/v1/scans/scan-9/finish", "/v1/scans/scan-9/assessment"])
-        XCTAssertEqual(report.findings.count, 1)
+        XCTAssertEqual(report.findings.count, 2)
     }
 
     func testRoomsThatNeverReachedTheServerStopTheFinish() async {

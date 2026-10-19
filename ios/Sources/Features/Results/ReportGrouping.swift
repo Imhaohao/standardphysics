@@ -5,8 +5,17 @@ nonisolated struct ObjectGroup: Sendable, Equatable, Identifiable {
     let outcomes: [RuleOutcome]
 
     var id: String { subject.id }
-    var issues: [RuleOutcome] { outcomes.filter { $0.status == .fail || $0.status == .needsInfo } }
+    var issues: [RuleOutcome] { outcomes.filter(\.needsAttention) }
     var worstSeverity: Int { outcomes.map(\.status.severity).max() ?? 0 }
+}
+
+extension RuleOutcome {
+    nonisolated var isViolation: Bool { status == .fail && !isOwnerQuestion }
+    /// Owner questions stay open whatever status the server gave them, until they are settled.
+    nonisolated var isQuestion: Bool {
+        isOwnerQuestion ? status != .pass && status != .notApplicable : status == .needsInfo
+    }
+    nonisolated var needsAttention: Bool { isViolation || isQuestion }
 }
 
 nonisolated struct RoomSection: Sendable, Equatable, Identifiable {
@@ -16,7 +25,7 @@ nonisolated struct RoomSection: Sendable, Equatable, Identifiable {
     var id: String { name }
     var objectsWithIssues: [ObjectGroup] { objects.filter { !$0.issues.isEmpty } }
     var passing: [(subject: ReportSubject, outcome: RuleOutcome)] {
-        objects.flatMap { group in group.outcomes.filter { $0.status == .pass }.map { (group.subject, $0) } }
+        objects.flatMap { group in group.outcomes.filter { $0.status == .pass && !$0.isOwnerQuestion }.map { (group.subject, $0) } }
     }
 }
 
@@ -43,11 +52,11 @@ nonisolated enum ReportGrouping {
     }
 
     static func summary(for report: ScanReport) -> ReportSummary {
-        let statuses = RuleComparison.outcomes(from: report.findings).map(\.status)
+        let outcomes = RuleComparison.outcomes(from: report.findings)
         return ReportSummary(
-            toFix: statuses.filter { $0 == .fail }.count,
-            questions: statuses.filter { $0 == .needsInfo }.count,
-            passing: statuses.filter { $0 == .pass }.count
+            toFix: outcomes.filter(\.isViolation).count,
+            questions: outcomes.filter(\.isQuestion).count,
+            passing: outcomes.filter { $0.status == .pass && !$0.isOwnerQuestion }.count
         )
     }
 

@@ -197,7 +197,8 @@ final class APIClientTests: XCTestCase {
         XCTAssertGreaterThan(report.createdAt.timeIntervalSince1970, 1_700_000_000)
         XCTAssertEqual(report.findings[0].asFinding?.measured, MeasuredValue(value: 0.78, unit: "m"))
         XCTAssertEqual(report.findings[0].asFinding?.required, ">= 0.815 m")
-        XCTAssertNil(report.findings[1].asFinding, "SYSTEM findings have no shared type")
+        XCTAssertEqual(report.findings[1].asFinding?.jurisdiction, .system)
+        XCTAssertEqual(report.findings[1].asFinding?.title, "Unlabelled object")
     }
 
     func testFinishScanUsesLongTimeoutAndIsNotRetried() async throws {

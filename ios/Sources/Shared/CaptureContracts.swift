@@ -89,10 +89,26 @@ nonisolated enum FindingStatus: String, Codable, Sendable {
 nonisolated enum Jurisdiction: String, Codable, Sendable {
     case ada2010 = "ADA2010"
     case cbc11b = "CBC11B"
+    /// Not a code: something Standard Physics itself could not settle, such as an object it
+    /// could not identify. These become questions for the owner, never violations.
+    case system = "SYSTEM"
+}
+
+nonisolated enum FindingSeverity: String, Codable, Sendable {
+    case violation
+    case advisory
+    case info
 }
 
 nonisolated struct MeasuredValue: Codable, Sendable, Equatable {
     let value: Double
+    let unit: String
+}
+
+/// A measurement that is only known to lie between two values.
+nonisolated struct MeasuredRange: Codable, Sendable, Equatable {
+    let lo: Double
+    let hi: Double
     let unit: String
 }
 
@@ -105,14 +121,58 @@ nonisolated struct Finding: Codable, Sendable, Equatable, Identifiable {
     let measured: MeasuredValue?
     let required: String
     let message: String
+    let title: String?
+    let severity: FindingSeverity?
+    /// The matching rule in the other jurisdiction, e.g. the CBC rule for an ADA one.
+    let counterpartRuleID: String?
+    let range: MeasuredRange?
 
     var id: String { "\(ruleID)#\(subjectID)" }
+    var isOwnerQuestion: Bool { jurisdiction == .system }
+
+    init(
+        ruleID: String, jurisdiction: Jurisdiction, section: String, subjectID: String, status: FindingStatus,
+        measured: MeasuredValue?, required: String, message: String, title: String? = nil,
+        severity: FindingSeverity? = nil, counterpartRuleID: String? = nil, range: MeasuredRange? = nil
+    ) {
+        self.ruleID = ruleID
+        self.jurisdiction = jurisdiction
+        self.section = section
+        self.subjectID = subjectID
+        self.status = status
+        self.measured = measured
+        self.required = required
+        self.message = message
+        self.title = title
+        self.severity = severity
+        self.counterpartRuleID = counterpartRuleID
+        self.range = range
+    }
+
+    /// Reports saved before these fields existed still load, and a severity this version does
+    /// not know reads as none rather than failing the whole report.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        ruleID = try container.decode(String.self, forKey: .ruleID)
+        jurisdiction = try container.decode(Jurisdiction.self, forKey: .jurisdiction)
+        section = try container.decode(String.self, forKey: .section)
+        subjectID = try container.decode(String.self, forKey: .subjectID)
+        status = try container.decode(FindingStatus.self, forKey: .status)
+        measured = try container.decodeIfPresent(MeasuredValue.self, forKey: .measured)
+        required = try container.decode(String.self, forKey: .required)
+        message = try container.decode(String.self, forKey: .message)
+        title = try container.decodeIfPresent(String.self, forKey: .title)
+        severity = try? container.decodeIfPresent(FindingSeverity.self, forKey: .severity)
+        counterpartRuleID = try container.decodeIfPresent(String.self, forKey: .counterpartRuleID)
+        range = try container.decodeIfPresent(MeasuredRange.self, forKey: .range)
+    }
 
     enum CodingKeys: String, CodingKey {
         case ruleID = "rule_id"
         case jurisdiction, section
         case subjectID = "subject_id"
-        case status, measured, required, message
+        case status, measured, required, message, title, severity, range
+        case counterpartRuleID = "counterpart_rule_id"
     }
 }
 

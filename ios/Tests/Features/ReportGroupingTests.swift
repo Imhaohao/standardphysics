@@ -68,8 +68,31 @@ final class ReportGroupingTests: XCTestCase {
         XCTAssertEqual(restroom.passing.map(\.subject.label).sorted(), ["Rear grab bar", "Sink"])
     }
 
+    func testOwnerChecksAreQuestionsNeverViolations() {
+        let check = Finding(
+            ruleID: "label.unresolved", jurisdiction: .system, section: "", subjectID: "obj", status: .fail,
+            measured: nil, required: "", message: "Check this object", title: "Object not identified"
+        )
+        let outcomes = RuleComparison.outcomes(from: [check])
+        XCTAssertEqual(outcomes.count, 1)
+        XCTAssertTrue(outcomes[0].isOwnerQuestion)
+        XCTAssertNil(outcomes[0].federal)
+        XCTAssertNil(outcomes[0].california)
+        let report = ScanReport(scanID: UUID(), name: "x", completedAt: .now, roomNames: [], subjects: [:], findings: [check])
+        XCTAssertEqual(ReportGrouping.summary(for: report), ReportSummary(toFix: 0, questions: 1, passing: 0))
+        XCTAssertEqual(ReportGrouping.sections(for: report).first?.objectsWithIssues.count, 1)
+        XCTAssertEqual(Citation.jurisdictionName(.system), "Standard Physics")
+    }
+
+    func testOwnerChecksDoNotPairWithCodeFindingsOnTheSameSubject() {
+        let code = Finding(ruleID: "ADA-1", jurisdiction: .ada2010, section: "", subjectID: "obj", status: .pass, measured: nil, required: "", message: "ok")
+        let check = Finding(ruleID: "label.unresolved", jurisdiction: .system, section: "", subjectID: "obj", status: .needsInfo, measured: nil, required: "", message: "?")
+        let outcomes = RuleComparison.outcomes(from: [code, check])
+        XCTAssertEqual(outcomes.map(\.governing.ruleID), ["ADA-1", "label.unresolved"])
+    }
+
     func testSummaryCountsEachRequirementOnce() {
-        XCTAssertEqual(ReportGrouping.summary(for: SampleData.completedReport), ReportSummary(toFix: 6, questions: 2, passing: 4))
+        XCTAssertEqual(ReportGrouping.summary(for: SampleData.completedReport), ReportSummary(toFix: 6, questions: 3, passing: 4))
     }
 
     func testUnknownSubjectsLandElsewhere() {
