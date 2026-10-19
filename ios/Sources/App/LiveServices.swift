@@ -19,16 +19,17 @@ final class LiveServices {
     init() {
         let coordinator = CaptureCoordinator()
         let journal = FileScanJournal()
-        coordinator.onRoomFinished = { roomJSON in
+        coordinator.onRoomFinished = { roomJSON, detectedObjects in
             let clock = ContinuousClock()
             let start = clock.now
-            let findings = try await RustComplianceEngine().evaluateRoom(capturedRoomJSON: roomJSON)
+            let findings = try await RustComplianceEngine().evaluateRoom(capturedRoomJSON: roomJSON, detectedObjects: detectedObjects)
             let elapsed = clock.now - start
             Diagnostics.shared.record("room_checked", [
                 "ms": Double(elapsed.components.seconds) * 1000 + Double(elapsed.components.attoseconds) / 1e15,
                 "findings": Double(findings.count),
                 "fails": Double(findings.filter { $0.status == .fail }.count),
                 "room_bytes": Double(roomJSON.count),
+                "detector_objects": Double(detectedObjects.count),
             ])
             return findings
         }
@@ -46,7 +47,7 @@ final class LiveServices {
             account: AccountModel(service: api)
         )
         detection = LiveDetectionPipeline(detector: TimedDetector(base: CoreMLDetector())) { [weak coordinator] detections in
-            await MainActor.run { coordinator?.detections = detections }
+            await MainActor.run { coordinator?.ingest(detections) }
         }
     }
 
