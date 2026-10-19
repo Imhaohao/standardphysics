@@ -181,6 +181,26 @@ final class ScanStreamerTests: XCTestCase {
         XCTAssertNotNil(sent.first?.capturedRoom)
     }
 
+    func testLiveRoomAndUploadedRoomShareOneServerID() async throws {
+        let streamer = makeStreamer()
+        let empty = try manifest()
+        streamer.capture(link, reached: .started(empty))
+        let file = "0.json"
+        try Data(#"{"identifier":"7D1E-ROOM","walls":[]}"#.utf8).write(to: directory.appending(path: file))
+        let withRoom = ScanManifest(
+            scanID: empty.scanID, name: empty.name, startedAt: empty.startedAt, phase: .scanning(room: 1),
+            rooms: [RoomRecord(index: 0, name: "Dining room", capturedRoomFile: file, completedAt: fixedNow)],
+            meshFile: "mesh.spm", remoteScanID: "remote-1"
+        )
+        streamer.capture(link, reached: .roomSaved(index: 0, manifest: withRoom))
+        await streamer.settle()
+
+        let sent = await channels[0].sent
+        XCTAssertEqual(sent.map(\.roomID), ["7D1E-ROOM"])
+        XCTAssertEqual(uploader.calls.first?.file, file)
+        XCTAssertEqual(RoomIdentity.names(of: withRoom, in: directory), ["7D1E-ROOM": "Dining room"])
+    }
+
     func testResumeReusesThePersistedRemoteIDAndResendsSavedRooms() async throws {
         let streamer = makeStreamer()
         streamer.capture(link, reached: .resumed(try manifest(rooms: 2, remoteID: "remote-7")))

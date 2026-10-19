@@ -1,15 +1,29 @@
 import Foundation
 
-/// Room ids sent over the live channel. The processor maps them back to the names the
-/// person gave each room.
-nonisolated enum LiveRoomID {
-    static let prefix = "room-"
+/// The id the server files a room under, whether it arrives over the live channel or as an
+/// uploaded file: the CapturedRoom `identifier`, or the uploaded file's name without its
+/// extension. Both paths must agree or the server stores the room twice.
+nonisolated enum RoomIdentity {
+    static func roomID(capturedRoomJSON: Data, fileName: String) -> String {
+        if let object = try? JSONSerialization.jsonObject(with: capturedRoomJSON) as? [String: Any],
+           let identifier = object["identifier"] as? String, !identifier.isEmpty {
+            return identifier
+        }
+        return (fileName as NSString).deletingPathExtension
+    }
 
-    static func make(index: Int) -> String { "\(prefix)\(index)" }
+    static func roomID(of record: RoomRecord, in directory: URL) -> String {
+        let url = directory.appending(path: record.capturedRoomFile)
+        let data = (try? Data(contentsOf: url)) ?? Data()
+        return roomID(capturedRoomJSON: data, fileName: url.lastPathComponent)
+    }
 
-    static func index(of roomID: String) -> Int? {
-        guard roomID.hasPrefix(prefix) else { return nil }
-        return Int(roomID.dropFirst(prefix.count))
+    /// Owner room names keyed by server room id.
+    static func names(of manifest: ScanManifest, in directory: URL) -> [String: String] {
+        Dictionary(
+            manifest.rooms.map { (roomID(of: $0, in: directory), $0.name) },
+            uniquingKeysWith: { first, _ in first }
+        )
     }
 }
 
@@ -32,12 +46,20 @@ final class ServerScanProcessor: ScanProcessing {
     private let uploader: BackgroundUploader
     private let rooms: (any RoomDelivering)?
     private let retention: (any ScanRetaining)?
+    private let roomDirectory: ((UUID) -> URL)?
 
-    init(api: APIClient, uploader: BackgroundUploader, rooms: (any RoomDelivering)? = nil, retention: (any ScanRetaining)? = nil) {
+    init(
+        api: APIClient,
+        uploader: BackgroundUploader,
+        rooms: (any RoomDelivering)? = nil,
+        retention: (any ScanRetaining)? = nil,
+        roomDirectory: ((UUID) -> URL)? = nil
+    ) {
         self.api = api
         self.uploader = uploader
         self.rooms = rooms
         self.retention = retention
+        self.roomDirectory = roomDirectory
     }
 
     func process(_ manifest: ScanManifest, onUpdate: @escaping (ProcessingUpdate) -> Void) async throws -> ScanReport {
@@ -50,7 +72,8 @@ final class ServerScanProcessor: ScanProcessing {
         onUpdate(ProcessingUpdate(stage: .checking, fraction: Self.checkingFraction))
         try? await retention?.releaseHeavyFiles(scanID: manifest.scanID)
         onUpdate(ProcessingUpdate(stage: .writing, fraction: 1))
-        return Self.scanReport(from: report, manifest: manifest)
+        let roomNamesByID = roomDirectory.map { RoomIdentity.names(of: manifest, in: $0(manifest.scanID)) } ?? [:]
+        return Self.scanReport(from: report, manifest: manifest, roomNamesByID: roomNamesByID)
     }
 
     private func uploadRemainingFiles(of scanID: String, onUpdate: @escaping (ProcessingUpdate) -> Void) async throws {
@@ -76,24 +99,19 @@ final class ServerScanProcessor: ScanProcessing {
         }
     }
 
-    static func scanReport(from report: Report, manifest: ScanManifest) -> ScanReport {
+    static func scanReport(from report: Report, manifest: ScanManifest, roomNamesByID: [String: String] = [:]) -> ScanReport {
         let roomNames = manifest.rooms.map(\.name)
         let findings = report.findings.filter { $0.asFinding != nil }
         var subjects: [String: ReportSubject] = [:]
         for finding in findings where subjects[finding.subjectID] == nil {
             subjects[finding.subjectID] = ReportSubject(
-                id: finding.subjectID, roomName: roomName(for: finding, in: manifest), label: finding.title
+                id: finding.subjectID, roomName: finding.roomID.flatMap { roomNamesByID[$0] } ?? ReportGrouping.unassignedRoom,
+                label: finding.title
             )
         }
         return ScanReport(
             scanID: manifest.scanID, name: manifest.name, completedAt: report.createdAt,
             roomNames: roomNames, subjects: subjects, findings: findings.compactMap(\.asFinding)
         )
-    }
-
-    private static func roomName(for finding: ServerFinding, in manifest: ScanManifest) -> String {
-        guard let roomID = finding.roomID, let index = LiveRoomID.index(of: roomID),
-              let room = manifest.rooms.first(where: { $0.index == index }) else { return ReportGrouping.unassignedRoom }
-        return room.name
     }
 }

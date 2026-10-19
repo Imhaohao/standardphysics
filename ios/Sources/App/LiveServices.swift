@@ -60,7 +60,10 @@ final class LiveServices {
         guard let api, let uploader else { return local }
         Task { await uploader.start() }
         return PreferredScanProcessor(
-            remote: ServerScanProcessor(api: api, uploader: uploader, rooms: streamer, retention: journal),
+            remote: ServerScanProcessor(
+                api: api, uploader: uploader, rooms: streamer, retention: journal,
+                roomDirectory: { journal.directory(for: $0) }
+            ),
             local: local,
             isSignedIn: { tokens.token() != nil }
         )

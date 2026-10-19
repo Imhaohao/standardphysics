@@ -36,7 +36,8 @@ final class ServerScanProcessorTests: XCTestCase {
         let uploader = BackgroundUploader(
             api: FakeUploadAPI(), ledger: UploadLedger(fileURL: storage.ledgerURL), session: FakeUploadSession(), storage: storage
         )
-        return (ServerScanProcessor(api: api, uploader: uploader), transport)
+        let roomDirectory: URL = directory
+        return (ServerScanProcessor(api: api, uploader: uploader, roomDirectory: { _ in roomDirectory }), transport)
     }
 
     func testFinishesScanAndMapsReportWithRoomNamesAndSharedFindings() async throws {

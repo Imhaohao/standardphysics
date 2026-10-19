@@ -40,21 +40,27 @@ final class LiveMessageDecodingTests: XCTestCase {
 
     func testRoomUpdateEncodesServerClientMessage() throws {
         let update = RoomUpdate(
-            roomID: LiveRoomID.make(index: 2), isFinal: true, seq: 4,
+            roomID: "ROOM-2", isFinal: true, seq: 4,
             capturedRoom: .object(["doors": .array([])]), observations: [.object(["id": .string("o1")])]
         )
         let object = try JSONSerialization.jsonObject(with: WireCoding.encoder().encode(update)) as? [String: Any]
         XCTAssertEqual(object?["type"] as? String, "room")
-        XCTAssertEqual(object?["room_id"] as? String, "room-2")
+        XCTAssertEqual(object?["room_id"] as? String, "ROOM-2")
         XCTAssertEqual(object?["final"] as? Bool, true)
         XCTAssertEqual(object?["seq"] as? Int, 4)
         XCTAssertNotNil(object?["captured_room"] as? [String: Any])
         XCTAssertEqual((object?["observations"] as? [[String: Any]])?.first?["id"] as? String, "o1")
     }
 
-    func testRoomIDsRoundTripToIndexes() {
-        XCTAssertEqual(LiveRoomID.index(of: LiveRoomID.make(index: 5)), 5)
-        XCTAssertNil(LiveRoomID.index(of: "kitchen"))
+    func testRoomIDIsTheCapturedRoomIdentifierLikeTheServer() {
+        let json = Data(#"{"identifier":"8F2C-ROOM","walls":[]}"#.utf8)
+        XCTAssertEqual(RoomIdentity.roomID(capturedRoomJSON: json, fileName: "0.json"), "8F2C-ROOM")
+    }
+
+    func testRoomIDFallsBackToTheUploadedFileStemLikeTheServer() {
+        let json = Data(#"{"walls":[]}"#.utf8)
+        XCTAssertEqual(RoomIdentity.roomID(capturedRoomJSON: json, fileName: "3.json"), "3")
+        XCTAssertEqual(RoomIdentity.roomID(capturedRoomJSON: Data(), fileName: "3.json"), "3")
     }
 }
 
