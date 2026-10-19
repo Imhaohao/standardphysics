@@ -206,14 +206,14 @@ function floorOutline(raw: CapturedRoom, walls: Wall[]): Vec2[] {
   return largest ?? outlineFromWalls(walls);
 }
 
+function roomId(raw: CapturedRoom, index: number) {
+  return raw.identifier ?? raw.floors?.[0]?.identifier ?? `room-${index}`;
+}
+
 function roomIdentity(raw: CapturedRoom, index: number) {
-  const section = raw.sections?.[0];
-  return {
-    id: raw.identifier ?? raw.floors?.[0]?.identifier ?? `room-${index}`,
-    name: section ? humanize(section.label) : `Room ${index + 1}`,
-    kind: (section ? ROOM_KINDS[section.label] : undefined) ?? "other",
-    storey: raw.story ?? 0,
-  };
+  const label = raw.sections?.[0]?.label;
+  const named = label === undefined ? { name: `Room ${index + 1}`, kind: "other" as RoomKind } : { name: humanize(label), kind: ROOM_KINDS[label] ?? "other" };
+  return { id: roomId(raw, index), ...named, storey: raw.story ?? 0 };
 }
 
 function convertOpenings(raw: CapturedRoom, walls: Wall[], level: number) {

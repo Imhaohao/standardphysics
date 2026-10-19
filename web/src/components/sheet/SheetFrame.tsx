@@ -18,7 +18,7 @@ export function SheetFrame({ columns = 8, rows = 6, className = "", children }: 
   const columnLabels = labels(columns, (index) => String(index + 1));
   const rowLabels = labels(rows, zoneRowLetter);
   return (
-    <div className={`grid grid-cols-[1.5rem_minmax(0,1fr)_1.5rem] grid-rows-[1.5rem_1fr_1.5rem] border-2 border-ink print:border-0 ${className}`}>
+    <div data-sheet-frame className={`grid grid-cols-[1.5rem_minmax(0,1fr)_1.5rem] grid-rows-[1.5rem_1fr_1.5rem] border-2 border-ink print:border-0 ${className}`}>
       <ZoneBand labels={columnLabels} orientation="horizontal" className="col-start-2 row-start-1 print:hidden" />
       <ZoneBand labels={rowLabels} orientation="vertical" className="col-start-1 row-start-2 print:hidden" />
       <ZoneBand labels={rowLabels} orientation="vertical" className="col-start-3 row-start-2 print:hidden" />
