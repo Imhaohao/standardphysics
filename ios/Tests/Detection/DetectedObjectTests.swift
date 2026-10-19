@@ -95,7 +95,7 @@ final class DetectedObjectTests: XCTestCase {
         let catalog = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
         let categories = try XCTUnwrap(catalog["object_categories"] as? [[String: Any]]).compactMap { $0["id"] as? String }
         XCTAssertTrue(ClassMapper.engineCategories.isSubset(of: Set(categories)), "\(ClassMapper.engineCategories.subtracting(categories))")
-        XCTAssertNil(ClassMapper.standard.category(for: "microwave"))
+        XCTAssertEqual(ClassMapper.standard.category(for: "microwave"), "microwave")
         XCTAssertEqual(ClassMapper.standard.category(for: "refrigerator"), "refrigerator")
     }
 }

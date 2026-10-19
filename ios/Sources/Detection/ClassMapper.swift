@@ -3,10 +3,6 @@ import Foundation
 /// Maps raw detector labels onto the app's object categories (`rules/metrics.json`).
 /// A label that maps to nothing is ignored. `obstacle` is drawn nowhere and checked by nothing
 /// because the catalog has no generic obstacle category.
-///
-/// COCO "microwave" is left unmapped: the catalog has no countertop-appliance category, and the
-/// nearest operable ones (dispenser, kiosk, self_service_shelf) would run rules (604.7, 707,
-/// 225) that do not apply to a microwave and report false failures.
 nonisolated struct ClassMapper: Sendable {
     static let obstacle = "obstacle"
 
@@ -32,6 +28,7 @@ nonisolated struct ClassMapper: Sendable {
         "sink": "sink",
         "tv": "television",
         "refrigerator": "refrigerator",
+        "microwave": "microwave",
         "oven": "oven",
         "bed": "bed",
         "potted plant": obstacle,
