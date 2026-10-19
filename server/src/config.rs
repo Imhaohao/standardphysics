@@ -9,6 +9,8 @@ pub const DEFAULT_LABEL_MODEL: &str = "google/gemini-2.5-flash";
 #[derive(Clone, Debug)]
 pub struct StorageConfig {
     pub endpoint: Option<String>,
+    pub public_endpoint: Option<String>,
+    pub allow_insecure_public_endpoint: bool,
     pub region: String,
     pub bucket: String,
     pub access_key_id: String,
@@ -130,8 +132,13 @@ fn bind_addr<F: Fn(&str) -> Option<String>>(env: &Env<F>) -> String {
 fn storage_config<F: Fn(&str) -> Option<String>>(env: &Env<F>) -> Result<StorageConfig> {
     let endpoint = env.optional("S3_ENDPOINT");
     let force_path_style = env.flag("S3_FORCE_PATH_STYLE", endpoint.is_some())?;
+    let public_endpoint = env.optional("S3_PUBLIC_ENDPOINT").or_else(|| endpoint.clone());
+    let allow_insecure = env.flag("S3_ALLOW_INSECURE_PUBLIC_ENDPOINT", false)?;
+    require_https(public_endpoint.as_deref(), allow_insecure)?;
     Ok(StorageConfig {
         endpoint,
+        public_endpoint,
+        allow_insecure_public_endpoint: allow_insecure,
         region: env.or_default("S3_REGION", "auto"),
         bucket: env.required("S3_BUCKET")?,
         access_key_id: env.required("S3_ACCESS_KEY_ID")?,
@@ -159,4 +166,46 @@ fn label_config<F: Fn(&str) -> Option<String>>(env: &Env<F>) -> Result<LabelConf
         deadline: Duration::from_millis(env.parsed("LABEL_DEADLINE_MS", 20_000)?),
         request_timeout: Duration::from_millis(env.parsed("LABEL_REQUEST_TIMEOUT_MS", 15_000)?),
     })
+}
+
+fn require_https(endpoint: Option<&str>, allow_insecure: bool) -> Result<()> {
+    match endpoint {
+        Some(url) if !url.starts_with("https://") && !allow_insecure => Err(anyhow!(
+            "S3_PUBLIC_ENDPOINT (or S3_ENDPOINT) must be https; set S3_ALLOW_INSECURE_PUBLIC_ENDPOINT=true for local development"
+        )),
+        _ => Ok(()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn lookup(extra: &[(&'static str, &'static str)]) -> Result<Config> {
+        let mut vars: std::collections::HashMap<&str, &str> = std::collections::HashMap::from([
+            ("DATABASE_URL", "postgres://x"),
+            ("S3_BUCKET", "b"),
+            ("S3_ACCESS_KEY_ID", "k"),
+            ("S3_SECRET_ACCESS_KEY", "s"),
+        ]);
+        vars.extend(extra.iter().copied());
+        Config::from_lookup(|k| vars.get(k).map(|v| v.to_string()))
+    }
+
+    #[test]
+    fn plain_http_public_endpoint_is_rejected_unless_flagged() {
+        assert!(lookup(&[("S3_ENDPOINT", "http://minio:9000")]).is_err());
+        assert!(lookup(&[("S3_PUBLIC_ENDPOINT", "http://x.example")]).is_err());
+        assert!(lookup(&[("S3_ENDPOINT", "http://minio:9000"), ("S3_ALLOW_INSECURE_PUBLIC_ENDPOINT", "true")]).is_ok());
+        assert!(lookup(&[("S3_ENDPOINT", "https://acct.r2.cloudflarestorage.com")]).is_ok());
+        assert!(lookup(&[]).is_ok());
+    }
+
+    #[test]
+    fn public_endpoint_defaults_to_the_storage_endpoint() {
+        let cfg = lookup(&[("S3_ENDPOINT", "https://internal.example"), ("S3_PUBLIC_ENDPOINT", "https://public.example")]).unwrap();
+        assert_eq!(cfg.storage.public_endpoint.as_deref(), Some("https://public.example"));
+        let cfg = lookup(&[("S3_ENDPOINT", "https://internal.example")]).unwrap();
+        assert_eq!(cfg.storage.public_endpoint.as_deref(), Some("https://internal.example"));
+    }
 }

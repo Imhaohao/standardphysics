@@ -151,6 +151,7 @@ pub async fn presign_parts(
         parts.push(part);
     }
     Ok(Json(PresignResponse {
+        host: state.storage.public_host().map(str::to_string),
         parts,
         expires_in_secs: state.cfg.storage.presign_ttl.as_secs(),
     }))
