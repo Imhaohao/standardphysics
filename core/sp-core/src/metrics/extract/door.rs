@@ -9,8 +9,9 @@ use crate::geometry::{OrientedBox2, Vec2};
 use crate::grid::{CellState, DoorGap, Probe, door_gap};
 use crate::metrics::subject::Subject;
 use crate::metrics::{EvalContext, Extraction, Extractor};
+use crate::routes::DOOR_MIN_CLEAR_WIDTH;
 use crate::scene::{Opening, OpeningKind, Room};
-use crate::units::inches;
+use crate::units::{inches, to_inches};
 
 pub const EXTRACTORS: &[(&str, Extractor)] = &[
     ("door.clear_width", clear_width),
@@ -93,11 +94,26 @@ fn clear_width(ctx: &EvalContext, subject: &Subject) -> Extraction {
     let estimate = estimated_clear_width(opening, 0.0);
     let measured = match opening.kind {
         OpeningKind::Door => {
-            range((estimate - CLEAR_WIDTH_ALLOWANCE_RANGE.1, estimate - CLEAR_WIDTH_ALLOWANCE_RANGE.0))
+            let (lo, hi) = (estimate - CLEAR_WIDTH_ALLOWANCE_RANGE.1, estimate - CLEAR_WIDTH_ALLOWANCE_RANGE.0);
+            if hi < DOOR_MIN_CLEAR_WIDTH && !ctx.scene.is_interior_opening(&opening.id) {
+                return unconfirmed_narrow_door(lo, hi);
+            }
+            range((lo, hi))
         }
         _ => Extraction::metres(estimate),
     };
     measured.located(Some(opening.center)).noted("frame width less an allowance for the leaf and stop")
+}
+
+/// A narrow "door" with nothing scanned behind it is often a closet or wardrobe front, so the
+/// owner confirms it with a tape measure instead of it being reported as a violation.
+fn unconfirmed_narrow_door(lo: f64, hi: f64) -> Extraction {
+    Extraction::unknown(format!(
+        "measured about {:.1}-{:.1} in, under the 32 in minimum, but nothing was scanned behind it. \
+         If people walk through it, measure its clear width; if it's a closet or cabinet front, it doesn't apply",
+        to_inches(lo),
+        to_inches(hi)
+    ))
 }
 
 /// Wall thickness at the opening: the gap between this room's wall and the connected room's
