@@ -170,6 +170,9 @@ protocol CaptureControlling: AnyObject, Observable {
     func pause()
     func continueScanning()
     func finishRoom() async
+    func nameRoom(index: Int, name: String) async
+    /// Drops the room in progress (and any relocalization attempt) and scans it from scratch.
+    func restartRoom()
     func startNextRoom()
     func finishScan() async
     func discardScan() async
