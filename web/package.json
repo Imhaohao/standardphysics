@@ -13,7 +13,10 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "e2e": "playwright test",
-    "fixture:scene": "node --experimental-strip-types scripts/build-fixture-scene.ts"
+    "api:types": "openapi-typescript ../server/openapi.json -o src/lib/api/openapi.gen.ts",
+    "fixture:capture": "node --experimental-strip-types scripts/capture-sample.ts --write",
+    "scene:types": "json2ts -i ../core/schema/scene.schema.json -o src/lib/scene/scene.gen.ts --no-additionalProperties --bannerComment '/* Generated from core/schema/scene.schema.json by pnpm scene:types. Do not edit. */'",
+    "e2e:server": "playwright test -c playwright.server.config.ts"
   },
   "dependencies": {
     "@phosphor-icons/react": "2.1.10",
@@ -35,6 +38,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
     "jsdom": "^26",
+    "json-schema-to-typescript": "^15.0.4",
+    "openapi-typescript": "^7.13.0",
     "tailwindcss": "4.3.3",
     "typescript": "~5.9.3",
     "vitest": "5.0.5"

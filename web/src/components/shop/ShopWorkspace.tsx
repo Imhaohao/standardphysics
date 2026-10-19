@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { InkedPlan, STATUS_TOKENS } from "@/components/plan/InkedPlan";
 import { StatusMark } from "@/components/ui/StatusMark";
-import type { ElementGroup } from "@/lib/findings/group";
+import { groupHeadline, type ElementGroup } from "@/lib/findings/group";
 import { findingPins } from "@/lib/findings/pins";
 import { readColor } from "@/lib/ink/canvas";
 import type { Scene } from "@/lib/scene/types";
@@ -73,7 +73,7 @@ function FindingList({ groups, labels, selectedId, onSelect }: { groups: Element
                   <span className="font-semibold">{group.name}</span>
                   <StatusMark status={group.status} />
                 </span>
-                <span className="text-sm text-ink-muted text-pretty">{group.pairs[0]!.governing.message}</span>
+                <span className="text-sm text-ink-muted text-pretty">{groupHeadline(group)}</span>
               </span>
             </button>
           </li>

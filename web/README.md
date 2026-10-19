@@ -12,7 +12,7 @@ pnpm dev:fixtures    # renders the bundled sample shop and never calls the API
 
 | Variable | Meaning |
 | --- | --- |
-| `NEXT_PUBLIC_SP_FIXTURES` | `1` serves the sample shop built from `fixtures/roomplan/apple_livingroom.room.json` |
+| `NEXT_PUBLIC_SP_FIXTURES` | `1` serves the sample shop captured from `fixtures/roomplan/apple_livingroom.room.json` |
 | `NEXT_PUBLIC_SP_API_URL` | sp-server's origin, default `http://localhost:8080` |
 
 ## Pages
@@ -24,7 +24,18 @@ pnpm dev:fixtures    # renders the bundled sample shop and never calls the API
 - `/shops/{id}/report` is the printable report, grouped by element, with ADA and CBC 11B side by side.
 - `/shops/{id}/live` follows `/v1/scans/{id}/live` and inks walls and doors as they arrive.
 
-All server calls go through `src/lib/api/client.ts`. `getScene` asks for `/v1/scans/{id}/scene`, which sp-server does not serve yet, so pages fall back to a "not drawn yet" state when it returns 404. The live socket carries findings but no geometry today, so the live view refetches the scene when findings arrive; the `room` and `scene` message types are ready for when the server sends geometry.
+All server calls go through `src/lib/api/client.ts`. Wire types are generated, never written by hand:
+
+- `pnpm api:types` regenerates `src/lib/api/openapi.gen.ts` from `server/openapi.json`.
+- `pnpm scene:types` regenerates `src/lib/scene/scene.gen.ts` from `core/schema/scene.schema.json`.
+
+A unit test fails when either generated file is stale.
+
+The live view follows the socket's `hello`, `room`, `scene`, `findings` and `report` frames. A finished scan is replayed from its saved scene and report instead.
+
+## Sample shop
+
+`src/fixtures/sample-scene.json` and `sample-report.json` are real sp-server output. To regenerate them, start sp-server and run `pnpm fixture:capture --api http://localhost:8080`. The script signs up a sample owner, streams the RoomPlan room over the live socket, finishes the scan and saves the scene and assessment.
 
 ## Ink
 
@@ -35,5 +46,5 @@ All server calls go through `src/lib/api/client.ts`. `getScene` asks for `/v1/sc
 ```sh
 pnpm typecheck && pnpm lint && pnpm test
 PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers pnpm e2e   # builds and serves in fixture mode on :3107
-pnpm fixture:scene                                    # regenerates src/fixtures/sample-scene.json
+SP_E2E_API=http://localhost:8088 PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers pnpm e2e:server   # against a running sp-server
 ```

@@ -1,14 +1,12 @@
 "use client";
 
 import { useEffect, useReducer } from "react";
-import { createHttpApi } from "@/lib/api/client";
 import { apiBaseUrl, liveSocketUrl } from "@/lib/api/config";
 import { connectLive, fixtureMessages, INITIAL_LIVE_STATE, reduceLive, replayMessages, type LiveConnection } from "@/lib/api/live";
 import type { Report, ServerMessage } from "@/lib/api/types";
 import type { Scene } from "@/lib/scene/types";
 
 const REPLAY_STEP_MS = 900;
-const SCENE_REFRESH_MS = 600;
 
 export type LiveSource =
   /** Plays a finished scan back from its saved scene and report. */
@@ -19,27 +17,10 @@ export type LiveSource =
 type Dispatch = (message: ServerMessage) => void;
 
 function followSocket(source: Extract<LiveSource, { kind: "socket" }>, dispatch: Dispatch): LiveConnection {
-  const api = createHttpApi({ baseUrl: apiBaseUrl(), token: source.token });
-  let refresh: ReturnType<typeof setTimeout> | undefined;
-  const refreshScene = () => {
-    clearTimeout(refresh);
-    refresh = setTimeout(() => {
-      void api.getScene(source.scanId).then((scene) => scene && dispatch({ type: "scene", scene })).catch(() => undefined);
-    }, SCENE_REFRESH_MS);
-  };
-  const connection = connectLive(liveSocketUrl(apiBaseUrl(), source.scanId, source.token), {
-    onMessage: (message) => {
-      dispatch(message);
-      if (message.type === "hello" || message.type === "findings") refreshScene();
-    },
+  return connectLive(liveSocketUrl(apiBaseUrl(), source.scanId, source.token), {
+    onMessage: dispatch,
     onClosed: (reason) => dispatch({ type: "error", message: reason }),
   });
-  return {
-    close() {
-      clearTimeout(refresh);
-      connection.close();
-    },
-  };
 }
 
 /** The live state of a scan: rooms and findings folded together as messages arrive. */

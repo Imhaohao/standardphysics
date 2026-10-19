@@ -1,8 +1,20 @@
 import { Question } from "@phosphor-icons/react/dist/ssr";
 import { citation } from "@/lib/findings/format";
-import type { ownerQuestions } from "@/lib/findings/group";
+import type { FindingPair, ownerQuestions } from "@/lib/findings/group";
 
 type Questions = ReturnType<typeof ownerQuestions>;
+type Asked = Questions[number]["questions"];
+
+/** The same ask often settles several checks on one element, so each ask is listed once with the checks it covers. */
+function byAsk(asked: Asked) {
+  const groups = new Map<string, Asked>();
+  for (const entry of asked) groups.set(entry.ask, [...(groups.get(entry.ask) ?? []), entry]);
+  return [...groups];
+}
+
+function citations(pair: FindingPair) {
+  return [pair.ada, pair.cbc].flatMap((finding) => (finding ? [citation(finding)] : [])).filter(Boolean).join(" and ");
+}
 
 /** What we couldn't measure from the scan, asked plainly so the owner can answer from memory or a quick look. */
 export function OwnerQuestions({ questions, labels }: { questions: Questions; labels: Map<string, string> }) {
@@ -14,15 +26,26 @@ export function OwnerQuestions({ questions, labels }: { questions: Questions; la
         Questions for you
       </h2>
       <ol className="divide-y divide-ink/20">
-        {questions.map(({ group, pair, question }) => (
-          <li key={`${group.subjectId}-${pair.key}`} className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3 px-4 py-3">
+        {questions.map(({ group, questions: asked }) => (
+          <li key={group.subjectId} className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3 px-4 py-3">
             <span className="font-semibold tabular-nums text-ink-muted">{labels.get(group.subjectId) ?? ""}</span>
-            <span>
-              <span className="block text-lg text-pretty">{question}</span>
-              <span className="block text-sm text-ink-muted">
-                {group.name}, {[pair.ada, pair.cbc].filter((finding) => finding !== null).map((finding) => citation(finding!)).join(" and ")}
-              </span>
-            </span>
+            <div className="flex flex-col gap-2">
+              <span className="font-semibold">{group.name}</span>
+              <ul className="flex flex-col gap-3">
+                {byAsk(asked).map(([ask, checks]) => (
+                  <li key={ask}>
+                    <span className="block text-pretty">{ask}</span>
+                    <ul className="text-sm text-ink-muted">
+                      {checks.map(({ pair, question }) => (
+                        <li key={pair.key}>
+                          {question}, {citations(pair)}
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </li>
         ))}
       </ol>

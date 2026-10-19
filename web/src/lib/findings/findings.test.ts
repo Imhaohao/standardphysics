@@ -1,25 +1,42 @@
 import { describe, expect, it } from "vitest";
 import { SAMPLE_FINDINGS, SAMPLE_SCENE } from "@/fixtures/sample";
 import { indexSubjects } from "@/lib/scene/describe";
-import { citation, formatMeasured, formatQuantity, formatRequirement } from "./format";
+import { citation, formatMeasured, formatQuantity, formatRequirement, missingReason, ownerAsk } from "./format";
 import { countStatuses, groupByElement, ownerQuestions, sectionKey } from "./group";
 import { findingPins } from "./pins";
 import type { Finding } from "./types";
 
 function finding(overrides: Partial<Finding>): Finding {
-  return { rule_id: "r", jurisdiction: "ADA2010", section: "404.2.3", subject_id: "door", status: "pass", measured: null, required: null, message: "", evidence: null, ...overrides };
+  return { rule_id: "r", jurisdiction: "ADA2010", section: "404.2.3", title: "", subject_id: "door", status: "pass", measured: null, required: "", message: "", evidence: "", severity: "major", ...overrides };
 }
 
 describe("formatting", () => {
-  it("formats quantities and requirements", () => {
+  it("formats quantities and measurements", () => {
     expect(formatQuantity(32, "in")).toBe('32"');
     expect(formatQuantity(29.44, "in")).toBe('29.4"');
     expect(formatQuantity(1 / 12, "ratio")).toBe("1:12");
-    expect(formatMeasured({ value: 5, unit: "lbf" })).toBe("5 lbf");
-    expect(formatRequirement({ op: ">=", value: 32, unit: "in" })).toBe('32" min');
-    expect(formatRequirement({ op: "between", value: [15, 48], unit: "in" })).toBe('15" to 48"');
-    expect(formatRequirement("Provide a level landing")).toBe("Provide a level landing");
-    expect(formatRequirement({ any: true })).toBeNull();
+    expect(formatMeasured({ text: "5", value: 5, unit: "lbf" })).toBe("5 lbf");
+    expect(formatMeasured({ text: "33.5-34.5", value: 34.5, lo: 33.5, hi: 34.5, unit: "in" })).toBe('33.5" to 34.5"');
+    expect(formatMeasured({ text: "yes", value: null, unit: "" })).toBe("yes");
+    expect(formatMeasured(null)).toBeNull();
+  });
+
+  it("reads sp-core requirement strings", () => {
+    expect(formatRequirement(">= 36 in")).toBe('36" min');
+    expect(formatRequirement("<= 48 in")).toBe('48" max');
+    expect(formatRequirement("between 28 and 34 in")).toBe('28" to 34"');
+    expect(formatRequirement(">= 36 in and <= 48 in")).toBe('36" min and 48" max');
+    expect(formatRequirement(">= 1")).toBe("1 min");
+    expect(formatRequirement("true")).toBe("true");
+    expect(formatRequirement("")).toBeNull();
+  });
+
+  it("turns what the engine is missing into a plain ask", () => {
+    const needs = (reason: string) => ({ message: `Thing: needs more information (${reason}).` });
+    expect(ownerAsk(needs("needs a photo of the element (door.has_latch)"))).toBe("Send us a photo of it.");
+    expect(ownerAsk(needs("scope unknown: needs a photo or tape measurement; the scan box does not resolve this detail"))).toBe("Measure it, or send us a photo.");
+    expect(ownerAsk(needs("something new"))).toBe("Something new");
+    expect(missingReason({ message: "Thing: measured 3 in, required >= 4 in." })).toBeNull();
   });
 
   it("cites each code its own way", () => {
@@ -32,10 +49,10 @@ describe("formatting", () => {
 
 describe("grouping", () => {
   const findings = [
-    finding({ jurisdiction: "ADA2010", status: "pass" }),
-    finding({ jurisdiction: "CBC11B", section: "11B-404.2.3", status: "fail" }),
-    finding({ section: "404.2.4", status: "needs_info", message: "Which way does the door swing?" }),
-    finding({ jurisdiction: "CBC11B", section: "11B-404.2.4", status: "needs_info", message: "Which way does the door swing?" }),
+    finding({ jurisdiction: "ADA2010", rule_id: "ada.door.width", counterpart: "cbc.door.width", status: "pass" }),
+    finding({ jurisdiction: "CBC11B", rule_id: "cbc.door.width", counterpart: "ada.door.width", section: "11B-404.2.3", status: "fail" }),
+    finding({ section: "404.2.4", status: "needs_info", title: "Door swing", message: "Door swing: needs more information (overlaps a fixture's clear floor if the door swings in; swing not captured)." }),
+    finding({ jurisdiction: "CBC11B", section: "11B-404.2.4", status: "needs_info", title: "Door swing", message: "Door swing: needs more information (overlaps a fixture's clear floor if the door swings in; swing not captured)." }),
     finding({ subject_id: "shelf", section: "902", status: "pass" }),
     finding({ subject_id: "shelf", section: "903", status: "not_applicable" }),
   ];
@@ -45,7 +62,7 @@ describe("grouping", () => {
     const door = groups[0]!;
     expect(door.subjectId).toBe("door");
     expect(door.status).toBe("fail");
-    expect(door.pairs.map((pair) => pair.key)).toEqual(["404.2.3", "404.2.4"]);
+    expect(door.pairs.map((pair) => pair.key)).toEqual(["ada.door.width", "404.2.4"]);
     expect(door.pairs[0]!.ada?.status).toBe("pass");
     expect(door.pairs[0]!.governing.jurisdiction).toBe("CBC11B");
   });
@@ -56,7 +73,9 @@ describe("grouping", () => {
   });
 
   it("asks each owner question once", () => {
-    expect(ownerQuestions(groups).map((q) => q.question)).toEqual(["Which way does the door swing?"]);
+    const questions = ownerQuestions(groups);
+    expect(questions.map((entry) => entry.group.subjectId)).toEqual(["door"]);
+    expect(questions[0]!.questions.map((q) => [q.question, q.ask])).toEqual([["Door swing", "Tell us which way the door swings."]]);
     expect(countStatuses(findings)).toEqual({ pass: 2, fail: 1, needs_info: 2, not_applicable: 1 });
   });
 
@@ -68,8 +87,9 @@ describe("grouping", () => {
     expect(pins.every((pin) => pin.status === "fail" || pin.status === "needs_info")).toBe(true);
   });
 
-  it("only cites subjects that exist in the sample scene", () => {
+  it("names every subject the engine reports on except the site as a whole", () => {
     const subjects = indexSubjects(SAMPLE_SCENE);
-    for (const sample of SAMPLE_FINDINGS) expect(subjects.has(sample.subject_id)).toBe(true);
+    const unnamed = new Set(SAMPLE_FINDINGS.map((finding) => finding.subject_id).filter((id) => !subjects.has(id)));
+    expect([...unnamed]).toEqual(["site"]);
   });
 });

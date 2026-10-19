@@ -1,52 +1,23 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import sampleScene from "@/fixtures/sample-scene.json";
 import { indexSubjects } from "./describe";
 import { objectBoxes, wallBoxes } from "./model";
 import { dominantWallAngle, openingSpan, planBounds, squaredToSheet, wallSegments } from "./plan";
-import { objectCategory, sceneFromCapturedRoom, snakeCase, yawOf, type CapturedRoom } from "./roomplan";
 import type { Opening, Scene, Wall } from "./types";
 import { formatFeetAndInches } from "./units";
-
-const raw = JSON.parse(readFileSync(new URL("../../../fixtures/roomplan/apple_livingroom.room.json", import.meta.url), "utf8")) as CapturedRoom;
-
-function rounded(value: unknown) {
-  return JSON.parse(JSON.stringify(value, (_, v: unknown) => (typeof v === "number" ? Math.round(v * 1e4) / 1e4 : v))) as unknown;
-}
 
 const wall: Wall = { id: "w", start: { x: 0, y: 0 }, end: { x: 4, y: 0 }, height: 2.5, thickness: 0.1 };
 const door: Opening = { id: "d", kind: "door", wall_id: "w", center: { x: 2, y: 1, z: 0 }, width: 1, height: 2, swing: null, hardware: null };
 
-describe("RoomPlan converter", () => {
-  const scene = sceneFromCapturedRoom(raw);
-  const room = scene.rooms[0]!;
+describe("sample scene", () => {
+  const room = (sampleScene as unknown as Scene).rooms[0]!;
 
-  it("matches the bundled fixture", () => {
-    expect(rounded(scene)).toEqual(sampleScene);
-  });
-
-  it("keeps every surface and object", () => {
-    expect(room.walls).toHaveLength(raw.walls!.length);
-    expect(room.objects).toHaveLength(raw.objects!.length);
-    expect(room.openings).toHaveLength((raw.doors?.length ?? 0) + (raw.windows?.length ?? 0) + (raw.openings?.length ?? 0));
-  });
-
-  it("puts the floor at zero and every opening on a wall", () => {
-    for (const object of room.objects) expect(object.center.y - object.size.y / 2).toBeGreaterThan(-0.05);
-    const wallIds = new Set(room.walls.map((w) => w.id));
+  it("is sp-core's conversion with every field written out", () => {
+    expect(room.walls.length).toBeGreaterThan(0);
+    for (const wall of room.walls) expect(wall.thickness).toBeGreaterThan(0);
+    const wallIds = new Set(room.walls.map((wall) => wall.id));
     for (const opening of room.openings) expect(wallIds.has(opening.wall_id)).toBe(true);
-  });
-
-  it("names categories the way core does", () => {
-    expect(snakeCase("diningRoom")).toBe("dining_room");
-    expect(objectCategory("table", { TableType: "coffee" })).toBe("coffee_table");
-    expect(objectCategory("stove", {})).toBe("range");
-    expect(objectCategory("television", {})).toBe("television");
-  });
-
-  it("reads yaw from the local x axis", () => {
-    const turn = Math.PI / 2;
-    expect(yawOf([Math.cos(turn), 0, -Math.sin(turn), 0, 0, 1, 0, 0, Math.sin(turn), 0, Math.cos(turn)])).toBeCloseTo(turn);
+    for (const object of room.objects) expect(object.center.y - object.size.y / 2).toBeGreaterThan(-0.05);
   });
 });
 
@@ -77,6 +48,8 @@ describe("plan geometry", () => {
     const subjects = [...indexSubjects(sampleScene as unknown as Scene).values()];
     const names = subjects.map((subject) => subject.name);
     expect(names).toContain("Wall 1");
+    expect(names).toContain("Floor");
+    expect(names).toContain("Route to the table 1");
     expect(new Set(names).size).toBe(names.length);
   });
 
