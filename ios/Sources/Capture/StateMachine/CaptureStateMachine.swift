@@ -19,9 +19,11 @@ private nonisolated struct Transition {
         switch event {
         case .start: start()
         case .resume(let point): resume(point)
-        case .appActivity(let activity): state.app = activity
+        case .appActivity(let activity): appActivity(activity)
         case .appWillResignActive: checkpointIfPossible()
-        case .sessionInterrupted: state.isSessionInterrupted = true
+        case .sessionInterrupted:
+            state.isSessionInterrupted = true
+            holdPause(.sessionInterrupted)
         case .sessionInterruptionEnded: state.isSessionInterrupted = false
         case .sessionFailed(let message): fail(message)
         case .tracking(let status): track(status)
@@ -30,7 +32,7 @@ private nonisolated struct Transition {
         case .roomCaptureEnded(let json): roomEnded(json)
         case .roomCaptureFailed(let message): roomFailed(message)
         case .userPause: userPause()
-        case .userContinue: state.isUserPaused = false
+        case .userContinue: userContinue()
         case .finishRoom: finishRoom()
         case .nextRoom: nextRoom()
         case .relocalized: relocalized()
@@ -118,6 +120,7 @@ private nonisolated struct Transition {
 
     /// Drops the room in progress. While relocalizing this also gives up on the saved frame.
     private mutating func restartRoom() {
+        state.heldPauseReason = nil
         switch state.activity {
         case .capturing:
             state.roomCaptureNeedsRestart = false
@@ -140,6 +143,26 @@ private nonisolated struct Transition {
             checkpointIfPossible()
         }
         state.isThermalCritical = level == .critical
+    }
+
+    private mutating func appActivity(_ activity: AppActivity) {
+        state.app = activity
+        switch activity {
+        case .active: return
+        case .inactive: holdPause(.appInactive)
+        case .background: holdPause(.backgrounded)
+        }
+    }
+
+    /// Keeps the first reason: Control Center then the app switcher still reads as "you left the app".
+    private mutating func holdPause(_ reason: PauseReason) {
+        guard state.isScanningRoom, !state.isUserPaused, state.heldPauseReason == nil else { return }
+        state.heldPauseReason = reason
+    }
+
+    private mutating func userContinue() {
+        state.isUserPaused = false
+        state.heldPauseReason = nil
     }
 
     private mutating func userPause() {
@@ -236,6 +259,7 @@ private nonisolated struct Transition {
     private mutating func beginFinishing() {
         state.activity = .finishing
         state.isUserPaused = false
+        state.heldPauseReason = nil
         effects.append(.exportStructure)
     }
 

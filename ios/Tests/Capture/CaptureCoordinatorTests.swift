@@ -91,8 +91,11 @@ final class CaptureCoordinatorTests: XCTestCase {
         coordinator.handleScenePhase(.inactive)
         coordinator.handleScenePhase(.active)
         await coordinator.settle()
-        XCTAssertEqual(coordinator.phase, .scanning(room: 0))
+        XCTAssertEqual(coordinator.phase, .paused(room: 0, reason: .appInactive), "waits for Continue")
         XCTAssertEqual(host.runModes, [.fresh, .continueExisting])
+        coordinator.continueScanning()
+        await coordinator.settle()
+        XCTAssertEqual(coordinator.phase, .scanning(room: 0))
         XCTAssertEqual(scanner.finishes, 0)
         XCTAssertEqual(scanner.cancels, 0)
         XCTAssertTrue(application.isIdleTimerDisabled)
@@ -104,6 +107,9 @@ final class CaptureCoordinatorTests: XCTestCase {
         host.emit(.interrupted)
         await eventually("paused") { coordinator.phase == .paused(room: 0, reason: .sessionInterrupted) }
         host.emit(.interruptionEnded)
+        await coordinator.settle()
+        XCTAssertEqual(coordinator.phase, .paused(room: 0, reason: .sessionInterrupted), "waits for Continue")
+        coordinator.continueScanning()
         host.emit(.tracking(.limited(.relocalizing)))
         await eventually("relocalizing") { coordinator.phase == .relocalizing(room: 0) }
         XCTAssertNotNil(coordinator.guidance)

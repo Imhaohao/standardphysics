@@ -53,9 +53,28 @@ final class CaptureStateMachineTests: XCTestCase {
         XCTAssertFalse(pauseEffects.contains(.finishRoomCapture))
 
         let (active, resumeEffects) = run([.appActivity(.inactive), .appActivity(.active)], from: background)
-        XCTAssertEqual(active.phase, .scanning(room: 0))
+        XCTAssertEqual(active.phase, .paused(room: 0, reason: .appInactive), "coming back waits for Continue")
         XCTAssertTrue(resumeEffects.contains(.runARSession(.continueExisting)))
         XCTAssertFalse(resumeEffects.contains(.startRoomCapture(room: 0)))
+        XCTAssertEqual(reduce(active, .userContinue).0.phase, .scanning(room: 0))
+    }
+
+    func testControlCenterRoundTripWaitsForContinueAndKeepsTheRoom() {
+        let (back, effects) = run([.appActivity(.inactive), .appActivity(.active)], from: scanning())
+        XCTAssertEqual(back.phase, .paused(room: 0, reason: .appInactive))
+        XCTAssertFalse(effects.contains(.pauseARSession), "the camera keeps tracking so RoomPlan keeps the room")
+        XCTAssertFalse(effects.contains(.cancelRoomCapture))
+        XCTAssertFalse(effects.contains(.startRoomCapture(room: 0)))
+        let (continued, continueEffects) = reduce(back, .userContinue)
+        XCTAssertEqual(continued.phase, .scanning(room: 0))
+        XCTAssertFalse(continueEffects.contains(.startRoomCapture(room: 0)))
+    }
+
+    func testHeldPauseDoesNotBlockFinishingTheRoom() {
+        let (held, _) = run([.appActivity(.inactive), .appActivity(.active)], from: scanning())
+        let (saving, effects) = reduce(held, .finishRoom)
+        XCTAssertEqual(effects.first, .finishRoomCapture)
+        XCTAssertEqual(saving.phase, .betweenRooms(completed: 0))
     }
 
     func testNoScenePhaseSequenceEverFinishesTheScan() {
@@ -83,9 +102,11 @@ final class CaptureStateMachineTests: XCTestCase {
         XCTAssertEqual(effects, [.persistManifest])
 
         let (ended, _) = reduce(interrupted, .sessionInterruptionEnded)
-        XCTAssertEqual(ended.phase, .scanning(room: 0))
+        XCTAssertEqual(ended.phase, .paused(room: 0, reason: .sessionInterrupted))
+        let continued = reduce(ended, .userContinue).0
+        XCTAssertEqual(continued.phase, .scanning(room: 0))
 
-        let (relocalizing, relocEffects) = reduce(ended, .tracking(.limited(.relocalizing)))
+        let (relocalizing, relocEffects) = reduce(continued, .tracking(.limited(.relocalizing)))
         XCTAssertEqual(relocalizing.phase, .relocalizing(room: 0))
         XCTAssertEqual(relocEffects, [.startRelocalizationTimer, .persistManifest])
 
@@ -105,7 +126,9 @@ final class CaptureStateMachineTests: XCTestCase {
         let (failed, effects) = run([.sessionInterrupted, .roomCaptureFailed(message: "worldTrackingFailure")], from: scanning())
         XCTAssertFalse(effects.contains(.startRoomCapture(room: 0)))
         XCTAssertEqual(failed.lastRoomCaptureError, "worldTrackingFailure")
-        let (resumed, resumeEffects) = reduce(failed, .sessionInterruptionEnded)
+        let (ended, endedEffects) = reduce(failed, .sessionInterruptionEnded)
+        XCTAssertFalse(endedEffects.contains(.startRoomCapture(room: 0)), "nothing restarts until Continue")
+        let (resumed, resumeEffects) = reduce(ended, .userContinue)
         XCTAssertEqual(resumed.phase, .scanning(room: 0))
         XCTAssertEqual(resumeEffects, [.startRoomCapture(room: 0), .persistManifest])
     }
@@ -387,9 +410,11 @@ final class CaptureStateMachineTests: XCTestCase {
         XCTAssertEqual(backgrounded.phase, .paused(room: 1, reason: .backgrounded))
         XCTAssertEqual(effects, [.pauseARSession, .persistManifest])
         let (back, backEffects) = reduce(backgrounded, .appActivity(.active))
-        XCTAssertEqual(back.phase, .relocalizing(room: 1))
-        XCTAssertEqual(backEffects, [.runARSession(.continueExisting), .persistManifest])
-        XCTAssertEqual(reduce(back, .tracking(.normal)).0.phase, .scanning(room: 1))
+        XCTAssertEqual(back.phase, .paused(room: 1, reason: .backgrounded))
+        XCTAssertEqual(backEffects, [.runARSession(.continueExisting)])
+        let continued = reduce(back, .userContinue).0
+        XCTAssertEqual(continued.phase, .relocalizing(room: 1))
+        XCTAssertEqual(reduce(continued, .tracking(.normal)).0.phase, .scanning(room: 1))
     }
 
     func testResumeIgnoredWhenAlreadyScanning() {

@@ -19,6 +19,9 @@ nonisolated struct CaptureState: Sendable, Equatable {
     var app: AppActivity = .active
     var isSessionInterrupted = false
     var isUserPaused = false
+    /// Set by an interruption while scanning; the scan stays paused until the person taps Continue,
+    /// even after the app is active again. The AR session keeps running so RoomPlan keeps its room.
+    var heldPauseReason: PauseReason?
     var isThermalCritical = false
     var isThermalWarning = false
     var isTrackingUnavailable = false
@@ -40,6 +43,7 @@ nonisolated struct CaptureState: Sendable, Equatable {
         if app == .background { return .backgrounded }
         if app == .inactive { return .appInactive }
         if isSessionInterrupted { return .sessionInterrupted }
+        if let heldPauseReason { return heldPauseReason }
         if isThermalCritical { return .thermal }
         if isUserPaused { return .user }
         if isTrackingUnavailable { return .trackingLost }
@@ -63,6 +67,13 @@ nonisolated struct CaptureState: Sendable, Equatable {
         switch activity {
         case .idle, .finished, .failed: false
         case .capturing, .relocalizing, .savingRoom, .betweenRooms, .finishing: true
+        }
+    }
+
+    var isScanningRoom: Bool {
+        switch activity {
+        case .capturing, .relocalizing: true
+        default: false
         }
     }
 

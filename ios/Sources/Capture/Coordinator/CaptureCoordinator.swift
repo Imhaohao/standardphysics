@@ -217,6 +217,7 @@ final class CaptureCoordinator: CaptureControlling {
     }
 
     private func handle(_ event: ARHostEvent) {
+        Diagnostics.shared.record("ar_event", note: String(describing: event))
         switch event {
         case .tracking(let status): send(.tracking(status))
         case .interrupted: send(.sessionInterrupted)
@@ -232,8 +233,12 @@ final class CaptureCoordinator: CaptureControlling {
         case .instruction(let next):
             instruction = next
             publish()
-        case .ended(let roomJSON): send(.roomCaptureEnded(roomJSON: roomJSON))
-        case .failed(let message): send(.roomCaptureFailed(message: message))
+        case .ended(let roomJSON):
+            Diagnostics.shared.record("room_capture_ended", ["bytes": Double(roomJSON.count)])
+            send(.roomCaptureEnded(roomJSON: roomJSON))
+        case .failed(let message):
+            Diagnostics.shared.record("room_capture_failed", note: message)
+            send(.roomCaptureFailed(message: message))
         }
     }
 
@@ -283,6 +288,7 @@ final class CaptureCoordinator: CaptureControlling {
     }
 
     private func startRoomCapture() {
+        Diagnostics.shared.record("room_capture_started", ["elements_dropped": Double(currentRoomElements.count)])
         currentRoomElements = []
         instruction = .normal
         dependencies.scanner.start()
