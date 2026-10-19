@@ -146,6 +146,23 @@ final class CaptureCoordinatorTests: XCTestCase {
 
     // MARK: Rooms
 
+    func testMeshCollectedAtCheckpointsSurvivesRoomPlanWipingIt() async throws {
+        let coordinator = makeCoordinator()
+        let seen = MeshPart(id: UUID(), transform: matrix_identity_float4x4, vertices: Data(count: 36), indices: Data(count: 12), classification: nil)
+        await coordinator.startScan(name: "Dorm")
+        host.parts = [seen]
+        host.emit(.checkpointDue)
+        await eventually("checkpoint saved") { coordinator.manifest?.worldMapSavedAt != nil }
+        await coordinator.settle()
+        host.parts = []
+        await coordinator.finishRoom()
+
+        let scanID = try XCTUnwrap(coordinator.manifest?.scanID)
+        let file = FileScanJournal(root: root).directory(for: scanID).appending(path: "mesh.spm")
+        let mesh = try SPMFormat.decode(Data(contentsOf: file))
+        XCTAssertEqual(mesh.parts.map(\.id), [seen.id])
+    }
+
     func testFinishRoomSavesRoomMeshAndFindings() async throws {
         let coordinator = makeCoordinator()
         let finding = Finding(ruleID: "r1", jurisdiction: .ada2010, section: "404", subjectID: "door", status: .fail, measured: nil, required: ">= 32 in", message: "Too narrow")

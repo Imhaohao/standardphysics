@@ -14,6 +14,9 @@ final class CaptureCoordinator: CaptureControlling {
     private(set) var manifest: ScanManifest?
     private(set) var finishedRoomElements: [LiveElement] = []
     private(set) var currentRoomElements: [LiveElement] = []
+    /// Every mesh piece seen this scan, by anchor. RoomPlan removes the session's mesh anchors when it
+    /// gives up on a room, so the mesh is collected at each checkpoint instead of only at the end.
+    private var meshLibrary: [UUID: MeshPart] = [:]
     /// Confirmed detector objects: those kept with finished rooms plus the room in progress.
     private(set) var detections: [Detection] = []
     @ObservationIgnored private var finishedRoomDetections: [Detection] = []
@@ -344,6 +347,7 @@ final class CaptureCoordinator: CaptureControlling {
     private func saveCheckpoint() async {
         guard let scanID = manifest?.scanID else { return }
         recordSessionConfiguration()
+        collectMesh()
         let token = dependencies.application.beginProtectedWork(named: "Save scan checkpoint")
         defer { dependencies.application.endProtectedWork(token) }
         do {
@@ -404,7 +408,8 @@ final class CaptureCoordinator: CaptureControlling {
 
     private func exportMesh() async {
         guard let scanID = manifest?.scanID else { return }
-        let parts = dependencies.host.meshParts()
+        collectMesh()
+        let parts = Array(meshLibrary.values)
         Diagnostics.shared.record("mesh_export", [
             "parts": Double(parts.count),
             "vertices": Double(parts.reduce(0) { $0 + $1.vertices.count / MeshPart.bytesPerVertex }),
@@ -529,7 +534,14 @@ final class CaptureCoordinator: CaptureControlling {
         observer?.capture(self, reached: milestone)
     }
 
+    private func collectMesh() {
+        for part in dependencies.host.meshParts() {
+            meshLibrary[part.id] = part
+        }
+    }
+
     private func resetLiveState() {
+        meshLibrary = [:]
         finishedRoomElements = []
         currentRoomElements = []
         finishedRoomDetections = []
