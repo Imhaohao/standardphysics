@@ -138,7 +138,7 @@ fn lookup_unit(key: &str) -> Option<Unit> {
         "ft" | "foot" | "feet" | "'" => Foot,
         "m2" | "m^2" | "sq_m" | "square_metres" | "square_meters" => SquareMetre,
         "in2" | "in^2" | "sq_in" | "square_inches" => SquareInch,
-        "ft2" | "ft^2" | "sq_ft" | "square_feet" => SquareFoot,
+        "ft2" | "ft^2" | "sq_ft" | "sqft" | "square_feet" => SquareFoot,
         "deg" | "degree" | "degrees" | "°" => Degree,
         "rad" | "radian" | "radians" => Radian,
         "%" | "percent" | "pct" => Percent,

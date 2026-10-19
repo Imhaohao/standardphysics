@@ -14,6 +14,10 @@ pub const EXTRACTORS: &[(&str, Extractor)] = &[
     ("toilet_room.compartment_count", compartment_count),
     ("toilet_room.urinal_count", urinal_count),
     ("toilet_room.is_single_user", is_single_user),
+    ("toilet_room.has_ambulatory_compartment", has_ambulatory_compartment),
+    ("toilet_room.accessible_urinal_count", accessible_urinal_count),
+    ("toilet_room.door_encroachment_into_turning_space", door_encroachment),
+    ("fitting_room.door_swing_into_turning", needs_detail),
     ("assembly.wheelchair_space_width", needs_detail),
     ("assembly.wheelchair_space_depth", needs_detail),
 ];
@@ -104,4 +108,45 @@ fn is_single_user(ctx: &EvalContext, subject: &Subject) -> Extraction {
     let lavatories = objects_of(room, LAVATORIES).count();
     let shared = count_in(room, &["toilet_compartment", "urinal"]);
     Extraction::boolean(water_closets == 1 && lavatories <= 1 && shared == 0)
+}
+
+const AMBULATORY_WIDTH: (f64, f64) = (0.889, 0.9398);
+
+fn has_ambulatory_compartment(ctx: &EvalContext, subject: &Subject) -> Extraction {
+    let room = match room_subject(ctx, subject) {
+        Ok(room) => room,
+        Err(e) => return e,
+    };
+    let ambulatory = objects_of(room, &["toilet_compartment"]).any(|c| {
+        let width = c.size.x.min(c.size.z);
+        width >= AMBULATORY_WIDTH.0 - 0.01 && width <= AMBULATORY_WIDTH.1 + 0.01
+    });
+    Extraction::boolean(ambulatory)
+}
+
+/// Urinals whose rim (within the box) is surely / possibly at most 17 in high.
+fn accessible_urinal_count(ctx: &EvalContext, subject: &Subject) -> Extraction {
+    let room = match room_subject(ctx, subject) {
+        Ok(room) => room,
+        Err(e) => return e,
+    };
+    let limit = crate::units::inches(17.0);
+    let spans: Vec<(f64, f64)> = objects_of(room, &["urinal"]).map(super::support::vertical_extent).collect();
+    let surely = spans.iter().filter(|(_, top)| *top <= limit).count();
+    let possibly = spans.iter().filter(|(bottom, _)| *bottom <= limit).count();
+    Extraction::count_range(surely, possibly)
+}
+
+/// Doors known to swing out do not encroach; otherwise the swing was not captured.
+fn door_encroachment(ctx: &EvalContext, subject: &Subject) -> Extraction {
+    let room = match room_subject(ctx, subject) {
+        Ok(room) => room,
+        Err(e) => return e,
+    };
+    let doors: Vec<_> = room.openings.iter().filter(|o| o.kind == crate::scene::OpeningKind::Door).collect();
+    if doors.iter().all(|d| d.swing.as_ref().is_some_and(|s| !s.swings_in)) {
+        Extraction::metres(0.0)
+    } else {
+        Extraction::unknown("door swing direction was not captured")
+    }
 }

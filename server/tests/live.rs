@@ -2,15 +2,28 @@ mod common;
 
 use std::time::Instant;
 
-use common::{connect_live, door_room, next_of_type, send_json, TestApp};
+use common::{connect_live, door_id, door_room_at, findings_for, next_of_type, send_json, TestApp};
 use serde_json::json;
 
+const WIDTH_RULE: &str = "ADA-404.2.3-clear-width";
+
 fn room_message(room_id: &str, door_width: f64, is_final: bool) -> serde_json::Value {
+    let slot = if room_id == "r1" { 0 } else { 1 };
     json!({
         "type": "room", "room_id": room_id, "final": is_final, "seq": 1,
-        "captured_room": door_room(room_id, door_width),
+        "captured_room": door_room_at(room_id, door_width, slot),
         "observations": [{"id": format!("{room_id}-obs"), "category": "toilet"}],
     })
+}
+
+fn width_status(findings: &serde_json::Value, room_id: &str) -> serde_json::Value {
+    let door = door_id(room_id);
+    let found = findings_for(findings, &door);
+    found
+        .iter()
+        .find(|f| f["rule_id"] == WIDTH_RULE)
+        .map(|f| f["status"].clone())
+        .unwrap_or_default()
 }
 
 #[tokio::test]
@@ -29,6 +42,9 @@ async fn phone_room_update_returns_findings_to_phone_and_viewer() {
 
     let sent_at = Instant::now();
     send_json(&mut phone, room_message("r1", 0.70, false)).await;
+    let room = next_of_type(&mut phone, "room").await;
+    assert_eq!(room["room"]["id"], "r1");
+    assert_eq!(room["room"]["openings"].as_array().unwrap().len(), 1);
     let on_phone = next_of_type(&mut phone, "findings").await;
     let round_trip = sent_at.elapsed();
     assert!(
@@ -37,17 +53,22 @@ async fn phone_room_update_returns_findings_to_phone_and_viewer() {
     );
     assert_eq!(on_phone["room_id"], "r1");
     assert_eq!(on_phone["seq"], 1);
-    assert_eq!(on_phone["findings"][0]["status"], "fail");
-    assert_eq!(on_phone["summary"]["total"]["fail"], 1);
+    assert_eq!(width_status(&on_phone["findings"], "r1"), "fail");
+    assert!(on_phone["summary"]["total"]["fail"].as_u64().unwrap() >= 1);
 
     let on_viewer = next_of_type(&mut viewer, "findings").await;
     assert_eq!(on_viewer["findings"], on_phone["findings"]);
 
     send_json(&mut phone, room_message("r2", 0.95, true)).await;
     let second = next_of_type(&mut viewer, "findings").await;
-    assert_eq!(second["findings"][0]["status"], "pass");
-    assert_eq!(second["summary"]["total"]["pass"], 1);
-    assert_eq!(second["summary"]["total"]["fail"], 1);
+    assert_eq!(width_status(&second["findings"], "r2"), "pass");
+    let first_room_fail = second["summary"]["by_jurisdiction"]["ADA2010"]["fail"]
+        .as_u64()
+        .unwrap();
+    assert!(
+        first_room_fail >= 1,
+        "summary keeps the earlier room's failure"
+    );
 }
 
 #[tokio::test]
@@ -110,7 +131,7 @@ async fn reconnect_restores_state_from_the_database() {
     let mut resumed = connect_live(&app, &token, &scan_id, "writer").await;
     let hello = next_of_type(&mut resumed, "hello").await;
     assert_eq!(hello["rooms"], json!(["r1"]));
-    assert_eq!(hello["findings"][0]["status"], "fail");
+    assert_eq!(width_status(&hello["findings"], "r1"), "fail");
 
     let observations: serde_json::Value =
         sqlx::query_scalar("SELECT observations FROM scan_rooms WHERE room_id = 'r1'")

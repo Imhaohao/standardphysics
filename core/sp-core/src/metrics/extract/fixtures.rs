@@ -30,6 +30,8 @@ pub const EXTRACTORS: &[(&str, Extractor)] = &[
     ("sign.lowest_baseline_height", sign_height),
     ("sign.location_latch_side", needs_detail),
     ("sign.clear_floor_18x18", sign_clear_floor),
+    ("dining_table.clear_floor_overlaps_route", clear_floor_overlaps_route),
+    ("bench.back_support_length", bench_back_support),
 ];
 
 /// 36 in: highest accessible sales and service counter (904.4.1).
@@ -231,4 +233,38 @@ fn sign_clear_floor(ctx: &EvalContext, subject: &Subject) -> Extraction {
     }
     let near_door = room.openings.iter().any(|o| o.kind.is_passable() && o.center.plan().distance(centre) < o.width + inches(9.0));
     if near_door { Extraction::unknown("a door swing may cross the space; swing not captured") } else { Extraction::boolean(true) }
+}
+
+/// More than a tenth of the table's clear floor space lies in the route corridor.
+fn clear_floor_overlaps_route(ctx: &EvalContext, subject: &Subject) -> Extraction {
+    let (room, table) = match object_in_room(ctx, subject) {
+        Ok(found) => found,
+        Err(e) => return e,
+    };
+    let Some(analysis) = ctx.analysis(room.storey) else { return Extraction::unknown("storey not analysed") };
+    if analysis.entrances.is_empty() {
+        return Extraction::unknown("no entrance on this storey to start a route from");
+    }
+    let Some(area) = super::clear_floor::clear_floor_area(ctx, room, table) else { return Extraction::unknown("storey not analysed") };
+    let grid = &analysis.grid;
+    let cells: Vec<usize> = grid.spec.cells_in(area.bounds()).filter(|&i| area.contains(grid.spec.center(i))).collect();
+    let corridor = analysis.route_corridor();
+    let inside = cells.iter().filter(|&&i| corridor[i]).count();
+    Extraction::boolean(!cells.is_empty() && inside * 10 > cells.len())
+}
+
+/// A bench against a wall, or with a back, is supported along its length.
+fn bench_back_support(ctx: &EvalContext, subject: &Subject) -> Extraction {
+    let (room, bench) = match object_in_room(ctx, subject) {
+        Ok(found) => found,
+        Err(e) => return e,
+    };
+    let against_wall = super::support::nearest_boundary(room, bench.center.plan()).is_some_and(|w| {
+        bench.footprint().corners().iter().map(|c| w.distance_to(*c)).fold(f64::INFINITY, f64::min) < 0.1
+    });
+    if against_wall || bench.size.y > BENCH_SEAT_ONLY {
+        Extraction::metres(long_dimension(bench))
+    } else {
+        Extraction::unknown("no wall or back seen behind the bench; a photo confirms")
+    }
 }

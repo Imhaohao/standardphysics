@@ -60,6 +60,11 @@ impl Probe {
         shifted.sweep(grid, max_length)
     }
 
+    /// True when the whole sweep line at `distance` is free floor.
+    pub fn is_clear_at(&self, grid: &OccupancyGrid, distance: f64) -> bool {
+        self.line_state(grid, distance) == CellState::Free
+    }
+
     /// Worst state along the sweep line at `distance`: Blocked beats Outside beats Free.
     fn line_state(&self, grid: &OccupancyGrid, distance: f64) -> CellState {
         let step = grid.spec.cell / 2.0;

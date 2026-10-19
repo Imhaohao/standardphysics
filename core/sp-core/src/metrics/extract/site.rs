@@ -22,6 +22,10 @@ pub const EXTRACTORS: &[(&str, Extractor)] = &[
     ("site.has_elevator", has_elevator),
     ("site.has_fitting_rooms", has_fitting_rooms),
     ("site.has_atm_or_depository", has_atm_or_depository),
+    ("site.arrival_route_accessible", arrival_route_accessible),
+    ("site.dining_seating_accessible", dining_seating_accessible),
+    ("site.fitting_rooms_total", fitting_rooms_total),
+    ("site.selling_space_sqft", selling_space),
     ("drinking_fountain.count_wheelchair", fountains_for_wheelchair),
     ("drinking_fountain.count_standing", fountains_for_standing),
 ];
@@ -184,4 +188,43 @@ fn fountains_for_wheelchair(ctx: &EvalContext, subject: &Subject) -> Extraction 
 
 fn fountains_for_standing(ctx: &EvalContext, subject: &Subject) -> Extraction {
     fountains_in_band(ctx, subject, inches(38.0), inches(43.0))
+}
+
+fn arrival_route_accessible(_: &EvalContext, subject: &Subject) -> Extraction {
+    site_only(subject).map(|_| Extraction::unknown("the exterior arrival route was not scanned; a photo or the owner confirms")).unwrap_or_else(|e| e)
+}
+
+/// Seats beside dining surfaces, counted as accessible when their surface's rules pass.
+fn dining_seating_accessible(ctx: &EvalContext, subject: &Subject) -> Extraction {
+    if let Err(e) = site_only(subject) {
+        return e;
+    }
+    if ctx.outcomes.is_none() {
+        return Extraction::unknown("counted after the element rules are evaluated");
+    }
+    let mut surely = 0;
+    let mut possibly = 0;
+    for (room, seat) in ctx.objects_of(SEATS) {
+        let table = super::support::objects_of(room, DINING_SURFACES).find(|t| t.footprint().distance_to(seat.center.plan()) < 0.75);
+        if let Some(outcome) = table.map(|t| ctx.outcome(&t.id).unwrap_or_default()) {
+            surely += usize::from(outcome.any_pass && !outcome.any_fail && !outcome.any_unresolved);
+            possibly += usize::from(!outcome.any_fail);
+        }
+    }
+    Extraction::count_range(surely, possibly)
+}
+
+fn fitting_rooms_total(ctx: &EvalContext, subject: &Subject) -> Extraction {
+    site_only(subject).map(|_| Extraction::count(ctx.objects_of(&["fitting_room"]).count())).unwrap_or_else(|e| e)
+}
+
+/// Floor area of customer rooms: at least the shops, at most every room but restrooms, storage and kitchens.
+fn selling_space(ctx: &EvalContext, subject: &Subject) -> Extraction {
+    if let Err(e) = site_only(subject) {
+        return e;
+    }
+    let area = |keep: &dyn Fn(RoomKind) -> bool| ctx.scene.rooms.iter().filter(|r| keep(r.kind)).map(|r| r.floor.area()).sum::<f64>();
+    let shops = area(&|k| k == RoomKind::Shop);
+    let customer = area(&|k| !matches!(k, RoomKind::Restroom | RoomKind::Storage | RoomKind::Kitchen));
+    Extraction::Measured(crate::metrics::Measurement::geometry(crate::metrics::Value::range(shops, customer), crate::units::Unit::SquareMetre))
 }

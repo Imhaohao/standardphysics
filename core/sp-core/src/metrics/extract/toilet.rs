@@ -31,10 +31,16 @@ pub const EXTRACTORS: &[(&str, Extractor)] = &[
     ("toilet_compartment.toe_clearance_height", needs_detail),
     ("toilet_compartment.door_location_from_side", needs_detail),
     ("toilet_compartment.kind", compartment_kind),
+    ("toilet_compartment.front_maneuvering_depth", compartment_front_depth),
+    ("water_closet.compartment_kind", wc_compartment_kind),
+    ("toilet_paper_dispenser.below_grab_bar", dispenser_below_grab_bar),
     ("toilet_compartment.wc_mounting", wc_mounting),
     ("urinal.rim_height", within_box),
     ("urinal.rim_depth", urinal_rim_depth),
     ("lavatory.rim_height", lavatory_rim_height),
+    ("lavatory.centerline_from_side_wall", lavatory_centerline_from_side_wall),
+    ("grab_bar.side_front_beyond_wc", side_bar_beyond_wc),
+    ("water_closet.front_maneuvering_depth", wc_front_maneuvering_depth),
     ("lavatory.distance_from_wc_centerline", lavatory_from_wc_centerline),
 ];
 
@@ -324,17 +330,64 @@ fn compartment_depth(ctx: &EvalContext, subject: &Subject) -> Extraction {
     compartment_size(ctx, subject).map(|(_, d)| Extraction::metres(d)).unwrap_or_else(|e| e)
 }
 
+fn kind_for_width(width: f64) -> &'static str {
+    match width {
+        w if w >= inches(60.0) - 0.01 => "wheelchair",
+        w if (inches(35.0) - 0.01..=inches(37.0) + 0.01).contains(&w) => "ambulatory",
+        _ => "other",
+    }
+}
+
 fn compartment_kind(ctx: &EvalContext, subject: &Subject) -> Extraction {
-    compartment_size(ctx, subject)
-        .map(|(width, _)| {
-            let kind = match width {
-                w if w >= inches(60.0) - 0.01 => "wheelchair",
-                w if (inches(35.0) - 0.01..=inches(37.0) + 0.01).contains(&w) => "ambulatory",
-                _ => "other",
-            };
-            Extraction::text(kind)
-        })
-        .unwrap_or_else(|e| e)
+    compartment_size(ctx, subject).map(|(width, _)| Extraction::text(kind_for_width(width))).unwrap_or_else(|e| e)
+}
+
+/// The compartment around a water closet, sized in that water closet's frame.
+fn wc_compartment_kind(ctx: &EvalContext, subject: &Subject) -> Extraction {
+    let (room, wc, frame) = match water_closet(ctx, subject) {
+        Ok(found) => found,
+        Err(e) => return e,
+    };
+    let compartment = objects_of(room, &["toilet_compartment"]).find(|c| c.footprint().contains(wc.center.plan()));
+    match compartment {
+        None => Extraction::text("none"),
+        Some(c) => {
+            let across = projected_span(&c.footprint(), frame.rear_origin, frame.lateral);
+            Extraction::text(kind_for_width(across.1 - across.0))
+        }
+    }
+}
+
+/// Depth inside the compartment from the front of the water closet to the compartment front.
+fn compartment_front_depth(ctx: &EvalContext, subject: &Subject) -> Extraction {
+    let (room, compartment) = match object_in_room(ctx, subject) {
+        Ok(found) => found,
+        Err(e) => return e,
+    };
+    let footprint = compartment.footprint();
+    let Some(wc) = objects_of(room, WATER_CLOSETS).find(|wc| footprint.contains(wc.center.plan())) else {
+        return Extraction::unknown("no water closet found inside the compartment");
+    };
+    let Some(frame) = WcFrame::of(room, wc) else { return Extraction::unknown("no walls captured around the water closet") };
+    let wc_front = projected_span(&wc.footprint(), frame.rear_origin, frame.facing).1;
+    let compartment_front = projected_span(&footprint, frame.rear_origin, frame.facing).1;
+    Extraction::metres((compartment_front - wc_front).max(0.0)).located(Some(compartment.center))
+}
+
+/// Below the side grab bar with 1.5 in between, and not past the bar's ends.
+fn dispenser_below_grab_bar(ctx: &EvalContext, subject: &Subject) -> Extraction {
+    let (room, dispenser) = match object_in_room(ctx, subject) {
+        Ok(found) => found,
+        Err(e) => return e,
+    };
+    let bar = objects_of(room, &["grab_bar"])
+        .filter(|b| b.footprint().distance_to(dispenser.center.plan()) < 0.3)
+        .min_by(|a, b| a.footprint().distance_to(dispenser.center.plan()).total_cmp(&b.footprint().distance_to(dispenser.center.plan())));
+    let Some(bar) = bar else { return Extraction::unknown("no grab bar detected near the dispenser; a photo confirms") };
+    let gap = bar.bottom_height() - dispenser.top_height;
+    let along = projected_span(&bar.footprint(), bar.center.plan(), long_axis(bar));
+    let offset = (dispenser.center.plan() - bar.center.plan()).dot(long_axis(bar));
+    Extraction::boolean(gap >= inches(1.5) - 1e-6 && offset >= along.0 && offset <= along.1)
 }
 
 /// A bowl box that stops short of the floor is wall hung.
@@ -373,4 +426,37 @@ fn lavatory_from_wc_centerline(ctx: &EvalContext, subject: &Subject) -> Extracti
     let span = projected_span(&lavatory.footprint(), frame.rear_origin, frame.lateral);
     let gap = if span.0 > centre_x { span.0 - centre_x } else if span.1 < centre_x { centre_x - span.1 } else { 0.0 };
     Extraction::metres(gap).located(Some(lavatory.center))
+}
+
+fn lavatory_centerline_from_side_wall(ctx: &EvalContext, subject: &Subject) -> Extraction {
+    match water_closet(ctx, subject) {
+        Ok((_, lavatory, frame)) => match frame.centre_x {
+            Some(x) => Extraction::metres(x).located(Some(lavatory.center)),
+            None => Extraction::unknown("no side wall found beside the lavatory"),
+        },
+        Err(e) => e,
+    }
+}
+
+/// How far the side bar's front end reaches past the front of the water closet.
+fn side_bar_beyond_wc(ctx: &EvalContext, subject: &Subject) -> Extraction {
+    let (room, bar) = match object_in_room(ctx, subject) {
+        Ok(found) => found,
+        Err(e) => return e,
+    };
+    let Some(wc) = nearest_wc(room, bar.center.plan()) else { return Extraction::not_applicable("no water closet in the room") };
+    let front = WcFrame::of(room, wc).map(|frame| projected_span(&wc.footprint(), frame.rear_origin, frame.facing).1);
+    bar_metric(ctx, subject, BarWall::Side, |_, _, span| Some(span.1)).map_value(|far_end| far_end - front.unwrap_or(far_end))
+}
+
+/// Free depth in front of the water closet across a 60 in band from the side wall.
+fn wc_front_maneuvering_depth(ctx: &EvalContext, subject: &Subject) -> Extraction {
+    let (room, wc, frame) = match water_closet(ctx, subject) {
+        Ok(found) => found,
+        Err(e) => return e,
+    };
+    let front = projected_span(&wc.footprint(), frame.rear_origin, frame.facing).1;
+    let points: Vec<Vec2> = obstruction_points(room, wc, &frame).into_iter().map(|p| Vec2::new(p.x, p.y - front)).collect();
+    let band = if frame.side.is_some() { CLEARANCE_WIDTH } else { f64::INFINITY };
+    Extraction::metres(clear_extent(&points, |p| p.y, |p| p.x.abs(), band)).located(Some(wc.center))
 }
