@@ -36,6 +36,7 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass, field
+from functools import lru_cache
 
 import numpy as np
 
@@ -222,6 +223,7 @@ def _names_agree(first: str, second: str) -> bool:
     return bool(left and right and (left <= right or right <= left))
 
 
+@lru_cache(maxsize=4096)
 def _words(name: str) -> frozenset[str]:
     settled = SYNONYMS.get(name.strip().lower(), name.strip().lower())
     return frozenset(word for word in settled.split() if word not in STOPWORDS)
@@ -229,15 +231,22 @@ def _words(name: str) -> frozenset[str]:
 
 def _bounds(box: CarvedBox) -> tuple[np.ndarray, np.ndarray]:
     """The axis-aligned range the turned box occupies."""
-    half = np.asarray(box.dimensions, dtype=np.float64) / 2
-    cos_t, sin_t = abs(np.cos(box.yaw)), abs(np.sin(box.yaw))
+    low, high = _turned_range(tuple(box.centre), tuple(box.dimensions), float(box.yaw))
+    return np.asarray(low), np.asarray(high)
+
+
+@lru_cache(maxsize=65536)
+def _turned_range(centre, dimensions, yaw: float) -> tuple[tuple[float, ...], tuple[float, ...]]:
+    """`_bounds` for one placement, worked out once: merging compares every box with every other."""
+    half = np.asarray(dimensions, dtype=np.float64) / 2
+    cos_t, sin_t = abs(np.cos(yaw)), abs(np.sin(yaw))
     reach = np.asarray([
         half[0] * cos_t + half[1] * sin_t,
         half[0] * sin_t + half[1] * cos_t,
         half[2],
     ])
-    centre = np.asarray(box.centre, dtype=np.float64)
-    return centre - reach, centre + reach
+    middle = np.asarray(centre, dtype=np.float64)
+    return tuple(middle - reach), tuple(middle + reach)
 
 
 def _first_view(candidate: Candidate) -> DiscoveredObject:

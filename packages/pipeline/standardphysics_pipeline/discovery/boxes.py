@@ -15,6 +15,7 @@ from uuid import UUID
 import numpy as np
 from standardphysics_contracts import SceneGraph, SceneNode, bounds_the_room
 
+from ..textures.regions import VertexIndex
 from .carve import CarvedBox
 
 CLAIMED_MARGIN = 0.03
@@ -64,20 +65,41 @@ def claimed_by(points: np.ndarray, node: SceneNode, margin: float = CLAIMED_MARG
     return within & (local[:, 2] <= half[2] - UNCLAIMED_LID)
 
 
+def near(index: VertexIndex, node: SceneNode, reach: float) -> np.ndarray:
+    """Ascending indices of every point that could lie within the node's box grown by `reach`.
+
+    A room's mesh is a million points and a room has a couple of hundred boxes, so
+    testing every point against every box was most of the cost of measuring what
+    is claimed. The bounds come from the same frame `to_local` measures in, so the
+    candidates hold every point the exact test would keep.
+    """
+    rotation, origin, half = _frame(node)
+    try:
+        back = np.linalg.inv(rotation)
+    except np.linalg.LinAlgError:
+        return np.arange(len(index.vertices))
+    extent = np.abs(back).T @ (half + reach) + 1e-6
+    return index.within(origin - extent, origin + extent)
+
+
 def claimed_by_any(points: np.ndarray, graph: SceneGraph, margin: float = CLAIMED_MARGIN) -> np.ndarray:
     """Points already inside something the scan measured."""
     owned = np.zeros(len(points), dtype=bool)
+    index = VertexIndex(points)
     for node in graph.nodes:
-        owned |= claimed_by(points, node, margin)
+        candidates = near(index, node, margin)
+        owned[candidates] |= claimed_by(points[candidates], node, margin)
     return owned
 
 
 def structure_points(points: np.ndarray, graph: SceneGraph, margin: float = CLAIMED_MARGIN) -> np.ndarray:
     """Points belonging to the walls, floor and openings, which nothing may delete."""
     owned = np.zeros(len(points), dtype=bool)
+    index = VertexIndex(points)
     for node in graph.nodes:
         if node.kind in STRUCTURE_KINDS:
-            owned |= inside(points, node, margin)
+            candidates = near(index, node, margin)
+            owned[candidates] |= inside(points[candidates], node, margin)
     return owned
 
 

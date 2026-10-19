@@ -24,7 +24,8 @@ from standardphysics_contracts import (
 )
 
 from ..occupancy import UNCLAIMED_SURFACE
-from .boxes import claimed_by_any, inside, to_local
+from ..textures.regions import VertexIndex
+from .boxes import claimed_by_any, inside, near, to_local
 
 HEIGHT_BAND_M = 0.025
 TOP_REACH_M = 0.25
@@ -76,10 +77,10 @@ def _owners(centres: np.ndarray, graph: SceneGraph) -> np.ndarray:
         bounds_the_room(nodes[index]),
         nodes[index].dimensions.x * nodes[index].dimensions.y * nodes[index].dimensions.z,
     ))
+    places = VertexIndex(centres)
     for index in order:
-        free = np.flatnonzero(assigned < 0)
-        if not len(free):
-            break
+        free = near(places, nodes[index], 0.03)
+        free = free[assigned[free] < 0]
         assigned[free[inside(centres[free], nodes[index], margin=0.03)]] = index
     return assigned
 
@@ -125,13 +126,28 @@ def _ceiling(centres: np.ndarray, area: np.ndarray, vertical: np.ndarray, graph:
     )
 
 
-def _top_candidates(node: SceneNode, centres: np.ndarray, vertical: np.ndarray) -> np.ndarray:
-    local = to_local(centres, node)
+class _ByHeight:
+    """Face centres sorted by height, so a node's top is looked for only in the slab around it."""
+
+    def __init__(self, centres: np.ndarray):
+        self.order = np.argsort(centres[:, 2], kind="stable")
+        self.heights = centres[self.order, 2]
+
+    def between(self, low: float, high: float) -> np.ndarray:
+        return self.order[np.searchsorted(self.heights, low, side="left"):np.searchsorted(self.heights, high, side="right")]
+
+
+def _top_candidates(node: SceneNode, centres: np.ndarray, vertical: np.ndarray, by_height: _ByHeight) -> np.ndarray:
     half = np.asarray(node.dimensions.as_tuple()) / 2
     target = node.transform.position.z + half[2]
-    return (np.all(np.abs(local[:, :2]) <= half[:2] + 0.03, axis=1)
-            & (np.abs(centres[:, 2] - target) <= TOP_REACH_M)
-            & (vertical >= 0.8))
+    slab = by_height.between(target - TOP_REACH_M, target + TOP_REACH_M)
+    local = to_local(centres[slab], node)
+    kept = (np.all(np.abs(local[:, :2]) <= half[:2] + 0.03, axis=1)
+            & (np.abs(centres[slab, 2] - target) <= TOP_REACH_M)
+            & (vertical[slab] >= 0.8))
+    mask = np.zeros(len(centres), dtype=bool)
+    mask[slab[kept]] = True
+    return mask
 
 
 def _dominant_top(centres: np.ndarray, area: np.ndarray, mask: np.ndarray) -> tuple[float, float, float] | None:
@@ -154,8 +170,8 @@ def _dominant_top(centres: np.ndarray, area: np.ndarray, mask: np.ndarray) -> tu
 
 
 def _height(node: SceneNode, centres: np.ndarray, area: np.ndarray, vertical: np.ndarray,
-            floor: tuple[float, float] | None) -> SurfaceHeight:
-    top = _dominant_top(centres, area, _top_candidates(node, centres, vertical))
+            floor: tuple[float, float] | None, by_height: _ByHeight) -> SurfaceHeight:
+    top = _dominant_top(centres, area, _top_candidates(node, centres, vertical, by_height))
     if floor is None or top is None:
         return SurfaceHeight()
     top_z, top_uncertainty, support = top
@@ -175,11 +191,13 @@ def _pieces(centres: np.ndarray, area: np.ndarray, vertical: np.ndarray,
     unique, inverse = np.unique(keys, axis=0, return_inverse=True)
     descriptions = ("horizontal", "sloped", "vertical")
     areas = np.bincount(inverse, weights=area)
+    grouped = np.argsort(inverse.reshape(-1), kind="stable")
+    starts = np.searchsorted(inverse.reshape(-1)[grouped], np.arange(len(unique) + 1))
     pieces = []
     for index, key in enumerate(unique):
         if areas[index] < MIN_TOP_AREA_M2:
             continue
-        points = centres[inverse == index]
+        points = centres[grouped[starts[index]:starts[index + 1]]]
         low, high = points.min(axis=0), points.max(axis=0)
         centre = (low + high) / 2
         size = np.maximum(high - low, 0.05)
@@ -259,8 +277,10 @@ def segment_surfaces(faces: np.ndarray, graph: SceneGraph, before: SceneGraph | 
         if floor_index is not None:
             floor_faces = (owners < 0) & (vertical >= 0.8) & (np.abs(centres[:, 2] - floor[0]) <= 0.06)
             owners[floor_faces] = floor_index
+    by_height = _ByHeight(centres)
     nodes = [
-        node if bounds_the_room(node) else node.model_copy(update={"top_surface": _height(node, centres, area, vertical, floor)})
+        node if bounds_the_room(node)
+        else node.model_copy(update={"top_surface": _height(node, centres, area, vertical, floor, by_height)})
         for node in graph.nodes
     ]
     pieces = _pieces(centres, area, vertical, owners, nodes, _components(centres, owners, vertical))
