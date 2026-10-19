@@ -70,7 +70,7 @@ targets:
           SP_STORAGE_HOSTS: localhost 127.0.0.1 .r2.cloudflarestorage.com
         Release:
           SP_API_BASE_URL: https://api.standardphysics.app
-          SP_STORAGE_HOSTS: .r2.cloudflarestorage.com
+          SP_STORAGE_HOSTS: 3a62492c4b6146cecd61f746a9ee2707.r2.cloudflarestorage.com
     entitlements:
       path: Resources/StandardPhysics.entitlements
       properties:
