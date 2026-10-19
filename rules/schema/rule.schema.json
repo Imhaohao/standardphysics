@@ -1,0 +1,692 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://standardphysics.dev/rules/schema/rule.schema.json",
+  "title": "Rulepack",
+  "description": "One jurisdiction's rules (ada2010.json, cbc11b.json). Every threshold is data here; sp-core evaluates it.",
+  "type": "object",
+  "required": [
+    "version",
+    "jurisdiction",
+    "edition",
+    "rules"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "jurisdiction": {
+      "$ref": "#/$defs/jurisdiction"
+    },
+    "edition": {
+      "type": "string"
+    },
+    "enforcement_context": {
+      "type": "string"
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "review_status": {
+      "type": "string"
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/rule"
+      },
+      "minItems": 1
+    }
+  },
+  "$defs": {
+    "jurisdiction": {
+      "enum": [
+        "ADA2010",
+        "CBC11B"
+      ]
+    },
+    "evidence": {
+      "enum": [
+        "measured",
+        "photo",
+        "owner"
+      ]
+    },
+    "op": {
+      "enum": [
+        "<=",
+        ">=",
+        "<",
+        ">",
+        "==",
+        "!=",
+        "between",
+        "in",
+        "exists"
+      ]
+    },
+    "scalar": {
+      "type": [
+        "number",
+        "string",
+        "boolean"
+      ]
+    },
+    "metric_ref": {
+      "type": "object",
+      "required": [
+        "metric"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "metric": {
+          "type": "string"
+        }
+      }
+    },
+    "value": {
+      "description": "A literal, a [lo, hi] pair for between, a list for in, or another metric on the same subject/site.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/scalar"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/scalar"
+          }
+        },
+        {
+          "$ref": "#/$defs/metric_ref"
+        }
+      ]
+    },
+    "rule": {
+      "type": "object",
+      "required": [
+        "id",
+        "jurisdiction",
+        "edition",
+        "section",
+        "title",
+        "summary",
+        "applies_to",
+        "scoping",
+        "test",
+        "evidence",
+        "tolerance",
+        "severity",
+        "source_url",
+        "source_kind",
+        "notes",
+        "counterpart",
+        "stricter_than",
+        "verified_by",
+        "verified_at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^(ADA|CBC)-[0-9A-Za-z.()\\-]+$"
+        },
+        "jurisdiction": {
+          "$ref": "#/$defs/jurisdiction"
+        },
+        "edition": {
+          "type": "string"
+        },
+        "section": {
+          "type": "string",
+          "minLength": 3
+        },
+        "title": {
+          "type": "string",
+          "minLength": 3
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 10,
+          "description": "Plain-language requirement shown in reports."
+        },
+        "applies_to": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "description": "Object categories or element kinds from metrics.json."
+        },
+        "scoping": {
+          "$ref": "#/$defs/scoping"
+        },
+        "test": {
+          "$ref": "#/$defs/test"
+        },
+        "evidence": {
+          "$ref": "#/$defs/evidence"
+        },
+        "tolerance": {
+          "description": "Measurement uncertainty band. With policy needs_info_within, a measurement within value of the limit yields needs_info instead of pass/fail.",
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "required": [
+                "value",
+                "unit",
+                "policy"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "value": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "unit": {
+                  "type": "string"
+                },
+                "policy": {
+                  "enum": [
+                    "needs_info_within"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "severity": {
+          "enum": [
+            "violation",
+            "advisory"
+          ]
+        },
+        "source_url": {
+          "type": "string",
+          "pattern": "^https://"
+        },
+        "official_url": {
+          "type": "string",
+          "pattern": "^https://"
+        },
+        "source_kind": {
+          "enum": [
+            "primary",
+            "transcription",
+            "regulation",
+            "statute"
+          ]
+        },
+        "notes": {
+          "type": "string"
+        },
+        "counterpart": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Rule id of the same requirement in the other jurisdiction."
+        },
+        "stricter_than": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Rule ids in the other jurisdiction this rule is stricter than; the stricter result governs."
+        },
+        "verified_by": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "verified_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "scoping": {
+      "type": "object",
+      "required": [
+        "text",
+        "when",
+        "when_unknown"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "when": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/condition"
+            }
+          ]
+        },
+        "when_unknown": {
+          "enum": [
+            "needs_info",
+            "not_applicable",
+            "apply"
+          ],
+          "description": "What to do when a metric in `when` has no value: report needs_info, skip as not_applicable, or evaluate the test anyway."
+        }
+      }
+    },
+    "condition": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "metric",
+            "op",
+            "value"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "metric": {
+              "type": "string"
+            },
+            "op": {
+              "$ref": "#/$defs/op"
+            },
+            "value": {
+              "$ref": "#/$defs/value"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "all"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "all": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/condition"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "any"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "any": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/condition"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "not"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "not": {
+              "$ref": "#/$defs/condition"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "category_present"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "category_present": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "room_kind_in"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "room_kind_in": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "subject_category_in"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "subject_category_in": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ],
+      "description": "Machine scoping condition. A leaf {metric, op, value} is read from the rule's subject, or from the site for site.* metrics. If the metric is not defined for the subject's category (metrics.json applies_to) the leaf is false. If it is defined but has no value, scoping.when_unknown decides the outcome. category_present tests the whole scene; room_kind_in tests the room containing the subject; subject_category_in tests the subject's canonical category."
+    },
+    "answer": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/scalar"
+        },
+        {
+          "type": "object",
+          "required": [
+            "op",
+            "value"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "$ref": "#/$defs/op"
+            },
+            "value": {
+              "$ref": "#/$defs/value"
+            }
+          }
+        }
+      ]
+    },
+    "table_row": {
+      "type": "object",
+      "required": [
+        "min",
+        "max"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "min": {
+          "type": "integer"
+        },
+        "max": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "required": {
+          "type": "integer"
+        },
+        "percent": {
+          "type": "number"
+        },
+        "base": {
+          "type": "integer"
+        },
+        "per": {
+          "type": "integer"
+        },
+        "over": {
+          "type": "integer"
+        },
+        "percent_of_excess": {
+          "type": "number"
+        }
+      }
+    },
+    "test": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "measure"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "measure": {
+              "type": "object",
+              "required": [
+                "metric",
+                "op",
+                "value",
+                "unit"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "metric": {
+                  "type": "string"
+                },
+                "op": {
+                  "$ref": "#/$defs/op"
+                },
+                "value": {
+                  "$ref": "#/$defs/value"
+                },
+                "unit": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "presence"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "presence": {
+              "type": "object",
+              "required": [
+                "metric",
+                "expected"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "metric": {
+                  "type": "string"
+                },
+                "expected": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "question"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "question": {
+              "type": "object",
+              "required": [
+                "metric",
+                "prompt",
+                "pass_answer"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "metric": {
+                  "type": "string"
+                },
+                "prompt": {
+                  "type": "string",
+                  "minLength": 10
+                },
+                "pass_answer": {
+                  "$ref": "#/$defs/answer"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "photo"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "photo": {
+              "type": "object",
+              "required": [
+                "metric",
+                "prompt",
+                "expected"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "metric": {
+                  "type": "string"
+                },
+                "prompt": {
+                  "type": "string",
+                  "minLength": 10
+                },
+                "expected": {
+                  "$ref": "#/$defs/answer"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "ratio"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "ratio": {
+              "type": "object",
+              "required": [
+                "metric",
+                "basis_metric",
+                "min_fraction",
+                "min_count",
+                "rounding"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "metric": {
+                  "type": "string"
+                },
+                "basis_metric": {
+                  "type": "string"
+                },
+                "min_fraction": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "min_count": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "rounding": {
+                  "enum": [
+                    "ceil",
+                    "floor",
+                    "round"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "table"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "table": {
+              "type": "object",
+              "required": [
+                "metric",
+                "basis_metric",
+                "rows"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "metric": {
+                  "type": "string"
+                },
+                "basis_metric": {
+                  "type": "string"
+                },
+                "rows": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "$ref": "#/$defs/table_row"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "all_of"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "all_of": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/test"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "any_of"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "any_of": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/test"
+              }
+            }
+          }
+        }
+      ],
+      "description": "Pass/fail test. measure compares a metric (unit must match metrics.json) with a literal, [lo, hi] for between, or {metric}. presence expects a boolean metric. question and photo request an owner answer or a labelled photo that sets the metric. ratio requires metric >= max(min_count, rounding(min_fraction * basis_metric)). table looks up the basis_metric row: required, percent of basis, or base + ceil((basis - over) / per) (with percent_of_excess, base + ceil(percent_of_excess% * (basis - over))). Any unknown metric makes the result needs_info, never pass."
+    }
+  }
+}

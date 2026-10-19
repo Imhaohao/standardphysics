@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://standardphysics.dev/rules/schema/metrics.schema.json",
+  "title": "Metric catalog",
+  "description": "Every metric a rule may reference. sp-core must implement an extractor (or an observation key) for each.",
+  "type": "object",
+  "required": ["version", "units_note", "evidence_kinds", "elements", "object_categories", "metrics"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {"type": "string"},
+    "units_note": {"type": "string"},
+    "evidence_kinds": {"type": "object", "additionalProperties": {"type": "string"}},
+    "elements": {
+      "type": "array",
+      "items": {
+        "type": "object", "required": ["id", "description"], "additionalProperties": false,
+        "properties": {"id": {"$ref": "#/$defs/ident"}, "description": {"type": "string"}}
+      }
+    },
+    "object_categories": {
+      "type": "array",
+      "items": {
+        "type": "object", "required": ["id", "origin", "canonical", "description"], "additionalProperties": false,
+        "properties": {
+          "id": {"$ref": "#/$defs/ident"},
+          "origin": {"enum": ["roomplan", "detector"]},
+          "roomplan_class": {"type": "string", "description": "RoomPlan CapturedRoom.Object.Category case name."},
+          "canonical": {"$ref": "#/$defs/ident", "description": "Category rules use; core maps id to canonical (e.g. toilet -> water_closet)."},
+          "description": {"type": "string"}
+        }
+      }
+    },
+    "metrics": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/metric"}}
+  },
+  "$defs": {
+    "ident": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "metric": {
+      "type": "object",
+      "required": ["id", "unit", "value_type", "element", "applies_to", "evidence", "fallback_evidence", "derivation"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*\\.[a-z0-9_]+$"},
+        "unit": {"enum": ["in", "ft", "ratio", "lbf", "s", "deg", "count", "boolean", "enum", "usd", "sqft"]},
+        "value_type": {"enum": ["number", "integer", "boolean", "enum"]},
+        "enum_values": {"type": "array", "items": {"type": "string"}, "minItems": 2},
+        "element": {"$ref": "#/$defs/ident"},
+        "applies_to": {"type": "array", "items": {"$ref": "#/$defs/ident"}, "minItems": 1},
+        "evidence": {"enum": ["measured", "photo", "owner"]},
+        "fallback_evidence": {"type": "array", "items": {"enum": ["measured", "photo", "owner"]}},
+        "derivation": {"type": "string", "minLength": 10},
+        "notes": {"type": "string"}
+      }
+    }
+  }
+}

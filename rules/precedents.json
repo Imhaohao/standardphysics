@@ -1,0 +1,499 @@
+{
+  "version": "2.0.0",
+  "note": "Curated table of case law, DOJ guidance and statutes that inform rules. verification records what was confirmed against a source on checked_at; anything with a false field needs human review before it is shown to users. verified_by stays null until a lawyer or CASp reviews the entry.",
+  "precedents": [
+    {
+      "id": "chapman-pier1-2011-en-banc",
+      "kind": "case",
+      "case_name": "Chapman v. Pier 1 Imports (U.S.) Inc.",
+      "citation": "631 F.3d 939 (9th Cir. 2011) (en banc)",
+      "docket": "07-16326",
+      "court": "U.S. Court of Appeals for the Ninth Circuit (en banc)",
+      "year": 2011,
+      "decided": "2011-01-07",
+      "holding": "An ADA plaintiff who encountered at least one barrier related to his disability, and is deterred or intends to return, has standing to challenge other unencountered barriers related to that disability, but must plead which barriers he encountered and how they affected him.",
+      "informs_rule_ids": [],
+      "topic": "standing and pleading: why findings must name the specific barrier and the disability it affects",
+      "source_url": "https://www.justice.gov/crt/about/app/briefs/chapmandecision.pdf",
+      "verification": {
+        "case_exists": true,
+        "docket_and_date": true,
+        "reporter_citation": false,
+        "holding": true,
+        "checked_at": "2026-10-19",
+        "note": "Opinion text read from the DOJ-hosted copy; the F.3d reporter citation was not shown in that copy."
+      },
+      "verified_by": null
+    },
+    {
+      "id": "chapman-pier1-2015",
+      "kind": "case",
+      "case_name": "Chapman v. Pier 1 Imports (U.S.) Inc.",
+      "citation": "779 F.3d 1001 (9th Cir. 2015)",
+      "docket": "12-16857",
+      "court": "U.S. Court of Appeals for the Ninth Circuit",
+      "year": 2015,
+      "decided": "2015-03-05",
+      "holding": "A store that repeatedly let merchandise and displays obstruct its aisles violated Title III; recurring obstructions are not the isolated or temporary interruptions excused by 28 C.F.R. 36.211(b).",
+      "informs_rule_ids": [
+        "ADA-403.5.1-clear-width",
+        "CBC-11B-403.5.1-clear-width",
+        "ADA-28CFR36.211-maintenance",
+        "CBC-11B-403.5.1-aisle-44"
+      ],
+      "topic": "movable merchandise counts against route width",
+      "source_url": "https://www.courtlistener.com/opinion/2784335/chapman-v-pier-1-imports-us-inc/",
+      "verification": {
+        "case_exists": true,
+        "docket_and_date": true,
+        "reporter_citation": true,
+        "holding": true,
+        "checked_at": "2026-09-30",
+        "note": "Carried over from the v1 precedent table, verified by Boris Nezlobin on 2026-09-30."
+      },
+      "verified_by": null
+    },
+    {
+      "id": "kalani-starbucks-2015-counter",
+      "kind": "case",
+      "case_name": "Kalani v. Starbucks Corp.",
+      "citation": "81 F. Supp. 3d 876 (N.D. Cal. 2015)",
+      "docket": "13-cv-00734-LHK",
+      "court": "U.S. District Court, N.D. Cal.",
+      "year": 2015,
+      "decided": "2015-02-25",
+      "holding": "Registers and promotional items kept the usable point-of-sale counter under the 36 in length 904.4.1 requires, and display baskets formed an alcove deeper than 15 in and narrower than 60 in (305.7.2); routinely placed items are not temporary obstructions.",
+      "informs_rule_ids": [
+        "ADA-904.4.1-parallel",
+        "CBC-11B-904.4.1-parallel",
+        "ADA-305.7.2-alcove-parallel",
+        "CBC-11B-305.7.2-alcove-parallel",
+        "ADA-28CFR36.211-maintenance"
+      ],
+      "topic": "counter length kept clear; displays forming alcoves",
+      "source_url": "https://www.courtlistener.com/opinion/7311599/kalani-v-starbucks-corp/",
+      "verification": {
+        "case_exists": true,
+        "docket_and_date": true,
+        "reporter_citation": true,
+        "holding": true,
+        "checked_at": "2026-09-30",
+        "note": "Carried over from the v1 precedent table, verified by Boris Nezlobin."
+      },
+      "verified_by": null
+    },
+    {
+      "id": "kalani-starbucks-2015-seating",
+      "kind": "case",
+      "case_name": "Kalani v. Starbucks Corp.",
+      "citation": "117 F. Supp. 3d 1078 (N.D. Cal. 2015)",
+      "docket": "13-cv-00734-LHK",
+      "court": "U.S. District Court, N.D. Cal.",
+      "year": 2015,
+      "decided": "2015",
+      "holding": "Interior accessible tables that left a wheelchair user facing the wall denied full and equal enjoyment under 42 U.S.C. 12182(b)(1); the court ordered at least one interior accessible table where a wheelchair user can face into the store.",
+      "informs_rule_ids": [
+        "ADA-42USC12182(b)(1)-dining-integration",
+        "ADA-226.2-dining-dispersion",
+        "CBC-11B-226.2-dining-dispersion"
+      ],
+      "topic": "dining table placement and integration",
+      "source_url": "https://www.courtlistener.com/opinion/7314627/kalani-v-starbucks-corp/",
+      "verification": {
+        "case_exists": true,
+        "docket_and_date": true,
+        "reporter_citation": true,
+        "holding": true,
+        "checked_at": "2026-09-30",
+        "note": "Carried over from the v1 precedent table, verified by Boris Nezlobin."
+      },
+      "verified_by": null
+    },
+    {
+      "id": "kalani-starbucks-2017-appeal",
+      "kind": "case",
+      "case_name": "Kalani v. Starbucks Coffee Co.",
+      "citation": "No. 15-16710 (9th Cir. June 28, 2017) (unpublished memorandum)",
+      "docket": "15-16710, 16-15227",
+      "court": "U.S. Court of Appeals for the Ninth Circuit",
+      "year": 2017,
+      "decided": "2017-06-28",
+      "holding": "Affirmed the point-of-sale counter ruling (recurring, not temporary, barriers) and the interior seating finding, but vacated ADA injunctive relief as moot after the plaintiff's death while Unruh Act damages survived.",
+      "informs_rule_ids": [
+        "ADA-904.4.1-parallel",
+        "CBC-11B-904.4.1-parallel",
+        "ADA-42USC12182(b)(1)-dining-integration"
+      ],
+      "topic": "appellate confirmation; Unruh damages survive mootness of ADA relief",
+      "source_url": "https://cdn.ca9.uscourts.gov/datastore/memoranda/2017/06/28/15-16710.pdf",
+      "verification": {
+        "case_exists": true,
+        "docket_and_date": true,
+        "reporter_citation": true,
+        "holding": true,
+        "checked_at": "2026-10-19",
+        "note": "Read from the Ninth Circuit PDF. Non-precedential under Ninth Circuit Rule 36-3."
+      },
+      "verified_by": null
+    },
+    {
+      "id": "moeller-taco-bell-2011",
+      "kind": "case",
+      "case_name": "Moeller v. Taco Bell Corp.",
+      "citation": "816 F. Supp. 2d 831 (N.D. Cal. 2011)",
+      "docket": "4:02-cv-05849",
+      "court": "U.S. District Court, N.D. Cal.",
+      "year": 2011,
+      "decided": "2011-10-05",
+      "holding": "Findings of fact and conclusions of law in the class action over access at California Taco Bell restaurants (queue lines, counters, doors, seating, restrooms); specific holdings not re-verified in this pass.",
+      "informs_rule_ids": [
+        "ADA-227.5-queue-width",
+        "CBC-11B-227.5-queue-width",
+        "ADA-404.2.9-opening-force",
+        "CBC-11B-404.2.9-opening-force",
+        "ADA-904.4.1-parallel",
+        "CBC-11B-904.4.1-parallel"
+      ],
+      "topic": "fast-food restaurant queue lines, counters and door force",
+      "source_url": "https://clearinghouse.net/doc/42090",
+      "verification": {
+        "case_exists": true,
+        "docket_and_date": true,
+        "reporter_citation": true,
+        "holding": false,
+        "checked_at": "2026-10-19",
+        "note": "Citation, court and date confirmed from the Civil Rights Litigation Clearinghouse record; the opinion's specific holdings were not read. Needs human review before display."
+      },
+      "verified_by": null
+    },
+    {
+      "id": "whitaker-tesla-2021",
+      "kind": "case",
+      "case_name": "Whitaker v. Tesla Motors, Inc.",
+      "citation": "985 F.3d 1173 (9th Cir. 2021)",
+      "docket": "19-56497",
+      "court": "U.S. Court of Appeals for the Ninth Circuit",
+      "year": 2021,
+      "decided": "2021-01-25",
+      "holding": "An ADA complaint that only alleged inaccessible service counters, without saying how they denied access (for example too high or too low), failed to state a claim.",
+      "informs_rule_ids": [
+        "ADA-904.4.1-parallel",
+        "CBC-11B-904.4.1-parallel",
+        "ADA-904.4.2-forward",
+        "CBC-11B-904.4.2-forward"
+      ],
+      "topic": "findings must state the measured value and limit, not just 'inaccessible'",
+      "source_url": "https://storage.courtlistener.com/pdf/2021/01/25/brian_whitaker_v._tesla_motors_inc..pdf",
+      "verification": {
+        "case_exists": true,
+        "docket_and_date": true,
+        "reporter_citation": false,
+        "holding": true,
+        "checked_at": "2026-10-19",
+        "note": "Published opinion read from CourtListener; the F.3d cite was not printed on the slip opinion."
+      },
+      "verified_by": null
+    },
+    {
+      "id": "oliver-ralphs-2011",
+      "kind": "case",
+      "case_name": "Oliver v. Ralphs Grocery Co.",
+      "citation": "654 F.3d 903 (9th Cir. 2011)",
+      "docket": "09-56447",
+      "court": "U.S. Court of Appeals for the Ninth Circuit",
+      "year": 2011,
+      "decided": "2011-08-17",
+      "holding": "An ADA plaintiff must identify each barrier in the complaint to give fair notice; barriers raised first in a later expert report were properly excluded.",
+      "informs_rule_ids": [],
+      "topic": "each finding is a separately identified barrier (report design)",
+      "source_url": "https://wlo.willamette.edu/9thcir/2011/08/oliver-v-ralphs-grocery-company.html",
+      "verification": {
+        "case_exists": true,
+        "docket_and_date": true,
+        "reporter_citation": false,
+        "holding": true,
+        "checked_at": "2026-10-19",
+        "note": "Summary from Willamette Law Online; reporter citation not confirmed from the source."
+      },
+      "verified_by": null
+    },
+    {
+      "id": "molski-mj-cable-2007",
+      "kind": "case",
+      "case_name": "Molski v. M.J. Cable, Inc.",
+      "citation": "481 F.3d 724 (9th Cir. 2007)",
+      "docket": "05-55347",
+      "court": "U.S. Court of Appeals for the Ninth Circuit",
+      "year": 2007,
+      "decided": "2007-03-23",
+      "holding": "A jury verdict that a restaurant had removed readily achievable barriers was against the clear weight of the evidence; Unruh Act statutory damages of $4,000 require no proof of actual damages.",
+      "informs_rule_ids": [
+        "ADA-28CFR36.304-barrier-removal",
+        "ADA-606.5-pipes",
+        "CBC-11B-606.5-pipes",
+        "ADA-604.5-grab-bars-present",
+        "CBC-11B-604.5-grab-bars-present",
+        "ADA-604.8.1.1-compartment-size",
+        "CBC-11B-604.8.1.1-compartment-size"
+      ],
+      "topic": "readily achievable restroom fixes (grab bars, pipe insulation, partitions, dispensers)",
+      "source_url": "https://caselaw.findlaw.com/us-9th-circuit/1099211.html",
+      "verification": {
+        "case_exists": true,
+        "docket_and_date": true,
+        "reporter_citation": false,
+        "holding": true,
+        "checked_at": "2026-10-19",
+        "note": "Opinion read on FindLaw; reporter citation not printed there."
+      },
+      "verified_by": null
+    },
+    {
+      "id": "munson-del-taco-2009",
+      "kind": "case",
+      "case_name": "Munson v. Del Taco, Inc.",
+      "citation": "46 Cal. 4th 661 (2009)",
+      "docket": null,
+      "court": "Supreme Court of California",
+      "year": 2009,
+      "decided": "2009-06-11",
+      "holding": "A plaintiff who proves an ADA access violation need not prove intentional discrimination to recover Unruh Act damages under Civil Code 52.",
+      "informs_rule_ids": [],
+      "topic": "every ADA rule failure is an Unruh violation in California",
+      "source_url": "https://scocal.stanford.edu/opinion/munson-v-del-taco-33013",
+      "verification": {
+        "case_exists": true,
+        "docket_and_date": true,
+        "reporter_citation": true,
+        "holding": true,
+        "checked_at": "2026-10-19",
+        "note": "Citation, date and holding read from the Stanford SCOCAL page."
+      },
+      "verified_by": null
+    },
+    {
+      "id": "strong-valdez-2013",
+      "kind": "case",
+      "case_name": "Strong v. Valdez Fine Foods",
+      "citation": "724 F.3d 1042 (9th Cir. 2013)",
+      "docket": "11-55265",
+      "court": "U.S. Court of Appeals for the Ninth Circuit",
+      "year": 2013,
+      "decided": "2013-07-22",
+      "holding": "A lay witness present during measurements can testify to observed conditions without an expert, and the 'readily achievable' burden applies only to facilities built before January 26, 1993.",
+      "informs_rule_ids": [
+        "ADA-28CFR36.304-barrier-removal",
+        "ADA-502.6-sign",
+        "CBC-11B-502.6-sign",
+        "ADA-502.3.1-aisle-width",
+        "CBC-11B-502.3.1-aisle-width"
+      ],
+      "topic": "measured evidence from a scan supports findings; construction era sets the legal standard",
+      "source_url": "https://wlo.willamette.edu/9thcir/2013/07/strong-v.-valdez-fine-foods.html",
+      "verification": {
+        "case_exists": true,
+        "docket_and_date": true,
+        "reporter_citation": false,
+        "holding": true,
+        "checked_at": "2026-10-19",
+        "note": "Summary source; parking subject matter from memory, reporter citation not confirmed."
+      },
+      "verified_by": null
+    },
+    {
+      "id": "langer-kiser-2023",
+      "kind": "case",
+      "case_name": "Langer v. Kiser",
+      "citation": "57 F.4th 1085 (9th Cir. 2023)",
+      "docket": "21-55183",
+      "court": "U.S. Court of Appeals for the Ninth Circuit",
+      "year": 2023,
+      "decided": "2023-01-23",
+      "holding": "A serial ADA litigant had standing, a customer parking lot is a Title III facility, and courts may not discount intent to return because the plaintiff files many suits.",
+      "informs_rule_ids": [
+        "ADA-208.2-parking-count",
+        "CBC-11B-208.2-parking-count",
+        "ADA-502.2-van-width",
+        "CBC-11B-502.2-van-width",
+        "ADA-502.6-sign",
+        "CBC-11B-502.6-sign"
+      ],
+      "topic": "parking lots are covered; tester plaintiffs have standing",
+      "source_url": "https://cdn.ca9.uscourts.gov/datastore/opinions/2023/01/23/21-55183.pdf",
+      "verification": {
+        "case_exists": true,
+        "docket_and_date": true,
+        "reporter_citation": false,
+        "holding": true,
+        "checked_at": "2026-10-19",
+        "note": "Read from the Ninth Circuit PDF; reporter citation not printed on the slip opinion."
+      },
+      "verified_by": null
+    },
+    {
+      "id": "doran-7eleven-2008",
+      "kind": "case",
+      "case_name": "Doran v. 7-Eleven, Inc.",
+      "citation": "524 F.3d 1034 (9th Cir. 2008)",
+      "docket": "05-56439",
+      "court": "U.S. Court of Appeals for the Ninth Circuit",
+      "year": 2008,
+      "decided": "2008",
+      "holding": "A plaintiff with standing to sue over one barrier may challenge all barriers at the place of public accommodation related to his disability, including those he did not personally encounter.",
+      "informs_rule_ids": [],
+      "topic": "why the scan checks every element, not just the plaintiff's path",
+      "source_url": "https://www.retailconsumerproductslaw.com/2007/11/ada-plaintiff-may-challenge-all-barriers-at-place-of-public-accommodation-affecting-his-or-her-disability/",
+      "verification": {
+        "case_exists": true,
+        "docket_and_date": false,
+        "reporter_citation": false,
+        "holding": true,
+        "checked_at": "2026-10-19",
+        "note": "UNVERIFIED DETAILS: existence and holding from search results only (original opinion Nov. 9, 2007; amended opinion reported 2008). Reporter cite and amended-opinion date need checking."
+      },
+      "verified_by": null
+    },
+    {
+      "id": "kohler-eddie-bauer-2015",
+      "kind": "case",
+      "case_name": "Kohler v. Eddie Bauer LLC",
+      "citation": "Nos. 13-55808, 13-56217 (9th Cir. Mar. 20, 2015)",
+      "docket": "13-55808",
+      "court": "U.S. Court of Appeals for the Ninth Circuit",
+      "year": 2015,
+      "decided": "2015-03-20",
+      "holding": "Lay testimony estimating a checkout counter above 36 in can support a violation without an expert; a dressing room bench longer than required did not violate the ADA where a parallel transfer was possible.",
+      "informs_rule_ids": [
+        "ADA-904.4.1-parallel",
+        "CBC-11B-904.4.1-parallel",
+        "ADA-903.3-bench-size",
+        "CBC-11B-903.3-bench-size"
+      ],
+      "topic": "counter height evidence; bench length is a minimum",
+      "source_url": "https://wlo.willamette.edu/9thcir/2015/03/kohler-v.-eddie-bauer.html",
+      "verification": {
+        "case_exists": true,
+        "docket_and_date": true,
+        "reporter_citation": false,
+        "holding": true,
+        "checked_at": "2026-10-19",
+        "note": "Publication status (published vs memorandum) not confirmed."
+      },
+      "verified_by": null
+    },
+    {
+      "id": "doj-small-business-primer-2011",
+      "kind": "doj_guidance",
+      "case_name": "ADA Update: A Primer for Small Business",
+      "citation": "U.S. Dep't of Justice, Civil Rights Division (March 2011)",
+      "docket": null,
+      "court": "U.S. Department of Justice (technical assistance)",
+      "year": 2011,
+      "decided": "2011-03",
+      "holding": "Barrier removal is a continuing obligation; elements complying with the 1991 Standards keep safe harbor element by element; where an accessible counter is not readily achievable, provide a folding shelf or nearby accessible counter, and some accessible tables must be dispersed in dining areas.",
+      "informs_rule_ids": [
+        "ADA-28CFR36.304-barrier-removal",
+        "ADA-904.4.1-parallel",
+        "CBC-11B-904.4.1-parallel",
+        "ADA-226.2-dining-dispersion",
+        "CBC-11B-226.2-dining-dispersion"
+      ],
+      "topic": "barrier removal priorities; counter and dining alternatives",
+      "source_url": "https://archive.ada.gov/regs2010/smallbusiness/smallbusprimer2010.pdf",
+      "verification": {
+        "case_exists": true,
+        "docket_and_date": true,
+        "reporter_citation": true,
+        "holding": true,
+        "checked_at": "2026-10-19",
+        "note": "Read from archive.ada.gov."
+      },
+      "verified_by": null
+    },
+    {
+      "id": "doj-small-business-guide-counters",
+      "kind": "doj_guidance",
+      "case_name": "ADA Guide for Small Businesses: Sales and Service Counters",
+      "citation": "U.S. Dep't of Justice, ADA Guide for Small Businesses",
+      "docket": null,
+      "court": "U.S. Department of Justice (technical assistance)",
+      "year": 1999,
+      "decided": null,
+      "holding": "A counter section at least 36 in long and no more than 36 in high with a 30x48 in clear floor space makes a sales counter accessible; an auxiliary counter, folding shelf, or temporarily a clipboard can serve where lowering is not readily achievable.",
+      "informs_rule_ids": [
+        "ADA-904.4.1-parallel",
+        "CBC-11B-904.4.1-parallel",
+        "ADA-305.3-cfs-parallel",
+        "CBC-11B-305.3-cfs-parallel"
+      ],
+      "topic": "existing-business counter alternatives",
+      "source_url": "https://archive.ada.gov/reachingout/salesservice.html",
+      "verification": {
+        "case_exists": true,
+        "docket_and_date": false,
+        "reporter_citation": true,
+        "holding": true,
+        "checked_at": "2026-10-19",
+        "note": "Publication year not shown on the excerpt page; 1999 is from memory."
+      },
+      "verified_by": null
+    },
+    {
+      "id": "doj-joann-stores-2006",
+      "kind": "doj_settlement",
+      "case_name": "Settlement Agreement between the United States and Jo-Ann Stores, Inc.",
+      "citation": "DOJ settlement (July 18, 2006)",
+      "docket": null,
+      "court": "U.S. Department of Justice",
+      "year": 2006,
+      "decided": "2006-07-18",
+      "holding": "The retailer agreed to a nationwide policy keeping movable displays and merchandise out of entrances, aisles and routes, and to survey and correct aisle widths and counter heights in its stores.",
+      "informs_rule_ids": [
+        "ADA-403.5.1-clear-width",
+        "CBC-11B-403.5.1-clear-width",
+        "ADA-28CFR36.211-maintenance"
+      ],
+      "topic": "maintenance of clear aisles in retail",
+      "source_url": "https://archive.ada.gov/joannstore.htm",
+      "verification": {
+        "case_exists": true,
+        "docket_and_date": true,
+        "reporter_citation": true,
+        "holding": true,
+        "checked_at": "2026-10-19",
+        "note": "Read from archive.ada.gov."
+      },
+      "verified_by": null
+    }
+  ],
+  "statutes": [
+    {
+      "id": "ca-civ-55-56",
+      "citation": "Cal. Civ. Code \u00a7 55.56",
+      "summary": "Statutory damages in construction-related accessibility claims are recoverable only for occasions the plaintiff personally encountered the violation or was deterred; assessed per occasion, not per violation; reducible to $1,000 (CASp-inspected, corrected within 60 days) or $2,000 (small business with 25 or fewer employees and under $3.5M receipts, corrected within 30 days).",
+      "source_url": "https://law.justia.com/codes/california/code-civ/division-1/part-2-53/section-55-56",
+      "verified": true
+    },
+    {
+      "id": "ca-civ-52",
+      "citation": "Cal. Civ. Code \u00a7 52(a)",
+      "summary": "Unruh Act damages: actual damages up to three times actual damages, but no less than $4,000 per offense, plus attorney's fees.",
+      "source_url": "https://law.justia.com/codes/california/code-civ/division-1/part-2/section-52/",
+      "verified": true
+    },
+    {
+      "id": "ca-civ-51f",
+      "citation": "Cal. Civ. Code \u00a7 51(f)",
+      "summary": "A violation of the right of any individual under the ADA also constitutes a violation of the Unruh Civil Rights Act.",
+      "source_url": "https://law.justia.com/codes/california/code-civ/division-1/part-2/section-51/",
+      "verified": false
+    },
+    {
+      "id": "28-cfr-36-211",
+      "citation": "28 C.F.R. \u00a7 36.211",
+      "summary": "Public accommodations must maintain accessible features in operable working condition; isolated or temporary interruptions for maintenance or repairs are not prohibited.",
+      "source_url": "https://www.law.cornell.edu/cfr/text/28/36.211",
+      "verified": true
+    }
+  ]
+}

@@ -262,6 +262,38 @@
       "verified_at": null
     },
     {
+      "id": "ADA-206.3-route-location",
+      "jurisdiction": "ADA2010",
+      "edition": "2010 ADA Standards for Accessible Design (28 CFR part 36 subpart D / part 35.151)",
+      "section": "206.3",
+      "title": "Accessible route in the general circulation area",
+      "summary": "Accessible routes must coincide with or be in the same area as general circulation paths.",
+      "applies_to": [
+        "route"
+      ],
+      "scoping": {
+        "text": "Applies to every subject in applies_to.",
+        "when": null,
+        "when_unknown": "needs_info"
+      },
+      "test": {
+        "presence": {
+          "metric": "route.same_area_as_general_circulation",
+          "expected": true
+        }
+      },
+      "evidence": "measured",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://www.access-board.gov/ada/chapter/ch02/",
+      "source_kind": "primary",
+      "notes": "",
+      "counterpart": "CBC-11B-206.3-route-location",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null
+    },
+    {
       "id": "ADA-206.4.1-entrances-60pct",
       "jurisdiction": "ADA2010",
       "edition": "2010 ADA Standards for Accessible Design (28 CFR part 36 subpart D / part 35.151)",
@@ -790,10 +822,10 @@
       "verified_at": null
     },
     {
-      "id": "ADA-217.3-telephone-reach",
+      "id": "ADA-217.2-telephone-reach",
       "jurisdiction": "ADA2010",
       "edition": "2010 ADA Standards for Accessible Design (28 CFR part 36 subpart D / part 35.151)",
-      "section": "217.3",
+      "section": "217.2",
       "title": "Public telephone within reach",
       "summary": "Where public telephones are provided, at least one per floor must have operable parts within reach (704.2, 308).",
       "applies_to": [
@@ -826,7 +858,7 @@
       "source_url": "https://www.access-board.gov/ada/chapter/ch02/",
       "source_kind": "primary",
       "notes": "",
-      "counterpart": "CBC-11B-217.3-telephone-reach",
+      "counterpart": "CBC-11B-217.2-telephone-reach",
       "stricter_than": [],
       "verified_by": null,
       "verified_at": null
@@ -1222,8 +1254,7 @@
       "title": "Queue lines to counters are accessible",
       "summary": "Queues and waiting lines serving accessible counters or check-out aisles must comply with 403 (36 in clear).",
       "applies_to": [
-        "food_service_line",
-        "checkout_aisle"
+        "food_service_line"
       ],
       "scoping": {
         "text": "Applies to every subject in applies_to.",
@@ -5145,6 +5176,46 @@
       "verified_at": null
     },
     {
+      "id": "ADA-405.7.2-landing-width",
+      "jurisdiction": "ADA2010",
+      "edition": "2010 ADA Standards for Accessible Design (28 CFR part 36 subpart D / part 35.151)",
+      "section": "405.7.2",
+      "title": "Ramp landing as wide as the run",
+      "summary": "Landings must be at least as wide as the widest ramp run leading to them.",
+      "applies_to": [
+        "ramp"
+      ],
+      "scoping": {
+        "text": "Applies to every subject in applies_to.",
+        "when": null,
+        "when_unknown": "needs_info"
+      },
+      "test": {
+        "measure": {
+          "metric": "ramp.landing_width",
+          "op": ">=",
+          "value": {
+            "metric": "ramp.clear_width"
+          },
+          "unit": "in"
+        }
+      },
+      "evidence": "measured",
+      "tolerance": {
+        "value": 0.5,
+        "unit": "in",
+        "policy": "needs_info_within"
+      },
+      "severity": "violation",
+      "source_url": "https://www.access-board.gov/ada/chapter/ch04/",
+      "source_kind": "primary",
+      "notes": "",
+      "counterpart": "CBC-11B-405.7.2-landing-width",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null
+    },
+    {
       "id": "ADA-405.7.3-landing-length",
       "jurisdiction": "ADA2010",
       "edition": "2010 ADA Standards for Accessible Design (28 CFR part 36 subpart D / part 35.151)",
@@ -6452,7 +6523,7 @@
           "metric": "handrail.bottom_extension",
           "op": ">=",
           "value": {
-            "metric": "stairs.tread_depth"
+            "metric": "handrail.stair_tread_depth"
           },
           "unit": "in"
         }
@@ -6771,7 +6842,7 @@
         "text": "Applies to every subject in applies_to.",
         "when": {
           "not": {
-            "metric": "toilet_compartment.kind",
+            "metric": "water_closet.compartment_kind",
             "op": "==",
             "value": "ambulatory"
           }
@@ -6817,7 +6888,7 @@
       "scoping": {
         "text": "Applies to every subject in applies_to.",
         "when": {
-          "metric": "toilet_compartment.kind",
+          "metric": "water_closet.compartment_kind",
           "op": "==",
           "value": "ambulatory"
         },
@@ -6863,7 +6934,7 @@
         "text": "Applies to every subject in applies_to.",
         "when": {
           "not": {
-            "metric": "toilet_compartment.kind",
+            "metric": "water_closet.compartment_kind",
             "op": "==",
             "value": "ambulatory"
           }
@@ -6992,7 +7063,7 @@
         "text": "Applies to every subject in applies_to.",
         "when": {
           "not": {
-            "metric": "toilet_compartment.kind",
+            "metric": "water_closet.compartment_kind",
             "op": "==",
             "value": "ambulatory"
           }
@@ -7164,7 +7235,7 @@
         "text": "Applies to every subject in applies_to.",
         "when": {
           "not": {
-            "metric": "toilet_compartment.kind",
+            "metric": "water_closet.compartment_kind",
             "op": "==",
             "value": "ambulatory"
           }
@@ -7338,9 +7409,11 @@
               {
                 "all_of": [
                   {
-                    "presence": {
+                    "measure": {
                       "metric": "toilet_compartment.wc_mounting",
-                      "expected": "wall_hung"
+                      "op": "==",
+                      "value": "wall_hung",
+                      "unit": "enum"
                     }
                   },
                   {

@@ -1,0 +1,6163 @@
+{
+  "version": "2.0.0",
+  "statuses": {
+    "covered": "At least one rule tests this section (rule_ids).",
+    "not_applicable_to_scope": "Considered; does not apply to small-business customer areas (reason).",
+    "deferred": "Applies in some cases but no rule yet (reason); CI lists these so they are not forgotten."
+  },
+  "entries": [
+    {
+      "jurisdiction": "ADA2010",
+      "section": "28 CFR 36.211",
+      "title": "Accessible features kept clear and working",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-28CFR36.211-maintenance"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "28 CFR 36.304",
+      "title": "Readily achievable barrier removal",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-28CFR36.304-barrier-removal"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "28 CFR 36.403",
+      "title": "Alterations: path of travel (regulation)",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-202.4-path-of-travel"
+      ],
+      "reason": "Covered by the technical rules of 202.4."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "42 USC 12182(b)(1)",
+      "title": "Accessible table faces into the room",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-42USC12182(b)(1)-dining-integration"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "201",
+      "title": "Application",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "General applicability statement; no testable requirement."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "202.1",
+      "title": "Existing buildings: general",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Defines when alteration rules apply; scoping uses site.construction_era and site.altered_since_2012."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "202.3",
+      "title": "Alterations",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Altered elements must meet the same rules as new construction; the rules here already apply to every element, and scoping uses site.altered_since_2012."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "202.4",
+      "title": "Path of travel upgraded with alterations",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-202.4-path-of-travel"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "202.5",
+      "title": "Alterations to qualified historic buildings",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Historic status is not captured yet; needs an owner question and alternate minimum rules."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "203.1",
+      "title": "General exceptions (other than 203.9)",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Construction sites, raised areas, limited-access spaces, machinery spaces, single-occupant structures, detention and residential exceptions do not apply to customer areas of a small shop or restaurant."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "203.9",
+      "title": "Employee work areas identified",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-203.9-employee-areas"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "204",
+      "title": "Protruding objects (scoping)",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-307.2-protrusion",
+        "ADA-307.3-post-overhang",
+        "ADA-307.3-between-posts",
+        "ADA-307.4-headroom",
+        "ADA-307.4-door-closer-height"
+      ],
+      "reason": "Covered by the technical rules of 307."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "205",
+      "title": "Operable parts (scoping)",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-308.2.1-forward-high",
+        "ADA-308.2.1-low-reach",
+        "ADA-308.2.2-forward-obstructed-20",
+        "ADA-308.2.2-forward-obstructed-25",
+        "ADA-308.3.1-side-high",
+        "ADA-308.3.2-side-obstructed-10",
+        "ADA-308.3.2-side-obstructed-24",
+        "ADA-309.4-tight-grasp",
+        "ADA-309.4-operating-force"
+      ],
+      "reason": "Covered by the technical rules of 308, 309."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "206.2.1",
+      "title": "Accessible route from site arrival points",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-206.2.1-site-arrival"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "206.2.2",
+      "title": "Accessible route within a multi-building site",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Multi-building sites are outside a single-business scan."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "206.2.3",
+      "title": "Vertical access between public levels",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-206.2.3-multi-story"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "206.2.4",
+      "title": "Accessible route connects entrance to public spaces and elements",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-206.2.4-connects-spaces"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "206.2.5",
+      "title": "Restaurants and cafeterias: route to dining areas",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-206.2.4-connects-spaces",
+        "ADA-226.2-dining-dispersion"
+      ],
+      "reason": "Covered by the technical rules of 206.2.4, 226.2."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "206.2.6",
+      "title": "Performance areas",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Stages and performance areas are outside small-business scope."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "206.2.8",
+      "title": "Employee work area circulation paths",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Employee areas are excluded from the customer scan by default (203.9); a staff-areas mode is planned."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "206.3",
+      "title": "Accessible route in the general circulation area",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-206.3-route-location"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "206.4.1",
+      "title": "Public entrances accessible (60%)",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-206.4.1-entrances-60pct"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "206.5",
+      "title": "Doors (scoping)",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-404.2.1-revolving",
+        "ADA-404.2.3-clear-width",
+        "ADA-404.2.3-deep-opening",
+        "ADA-404.2.3-projection-low",
+        "ADA-404.2.3-projection-mid",
+        "ADA-404.2.4.1-front-pull",
+        "ADA-404.2.4.1-front-push",
+        "ADA-404.2.4.1-front-push-closer-latch",
+        "ADA-404.2.4.1-hinge-pull",
+        "ADA-404.2.4.1-hinge-push",
+        "ADA-404.2.4.1-hinge-push-closer-latch",
+        "ADA-404.2.4.1-latch-pull",
+        "ADA-404.2.4.1-latch-pull-closer",
+        "ADA-404.2.4.1-latch-push",
+        "ADA-404.2.4.1-latch-push-closer",
+        "ADA-404.2.4.2-doorway-no-door",
+        "ADA-404.2.4.3-recessed",
+        "ADA-404.2.4.4-maneuvering-slope",
+        "ADA-404.2.5-threshold",
+        "ADA-404.2.5-threshold-existing",
+        "ADA-404.2.6-doors-in-series",
+        "ADA-404.2.7-hardware-grasp",
+        "ADA-404.2.7-hardware-height",
+        "ADA-404.2.8-closing-speed",
+        "ADA-404.2.9-opening-force",
+        "ADA-404.2.10-bottom-surface",
+        "ADA-404.2.11-vision-lite",
+        "ADA-404.3-automatic"
+      ],
+      "reason": "Covered by the technical rules of 404."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "206.6",
+      "title": "Elevators (scoping)",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-407.1-elevator"
+      ],
+      "reason": "Covered by the technical rules of 407."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "206.7",
+      "title": "Platform lifts (scoping)",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-410.1-platform-lift"
+      ],
+      "reason": "Covered by the technical rules of 410."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "206.8",
+      "title": "Security barriers",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Security barriers and metal detectors are not found in small retail and restaurant spaces."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "207",
+      "title": "Accessible means of egress",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Requires building-code egress analysis (exit count, areas of refuge) beyond the scan."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "208.2",
+      "title": "Number of accessible parking spaces",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-208.2-parking-count"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "208.2.4",
+      "title": "Van-accessible parking spaces",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-208.2.4-van-spaces"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "208.3.1",
+      "title": "Accessible parking on the shortest route",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-208.3.1-parking-location"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "209",
+      "title": "Passenger loading zones",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Only where provided; small businesses rarely have them. Add an owner question if the product scope expands."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "210",
+      "title": "Stairways (scoping)",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-504.2-riser",
+        "ADA-504.2-tread",
+        "ADA-504.2-uniform",
+        "ADA-504.3-open-risers",
+        "ADA-504.5-nosing-radius",
+        "ADA-504.5-nosing-projection",
+        "ADA-504.6-handrails"
+      ],
+      "reason": "Covered by the technical rules of 504."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "211.2",
+      "title": "Drinking fountain for wheelchair users",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-211.2-fountain-wheelchair",
+        "ADA-211.2-fountain-standing"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "212",
+      "title": "Kitchens, kitchenettes and sinks",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Customer-facing kitchens are uncommon; public sinks are lavatories covered by 606, and employee kitchens are excluded."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "213.3.1",
+      "title": "Ambulatory compartment where 6 or more fixtures",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-213.3.1-ambulatory-compartment"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "213.3.3",
+      "title": "Accessible urinal where more than one",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-213.3.3-urinal"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "214",
+      "title": "Washing machines and dryers",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Not present in shops and restaurants."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "215.1",
+      "title": "Visible alarms where a fire alarm system is provided",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-215.1-visible-alarms"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "216.2",
+      "title": "Permanent room identification sign",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-216.2-room-id-sign"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "216.4.1",
+      "title": "Tactile exit signs at exit doors",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-216.4.1-tactile-exit-sign"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "216.6",
+      "title": "Signs at inaccessible entrances",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-216.6-entrance-signs"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "216.8",
+      "title": "Directional signs to an accessible restroom",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-216.8-toilet-directional"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "216.11",
+      "title": "Accessible check-out aisle identified",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-216.11-checkout-isa"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "217.2",
+      "title": "Public telephone within reach",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-217.2-telephone-reach"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "217.4",
+      "title": "TTYs",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Only for banks of public pay phones; pay phones are rare in small businesses."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "218",
+      "title": "Transportation facilities",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Not a transportation facility."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "219.2",
+      "title": "Assistive listening system",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-219.2-assistive-listening"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "220.1",
+      "title": "ATMs comply with 707",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-220.1-atm"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "221.2.1.1",
+      "title": "Wheelchair spaces in assembly seating",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-221.2.1.1-wheelchair-spaces"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "222.1",
+      "title": "Accessible fitting rooms (5%, min one)",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-222.1-fitting-rooms"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "223",
+      "title": "Medical care and long-term care facilities",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "224",
+      "title": "Transient lodging guest rooms",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "225.2.1",
+      "title": "Lockers",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-811.3-storage-reach"
+      ],
+      "reason": "Covered by the technical rules of 811."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "225.2.2",
+      "title": "Self-service shelving on an accessible route",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-225.2.2-self-service-shelving-route"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "225.3",
+      "title": "Self-service storage facilities",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Self-storage facilities are outside product scope."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "226.1",
+      "title": "Accessible dining seating (5%)",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-226.1-dining-5pct"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "226.2",
+      "title": "Accessible dining dispersed",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-226.2-dining-dispersion"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "227.2",
+      "title": "Accessible check-out aisles",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-227.2-checkout-count"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "227.3",
+      "title": "Sales and service counters (scoping)",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-904.4.1-parallel",
+        "ADA-904.4.2-forward",
+        "ADA-904.4-same-depth",
+        "ADA-904.4-customer-side"
+      ],
+      "reason": "Covered by the technical rules of 904.4."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "227.4",
+      "title": "Food service self-service shelves within reach",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-227.4-food-shelves-reach"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "227.5",
+      "title": "Queue lines to counters are accessible",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-227.5-queue-width"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "228.1",
+      "title": "Depositories, vending and change machines usable",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-228.1-depository-reach"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "229",
+      "title": "Windows",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Operable windows for public use are not part of the customer experience in small businesses."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "230",
+      "title": "Two-way communication systems",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Entry intercoms are uncommon; needs an owner question and 708 photo checks."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "231",
+      "title": "Judicial facilities",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "232",
+      "title": "Detention and correctional facilities",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "233",
+      "title": "Residential facilities",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "234",
+      "title": "Amusement rides",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "235",
+      "title": "Recreational boating facilities",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "236",
+      "title": "Exercise machines and equipment",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Gyms are outside the initial small-business scope."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "237",
+      "title": "Fishing piers and platforms",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "238",
+      "title": "Golf facilities",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "239",
+      "title": "Miniature golf facilities",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "240",
+      "title": "Play areas",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "241",
+      "title": "Saunas and steam rooms",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "242",
+      "title": "Swimming pools, wading pools and spas",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "243",
+      "title": "Shooting facilities",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "301",
+      "title": "Building blocks: general",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "General statement."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "302.1",
+      "title": "Floor firm, stable and slip resistant",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-302.1-firm-stable"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "302.2",
+      "title": "Carpet pile height",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-302.2-carpet-pile",
+        "ADA-302.2-carpet-secured"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "302.3",
+      "title": "Openings in floor surfaces",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-302.3-openings",
+        "ADA-302.3-grating-orientation"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "303.2",
+      "title": "Changes in level on the route",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-303.2-level-change"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "303.3",
+      "title": "Beveled changes in level",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-303.3-bevel"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "304.2",
+      "title": "Turning space floor slope",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-304.2-turning-slope"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "304.3",
+      "title": "Turning space in toilet rooms",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-304.3-turning-space"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "305.2",
+      "title": "Clear floor space slope",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-305.2-cfs-slope"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "305.3",
+      "title": "Clear floor space, forward approach",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-305.3-cfs-forward",
+        "ADA-305.3-cfs-parallel"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "305.6",
+      "title": "Clear floor space adjoins the route",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-305.6-cfs-adjoins-route"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "305.7.1",
+      "title": "Alcove width, forward approach",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-305.7.1-alcove-forward"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "305.7.2",
+      "title": "Alcove width, parallel approach",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-305.7.2-alcove-parallel"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "306.2.3",
+      "title": "Toe clearance depth",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-306.2.3-toe-depth"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "306.2.5",
+      "title": "Toe clearance height",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-306.2.5-toe-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "306.3.1",
+      "title": "Knee clearance height",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-306.3.1-knee-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "306.3.3",
+      "title": "Knee clearance depth at 27 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-306.3.3-knee-depth-27",
+        "ADA-306.3.3-knee-depth-9"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "306.3.5",
+      "title": "Knee clearance width",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-306.3.5-knee-width"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "307.2",
+      "title": "Wall-mounted protrusions into circulation",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-307.2-protrusion"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "307.3",
+      "title": "Post-mounted overhang",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-307.3-post-overhang",
+        "ADA-307.3-between-posts"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "307.4",
+      "title": "Vertical clearance 80 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-307.4-headroom",
+        "ADA-307.4-door-closer-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "307.5",
+      "title": "Protruding objects reduce required width",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-403.5.1-clear-width"
+      ],
+      "reason": "Covered by the technical rules of 403.5.1."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "308.2.1",
+      "title": "Unobstructed forward reach, high",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-308.2.1-forward-high",
+        "ADA-308.2.1-low-reach"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "308.2.2",
+      "title": "Obstructed forward reach, obstruction 20 in or less",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-308.2.2-forward-obstructed-20",
+        "ADA-308.2.2-forward-obstructed-25"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "308.3.1",
+      "title": "Unobstructed side reach, high",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-308.3.1-side-high"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "308.3.2",
+      "title": "Obstructed side reach, obstruction 10 in or less",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-308.3.2-side-obstructed-10",
+        "ADA-308.3.2-side-obstructed-24"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "309.4",
+      "title": "Operable without tight grasping",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-309.4-tight-grasp",
+        "ADA-309.4-operating-force"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "401",
+      "title": "Accessible routes: general",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "General statement."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "402.2",
+      "title": "Walking surface running slope",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-402.2-running-slope"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "403.3",
+      "title": "Walking surface cross slope",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-403.3-cross-slope"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "403.4",
+      "title": "Walking surfaces: changes in level",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-303.2-level-change",
+        "ADA-303.3-bevel"
+      ],
+      "reason": "Covered by the technical rules of 303."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "403.5.1",
+      "title": "Route clear width 36 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-403.5.1-clear-width"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "403.5.2",
+      "title": "Clear width at 180-degree turns",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-403.5.2-turn-width"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "403.5.3",
+      "title": "Passing spaces every 200 ft",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-403.5.3-passing-space"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "403.6",
+      "title": "Walking surface handrails",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-505.4-height",
+        "ADA-505.5-clearance",
+        "ADA-505.7.1-diameter",
+        "ADA-505.3-continuous",
+        "ADA-505.10.1-ramp-extension",
+        "ADA-505.10.2-stair-top-extension",
+        "ADA-505.10.3-stair-bottom-extension"
+      ],
+      "reason": "Covered by the technical rules of 505."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "404.2.1",
+      "title": "Revolving doors not the accessible door",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-404.2.1-revolving"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "404.2.2",
+      "title": "Double-leaf doors",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-404.2.3-clear-width",
+        "ADA-404.2.3-deep-opening",
+        "ADA-404.2.3-projection-low",
+        "ADA-404.2.3-projection-mid"
+      ],
+      "reason": "Covered by the technical rules of 404.2.3."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "404.2.3",
+      "title": "Door clear width 32 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-404.2.3-clear-width",
+        "ADA-404.2.3-deep-opening",
+        "ADA-404.2.3-projection-low",
+        "ADA-404.2.3-projection-mid"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "404.2.4.1",
+      "title": "Maneuvering clearance, front approach, pull side",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-404.2.4.1-front-pull",
+        "ADA-404.2.4.1-front-push",
+        "ADA-404.2.4.1-front-push-closer-latch",
+        "ADA-404.2.4.1-hinge-pull",
+        "ADA-404.2.4.1-hinge-push",
+        "ADA-404.2.4.1-hinge-push-closer-latch",
+        "ADA-404.2.4.1-latch-pull",
+        "ADA-404.2.4.1-latch-pull-closer",
+        "ADA-404.2.4.1-latch-push",
+        "ADA-404.2.4.1-latch-push-closer"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "404.2.4.2",
+      "title": "Maneuvering clearance at doorways without doors",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-404.2.4.2-doorway-no-door"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "404.2.4.3",
+      "title": "Recessed doors need front-approach clearance",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-404.2.4.3-recessed"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "404.2.4.4",
+      "title": "Level floor in door maneuvering clearance",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-404.2.4.4-maneuvering-slope"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "404.2.5",
+      "title": "Threshold 1/2 in max",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-404.2.5-threshold",
+        "ADA-404.2.5-threshold-existing"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "404.2.6",
+      "title": "Doors in series 48 in apart",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-404.2.6-doors-in-series"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "404.2.7",
+      "title": "Door hardware usable without grasping",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-404.2.7-hardware-grasp",
+        "ADA-404.2.7-hardware-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "404.2.8",
+      "title": "Door closer speed 5 s",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-404.2.8-closing-speed"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "404.2.9",
+      "title": "Interior door opening force 5 lbf",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-404.2.9-opening-force"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "404.2.10",
+      "title": "Smooth door bottom 10 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-404.2.10-bottom-surface"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "404.2.11",
+      "title": "Vision lites 43 in max",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-404.2.11-vision-lite"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "404.3",
+      "title": "Automatic doors meet BHMA standards",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-404.3-automatic"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "405.2",
+      "title": "Ramp running slope 1:12",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-405.2-slope",
+        "ADA-405.2-slope-existing"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "405.3",
+      "title": "Ramp cross slope 1:48",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-405.3-cross-slope"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "405.4",
+      "title": "Ramp surfaces",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-302.1-firm-stable",
+        "ADA-302.2-carpet-pile",
+        "ADA-302.2-carpet-secured",
+        "ADA-302.3-openings",
+        "ADA-302.3-grating-orientation",
+        "ADA-303.2-level-change",
+        "ADA-303.3-bevel"
+      ],
+      "reason": "Covered by the technical rules of 302, 303."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "405.5",
+      "title": "Ramp clear width",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-405.5-width"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "405.6",
+      "title": "Ramp rise 30 in per run",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-405.6-rise"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "405.7.1",
+      "title": "Ramp landing slope",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-405.7.1-landing-slope"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "405.7.2",
+      "title": "Ramp landing as wide as the run",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-405.7.2-landing-width"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "405.7.3",
+      "title": "Ramp landing length 60 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-405.7.3-landing-length"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "405.7.4",
+      "title": "Landing at change of direction",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-405.7.4-turn-landing"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "405.7.5",
+      "title": "Doorways at ramp landings",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Needs door-swing overlap analysis on landings; metric ramp.door_swing_into_landing exists, rule pending review."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "405.8",
+      "title": "Ramp handrails on both sides",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-405.8-handrails"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "405.9",
+      "title": "Ramp edge protection",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-405.9-edge-protection"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "405.10",
+      "title": "Ramps in wet conditions",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Drainage design is not observable from a scan."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "406.1",
+      "title": "Curb ramp running slope 1:12",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-406.1-curb-ramp-slope",
+        "ADA-406.1-curb-ramp-width"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "406.2",
+      "title": "Curb ramp counter slope 1:20",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-406.2-counter-slope"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "406.3",
+      "title": "Curb ramp flares 1:10",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-406.3-flare-slope"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "406.4",
+      "title": "Curb ramp top landing",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-406.4-landing"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "407.1",
+      "title": "Passenger elevator complies with 407",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-407.1-elevator"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "408",
+      "title": "Limited-use/limited-application elevators",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-407.1-elevator"
+      ],
+      "reason": "Covered by the technical rules of 407."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "409",
+      "title": "Private residence elevators",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Not permitted in public accommodations."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "410.1",
+      "title": "Platform lift complies with 410",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-410.1-platform-lift"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "501",
+      "title": "General site and building elements",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "General statement."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "502.2",
+      "title": "Car space width 96 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-502.2-car-width",
+        "ADA-502.2-van-width"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "502.3.1",
+      "title": "Access aisle 60 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-502.3.1-aisle-width"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "502.3.2",
+      "title": "Access aisle length",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Exterior parking geometry is captured only when the lot is scanned; length check pending."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "502.3.3",
+      "title": "Access aisle marked",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-502.3.3-aisle-marking"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "502.3.4",
+      "title": "Access aisle location",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Exterior parking geometry is captured only when the lot is scanned."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "502.4",
+      "title": "Parking space and aisle slope 1:48",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-502.4-surface-slope"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "502.5",
+      "title": "Van vertical clearance 98 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-502.5-van-clearance"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "502.6",
+      "title": "Accessible parking sign",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-502.6-sign",
+        "ADA-502.6-sign-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "502.7",
+      "title": "Parking relationship to accessible routes",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Needs vehicle overhang modeling."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "503",
+      "title": "Passenger loading zones",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "See 209."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "504.2",
+      "title": "Stair risers 4-7 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-504.2-riser",
+        "ADA-504.2-tread",
+        "ADA-504.2-uniform"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "504.3",
+      "title": "No open risers",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-504.3-open-risers"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "504.4",
+      "title": "Tread surface",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-302.1-firm-stable",
+        "ADA-302.2-carpet-pile",
+        "ADA-302.2-carpet-secured",
+        "ADA-302.3-openings",
+        "ADA-302.3-grating-orientation"
+      ],
+      "reason": "Covered by the technical rules of 302."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "504.5",
+      "title": "Nosing radius 1/2 in max",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-504.5-nosing-radius",
+        "ADA-504.5-nosing-projection"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "504.6",
+      "title": "Stair handrails both sides",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-504.6-handrails"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "504.7",
+      "title": "Stairs in wet conditions",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Drainage design is not observable from a scan."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "505.2",
+      "title": "Handrails where required",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-405.8-handrails",
+        "ADA-504.6-handrails"
+      ],
+      "reason": "Covered by the technical rules of 405.8, 504.6."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "505.3",
+      "title": "Handrail continuous",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-505.3-continuous"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "505.4",
+      "title": "Handrail height 34-38 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-505.4-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "505.5",
+      "title": "Handrail wall clearance 1 1/2 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-505.5-clearance"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "505.6",
+      "title": "Handrail gripping surface continuity",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Needs close-range geometry of brackets; photo rule pending."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "505.7.1",
+      "title": "Handrail diameter 1 1/4-2 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-505.7.1-diameter"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "505.7.2",
+      "title": "Non-circular handrail cross section",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Rare; photo measurement pending."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "505.8",
+      "title": "Handrail surfaces",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Sharp edges need a photo rule; pending."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "505.9",
+      "title": "Handrail fittings",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Rotation needs an owner check; pending."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "505.10.1",
+      "title": "Ramp handrail extensions 12 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-505.10.1-ramp-extension"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "505.10.2",
+      "title": "Stair handrail top extension 12 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-505.10.2-stair-top-extension"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "505.10.3",
+      "title": "Stair handrail bottom extension",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-505.10.3-stair-bottom-extension"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "601",
+      "title": "Plumbing elements: general",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "General statement."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "602.1",
+      "title": "Drinking fountains: general and clear floor space",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-305.3-cfs-forward",
+        "ADA-305.3-cfs-parallel",
+        "ADA-305.2-cfs-slope",
+        "ADA-305.6-cfs-adjoins-route",
+        "ADA-305.7.1-alcove-forward",
+        "ADA-305.7.2-alcove-parallel",
+        "ADA-306.3.1-knee-height",
+        "ADA-306.3.3-knee-depth-27",
+        "ADA-306.3.3-knee-depth-9",
+        "ADA-306.3.5-knee-width",
+        "ADA-306.2.3-toe-depth",
+        "ADA-306.2.5-toe-height"
+      ],
+      "reason": "Covered by the technical rules of 305, 306."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "602.3",
+      "title": "Drinking fountain operable parts",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-309.4-tight-grasp",
+        "ADA-309.4-operating-force"
+      ],
+      "reason": "Covered by the technical rules of 309."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "602.4",
+      "title": "Wheelchair fountain spout 36 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-602.4-spout-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "602.5",
+      "title": "Spout 5 in max from front",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-602.5-spout-location"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "602.6",
+      "title": "Drinking fountain water flow",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Needs the water running; photo/video rule pending."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "602.7",
+      "title": "Standing fountain spout 38-43 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-602.7-standing-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "603.2.1",
+      "title": "Toilet room turning space",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-304.3-turning-space",
+        "ADA-304.2-turning-slope"
+      ],
+      "reason": "Covered by the technical rules of 304."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "603.2.2",
+      "title": "Toilet room clearance overlap",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Permissive provision; no failing condition."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "603.2.3",
+      "title": "Door does not swing into fixture clear floor space",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-603.2.3-door-swing"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "603.3",
+      "title": "Mirror over lavatory 40 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-603.3-mirror-over-lav",
+        "ADA-603.3-mirror-other"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "603.4",
+      "title": "Coat hooks within reach",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-603.4-coat-hook"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "604.2",
+      "title": "Water closet centerline 16-18 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-604.2-centerline",
+        "ADA-604.2-centerline-ambulatory"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "604.3.1",
+      "title": "Water closet clearance 60x56 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-604.3.1-clearance"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "604.3.2",
+      "title": "No other fixtures in WC clearance",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-604.3.2-overlap"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "604.4",
+      "title": "Seat height 17-19 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-604.4-seat-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "604.5",
+      "title": "Side and rear grab bars present",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-604.5-grab-bars-present"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "604.5.1",
+      "title": "Side grab bar 42 in, 12 in max from rear wall, to 54 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-604.5.1-side-bar"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "604.5.2",
+      "title": "Rear grab bar 36 in, 12/24 in either side",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-604.5.2-rear-bar"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "604.6",
+      "title": "Flush control on the open side",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-604.6-flush-open-side"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "604.7",
+      "title": "Toilet paper 7-9 in in front of WC",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-604.7-tp-location",
+        "ADA-604.7-tp-height",
+        "ADA-604.7-tp-continuous"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "604.8.1.1",
+      "title": "Wheelchair compartment size",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-604.8.1.1-compartment-size"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "604.8.1.2",
+      "title": "Compartment door self-closing with pulls",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-604.8.1.2-compartment-door",
+        "ADA-604.8.1.2-compartment-door-location"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "604.8.1.3",
+      "title": "Compartment approach",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Permissive (left or right hand)."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "604.8.1.4",
+      "title": "Compartment toe clearance 9 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-604.8.1.4-toe-clearance"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "604.8.1.5",
+      "title": "Compartment grab bars",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-604.5-grab-bars-present",
+        "ADA-604.5.1-side-bar",
+        "ADA-604.5.2-rear-bar"
+      ],
+      "reason": "Covered by the technical rules of 604.5."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "604.8.2",
+      "title": "Ambulatory compartment 35-37 in wide, 60 in deep",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-604.8.2-ambulatory-size"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "604.8.3",
+      "title": "Compartment coat hooks and shelves",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-603.4-coat-hook"
+      ],
+      "reason": "Covered by the technical rules of 603.4."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "604.9",
+      "title": "Water closets for children",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Children's fixtures are outside small-business scope."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "605.2",
+      "title": "Urinal rim 17 in max",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-605.2-rim-height",
+        "ADA-605.2-rim-depth"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "605.3",
+      "title": "Urinal clear floor space",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-305.3-cfs-forward",
+        "ADA-305.3-cfs-parallel",
+        "ADA-305.2-cfs-slope",
+        "ADA-305.6-cfs-adjoins-route",
+        "ADA-305.7.1-alcove-forward",
+        "ADA-305.7.2-alcove-parallel"
+      ],
+      "reason": "Covered by the technical rules of 305."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "606.2",
+      "title": "Lavatory clear floor space and knee clearance",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-306.3.1-knee-height",
+        "ADA-306.3.3-knee-depth-27",
+        "ADA-306.3.3-knee-depth-9",
+        "ADA-306.3.5-knee-width",
+        "ADA-306.2.3-toe-depth",
+        "ADA-306.2.5-toe-height"
+      ],
+      "reason": "Covered by the technical rules of 306."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "606.3",
+      "title": "Lavatory rim 34 in max",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-606.3-rim-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "606.4",
+      "title": "Faucets operable with one hand",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-606.4-faucets"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "606.5",
+      "title": "Pipes under lavatory insulated",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-606.5-pipes"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "607",
+      "title": "Bathtubs",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Not present in shops and restaurants."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "608",
+      "title": "Shower compartments",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Not present in shops and restaurants."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "609.2.1",
+      "title": "Grab bar diameter 1 1/4-2 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-609.2.1-diameter"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "609.2.2",
+      "title": "Non-circular grab bars",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Rare; photo measurement pending."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "609.3",
+      "title": "Grab bar wall space 1 1/2 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-609.3-wall-space",
+        "ADA-609.3-space-above",
+        "ADA-609.3-space-below"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "609.4",
+      "title": "Grab bar height 33-36 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-609.4-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "609.5",
+      "title": "Grab bar surface hazards",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Photo rule pending."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "609.6",
+      "title": "Grab bars do not rotate",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-609.6-no-rotation"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "609.7",
+      "title": "Grab bar installation",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Permissive provision."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "609.8",
+      "title": "Grab bar structural strength 250 lbf",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-609.8-strength"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "610",
+      "title": "Seats (bathing)",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Bathing facilities not in scope."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "611",
+      "title": "Washing machines and dryers",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Not present."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "612",
+      "title": "Saunas and steam rooms",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Not present."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "701",
+      "title": "Communication elements: general",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "General statement."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "702.1",
+      "title": "Visible alarm appliances per NFPA 72",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-702.1-alarm-appliances"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "703.1",
+      "title": "Signs: general",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-703.4.1-tactile-height",
+        "ADA-703.4.2-tactile-location",
+        "ADA-703.2-raised-characters",
+        "ADA-703.2.5-character-height",
+        "ADA-703.2.2-uppercase-sans",
+        "ADA-703.5.1-finish-contrast",
+        "ADA-703.5.6-visual-height"
+      ],
+      "reason": "Covered by the technical rules of 703.2, 703.4, 703.5."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "703.2",
+      "title": "Raised characters on room signs",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-703.2-raised-characters"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "703.2.2",
+      "title": "Uppercase sans serif tactile characters",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-703.2.2-uppercase-sans"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "703.2.5",
+      "title": "Raised character height 5/8-2 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-703.2.5-character-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "703.3",
+      "title": "Braille on tactile signs",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-703.3-braille"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "703.4.1",
+      "title": "Tactile sign height 48-60 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-703.4.1-tactile-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "703.4.2",
+      "title": "Tactile sign on the latch side",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-703.4.2-tactile-location"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "703.5.1",
+      "title": "Non-glare finish and contrast",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-703.5.1-finish-contrast"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "703.5.6",
+      "title": "Visual characters 40 in min",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-703.5.6-visual-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "703.6.1",
+      "title": "Pictogram field 6 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-703.6.1-pictogram-field"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "703.7",
+      "title": "Symbols of accessibility",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-216.6-entrance-signs",
+        "ADA-216.8-toilet-directional"
+      ],
+      "reason": "Covered by the technical rules of 216.6, 216.8."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "704.2",
+      "title": "Wheelchair accessible telephones",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-217.2-telephone-reach"
+      ],
+      "reason": "Covered by the technical rules of 217.2."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "704.3",
+      "title": "Telephone volume control",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-704.3-volume-control"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "704.4",
+      "title": "TTYs",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "See 217.4."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "705.1",
+      "title": "Truncated dome dimensions",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-705.1-dome-dimensions"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "706",
+      "title": "Assistive listening systems (technical)",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-219.2-assistive-listening"
+      ],
+      "reason": "Covered by the technical rules of 219.2."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "707.2",
+      "title": "ATM clear floor space",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-305.3-cfs-forward",
+        "ADA-305.3-cfs-parallel",
+        "ADA-305.2-cfs-slope",
+        "ADA-305.6-cfs-adjoins-route",
+        "ADA-305.7.1-alcove-forward",
+        "ADA-305.7.2-alcove-parallel"
+      ],
+      "reason": "Covered by the technical rules of 305."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "707.3",
+      "title": "ATM operable parts",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-308.2.1-forward-high",
+        "ADA-308.2.1-low-reach",
+        "ADA-308.2.2-forward-obstructed-20",
+        "ADA-308.2.2-forward-obstructed-25",
+        "ADA-308.3.1-side-high",
+        "ADA-308.3.2-side-obstructed-10",
+        "ADA-308.3.2-side-obstructed-24",
+        "ADA-309.4-tight-grasp",
+        "ADA-309.4-operating-force"
+      ],
+      "reason": "Covered by the technical rules of 308, 309."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "707.5",
+      "title": "ATM speech output",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-220.1-atm"
+      ],
+      "reason": "Covered by the technical rules of 220.1."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "707.6",
+      "title": "ATM/kiosk tactile input",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-707.6-tactile-keys"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "708",
+      "title": "Two-way communication systems (technical)",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "See 230."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "801",
+      "title": "Special rooms: general",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "General statement."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "802.1.2",
+      "title": "Wheelchair space width",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-802.1.2-wheelchair-space-width"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "802.1.3",
+      "title": "Wheelchair space depth",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-802.1.3-wheelchair-space-depth"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "802.2",
+      "title": "Wheelchair space lines of sight",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Sightline modeling over a seated audience is out of scan scope."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "802.3",
+      "title": "Companion seats",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Owner question pending; assembly seating is rare in scope."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "803.2",
+      "title": "Fitting room turning space",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-803.2-turning"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "803.3",
+      "title": "Fitting room door swing",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-803.3-door-swing"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "803.4",
+      "title": "Dressing room bench",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-903.3-bench-size",
+        "ADA-903.4-back-support",
+        "ADA-903.5-bench-height"
+      ],
+      "reason": "Covered by the technical rules of 903."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "803.5",
+      "title": "Dressing room coat hooks and shelves",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-603.4-coat-hook"
+      ],
+      "reason": "Covered by the technical rules of 603.4."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "804",
+      "title": "Kitchens and kitchenettes",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "See 212."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "805",
+      "title": "Medical care facilities",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "806",
+      "title": "Transient lodging guest rooms",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "807",
+      "title": "Holding cells and housing cells",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "808",
+      "title": "Courtrooms",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "809",
+      "title": "Residential dwelling units",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "810",
+      "title": "Transportation facilities",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "811.3",
+      "title": "Storage within reach",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-811.3-storage-reach"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "901",
+      "title": "Built-in elements: general",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "General statement."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "902.2",
+      "title": "Dining surface clear floor space",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-305.3-cfs-forward",
+        "ADA-305.3-cfs-parallel",
+        "ADA-305.2-cfs-slope",
+        "ADA-305.6-cfs-adjoins-route",
+        "ADA-305.7.1-alcove-forward",
+        "ADA-305.7.2-alcove-parallel",
+        "ADA-306.3.1-knee-height",
+        "ADA-306.3.3-knee-depth-27",
+        "ADA-306.3.3-knee-depth-9",
+        "ADA-306.3.5-knee-width",
+        "ADA-306.2.3-toe-depth",
+        "ADA-306.2.5-toe-height"
+      ],
+      "reason": "Covered by the technical rules of 305, 306."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "902.3",
+      "title": "Dining and work surface height 28-34 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-902.3-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "902.4",
+      "title": "Dining surfaces for children",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Children's surfaces are outside small-business scope."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "903.2",
+      "title": "Bench clear floor space",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-305.3-cfs-forward",
+        "ADA-305.3-cfs-parallel",
+        "ADA-305.2-cfs-slope",
+        "ADA-305.6-cfs-adjoins-route",
+        "ADA-305.7.1-alcove-forward",
+        "ADA-305.7.2-alcove-parallel"
+      ],
+      "reason": "Covered by the technical rules of 305."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "903.3",
+      "title": "Bench size",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-903.3-bench-size"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "903.4",
+      "title": "Bench back support",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-903.4-back-support"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "903.5",
+      "title": "Bench seat height 17-19 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-903.5-bench-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "903.6",
+      "title": "Bench structural strength",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Needs an owner attestation; pending."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "903.7",
+      "title": "Benches in wet locations",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Wet-location benches belong to bathing facilities, not in scope."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "904.2",
+      "title": "Counters adjoin walking surface",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-904.4.1-parallel",
+        "ADA-904.4.2-forward",
+        "ADA-904.4-same-depth",
+        "ADA-904.4-customer-side"
+      ],
+      "reason": "Covered by the technical rules of 904.4."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "904.3.1",
+      "title": "Check-out aisle 36 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-904.3.1-aisle-width"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "904.3.2",
+      "title": "Check-out counter 38 in max",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-904.3.2-counter-height",
+        "ADA-904.3.2-edge-protection"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "904.3.3",
+      "title": "Check writing surfaces",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-902.3-height"
+      ],
+      "reason": "Covered by the technical rules of 902.3."
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "904.4",
+      "title": "Accessible counter portion full depth",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-904.4-same-depth",
+        "ADA-904.4-customer-side"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "904.4.1",
+      "title": "Sales counter, parallel approach: 36 in long, 36 in high",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-904.4.1-parallel"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "904.4.2",
+      "title": "Sales counter, forward approach: 30 in long, 36 in high",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-904.4.2-forward"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "904.5.1",
+      "title": "Self-service dispensers within reach",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-904.5.1-self-service-reach"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "904.5.2",
+      "title": "Tray slide 28-34 in",
+      "status": "covered",
+      "rule_ids": [
+        "ADA-904.5.2-tray-slide"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "ADA2010",
+      "section": "904.6",
+      "title": "Security glazing at counters",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Voice communication method at teller glazing needs an owner question; pending."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-201",
+      "title": "Application",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "General applicability statement; no testable requirement."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-202.1",
+      "title": "Existing buildings: general",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Defines when alteration rules apply; scoping uses site.construction_era and site.altered_since_2012."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-202.3",
+      "title": "Alterations",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Altered elements must meet the same rules as new construction; the rules here already apply to every element, and scoping uses site.altered_since_2012."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-202.4",
+      "title": "Path of travel upgraded with alterations (CBC)",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-202.4-path-of-travel"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-202.5",
+      "title": "Alterations to qualified historic buildings",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Historic status is not captured yet; needs an owner question and alternate minimum rules."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-203.1",
+      "title": "General exceptions (other than 203.9)",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Construction sites, raised areas, limited-access spaces, machinery spaces, single-occupant structures, detention and residential exceptions do not apply to customer areas of a small shop or restaurant."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-203.9",
+      "title": "Employee work areas identified",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-203.9-employee-areas"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-204",
+      "title": "Protruding objects (scoping)",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-307.2-protrusion",
+        "CBC-11B-307.3-post-overhang",
+        "CBC-11B-307.3-between-posts",
+        "CBC-11B-307.4-headroom",
+        "CBC-11B-307.4-door-closer-height"
+      ],
+      "reason": "Covered by the technical rules of 307."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-205",
+      "title": "Operable parts (scoping)",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-308.2.1-forward-high",
+        "CBC-11B-308.2.1-low-reach",
+        "CBC-11B-308.2.2-forward-obstructed-20",
+        "CBC-11B-308.2.2-forward-obstructed-25",
+        "CBC-11B-308.3.1-side-high",
+        "CBC-11B-308.3.2-side-obstructed-10",
+        "CBC-11B-308.3.2-side-obstructed-24",
+        "CBC-11B-309.4-tight-grasp",
+        "CBC-11B-309.4-operating-force"
+      ],
+      "reason": "Covered by the technical rules of 308, 309."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-206.2.1",
+      "title": "Accessible route from site arrival points",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-206.2.1-site-arrival"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-206.2.2",
+      "title": "Accessible route within a multi-building site",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Multi-building sites are outside a single-business scan."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-206.2.3",
+      "title": "Vertical access between public levels",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-206.2.3-multi-story"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-206.2.4",
+      "title": "Accessible route connects entrance to public spaces and elements",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-206.2.4-connects-spaces"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-206.2.5",
+      "title": "Restaurants and cafeterias: route to dining areas",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-206.2.4-connects-spaces",
+        "CBC-11B-226.2-dining-dispersion"
+      ],
+      "reason": "Covered by the technical rules of 206.2.4, 226.2."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-206.2.6",
+      "title": "Performance areas",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Stages and performance areas are outside small-business scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-206.2.8",
+      "title": "Employee work area circulation paths",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Employee areas are excluded from the customer scan by default (203.9); a staff-areas mode is planned."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-206.3",
+      "title": "Accessible route in the general circulation area",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-206.3-route-location"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-206.4.1",
+      "title": "All entrances accessible",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-206.4.1-entrances-all"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-206.4.5",
+      "title": "Tenant space entrances",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-206.4.1-entrances-all"
+      ],
+      "reason": "Covered by the technical rules of 206.4.1."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-206.4.8",
+      "title": "Service entrances",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-206.4.1-entrances-all"
+      ],
+      "reason": "Covered by the technical rules of 206.4.1."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-206.5",
+      "title": "Doors (scoping)",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-404.2.1-revolving",
+        "CBC-11B-404.2.3-clear-width",
+        "CBC-11B-404.2.3-deep-opening",
+        "CBC-11B-404.2.3-projection-low",
+        "CBC-11B-404.2.3-projection-mid",
+        "CBC-11B-404.2.4.1-front-pull",
+        "CBC-11B-404.2.4.1-front-pull-exterior",
+        "CBC-11B-404.2.4.1-front-push",
+        "CBC-11B-404.2.4.1-front-push-closer-latch",
+        "CBC-11B-404.2.4.1-hinge-pull",
+        "CBC-11B-404.2.4.1-hinge-push",
+        "CBC-11B-404.2.4.1-hinge-push-closer-latch",
+        "CBC-11B-404.2.4.1-latch-pull",
+        "CBC-11B-404.2.4.1-latch-push",
+        "CBC-11B-404.2.4.1-latch-push-closer",
+        "CBC-11B-404.2.4.2-doorway-no-door",
+        "CBC-11B-404.2.4.3-recessed",
+        "CBC-11B-404.2.4.4-maneuvering-slope",
+        "CBC-11B-404.2.5-threshold",
+        "CBC-11B-404.2.6-doors-in-series",
+        "CBC-11B-404.2.7-hardware-grasp",
+        "CBC-11B-404.2.7-hardware-height",
+        "CBC-11B-404.2.8-closing-speed",
+        "CBC-11B-404.2.9-opening-force",
+        "CBC-11B-404.2.9-fire-door-force",
+        "CBC-11B-404.2.10-bottom-surface",
+        "CBC-11B-404.2.11-vision-lite",
+        "CBC-11B-404.3-automatic"
+      ],
+      "reason": "Covered by the technical rules of 404."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-206.6",
+      "title": "Elevators (scoping)",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-407.1-elevator"
+      ],
+      "reason": "Covered by the technical rules of 407."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-206.7",
+      "title": "Platform lifts (scoping)",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-410.1-platform-lift"
+      ],
+      "reason": "Covered by the technical rules of 410."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-206.8",
+      "title": "Security barriers",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Security barriers and metal detectors are not found in small retail and restaurant spaces."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-207",
+      "title": "Accessible means of egress",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Requires building-code egress analysis (exit count, areas of refuge) beyond the scan."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-208.2",
+      "title": "Number of accessible parking spaces",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-208.2-parking-count"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-208.2.4",
+      "title": "Van-accessible parking spaces",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-208.2.4-van-spaces"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-208.3.1",
+      "title": "Accessible parking on the shortest route",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-208.3.1-parking-location"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-209",
+      "title": "Passenger loading zones",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Only where provided; small businesses rarely have them. Add an owner question if the product scope expands."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-210",
+      "title": "Stairways (scoping)",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-504.2-riser",
+        "CBC-11B-504.2-tread",
+        "CBC-11B-504.2-uniform",
+        "CBC-11B-504.3-open-risers",
+        "CBC-11B-504.5-nosing-radius",
+        "CBC-11B-504.5-nosing-projection",
+        "CBC-11B-504.6-handrails",
+        "CBC-11B-504.4.1-stripe"
+      ],
+      "reason": "Covered by the technical rules of 504."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-211.2",
+      "title": "Drinking fountain for wheelchair users",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-211.2-fountain-wheelchair",
+        "CBC-11B-211.2-fountain-standing"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-212",
+      "title": "Kitchens, kitchenettes and sinks",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Customer-facing kitchens are uncommon; public sinks are lavatories covered by 606, and employee kitchens are excluded."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-213.3.1",
+      "title": "Ambulatory compartment where 6 or more fixtures",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-213.3.1-ambulatory-compartment"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-213.3.3",
+      "title": "Accessible urinal (10%, min one)",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-213.3.3-urinal"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-214",
+      "title": "Washing machines and dryers",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Not present in shops and restaurants."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-215.1",
+      "title": "Visible alarms where a fire alarm system is provided",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-215.1-visible-alarms"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-216.2",
+      "title": "Permanent room identification sign",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-216.2-room-id-sign"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-216.4.1",
+      "title": "Tactile exit signs at exit doors",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-216.4.1-tactile-exit-sign"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-216.6",
+      "title": "ISA at accessible entrances and directional signs",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-216.6-entrance-signs"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-216.8",
+      "title": "ISA on accessible restrooms and directional signs",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-216.8-toilet-isa"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-216.8.1",
+      "title": "Geometric symbol on restroom door",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-216.8.1-geometric-symbol"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-216.8.2",
+      "title": "All-gender multi-user facility signs",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Needs OCR of door text; photo rule pending."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-216.8.3",
+      "title": "Compartment labels URINAL/TOILET",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Needs OCR of door text; photo rule pending."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-216.11",
+      "title": "Accessible check-out aisle identified",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-216.11-checkout-isa"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-217.2",
+      "title": "Public telephone within reach",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-217.2-telephone-reach"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-217.4",
+      "title": "TTYs",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Only for banks of public pay phones; pay phones are rare in small businesses."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-218",
+      "title": "Transportation facilities",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Not a transportation facility."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-219.2",
+      "title": "Assistive listening system",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-219.2-assistive-listening"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-220.1",
+      "title": "ATMs comply with 11B-707",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-220.1-atm"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-220.2",
+      "title": "Point-of-sale devices have tactile input",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-220.2-pos-devices"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-221.2.1.1",
+      "title": "Wheelchair spaces in assembly seating",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-221.2.1.1-wheelchair-spaces"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-222.1",
+      "title": "Accessible fitting rooms (5%, min one)",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-222.1-fitting-rooms"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-223",
+      "title": "Medical care and long-term care facilities",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-224",
+      "title": "Transient lodging guest rooms",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-225.2.1",
+      "title": "Lockers",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-811.3-storage-reach"
+      ],
+      "reason": "Covered by the technical rules of 811."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-225.2.2",
+      "title": "Self-service shelving on an accessible route",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-225.2.2-self-service-shelving-route"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-225.3",
+      "title": "Self-service storage facilities",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Self-storage facilities are outside product scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-226.1",
+      "title": "Accessible dining seating (5%)",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-226.1-dining-5pct"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-226.2",
+      "title": "Accessible dining dispersed by seating type",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-226.2-dining-dispersion"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-226.3",
+      "title": "Accessible portion of counters over 34 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-226.3-bar-counter-60in"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-226.4",
+      "title": "Diaper changing stations",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Deployed-position protrusion check pending; operable height covered by 603.5 when detected as baby_changing_table."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-227.2",
+      "title": "Accessible check-out aisles",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-227.2-checkout-count"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-227.3",
+      "title": "Sales and service counters (scoping)",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-904.4.1-parallel",
+        "CBC-11B-904.4.2-forward",
+        "CBC-11B-904.4-same-depth",
+        "CBC-11B-904.4-customer-side"
+      ],
+      "reason": "Covered by the technical rules of 904.4."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-227.4",
+      "title": "Food service self-service shelves within reach",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-227.4-food-shelves-reach"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-227.5",
+      "title": "Queue lines to counters are accessible",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-227.5-queue-width"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-228.1",
+      "title": "Depositories, vending and change machines usable",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-228.1-depository-reach"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-228.3",
+      "title": "Electric vehicle charging stations (scoping)",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Only where EV chargers are provided; 11B-812 technical rules not yet encoded."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-229",
+      "title": "Windows",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Operable windows for public use are not part of the customer experience in small businesses."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-230",
+      "title": "Two-way communication systems",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Entry intercoms are uncommon; needs an owner question and 708 photo checks."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-231",
+      "title": "Judicial facilities",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-232",
+      "title": "Detention and correctional facilities",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-233",
+      "title": "Residential facilities",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-234",
+      "title": "Amusement rides",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-235",
+      "title": "Recreational boating facilities",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-236",
+      "title": "Exercise machines and equipment",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Gyms are outside the initial small-business scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-237",
+      "title": "Fishing piers and platforms",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-238",
+      "title": "Golf facilities",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-239",
+      "title": "Miniature golf facilities",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-240",
+      "title": "Play areas",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-241",
+      "title": "Saunas and steam rooms",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-242",
+      "title": "Swimming pools, wading pools and spas",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-243",
+      "title": "Shooting facilities",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-244",
+      "title": "Religious facilities",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-245",
+      "title": "Public accommodations located in private residences",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Home-based businesses: the public-use portion is scanned like any other space; specific scoping not yet encoded."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-246",
+      "title": "Outdoor developed areas",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Parks and trails are outside product scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-247.1.2.2",
+      "title": "Detectable warnings at curb ramps",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-247.1.2.2-curb-ramp-dw"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-248",
+      "title": "Common use areas and employee work areas",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Employee areas are excluded by default (11B-203.9)."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-249",
+      "title": "Adult changing facilities",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Required only for commercial places of public amusement (11B-249.1); not shops, cafes or restaurants."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-250.1",
+      "title": "Circulation paths separated from vehicles",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-250.1-walk-separation"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-301",
+      "title": "Building blocks: general",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "General statement."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-302.1",
+      "title": "Floor firm, stable and slip resistant",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-302.1-firm-stable"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-302.2",
+      "title": "Carpet pile height",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-302.2-carpet-pile",
+        "CBC-11B-302.2-carpet-secured"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-302.3",
+      "title": "Openings in floor surfaces",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-302.3-openings",
+        "CBC-11B-302.3-grating-orientation"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-303.2",
+      "title": "Changes in level on the route",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-303.2-level-change"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-303.3",
+      "title": "Beveled changes in level",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-303.3-bevel"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-303.5",
+      "title": "Warning curbs at drop-offs over 4 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-303.5-warning-curb"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-304.2",
+      "title": "Turning space floor slope",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-304.2-turning-slope"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-304.3",
+      "title": "Turning space in toilet rooms",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-304.3-turning-space"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-305.2",
+      "title": "Clear floor space slope",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-305.2-cfs-slope"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-305.3",
+      "title": "Clear floor space, forward approach",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-305.3-cfs-forward",
+        "CBC-11B-305.3-cfs-parallel"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-305.6",
+      "title": "Clear floor space adjoins the route",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-305.6-cfs-adjoins-route"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-305.7.1",
+      "title": "Alcove width, forward approach",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-305.7.1-alcove-forward"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-305.7.2",
+      "title": "Alcove width, parallel approach",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-305.7.2-alcove-parallel"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-306.2.3",
+      "title": "Toe clearance depth",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-306.2.3-toe-depth"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-306.2.5",
+      "title": "Toe clearance height",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-306.2.5-toe-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-306.3.1",
+      "title": "Knee clearance height",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-306.3.1-knee-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-306.3.3",
+      "title": "Knee clearance depth at 27 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-306.3.3-knee-depth-27",
+        "CBC-11B-306.3.3-knee-depth-9"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-306.3.5",
+      "title": "Knee clearance width",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-306.3.5-knee-width"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-307.2",
+      "title": "Wall-mounted protrusions into circulation",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-307.2-protrusion"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-307.3",
+      "title": "Post-mounted overhang",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-307.3-post-overhang",
+        "CBC-11B-307.3-between-posts"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-307.3.1",
+      "title": "Post-mounted object edges",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Edge radius needs a close-up photo rule; pending."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-307.4",
+      "title": "Vertical clearance 80 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-307.4-headroom",
+        "CBC-11B-307.4-door-closer-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-307.4.1",
+      "title": "Guy braces",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Exterior utility guys are outside the business scan."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-307.5",
+      "title": "Protruding objects reduce required width",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-403.5.1-clear-width",
+        "CBC-11B-403.5.1-corridor-44",
+        "CBC-11B-403.5.1-aisle-44",
+        "CBC-11B-403.5.1-walk-48",
+        "CBC-11B-403.5.1-toilet-route-44"
+      ],
+      "reason": "Covered by the technical rules of 403.5.1."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-308.2.1",
+      "title": "Unobstructed forward reach, high",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-308.2.1-forward-high",
+        "CBC-11B-308.2.1-low-reach"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-308.2.2",
+      "title": "Obstructed forward reach, obstruction 20 in or less",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-308.2.2-forward-obstructed-20",
+        "CBC-11B-308.2.2-forward-obstructed-25"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-308.3.1",
+      "title": "Unobstructed side reach, high",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-308.3.1-side-high"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-308.3.2",
+      "title": "Obstructed side reach, obstruction 10 in or less",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-308.3.2-side-obstructed-10",
+        "CBC-11B-308.3.2-side-obstructed-24"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-309.4",
+      "title": "Operable without tight grasping",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-309.4-tight-grasp",
+        "CBC-11B-309.4-operating-force"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-401",
+      "title": "Accessible routes: general",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "General statement."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-402.2",
+      "title": "Walking surface running slope",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-402.2-running-slope"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-403.3",
+      "title": "Walking surface cross slope",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-403.3-cross-slope"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-403.4",
+      "title": "Walking surfaces: changes in level",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-303.2-level-change",
+        "CBC-11B-303.3-bevel",
+        "CBC-11B-303.5-warning-curb"
+      ],
+      "reason": "Covered by the technical rules of 303."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-403.5.1",
+      "title": "Route clear width 36 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-403.5.1-clear-width",
+        "CBC-11B-403.5.1-corridor-44",
+        "CBC-11B-403.5.1-aisle-44",
+        "CBC-11B-403.5.1-walk-48",
+        "CBC-11B-403.5.1-toilet-route-44"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-403.5.2",
+      "title": "Clear width at 180-degree turns",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-403.5.2-turn-width"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-403.5.3",
+      "title": "Passing spaces every 200 ft",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-403.5.3-passing-space"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-403.6",
+      "title": "Walking surface handrails",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-505.4-height",
+        "CBC-11B-505.5-clearance",
+        "CBC-11B-505.7.1-diameter",
+        "CBC-11B-505.3-continuous",
+        "CBC-11B-505.10.1-ramp-extension",
+        "CBC-11B-505.10.2-stair-top-extension",
+        "CBC-11B-505.10.3-stair-bottom-extension"
+      ],
+      "reason": "Covered by the technical rules of 505."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-403.7",
+      "title": "Continuous gradient resting areas",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Applies to walks with continuous gradients of 400 ft or more."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-404.2.1",
+      "title": "Revolving doors not the accessible door",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-404.2.1-revolving"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-404.2.2",
+      "title": "Double-leaf doors",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-404.2.3-clear-width",
+        "CBC-11B-404.2.3-deep-opening",
+        "CBC-11B-404.2.3-projection-low",
+        "CBC-11B-404.2.3-projection-mid"
+      ],
+      "reason": "Covered by the technical rules of 404.2.3."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-404.2.3",
+      "title": "Door clear width 32 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-404.2.3-clear-width",
+        "CBC-11B-404.2.3-deep-opening",
+        "CBC-11B-404.2.3-projection-low",
+        "CBC-11B-404.2.3-projection-mid"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-404.2.4.1",
+      "title": "Maneuvering clearance, front approach, pull side",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-404.2.4.1-front-pull",
+        "CBC-11B-404.2.4.1-front-pull-exterior",
+        "CBC-11B-404.2.4.1-front-push",
+        "CBC-11B-404.2.4.1-front-push-closer-latch",
+        "CBC-11B-404.2.4.1-hinge-pull",
+        "CBC-11B-404.2.4.1-hinge-push",
+        "CBC-11B-404.2.4.1-hinge-push-closer-latch",
+        "CBC-11B-404.2.4.1-latch-pull",
+        "CBC-11B-404.2.4.1-latch-push",
+        "CBC-11B-404.2.4.1-latch-push-closer"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-404.2.4.2",
+      "title": "Maneuvering clearance at doorways without doors",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-404.2.4.2-doorway-no-door"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-404.2.4.3",
+      "title": "Recessed doors need front-approach clearance",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-404.2.4.3-recessed"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-404.2.4.4",
+      "title": "Level floor in door maneuvering clearance",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-404.2.4.4-maneuvering-slope"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-404.2.5",
+      "title": "Threshold 1/2 in max",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-404.2.5-threshold"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-404.2.6",
+      "title": "Doors in series 48 in apart",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-404.2.6-doors-in-series"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-404.2.7",
+      "title": "Door hardware usable without grasping",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-404.2.7-hardware-grasp",
+        "CBC-11B-404.2.7-hardware-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-404.2.8",
+      "title": "Door closer speed 5 s",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-404.2.8-closing-speed"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-404.2.9",
+      "title": "Door opening force 5 lbf, interior and exterior",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-404.2.9-opening-force",
+        "CBC-11B-404.2.9-fire-door-force"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-404.2.10",
+      "title": "Smooth door bottom 10 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-404.2.10-bottom-surface"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-404.2.11",
+      "title": "Vision lites 43 in max",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-404.2.11-vision-lite"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-404.3",
+      "title": "Automatic doors meet BHMA standards",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-404.3-automatic"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-405.2",
+      "title": "Ramp running slope 1:12",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-405.2-slope"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-405.3",
+      "title": "Ramp cross slope 1:48",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-405.3-cross-slope"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-405.4",
+      "title": "Ramp surfaces",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-302.1-firm-stable",
+        "CBC-11B-302.2-carpet-pile",
+        "CBC-11B-302.2-carpet-secured",
+        "CBC-11B-302.3-openings",
+        "CBC-11B-302.3-grating-orientation",
+        "CBC-11B-303.2-level-change",
+        "CBC-11B-303.3-bevel",
+        "CBC-11B-303.5-warning-curb"
+      ],
+      "reason": "Covered by the technical rules of 302, 303."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-405.5",
+      "title": "Ramp clear width",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-405.5-width"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-405.6",
+      "title": "Ramp rise 30 in per run",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-405.6-rise"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-405.7.1",
+      "title": "Ramp landing slope",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-405.7.1-landing-slope"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-405.7.2",
+      "title": "Ramp landing as wide as the run",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-405.7.2-landing-width"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-405.7.2.1",
+      "title": "Top landing 60 in wide",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-405.7.2.1-top-landing-width"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-405.7.3",
+      "title": "Ramp landing length 60 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-405.7.3-landing-length"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-405.7.3.1",
+      "title": "Bottom landing 72 in long",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-405.7.3.1-bottom-landing"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-405.7.4",
+      "title": "Landing at change of direction",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-405.7.4-turn-landing"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-405.7.5",
+      "title": "Doorways at ramp landings",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Needs door-swing overlap analysis on landings; metric ramp.door_swing_into_landing exists, rule pending review."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-405.8",
+      "title": "Ramp handrails on both sides",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-405.8-handrails"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-405.9",
+      "title": "Ramp edge protection",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-405.9-edge-protection"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-405.10",
+      "title": "Ramps in wet conditions",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Drainage design is not observable from a scan."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-406.1",
+      "title": "Curb ramp running slope 1:12",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-406.1-curb-ramp-slope"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-406.2",
+      "title": "Curb ramp counter slope 1:20",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-406.2-counter-slope"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-406.3",
+      "title": "Curb ramp flares 1:10",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-406.3-flare-slope"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-406.4",
+      "title": "Curb ramp top landing",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-406.4-landing"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-406.5.2",
+      "title": "Curb ramp width 48 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-406.5.2-curb-ramp-width"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-407.1",
+      "title": "Passenger elevator complies with 407",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-407.1-elevator"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-408",
+      "title": "Limited-use/limited-application elevators",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-407.1-elevator"
+      ],
+      "reason": "Covered by the technical rules of 407."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-409",
+      "title": "Private residence elevators",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Not permitted in public accommodations."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-410.1",
+      "title": "Platform lift complies with 410",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-410.1-platform-lift"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-411",
+      "title": "Destination-oriented elevators",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Not found in small businesses."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-501",
+      "title": "General site and building elements",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "General statement."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-502.2",
+      "title": "Car space width 108 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-502.2-car-width",
+        "CBC-11B-502.2-van-width",
+        "CBC-11B-502.2-length"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-502.3.1",
+      "title": "Access aisle 60 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-502.3.1-aisle-width"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-502.3.2",
+      "title": "Access aisle length",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Exterior parking geometry is captured only when the lot is scanned; length check pending."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-502.3.3",
+      "title": "Access aisle marked",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-502.3.3-aisle-marking"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-502.3.4",
+      "title": "Access aisle location",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Exterior parking geometry is captured only when the lot is scanned."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-502.4",
+      "title": "Parking space and aisle slope 1:48",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-502.4-surface-slope"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-502.5",
+      "title": "Van vertical clearance 98 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-502.5-van-clearance"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-502.6",
+      "title": "Accessible parking sign",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-502.6-sign",
+        "CBC-11B-502.6-sign-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-502.6.2",
+      "title": "'Minimum Fine $250' on sign",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-502.6.2-min-fine"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-502.6.4",
+      "title": "ISA painted on the space",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-502.6.4-surface-isa"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-502.7",
+      "title": "Parking relationship to accessible routes",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Needs vehicle overhang modeling."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-502.8",
+      "title": "Tow-away sign",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-502.8-tow-away"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-503",
+      "title": "Passenger loading zones",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "See 209."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-504.2",
+      "title": "Stair risers 4-7 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-504.2-riser",
+        "CBC-11B-504.2-tread",
+        "CBC-11B-504.2-uniform"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-504.3",
+      "title": "No open risers",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-504.3-open-risers"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-504.4",
+      "title": "Tread surface",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-302.1-firm-stable",
+        "CBC-11B-302.2-carpet-pile",
+        "CBC-11B-302.2-carpet-secured",
+        "CBC-11B-302.3-openings",
+        "CBC-11B-302.3-grating-orientation"
+      ],
+      "reason": "Covered by the technical rules of 302."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-504.4.1",
+      "title": "Contrasting stair stripes",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-504.4.1-stripe"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-504.5",
+      "title": "Nosing radius 1/2 in max",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-504.5-nosing-radius",
+        "CBC-11B-504.5-nosing-projection"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-504.6",
+      "title": "Stair handrails both sides",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-504.6-handrails"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-504.7",
+      "title": "Stairs in wet conditions",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Drainage design is not observable from a scan."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-504.8",
+      "title": "Stair floor identification",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Enclosed stairways in buildings of two or more stories; uncommon in scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-505.2",
+      "title": "Handrails where required",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-405.8-handrails",
+        "CBC-11B-504.6-handrails"
+      ],
+      "reason": "Covered by the technical rules of 405.8, 504.6."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-505.3",
+      "title": "Handrail continuous",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-505.3-continuous"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-505.4",
+      "title": "Handrail height 34-38 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-505.4-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-505.5",
+      "title": "Handrail wall clearance 1 1/2 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-505.5-clearance"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-505.6",
+      "title": "Handrail gripping surface continuity",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Needs close-range geometry of brackets; photo rule pending."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-505.7.1",
+      "title": "Handrail diameter 1 1/4-2 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-505.7.1-diameter"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-505.7.2",
+      "title": "Non-circular handrail cross section",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Rare; photo measurement pending."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-505.8",
+      "title": "Handrail surfaces",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Sharp edges need a photo rule; pending."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-505.9",
+      "title": "Handrail fittings",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Rotation needs an owner check; pending."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-505.10.1",
+      "title": "Ramp handrail extensions 12 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-505.10.1-ramp-extension"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-505.10.2",
+      "title": "Stair handrail top extension 12 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-505.10.2-stair-top-extension"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-505.10.3",
+      "title": "Stair handrail bottom extension",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-505.10.3-stair-bottom-extension"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-601",
+      "title": "Plumbing elements: general",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "General statement."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-602.1",
+      "title": "Drinking fountains: general and clear floor space",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-305.3-cfs-forward",
+        "CBC-11B-305.3-cfs-parallel",
+        "CBC-11B-305.2-cfs-slope",
+        "CBC-11B-305.6-cfs-adjoins-route",
+        "CBC-11B-305.7.1-alcove-forward",
+        "CBC-11B-305.7.2-alcove-parallel",
+        "CBC-11B-306.3.1-knee-height",
+        "CBC-11B-306.3.3-knee-depth-27",
+        "CBC-11B-306.3.3-knee-depth-9",
+        "CBC-11B-306.3.5-knee-width",
+        "CBC-11B-306.2.3-toe-depth",
+        "CBC-11B-306.2.5-toe-height"
+      ],
+      "reason": "Covered by the technical rules of 305, 306."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-602.3",
+      "title": "Drinking fountain operable parts",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-309.4-tight-grasp",
+        "CBC-11B-309.4-operating-force"
+      ],
+      "reason": "Covered by the technical rules of 309."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-602.4",
+      "title": "Wheelchair fountain spout 36 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-602.4-spout-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-602.5",
+      "title": "Spout 5 in max from front",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-602.5-spout-location"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-602.6",
+      "title": "Drinking fountain water flow",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Needs the water running; photo/video rule pending."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-602.7",
+      "title": "Standing fountain spout 38-43 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-602.7-standing-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-602.8",
+      "title": "Cantilevered fountain depth",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Depth 18-19 in check pending."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-602.9",
+      "title": "Fountain in alcove or between wing walls",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-602.9-pedestrian-protection"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-602.10",
+      "title": "Bottle filling stations",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Operable parts covered by 309 when detected as bottle_filler; scoping rule pending."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-603.2.1",
+      "title": "Toilet room turning space",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-304.3-turning-space",
+        "CBC-11B-304.2-turning-slope"
+      ],
+      "reason": "Covered by the technical rules of 304."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-603.2.2",
+      "title": "Toilet room clearance overlap",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Permissive provision; no failing condition."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-603.2.3",
+      "title": "Door does not swing into fixture clear floor space",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-603.2.3-door-swing",
+        "CBC-11B-603.2.3-door-encroach-turning"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-603.3",
+      "title": "Mirror over lavatory 40 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-603.3-mirror-over-lav",
+        "CBC-11B-603.3-mirror-other"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-603.4",
+      "title": "Coat hooks within reach",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-603.4-coat-hook"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-603.5",
+      "title": "Toilet room accessories 40 in max",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-603.5-accessories"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-604.2",
+      "title": "Water closet centerline 17-18 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-604.2-centerline",
+        "CBC-11B-604.2-centerline-ambulatory"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-604.3.1",
+      "title": "Water closet clearance 60x56 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-604.3.1-clearance",
+        "CBC-11B-604.3.1-front-maneuvering"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-604.3.2",
+      "title": "No other fixtures in WC clearance",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-604.3.2-overlap"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-604.4",
+      "title": "Seat height 17-19 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-604.4-seat-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-604.5",
+      "title": "Side and rear grab bars present",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-604.5-grab-bars-present"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-604.5.1",
+      "title": "Side grab bar 42 in, 12 in max from rear wall, to 54 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-604.5.1-side-bar",
+        "CBC-11B-604.5.1-side-bar-front"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-604.5.2",
+      "title": "Rear grab bar 36 in, 12/24 in either side",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-604.5.2-rear-bar"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-604.6",
+      "title": "Flush control on open side, 44 in max",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-604.6-flush-open-side"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-604.7",
+      "title": "Toilet paper 7-9 in in front of WC",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-604.7-tp-location",
+        "CBC-11B-604.7-tp-continuous"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-604.7.1",
+      "title": "Toilet paper outlet 19 in min, below grab bar",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-604.7.1-tp-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-604.7.2",
+      "title": "Sanitary napkin disposal location",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Location relative to dispenser and grab bar pending."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-604.8.1.1",
+      "title": "Wheelchair compartment size and maneuvering space",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-604.8.1.1-compartment-size"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-604.8.1.2",
+      "title": "Compartment door self-closing with pulls",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-604.8.1.2-compartment-door",
+        "CBC-11B-604.8.1.2-compartment-door-location"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-604.8.1.3",
+      "title": "Compartment approach",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Permissive (left or right hand)."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-604.8.1.4",
+      "title": "Compartment toe clearance 9 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-604.8.1.4-toe-clearance"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-604.8.1.5",
+      "title": "Compartment grab bars",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-604.5-grab-bars-present",
+        "CBC-11B-604.5.1-side-bar",
+        "CBC-11B-604.5.1-side-bar-front",
+        "CBC-11B-604.5.2-rear-bar"
+      ],
+      "reason": "Covered by the technical rules of 604.5."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-604.8.2",
+      "title": "Ambulatory compartment 35-37 in wide, 60 in deep",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-604.8.2-ambulatory-size"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-604.8.3",
+      "title": "Compartment coat hooks and shelves",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-603.4-coat-hook"
+      ],
+      "reason": "Covered by the technical rules of 603.4."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-604.9",
+      "title": "Water closets for children",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Children's fixtures are outside small-business scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-605.2",
+      "title": "Urinal rim 17 in max",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-605.2-rim-height",
+        "CBC-11B-605.2-rim-depth"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-605.3",
+      "title": "Urinal clear floor space",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-305.3-cfs-forward",
+        "CBC-11B-305.3-cfs-parallel",
+        "CBC-11B-305.2-cfs-slope",
+        "CBC-11B-305.6-cfs-adjoins-route",
+        "CBC-11B-305.7.1-alcove-forward",
+        "CBC-11B-305.7.2-alcove-parallel"
+      ],
+      "reason": "Covered by the technical rules of 305."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-605.4",
+      "title": "Urinal flush control 44 in max",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-605.4-flush-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-606.2",
+      "title": "Lavatory clear floor space and knee clearance",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-306.3.1-knee-height",
+        "CBC-11B-306.3.3-knee-depth-27",
+        "CBC-11B-306.3.3-knee-depth-9",
+        "CBC-11B-306.3.5-knee-width",
+        "CBC-11B-306.2.3-toe-depth",
+        "CBC-11B-306.2.5-toe-height"
+      ],
+      "reason": "Covered by the technical rules of 306."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-606.3",
+      "title": "Lavatory rim 34 in max",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-606.3-rim-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-606.4",
+      "title": "Faucets operable with one hand",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-606.4-faucets"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-606.5",
+      "title": "Pipes under lavatory insulated",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-606.5-pipes"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-606.6",
+      "title": "Lavatory centerline 18 in from side wall",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-606.6-side-clearance"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-607",
+      "title": "Bathtubs",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Not present in shops and restaurants."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-608",
+      "title": "Shower compartments",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Not present in shops and restaurants."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-609.2.1",
+      "title": "Grab bar diameter 1 1/4-2 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-609.2.1-diameter"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-609.2.2",
+      "title": "Non-circular grab bars",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Rare; photo measurement pending."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-609.3",
+      "title": "Grab bar wall space 1 1/2 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-609.3-wall-space",
+        "CBC-11B-609.3-space-above",
+        "CBC-11B-609.3-space-below"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-609.4",
+      "title": "Grab bar height 33-36 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-609.4-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-609.5",
+      "title": "Grab bar surface hazards",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Photo rule pending."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-609.6",
+      "title": "Grab bars do not rotate",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-609.6-no-rotation"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-609.7",
+      "title": "Grab bar installation",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Permissive provision."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-609.8",
+      "title": "Grab bar structural strength 250 lbf",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-609.8-strength"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-610",
+      "title": "Seats (bathing)",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Bathing facilities not in scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-611",
+      "title": "Washing machines and dryers",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Not present."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-612",
+      "title": "Saunas and steam rooms",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Not present."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-701",
+      "title": "Communication elements: general",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "General statement."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-702.1",
+      "title": "Visible alarm appliances per NFPA 72",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-702.1-alarm-appliances"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-703.1",
+      "title": "Signs: general",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-703.4.1-tactile-height",
+        "CBC-11B-703.4.2-tactile-location",
+        "CBC-11B-703.2-raised-characters",
+        "CBC-11B-703.2.5-character-height",
+        "CBC-11B-703.2.2-uppercase-sans",
+        "CBC-11B-703.5.1-finish-contrast",
+        "CBC-11B-703.5.6-visual-height"
+      ],
+      "reason": "Covered by the technical rules of 703.2, 703.4, 703.5."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-703.2",
+      "title": "Raised characters on room signs",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-703.2-raised-characters"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-703.2.2",
+      "title": "Uppercase sans serif tactile characters",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-703.2.2-uppercase-sans"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-703.2.5",
+      "title": "Raised character height 5/8-2 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-703.2.5-character-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-703.3",
+      "title": "Braille on tactile signs",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-703.3-braille"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-703.4.1",
+      "title": "Tactile sign height 48-60 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-703.4.1-tactile-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-703.4.2",
+      "title": "Tactile sign on the latch side",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-703.4.2-tactile-location"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-703.5.1",
+      "title": "Non-glare finish and contrast",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-703.5.1-finish-contrast"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-703.5.6",
+      "title": "Visual characters 40 in min",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-703.5.6-visual-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-703.6.1",
+      "title": "Pictogram field 6 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-703.6.1-pictogram-field"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-703.7",
+      "title": "Symbols of accessibility",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-216.6-entrance-signs",
+        "CBC-11B-216.8-toilet-isa",
+        "CBC-11B-216.8.1-geometric-symbol"
+      ],
+      "reason": "Covered by the technical rules of 216.6, 216.8."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-703.7.2.6",
+      "title": "Geometric symbol 58-60 in to center",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-703.7.2.6-geometric-height",
+        "CBC-11B-703.7.2.6-geometric-size"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-703.8",
+      "title": "Variable message signs",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Transportation and emergency-shelter signs; not in scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-704.2",
+      "title": "Wheelchair accessible telephones",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-217.2-telephone-reach"
+      ],
+      "reason": "Covered by the technical rules of 217.2."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-704.3",
+      "title": "Telephone volume control",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-704.3-volume-control"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-704.4",
+      "title": "TTYs",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "See 217.4."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-705.1.1",
+      "title": "Truncated dome dimensions (CBC)",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-705.1.1-dome-dimensions"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-705.1.1.3",
+      "title": "Detectable warnings yellow",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-705.1.1.3-dw-yellow"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-705.1.2.2",
+      "title": "Curb ramp detectable warning 36 in deep",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-705.1.2.2-dw-depth"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-706",
+      "title": "Assistive listening systems (technical)",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-219.2-assistive-listening"
+      ],
+      "reason": "Covered by the technical rules of 219.2."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-707.2",
+      "title": "ATM clear floor space",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-305.3-cfs-forward",
+        "CBC-11B-305.3-cfs-parallel",
+        "CBC-11B-305.2-cfs-slope",
+        "CBC-11B-305.6-cfs-adjoins-route",
+        "CBC-11B-305.7.1-alcove-forward",
+        "CBC-11B-305.7.2-alcove-parallel"
+      ],
+      "reason": "Covered by the technical rules of 305."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-707.3",
+      "title": "ATM operable parts",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-308.2.1-forward-high",
+        "CBC-11B-308.2.1-low-reach",
+        "CBC-11B-308.2.2-forward-obstructed-20",
+        "CBC-11B-308.2.2-forward-obstructed-25",
+        "CBC-11B-308.3.1-side-high",
+        "CBC-11B-308.3.2-side-obstructed-10",
+        "CBC-11B-308.3.2-side-obstructed-24",
+        "CBC-11B-309.4-tight-grasp",
+        "CBC-11B-309.4-operating-force"
+      ],
+      "reason": "Covered by the technical rules of 308, 309."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-707.5",
+      "title": "ATM speech output",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-220.1-atm"
+      ],
+      "reason": "Covered by the technical rules of 220.1."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-707.6",
+      "title": "ATM/kiosk tactile input",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-707.6-tactile-keys"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-707.7.1",
+      "title": "Display screen centerline height",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-707.7.1-display-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-708",
+      "title": "Two-way communication systems (technical)",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "See 230."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-801",
+      "title": "Special rooms: general",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "General statement."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-802.1.2",
+      "title": "Wheelchair space width",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-802.1.2-wheelchair-space-width"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-802.1.3",
+      "title": "Wheelchair space depth",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-802.1.3-wheelchair-space-depth"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-802.2",
+      "title": "Wheelchair space lines of sight",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Sightline modeling over a seated audience is out of scan scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-802.3",
+      "title": "Companion seats",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Owner question pending; assembly seating is rare in scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-803.2",
+      "title": "Fitting room turning space",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-803.2-turning"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-803.3",
+      "title": "Fitting room door swing",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-803.3-door-swing"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-803.4",
+      "title": "Dressing room bench",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-903.3-bench-size",
+        "CBC-11B-903.4-back-support",
+        "CBC-11B-903.5-bench-height"
+      ],
+      "reason": "Covered by the technical rules of 903."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-803.5",
+      "title": "Coat hooks not above the bench",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-803.5-hook-over-bench"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-803.6",
+      "title": "Full-length mirror in fitting room",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-803.6-mirror"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-804",
+      "title": "Kitchens and kitchenettes",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "See 212."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-805",
+      "title": "Medical care facilities",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-806",
+      "title": "Transient lodging guest rooms",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-807",
+      "title": "Holding cells and housing cells",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-808",
+      "title": "Courtrooms",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-809",
+      "title": "Residential dwelling units",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-810",
+      "title": "Transportation facilities",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-811.3",
+      "title": "Storage within reach",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-811.3-storage-reach"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-812",
+      "title": "Electric vehicle charging stations",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "See 11B-228.3."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-813",
+      "title": "Adult changing facilities (technical)",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "See 11B-249."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-901",
+      "title": "Built-in elements: general",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "General statement."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-902.2",
+      "title": "Dining surface clear floor space",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-305.3-cfs-forward",
+        "CBC-11B-305.3-cfs-parallel",
+        "CBC-11B-305.2-cfs-slope",
+        "CBC-11B-305.6-cfs-adjoins-route",
+        "CBC-11B-305.7.1-alcove-forward",
+        "CBC-11B-305.7.2-alcove-parallel",
+        "CBC-11B-306.3.1-knee-height",
+        "CBC-11B-306.3.3-knee-depth-27",
+        "CBC-11B-306.3.3-knee-depth-9",
+        "CBC-11B-306.3.5-knee-width",
+        "CBC-11B-306.2.3-toe-depth",
+        "CBC-11B-306.2.5-toe-height"
+      ],
+      "reason": "Covered by the technical rules of 305, 306."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-902.2.1",
+      "title": "Dining clear floor space off the route",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-902.2.1-cfs-not-route"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-902.3",
+      "title": "Dining and work surface height 28-34 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-902.3-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-902.4",
+      "title": "Dining surfaces for children",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Children's surfaces are outside small-business scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-903.2",
+      "title": "Bench clear floor space",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-305.3-cfs-forward",
+        "CBC-11B-305.3-cfs-parallel",
+        "CBC-11B-305.2-cfs-slope",
+        "CBC-11B-305.6-cfs-adjoins-route",
+        "CBC-11B-305.7.1-alcove-forward",
+        "CBC-11B-305.7.2-alcove-parallel"
+      ],
+      "reason": "Covered by the technical rules of 305."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-903.3",
+      "title": "Bench size",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-903.3-bench-size"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-903.4",
+      "title": "Bench back support",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-903.4-back-support"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-903.5",
+      "title": "Bench seat height 17-19 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-903.5-bench-height"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-903.6",
+      "title": "Bench structural strength",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Needs an owner attestation; pending."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-903.7",
+      "title": "Benches in wet locations",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Wet-location benches belong to bathing facilities, not in scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-904.2",
+      "title": "Counters adjoin walking surface",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-904.4.1-parallel",
+        "CBC-11B-904.4.2-forward",
+        "CBC-11B-904.4-same-depth",
+        "CBC-11B-904.4-customer-side"
+      ],
+      "reason": "Covered by the technical rules of 904.4."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-904.3.1",
+      "title": "Check-out aisle 36 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-904.3.1-aisle-width"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-904.3.2",
+      "title": "Check-out counter 38 in max",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-904.3.2-counter-height",
+        "CBC-11B-904.3.2-edge-protection"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-904.3.3",
+      "title": "Check writing surfaces",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-902.3-height"
+      ],
+      "reason": "Covered by the technical rules of 902.3."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-904.4",
+      "title": "Accessible counter portion full depth",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-904.4-same-depth",
+        "CBC-11B-904.4-customer-side"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-904.4.1",
+      "title": "Sales counter, parallel approach: 36 in long, 34 in high",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-904.4.1-parallel"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-904.4.2",
+      "title": "Sales counter, forward approach: 30 in long, 34 in high",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-904.4.2-forward"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-904.5.1",
+      "title": "Self-service dispensers within reach",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-904.5.1-self-service-reach"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-904.5.2",
+      "title": "Tray slide 28-34 in",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-904.5.2-tray-slide"
+      ],
+      "reason": ""
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-904.6",
+      "title": "Security glazing at counters",
+      "status": "deferred",
+      "rule_ids": [],
+      "reason": "Voice communication method at teller glazing needs an owner question; pending."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "11B-1001",
+      "title": "Recreation facilities (Division 10)",
+      "status": "not_applicable_to_scope",
+      "rule_ids": [],
+      "reason": "Outside product scope."
+    },
+    {
+      "jurisdiction": "CBC11B",
+      "section": "1013.4",
+      "title": "Tactile exit sign wording",
+      "status": "covered",
+      "rule_ids": [
+        "CBC-1013.4-tactile-exit-wording"
+      ],
+      "reason": ""
+    }
+  ]
+}

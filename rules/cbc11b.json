@@ -200,6 +200,39 @@
       "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
     },
     {
+      "id": "CBC-11B-206.3-route-location",
+      "jurisdiction": "CBC11B",
+      "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
+      "section": "11B-206.3",
+      "title": "Accessible route in the general circulation area",
+      "summary": "Accessible routes must coincide with or be in the same area as general circulation paths.",
+      "applies_to": [
+        "route"
+      ],
+      "scoping": {
+        "text": "Applies to every subject in applies_to.",
+        "when": null,
+        "when_unknown": "needs_info"
+      },
+      "test": {
+        "presence": {
+          "metric": "route.same_area_as_general_circulation",
+          "expected": true
+        }
+      },
+      "evidence": "measured",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://gocodebook.com/library/us/ca/ca-building-code/chapter-11b-accessibility-to-public-buildings-public-accommodations/section-11b-206-accessible-routes",
+      "source_kind": "transcription",
+      "notes": "CBC 11B-206.3 adds that an accessible route may not pass through kitchens, storage rooms, restrooms or closets.",
+      "counterpart": "ADA-206.3-route-location",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null,
+      "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
+    },
+    {
       "id": "CBC-11B-206.4.1-entrances-all",
       "jurisdiction": "CBC11B",
       "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
@@ -780,10 +813,10 @@
       "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
     },
     {
-      "id": "CBC-11B-217.3-telephone-reach",
+      "id": "CBC-11B-217.2-telephone-reach",
       "jurisdiction": "CBC11B",
       "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
-      "section": "11B-217.3",
+      "section": "11B-217.2",
       "title": "Public telephone within reach",
       "summary": "Where public telephones are provided, at least one per floor must have operable parts within reach (704.2, 308).",
       "applies_to": [
@@ -816,7 +849,7 @@
       "source_url": "https://gocodebook.com/library/us/ca/ca-building-code/chapter-11b-accessibility-to-public-buildings-public-accommodations/section-11b-217-telephones",
       "source_kind": "transcription",
       "notes": "Same requirement as the 2010 ADA Standards.",
-      "counterpart": "ADA-217.3-telephone-reach",
+      "counterpart": "ADA-217.2-telephone-reach",
       "stricter_than": [],
       "verified_by": null,
       "verified_at": null,
@@ -1228,8 +1261,7 @@
       "title": "Queue lines to counters are accessible",
       "summary": "Queues and waiting lines serving accessible counters or check-out aisles must comply with 403 (36 in clear).",
       "applies_to": [
-        "food_service_line",
-        "checkout_aisle"
+        "food_service_line"
       ],
       "scoping": {
         "text": "Applies to every subject in applies_to.",
@@ -5429,6 +5461,47 @@
       "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
     },
     {
+      "id": "CBC-11B-405.7.2-landing-width",
+      "jurisdiction": "CBC11B",
+      "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
+      "section": "11B-405.7.2",
+      "title": "Ramp landing as wide as the run",
+      "summary": "Landings must be at least as wide as the widest ramp run leading to them.",
+      "applies_to": [
+        "ramp"
+      ],
+      "scoping": {
+        "text": "Applies to every subject in applies_to.",
+        "when": null,
+        "when_unknown": "needs_info"
+      },
+      "test": {
+        "measure": {
+          "metric": "ramp.landing_width",
+          "op": ">=",
+          "value": {
+            "metric": "ramp.clear_width"
+          },
+          "unit": "in"
+        }
+      },
+      "evidence": "measured",
+      "tolerance": {
+        "value": 0.5,
+        "unit": "in",
+        "policy": "needs_info_within"
+      },
+      "severity": "violation",
+      "source_url": "https://gocodebook.com/library/us/ca/ca-building-code/chapter-11b-accessibility-to-public-buildings-public-accommodations/section-11b-405-ramps",
+      "source_kind": "transcription",
+      "notes": "Same requirement as the 2010 ADA Standards.",
+      "counterpart": "ADA-405.7.2-landing-width",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null,
+      "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
+    },
+    {
       "id": "CBC-11B-405.7.3-landing-length",
       "jurisdiction": "CBC11B",
       "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
@@ -7067,7 +7140,7 @@
               "metric": "handrail.bottom_extension",
               "op": ">=",
               "value": {
-                "metric": "stairs.tread_depth"
+                "metric": "handrail.stair_tread_depth"
               },
               "unit": "in"
             }
@@ -7521,7 +7594,7 @@
         "text": "Applies to every subject in applies_to.",
         "when": {
           "not": {
-            "metric": "toilet_compartment.kind",
+            "metric": "water_closet.compartment_kind",
             "op": "==",
             "value": "ambulatory"
           }
@@ -7570,7 +7643,7 @@
       "scoping": {
         "text": "Applies to every subject in applies_to.",
         "when": {
-          "metric": "toilet_compartment.kind",
+          "metric": "water_closet.compartment_kind",
           "op": "==",
           "value": "ambulatory"
         },
@@ -7617,7 +7690,7 @@
         "text": "Applies to every subject in applies_to.",
         "when": {
           "not": {
-            "metric": "toilet_compartment.kind",
+            "metric": "water_closet.compartment_kind",
             "op": "==",
             "value": "ambulatory"
           }
@@ -7674,7 +7747,7 @@
         "text": "Applies to every subject in applies_to.",
         "when": {
           "not": {
-            "metric": "toilet_compartment.kind",
+            "metric": "water_closet.compartment_kind",
             "op": "==",
             "value": "ambulatory"
           }
@@ -7794,7 +7867,7 @@
         "text": "Applies to every subject in applies_to.",
         "when": {
           "not": {
-            "metric": "toilet_compartment.kind",
+            "metric": "water_closet.compartment_kind",
             "op": "==",
             "value": "ambulatory"
           }
@@ -8012,7 +8085,7 @@
         "text": "Applies to every subject in applies_to.",
         "when": {
           "not": {
-            "metric": "toilet_compartment.kind",
+            "metric": "water_closet.compartment_kind",
             "op": "==",
             "value": "ambulatory"
           }
@@ -8124,11 +8197,9 @@
             }
           },
           {
-            "measure": {
-              "metric": "grab_bar.clearance_below",
-              "op": ">=",
-              "value": 1.5,
-              "unit": "in"
+            "presence": {
+              "metric": "toilet_paper_dispenser.below_grab_bar",
+              "expected": true
             }
           }
         ]
@@ -8219,9 +8290,11 @@
               {
                 "all_of": [
                   {
-                    "presence": {
+                    "measure": {
                       "metric": "toilet_compartment.wc_mounting",
-                      "expected": "wall_hung"
+                      "op": "==",
+                      "value": "wall_hung",
+                      "unit": "enum"
                     }
                   },
                   {
@@ -8246,7 +8319,7 @@
           },
           {
             "measure": {
-              "metric": "water_closet.front_maneuvering_depth",
+              "metric": "toilet_compartment.front_maneuvering_depth",
               "op": ">=",
               "value": 36,
               "unit": "in"
@@ -10114,7 +10187,7 @@
           },
           {
             "measure": {
-              "metric": "mirror.reflecting_surface_bottom_height",
+              "metric": "fitting_room.mirror_bottom_height",
               "op": "<=",
               "value": 20,
               "unit": "in"

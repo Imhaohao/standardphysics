@@ -1049,6 +1049,8 @@
       "applies_to": [
         "clear_floor_space",
         "room",
+        "toilet_room",
+        "fitting_room",
         "door"
       ],
       "evidence": "measured",
@@ -1076,7 +1078,8 @@
       "element": "room",
       "applies_to": [
         "room",
-        "toilet_room"
+        "toilet_room",
+        "fitting_room"
       ],
       "evidence": "measured",
       "fallback_evidence": [],
@@ -1209,7 +1212,8 @@
         "sales_counter",
         "counter",
         "drinking_fountain",
-        "table"
+        "table",
+        "kiosk"
       ],
       "evidence": "measured",
       "fallback_evidence": [
@@ -1223,11 +1227,17 @@
       "value_type": "number",
       "element": "clear_floor_space",
       "applies_to": [
+        "dining_table",
+        "bar_counter",
+        "work_surface",
         "lavatory",
         "sink",
-        "dining_table",
-        "work_surface",
-        "drinking_fountain"
+        "service_counter",
+        "sales_counter",
+        "counter",
+        "drinking_fountain",
+        "table",
+        "kiosk"
       ],
       "evidence": "measured",
       "fallback_evidence": [
@@ -1250,7 +1260,8 @@
         "sales_counter",
         "counter",
         "drinking_fountain",
-        "table"
+        "table",
+        "kiosk"
       ],
       "evidence": "measured",
       "fallback_evidence": [
@@ -1265,13 +1276,16 @@
       "element": "clear_floor_space",
       "applies_to": [
         "dining_table",
+        "bar_counter",
         "work_surface",
         "lavatory",
         "sink",
         "service_counter",
         "sales_counter",
         "counter",
-        "table"
+        "drinking_fountain",
+        "table",
+        "kiosk"
       ],
       "evidence": "measured",
       "fallback_evidence": [
@@ -1286,11 +1300,16 @@
       "element": "clear_floor_space",
       "applies_to": [
         "dining_table",
+        "bar_counter",
         "work_surface",
         "lavatory",
         "sink",
+        "service_counter",
+        "sales_counter",
         "counter",
-        "table"
+        "drinking_fountain",
+        "table",
+        "kiosk"
       ],
       "evidence": "measured",
       "fallback_evidence": [
@@ -1330,7 +1349,8 @@
         "fire_alarm_strobe",
         "telephone",
         "mirror",
-        "overhead_object"
+        "overhead_object",
+        "kiosk"
       ],
       "evidence": "measured",
       "fallback_evidence": [],
@@ -1515,15 +1535,19 @@
         "outlet",
         "thermostat",
         "dispenser",
+        "toilet_paper_dispenser",
         "hand_dryer",
         "coat_hook",
         "kiosk",
         "atm",
         "depository",
+        "point_of_sale_device",
         "self_service_shelf",
         "shelf",
         "locker",
-        "point_of_sale_device"
+        "telephone",
+        "counter",
+        "operable_part"
       ],
       "evidence": "measured",
       "fallback_evidence": [],
@@ -1539,15 +1563,19 @@
         "outlet",
         "thermostat",
         "dispenser",
+        "toilet_paper_dispenser",
         "hand_dryer",
         "coat_hook",
         "kiosk",
         "atm",
         "depository",
+        "point_of_sale_device",
         "self_service_shelf",
         "shelf",
         "locker",
-        "point_of_sale_device"
+        "telephone",
+        "counter",
+        "operable_part"
       ],
       "evidence": "measured",
       "fallback_evidence": [],
@@ -1561,11 +1589,21 @@
       "applies_to": [
         "light_switch",
         "outlet",
+        "thermostat",
         "dispenser",
+        "toilet_paper_dispenser",
+        "hand_dryer",
+        "coat_hook",
         "kiosk",
-        "self_service_shelf",
+        "atm",
+        "depository",
         "point_of_sale_device",
-        "counter"
+        "self_service_shelf",
+        "shelf",
+        "locker",
+        "telephone",
+        "counter",
+        "operable_part"
       ],
       "evidence": "measured",
       "fallback_evidence": [],
@@ -1579,11 +1617,21 @@
       "applies_to": [
         "light_switch",
         "outlet",
+        "thermostat",
         "dispenser",
+        "toilet_paper_dispenser",
+        "hand_dryer",
+        "coat_hook",
         "kiosk",
-        "self_service_shelf",
+        "atm",
+        "depository",
         "point_of_sale_device",
-        "counter"
+        "self_service_shelf",
+        "shelf",
+        "locker",
+        "telephone",
+        "counter",
+        "operable_part"
       ],
       "evidence": "measured",
       "fallback_evidence": [],
@@ -1595,6 +1643,22 @@
       "value_type": "number",
       "element": "operable_part",
       "applies_to": [
+        "light_switch",
+        "outlet",
+        "thermostat",
+        "dispenser",
+        "toilet_paper_dispenser",
+        "hand_dryer",
+        "coat_hook",
+        "kiosk",
+        "atm",
+        "depository",
+        "point_of_sale_device",
+        "self_service_shelf",
+        "shelf",
+        "locker",
+        "telephone",
+        "counter",
         "operable_part"
       ],
       "evidence": "measured",
@@ -1607,6 +1671,22 @@
       "value_type": "number",
       "element": "operable_part",
       "applies_to": [
+        "light_switch",
+        "outlet",
+        "thermostat",
+        "dispenser",
+        "toilet_paper_dispenser",
+        "hand_dryer",
+        "coat_hook",
+        "kiosk",
+        "atm",
+        "depository",
+        "point_of_sale_device",
+        "self_service_shelf",
+        "shelf",
+        "locker",
+        "telephone",
+        "counter",
         "operable_part"
       ],
       "evidence": "measured",
@@ -1803,6 +1883,8 @@
         "checkout_aisle",
         "kiosk",
         "self_service_shelf",
+        "shelf",
+        "display_rack",
         "drinking_fountain",
         "fitting_room"
       ],
@@ -1953,7 +2035,8 @@
       "element": "door",
       "applies_to": [
         "door",
-        "entrance"
+        "entrance",
+        "toilet_compartment"
       ],
       "evidence": "measured",
       "fallback_evidence": [
@@ -1981,7 +2064,8 @@
       "element": "door",
       "applies_to": [
         "door",
-        "entrance"
+        "entrance",
+        "toilet_compartment"
       ],
       "evidence": "measured",
       "fallback_evidence": [],
@@ -2114,7 +2198,8 @@
       "element": "door",
       "applies_to": [
         "door",
-        "entrance"
+        "entrance",
+        "toilet_compartment"
       ],
       "evidence": "photo",
       "fallback_evidence": [
@@ -2130,7 +2215,8 @@
       "element": "door",
       "applies_to": [
         "door",
-        "entrance"
+        "entrance",
+        "toilet_compartment"
       ],
       "evidence": "photo",
       "fallback_evidence": [
@@ -2217,7 +2303,8 @@
       "value_type": "boolean",
       "element": "door",
       "applies_to": [
-        "door"
+        "door",
+        "entrance"
       ],
       "evidence": "owner",
       "fallback_evidence": [],
@@ -4225,7 +4312,8 @@
       "applies_to": [
         "self_service_shelf",
         "shelf",
-        "food_service_line"
+        "food_service_line",
+        "dispenser"
       ],
       "evidence": "measured",
       "fallback_evidence": [
@@ -4424,7 +4512,8 @@
       "element": "room",
       "applies_to": [
         "room",
-        "toilet_room"
+        "toilet_room",
+        "fitting_room"
       ],
       "evidence": "photo",
       "fallback_evidence": [
@@ -4996,7 +5085,8 @@
       "applies_to": [
         "dining_table",
         "bar_counter",
-        "table"
+        "table",
+        "work_surface"
       ],
       "evidence": "measured",
       "fallback_evidence": [],
@@ -5055,6 +5145,76 @@
       "evidence": "measured",
       "fallback_evidence": [],
       "derivation": "Width of the top landing."
+    },
+    {
+      "id": "water_closet.compartment_kind",
+      "unit": "enum",
+      "value_type": "enum",
+      "element": "water_closet",
+      "applies_to": [
+        "water_closet"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Kind of compartment the water closet sits in: none (open toilet room), wheelchair, ambulatory, other.",
+      "enum_values": [
+        "none",
+        "wheelchair",
+        "ambulatory",
+        "other"
+      ]
+    },
+    {
+      "id": "toilet_compartment.front_maneuvering_depth",
+      "unit": "in",
+      "value_type": "number",
+      "element": "toilet_compartment",
+      "applies_to": [
+        "toilet_compartment"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Depth of 60 in wide maneuvering space in front of the water closet inside the compartment (CBC 11B-604.8.1.1.1-3)."
+    },
+    {
+      "id": "toilet_paper_dispenser.below_grab_bar",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "toilet_paper_dispenser",
+      "applies_to": [
+        "toilet_paper_dispenser"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Dispenser is below the side grab bar with 1 1/2 in min clearance and not behind it (CBC 11B-604.7.1)."
+    },
+    {
+      "id": "fitting_room.mirror_bottom_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "fitting_room",
+      "applies_to": [
+        "fitting_room"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Height of the bottom edge of the full-length mirror in the dressing room."
+    },
+    {
+      "id": "handrail.stair_tread_depth",
+      "unit": "in",
+      "value_type": "number",
+      "element": "handrail",
+      "applies_to": [
+        "handrail"
+      ],
+      "evidence": "measured",
+      "fallback_evidence": [],
+      "derivation": "Tread depth of the stair flight the handrail serves (for the bottom extension check)."
     }
   ]
 }
