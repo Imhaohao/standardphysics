@@ -337,3 +337,12 @@ fn updating_one_storey_keeps_the_route_findings_of_the_others() {
     assert_eq!(route_findings(&engine, "route:fountain"), ground_routes);
     assert_eq!(route_findings(&engine, "route:upper-fountain"), upper_routes, "other storey kept");
 }
+
+#[test]
+fn microwave_gets_reach_range_checks() {
+    let mut shop = shop_with_door(inches(38.0));
+    shop.objects.push(object("microwave", "microwave", Vec2::new(3.0, 4.6), Vec3::new(0.5, 0.3, 0.4), inches(54.0)));
+    let Some((_, findings)) = evaluate(vec![shop]) else { return };
+    let reach = findings.iter().filter(|f| f.subject_id == "microwave" && f.rule_id.starts_with("ADA-308")).count();
+    assert!(reach > 0, "no reach-range findings for the microwave");
+}
