@@ -1,7 +1,7 @@
 import type { Scene } from "@/lib/scene/types";
 import { apiBaseUrl, isFixtureMode } from "./config";
 import { fixtureApi } from "./fixtureApi";
-import type { AuthResponse, Report, Scan } from "./types";
+import type { AuthResponse, LiveTicket, Report, Scan } from "./types";
 
 /** Everything the web app asks of sp-server. Pages talk to this interface only. */
 export interface Api {
@@ -11,6 +11,7 @@ export interface Api {
   getScan(scanId: string): Promise<Scan | null>;
   getScene(scanId: string): Promise<Scene | null>;
   getReport(scanId: string): Promise<Report | null>;
+  createLiveTicket(scanId: string): Promise<LiveTicket>;
 }
 
 export class ApiError extends Error {
@@ -69,6 +70,7 @@ export function createHttpApi({ baseUrl, token, fetch: fetchImpl = fetch }: Http
     getScan: (scanId) => orNull(request<Scan>(scanPath(scanId))),
     getScene: (scanId) => orNull(request<Scene>(`${scanPath(scanId)}/scene`)),
     getReport: (scanId) => orNull(request<Report>(`${scanPath(scanId)}/assessment`)),
+    createLiveTicket: (scanId) => request<LiveTicket>(`${scanPath(scanId)}/live-ticket`, { method: "POST" }),
   };
 }
 

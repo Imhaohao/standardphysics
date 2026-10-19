@@ -11,4 +11,7 @@ export const fixtureApi: Api = {
   getScan: async (scanId) => SAMPLE_SCANS.find((scan) => scan.id === scanId) ?? null,
   getScene: async (scanId) => (isSample(scanId) ? SAMPLE_SCENE : null),
   getReport: async (scanId) => (isSample(scanId) ? SAMPLE_REPORT : null),
+  createLiveTicket: async () => {
+    throw new Error("The sample shop is replayed, so it has no live socket.");
+  },
 };

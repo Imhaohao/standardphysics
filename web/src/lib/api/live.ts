@@ -48,6 +48,12 @@ export function reduceLive(state: LiveState, message: ServerMessage): LiveState 
   return reducer ? reducer(state, message) : state;
 }
 
+/** The live page's heading: a replay stays a replay; a scan followed live says when it has finished. */
+export function liveTitle(kind: "replay" | "socket", phase: LivePhase) {
+  if (kind === "replay") return "Scan replay";
+  return phase === "finished" ? "Scan finished" : "Scanning now";
+}
+
 export function liveFindings(state: LiveState): Finding[] {
   return Object.values(state.findingsByRoom).flat();
 }
@@ -72,32 +78,44 @@ export interface LiveHandlers {
 
 const RECONNECT_DELAYS_MS = [500, 1000, 2000, 4000, 8000];
 
+/** Gives the socket URL to open next. Live tickets are single use, so it is called again before every reconnect. */
+export type LiveUrlProvider = () => Promise<string>;
+
 /** Subscribes read-only to a scan's live socket, reconnecting with backoff until closed or the scan finishes. */
-export function connectLive(url: string, handlers: LiveHandlers, createSocket = (target: string) => new WebSocket(target)): LiveConnection {
+export function connectLive(socketUrl: LiveUrlProvider, handlers: LiveHandlers, createSocket = (target: string) => new WebSocket(target)): LiveConnection {
   let socket: WebSocket | null = null;
   let attempt = 0;
   let closed = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
 
-  const open = () => {
-    socket = createSocket(url);
-    socket.onopen = () => (attempt = 0);
-    socket.onmessage = (event) => {
+  const retry = (reason: string) => {
+    if (closed) return;
+    const delay = RECONNECT_DELAYS_MS[attempt];
+    if (delay === undefined) return handlers.onClosed(reason);
+    attempt += 1;
+    timer = setTimeout(() => void open(), delay);
+  };
+
+  const listen = (opened: WebSocket) => {
+    opened.onopen = () => (attempt = 0);
+    opened.onmessage = (event) => {
       const message = typeof event.data === "string" ? parseServerMessage(event.data) : null;
       if (!message) return;
       handlers.onMessage(message);
       if (message.type === "report") closed = true;
     };
-    socket.onclose = (event) => {
-      if (closed) return;
-      const delay = RECONNECT_DELAYS_MS[attempt];
-      if (delay === undefined) return handlers.onClosed(event.reason || "The live connection dropped.");
-      attempt += 1;
-      timer = setTimeout(open, delay);
-    };
+    opened.onclose = (event) => retry(event.reason || "The live connection dropped.");
   };
 
-  open();
+  const open = async () => {
+    const url = await socketUrl().catch(() => null);
+    if (closed) return;
+    if (!url) return retry("We couldn't get permission to follow this scan.");
+    socket = createSocket(url);
+    listen(socket);
+  };
+
+  void open();
   return {
     close() {
       closed = true;

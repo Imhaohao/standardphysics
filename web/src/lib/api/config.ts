@@ -11,10 +11,11 @@ export function apiBaseUrl() {
   return (process.env.NEXT_PUBLIC_SP_API_URL ?? "http://localhost:8080").replace(/\/$/, "");
 }
 
-export function liveSocketUrl(baseUrl: string, scanId: string, token: string) {
+/** The viewer socket for a scan, opened with a single-use ticket from POST /v1/scans/{id}/live-ticket. */
+export function liveSocketUrl(baseUrl: string, scanId: string, ticket: string) {
   const url = new URL(`/v1/scans/${encodeURIComponent(scanId)}/live`, baseUrl);
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   url.searchParams.set("role", "viewer");
-  url.searchParams.set("token", token);
+  url.searchParams.set("ticket", ticket);
   return url.toString();
 }

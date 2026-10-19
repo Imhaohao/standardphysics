@@ -31,7 +31,7 @@ All server calls go through `src/lib/api/client.ts`. Wire types are generated, n
 
 A unit test fails when either generated file is stale.
 
-The live view follows the socket's `hello`, `room`, `scene`, `findings` and `report` frames. A finished scan is replayed from its saved scene and report instead.
+The live view follows the socket's `hello`, `room`, `scene`, `findings` and `report` frames. Before each connect or reconnect, the browser calls this app's `POST /api/scans/{id}/live-ticket`. That route reads the httpOnly session cookie and asks sp-server for a single-use ticket, then returns the `?ticket=` socket URL. The session token never reaches browser JavaScript. A finished scan is replayed from its saved scene and report instead.
 
 ## Sample shop
 

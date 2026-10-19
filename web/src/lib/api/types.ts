@@ -10,6 +10,7 @@ export type StageTimings = Schemas["StageTimings"];
 export type Report = Schemas["Report"];
 export type User = Schemas["User"];
 export type AuthResponse = Schemas["AuthResponse"];
+export type LiveTicket = Schemas["LiveTicket"];
 
 type GeneratedMessage = Schemas["ServerMessage"];
 

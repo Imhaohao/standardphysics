@@ -212,6 +212,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/scans/{scan_id}/live-ticket": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["create_live_ticket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/scans/{scan_id}/scene": {
         parameters: {
             query?: never;
@@ -314,7 +330,8 @@ export interface components {
     schemas: {
         AppleSignIn: {
             identity_token: string;
-            nonce?: string | null;
+            /** @description The raw nonce; the identity token's `nonce` claim must be its hex SHA-256. */
+            nonce: string;
         };
         Artifact: {
             content_type: string;
@@ -399,6 +416,12 @@ export interface components {
             status: string;
             version: string;
         };
+        LiveTicket: {
+            /** Format: int64 */
+            expires_in_secs: number;
+            /** @description Pass as `?ticket=` when opening the WebSocket. Single use, valid for `expires_in_secs`. */
+            ticket: string;
+        };
         Measured: {
             /** Format: double */
             hi?: number | null;
@@ -423,6 +446,8 @@ export interface components {
         PresignResponse: {
             /** Format: int64 */
             expires_in_secs: number;
+            /** @description Host (with port when not default) every URL in `parts` points at; allowlist this on the device. */
+            host?: string | null;
             parts: components["schemas"]["PresignedPart"][];
         };
         PresignedPart: {
@@ -813,7 +838,10 @@ export interface operations {
     create_scan: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Repeats with the same key and body within 24 h replay the first response; a different body is 409. */
+                "Idempotency-Key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -832,6 +860,14 @@ export interface operations {
                 };
             };
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -968,8 +1004,8 @@ export interface operations {
     live_socket: {
         parameters: {
             query?: {
-                /** @description Session token, for browsers that cannot set headers */
-                token?: string;
+                /** @description Single-use ticket from POST /v1/scans/{scan_id}/live-ticket, for browsers that cannot set an Authorization header. Session tokens are never accepted in the query string. */
+                ticket?: string;
                 /** @description `viewer` for a read-only subscription */
                 role?: string;
             };
@@ -987,6 +1023,35 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    create_live_ticket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveTicket"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
             };
         };
     };
@@ -1024,7 +1089,10 @@ export interface operations {
     create_upload: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Repeats with the same key and body within 24 h replay the first response; a different body is 409. */
+                "Idempotency-Key"?: string | null;
+            };
             path: {
                 scan_id: string;
             };
@@ -1045,6 +1113,14 @@ export interface operations {
                 };
             };
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

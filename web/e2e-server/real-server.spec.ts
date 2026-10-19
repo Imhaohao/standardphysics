@@ -65,6 +65,8 @@ test("a finished scan from sp-server shows its model, report and replay", async 
 test("a scan in progress inks itself as sp-server streams it", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
+  const sockets: string[] = [];
+  page.on("websocket", (socket) => sockets.push(socket.url()));
   const scanId = await createScan(await login());
   await signIn(page);
   await page.goto(`/shops/${scanId}/live`);
@@ -80,7 +82,12 @@ test("a scan in progress inks itself as sp-server streams it", async ({ page }) 
   await page.screenshot({ path: `${SHOTS}/live-middle.png`, fullPage: true });
   expect(await finished).toBe(0);
   await expect(page.getByRole("link", { name: "Read the full report" })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("heading", { level: 1, name: "Scan finished" })).toBeVisible();
   await inkSettled(sheet);
   await page.screenshot({ path: `${SHOTS}/live-finished.png`, fullPage: true });
+  const live = sockets.filter((url) => url.includes("/live"));
+  expect(live.length).toBeGreaterThan(0);
+  for (const url of live) expect(url).toMatch(/[?&]ticket=[^&]+/);
+  for (const url of live) expect(url).not.toMatch(/[?&]token=/);
   expect(errors).toEqual([]);
 });

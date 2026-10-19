@@ -63,10 +63,11 @@ function progressiveCaptures(full: Json): Json[] {
   return steps;
 }
 
-function openSocket(scanId: string, token: string) {
+async function openSocket(scanId: string, token: string) {
+  const { ticket } = await call<{ ticket: string }>(`/scans/${scanId}/live-ticket`, { method: "POST", token });
   const url = new URL(`/v1/scans/${scanId}/live`, args.api);
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-  url.searchParams.set("token", token);
+  url.searchParams.set("ticket", ticket);
   const socket = new WebSocket(url);
   const received: Json[] = [];
   const waiters: { type: string; resolve: (message: Json) => void }[] = [];
@@ -102,7 +103,7 @@ async function main() {
   const scanId = args.scan ?? (await call<{ id: string }>("/scans", { method: "POST", token, body: JSON.stringify({ name: "Corner shop", site_name: "Corner shop" }) })).id;
   console.error(`scan ${scanId}`);
 
-  const live = openSocket(scanId, token);
+  const live = await openSocket(scanId, token);
   const hello = live.next("hello");
   await live.opened;
   await hello;

@@ -345,20 +345,6 @@
         },
         {
           "center": {
-            "x": -0.308,
-            "y": 0.92,
-            "z": 5.4963
-          },
-          "hardware": null,
-          "height": 1.84,
-          "id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-          "kind": "opening",
-          "swing": null,
-          "wall_id": "8478E6F1-B300-41E3-AAA8-24AF26133953",
-          "width": 0.0317
-        },
-        {
-          "center": {
             "x": 0.6895,
             "y": 1.02,
             "z": 5.6587

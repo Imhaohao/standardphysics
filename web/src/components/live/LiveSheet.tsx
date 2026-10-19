@@ -5,8 +5,9 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { STATUS_TOKENS } from "@/components/plan/InkedPlan";
 import { Button, buttonClassName } from "@/components/ui/Button";
+import { ShopHeader } from "@/components/shop/ShopHeader";
 import { StatusMark } from "@/components/ui/StatusMark";
-import { liveFindings, type LiveState } from "@/lib/api/live";
+import { liveFindings, liveTitle, type LiveState } from "@/lib/api/live";
 import { groupByElement, groupHeadline, type ElementGroup } from "@/lib/findings/group";
 import { findingPins } from "@/lib/findings/pins";
 import type { FindingStatus } from "@/lib/findings/types";
@@ -102,15 +103,27 @@ function FindingFeed({ groups, labels }: { groups: ElementGroup[]; labels: Reado
 }
 
 /** A scan drawing itself: walls, doors and furniture are inked onto the sheet the moment they are captured. */
-export function LiveSheet({ source, reportHref }: { source: LiveSource; reportHref: string }) {
-  const [run, setRun] = useState(0);
-  return <LiveRun key={run} source={source} reportHref={reportHref} onReplay={() => setRun((count) => count + 1)} />;
+interface LiveSheetProps {
+  source: LiveSource;
+  reportHref: string;
+  backHref: string;
+  backLabel: string;
 }
 
-function LiveRun({ source, reportHref, onReplay }: { source: LiveSource; reportHref: string; onReplay: () => void }) {
+export function LiveSheet(props: LiveSheetProps) {
+  const [run, setRun] = useState(0);
+  return <LiveRun key={run} {...props} onReplay={() => setRun((count) => count + 1)} />;
+}
+
+function LiveRun({ source, reportHref, backHref, backLabel, onReplay }: LiveSheetProps & { onReplay: () => void }) {
   const state = useLiveScan(source);
   const groups = useMemo(() => groupByElement(liveFindings(state), indexSubjects(state.scene)), [state]);
-  return <LiveLayout state={state} groups={groups} reportHref={reportHref} canReplay={source.kind === "replay"} onReplay={onReplay} />;
+  return (
+    <>
+      <ShopHeader backHref={backHref} backLabel={backLabel} title={liveTitle(source.kind, state.phase)} />
+      <LiveLayout state={state} groups={groups} reportHref={reportHref} canReplay={source.kind === "replay"} onReplay={onReplay} />
+    </>
+  );
 }
 
 function LiveLayout({ state, groups, reportHref, canReplay, onReplay }: { state: LiveState; groups: ElementGroup[]; reportHref: string; canReplay: boolean; onReplay: () => void }) {
@@ -128,7 +141,7 @@ function LiveLayout({ state, groups, reportHref, canReplay, onReplay }: { state:
       <section aria-labelledby="live-heading" data-ink-avoid className="flex flex-col border border-ink bg-paper">
         <div className="flex flex-col gap-3 border-b border-ink px-4 py-3">
           <h2 id="live-heading" className="heading-display text-xl">
-            What we&rsquo;ve found so far
+            {finished ? "What we found" : <>What we&rsquo;ve found so far</>}
           </h2>
           <PhaseLine phase={state.phase} error={state.error} />
         </div>

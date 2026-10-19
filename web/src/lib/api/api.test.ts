@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { SAMPLE_REPORT, SAMPLE_SCAN_ID, SAMPLE_SCENE } from "@/fixtures/sample";
 import { ApiError, createHttpApi } from "./client";
 import { liveSocketUrl } from "./config";
-import { captureSteps, connectLive, fixtureMessages, INITIAL_LIVE_STATE, liveFindings, parseServerMessage, reduceLive, replayMessages } from "./live";
+import { captureSteps, connectLive, fixtureMessages, INITIAL_LIVE_STATE, liveFindings, liveTitle, parseServerMessage, reduceLive, replayMessages } from "./live";
 import type { ServerMessage } from "./types";
 
 function jsonResponse(status: number, body: unknown) {
@@ -44,7 +44,17 @@ describe("http client", () => {
   });
 
   it("builds the viewer socket url", () => {
-    expect(liveSocketUrl("https://api.test", "s1", "tok")).toBe("wss://api.test/v1/scans/s1/live?role=viewer&token=tok");
+    expect(liveSocketUrl("https://api.test", "s1", "tkt")).toBe("wss://api.test/v1/scans/s1/live?role=viewer&ticket=tkt");
+  });
+
+  it("asks for a live ticket with the bearer token", async () => {
+    const fetch = fakeFetch(201, { ticket: "tkt", expires_in_secs: 60 });
+    const ticket = await createHttpApi({ baseUrl: "https://api.test", token: "t0k", fetch }).createLiveTicket("s1");
+    const [url, init] = fetch.mock.calls[0]!;
+    expect(url).toBe("https://api.test/v1/scans/s1/live-ticket");
+    expect(init?.method).toBe("POST");
+    expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer t0k");
+    expect(ticket.ticket).toBe("tkt");
   });
 });
 
@@ -103,32 +113,60 @@ describe("live socket", () => {
     FakeSocket.opened = [];
   });
 
-  it("reconnects with backoff and stops after the report", () => {
+  /** A URL provider that hands out a fresh single-use ticket on every call, as the live-ticket route does. */
+  function ticketing() {
+    let issued = 0;
+    return vi.fn(async () => `ws://x/live?ticket=t${++issued}`);
+  }
+
+  it("fetches a fresh ticket for every reconnect and stops after the report", async () => {
     vi.useFakeTimers();
     const received: ServerMessage[] = [];
     const onClosed = vi.fn();
-    connectLive("ws://x", { onMessage: (m) => received.push(m), onClosed }, (url) => new FakeSocket(url) as unknown as WebSocket);
+    const urls = ticketing();
+    connectLive(urls, { onMessage: (m) => received.push(m), onClosed }, (url) => new FakeSocket(url) as unknown as WebSocket);
+    await vi.advanceTimersByTimeAsync(0);
     FakeSocket.opened[0]!.onclose!({ reason: "" });
-    vi.advanceTimersByTime(500);
-    expect(FakeSocket.opened).toHaveLength(2);
+    await vi.advanceTimersByTimeAsync(500);
+    expect(FakeSocket.opened.map((socket) => socket.url)).toEqual(["ws://x/live?ticket=t1", "ws://x/live?ticket=t2"]);
     const socket = FakeSocket.opened[1]!;
     socket.onmessage!({ data: JSON.stringify({ type: "report", report: SAMPLE_REPORT }) });
     socket.onclose!({ reason: "" });
-    vi.advanceTimersByTime(10_000);
-    expect(FakeSocket.opened).toHaveLength(2);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(urls).toHaveBeenCalledTimes(2);
     expect(received.map((m) => m.type)).toEqual(["report"]);
     expect(onClosed).not.toHaveBeenCalled();
   });
 
-  it("gives up after the last retry", () => {
+  it("retries when a ticket cannot be had, then gives up", async () => {
     vi.useFakeTimers();
     const onClosed = vi.fn();
-    connectLive("ws://x", { onMessage: () => undefined, onClosed }, (url) => new FakeSocket(url) as unknown as WebSocket);
+    const urls = vi.fn(async (): Promise<string> => {
+      throw new Error("401");
+    });
+    connectLive(urls, { onMessage: () => undefined, onClosed }, (url) => new FakeSocket(url) as unknown as WebSocket);
+    await vi.advanceTimersByTimeAsync(20_000);
+    expect(FakeSocket.opened).toHaveLength(0);
+    expect(urls).toHaveBeenCalledTimes(6);
+    expect(onClosed).toHaveBeenCalledWith("We couldn't get permission to follow this scan.");
+  });
+
+  it("gives up after the last retry", async () => {
+    vi.useFakeTimers();
+    const onClosed = vi.fn();
+    connectLive(ticketing(), { onMessage: () => undefined, onClosed }, (url) => new FakeSocket(url) as unknown as WebSocket);
     for (let attempt = 0; attempt < 6; attempt += 1) {
+      await vi.advanceTimersByTimeAsync(0);
       FakeSocket.opened.at(-1)!.onclose!({ reason: "gone" });
-      vi.advanceTimersByTime(8000);
+      await vi.advanceTimersByTimeAsync(8000);
     }
     expect(onClosed).toHaveBeenCalledWith("gone");
+  });
+
+  it("titles the page by what it is showing", () => {
+    expect(liveTitle("socket", "live")).toBe("Scanning now");
+    expect(liveTitle("socket", "finished")).toBe("Scan finished");
+    expect(liveTitle("replay", "finished")).toBe("Scan replay");
   });
 
   it("replays fixture messages on a timer until closed", () => {

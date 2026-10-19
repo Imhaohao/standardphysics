@@ -1,33 +1,33 @@
 {
   "scan_id": "sample-living-room",
-  "assessment_id": "1cafcd64-1cd4-4b66-94b1-7eb182b4750c",
-  "created_at": "2026-10-19T10:40:13.442494Z",
+  "assessment_id": "057fad22-fb0f-4e15-895e-7103100cc109",
+  "created_at": "2026-10-19T11:14:58.841604Z",
   "summary": {
     "total": {
       "pass": 36,
-      "fail": 19,
-      "needs_info": 202,
-      "not_applicable": 142
+      "fail": 16,
+      "needs_info": 130,
+      "not_applicable": 161
     },
     "by_jurisdiction": {
       "ADA2010": {
         "pass": 18,
-        "fail": 8,
-        "needs_info": 99,
-        "not_applicable": 64
+        "fail": 7,
+        "needs_info": 62,
+        "not_applicable": 74
       },
       "CBC11B": {
         "pass": 18,
-        "fail": 11,
-        "needs_info": 103,
-        "not_applicable": 78
+        "fail": 9,
+        "needs_info": 68,
+        "not_applicable": 87
       }
     },
     "governing_counts": {
       "pass": 18,
-      "fail": 11,
-      "needs_info": 108,
-      "not_applicable": 83
+      "fail": 9,
+      "needs_info": 70,
+      "not_applicable": 93
     },
     "governing": [
       {
@@ -42,332 +42,6 @@
         "message": "Wall-mounted protrusions into circulation: not applicable (out of scope: Applies to every subject in applies_to.)."
       },
       {
-        "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-        "status": "needs_info",
-        "governing_rule_id": "CBC-11B-404.2.1-revolving",
-        "governing_jurisdiction": "CBC11B",
-        "rule_ids": [
-          "ADA-404.2.1-revolving",
-          "CBC-11B-404.2.1-revolving"
-        ],
-        "message": "Revolving doors not the accessible door: needs more information (needs a photo of the element (door.is_revolving_or_turnstile))."
-      },
-      {
-        "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-        "status": "needs_info",
-        "governing_rule_id": "CBC-11B-404.2.10-bottom-surface",
-        "governing_jurisdiction": "CBC11B",
-        "rule_ids": [
-          "ADA-404.2.10-bottom-surface",
-          "CBC-11B-404.2.10-bottom-surface"
-        ],
-        "message": "Smooth door bottom 10 in: needs more information (needs a photo of the element (door.bottom_smooth_surface_height))."
-      },
-      {
-        "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-        "status": "not_applicable",
-        "governing_rule_id": "CBC-11B-404.2.11-vision-lite",
-        "governing_jurisdiction": "CBC11B",
-        "rule_ids": [
-          "ADA-404.2.11-vision-lite",
-          "CBC-11B-404.2.11-vision-lite"
-        ],
-        "message": "Vision lites 43 in max: not applicable (needs a photo or tape measurement; the scan box does not resolve this detail)."
-      },
-      {
-        "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-        "status": "fail",
-        "governing_rule_id": "CBC-11B-404.2.3-clear-width",
-        "governing_jurisdiction": "CBC11B",
-        "rule_ids": [
-          "ADA-404.2.3-clear-width",
-          "CBC-11B-404.2.3-clear-width"
-        ],
-        "message": "Door clear width 32 in: measured 1.25 in, required >= 32 in."
-      },
-      {
-        "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-        "status": "not_applicable",
-        "governing_rule_id": "CBC-11B-404.2.3-deep-opening",
-        "governing_jurisdiction": "CBC11B",
-        "rule_ids": [
-          "ADA-404.2.3-deep-opening",
-          "CBC-11B-404.2.3-deep-opening"
-        ],
-        "message": "Openings deeper than 24 in are 36 in wide: not applicable (out of scope: Applies to every subject in applies_to.)."
-      },
-      {
-        "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-        "status": "needs_info",
-        "governing_rule_id": "CBC-11B-404.2.3-projection-low",
-        "governing_jurisdiction": "CBC11B",
-        "rule_ids": [
-          "ADA-404.2.3-projection-low",
-          "CBC-11B-404.2.3-projection-low"
-        ],
-        "message": "No projections below 34 in: needs more information (needs a photo of the element (door.projection_below_34))."
-      },
-      {
-        "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-        "status": "needs_info",
-        "governing_rule_id": "CBC-11B-404.2.3-projection-mid",
-        "governing_jurisdiction": "CBC11B",
-        "rule_ids": [
-          "ADA-404.2.3-projection-mid",
-          "CBC-11B-404.2.3-projection-mid"
-        ],
-        "message": "Projections 34-80 in limited to 4 in: needs more information (needs a photo of the element (door.projection_34_80))."
-      },
-      {
-        "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-        "status": "needs_info",
-        "governing_rule_id": "CBC-11B-404.2.4.1-front-pull",
-        "governing_jurisdiction": "CBC11B",
-        "rule_ids": [
-          "ADA-404.2.4.1-front-pull",
-          "CBC-11B-404.2.4.1-front-pull"
-        ],
-        "message": "Maneuvering clearance, front approach, pull side: needs more information (scope unknown: no route reaches this door)."
-      },
-      {
-        "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-        "status": "needs_info",
-        "governing_rule_id": "CBC-11B-404.2.4.1-front-push",
-        "governing_jurisdiction": "CBC11B",
-        "rule_ids": [
-          "ADA-404.2.4.1-front-push",
-          "CBC-11B-404.2.4.1-front-push"
-        ],
-        "message": "Maneuvering clearance, front approach, push side: needs more information (scope unknown: no route reaches this door)."
-      },
-      {
-        "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-        "status": "needs_info",
-        "governing_rule_id": "CBC-11B-404.2.4.1-front-push-closer-latch",
-        "governing_jurisdiction": "CBC11B",
-        "rule_ids": [
-          "ADA-404.2.4.1-front-push-closer-latch",
-          "CBC-11B-404.2.4.1-front-push-closer-latch"
-        ],
-        "message": "Front approach push side with closer and latch: needs more information (scope unknown: needs a photo of the element (door.has_latch))."
-      },
-      {
-        "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-        "status": "needs_info",
-        "governing_rule_id": "CBC-11B-404.2.4.1-hinge-pull",
-        "governing_jurisdiction": "CBC11B",
-        "rule_ids": [
-          "ADA-404.2.4.1-hinge-pull",
-          "CBC-11B-404.2.4.1-hinge-pull"
-        ],
-        "message": "Maneuvering clearance, hinge approach, pull side: needs more information (scope unknown: no route reaches this door)."
-      },
-      {
-        "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-        "status": "needs_info",
-        "governing_rule_id": "CBC-11B-404.2.4.1-hinge-push",
-        "governing_jurisdiction": "CBC11B",
-        "rule_ids": [
-          "ADA-404.2.4.1-hinge-push",
-          "CBC-11B-404.2.4.1-hinge-push"
-        ],
-        "message": "Maneuvering clearance, hinge approach, push side: needs more information (scope unknown: no route reaches this door)."
-      },
-      {
-        "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-        "status": "needs_info",
-        "governing_rule_id": "CBC-11B-404.2.4.1-hinge-push-closer-latch",
-        "governing_jurisdiction": "CBC11B",
-        "rule_ids": [
-          "ADA-404.2.4.1-hinge-push-closer-latch",
-          "CBC-11B-404.2.4.1-hinge-push-closer-latch"
-        ],
-        "message": "Hinge approach push side with closer and latch: needs more information (scope unknown: needs a photo of the element (door.has_latch))."
-      },
-      {
-        "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-        "status": "needs_info",
-        "governing_rule_id": "CBC-11B-404.2.4.1-latch-pull",
-        "governing_jurisdiction": "CBC11B",
-        "rule_ids": [
-          "ADA-404.2.4.1-latch-pull",
-          "CBC-11B-404.2.4.1-latch-pull"
-        ],
-        "message": "Maneuvering clearance, latch approach, pull side: needs more information (scope unknown: no route reaches this door)."
-      },
-      {
-        "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-        "status": "needs_info",
-        "governing_rule_id": "ADA-404.2.4.1-latch-pull-closer",
-        "governing_jurisdiction": "ADA2010",
-        "rule_ids": [
-          "ADA-404.2.4.1-latch-pull-closer"
-        ],
-        "message": "Latch approach pull side with closer: needs more information (scope unknown: needs a photo or tape measurement; the scan box does not resolve this detail)."
-      },
-      {
-        "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-        "status": "needs_info",
-        "governing_rule_id": "CBC-11B-404.2.4.1-latch-push",
-        "governing_jurisdiction": "CBC11B",
-        "rule_ids": [
-          "ADA-404.2.4.1-latch-push",
-          "CBC-11B-404.2.4.1-latch-push"
-        ],
-        "message": "Maneuvering clearance, latch approach, push side: needs more information (scope unknown: no route reaches this door)."
-      },
-      {
-        "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-        "status": "needs_info",
-        "governing_rule_id": "CBC-11B-404.2.4.1-latch-push-closer",
-        "governing_jurisdiction": "CBC11B",
-        "rule_ids": [
-          "ADA-404.2.4.1-latch-push-closer",
-          "CBC-11B-404.2.4.1-latch-push-closer"
-        ],
-        "message": "Latch approach push side with closer: needs more information (scope unknown: needs a photo or tape measurement; the scan box does not resolve this detail)."
-      },
-      {
-        "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-        "status": "needs_info",
-        "governing_rule_id": "CBC-11B-404.2.4.2-doorway-no-door",
-        "governing_jurisdiction": "CBC11B",
-        "rule_ids": [
-          "ADA-404.2.4.2-doorway-no-door",
-          "CBC-11B-404.2.4.2-doorway-no-door"
-        ],
-        "message": "Maneuvering clearance at doorways without doors: needs more information (measured range 0-54.63 straddles the limit; tolerance 0.5)."
-      },
-      {
-        "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-        "status": "not_applicable",
-        "governing_rule_id": "CBC-11B-404.2.4.3-recessed",
-        "governing_jurisdiction": "CBC11B",
-        "rule_ids": [
-          "ADA-404.2.4.3-recessed",
-          "CBC-11B-404.2.4.3-recessed"
-        ],
-        "message": "Recessed doors need front-approach clearance: not applicable (doorway without a door leaf)."
-      },
-      {
-        "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-        "status": "needs_info",
-        "governing_rule_id": "CBC-11B-404.2.4.4-maneuvering-slope",
-        "governing_jurisdiction": "CBC11B",
-        "rule_ids": [
-          "ADA-404.2.4.4-maneuvering-slope",
-          "CBC-11B-404.2.4.4-maneuvering-slope"
-        ],
-        "message": "Level floor in door maneuvering clearance: needs more information (needs the floor mesh height field; scan boxes assume a level floor)."
-      },
-      {
-        "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-        "status": "needs_info",
-        "governing_rule_id": "CBC-11B-404.2.5-threshold",
-        "governing_jurisdiction": "CBC11B",
-        "rule_ids": [
-          "ADA-404.2.5-threshold",
-          "CBC-11B-404.2.5-threshold"
-        ],
-        "message": "Threshold 1/2 in max: needs more information (needs the floor mesh height field; scan boxes assume a level floor)."
-      },
-      {
-        "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-        "status": "not_applicable",
-        "governing_rule_id": "ADA-404.2.5-threshold-existing",
-        "governing_jurisdiction": "ADA2010",
-        "rule_ids": [
-          "ADA-404.2.5-threshold-existing"
-        ],
-        "message": "Existing threshold 3/4 in max beveled: not applicable (needs an answer from the owner (site.construction_era))."
-      },
-      {
-        "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-        "status": "not_applicable",
-        "governing_rule_id": "CBC-11B-404.2.6-doors-in-series",
-        "governing_jurisdiction": "CBC11B",
-        "rule_ids": [
-          "ADA-404.2.6-doors-in-series",
-          "CBC-11B-404.2.6-doors-in-series"
-        ],
-        "message": "Doors in series 48 in apart: not applicable (doorway without a door leaf)."
-      },
-      {
-        "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-        "status": "needs_info",
-        "governing_rule_id": "CBC-11B-404.2.7-hardware-grasp",
-        "governing_jurisdiction": "CBC11B",
-        "rule_ids": [
-          "ADA-404.2.7-hardware-grasp",
-          "CBC-11B-404.2.7-hardware-grasp"
-        ],
-        "message": "Door hardware usable without grasping: needs more information (needs a photo of the element (door.hardware_requires_tight_grasp))."
-      },
-      {
-        "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-        "status": "needs_info",
-        "governing_rule_id": "CBC-11B-404.2.7-hardware-height",
-        "governing_jurisdiction": "CBC11B",
-        "rule_ids": [
-          "ADA-404.2.7-hardware-height",
-          "CBC-11B-404.2.7-hardware-height"
-        ],
-        "message": "Door hardware 34-44 in: needs more information (needs a photo or tape measurement; the scan box does not resolve this detail)."
-      },
-      {
-        "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-        "status": "needs_info",
-        "governing_rule_id": "CBC-11B-404.2.8-closing-speed",
-        "governing_jurisdiction": "CBC11B",
-        "rule_ids": [
-          "ADA-404.2.8-closing-speed",
-          "CBC-11B-404.2.8-closing-speed"
-        ],
-        "message": "Door closer speed 5 s: needs more information (scope unknown: needs a photo or tape measurement; the scan box does not resolve this detail)."
-      },
-      {
-        "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-        "status": "needs_info",
-        "governing_rule_id": "CBC-11B-404.2.9-opening-force",
-        "governing_jurisdiction": "CBC11B",
-        "rule_ids": [
-          "ADA-404.2.9-opening-force",
-          "CBC-11B-404.2.9-opening-force"
-        ],
-        "message": "Door opening force 5 lbf, interior and exterior: needs more information (scope unknown: needs an answer from the owner (door.is_fire_door))."
-      },
-      {
-        "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-        "status": "not_applicable",
-        "governing_rule_id": "CBC-11B-404.3-automatic",
-        "governing_jurisdiction": "CBC11B",
-        "rule_ids": [
-          "ADA-404.3-automatic",
-          "CBC-11B-404.3-automatic"
-        ],
-        "message": "Automatic doors meet BHMA standards: not applicable (needs a photo of the element (door.is_automatic))."
-      },
-      {
-        "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-        "status": "needs_info",
-        "governing_rule_id": "CBC-1013.4-tactile-exit-wording",
-        "governing_jurisdiction": "CBC11B",
-        "rule_ids": [
-          "CBC-1013.4-tactile-exit-wording"
-        ],
-        "message": "Tactile exit sign wording: needs more information (scope unknown: the far side was not scanned; the owner confirms whether it is outside)."
-      },
-      {
-        "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-        "status": "needs_info",
-        "governing_rule_id": "CBC-11B-404.2.4.1-front-pull-exterior",
-        "governing_jurisdiction": "CBC11B",
-        "rule_ids": [
-          "CBC-11B-404.2.4.1-front-pull-exterior"
-        ],
-        "message": "Front approach pull side of exterior doors: 24 in beyond latch: needs more information (scope unknown: the far side was not scanned; the owner confirms whether it is outside)."
-      },
-      {
         "subject_id": "470F48AA-2006-473D-B93D-E487F5D05BE3",
         "status": "needs_info",
         "governing_rule_id": "CBC-11B-305.2-cfs-slope",
@@ -376,7 +50,7 @@
           "ADA-305.2-cfs-slope",
           "CBC-11B-305.2-cfs-slope"
         ],
-        "message": "Clear floor space slope: needs more information (needs the floor mesh height field; scan boxes assume a level floor)."
+        "message": "Clear floor space slope: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified)."
       },
       {
         "subject_id": "470F48AA-2006-473D-B93D-E487F5D05BE3",
@@ -463,7 +137,7 @@
           "ADA-305.2-cfs-slope",
           "CBC-11B-305.2-cfs-slope"
         ],
-        "message": "Clear floor space slope: needs more information (needs the floor mesh height field; scan boxes assume a level floor)."
+        "message": "Clear floor space slope: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified)."
       },
       {
         "subject_id": "488AFC52-9149-4017-8E6F-B2A5E94AC300",
@@ -769,7 +443,7 @@
           "ADA-404.2.4.4-maneuvering-slope",
           "CBC-11B-404.2.4.4-maneuvering-slope"
         ],
-        "message": "Level floor in door maneuvering clearance: needs more information (needs the floor mesh height field; scan boxes assume a level floor)."
+        "message": "Level floor in door maneuvering clearance: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified)."
       },
       {
         "subject_id": "7EDE5A32-8E03-4DEA-B490-F735AF27403C",
@@ -780,7 +454,7 @@
           "ADA-404.2.5-threshold",
           "CBC-11B-404.2.5-threshold"
         ],
-        "message": "Threshold 1/2 in max: needs more information (needs the floor mesh height field; scan boxes assume a level floor)."
+        "message": "Threshold 1/2 in max: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified)."
       },
       {
         "subject_id": "7EDE5A32-8E03-4DEA-B490-F735AF27403C",
@@ -975,7 +649,7 @@
           "ADA-404.2.4.1-front-pull",
           "CBC-11B-404.2.4.1-front-pull"
         ],
-        "message": "Maneuvering clearance, front approach, pull side: needs more information (scope unknown: no route reaches this door)."
+        "message": "Maneuvering clearance, front approach, pull side: needs more information (measured range at least 0 straddles the limit; tolerance 0.5)."
       },
       {
         "subject_id": "B435D27C-8EEC-4207-B5C1-E9BEA27BCDC7",
@@ -986,7 +660,7 @@
           "ADA-404.2.4.1-front-push",
           "CBC-11B-404.2.4.1-front-push"
         ],
-        "message": "Maneuvering clearance, front approach, push side: needs more information (scope unknown: no route reaches this door)."
+        "message": "Maneuvering clearance, front approach, push side: needs more information (measured range at least 0 straddles the limit; tolerance 0.5)."
       },
       {
         "subject_id": "B435D27C-8EEC-4207-B5C1-E9BEA27BCDC7",
@@ -1001,79 +675,79 @@
       },
       {
         "subject_id": "B435D27C-8EEC-4207-B5C1-E9BEA27BCDC7",
-        "status": "needs_info",
+        "status": "not_applicable",
         "governing_rule_id": "CBC-11B-404.2.4.1-hinge-pull",
         "governing_jurisdiction": "CBC11B",
         "rule_ids": [
           "ADA-404.2.4.1-hinge-pull",
           "CBC-11B-404.2.4.1-hinge-pull"
         ],
-        "message": "Maneuvering clearance, hinge approach, pull side: needs more information (scope unknown: no route reaches this door)."
+        "message": "Maneuvering clearance, hinge approach, pull side: not applicable (out of scope: Applies to every subject in applies_to.)."
       },
       {
         "subject_id": "B435D27C-8EEC-4207-B5C1-E9BEA27BCDC7",
-        "status": "needs_info",
+        "status": "not_applicable",
         "governing_rule_id": "CBC-11B-404.2.4.1-hinge-push",
         "governing_jurisdiction": "CBC11B",
         "rule_ids": [
           "ADA-404.2.4.1-hinge-push",
           "CBC-11B-404.2.4.1-hinge-push"
         ],
-        "message": "Maneuvering clearance, hinge approach, push side: needs more information (scope unknown: no route reaches this door)."
+        "message": "Maneuvering clearance, hinge approach, push side: not applicable (out of scope: Applies to every subject in applies_to.)."
       },
       {
         "subject_id": "B435D27C-8EEC-4207-B5C1-E9BEA27BCDC7",
-        "status": "needs_info",
+        "status": "not_applicable",
         "governing_rule_id": "CBC-11B-404.2.4.1-hinge-push-closer-latch",
         "governing_jurisdiction": "CBC11B",
         "rule_ids": [
           "ADA-404.2.4.1-hinge-push-closer-latch",
           "CBC-11B-404.2.4.1-hinge-push-closer-latch"
         ],
-        "message": "Hinge approach push side with closer and latch: needs more information (scope unknown: needs a photo of the element (door.has_latch))."
+        "message": "Hinge approach push side with closer and latch: not applicable (out of scope: Applies to every subject in applies_to.)."
       },
       {
         "subject_id": "B435D27C-8EEC-4207-B5C1-E9BEA27BCDC7",
-        "status": "needs_info",
+        "status": "not_applicable",
         "governing_rule_id": "CBC-11B-404.2.4.1-latch-pull",
         "governing_jurisdiction": "CBC11B",
         "rule_ids": [
           "ADA-404.2.4.1-latch-pull",
           "CBC-11B-404.2.4.1-latch-pull"
         ],
-        "message": "Maneuvering clearance, latch approach, pull side: needs more information (scope unknown: no route reaches this door)."
+        "message": "Maneuvering clearance, latch approach, pull side: not applicable (out of scope: Applies to every subject in applies_to.)."
       },
       {
         "subject_id": "B435D27C-8EEC-4207-B5C1-E9BEA27BCDC7",
-        "status": "needs_info",
+        "status": "not_applicable",
         "governing_rule_id": "ADA-404.2.4.1-latch-pull-closer",
         "governing_jurisdiction": "ADA2010",
         "rule_ids": [
           "ADA-404.2.4.1-latch-pull-closer"
         ],
-        "message": "Latch approach pull side with closer: needs more information (scope unknown: needs a photo or tape measurement; the scan box does not resolve this detail)."
+        "message": "Latch approach pull side with closer: not applicable (out of scope: Applies to every subject in applies_to.)."
       },
       {
         "subject_id": "B435D27C-8EEC-4207-B5C1-E9BEA27BCDC7",
-        "status": "needs_info",
+        "status": "not_applicable",
         "governing_rule_id": "CBC-11B-404.2.4.1-latch-push",
         "governing_jurisdiction": "CBC11B",
         "rule_ids": [
           "ADA-404.2.4.1-latch-push",
           "CBC-11B-404.2.4.1-latch-push"
         ],
-        "message": "Maneuvering clearance, latch approach, push side: needs more information (scope unknown: no route reaches this door)."
+        "message": "Maneuvering clearance, latch approach, push side: not applicable (out of scope: Applies to every subject in applies_to.)."
       },
       {
         "subject_id": "B435D27C-8EEC-4207-B5C1-E9BEA27BCDC7",
-        "status": "needs_info",
+        "status": "not_applicable",
         "governing_rule_id": "CBC-11B-404.2.4.1-latch-push-closer",
         "governing_jurisdiction": "CBC11B",
         "rule_ids": [
           "ADA-404.2.4.1-latch-push-closer",
           "CBC-11B-404.2.4.1-latch-push-closer"
         ],
-        "message": "Latch approach push side with closer: needs more information (scope unknown: needs a photo or tape measurement; the scan box does not resolve this detail)."
+        "message": "Latch approach push side with closer: not applicable (out of scope: Applies to every subject in applies_to.)."
       },
       {
         "subject_id": "B435D27C-8EEC-4207-B5C1-E9BEA27BCDC7",
@@ -1095,7 +769,7 @@
           "ADA-404.2.4.4-maneuvering-slope",
           "CBC-11B-404.2.4.4-maneuvering-slope"
         ],
-        "message": "Level floor in door maneuvering clearance: needs more information (needs the floor mesh height field; scan boxes assume a level floor)."
+        "message": "Level floor in door maneuvering clearance: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified)."
       },
       {
         "subject_id": "B435D27C-8EEC-4207-B5C1-E9BEA27BCDC7",
@@ -1106,7 +780,7 @@
           "ADA-404.2.5-threshold",
           "CBC-11B-404.2.5-threshold"
         ],
-        "message": "Threshold 1/2 in max: needs more information (needs the floor mesh height field; scan boxes assume a level floor)."
+        "message": "Threshold 1/2 in max: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified)."
       },
       {
         "subject_id": "B435D27C-8EEC-4207-B5C1-E9BEA27BCDC7",
@@ -1357,25 +1031,25 @@
       },
       {
         "subject_id": "E513B016-5FD6-4384-9073-75F7D6630F46",
-        "status": "needs_info",
+        "status": "not_applicable",
         "governing_rule_id": "CBC-11B-404.2.4.1-front-pull",
         "governing_jurisdiction": "CBC11B",
         "rule_ids": [
           "ADA-404.2.4.1-front-pull",
           "CBC-11B-404.2.4.1-front-pull"
         ],
-        "message": "Maneuvering clearance, front approach, pull side: needs more information (scope unknown: no route reaches this door)."
+        "message": "Maneuvering clearance, front approach, pull side: not applicable (doorway without a door leaf)."
       },
       {
         "subject_id": "E513B016-5FD6-4384-9073-75F7D6630F46",
-        "status": "needs_info",
+        "status": "not_applicable",
         "governing_rule_id": "CBC-11B-404.2.4.1-front-push",
         "governing_jurisdiction": "CBC11B",
         "rule_ids": [
           "ADA-404.2.4.1-front-push",
           "CBC-11B-404.2.4.1-front-push"
         ],
-        "message": "Maneuvering clearance, front approach, push side: needs more information (scope unknown: no route reaches this door)."
+        "message": "Maneuvering clearance, front approach, push side: not applicable (doorway without a door leaf)."
       },
       {
         "subject_id": "E513B016-5FD6-4384-9073-75F7D6630F46",
@@ -1390,79 +1064,79 @@
       },
       {
         "subject_id": "E513B016-5FD6-4384-9073-75F7D6630F46",
-        "status": "needs_info",
+        "status": "not_applicable",
         "governing_rule_id": "CBC-11B-404.2.4.1-hinge-pull",
         "governing_jurisdiction": "CBC11B",
         "rule_ids": [
           "ADA-404.2.4.1-hinge-pull",
           "CBC-11B-404.2.4.1-hinge-pull"
         ],
-        "message": "Maneuvering clearance, hinge approach, pull side: needs more information (scope unknown: no route reaches this door)."
+        "message": "Maneuvering clearance, hinge approach, pull side: not applicable (out of scope: Applies to every subject in applies_to.)."
       },
       {
         "subject_id": "E513B016-5FD6-4384-9073-75F7D6630F46",
-        "status": "needs_info",
+        "status": "not_applicable",
         "governing_rule_id": "CBC-11B-404.2.4.1-hinge-push",
         "governing_jurisdiction": "CBC11B",
         "rule_ids": [
           "ADA-404.2.4.1-hinge-push",
           "CBC-11B-404.2.4.1-hinge-push"
         ],
-        "message": "Maneuvering clearance, hinge approach, push side: needs more information (scope unknown: no route reaches this door)."
+        "message": "Maneuvering clearance, hinge approach, push side: not applicable (out of scope: Applies to every subject in applies_to.)."
       },
       {
         "subject_id": "E513B016-5FD6-4384-9073-75F7D6630F46",
-        "status": "needs_info",
+        "status": "not_applicable",
         "governing_rule_id": "CBC-11B-404.2.4.1-hinge-push-closer-latch",
         "governing_jurisdiction": "CBC11B",
         "rule_ids": [
           "ADA-404.2.4.1-hinge-push-closer-latch",
           "CBC-11B-404.2.4.1-hinge-push-closer-latch"
         ],
-        "message": "Hinge approach push side with closer and latch: needs more information (scope unknown: needs a photo of the element (door.has_latch))."
+        "message": "Hinge approach push side with closer and latch: not applicable (out of scope: Applies to every subject in applies_to.)."
       },
       {
         "subject_id": "E513B016-5FD6-4384-9073-75F7D6630F46",
-        "status": "needs_info",
+        "status": "not_applicable",
         "governing_rule_id": "CBC-11B-404.2.4.1-latch-pull",
         "governing_jurisdiction": "CBC11B",
         "rule_ids": [
           "ADA-404.2.4.1-latch-pull",
           "CBC-11B-404.2.4.1-latch-pull"
         ],
-        "message": "Maneuvering clearance, latch approach, pull side: needs more information (scope unknown: no route reaches this door)."
+        "message": "Maneuvering clearance, latch approach, pull side: not applicable (out of scope: Applies to every subject in applies_to.)."
       },
       {
         "subject_id": "E513B016-5FD6-4384-9073-75F7D6630F46",
-        "status": "needs_info",
+        "status": "not_applicable",
         "governing_rule_id": "ADA-404.2.4.1-latch-pull-closer",
         "governing_jurisdiction": "ADA2010",
         "rule_ids": [
           "ADA-404.2.4.1-latch-pull-closer"
         ],
-        "message": "Latch approach pull side with closer: needs more information (scope unknown: needs a photo or tape measurement; the scan box does not resolve this detail)."
+        "message": "Latch approach pull side with closer: not applicable (out of scope: Applies to every subject in applies_to.)."
       },
       {
         "subject_id": "E513B016-5FD6-4384-9073-75F7D6630F46",
-        "status": "needs_info",
+        "status": "not_applicable",
         "governing_rule_id": "CBC-11B-404.2.4.1-latch-push",
         "governing_jurisdiction": "CBC11B",
         "rule_ids": [
           "ADA-404.2.4.1-latch-push",
           "CBC-11B-404.2.4.1-latch-push"
         ],
-        "message": "Maneuvering clearance, latch approach, push side: needs more information (scope unknown: no route reaches this door)."
+        "message": "Maneuvering clearance, latch approach, push side: not applicable (out of scope: Applies to every subject in applies_to.)."
       },
       {
         "subject_id": "E513B016-5FD6-4384-9073-75F7D6630F46",
-        "status": "needs_info",
+        "status": "not_applicable",
         "governing_rule_id": "CBC-11B-404.2.4.1-latch-push-closer",
         "governing_jurisdiction": "CBC11B",
         "rule_ids": [
           "ADA-404.2.4.1-latch-push-closer",
           "CBC-11B-404.2.4.1-latch-push-closer"
         ],
-        "message": "Latch approach push side with closer: needs more information (scope unknown: needs a photo or tape measurement; the scan box does not resolve this detail)."
+        "message": "Latch approach push side with closer: not applicable (out of scope: Applies to every subject in applies_to.)."
       },
       {
         "subject_id": "E513B016-5FD6-4384-9073-75F7D6630F46",
@@ -1495,7 +1169,7 @@
           "ADA-404.2.4.4-maneuvering-slope",
           "CBC-11B-404.2.4.4-maneuvering-slope"
         ],
-        "message": "Level floor in door maneuvering clearance: needs more information (needs the floor mesh height field; scan boxes assume a level floor)."
+        "message": "Level floor in door maneuvering clearance: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified)."
       },
       {
         "subject_id": "E513B016-5FD6-4384-9073-75F7D6630F46",
@@ -1506,7 +1180,7 @@
           "ADA-404.2.5-threshold",
           "CBC-11B-404.2.5-threshold"
         ],
-        "message": "Threshold 1/2 in max: needs more information (needs the floor mesh height field; scan boxes assume a level floor)."
+        "message": "Threshold 1/2 in max: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified)."
       },
       {
         "subject_id": "E513B016-5FD6-4384-9073-75F7D6630F46",
@@ -1657,7 +1331,7 @@
           "ADA-303.2-level-change",
           "CBC-11B-303.2-level-change"
         ],
-        "message": "Changes in level on the route: needs more information (needs the floor mesh height field; scan boxes assume a level floor)."
+        "message": "Changes in level on the route: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified)."
       },
       {
         "subject_id": "floor:living-room",
@@ -1668,7 +1342,7 @@
           "ADA-303.3-bevel",
           "CBC-11B-303.3-bevel"
         ],
-        "message": "Beveled changes in level: not applicable (needs the floor mesh height field; scan boxes assume a level floor)."
+        "message": "Beveled changes in level: not applicable (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified)."
       },
       {
         "subject_id": "floor:living-room",
@@ -1755,7 +1429,7 @@
           "ADA-303.2-level-change",
           "CBC-11B-303.2-level-change"
         ],
-        "message": "Changes in level on the route: needs more information (needs the floor mesh height field; scan boxes assume a level floor)."
+        "message": "Changes in level on the route: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified)."
       },
       {
         "subject_id": "route:470F48AA-2006-473D-B93D-E487F5D05BE3",
@@ -1766,7 +1440,7 @@
           "ADA-303.3-bevel",
           "CBC-11B-303.3-bevel"
         ],
-        "message": "Beveled changes in level: not applicable (needs the floor mesh height field; scan boxes assume a level floor)."
+        "message": "Beveled changes in level: not applicable (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified)."
       },
       {
         "subject_id": "route:470F48AA-2006-473D-B93D-E487F5D05BE3",
@@ -1788,7 +1462,7 @@
           "ADA-402.2-running-slope",
           "CBC-11B-402.2-running-slope"
         ],
-        "message": "Walking surface running slope: needs more information (needs the floor mesh height field; scan boxes assume a level floor)."
+        "message": "Walking surface running slope: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified)."
       },
       {
         "subject_id": "route:470F48AA-2006-473D-B93D-E487F5D05BE3",
@@ -1799,7 +1473,7 @@
           "ADA-403.3-cross-slope",
           "CBC-11B-403.3-cross-slope"
         ],
-        "message": "Walking surface cross slope: needs more information (needs the floor mesh height field; scan boxes assume a level floor)."
+        "message": "Walking surface cross slope: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified)."
       },
       {
         "subject_id": "route:470F48AA-2006-473D-B93D-E487F5D05BE3",
@@ -1904,7 +1578,7 @@
           "ADA-303.2-level-change",
           "CBC-11B-303.2-level-change"
         ],
-        "message": "Changes in level on the route: needs more information (needs the floor mesh height field; scan boxes assume a level floor)."
+        "message": "Changes in level on the route: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified)."
       },
       {
         "subject_id": "route:488AFC52-9149-4017-8E6F-B2A5E94AC300",
@@ -1915,7 +1589,7 @@
           "ADA-303.3-bevel",
           "CBC-11B-303.3-bevel"
         ],
-        "message": "Beveled changes in level: not applicable (needs the floor mesh height field; scan boxes assume a level floor)."
+        "message": "Beveled changes in level: not applicable (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified)."
       },
       {
         "subject_id": "route:488AFC52-9149-4017-8E6F-B2A5E94AC300",
@@ -1937,7 +1611,7 @@
           "ADA-402.2-running-slope",
           "CBC-11B-402.2-running-slope"
         ],
-        "message": "Walking surface running slope: needs more information (needs the floor mesh height field; scan boxes assume a level floor)."
+        "message": "Walking surface running slope: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified)."
       },
       {
         "subject_id": "route:488AFC52-9149-4017-8E6F-B2A5E94AC300",
@@ -1948,7 +1622,7 @@
           "ADA-403.3-cross-slope",
           "CBC-11B-403.3-cross-slope"
         ],
-        "message": "Walking surface cross slope: needs more information (needs the floor mesh height field; scan boxes assume a level floor)."
+        "message": "Walking surface cross slope: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified)."
       },
       {
         "subject_id": "route:488AFC52-9149-4017-8E6F-B2A5E94AC300",
@@ -2053,7 +1727,7 @@
           "ADA-303.2-level-change",
           "CBC-11B-303.2-level-change"
         ],
-        "message": "Changes in level on the route: needs more information (needs the floor mesh height field; scan boxes assume a level floor)."
+        "message": "Changes in level on the route: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified)."
       },
       {
         "subject_id": "route:living-room",
@@ -2064,7 +1738,7 @@
           "ADA-303.3-bevel",
           "CBC-11B-303.3-bevel"
         ],
-        "message": "Beveled changes in level: not applicable (needs the floor mesh height field; scan boxes assume a level floor)."
+        "message": "Beveled changes in level: not applicable (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified)."
       },
       {
         "subject_id": "route:living-room",
@@ -2086,7 +1760,7 @@
           "ADA-402.2-running-slope",
           "CBC-11B-402.2-running-slope"
         ],
-        "message": "Walking surface running slope: needs more information (needs the floor mesh height field; scan boxes assume a level floor)."
+        "message": "Walking surface running slope: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified)."
       },
       {
         "subject_id": "route:living-room",
@@ -2097,7 +1771,7 @@
           "ADA-403.3-cross-slope",
           "CBC-11B-403.3-cross-slope"
         ],
-        "message": "Walking surface cross slope: needs more information (needs the floor mesh height field; scan boxes assume a level floor)."
+        "message": "Walking surface cross slope: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified)."
       },
       {
         "subject_id": "route:living-room",
@@ -2228,14 +1902,14 @@
       },
       {
         "subject_id": "site",
-        "status": "fail",
+        "status": "needs_info",
         "governing_rule_id": "CBC-11B-206.4.1-entrances-all",
         "governing_jurisdiction": "CBC11B",
         "rule_ids": [
           "ADA-206.4.1-entrances-60pct",
           "CBC-11B-206.4.1-entrances-all"
         ],
-        "message": "All entrances accessible: measured 0-3 count, required >= 4."
+        "message": "All entrances accessible: needs more information (measured range 0-3 straddles the limit)."
       },
       {
         "subject_id": "site",
@@ -2453,1150 +2127,6 @@
       "counterpart": "ADA-307.2-protrusion"
     },
     {
-      "rule_id": "ADA-404.2.3-clear-width",
-      "jurisdiction": "ADA2010",
-      "section": "404.2.3",
-      "title": "Door clear width 32 in",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "fail",
-      "measured": {
-        "text": "1.25",
-        "value": 1.2469,
-        "lo": 1.2469,
-        "hi": 1.2469,
-        "unit": "in"
-      },
-      "required": ">= 32 in",
-      "message": "Door clear width 32 in: measured 1.25 in, required >= 32 in.",
-      "evidence": "measured: geometry",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "CBC-11B-404.2.3-clear-width"
-    },
-    {
-      "rule_id": "ADA-404.2.3-deep-opening",
-      "jurisdiction": "ADA2010",
-      "section": "404.2.3",
-      "title": "Openings deeper than 24 in are 36 in wide",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "not_applicable",
-      "measured": null,
-      "required": "",
-      "message": "Openings deeper than 24 in are 36 in wide: not applicable (out of scope: Applies to every subject in applies_to.).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "CBC-11B-404.2.3-deep-opening"
-    },
-    {
-      "rule_id": "ADA-404.2.3-projection-low",
-      "jurisdiction": "ADA2010",
-      "section": "404.2.3",
-      "title": "No projections below 34 in",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "",
-      "message": "No projections below 34 in: needs more information (needs a photo of the element (door.projection_below_34)).",
-      "evidence": "photo",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "CBC-11B-404.2.3-projection-low"
-    },
-    {
-      "rule_id": "ADA-404.2.3-projection-mid",
-      "jurisdiction": "ADA2010",
-      "section": "404.2.3",
-      "title": "Projections 34-80 in limited to 4 in",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "",
-      "message": "Projections 34-80 in limited to 4 in: needs more information (needs a photo of the element (door.projection_34_80)).",
-      "evidence": "photo",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "CBC-11B-404.2.3-projection-mid"
-    },
-    {
-      "rule_id": "ADA-404.2.4.2-doorway-no-door",
-      "jurisdiction": "ADA2010",
-      "section": "404.2.4.2",
-      "title": "Maneuvering clearance at doorways without doors",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": {
-        "text": "0-54.63",
-        "value": 0,
-        "lo": 0,
-        "hi": 54.626,
-        "unit": "in"
-      },
-      "required": ">= 42 in",
-      "message": "Maneuvering clearance at doorways without doors: needs more information (measured range 0-54.63 straddles the limit; tolerance 0.5).",
-      "evidence": "measured: geometry",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "CBC-11B-404.2.4.2-doorway-no-door"
-    },
-    {
-      "rule_id": "CBC-11B-404.2.3-clear-width",
-      "jurisdiction": "CBC11B",
-      "section": "11B-404.2.3",
-      "title": "Door clear width 32 in",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "fail",
-      "measured": {
-        "text": "1.25",
-        "value": 1.2469,
-        "lo": 1.2469,
-        "hi": 1.2469,
-        "unit": "in"
-      },
-      "required": ">= 32 in",
-      "message": "Door clear width 32 in: measured 1.25 in, required >= 32 in.",
-      "evidence": "measured: geometry",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "ADA-404.2.3-clear-width"
-    },
-    {
-      "rule_id": "CBC-11B-404.2.3-deep-opening",
-      "jurisdiction": "CBC11B",
-      "section": "11B-404.2.3",
-      "title": "Openings deeper than 24 in are 36 in wide",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "not_applicable",
-      "measured": null,
-      "required": "",
-      "message": "Openings deeper than 24 in are 36 in wide: not applicable (out of scope: Applies to every subject in applies_to.).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "ADA-404.2.3-deep-opening"
-    },
-    {
-      "rule_id": "CBC-11B-404.2.3-projection-low",
-      "jurisdiction": "CBC11B",
-      "section": "11B-404.2.3",
-      "title": "No projections below 34 in",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "",
-      "message": "No projections below 34 in: needs more information (needs a photo of the element (door.projection_below_34)).",
-      "evidence": "photo",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "ADA-404.2.3-projection-low"
-    },
-    {
-      "rule_id": "CBC-11B-404.2.3-projection-mid",
-      "jurisdiction": "CBC11B",
-      "section": "11B-404.2.3",
-      "title": "Projections 34-80 in limited to 4 in",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "",
-      "message": "Projections 34-80 in limited to 4 in: needs more information (needs a photo of the element (door.projection_34_80)).",
-      "evidence": "photo",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "ADA-404.2.3-projection-mid"
-    },
-    {
-      "rule_id": "CBC-11B-404.2.4.2-doorway-no-door",
-      "jurisdiction": "CBC11B",
-      "section": "11B-404.2.4.2",
-      "title": "Maneuvering clearance at doorways without doors",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": {
-        "text": "0-54.63",
-        "value": 0,
-        "lo": 0,
-        "hi": 54.626,
-        "unit": "in"
-      },
-      "required": ">= 42 in",
-      "message": "Maneuvering clearance at doorways without doors: needs more information (measured range 0-54.63 straddles the limit; tolerance 0.5).",
-      "evidence": "measured: geometry",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "ADA-404.2.4.2-doorway-no-door"
-    },
-    {
-      "rule_id": "ADA-404.2.1-revolving",
-      "jurisdiction": "ADA2010",
-      "section": "404.2.1",
-      "title": "Revolving doors not the accessible door",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "",
-      "message": "Revolving doors not the accessible door: needs more information (needs a photo of the element (door.is_revolving_or_turnstile)).",
-      "evidence": "photo",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "CBC-11B-404.2.1-revolving"
-    },
-    {
-      "rule_id": "ADA-404.2.4.1-front-pull",
-      "jurisdiction": "ADA2010",
-      "section": "404.2.4.1",
-      "title": "Maneuvering clearance, front approach, pull side",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, front approach, pull side: needs more information (scope unknown: no route reaches this door).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "CBC-11B-404.2.4.1-front-pull"
-    },
-    {
-      "rule_id": "ADA-404.2.4.1-front-push",
-      "jurisdiction": "ADA2010",
-      "section": "404.2.4.1",
-      "title": "Maneuvering clearance, front approach, push side",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, front approach, push side: needs more information (scope unknown: no route reaches this door).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "CBC-11B-404.2.4.1-front-push"
-    },
-    {
-      "rule_id": "ADA-404.2.4.1-front-push-closer-latch",
-      "jurisdiction": "ADA2010",
-      "section": "404.2.4.1",
-      "title": "Front approach push side with closer and latch",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Front approach push side with closer and latch: needs more information (scope unknown: needs a photo of the element (door.has_latch)).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "CBC-11B-404.2.4.1-front-push-closer-latch"
-    },
-    {
-      "rule_id": "ADA-404.2.4.1-hinge-pull",
-      "jurisdiction": "ADA2010",
-      "section": "404.2.4.1",
-      "title": "Maneuvering clearance, hinge approach, pull side",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, hinge approach, pull side: needs more information (scope unknown: no route reaches this door).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "CBC-11B-404.2.4.1-hinge-pull"
-    },
-    {
-      "rule_id": "ADA-404.2.4.1-hinge-push",
-      "jurisdiction": "ADA2010",
-      "section": "404.2.4.1",
-      "title": "Maneuvering clearance, hinge approach, push side",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, hinge approach, push side: needs more information (scope unknown: no route reaches this door).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "CBC-11B-404.2.4.1-hinge-push"
-    },
-    {
-      "rule_id": "ADA-404.2.4.1-hinge-push-closer-latch",
-      "jurisdiction": "ADA2010",
-      "section": "404.2.4.1",
-      "title": "Hinge approach push side with closer and latch",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Hinge approach push side with closer and latch: needs more information (scope unknown: needs a photo of the element (door.has_latch)).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "CBC-11B-404.2.4.1-hinge-push-closer-latch"
-    },
-    {
-      "rule_id": "ADA-404.2.4.1-latch-pull",
-      "jurisdiction": "ADA2010",
-      "section": "404.2.4.1",
-      "title": "Maneuvering clearance, latch approach, pull side",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, latch approach, pull side: needs more information (scope unknown: no route reaches this door).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "CBC-11B-404.2.4.1-latch-pull"
-    },
-    {
-      "rule_id": "ADA-404.2.4.1-latch-pull-closer",
-      "jurisdiction": "ADA2010",
-      "section": "404.2.4.1",
-      "title": "Latch approach pull side with closer",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Latch approach pull side with closer: needs more information (scope unknown: needs a photo or tape measurement; the scan box does not resolve this detail).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "CBC-11B-404.2.4.1-latch-pull"
-    },
-    {
-      "rule_id": "ADA-404.2.4.1-latch-push",
-      "jurisdiction": "ADA2010",
-      "section": "404.2.4.1",
-      "title": "Maneuvering clearance, latch approach, push side",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, latch approach, push side: needs more information (scope unknown: no route reaches this door).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "CBC-11B-404.2.4.1-latch-push"
-    },
-    {
-      "rule_id": "ADA-404.2.4.1-latch-push-closer",
-      "jurisdiction": "ADA2010",
-      "section": "404.2.4.1",
-      "title": "Latch approach push side with closer",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Latch approach push side with closer: needs more information (scope unknown: needs a photo or tape measurement; the scan box does not resolve this detail).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "CBC-11B-404.2.4.1-latch-push-closer"
-    },
-    {
-      "rule_id": "ADA-404.2.4.3-recessed",
-      "jurisdiction": "ADA2010",
-      "section": "404.2.4.3",
-      "title": "Recessed doors need front-approach clearance",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "not_applicable",
-      "measured": null,
-      "required": "",
-      "message": "Recessed doors need front-approach clearance: not applicable (doorway without a door leaf).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "CBC-11B-404.2.4.3-recessed"
-    },
-    {
-      "rule_id": "ADA-404.2.4.4-maneuvering-slope",
-      "jurisdiction": "ADA2010",
-      "section": "404.2.4.4",
-      "title": "Level floor in door maneuvering clearance",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "",
-      "message": "Level floor in door maneuvering clearance: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "CBC-11B-404.2.4.4-maneuvering-slope"
-    },
-    {
-      "rule_id": "ADA-404.2.5-threshold",
-      "jurisdiction": "ADA2010",
-      "section": "404.2.5",
-      "title": "Threshold 1/2 in max",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "",
-      "message": "Threshold 1/2 in max: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "CBC-11B-404.2.5-threshold"
-    },
-    {
-      "rule_id": "ADA-404.2.5-threshold-existing",
-      "jurisdiction": "ADA2010",
-      "section": "404.2.5",
-      "title": "Existing threshold 3/4 in max beveled",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "not_applicable",
-      "measured": null,
-      "required": "",
-      "message": "Existing threshold 3/4 in max beveled: not applicable (needs an answer from the owner (site.construction_era)).",
-      "evidence": "photo",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "CBC-11B-404.2.5-threshold"
-    },
-    {
-      "rule_id": "ADA-404.2.6-doors-in-series",
-      "jurisdiction": "ADA2010",
-      "section": "404.2.6",
-      "title": "Doors in series 48 in apart",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "not_applicable",
-      "measured": null,
-      "required": "",
-      "message": "Doors in series 48 in apart: not applicable (doorway without a door leaf).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "CBC-11B-404.2.6-doors-in-series"
-    },
-    {
-      "rule_id": "ADA-404.2.7-hardware-grasp",
-      "jurisdiction": "ADA2010",
-      "section": "404.2.7",
-      "title": "Door hardware usable without grasping",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "",
-      "message": "Door hardware usable without grasping: needs more information (needs a photo of the element (door.hardware_requires_tight_grasp)).",
-      "evidence": "photo",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "CBC-11B-404.2.7-hardware-grasp"
-    },
-    {
-      "rule_id": "ADA-404.2.7-hardware-height",
-      "jurisdiction": "ADA2010",
-      "section": "404.2.7",
-      "title": "Door hardware 34-48 in",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "",
-      "message": "Door hardware 34-48 in: needs more information (needs a photo or tape measurement; the scan box does not resolve this detail).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "CBC-11B-404.2.7-hardware-height"
-    },
-    {
-      "rule_id": "ADA-404.2.8-closing-speed",
-      "jurisdiction": "ADA2010",
-      "section": "404.2.8",
-      "title": "Door closer speed 5 s",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Door closer speed 5 s: needs more information (scope unknown: needs a photo or tape measurement; the scan box does not resolve this detail).",
-      "evidence": "owner",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "CBC-11B-404.2.8-closing-speed"
-    },
-    {
-      "rule_id": "ADA-404.2.9-opening-force",
-      "jurisdiction": "ADA2010",
-      "section": "404.2.9",
-      "title": "Interior door opening force 5 lbf",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Interior door opening force 5 lbf: needs more information (scope unknown: needs an answer from the owner (door.is_fire_door)).",
-      "evidence": "owner",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "CBC-11B-404.2.9-opening-force"
-    },
-    {
-      "rule_id": "ADA-404.2.10-bottom-surface",
-      "jurisdiction": "ADA2010",
-      "section": "404.2.10",
-      "title": "Smooth door bottom 10 in",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "",
-      "message": "Smooth door bottom 10 in: needs more information (needs a photo of the element (door.bottom_smooth_surface_height)).",
-      "evidence": "photo",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "CBC-11B-404.2.10-bottom-surface"
-    },
-    {
-      "rule_id": "ADA-404.2.11-vision-lite",
-      "jurisdiction": "ADA2010",
-      "section": "404.2.11",
-      "title": "Vision lites 43 in max",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "not_applicable",
-      "measured": null,
-      "required": "",
-      "message": "Vision lites 43 in max: not applicable (needs a photo or tape measurement; the scan box does not resolve this detail).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "CBC-11B-404.2.11-vision-lite"
-    },
-    {
-      "rule_id": "ADA-404.3-automatic",
-      "jurisdiction": "ADA2010",
-      "section": "404.3",
-      "title": "Automatic doors meet BHMA standards",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "not_applicable",
-      "measured": null,
-      "required": "",
-      "message": "Automatic doors meet BHMA standards: not applicable (needs a photo of the element (door.is_automatic)).",
-      "evidence": "owner",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "CBC-11B-404.3-automatic"
-    },
-    {
-      "rule_id": "CBC-11B-404.2.1-revolving",
-      "jurisdiction": "CBC11B",
-      "section": "11B-404.2.1",
-      "title": "Revolving doors not the accessible door",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "",
-      "message": "Revolving doors not the accessible door: needs more information (needs a photo of the element (door.is_revolving_or_turnstile)).",
-      "evidence": "photo",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "ADA-404.2.1-revolving"
-    },
-    {
-      "rule_id": "CBC-11B-404.2.4.1-front-pull",
-      "jurisdiction": "CBC11B",
-      "section": "11B-404.2.4.1",
-      "title": "Maneuvering clearance, front approach, pull side",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, front approach, pull side: needs more information (scope unknown: no route reaches this door).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "ADA-404.2.4.1-front-pull"
-    },
-    {
-      "rule_id": "CBC-11B-404.2.4.1-front-pull-exterior",
-      "jurisdiction": "CBC11B",
-      "section": "11B-404.2.4.1",
-      "title": "Front approach pull side of exterior doors: 24 in beyond latch",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Front approach pull side of exterior doors: 24 in beyond latch: needs more information (scope unknown: the far side was not scanned; the owner confirms whether it is outside).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": null
-    },
-    {
-      "rule_id": "CBC-11B-404.2.4.1-front-push",
-      "jurisdiction": "CBC11B",
-      "section": "11B-404.2.4.1",
-      "title": "Maneuvering clearance, front approach, push side",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, front approach, push side: needs more information (scope unknown: no route reaches this door).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "ADA-404.2.4.1-front-push"
-    },
-    {
-      "rule_id": "CBC-11B-404.2.4.1-front-push-closer-latch",
-      "jurisdiction": "CBC11B",
-      "section": "11B-404.2.4.1",
-      "title": "Front approach push side with closer and latch",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Front approach push side with closer and latch: needs more information (scope unknown: needs a photo of the element (door.has_latch)).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "ADA-404.2.4.1-front-push-closer-latch"
-    },
-    {
-      "rule_id": "CBC-11B-404.2.4.1-hinge-pull",
-      "jurisdiction": "CBC11B",
-      "section": "11B-404.2.4.1",
-      "title": "Maneuvering clearance, hinge approach, pull side",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, hinge approach, pull side: needs more information (scope unknown: no route reaches this door).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "ADA-404.2.4.1-hinge-pull"
-    },
-    {
-      "rule_id": "CBC-11B-404.2.4.1-hinge-push",
-      "jurisdiction": "CBC11B",
-      "section": "11B-404.2.4.1",
-      "title": "Maneuvering clearance, hinge approach, push side",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, hinge approach, push side: needs more information (scope unknown: no route reaches this door).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "ADA-404.2.4.1-hinge-push"
-    },
-    {
-      "rule_id": "CBC-11B-404.2.4.1-hinge-push-closer-latch",
-      "jurisdiction": "CBC11B",
-      "section": "11B-404.2.4.1",
-      "title": "Hinge approach push side with closer and latch",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Hinge approach push side with closer and latch: needs more information (scope unknown: needs a photo of the element (door.has_latch)).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "ADA-404.2.4.1-hinge-push-closer-latch"
-    },
-    {
-      "rule_id": "CBC-11B-404.2.4.1-latch-pull",
-      "jurisdiction": "CBC11B",
-      "section": "11B-404.2.4.1",
-      "title": "Maneuvering clearance, latch approach, pull side",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, latch approach, pull side: needs more information (scope unknown: no route reaches this door).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "ADA-404.2.4.1-latch-pull"
-    },
-    {
-      "rule_id": "CBC-11B-404.2.4.1-latch-push",
-      "jurisdiction": "CBC11B",
-      "section": "11B-404.2.4.1",
-      "title": "Maneuvering clearance, latch approach, push side",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, latch approach, push side: needs more information (scope unknown: no route reaches this door).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "ADA-404.2.4.1-latch-push"
-    },
-    {
-      "rule_id": "CBC-11B-404.2.4.1-latch-push-closer",
-      "jurisdiction": "CBC11B",
-      "section": "11B-404.2.4.1",
-      "title": "Latch approach push side with closer",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Latch approach push side with closer: needs more information (scope unknown: needs a photo or tape measurement; the scan box does not resolve this detail).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "ADA-404.2.4.1-latch-push-closer"
-    },
-    {
-      "rule_id": "CBC-11B-404.2.4.3-recessed",
-      "jurisdiction": "CBC11B",
-      "section": "11B-404.2.4.3",
-      "title": "Recessed doors need front-approach clearance",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "not_applicable",
-      "measured": null,
-      "required": "",
-      "message": "Recessed doors need front-approach clearance: not applicable (doorway without a door leaf).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "ADA-404.2.4.3-recessed"
-    },
-    {
-      "rule_id": "CBC-11B-404.2.4.4-maneuvering-slope",
-      "jurisdiction": "CBC11B",
-      "section": "11B-404.2.4.4",
-      "title": "Level floor in door maneuvering clearance",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "",
-      "message": "Level floor in door maneuvering clearance: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "ADA-404.2.4.4-maneuvering-slope"
-    },
-    {
-      "rule_id": "CBC-11B-404.2.5-threshold",
-      "jurisdiction": "CBC11B",
-      "section": "11B-404.2.5",
-      "title": "Threshold 1/2 in max",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "",
-      "message": "Threshold 1/2 in max: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "ADA-404.2.5-threshold"
-    },
-    {
-      "rule_id": "CBC-11B-404.2.6-doors-in-series",
-      "jurisdiction": "CBC11B",
-      "section": "11B-404.2.6",
-      "title": "Doors in series 48 in apart",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "not_applicable",
-      "measured": null,
-      "required": "",
-      "message": "Doors in series 48 in apart: not applicable (doorway without a door leaf).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "ADA-404.2.6-doors-in-series"
-    },
-    {
-      "rule_id": "CBC-11B-404.2.7-hardware-grasp",
-      "jurisdiction": "CBC11B",
-      "section": "11B-404.2.7",
-      "title": "Door hardware usable without grasping",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "",
-      "message": "Door hardware usable without grasping: needs more information (needs a photo of the element (door.hardware_requires_tight_grasp)).",
-      "evidence": "photo",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "ADA-404.2.7-hardware-grasp"
-    },
-    {
-      "rule_id": "CBC-11B-404.2.7-hardware-height",
-      "jurisdiction": "CBC11B",
-      "section": "11B-404.2.7",
-      "title": "Door hardware 34-44 in",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "",
-      "message": "Door hardware 34-44 in: needs more information (needs a photo or tape measurement; the scan box does not resolve this detail).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "ADA-404.2.7-hardware-height"
-    },
-    {
-      "rule_id": "CBC-11B-404.2.8-closing-speed",
-      "jurisdiction": "CBC11B",
-      "section": "11B-404.2.8",
-      "title": "Door closer speed 5 s",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Door closer speed 5 s: needs more information (scope unknown: needs a photo or tape measurement; the scan box does not resolve this detail).",
-      "evidence": "owner",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "ADA-404.2.8-closing-speed"
-    },
-    {
-      "rule_id": "CBC-11B-404.2.9-opening-force",
-      "jurisdiction": "CBC11B",
-      "section": "11B-404.2.9",
-      "title": "Door opening force 5 lbf, interior and exterior",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Door opening force 5 lbf, interior and exterior: needs more information (scope unknown: needs an answer from the owner (door.is_fire_door)).",
-      "evidence": "owner",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "ADA-404.2.9-opening-force"
-    },
-    {
-      "rule_id": "CBC-11B-404.2.10-bottom-surface",
-      "jurisdiction": "CBC11B",
-      "section": "11B-404.2.10",
-      "title": "Smooth door bottom 10 in",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "",
-      "message": "Smooth door bottom 10 in: needs more information (needs a photo of the element (door.bottom_smooth_surface_height)).",
-      "evidence": "photo",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "ADA-404.2.10-bottom-surface"
-    },
-    {
-      "rule_id": "CBC-11B-404.2.11-vision-lite",
-      "jurisdiction": "CBC11B",
-      "section": "11B-404.2.11",
-      "title": "Vision lites 43 in max",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "not_applicable",
-      "measured": null,
-      "required": "",
-      "message": "Vision lites 43 in max: not applicable (needs a photo or tape measurement; the scan box does not resolve this detail).",
-      "evidence": "measured",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "ADA-404.2.11-vision-lite"
-    },
-    {
-      "rule_id": "CBC-11B-404.3-automatic",
-      "jurisdiction": "CBC11B",
-      "section": "11B-404.3",
-      "title": "Automatic doors meet BHMA standards",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "not_applicable",
-      "measured": null,
-      "required": "",
-      "message": "Automatic doors meet BHMA standards: not applicable (needs a photo of the element (door.is_automatic)).",
-      "evidence": "owner",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": "ADA-404.3-automatic"
-    },
-    {
-      "rule_id": "CBC-1013.4-tactile-exit-wording",
-      "jurisdiction": "CBC11B",
-      "section": "1013.4",
-      "title": "Tactile exit sign wording",
-      "subject_id": "25F3112E-77CE-4666-847C-B83DF114B6BB",
-      "room_id": "living-room",
-      "status": "needs_info",
-      "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Tactile exit sign wording: needs more information (scope unknown: the far side was not scanned; the owner confirms whether it is outside).",
-      "evidence": "photo",
-      "severity": "violation",
-      "location": {
-        "x": -0.308,
-        "y": 0.92,
-        "z": 5.4963
-      },
-      "counterpart": null
-    },
-    {
       "rule_id": "ADA-305.3-cfs-forward",
       "jurisdiction": "ADA2010",
       "section": "305.3",
@@ -3652,9 +2182,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Clear floor space slope: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Clear floor space slope: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 1.6046,
         "y": 0.2309,
@@ -3784,9 +2314,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Clear floor space slope: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Clear floor space slope: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 1.6046,
         "y": 0.2309,
@@ -3994,9 +2524,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Clear floor space slope: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Clear floor space slope: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 0.7889,
         "y": 0.2548,
@@ -4132,9 +2662,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Clear floor space slope: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Clear floor space slope: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 0.7889,
         "y": 0.2548,
@@ -4806,9 +3336,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Level floor in door maneuvering clearance: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Level floor in door maneuvering clearance: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": -0.4412,
         "y": 1.03,
@@ -4826,9 +3356,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Threshold 1/2 in max: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Threshold 1/2 in max: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": -0.4412,
         "y": 1.03,
@@ -5266,9 +3796,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Level floor in door maneuvering clearance: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Level floor in door maneuvering clearance: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": -0.4412,
         "y": 1.03,
@@ -5286,9 +3816,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Threshold 1/2 in max: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Threshold 1/2 in max: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": -0.4412,
         "y": 1.03,
@@ -5610,10 +4140,16 @@
       "subject_id": "B435D27C-8EEC-4207-B5C1-E9BEA27BCDC7",
       "room_id": "living-room",
       "status": "needs_info",
-      "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, front approach, pull side: needs more information (scope unknown: no route reaches this door).",
-      "evidence": "measured",
+      "measured": {
+        "text": "at least 0",
+        "value": 0,
+        "lo": 0,
+        "hi": null,
+        "unit": "in"
+      },
+      "required": ">= 60 in and >= 18 in",
+      "message": "Maneuvering clearance, front approach, pull side: needs more information (measured range at least 0 straddles the limit; tolerance 0.5).",
+      "evidence": "measured: geometry",
       "severity": "violation",
       "location": {
         "x": 3.705,
@@ -5630,10 +4166,16 @@
       "subject_id": "B435D27C-8EEC-4207-B5C1-E9BEA27BCDC7",
       "room_id": "living-room",
       "status": "needs_info",
-      "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, front approach, push side: needs more information (scope unknown: no route reaches this door).",
-      "evidence": "measured",
+      "measured": {
+        "text": "at least 0",
+        "value": 0,
+        "lo": 0,
+        "hi": null,
+        "unit": "in"
+      },
+      "required": ">= 48 in",
+      "message": "Maneuvering clearance, front approach, push side: needs more information (measured range at least 0 straddles the limit; tolerance 0.5).",
+      "evidence": "measured: geometry",
       "severity": "violation",
       "location": {
         "x": 3.705,
@@ -5669,10 +4211,10 @@
       "title": "Maneuvering clearance, hinge approach, pull side",
       "subject_id": "B435D27C-8EEC-4207-B5C1-E9BEA27BCDC7",
       "room_id": "living-room",
-      "status": "needs_info",
+      "status": "not_applicable",
       "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, hinge approach, pull side: needs more information (scope unknown: no route reaches this door).",
+      "required": "",
+      "message": "Maneuvering clearance, hinge approach, pull side: not applicable (out of scope: Applies to every subject in applies_to.).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -5689,10 +4231,10 @@
       "title": "Maneuvering clearance, hinge approach, push side",
       "subject_id": "B435D27C-8EEC-4207-B5C1-E9BEA27BCDC7",
       "room_id": "living-room",
-      "status": "needs_info",
+      "status": "not_applicable",
       "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, hinge approach, push side: needs more information (scope unknown: no route reaches this door).",
+      "required": "",
+      "message": "Maneuvering clearance, hinge approach, push side: not applicable (out of scope: Applies to every subject in applies_to.).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -5709,10 +4251,10 @@
       "title": "Hinge approach push side with closer and latch",
       "subject_id": "B435D27C-8EEC-4207-B5C1-E9BEA27BCDC7",
       "room_id": "living-room",
-      "status": "needs_info",
+      "status": "not_applicable",
       "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Hinge approach push side with closer and latch: needs more information (scope unknown: needs a photo of the element (door.has_latch)).",
+      "required": "",
+      "message": "Hinge approach push side with closer and latch: not applicable (out of scope: Applies to every subject in applies_to.).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -5729,10 +4271,10 @@
       "title": "Maneuvering clearance, latch approach, pull side",
       "subject_id": "B435D27C-8EEC-4207-B5C1-E9BEA27BCDC7",
       "room_id": "living-room",
-      "status": "needs_info",
+      "status": "not_applicable",
       "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, latch approach, pull side: needs more information (scope unknown: no route reaches this door).",
+      "required": "",
+      "message": "Maneuvering clearance, latch approach, pull side: not applicable (out of scope: Applies to every subject in applies_to.).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -5749,10 +4291,10 @@
       "title": "Latch approach pull side with closer",
       "subject_id": "B435D27C-8EEC-4207-B5C1-E9BEA27BCDC7",
       "room_id": "living-room",
-      "status": "needs_info",
+      "status": "not_applicable",
       "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Latch approach pull side with closer: needs more information (scope unknown: needs a photo or tape measurement; the scan box does not resolve this detail).",
+      "required": "",
+      "message": "Latch approach pull side with closer: not applicable (out of scope: Applies to every subject in applies_to.).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -5769,10 +4311,10 @@
       "title": "Maneuvering clearance, latch approach, push side",
       "subject_id": "B435D27C-8EEC-4207-B5C1-E9BEA27BCDC7",
       "room_id": "living-room",
-      "status": "needs_info",
+      "status": "not_applicable",
       "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, latch approach, push side: needs more information (scope unknown: no route reaches this door).",
+      "required": "",
+      "message": "Maneuvering clearance, latch approach, push side: not applicable (out of scope: Applies to every subject in applies_to.).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -5789,10 +4331,10 @@
       "title": "Latch approach push side with closer",
       "subject_id": "B435D27C-8EEC-4207-B5C1-E9BEA27BCDC7",
       "room_id": "living-room",
-      "status": "needs_info",
+      "status": "not_applicable",
       "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Latch approach push side with closer: needs more information (scope unknown: needs a photo or tape measurement; the scan box does not resolve this detail).",
+      "required": "",
+      "message": "Latch approach push side with closer: not applicable (out of scope: Applies to every subject in applies_to.).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -5832,9 +4374,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Level floor in door maneuvering clearance: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Level floor in door maneuvering clearance: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 3.705,
         "y": 1.0252,
@@ -5852,9 +4394,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Threshold 1/2 in max: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Threshold 1/2 in max: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 3.705,
         "y": 1.0252,
@@ -6196,10 +4738,16 @@
       "subject_id": "B435D27C-8EEC-4207-B5C1-E9BEA27BCDC7",
       "room_id": "living-room",
       "status": "needs_info",
-      "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, front approach, pull side: needs more information (scope unknown: no route reaches this door).",
-      "evidence": "measured",
+      "measured": {
+        "text": "at least 0",
+        "value": 0,
+        "lo": 0,
+        "hi": null,
+        "unit": "in"
+      },
+      "required": ">= 60 in and >= 18 in",
+      "message": "Maneuvering clearance, front approach, pull side: needs more information (measured range at least 0 straddles the limit; tolerance 0.5).",
+      "evidence": "measured: geometry",
       "severity": "violation",
       "location": {
         "x": 3.705,
@@ -6236,10 +4784,16 @@
       "subject_id": "B435D27C-8EEC-4207-B5C1-E9BEA27BCDC7",
       "room_id": "living-room",
       "status": "needs_info",
-      "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, front approach, push side: needs more information (scope unknown: no route reaches this door).",
-      "evidence": "measured",
+      "measured": {
+        "text": "at least 0",
+        "value": 0,
+        "lo": 0,
+        "hi": null,
+        "unit": "in"
+      },
+      "required": ">= 48 in",
+      "message": "Maneuvering clearance, front approach, push side: needs more information (measured range at least 0 straddles the limit; tolerance 0.5).",
+      "evidence": "measured: geometry",
       "severity": "violation",
       "location": {
         "x": 3.705,
@@ -6275,10 +4829,10 @@
       "title": "Maneuvering clearance, hinge approach, pull side",
       "subject_id": "B435D27C-8EEC-4207-B5C1-E9BEA27BCDC7",
       "room_id": "living-room",
-      "status": "needs_info",
+      "status": "not_applicable",
       "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, hinge approach, pull side: needs more information (scope unknown: no route reaches this door).",
+      "required": "",
+      "message": "Maneuvering clearance, hinge approach, pull side: not applicable (out of scope: Applies to every subject in applies_to.).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -6295,10 +4849,10 @@
       "title": "Maneuvering clearance, hinge approach, push side",
       "subject_id": "B435D27C-8EEC-4207-B5C1-E9BEA27BCDC7",
       "room_id": "living-room",
-      "status": "needs_info",
+      "status": "not_applicable",
       "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, hinge approach, push side: needs more information (scope unknown: no route reaches this door).",
+      "required": "",
+      "message": "Maneuvering clearance, hinge approach, push side: not applicable (out of scope: Applies to every subject in applies_to.).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -6315,10 +4869,10 @@
       "title": "Hinge approach push side with closer and latch",
       "subject_id": "B435D27C-8EEC-4207-B5C1-E9BEA27BCDC7",
       "room_id": "living-room",
-      "status": "needs_info",
+      "status": "not_applicable",
       "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Hinge approach push side with closer and latch: needs more information (scope unknown: needs a photo of the element (door.has_latch)).",
+      "required": "",
+      "message": "Hinge approach push side with closer and latch: not applicable (out of scope: Applies to every subject in applies_to.).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -6335,10 +4889,10 @@
       "title": "Maneuvering clearance, latch approach, pull side",
       "subject_id": "B435D27C-8EEC-4207-B5C1-E9BEA27BCDC7",
       "room_id": "living-room",
-      "status": "needs_info",
+      "status": "not_applicable",
       "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, latch approach, pull side: needs more information (scope unknown: no route reaches this door).",
+      "required": "",
+      "message": "Maneuvering clearance, latch approach, pull side: not applicable (out of scope: Applies to every subject in applies_to.).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -6355,10 +4909,10 @@
       "title": "Maneuvering clearance, latch approach, push side",
       "subject_id": "B435D27C-8EEC-4207-B5C1-E9BEA27BCDC7",
       "room_id": "living-room",
-      "status": "needs_info",
+      "status": "not_applicable",
       "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, latch approach, push side: needs more information (scope unknown: no route reaches this door).",
+      "required": "",
+      "message": "Maneuvering clearance, latch approach, push side: not applicable (out of scope: Applies to every subject in applies_to.).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -6375,10 +4929,10 @@
       "title": "Latch approach push side with closer",
       "subject_id": "B435D27C-8EEC-4207-B5C1-E9BEA27BCDC7",
       "room_id": "living-room",
-      "status": "needs_info",
+      "status": "not_applicable",
       "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Latch approach push side with closer: needs more information (scope unknown: needs a photo or tape measurement; the scan box does not resolve this detail).",
+      "required": "",
+      "message": "Latch approach push side with closer: not applicable (out of scope: Applies to every subject in applies_to.).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -6418,9 +4972,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Level floor in door maneuvering clearance: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Level floor in door maneuvering clearance: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 3.705,
         "y": 1.0252,
@@ -6438,9 +4992,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Threshold 1/2 in max: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Threshold 1/2 in max: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 3.705,
         "y": 1.0252,
@@ -7091,10 +5645,10 @@
       "title": "Maneuvering clearance, front approach, pull side",
       "subject_id": "E513B016-5FD6-4384-9073-75F7D6630F46",
       "room_id": "living-room",
-      "status": "needs_info",
+      "status": "not_applicable",
       "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, front approach, pull side: needs more information (scope unknown: no route reaches this door).",
+      "required": "",
+      "message": "Maneuvering clearance, front approach, pull side: not applicable (doorway without a door leaf).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -7111,10 +5665,10 @@
       "title": "Maneuvering clearance, front approach, push side",
       "subject_id": "E513B016-5FD6-4384-9073-75F7D6630F46",
       "room_id": "living-room",
-      "status": "needs_info",
+      "status": "not_applicable",
       "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, front approach, push side: needs more information (scope unknown: no route reaches this door).",
+      "required": "",
+      "message": "Maneuvering clearance, front approach, push side: not applicable (doorway without a door leaf).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -7151,10 +5705,10 @@
       "title": "Maneuvering clearance, hinge approach, pull side",
       "subject_id": "E513B016-5FD6-4384-9073-75F7D6630F46",
       "room_id": "living-room",
-      "status": "needs_info",
+      "status": "not_applicable",
       "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, hinge approach, pull side: needs more information (scope unknown: no route reaches this door).",
+      "required": "",
+      "message": "Maneuvering clearance, hinge approach, pull side: not applicable (out of scope: Applies to every subject in applies_to.).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -7171,10 +5725,10 @@
       "title": "Maneuvering clearance, hinge approach, push side",
       "subject_id": "E513B016-5FD6-4384-9073-75F7D6630F46",
       "room_id": "living-room",
-      "status": "needs_info",
+      "status": "not_applicable",
       "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, hinge approach, push side: needs more information (scope unknown: no route reaches this door).",
+      "required": "",
+      "message": "Maneuvering clearance, hinge approach, push side: not applicable (out of scope: Applies to every subject in applies_to.).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -7191,10 +5745,10 @@
       "title": "Hinge approach push side with closer and latch",
       "subject_id": "E513B016-5FD6-4384-9073-75F7D6630F46",
       "room_id": "living-room",
-      "status": "needs_info",
+      "status": "not_applicable",
       "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Hinge approach push side with closer and latch: needs more information (scope unknown: needs a photo of the element (door.has_latch)).",
+      "required": "",
+      "message": "Hinge approach push side with closer and latch: not applicable (out of scope: Applies to every subject in applies_to.).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -7211,10 +5765,10 @@
       "title": "Maneuvering clearance, latch approach, pull side",
       "subject_id": "E513B016-5FD6-4384-9073-75F7D6630F46",
       "room_id": "living-room",
-      "status": "needs_info",
+      "status": "not_applicable",
       "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, latch approach, pull side: needs more information (scope unknown: no route reaches this door).",
+      "required": "",
+      "message": "Maneuvering clearance, latch approach, pull side: not applicable (out of scope: Applies to every subject in applies_to.).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -7231,10 +5785,10 @@
       "title": "Latch approach pull side with closer",
       "subject_id": "E513B016-5FD6-4384-9073-75F7D6630F46",
       "room_id": "living-room",
-      "status": "needs_info",
+      "status": "not_applicable",
       "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Latch approach pull side with closer: needs more information (scope unknown: needs a photo or tape measurement; the scan box does not resolve this detail).",
+      "required": "",
+      "message": "Latch approach pull side with closer: not applicable (out of scope: Applies to every subject in applies_to.).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -7251,10 +5805,10 @@
       "title": "Maneuvering clearance, latch approach, push side",
       "subject_id": "E513B016-5FD6-4384-9073-75F7D6630F46",
       "room_id": "living-room",
-      "status": "needs_info",
+      "status": "not_applicable",
       "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, latch approach, push side: needs more information (scope unknown: no route reaches this door).",
+      "required": "",
+      "message": "Maneuvering clearance, latch approach, push side: not applicable (out of scope: Applies to every subject in applies_to.).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -7271,10 +5825,10 @@
       "title": "Latch approach push side with closer",
       "subject_id": "E513B016-5FD6-4384-9073-75F7D6630F46",
       "room_id": "living-room",
-      "status": "needs_info",
+      "status": "not_applicable",
       "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Latch approach push side with closer: needs more information (scope unknown: needs a photo or tape measurement; the scan box does not resolve this detail).",
+      "required": "",
+      "message": "Latch approach push side with closer: not applicable (out of scope: Applies to every subject in applies_to.).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -7314,9 +5868,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Level floor in door maneuvering clearance: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Level floor in door maneuvering clearance: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 0.6895,
         "y": 1.02,
@@ -7334,9 +5888,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Threshold 1/2 in max: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Threshold 1/2 in max: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 0.6895,
         "y": 1.02,
@@ -7551,10 +6105,10 @@
       "title": "Maneuvering clearance, front approach, pull side",
       "subject_id": "E513B016-5FD6-4384-9073-75F7D6630F46",
       "room_id": "living-room",
-      "status": "needs_info",
+      "status": "not_applicable",
       "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, front approach, pull side: needs more information (scope unknown: no route reaches this door).",
+      "required": "",
+      "message": "Maneuvering clearance, front approach, pull side: not applicable (doorway without a door leaf).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -7591,10 +6145,10 @@
       "title": "Maneuvering clearance, front approach, push side",
       "subject_id": "E513B016-5FD6-4384-9073-75F7D6630F46",
       "room_id": "living-room",
-      "status": "needs_info",
+      "status": "not_applicable",
       "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, front approach, push side: needs more information (scope unknown: no route reaches this door).",
+      "required": "",
+      "message": "Maneuvering clearance, front approach, push side: not applicable (doorway without a door leaf).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -7631,10 +6185,10 @@
       "title": "Maneuvering clearance, hinge approach, pull side",
       "subject_id": "E513B016-5FD6-4384-9073-75F7D6630F46",
       "room_id": "living-room",
-      "status": "needs_info",
+      "status": "not_applicable",
       "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, hinge approach, pull side: needs more information (scope unknown: no route reaches this door).",
+      "required": "",
+      "message": "Maneuvering clearance, hinge approach, pull side: not applicable (out of scope: Applies to every subject in applies_to.).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -7651,10 +6205,10 @@
       "title": "Maneuvering clearance, hinge approach, push side",
       "subject_id": "E513B016-5FD6-4384-9073-75F7D6630F46",
       "room_id": "living-room",
-      "status": "needs_info",
+      "status": "not_applicable",
       "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, hinge approach, push side: needs more information (scope unknown: no route reaches this door).",
+      "required": "",
+      "message": "Maneuvering clearance, hinge approach, push side: not applicable (out of scope: Applies to every subject in applies_to.).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -7671,10 +6225,10 @@
       "title": "Hinge approach push side with closer and latch",
       "subject_id": "E513B016-5FD6-4384-9073-75F7D6630F46",
       "room_id": "living-room",
-      "status": "needs_info",
+      "status": "not_applicable",
       "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Hinge approach push side with closer and latch: needs more information (scope unknown: needs a photo of the element (door.has_latch)).",
+      "required": "",
+      "message": "Hinge approach push side with closer and latch: not applicable (out of scope: Applies to every subject in applies_to.).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -7691,10 +6245,10 @@
       "title": "Maneuvering clearance, latch approach, pull side",
       "subject_id": "E513B016-5FD6-4384-9073-75F7D6630F46",
       "room_id": "living-room",
-      "status": "needs_info",
+      "status": "not_applicable",
       "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, latch approach, pull side: needs more information (scope unknown: no route reaches this door).",
+      "required": "",
+      "message": "Maneuvering clearance, latch approach, pull side: not applicable (out of scope: Applies to every subject in applies_to.).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -7711,10 +6265,10 @@
       "title": "Maneuvering clearance, latch approach, push side",
       "subject_id": "E513B016-5FD6-4384-9073-75F7D6630F46",
       "room_id": "living-room",
-      "status": "needs_info",
+      "status": "not_applicable",
       "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Maneuvering clearance, latch approach, push side: needs more information (scope unknown: no route reaches this door).",
+      "required": "",
+      "message": "Maneuvering clearance, latch approach, push side: not applicable (out of scope: Applies to every subject in applies_to.).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -7731,10 +6285,10 @@
       "title": "Latch approach push side with closer",
       "subject_id": "E513B016-5FD6-4384-9073-75F7D6630F46",
       "room_id": "living-room",
-      "status": "needs_info",
+      "status": "not_applicable",
       "measured": null,
-      "required": "Applies to every subject in applies_to.",
-      "message": "Latch approach push side with closer: needs more information (scope unknown: needs a photo or tape measurement; the scan box does not resolve this detail).",
+      "required": "",
+      "message": "Latch approach push side with closer: not applicable (out of scope: Applies to every subject in applies_to.).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -7774,9 +6328,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Level floor in door maneuvering clearance: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Level floor in door maneuvering clearance: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 0.6895,
         "y": 1.02,
@@ -7794,9 +6348,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Threshold 1/2 in max: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Threshold 1/2 in max: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 0.6895,
         "y": 1.02,
@@ -8094,9 +6648,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Changes in level on the route: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Changes in level on the route: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 1.4378,
         "y": 0,
@@ -8114,7 +6668,7 @@
       "status": "not_applicable",
       "measured": null,
       "required": "",
-      "message": "Beveled changes in level: not applicable (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Beveled changes in level: not applicable (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -8194,9 +6748,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Changes in level on the route: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Changes in level on the route: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 1.4378,
         "y": 0,
@@ -8214,7 +6768,7 @@
       "status": "not_applicable",
       "measured": null,
       "required": "",
-      "message": "Beveled changes in level: not applicable (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Beveled changes in level: not applicable (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -8492,9 +7046,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Changes in level on the route: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Changes in level on the route: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 0.6375,
         "y": 0,
@@ -8512,7 +7066,7 @@
       "status": "not_applicable",
       "measured": null,
       "required": "",
-      "message": "Beveled changes in level: not applicable (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Beveled changes in level: not applicable (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -8558,9 +7112,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Walking surface running slope: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Walking surface running slope: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 0.6375,
         "y": 0,
@@ -8578,9 +7132,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Walking surface cross slope: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Walking surface cross slope: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 0.6375,
         "y": 0,
@@ -8696,9 +7250,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Changes in level on the route: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Changes in level on the route: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 0.6375,
         "y": 0,
@@ -8716,7 +7270,7 @@
       "status": "not_applicable",
       "measured": null,
       "required": "",
-      "message": "Beveled changes in level: not applicable (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Beveled changes in level: not applicable (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -8782,9 +7336,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Walking surface running slope: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Walking surface running slope: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 0.6375,
         "y": 0,
@@ -8802,9 +7356,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Walking surface cross slope: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Walking surface cross slope: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 0.6375,
         "y": 0,
@@ -9000,9 +7554,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Changes in level on the route: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Changes in level on the route: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 0.1875,
         "y": 0,
@@ -9020,7 +7574,7 @@
       "status": "not_applicable",
       "measured": null,
       "required": "",
-      "message": "Beveled changes in level: not applicable (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Beveled changes in level: not applicable (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -9066,9 +7620,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Walking surface running slope: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Walking surface running slope: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 0.1875,
         "y": 0,
@@ -9086,9 +7640,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Walking surface cross slope: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Walking surface cross slope: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 0.1875,
         "y": 0,
@@ -9204,9 +7758,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Changes in level on the route: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Changes in level on the route: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 0.1875,
         "y": 0,
@@ -9224,7 +7778,7 @@
       "status": "not_applicable",
       "measured": null,
       "required": "",
-      "message": "Beveled changes in level: not applicable (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Beveled changes in level: not applicable (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -9290,9 +7844,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Walking surface running slope: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Walking surface running slope: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 0.1875,
         "y": 0,
@@ -9310,9 +7864,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Walking surface cross slope: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Walking surface cross slope: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 0.1875,
         "y": 0,
@@ -9508,9 +8062,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Changes in level on the route: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Changes in level on the route: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 3.5875,
         "y": 0,
@@ -9528,7 +8082,7 @@
       "status": "not_applicable",
       "measured": null,
       "required": "",
-      "message": "Beveled changes in level: not applicable (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Beveled changes in level: not applicable (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -9574,9 +8128,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Walking surface running slope: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Walking surface running slope: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 3.5875,
         "y": 0,
@@ -9594,9 +8148,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Walking surface cross slope: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Walking surface cross slope: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 3.5875,
         "y": 0,
@@ -9706,9 +8260,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Changes in level on the route: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Changes in level on the route: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 3.5875,
         "y": 0,
@@ -9726,7 +8280,7 @@
       "status": "not_applicable",
       "measured": null,
       "required": "",
-      "message": "Beveled changes in level: not applicable (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Beveled changes in level: not applicable (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
       "severity": "violation",
       "location": {
@@ -9792,9 +8346,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Walking surface running slope: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Walking surface running slope: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 3.5875,
         "y": 0,
@@ -9812,9 +8366,9 @@
       "status": "needs_info",
       "measured": null,
       "required": "",
-      "message": "Walking surface cross slope: needs more information (needs the floor mesh height field; scan boxes assume a level floor).",
+      "message": "Walking surface cross slope: needs more information (no scan mesh was captured; the RoomPlan floor is level by construction, so slope and level changes are unverified).",
       "evidence": "measured",
-      "severity": "violation",
+      "severity": "advisory",
       "location": {
         "x": 3.5875,
         "y": 0,
@@ -10079,7 +8633,7 @@
         "hi": 3,
         "unit": "count"
       },
-      "required": ">= 3",
+      "required": ">= 2",
       "message": "Public entrances accessible (60%): needs more information (measured range 0-3 straddles the limit).",
       "evidence": "measured: geometry",
       "severity": "violation",
@@ -10175,8 +8729,8 @@
       "room_id": null,
       "status": "needs_info",
       "measured": null,
-      "required": "",
-      "message": "Signs at inaccessible entrances: needs more information (needs a photo of the element (site.isa_signage_at_inaccessible_entrances)).",
+      "required": "Applies to every subject in applies_to.",
+      "message": "Signs at inaccessible entrances: needs more information (scope unknown: measured range 0-3 straddles the limit).",
       "evidence": "photo",
       "severity": "violation",
       "location": null,
@@ -10349,7 +8903,7 @@
       "title": "All entrances accessible",
       "subject_id": "site",
       "room_id": null,
-      "status": "fail",
+      "status": "needs_info",
       "measured": {
         "text": "0-3",
         "value": 0,
@@ -10357,8 +8911,8 @@
         "hi": 3,
         "unit": "count"
       },
-      "required": ">= 4",
-      "message": "All entrances accessible: measured 0-3 count, required >= 4.",
+      "required": ">= 3",
+      "message": "All entrances accessible: needs more information (measured range 0-3 straddles the limit).",
       "evidence": "measured: geometry",
       "severity": "violation",
       "location": null,
@@ -10592,7 +9146,7 @@
   "timings": {
     "load_ms": 2,
     "labelling_ms": 0,
-    "evaluation_ms": 53,
+    "evaluation_ms": 33,
     "persist_ms": 0,
     "total_ms": 0
   },
