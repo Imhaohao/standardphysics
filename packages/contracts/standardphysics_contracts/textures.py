@@ -117,8 +117,16 @@ class TextureCoverage(BaseModel):
 
 
 class TextureBuild(BaseModel):
+    """One build's photographed outputs.
+
+    The painted scan is published first, because it is what the owner sees. The
+    photographed boxes follow in a step of their own, and until they land every
+    box field below is empty.
+    """
+
     build_id: str
-    glb_url: str
+    glb_url: str | None = None
+    """The photographed boxes, once they are baked."""
     scan_glb_url: str | None = None
     """The scanned surface itself, in colour, when it could be painted.
 
@@ -126,16 +134,21 @@ class TextureBuild(BaseModel):
     the room looks like: the LiDAR mesh with every vertex given the colour of
     the photo that saw it best.
     """
-    coverage_mask_urls: list[str]
+    coverage_mask_urls: list[str] = []
     """One grayscale mask per atlas, in atlas order: white where photos reached."""
     bake_graph: SceneGraph
     """The layout the photos were projected onto: every node at its captured placement."""
-    coverage: TextureCoverage
-    frames_used: int
-    seconds: float
+    coverage: TextureCoverage | None = None
+    frames_used: int | None = None
+    seconds: float | None = None
     box_key: str | None = None
-    """Which bake of the photographed boxes this build carries, so a build that
-    changes only the painted scan copies them instead of baking them again."""
+    """Which bake of the photographed boxes this build carries. Builds with the same
+    layout and photos share one bake, so a build that changes only the painted scan
+    never bakes the boxes again."""
+
+    @property
+    def boxes_ready(self) -> bool:
+        return self.glb_url is not None
 
 
 class TextureRequest(BaseModel):

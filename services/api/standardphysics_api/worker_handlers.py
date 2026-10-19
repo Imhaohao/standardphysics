@@ -37,7 +37,7 @@ from .settings import Settings
 from .simulations import SIMULATE, queue_simulation, run_simulation
 from .stages import DiscoveryOutcome, Stages, configured_stages
 from .store import ArtifactStore, ScanQuota
-from .textures import TEXTURE, maybe_queue_texture, run_texture
+from .textures import BOXES, TEXTURE, maybe_queue_texture, queue_boxes, run_boxes, run_texture
 from .worker_child import in_own_process
 from .worker_pulse import RunningJob
 
@@ -109,6 +109,7 @@ class JobHandlers:
             DISPLAY: self._display,
             SIMULATE: self._simulate,
             TEXTURE: self._texture,
+            BOXES: self._boxes,
             REARRANGE: self._rearrange,
             FURNITURE: self._furniture,
         }
@@ -117,7 +118,7 @@ class JobHandlers:
         """Run the job's stage here and say whether a follow-up process job may be due."""
         scan_id, revision = uuid.UUID(job["scan_id"]), job["revision"]
         handler = self.handlers()[job["kind"]]
-        if job["kind"] in (TEXTURE, FURNITURE):
+        if job["kind"] in (TEXTURE, BOXES, FURNITURE):
             return handler(scan_id=scan_id, build_id=revision, job=job)
         return handler(scan_id=scan_id, revision=revision, job=job)
 
@@ -132,7 +133,17 @@ class JobHandlers:
             )
         else:
             run_texture(self.database, self.store, self.stages, scan_id, build_id)
+        queue_boxes(self.database, self, scan_id, build_id)
         queue_furniture(self.database, self, scan_id, build_id)
+        return False
+
+    def _boxes(self, scan_id, build_id, job=None) -> bool:
+        if self.settings.bake_in_own_process:
+            in_own_process(
+                bake_boxes, self.settings, scan_id, build_id, timeout_seconds=self.settings.bake_timeout_seconds
+            )
+        else:
+            run_boxes(self.database, self.store, self.stages, scan_id, build_id)
         return False
 
     def _furniture(self, scan_id, build_id, job=None) -> bool:
@@ -377,6 +388,12 @@ def bake_photos(settings: Settings, scan_id: uuid.UUID, build_id: int) -> None:
     with tracing_for_this_process(settings.weave_project, settings.weave_entity):
         stages = configured_stages(settings)
         run_texture(Database(settings.database_path), store_for(settings), stages, scan_id, build_id)
+
+
+def bake_boxes(settings: Settings, scan_id: uuid.UUID, build_id: int) -> None:
+    """One bake of the photographed boxes, in its own process for the same reason as `bake_photos`."""
+    with tracing_for_this_process(settings.weave_project, settings.weave_entity):
+        run_boxes(Database(settings.database_path), store_for(settings), configured_stages(settings), scan_id, build_id)
 
 
 def store_for(settings: Settings) -> ArtifactStore:

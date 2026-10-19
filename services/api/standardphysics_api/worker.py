@@ -55,7 +55,7 @@ from .settings import Settings
 from .simulations import SIMULATE
 from .stages import Stages, configured_stages
 from .store import ArtifactStore
-from .textures import TEXTURE
+from .textures import BOXES, TEXTURE
 from .worker_child import ChildFailed, ChildTimedOut, in_own_process, is_lock_contention, is_transient
 from .worker_handlers import ASSESS, DISPLAY, PROCESS, JobHandlers, store_for
 from .worker_lock import WorkerLock
@@ -457,7 +457,7 @@ class Worker(JobHandlers):
             return _JobOutcome(follow_up=self._run_through_transient_errors(job, scan_id))
         except Exception as exc:
             log.error("job %s %s failed:\n%s", job["kind"], scan_id, traceback.format_exc())
-            if job["kind"] not in (DISPLAY, SIMULATE, TEXTURE, REARRANGE, FURNITURE):
+            if job["kind"] not in (DISPLAY, SIMULATE, TEXTURE, BOXES, REARRANGE, FURNITURE):
                 with self.database.transaction() as connection:
                     repo.set_state(connection, scan_id, "failed")
             return _JobOutcome(error=_job_error(job["kind"], exc))
@@ -480,7 +480,7 @@ class Worker(JobHandlers):
             attempt += 1
 
     def _call_handler(self, job) -> bool:
-        if job["kind"] != TEXTURE and self.settings.jobs_in_own_process:
+        if job["kind"] not in (TEXTURE, BOXES) and self.settings.jobs_in_own_process:
             return self._in_child(job)
         return self.run_stage(job)
 

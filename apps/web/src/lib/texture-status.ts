@@ -40,8 +40,9 @@ export function textureStatusView(status: TextureStatus): TextureStatusView {
   const base = BASE_VIEW[status.state];
   const canOfferRetry = status.state !== "failed" || status.can_retry;
   const actionLabel = canOfferRetry ? ACTION_LABEL[status.state] ?? null : null;
-  const message = status.state === "complete" && status.build
-    ? `Photos cover ${Math.round(status.build.coverage.textured_fraction * 100)}% of surfaces`
+  const coverage = status.state === "complete" ? status.build?.coverage : null;
+  const message = coverage
+    ? `Photos cover ${Math.round(coverage.textured_fraction * 100)}% of surfaces`
     : base.message;
   return { ...base, message, actionLabel };
 }

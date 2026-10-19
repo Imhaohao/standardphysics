@@ -8,10 +8,8 @@ import pathlib
 import re
 import shutil
 import tempfile
-import threading
 import time
 import uuid
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -50,6 +48,7 @@ from .errors import ApiProblem
 log = logging.getLogger(__name__)
 
 TEXTURE = "texture"
+BOXES = "boxes"
 BUILD_KEY = re.compile(r"^[0-9a-f]{64}$")
 ASSET_NAME = re.compile(r"^(scene\.glb|scan\.glb|scan-furniture\.glb|coverage-[0-3]\.png)$")
 MAX_METADATA_BYTES = 4_000_000
@@ -357,14 +356,8 @@ class _ProgressFile:
         self.path = path
         self.last_step: str | None = None
         self.last_write = 0.0
-        self.writing = threading.Lock()
-        """The box model and the painted scan report from two threads, and both write through one partial file."""
 
     def __call__(self, progress: StepProgress) -> None:
-        with self.writing:
-            self._write(progress)
-
-    def _write(self, progress: StepProgress) -> None:
         now = time.monotonic()
         if progress.step == self.last_step and now - self.last_write < self.SECONDS_BETWEEN_COUNTS:
             return
@@ -415,7 +408,7 @@ def record_build(database, scan_id, build_key: str, graph: SceneGraph, inputs: d
 
 @dataclass(frozen=True)
 class _Boxes:
-    """The photographed boxes of a build, however they were come by."""
+    """The photographed boxes of one bake, which every build of the same layout and photos shares."""
 
     mask_names: list[str]
     coverage: TextureCoverage
@@ -423,7 +416,15 @@ class _Boxes:
     seconds: float
 
 
+BOXES_RECORD = "boxes.json"
+
+
 def run_texture(database, store, stages, scan_id, build_id):
+    """Paint the scan and publish it, with the photographed boxes following in a job of their own (`run_boxes`).
+
+    A capture with no mesh has no scan to paint, so the boxes are all it has, and
+    they are baked here before anything is published.
+    """
     with database.connect() as connection:
         row = connection.execute(
             "SELECT * FROM texture_builds WHERE id=? AND scan_id=?", (build_id, str(scan_id))
@@ -432,17 +433,66 @@ def run_texture(database, store, stages, scan_id, build_id):
         return
     destination = build_dir(store, scan_id) / row["build_key"]
     result_path = destination / "result.json"
-    if result_path.is_file():
-        result = TextureBuild.model_validate_json(result_path.read_bytes())
-    else:
-        reported = progress_path(store, scan_id, row["build_key"])
-        try:
-            with listening(_ProgressFile(reported)):
-                result = _new_build(database, store, stages, scan_id, row, destination)
-        finally:
-            reported.unlink(missing_ok=True)
-    with database.transaction() as connection:
-        connection.execute("UPDATE texture_builds SET result_json=? WHERE id=?", (result.model_dump_json(), build_id))
+    reported = progress_path(store, scan_id, row["build_key"])
+    try:
+        with listening(_ProgressFile(reported)):
+            if result_path.is_file():
+                result = TextureBuild.model_validate_json(result_path.read_bytes())
+            else:
+                result = _painted_build(store, scan_id, row, destination)
+            if result.scan_glb_url is None:
+                result = _with_boxes(store, stages, scan_id, result, json.loads(row["inputs_json"]))
+    finally:
+        reported.unlink(missing_ok=True)
+    _record_result(database, build_id, result)
+
+
+def _painted_build(store, scan_id, row, destination: pathlib.Path) -> TextureBuild:
+    graph = SceneGraph.model_validate_json(row["graph_json"])
+    inputs = json.loads(row["inputs_json"])
+    temporary = staged_build_dir(store, scan_id)
+    try:
+        with timed("painted scan"):
+            scan_glb = _paint_the_scan(store, scan_id, graph, inputs, temporary)
+        result = TextureBuild(
+            build_id=row["build_key"],
+            scan_glb_url=build_prefix(scan_id, row["build_key"]) + "/scan.glb" if scan_glb else None,
+            bake_graph=graph,
+            box_key=box_bake_key(graph, inputs["digest"]),
+        )
+        finish_build(temporary, destination, result)
+        return result
+    finally:
+        if temporary.exists():
+            shutil.rmtree(temporary)
+
+
+def run_boxes(database, store, stages, scan_id, build_id):
+    """Bake the photographed boxes of a published build, or take them from a build that already baked them."""
+    with database.connect() as connection:
+        row = connection.execute(
+            "SELECT * FROM texture_builds WHERE id=? AND scan_id=?", (build_id, str(scan_id))
+        ).fetchone()
+    if row is None or not row["result_json"]:
+        return
+    published = TextureBuild.model_validate_json(row["result_json"])
+    if not published.boxes_ready:
+        complete = _with_boxes(store, stages, scan_id, published, json.loads(row["inputs_json"]))
+        _record_result(database, build_id, complete)
+
+
+def _with_boxes(store, stages, scan_id, published: TextureBuild, inputs: dict) -> TextureBuild:
+    boxes = _shared_boxes(store, scan_id, published.box_key) or _baked_boxes(store, stages, scan_id, published, inputs)
+    prefix = build_prefix(scan_id, published.box_key)
+    complete = published.model_copy(update={
+        "glb_url": prefix + "/scene.glb",
+        "coverage_mask_urls": [prefix + "/" + name for name in boxes.mask_names],
+        "coverage": boxes.coverage,
+        "frames_used": boxes.frames_used,
+        "seconds": boxes.seconds,
+    })
+    _replace_result_file(build_dir(store, scan_id) / published.build_id, complete)
+    return complete
 
 
 def queue_missing_enhancements(database, store, worker, scan_id, revision) -> TextureStatus:
@@ -458,6 +508,8 @@ def queue_missing_enhancements(database, store, worker, scan_id, revision) -> Te
         ).fetchone()
     if row is not None:
         queue_furniture(database, worker, scan_id, row["id"])
+        if not status.build.boxes_ready:
+            queue_boxes(database, worker, scan_id, row["id"])
     return status
 
 
@@ -516,80 +568,84 @@ def retry_furniture(database, store, worker, scan_id, revision):
     return read_furniture_status(database, store, scan_id, revision)
 
 
-def _box_model(database, store, stages, scan_id, graph, inputs, box_key, temporary: pathlib.Path):
-    """The textured box model, reused from an earlier build of the same photos and layout when there is one.
-
-    It runs beside the painted scan: the bake is mostly Blender in its own
-    process, and neither reads what the other writes."""
-    with timed("box model"):
-        return _reused_boxes(database, store, scan_id, box_key, temporary) or _baked_boxes(
-            store, stages, scan_id, graph, inputs, temporary
-        )
+def queue_boxes(database, worker, scan_id: uuid.UUID, build_id: int) -> None:
+    with database.transaction() as connection:
+        jobs_repo.enqueue_job(connection, scan_id, BOXES, build_id)
+    worker.wake()
 
 
-def _new_build(database, store, stages, scan_id, row, destination: pathlib.Path) -> TextureBuild:
-    graph = SceneGraph.model_validate_json(row["graph_json"])
-    inputs = json.loads(row["inputs_json"])
-    box_key = box_bake_key(graph, inputs["digest"])
+def _record_result(database, build_id: int, result: TextureBuild) -> None:
+    with database.transaction() as connection:
+        connection.execute("UPDATE texture_builds SET result_json=? WHERE id=?", (result.model_dump_json(), build_id))
+
+
+def _replace_result_file(directory: pathlib.Path, result: TextureBuild) -> None:
+    """Rewrite a published build's own record of itself, by rename so a reader never sees half of it."""
+    if not directory.is_dir():
+        return
+    partial = directory / "result.partial"
+    partial.write_text(result.model_dump_json())
+    partial.replace(directory / "result.json")
+
+
+def _shared_boxes(store, scan_id, box_key: str) -> _Boxes | None:
+    """The boxes an earlier build of the same layout and photos already baked.
+
+    The boxes do not change when only the painter of the scan does, and baking
+    them is minutes of work per walk that came out byte for byte the same.
+    """
+    record = build_dir(store, scan_id) / box_key / BOXES_RECORD
+    if not record.is_file():
+        return None
+    saved = json.loads(record.read_text())
+    return _Boxes(saved["mask_names"], TextureCoverage.model_validate(saved["coverage"]), saved["frames_used"], 0.0)
+
+
+def _baked_boxes(store, stages, scan_id, published: TextureBuild, inputs: dict) -> _Boxes:
+    """Bake the boxes into a directory of their own, named for the bake, and move it into place whole."""
     temporary = staged_build_dir(store, scan_id)
     try:
-        with ThreadPoolExecutor(max_workers=1) as beside:
-            boxes_later = beside.submit(_box_model, database, store, stages, scan_id, graph, inputs, box_key, temporary)
-            with timed("painted scan"):
-                scan_glb = _paint_the_scan(store, scan_id, graph, inputs, temporary)
-            boxes = boxes_later.result()
-        prefix = build_prefix(scan_id, row["build_key"])
-        result = TextureBuild(
-            build_id=row["build_key"], glb_url=prefix + "/scene.glb",
-            scan_glb_url=prefix + "/scan.glb" if scan_glb else None,
-            coverage_mask_urls=[prefix + "/" + name for name in boxes.mask_names],
-            bake_graph=graph, coverage=boxes.coverage,
-            frames_used=boxes.frames_used, seconds=boxes.seconds, box_key=box_key,
-        )
-        finish_build(temporary, destination, result)
-        return result
+        with timed("box model"):
+            baked = stages.bake_textures(BakeInputs(
+                bake_graph=published.bake_graph, poses_path=store.artifact_path(scan_id, inputs["poses"]),
+                frame_paths={key: store.artifact_path(scan_id, value) for key, value in inputs["frames"].items()},
+                lidar_mesh_path=store.artifact_path(scan_id, inputs["lidar"]) if inputs["lidar"] else None,
+                out_dir=temporary,
+                materials_dir=room_materials_dir(store, scan_id),
+            ))
+        boxes = _checked_bake(baked, temporary)
+        (temporary / BOXES_RECORD).write_text(json.dumps({
+            "mask_names": boxes.mask_names, "coverage": boxes.coverage.model_dump(mode="json"),
+            "frames_used": boxes.frames_used,
+        }))
+        destination = build_dir(store, scan_id) / published.box_key
+        if destination.exists():
+            return _shared_boxes(store, scan_id, published.box_key) or boxes
+        temporary.rename(destination)
+        return boxes
     finally:
         if temporary.exists():
             shutil.rmtree(temporary)
 
 
-def _reused_boxes(database, store, scan_id, box_key: str, temporary: pathlib.Path) -> _Boxes | None:
-    """The boxes of an earlier finished build of the same photos and layout, copied in rather than baked again.
-
-    The boxes do not change when only the painter of the scan does, and baking
-    them is minutes of work per walk that came out byte for byte the same.
-    """
-    with database.connect() as connection:
-        rows = connection.execute(
-            "SELECT result_json FROM texture_builds WHERE scan_id=? AND result_json IS NOT NULL ORDER BY id DESC",
-            (str(scan_id),),
-        ).fetchall()
-    for row in rows:
-        earlier = TextureBuild.model_validate_json(row["result_json"])
-        source = build_dir(store, scan_id) / earlier.build_id
-        names = [url.rsplit("/", 1)[-1] for url in earlier.coverage_mask_urls]
-        if earlier.box_key != box_key or not all((source / name).is_file() for name in ["scene.glb", *names]):
-            continue
-        for name in ["scene.glb", *names]:
-            shutil.copyfile(source / name, temporary / name)
-        return _Boxes(names, earlier.coverage, earlier.frames_used, 0.0)
-    return None
-
-
-def _baked_boxes(store, stages, scan_id, graph: SceneGraph, inputs: dict, temporary: pathlib.Path) -> _Boxes:
-    baked = stages.bake_textures(BakeInputs(
-        bake_graph=graph, poses_path=store.artifact_path(scan_id, inputs["poses"]),
-        frame_paths={key: store.artifact_path(scan_id, value) for key, value in inputs["frames"].items()},
-        lidar_mesh_path=store.artifact_path(scan_id, inputs["lidar"]) if inputs["lidar"] else None,
-        out_dir=temporary,
-        materials_dir=room_materials_dir(store, scan_id),
-    ))
+def _checked_bake(baked, temporary: pathlib.Path) -> _Boxes:
     if not baked.glb_path.is_file() or baked.glb_path.name != "scene.glb" or baked.glb_path.parent != temporary:
         raise ValueError("baker did not produce scene.glb")
     for mask in baked.coverage_mask_paths:
         if mask.parent != temporary or not mask.is_file() or not ASSET_NAME.fullmatch(mask.name):
             raise ValueError("baker produced an invalid coverage mask")
     return _Boxes([mask.name for mask in baked.coverage_mask_paths], baked.coverage, baked.frames_used, baked.seconds)
+
+
+def _published(connection, scan_id, key: str) -> bool:
+    """Whether `key` names a published build, or the boxes a published build carries."""
+    row = connection.execute(
+        "SELECT 1 FROM texture_builds WHERE scan_id=? AND result_json IS NOT NULL AND (build_key=?"
+        " OR (json_extract(result_json, '$.box_key')=? AND json_extract(result_json, '$.glb_url') IS NOT NULL))"
+        " LIMIT 1",
+        (str(scan_id), key, key),
+    ).fetchone()
+    return row is not None
 
 
 def install_texture_routes(app: FastAPI, database, store, worker):
@@ -620,12 +676,8 @@ def install_texture_routes(app: FastAPI, database, store, worker):
         if not BUILD_KEY.fullmatch(build_key) or not ASSET_NAME.fullmatch(filename):
             raise ApiProblem(404, "no texture asset")
         with database.connect() as connection:
-            row = connection.execute(
-                "SELECT result_json FROM texture_builds WHERE scan_id=? AND build_key=?",
-                (str(scan_id), build_key),
-            ).fetchone()
-        if row is None or row["result_json"] is None:
-            raise ApiProblem(404, "textures are not ready")
+            if not _published(connection, scan_id, build_key):
+                raise ApiProblem(404, "textures are not ready")
         path = store.scan_dir(scan_id) / "textures" / build_key / filename
         if not path.is_file():
             raise ApiProblem(404, "no texture asset")

@@ -118,9 +118,9 @@ function MenuToggle({ on, onClick, children }: { on: boolean; onClick: () => voi
 /** The less-used looks, each offered only where this scan has one to show. */
 function extraModes(textures: Textures): { mode: MaterialMode; label: string }[] {
   const build = textures.status?.build;
-  const coverage = build ? `Where photos reached (${Math.round(build.coverage.textured_fraction * 100)}%)` : null;
+  const coverage = build?.coverage ? `Where photos reached (${Math.round(build.coverage.textured_fraction * 100)}%)` : null;
   const candidates: [MaterialMode, string | null][] = [
-    ["captured", build?.scan_glb_url ? "Photos on the boxes" : null],
+    ["captured", build?.glb_url ? "Photos on the boxes" : null],
     ["coverage", coverage],
     ["reconstructed", textures.reconstruction.count > 0 ? "Objects rebuilt from photos" : null],
     ["splat", textures.capturedSplats ? "The room rebuilt from photos" : null],

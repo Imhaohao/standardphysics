@@ -152,7 +152,7 @@ def oldest_queued_job_seconds(connection: sqlite3.Connection) -> float | None:
     return round((datetime.now(UTC) - datetime.fromisoformat(row["since"])).total_seconds(), 1)
 
 
-BLENDER_KINDS = ("texture", "display")
+BLENDER_KINDS = ("texture", "boxes", "display")
 """The kinds that run Blender, which share one lane so a 4 GB machine never holds two Blenders at once."""
 LANED_KINDS = (*BLENDER_KINDS, "rearrange", "furniture", "simulate")
 """Job kinds that run on a worker thread of their own, never the main one."""
@@ -216,7 +216,7 @@ def retry_failed_jobs(connection: sqlite3.Connection, scan_id: uuid.UUID) -> Non
         row["kind"]
         for row in connection.execute(
             "SELECT kind FROM jobs WHERE scan_id = ? AND state = 'failed'"
-            " AND kind NOT IN ('display', 'simulate', 'texture', 'rearrange')",
+            " AND kind NOT IN ('display', 'simulate', 'texture', 'boxes', 'rearrange')",
             (str(scan_id),),
         )
     }
@@ -227,7 +227,7 @@ def retry_failed_jobs(connection: sqlite3.Connection, scan_id: uuid.UUID) -> Non
     connection.execute(
         "UPDATE jobs SET state = 'queued', error = NULL, interruptions = 0, queued_at = ?"
         " WHERE scan_id = ? AND state = 'failed'"
-        " AND kind NOT IN ('display', 'simulate', 'texture', 'rearrange')",
+        " AND kind NOT IN ('display', 'simulate', 'texture', 'boxes', 'rearrange')",
         (repo.now(), str(scan_id)),
     )
 
@@ -251,7 +251,7 @@ def fail_interrupted_simulations(connection: sqlite3.Connection) -> None:
 
 MAX_INTERRUPTIONS = 3
 """How many runs of one job a restart may cut short before the job is failed rather than queued again."""
-DERIVED_KINDS = ("display", "simulate", "texture")
+DERIVED_KINDS = ("display", "simulate", "texture", "boxes")
 """Job kinds whose failure leaves the scan's own state alone. Each is asked for again on its own."""
 
 

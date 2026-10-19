@@ -388,29 +388,41 @@ def test_a_running_build_says_which_step_it_is_on_and_how_far_through(make_clien
         assert not list((client.app.state.store.scan_dir(scan) / 'textures').glob('*.progress.json'))
 
 
-def test_two_steps_running_side_by_side_can_both_report_progress(tmp_path, monkeypatch):
-    """The box model and the painted scan run at once and report through one progress file."""
-    import threading
-    import time as clock
 
-    from standardphysics_pipeline.textures.stages import StepProgress
-
+def test_the_painted_scan_is_published_before_the_boxes_are_baked(make_client, monkeypatch):
+    """The owner sees the painted scan, so it goes live first; the boxes follow in a job of their own."""
     from standardphysics_api import textures
-    monkeypatch.setattr(textures._ProgressFile, 'SECONDS_BETWEEN_COUNTS', 0.0)
-    reported = textures._ProgressFile(tmp_path / 'build.progress.json')
-    failures = []
 
-    def report(step):
-        try:
-            for done in range(300):
-                reported(StepProgress(step, done, 300, clock.time()))
-        except OSError as error:
-            failures.append(error)
+    monkeypatch.setattr(
+        textures, '_paint_the_scan',
+        lambda store, scan_id, graph, inputs, out_dir: bool(shutil.copyfile(FIXTURE_DATA / 'shop.glb', out_dir / 'scan.glb')),
+    )
+    seen_while_baking = []
 
-    threads = [threading.Thread(target=report, args=(step,)) for step in ('box model', 'painted scan')]
-    for thread in threads:
-        thread.start()
-    for thread in threads:
-        thread.join()
-    assert not failures
-    assert json.loads((tmp_path / 'build.progress.json').read_text())['step'] in {'box model', 'painted scan'}
+    def baking(inputs):
+        seen_while_baking.append(client.get(f'/api/scans/{scan_id}/textures').json())
+        return _bake(inputs)
+
+    with make_client(stages=no_blender_stages(bake_textures=baking)) as client:
+        scan_id, _ = _room(client)
+        lidar = json.dumps({'parts': [{
+            'id': '00000000-0000-0000-0000-000000000001',
+            'transform': Mat4.identity().m,
+            'vertices': [0, 0, 0, 1, 0, 0, 0, 1, 0],
+            'triangles': [0, 1, 2],
+        }]}).encode()
+        assert put_artifact(client, scan_id, 'lidar-mesh', lidar, 'lidar_mesh').status_code == 201
+        _photos(client, scan_id)
+        drain(client)
+
+        during = seen_while_baking[0]
+        assert during['state'] == 'complete'
+        assert client.get(during['build']['scan_glb_url']).status_code == 200
+        assert during['build']['glb_url'] is None and during['build']['coverage'] is None
+
+        after = client.get(f'/api/scans/{scan_id}/textures').json()['build']
+        assert after['scan_glb_url'] == during['build']['scan_glb_url']
+        assert client.get(after['glb_url']).status_code == 200
+        assert after['coverage']['textured_fraction'] == 0.5
+        with client.app.state.database.connect() as connection:
+            assert connection.execute("SELECT state FROM jobs WHERE kind='boxes'").fetchone()[0] == 'done'

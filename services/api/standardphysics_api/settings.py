@@ -300,6 +300,7 @@ class Settings:
             "display": self.display_timeout_seconds,
             "simulate": self.simulate_timeout_seconds,
             "texture": self.bake_timeout_seconds,
+            "boxes": self.bake_timeout_seconds,
             "rearrange": self.rearrange_timeout_seconds,
             "furniture": self.furniture_timeout_seconds,
         }

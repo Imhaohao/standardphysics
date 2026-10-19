@@ -136,9 +136,21 @@
         {
           "date": "2026-10-18",
           "note": "compute-box suite now runs with BLENDER on PATH; before this, Blender-gated tests were skipped there. Ran them separately on f318e51f: 85 + 45 passed."
+        },
+        {
+          "date": "2026-10-19",
+          "change": "painted scan published first by the texture job; photographed boxes baked by a new 'boxes' job into a directory keyed by box_key and shared across builds. A capture with no mesh still bakes boxes inside the texture job. TextureBuild.glb_url/coverage/frames_used/seconds optional until boxes land.",
+          "run": "warm detection cache",
+          "ready_s": 77.5,
+          "process_s": 26.2,
+          "texture_s": 50.6,
+          "boxes_s": 40.1,
+          "wall_with_boxes_s": 117.6,
+          "suites": "2661 + 797 passed; test_a_kill_reaches_what_the_child_started failed once under load, passed 3/3 alone",
+          "known_gap": "a boxes job that fails after the painted scan is up stays failed; the build reads complete without the box model and nothing retries it automatically"
         }
       ],
-      "next": "90.7 s. Texture is the critical path: painted scan and box model share 8 cores and slow each other ~50%. The owner view shows the painted scan first; letting it publish before the box model finishes is a contract change awaiting a decision."
+      "next": "77.5 s to painted scan. Exact cuts in progress: discovery spatial index + merge caches. Then measure a photo-count trade-off for the painted scan."
     },
     {
       "id": 3,

@@ -629,7 +629,7 @@ function WorkspaceBody({ scan, scene, exported, assessment, glbUrl, lidarUrl, te
           onClearSelection={actions.clear}
           materialMode={sourcePlan.materialMode}
           staleNodeIds={sourcePlan.staleNodeIds}
-          coverage={photoBuild?.coverage.nodes ?? []}
+          coverage={photoBuild?.coverage?.nodes ?? []}
           wheelchairMode={wheelchairMode}
           wheelchairProfile={profile}
           onWheelchairStateChange={setWheelchairState}

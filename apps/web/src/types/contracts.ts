@@ -1994,6 +1994,12 @@ export interface SpaceTypologyRequest {
   space_typology: SpaceTypology | null;
 }
 /**
+ * One build's photographed outputs.
+ *
+ * The painted scan is published first, because it is what the owner sees. The
+ * photographed boxes follow in a step of their own, and until they land every
+ * box field below is empty.
+ *
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema
  * via the `definition` "TextureBuild".
  */
@@ -2001,12 +2007,12 @@ export interface TextureBuild {
   bake_graph: SceneGraph;
   box_key: string | null;
   build_id: string;
-  coverage: TextureCoverage;
+  coverage: TextureCoverage | null;
   coverage_mask_urls: string[];
-  frames_used: number;
-  glb_url: string;
+  frames_used: number | null;
+  glb_url: string | null;
   scan_glb_url: string | null;
-  seconds: number;
+  seconds: number | null;
 }
 /**
  * This interface was referenced by `StandardPhysicsContracts`'s JSON-Schema

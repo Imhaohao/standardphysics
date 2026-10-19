@@ -21,11 +21,11 @@ from standardphysics_api.furniture import FURNITURE
 from standardphysics_api.rearrangement import REARRANGE
 from standardphysics_api.settings import Settings
 from standardphysics_api.simulations import SIMULATE
-from standardphysics_api.textures import TEXTURE
+from standardphysics_api.textures import BOXES, TEXTURE
 from standardphysics_api.worker_child import ChildFailed, in_own_process
 from standardphysics_api.worker_handlers import ASSESS, DISPLAY, PROCESS
 
-EVERY_JOB_KIND = (PROCESS, ASSESS, DISPLAY, SIMULATE, TEXTURE, REARRANGE, FURNITURE)
+EVERY_JOB_KIND = (PROCESS, ASSESS, DISPLAY, SIMULATE, TEXTURE, BOXES, REARRANGE, FURNITURE)
 
 
 def _seeded_shop(client) -> str:
