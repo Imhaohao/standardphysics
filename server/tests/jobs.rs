@@ -146,6 +146,37 @@ async fn job_past_its_deadline_is_failed_and_retried() {
 }
 
 #[tokio::test]
+async fn timed_out_handler_is_stopped_not_left_running() {
+    let app = TestApp::start().await;
+    let finished = Arc::new(AtomicUsize::new(0));
+    let mut handlers = Handlers::default();
+    let counter = finished.clone();
+    handlers.register("overrun", move |_, _| {
+        let counter = counter.clone();
+        Box::pin(async move {
+            tokio::time::sleep(Duration::from_millis(1500)).await;
+            counter.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        })
+    });
+    let options = EnqueueOptions {
+        max_attempts: 1,
+        deadline_secs: 1,
+        ..EnqueueOptions::default()
+    };
+    enqueue(&app.db, "overrun", &json!({}), options)
+        .await
+        .unwrap();
+    assert!(worker(&app, handlers).run_once().await.unwrap());
+    tokio::time::sleep(Duration::from_millis(1000)).await;
+    assert_eq!(
+        finished.load(Ordering::SeqCst),
+        0,
+        "handler kept running after its deadline"
+    );
+}
+
+#[tokio::test]
 async fn crashed_worker_lease_expires_and_another_worker_recovers_the_job() {
     let app = TestApp::start().await;
     let id = enqueue(

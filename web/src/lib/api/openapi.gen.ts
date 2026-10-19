@@ -397,7 +397,7 @@ export interface components {
             room_id?: string | null;
             rule_id: string;
             section: string;
-            severity: string;
+            severity: components["schemas"]["Severity"];
             status: components["schemas"]["FindingStatus"];
             subject_id: string;
             title: string;
@@ -536,6 +536,13 @@ export interface components {
             /** @enum {string} */
             type: "pong";
         };
+        /**
+         * @description Every value `Finding.severity` can take. `violation` and `advisory` come from the rulepack
+         *     (`advisory` also replaces `violation` when a level floor is only assumed); `info` is used
+         *     by server-generated findings such as unresolved labels.
+         * @enum {string}
+         */
+        Severity: "violation" | "advisory" | "info";
         StageTimings: {
             /** Format: int64 */
             evaluation_ms: number;

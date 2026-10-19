@@ -54,10 +54,18 @@ pub async fn finish_upload_with_artifact(
     sha256: &str,
 ) -> ApiResult<Artifact> {
     let mut tx = db.begin().await?;
-    sqlx::query("UPDATE uploads SET state = 'complete', finished_at = now() WHERE id = $1")
-        .bind(upload.id)
-        .execute(&mut *tx)
-        .await?;
+    let claimed = sqlx::query(
+        "UPDATE uploads SET state = 'complete', finished_at = now() WHERE id = $1 AND state = 'open'",
+    )
+    .bind(upload.id)
+    .execute(&mut *tx)
+    .await?;
+    if claimed.rows_affected() == 0 {
+        tx.rollback().await?;
+        return artifact_for_upload(db, upload.id)
+            .await?
+            .ok_or_else(|| ApiError::Conflict("upload is no longer open".into()));
+    }
     let artifact = sqlx::query_as(
         "INSERT INTO artifacts (id, scan_id, upload_id, kind, filename, content_type, s3_key,
                                 size_bytes, sha256)

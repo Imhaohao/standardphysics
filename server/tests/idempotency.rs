@@ -128,3 +128,29 @@ async fn upload_create_is_idempotent_and_makes_one_multipart_upload() {
     );
     assert!(!replayed);
 }
+
+#[tokio::test]
+async fn a_key_left_in_progress_by_a_dead_request_is_taken_over() {
+    let app = TestApp::start().await;
+    let token = app.register("i9@example.com").await;
+    let body = json!({"name": "Shop"});
+    post_with_key(&app, &token, "/v1/scans", "crash", body.clone()).await;
+    // The process died after claiming the key and before recording the response.
+    sqlx::query("UPDATE idempotency_keys SET status = NULL, response = NULL")
+        .execute(&app.db)
+        .await
+        .unwrap();
+    let (status, _, _) = post_with_key(&app, &token, "/v1/scans", "crash", body.clone()).await;
+    assert_eq!(
+        status,
+        StatusCode::CONFLICT,
+        "a fresh in-progress key still blocks a duplicate"
+    );
+    sqlx::query("UPDATE idempotency_keys SET created_at = now() - interval '10 minutes'")
+        .execute(&app.db)
+        .await
+        .unwrap();
+    let (status, _, replayed) = post_with_key(&app, &token, "/v1/scans", "crash", body).await;
+    assert_eq!(status, StatusCode::CREATED);
+    assert!(!replayed);
+}

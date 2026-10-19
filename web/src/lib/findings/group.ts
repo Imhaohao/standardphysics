@@ -44,17 +44,25 @@ function pairKey(finding: Finding) {
   return sectionKey(finding.section) || ruleId;
 }
 
+/**
+ * A group can hold several findings with the same pair key (a floor and the route through the same room, or
+ * several California rules under one section with no ADA twin). Each finding gets its own slot so none is
+ * overwritten: a later pass must never hide an earlier failure.
+ */
 function pairFindings(findings: readonly Finding[]): FindingPair[] {
-  const byKey = new Map<string, { ada: Finding | null; cbc: Finding | null }>();
+  const byKey = new Map<string, { ada: Finding | null; cbc: Finding | null }[]>();
   for (const finding of findings) {
     const key = pairKey(finding);
-    const slot = byKey.get(key) ?? { ada: null, cbc: null };
-    if (finding.jurisdiction === "CBC11B") slot.cbc = finding;
-    else slot.ada = finding;
-    byKey.set(key, slot);
+    const side = finding.jurisdiction === "CBC11B" ? "cbc" : "ada";
+    const slots = byKey.get(key) ?? [];
+    const slot = slots.find((candidate) => candidate[side] === null) ?? { ada: null, cbc: null };
+    if (!slots.includes(slot)) slots.push(slot);
+    slot[side] = finding;
+    byKey.set(key, slots);
   }
   return [...byKey.entries()]
-    .map(([key, { ada, cbc }]) => ({ key, ada, cbc, governing: governingFinding(ada, cbc) }))
+    .flatMap(([key, slots]) => slots.map((slot, index) => ({ key: index === 0 ? key : `${key}#${index + 1}`, ...slot })))
+    .map(({ key, ada, cbc }) => ({ key, ada, cbc, governing: governingFinding(ada, cbc) }))
     .sort((a, b) => STATUS_RANK[a.governing.status] - STATUS_RANK[b.governing.status] || a.key.localeCompare(b.key, undefined, { numeric: true }));
 }
 

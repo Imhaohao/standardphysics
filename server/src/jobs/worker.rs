@@ -108,9 +108,13 @@ impl JobWorker {
             .get(&job.kind)
             .ok_or_else(|| anyhow!("no handler for job kind {}", job.kind))?;
         let deadline = Duration::from_secs(job.deadline_secs.max(1) as u64);
-        let task = tokio::spawn(handler(self.ctx.clone(), job.clone()));
-        match tokio::time::timeout(deadline, task).await {
-            Err(_) => Err(anyhow!("job exceeded its {}s deadline", job.deadline_secs)),
+        let mut task = tokio::spawn(handler(self.ctx.clone(), job.clone()));
+        match tokio::time::timeout(deadline, &mut task).await {
+            Err(_) => {
+                // Dropping a JoinHandle detaches the task; abort it so a retry never runs alongside it.
+                task.abort();
+                Err(anyhow!("job exceeded its {}s deadline", job.deadline_secs))
+            }
             Ok(Err(join_error)) => Err(anyhow!("job handler crashed: {join_error}")),
             Ok(Ok(result)) => result,
         }

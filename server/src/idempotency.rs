@@ -14,6 +14,9 @@ use crate::error::{ApiError, ApiResult};
 pub const KEY_HEADER: &str = "idempotency-key";
 pub const REPLAYED_HEADER: &str = "idempotent-replayed";
 pub const RETENTION_HOURS: i32 = 24;
+/// A key still marked in progress after this long belongs to a request that died before it could
+/// record or release it (a crash or a dropped connection); a retry takes it over.
+pub const STALE_IN_PROGRESS_SECS: i32 = 120;
 const MAX_KEY_LEN: usize = 255;
 
 enum Begin {
@@ -46,12 +49,14 @@ async fn begin(db: &PgPool, user_id: Uuid, scope: &str, key: &str, hash: &str) -
     sqlx::query(
         "DELETE FROM idempotency_keys
          WHERE user_id = $1 AND scope = $2 AND key = $3
-           AND created_at < now() - make_interval(hours => $4)",
+           AND (created_at < now() - make_interval(hours => $4)
+                OR (status IS NULL AND created_at < now() - make_interval(secs => $5)))",
     )
     .bind(user_id)
     .bind(scope)
     .bind(key)
     .bind(RETENTION_HOURS)
+    .bind(f64::from(STALE_IN_PROGRESS_SECS))
     .execute(db)
     .await?;
     let inserted = sqlx::query(

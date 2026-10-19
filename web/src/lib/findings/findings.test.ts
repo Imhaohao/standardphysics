@@ -7,7 +7,7 @@ import { findingPins } from "./pins";
 import type { Finding } from "./types";
 
 function finding(overrides: Partial<Finding>): Finding {
-  return { rule_id: "r", jurisdiction: "ADA2010", section: "404.2.3", title: "", subject_id: "door", status: "pass", measured: null, required: "", message: "", evidence: "", severity: "major", ...overrides };
+  return { rule_id: "r", jurisdiction: "ADA2010", section: "404.2.3", title: "", subject_id: "door", status: "pass", measured: null, required: "", message: "", evidence: "", severity: "violation", ...overrides };
 }
 
 describe("formatting", () => {
@@ -65,6 +65,25 @@ describe("grouping", () => {
     expect(door.pairs.map((pair) => pair.key)).toEqual(["ada.door.width", "404.2.4"]);
     expect(door.pairs[0]!.ada?.status).toBe("pass");
     expect(door.pairs[0]!.governing.jurisdiction).toBe("CBC11B");
+  });
+
+  it("never lets a second finding for the same requirement overwrite the first", () => {
+    const shared = [
+      finding({ subject_id: "floor:room", rule_id: "ADA-303.2", counterpart: "CBC-303.2", status: "fail" }),
+      finding({ subject_id: "route:room", rule_id: "ADA-303.2", counterpart: "CBC-303.2", status: "pass" }),
+      finding({ subject_id: "room", jurisdiction: "CBC11B", rule_id: "CBC-403.5.1-a", section: "11B-403.5.1", status: "fail" }),
+      finding({ subject_id: "room", jurisdiction: "CBC11B", rule_id: "CBC-403.5.1-b", section: "11B-403.5.1", status: "pass" }),
+    ];
+    const subjects = new Map([
+      ["floor:room", { groupId: "room" }],
+      ["route:room", { groupId: "room" }],
+      ["room", { groupId: "room" }],
+    ]) as unknown as Parameters<typeof groupByElement>[1];
+    const [group] = groupByElement(shared, subjects);
+    expect(group!.status).toBe("fail");
+    expect(group!.pairs).toHaveLength(4);
+    expect(group!.pairs.filter((pair) => pair.governing.status === "fail")).toHaveLength(2);
+    expect(new Set(group!.pairs.map((pair) => pair.key)).size).toBe(4);
   });
 
   it("drops not-applicable findings and orders worst first", () => {

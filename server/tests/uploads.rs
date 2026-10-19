@@ -275,3 +275,32 @@ async fn aborting_an_in_progress_mesh_upload_releases_it() {
         .await;
     assert_eq!(status, StatusCode::CONFLICT);
 }
+
+#[tokio::test]
+async fn a_losing_concurrent_complete_never_records_a_second_artifact() {
+    let app = TestApp::start().await;
+    let token = app.register("race@example.com").await;
+    let scan_id = app.create_scan(&token).await;
+    let data = payload(1000);
+    let artifact_id = common::upload_artifact(&app, &token, &scan_id, "photo", &data).await;
+    let scan = uuid::Uuid::parse_str(&scan_id).unwrap();
+    let (upload_id,): (uuid::Uuid,) = sqlx::query_as("SELECT id FROM uploads WHERE scan_id = $1")
+        .bind(scan)
+        .fetch_one(&app.db)
+        .await
+        .unwrap();
+    // A second request that read the upload as `open` before the first one finished.
+    let mut stale = sp_server::uploads::repo::get_upload(&app.db, scan, upload_id)
+        .await
+        .unwrap();
+    stale.state = "open".into();
+    let again =
+        sp_server::uploads::repo::finish_upload_with_artifact(&app.db, &stale, &sha256_hex(&data))
+            .await
+            .unwrap();
+    assert_eq!(again.id.to_string(), artifact_id);
+    let (_, artifacts) = app
+        .get(&token, &format!("/v1/scans/{scan_id}/artifacts"))
+        .await;
+    assert_eq!(artifacts.as_array().unwrap().len(), 1);
+}
