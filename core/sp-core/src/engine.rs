@@ -9,6 +9,7 @@ use crate::metrics::{Catalog, EvalContext, SubjectOutcome};
 use crate::roomplan::detect_connections;
 use crate::rules::{Evaluator, Finding, Report, Rule, RuleLoadError, RulePack, Status};
 use crate::scene::{Room, Scene};
+use crate::split_rooms::drop_split_room_duplicates;
 use std::collections::{BTreeMap, HashMap};
 
 #[derive(Debug, thiserror::Error)]
@@ -179,11 +180,11 @@ impl Engine {
     pub fn report(&self) -> Report {
         let rules: HashMap<String, &Rule> =
             self.packs.iter().flat_map(|p| &p.rules).map(|r| (r.id.clone(), r)).collect();
-        Report::build(self.findings.values().flatten().cloned().collect(), &rules)
+        Report::build(self.findings(), &rules)
     }
 
     pub fn findings(&self) -> Vec<Finding> {
-        self.findings.values().flatten().cloned().collect()
+        drop_split_room_duplicates(self.findings.values().flatten().cloned().collect(), &self.scene)
     }
 }
 

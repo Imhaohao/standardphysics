@@ -10,6 +10,7 @@ pub mod roomplan;
 pub mod routes;
 pub mod rules;
 pub mod scene;
+pub mod split_rooms;
 pub mod units;
 
 pub use engine::{Engine, EngineError};

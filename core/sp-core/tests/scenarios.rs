@@ -346,3 +346,32 @@ fn microwave_gets_reach_range_checks() {
     let reach = findings.iter().filter(|f| f.subject_id == "microwave" && f.rule_id.starts_with("ADA-308")).count();
     assert!(reach > 0, "no reach-range findings for the microwave");
 }
+
+#[test]
+fn a_room_split_in_two_reports_each_element_once() {
+    let first = shop_with_door(inches(30.0));
+    let mut second = shop_with_door(inches(30.0));
+    second.id = "shop-2".into();
+    second.walls.iter_mut().for_each(|w| w.id = w.id.replace("shop", "shop-2"));
+    second.openings[0].id = "entry-2".into();
+    second.openings[0].wall_id = "shop-2-w0".into();
+    second.openings[0].center.x += 0.1;
+    let Some((_, findings)) = evaluate(vec![first, second]) else { return };
+    let widths = findings.iter().filter(|f| f.rule_id == "ADA-404.2.3-clear-width").count();
+    assert_eq!(widths, 1);
+}
+
+#[test]
+fn separate_rooms_keep_their_own_findings() {
+    let first = shop_with_door(inches(30.0));
+    let mut second = rect_room("office", RoomKind::Office, 6.0, 5.0);
+    second.floor = Polygon2::new(second.floor.points.iter().map(|p| Vec2::new(p.x + 7.0, p.y)).collect());
+    for wall in &mut second.walls {
+        wall.start.x += 7.0;
+        wall.end.x += 7.0;
+    }
+    second.openings.push(south_door(&second, "office-door", 10.0, inches(30.0)));
+    let Some((_, findings)) = evaluate(vec![first, second]) else { return };
+    let widths = findings.iter().filter(|f| f.rule_id == "ADA-404.2.3-clear-width").count();
+    assert_eq!(widths, 2);
+}
