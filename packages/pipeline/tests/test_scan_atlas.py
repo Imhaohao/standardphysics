@@ -213,3 +213,25 @@ def test_padding_only_the_frontier_matches_padding_the_whole_image(tmp_path):
     filled[texels.rows, texels.columns] = True
 
     assert np.array_equal(pad_gutters(image, filled), _padded_whole_image(image, filled, GUTTER_PASSES))
+
+
+@pytest.mark.skipif(_blender_missing(), reason="Blender not installed")
+def test_a_scan_unwrapped_in_cells_meets_itself_at_every_cut(tmp_path, monkeypatch):
+    """Cells are thinned by separate Blenders, so the vertices on each cut must come back exactly where they were."""
+    from scipy.spatial import cKDTree
+    from standardphysics_pipeline.textures import scan_atlas
+
+    monkeypatch.setattr(scan_atlas, "UNWRAP_CELLS", 4)
+    vertices, triangles = scan_geometry(REPO / "datasets/phone/test1/lidar-mesh.json", capture_to_room(0.0))
+    scan = ColouredScan(vertices, triangles, np.zeros((len(vertices), 3)), np.zeros(len(vertices), bool))
+    budget = len(triangles) // 4
+    handed, faces = scan_atlas.thinned_for_blender(vertices, triangles, scan_atlas.BLENDER_FACE_FACTOR * budget)
+    cell_of = scan_atlas._cells(handed[faces].mean(axis=1)[:, :2], 1, 4)
+    cut = handed[scan_atlas._on_a_cut(faces, cell_of, len(handed), 4)]
+
+    mesh = unwrapped(scan, tmp_path, max_triangles=budget)
+
+    assert len(cut) > 100
+    assert np.all(cKDTree(mesh.vertices).query(cut)[0] < 1e-5)
+    assert set(np.unique(mesh.atlases).tolist()) == {0}
+    assert mesh.uv.min() >= 0.0 and mesh.uv.max() <= 1.0

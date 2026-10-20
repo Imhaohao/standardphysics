@@ -28,6 +28,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--out", required=True)
     parser.add_argument("--max-triangles", type=int, default=MAX_TRIANGLES)
     parser.add_argument("--atlases", type=int, default=1)
+    parser.add_argument("--margin-scale", type=float, default=1.0)
     return parser.parse_args(argv)
 
 
@@ -62,12 +63,26 @@ def welded(obj) -> None:
     mesh.free()
 
 
+HELD = "held"
+"""The vertices on a cut between pieces of one scan thinned side by side, which thinning must leave in place."""
+
+
+def held(obj, mask: np.ndarray) -> None:
+    group = obj.vertex_groups.new(name=HELD)
+    group.add([int(index) for index in np.flatnonzero(mask)], 1.0, "REPLACE")
+
+
 def thin(obj, max_triangles: int) -> None:
     count = len(obj.data.polygons)
     if count <= max_triangles:
         return
     modifier = obj.modifiers.new("thin", "DECIMATE")
     modifier.ratio = max_triangles / count
+    if obj.vertex_groups.get(HELD) is not None:
+        # Inverted, a full weight is no thinning at all: on Share Tea every held vertex stayed exactly where it was.
+        modifier.vertex_group = HELD
+        modifier.invert_vertex_group = True
+        modifier.vertex_group_factor = 1000.0
     bpy.ops.object.modifier_apply(modifier="thin")
 
 
@@ -116,7 +131,7 @@ def _split(centres: np.ndarray, faces: np.ndarray, first: int, count: int, label
     _split(centres, ordered[cut:], first + lower, count - lower, labels)
 
 
-def unwrap(obj, labels: np.ndarray) -> None:
+def unwrap(obj, labels: np.ndarray, margin_scale: float = 1.0) -> None:
     """Each atlas's faces packed on their own, at a size in proportion to their area.
 
     Charts that follow the surface are the usual choice, but a thinned LiDAR mesh
@@ -133,7 +148,7 @@ def unwrap(obj, labels: np.ndarray) -> None:
         for index in np.flatnonzero(labels == atlas):
             mesh.faces[index].select_set(True)
         bmesh.update_edit_mesh(obj.data)
-        bpy.ops.uv.lightmap_pack(PREF_CONTEXT="SEL_FACES", PREF_PACK_IN_ONE=True, PREF_MARGIN_DIV=MARGIN_DIVISOR)
+        bpy.ops.uv.lightmap_pack(PREF_CONTEXT="SEL_FACES", PREF_PACK_IN_ONE=True, PREF_MARGIN_DIV=MARGIN_DIVISOR * margin_scale)
     bpy.ops.object.mode_set(mode="OBJECT")
 
 
@@ -153,11 +168,14 @@ def main() -> None:
     bpy.ops.wm.read_factory_settings(use_empty=True)
     archive = np.load(args.scan)
     obj = build(archive["vertices"], archive["triangles"])
-    welded(obj)
+    if "held" in archive.files:
+        held(obj, archive["held"])
+    else:
+        welded(obj)
     thin(obj, args.max_triangles)
     triangulated(obj)
     atlases = regions(obj, args.atlases)
-    unwrap(obj, atlases)
+    unwrap(obj, atlases, args.margin_scale)
     vertices, triangles, uv = corner_arrays(obj)
     np.savez(args.out, vertices=vertices, triangles=triangles, uv=uv, atlases=atlases)
     print(f"SCAN_UNWRAPPED {len(triangles)}")

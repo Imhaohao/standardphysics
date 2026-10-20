@@ -21,9 +21,11 @@ of surface, which is itself a photograph or the room's generated material.
 from __future__ import annotations
 
 import ctypes
+import os
 import pathlib
 import tempfile
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 import fast_simplification
@@ -167,14 +169,103 @@ def unwrapped(scan: ColouredScan, work: pathlib.Path, max_triangles: int, atlase
     painted scan was lost. It now receives a mesh already thinned to a few times
     the viewer's size, so what it holds is bounded however large the capture.
     """
-    from ..blender import _run
-
     handed = min(BLENDER_FACE_FACTOR * max_triangles, MAX_BLENDER_FACES)
     vertices, triangles = thinned_for_blender(scan.vertices, scan.triangles, handed)
-    source, result = work / "scan.npz", work / "unwrapped.npz"
-    np.savez(source, vertices=vertices.astype(np.float32), triangles=triangles.astype(np.int32))
+    if UNWRAP_CELLS == 1:
+        return _blender_unwrap(vertices, triangles, None, work / "scan", max_triangles, atlases)
+    return _unwrapped_in_cells(vertices, triangles, work, max_triangles, atlases)
+
+
+UNWRAP_CELLS = 4 if (os.cpu_count() or 1) >= 4 else 1
+"""Pieces each atlas is cut into, thinned and packed by Blenders running side by side.
+
+Blender thins and packs on one core, and on Share Tea that was 13 of the painted
+scan's 50 seconds while the other cores waited. Each piece is thinned with its
+cut held exactly in place, so the pieces meet without a crack, and packed into
+one quarter of its atlas, so the atlas holds as many texels as before. A Blender
+holds about a gigabyte, so a machine with fewer than four cores, such as a
+two-core server with four gigabytes, keeps thinning the scan as one piece."""
+CELL_GRID = 2
+"""Cells per side of an atlas: UNWRAP_CELLS is this squared."""
+
+
+def _unwrapped_in_cells(
+    vertices: np.ndarray, triangles: np.ndarray, work: pathlib.Path, max_triangles: int, atlases: int
+) -> UnwrappedScan:
+    cell_of = _cells(vertices[triangles].mean(axis=1)[:, :2], atlases, UNWRAP_CELLS)
+    cells = atlases * UNWRAP_CELLS
+    on_a_cut = _on_a_cut(triangles, cell_of, len(vertices), cells)
+    jobs = [_cell_job(vertices, triangles, cell_of == cell, on_a_cut, max_triangles, work / f"cell-{cell}") for cell in range(cells)]
+    pieces = in_parallel(lambda job: _blender_unwrap(*job, 1, margin_scale=CELL_GRID), jobs, counted=False)
+    return _joined(list(pieces))
+
+
+def _cells(centres: np.ndarray, atlases: int, per_atlas: int) -> np.ndarray:
+    """Which cell each face falls in: the floor cut across its longer side into atlases, and each atlas into cells."""
+    atlas_of = np.zeros(len(centres), dtype=np.int64)
+    _halve(centres, np.arange(len(centres)), 0, atlases, atlas_of)
+    cell_of = np.zeros(len(centres), dtype=np.int64)
+    for atlas in range(atlases):
+        _halve(centres, np.flatnonzero(atlas_of == atlas), atlas * per_atlas, per_atlas, cell_of)
+    return cell_of
+
+
+def _halve(centres: np.ndarray, faces: np.ndarray, first: int, count: int, labels: np.ndarray) -> None:
+    if count == 1 or not len(faces):
+        labels[faces] = first
+        return
+    lower = count // 2
+    axis = int(np.argmax(np.ptp(centres[faces], axis=0)))
+    ordered = faces[np.argsort(centres[faces, axis], kind="stable")]
+    cut = len(ordered) * lower // count
+    _halve(centres, ordered[:cut], first, lower, labels)
+    _halve(centres, ordered[cut:], first + lower, count - lower, labels)
+
+
+def _on_a_cut(triangles: np.ndarray, cell_of: np.ndarray, vertex_count: int, cells: int) -> np.ndarray:
+    """Vertices used by faces in more than one cell."""
+    seen = np.zeros((vertex_count, cells), dtype=bool)
+    seen[triangles.reshape(-1), np.repeat(cell_of, 3)] = True
+    return seen.sum(axis=1) > 1
+
+
+def _cell_job(vertices, triangles, chosen, on_a_cut, max_triangles: int, stem: pathlib.Path):
+    faces = triangles[chosen]
+    used = np.unique(faces)
+    remap = np.full(len(vertices), -1, dtype=np.int64)
+    remap[used] = np.arange(len(used))
+    held = on_a_cut[used]
+    share = max(1, round(max_triangles * len(faces) / len(triangles))) + int(held.sum())
+    return vertices[used], remap[faces], held, stem, share
+
+
+def _joined(pieces: list[UnwrappedScan]) -> UnwrappedScan:
+    """The cells as one scan, each cell's UVs moved into its quarter of its atlas."""
+    vertices, triangles, uvs, atlases, offset = [], [], [], [], 0
+    for cell, piece in enumerate(pieces):
+        column, row = cell % UNWRAP_CELLS % CELL_GRID, cell % UNWRAP_CELLS // CELL_GRID
+        vertices.append(piece.vertices)
+        triangles.append(piece.triangles + offset)
+        uvs.append((piece.uv + np.array([column, row])) / CELL_GRID)
+        atlases.append(np.full(len(piece.triangles), cell // UNWRAP_CELLS, dtype=np.int64))
+        offset += len(piece.vertices)
+    return UnwrappedScan(np.concatenate(vertices), np.concatenate(triangles), np.concatenate(uvs), np.concatenate(atlases))
+
+
+def _blender_unwrap(
+    vertices: np.ndarray, triangles: np.ndarray, held: np.ndarray | None, stem: pathlib.Path,
+    max_triangles: int, atlases: int, margin_scale: float = 1.0,
+) -> UnwrappedScan:
+    from ..blender import _run
+
+    source, result = stem.with_suffix(".npz"), stem.with_name(stem.name + "-unwrapped.npz")
+    arrays = {"vertices": vertices.astype(np.float32), "triangles": triangles.astype(np.int32)}
+    if held is not None:
+        arrays["held"] = held
+    np.savez(source, **arrays)
     output = _run("unwrap_scan.py", [
-        "--scan", str(source), "--out", str(result), "--max-triangles", str(max_triangles), "--atlases", str(atlases),
+        "--scan", str(source), "--out", str(result), "--max-triangles", str(max_triangles),
+        "--atlases", str(atlases), "--margin-scale", str(margin_scale),
     ])
     if "SCAN_UNWRAPPED" not in output:
         raise RuntimeError(f"Blender did not unwrap the scan:\n{output[-1500:]}")
@@ -233,11 +324,15 @@ def atlas_size(mesh: UnwrappedScan) -> int:
 
 def _read(path: pathlib.Path, edge: int) -> np.ndarray:
     """The photo as linear-ready floats, no larger than `edge`; a JPEG is decoded straight at the nearest smaller scale."""
+    return _read_bytes(path, edge).astype(np.float32) / 255.0
+
+
+def _read_bytes(path: pathlib.Path, edge: int) -> np.ndarray:
     with Image.open(path) as opened:
         opened.draft("RGB", (edge, edge))
         image = opened.convert("RGB")
         image.thumbnail((edge, edge), Image.Resampling.LANCZOS)
-        return np.asarray(image, dtype=np.float32) / 255.0
+        return np.asarray(image, dtype=np.uint8)
 
 
 def _pixel_of(uv: np.ndarray, size: int) -> tuple[np.ndarray, np.ndarray]:
@@ -405,7 +500,26 @@ class _Occluders:
         return self.buffers[camera.frame_id]
 
 
-def _exposure(surface: _Surface, cameras, frame_paths, detections, occluders: _Occluders) -> tuple[np.ndarray, list]:
+@dataclass(frozen=True)
+class _Thumbnails:
+    """Every photo at exposure size, read while Blender unwraps the scan rather than after it.
+
+    Kept as bytes, about 160 MB for a 439-photo walk, and turned into floats the
+    way `_read` does when a photo is asked for, so every gain is unchanged.
+    """
+
+    by_frame: dict[str, np.ndarray]
+
+    @classmethod
+    def of(cls, cameras, frame_paths) -> _Thumbnails:
+        read = in_parallel(lambda camera: _read_bytes(frame_paths[camera.frame_id], EXPOSURE_PHOTO_EDGE), cameras, counted=False)
+        return cls({camera.frame_id: photo for camera, photo in zip(cameras, read, strict=True)})
+
+    def photo(self, camera) -> np.ndarray:
+        return self.by_frame[camera.frame_id].astype(np.float32) / 255.0
+
+
+def _exposure(surface: _Surface, cameras, thumbnails: _Thumbnails, detections, occluders: _Occluders) -> tuple[np.ndarray, list]:
     """Per-photo gains from an even sample of texels, and each photo's depth buffer for the bake."""
     sample = np.unique(np.linspace(0, len(surface.positions) - 1, MAX_EXPOSURE_POINTS).astype(np.int64))
     in_sample = np.full(len(surface.positions), -1, dtype=np.int64)
@@ -421,7 +535,7 @@ def _exposure(surface: _Surface, cameras, frame_paths, detections, occluders: _O
         sampled = visible[in_sample[visible] >= 0]
         if not len(sampled):
             return True, nothing
-        photo = _read(frame_paths[camera.frame_id], EXPOSURE_PHOTO_EDGE)
+        photo = thumbnails.photo(camera)
         weight, columns, rows = surface.weights(camera, photo, detections, sampled, buffer)
         seen = np.flatnonzero(weight > 0)
         return True, (in_sample[sampled[seen]], to_linear(bilinear(photo, columns[seen], rows[seen])))
@@ -604,13 +718,16 @@ def _return_freed_memory() -> None:
         pass
 
 
-def _baked_atlas(mesh: UnwrappedScan, painted: ColouredScan, graph: SceneGraph, cameras, frame_paths, detections, path, occluders) -> _Atlas:
+def _baked_atlas(
+    mesh: UnwrappedScan, painted: ColouredScan, graph: SceneGraph, cameras, frame_paths, detections, path, occluders,
+    thumbnails: _Thumbnails,
+) -> _Atlas:
     """One atlas's faces baked from the photos into an image at `path`."""
     size = atlas_size(mesh)
     with timed("texels"):
         surface = _Surface(mesh, size, painted, graph)
     with timed("exposure"):
-        gains, framed = _exposure(surface, cameras, frame_paths, detections, occluders)
+        gains, framed = _exposure(surface, cameras, thumbnails, detections, occluders)
     with timed("photo bake"):
         colours, reached = _bake(surface, cameras, frame_paths, detections, gains, framed, occluders)
     with timed("atlas image"):
@@ -639,14 +756,18 @@ def bake_scan_atlas(
     budget = max_triangles or viewer_faces(painted)
     with tempfile.TemporaryDirectory(prefix="standardphysics-atlas-") as temporary:
         work = pathlib.Path(temporary)
-        with timed("unwrap"):
-            mesh = unwrapped(painted, work, budget, atlas_count(budget))
+        with ThreadPoolExecutor(max_workers=1) as beside:
+            thumbnails_later = beside.submit(_Thumbnails.of, chosen, frame_paths)
+            with timed("unwrap"):
+                mesh = unwrapped(painted, work, budget, atlas_count(budget))
+            thumbnails = thumbnails_later.result()
         with timed("occlusion"):
             occluders = _Occluders(mesh, chosen)
         atlases = []
         for index in range(mesh.atlas_count):
             atlases.append(_baked_atlas(
                 mesh.atlas(index), painted, graph, chosen, frame_paths, detections, work / f"atlas-{index}.jpg", occluders,
+                thumbnails,
             ))
             _return_freed_memory()
         mesh_path = work / "mesh.npz"
