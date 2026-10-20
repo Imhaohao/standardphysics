@@ -243,7 +243,21 @@
         "relations": "interpretation/relations.py: Relation(name, source, target, because); kept() keeps only relations whose predicate holds; neighbours() offers things within 5 cm; facts() is what a model sees",
         "coiner": "agents/interpret/relations.py: OpenRouter frontier model names relations per touching pair and writes predicates as JSON strings; engine drops any that fail",
         "test1": "26 entities, 42 touching pairs; a rests-on predicate holds for every solid thing on the lowest thing and never the reverse; scrambled names judge identically",
-        "next": "run coin_relations on test1 and Share Tea with a real frontier model (needs OpenRouter spend approval), store relations on the scene graph, then group unowned pieces"
+        "next": "run coin_relations on test1 and Share Tea with a real frontier model (needs OpenRouter spend approval), store relations on the scene graph, then group unowned pieces",
+        "first_real_coining_2026_10_20": {
+          "model": "anthropic/claude-opus-5.5 via OpenRouter",
+          "spent_dollars": {
+            "test1": 0.2124,
+            "sharetea": 0.5559,
+            "total": 0.7683,
+            "approved": 1.0
+          },
+          "test1": "26 things, 43 touching pairs, all sent; 43 relations proposed, 43 kept, 0 dropped (none malformed, none false on its own pair)",
+          "sharetea": "185 things, 917 touching pairs, 160 sent before the cap (mostly wall pairs, by pair order); 148 proposed, 148 kept, 0 dropped",
+          "specificity": "each predicate re-run on every ordered touching pair in its room. test1: 'supports' holds only floor->furniture (16/86), 'rises from the floor' on walls/chairs/storage over the floor (15/86); 'meets at a corner' 53/86 and 'stands beside' 36/86 also hold for floor->chair and wall->floor. Share Tea: 'meets at a corner' 1834/1834, 'lies flush against' up to 1136/1834, most wall relations hold on hundreds of pairs.",
+          "conclusion": "checking a predicate only on the pair it was written for drops nothing: the frontier model writes well-formed predicates that are true there. The gap is generality, the verifier hole ARCHITECTURE.md names. Raw output: docs/archive/research/coining/.",
+          "next": "make verification adversarial: after coining, run each predicate over every touching pair, send the model the pairs it also selects that it did not name, and keep a relation only when its predicate is tightened to exclude them (one extra call per room); order pairs so a capped run covers furniture before walls"
+        }
       }
     },
     {
