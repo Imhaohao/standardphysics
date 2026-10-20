@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import pathlib
 import uuid
+from dataclasses import dataclass
 
 import numpy as np
 from standardphysics_contracts import Mat4
@@ -49,8 +50,21 @@ FORWARD = np.array(
 REGION_NAMESPACE = uuid.UUID("5b3c1c4e-6f1d-4a43-9d55-2c7a8f0e9b21")
 
 
+@dataclass(frozen=True)
+class Piece:
+    """One region cut from the mesh, with the middles of the triangles it was cut from."""
+
+    region: Region
+    points: np.ndarray
+
+
 def segment(mesh: pathlib.Path, capture_to_room: Mat4) -> list[Region]:
     """The mesh cut into pieces at every sharp turn or step, as unnamed regions."""
+    return [piece.region for piece in pieces_of(mesh, capture_to_room)]
+
+
+def pieces_of(mesh: pathlib.Path, capture_to_room: Mat4) -> list[Piece]:
+    """`segment`, keeping each piece's own surface so it can be looked for in photographs."""
     faces = room_faces(mesh, capture_to_room)
     if not len(faces):
         return []
@@ -138,15 +152,18 @@ class _Groups:
         self.inside[a] = max(self.inside[a], self.inside[b], weight)
 
 
-def _fitted(faces: np.ndarray, labels: np.ndarray) -> list[Region]:
+def _fitted(faces: np.ndarray, labels: np.ndarray) -> list[Piece]:
     order = np.argsort(labels, kind="stable")
     labels, faces = labels[order], faces[order]
     starts = np.flatnonzero(np.diff(labels, prepend=-1))
     ends = [*starts[1:], len(labels)]
-    return [_boxed(faces[start:end].reshape(-1, 3)) for start, end in zip(starts, ends, strict=True)]
+    return [
+        Piece(boxed(faces[start:end].reshape(-1, 3)), faces[start:end].mean(axis=1).astype(np.float64))
+        for start, end in zip(starts, ends, strict=True)
+    ]
 
 
-def _boxed(points: np.ndarray) -> Region:
+def boxed(points: np.ndarray) -> Region:
     """The tightest box along the directions the points spread out in."""
     points = points.astype(np.float64)
     middle = points.mean(axis=0)

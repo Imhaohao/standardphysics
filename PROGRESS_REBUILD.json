@@ -235,7 +235,16 @@
     {
       "id": 3,
       "name": "Interpretation: coined entities and relations carrying predicates",
-      "status": "todo"
+      "status": "built 2026-10-20: entities, predicate language, relation store and model coiner; not yet run against a real model",
+      "findings": {
+        "entities": "interpretation/entities.py: one per scene node (discovery's photo-carved objects plus the scanner's), id = node id, name = node label as a free string, region = the measured box, pieces = mesh pieces mostly (60%) inside the box, smallest box wins",
+        "rejected": "voting pieces straight from photo rectangles: floor pieces inside chair rectangles chained every chair in the room into one 7.9 m 'chair'; discovery's multi-view carving already solves this",
+        "predicates": "interpretation/predicates.py: all/any/not over 8 substrate measurements (gap, overlap_fraction, footprint_overlap, contact_area, separation, rise, extent, volume) with under/over; total, depth <= 8, unknown keys refused",
+        "relations": "interpretation/relations.py: Relation(name, source, target, because); kept() keeps only relations whose predicate holds; neighbours() offers things within 5 cm; facts() is what a model sees",
+        "coiner": "agents/interpret/relations.py: OpenRouter frontier model names relations per touching pair and writes predicates as JSON strings; engine drops any that fail",
+        "test1": "26 entities, 42 touching pairs; a rests-on predicate holds for every solid thing on the lowest thing and never the reverse; scrambled names judge identically",
+        "next": "run coin_relations on test1 and Share Tea with a real frontier model (needs OpenRouter spend approval), store relations on the scene graph, then group unowned pieces"
+      }
     },
     {
       "id": 4,
