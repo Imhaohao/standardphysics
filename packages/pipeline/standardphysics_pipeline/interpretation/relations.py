@@ -57,6 +57,28 @@ def kept(relations: Iterable[Relation], entities: list[Entity], down: np.ndarray
     return out
 
 
+def selected(
+    because: dict, ordered_pairs: Iterable[tuple[Entity, Entity]], entities: list[Entity], down: np.ndarray
+) -> set[tuple[uuid.UUID, uuid.UUID]]:
+    """Every ordered pair, from source to target, that the predicate holds for; nothing when it is malformed.
+
+    A predicate true of the pair it was written for can still be true of half the
+    room. What it selects across every pair is what it actually says.
+    """
+    regions = {str(entity.id): entity.region for entity in entities}
+    found = set()
+    for source, target in ordered_pairs:
+        if still_holds(Relation("", source.id, target.id, because), regions, down):
+            found.add((source.id, target.id))
+    return found
+
+
+def both_ways(pairs: Iterable[tuple[Entity, Entity]]) -> list[tuple[Entity, Entity]]:
+    """Each pair in both orders, since a relation runs from one thing to the other."""
+    pairs = list(pairs)
+    return pairs + [(second, first) for first, second in pairs]
+
+
 def neighbours(entities: list[Entity], within: float = NEAR) -> list[tuple[Entity, Entity]]:
     """Every pair of things that touch or nearly touch, each pair once."""
     low = np.array([_low(entity.region) for entity in entities])
