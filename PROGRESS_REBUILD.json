@@ -277,6 +277,19 @@
       "proved": "/health ok from another tailnet machine; /health/details commit 19ab6c89, all five worker loops idle; killed the process and launchd had it serving again in 2 s",
       "not_done": "secrets.env holds only the list of names to copy from the Droplet's .env; a launchd agent runs only while the user is logged in; production untouched",
       "found": "the offload server for prod (:8791, ~/sp-offload/repo-master) is pinned at e97d98b4 while prod runs 19ab6c89, so it refuses prod's calls and prod's Blender steps run on the Droplet"
-    }
+    },
+    "step_2_throughput_2026_10_19": {
+      "method": "from compute-box, 20 rounds of the public web app's 12 JS chunks from the Droplet's Caddy, forced through the Tailscale address (--resolve standardphysics.app:443:100.79.57.24) and over the public internet",
+      "one_at_a_time": "0.61 MB/s Tailscale, 0.40 MB/s public (latency-bound on ~53 KB files)",
+      "eight_in_flight": "4.35 MB/s Tailscale, 4.90 MB/s public",
+      "verdict": "clears the ~3 MB/s bar; a walk streams ~1 MB/s (about 1.5 photos/s at ~0.6 MB). Small files, so the true ceiling may be higher."
+    },
+    "offload_8791_repin_2026_10_19": "repo-master at 19ab6c89, server restarted, prod-style export_glb returned 200; no real Droplet call yet because production had no jobs (all worker loops idle on /health/details)",
+    "waiting_on_user": [
+      "copy secrets from the Droplet .env into ~/sp-prod/secrets.env",
+      "free ~100 GB and set pmset sleep 0 / autorestart 1 / standby 0 (admin)",
+      "copy the latest prod backup over for the restore rehearsal",
+      "pick a maintenance window and run the migration and deploy commands on the Droplet"
+    ]
   }
 }
