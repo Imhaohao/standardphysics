@@ -147,7 +147,8 @@
           "boxes_s": 40.1,
           "wall_with_boxes_s": 117.6,
           "suites": "2661 + 797 passed; test_a_kill_reaches_what_the_child_started failed once under load, passed 3/3 alone",
-          "known_gap": "a boxes job that fails after the painted scan is up stays failed; the build reads complete without the box model and nothing retries it automatically"
+          "known_gap": "a boxes job that fails after the painted scan is up stays failed; the build reads complete without the box model and nothing retries it automatically",
+          "known_gap_fixed_2026_10_20": "a failed boxes job now shows on the status as the build's error with can_retry, and the existing retry (POST /textures) queues the boxes job again without repainting"
         },
         {
           "date": "2026-10-19",

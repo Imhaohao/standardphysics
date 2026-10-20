@@ -214,9 +214,12 @@ def _status(connection, store, scan_id, revision):
                 " WHERE b.scan_id=? AND b.build_key=?",
                 (str(scan_id), key),
             ).fetchone()
+    boxes_failed = None
     if row:
         state = "complete" if row["result_json"] else row["job_state"] or "not_started"
         error = row["job_error"]
+        boxes_failed = _boxes_failure(connection, scan_id, row)
+        error = boxes_failed or error
     ready = row if row and row["result_json"] else connection.execute(
         "SELECT * FROM texture_builds WHERE scan_id=? AND result_json IS NOT NULL ORDER BY id DESC LIMIT 1",
         (str(scan_id),),
@@ -233,10 +236,24 @@ def _status(connection, store, scan_id, revision):
         scan_id=scan_id, revision=shown.revision, state=state, build=build,
         exact=bool(ready and ready["build_key"] == key) or published_floor_exact,
         stale_node_ids=stale, error=error,
-        can_retry=bool(inputs and state == "failed"),
+        can_retry=bool(inputs and (state == "failed" or boxes_failed)),
         progress=_progress(store, scan_id, key) if state == "running" else None,
     )
     return result, bake, inputs, key
+
+
+def _boxes_failure(connection, scan_id, row) -> str | None:
+    """Why a published build's photographed boxes failed.
+
+    Its painted scan stays up, and the boxes can be asked for again."""
+    if not row["result_json"] or TextureBuild.model_validate_json(row["result_json"]).boxes_ready:
+        return None
+    job = connection.execute(
+        "SELECT state, error FROM jobs WHERE scan_id=? AND kind=? AND revision=?", (str(scan_id), BOXES, row["id"])
+    ).fetchone()
+    if job is None or job["state"] != "failed":
+        return None
+    return job["error"] or "the photographed boxes could not be baked"
 
 
 def texture_status(database, store, scan_id, revision=None):
@@ -257,7 +274,11 @@ def bake_inputs(database, store, scan_id, revision=None):
 def queue_texture(database, store, worker, scan_id, revision=None, *, retry=False, max_queued_jobs=None):
     with database.transaction() as connection:
         status, bake, inputs, key = _status(connection, store, scan_id, revision)
-        settled = status.state in ("queued", "running", "complete")
+        if retry and status.state == "complete" and status.can_retry:
+            _bake_boxes_again(connection, scan_id, key)
+            settled = True
+        else:
+            settled = status.state in ("queued", "running", "complete")
         if inputs is None or settled or (status.state == "failed" and not retry):
             return status
         connection.execute(
@@ -272,6 +293,13 @@ def queue_texture(database, store, worker, scan_id, revision=None, *, retry=Fals
         jobs_repo.queue_job_again(connection, scan_id, TEXTURE, row["id"])
     worker.wake()
     return texture_status(database, store, scan_id, revision)
+
+
+def _bake_boxes_again(connection, scan_id, key: str) -> None:
+    row = connection.execute(
+        "SELECT id FROM texture_builds WHERE scan_id=? AND build_key=?", (str(scan_id), key)
+    ).fetchone()
+    jobs_repo.queue_job_again(connection, scan_id, BOXES, row["id"])
 
 
 def maybe_queue_texture(database, store, worker, scan_id, revision=None):

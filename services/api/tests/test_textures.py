@@ -465,3 +465,47 @@ def test_a_scan_painted_ahead_of_its_texture_job_is_not_painted_twice(make_clien
         assert len(painted) == 1
         assert build['scan_glb_url'].endswith(f"/{build['paint_key']}/scan.glb")
         assert client.get(build['scan_glb_url']).status_code == 200
+
+
+def test_photographed_boxes_that_failed_can_be_baked_again_without_repainting(make_client, monkeypatch):
+    """The painted scan stays up when the boxes fail, and asking again bakes only the boxes."""
+    from standardphysics_api import textures
+
+    painted = []
+
+    def painting(store, scan_id, graph, inputs, out_dir):
+        painted.append(scan_id)
+        return bool(shutil.copyfile(FIXTURE_DATA / 'shop.glb', out_dir / 'scan.glb'))
+
+    monkeypatch.setattr(textures, '_paint_the_scan', painting)
+    attempts = []
+
+    def failing_once(inputs):
+        attempts.append(inputs)
+        if len(attempts) == 1:
+            raise RuntimeError('test bake failure')
+        return _bake(inputs)
+
+    with make_client(stages=no_blender_stages(bake_textures=failing_once)) as client:
+        scan_id, _ = _room(client)
+        lidar = json.dumps({'parts': [{
+            'id': '00000000-0000-0000-0000-000000000001',
+            'transform': Mat4.identity().m,
+            'vertices': [0, 0, 0, 1, 0, 0, 0, 1, 0],
+            'triangles': [0, 1, 2],
+        }]}).encode()
+        assert put_artifact(client, scan_id, 'lidar-mesh', lidar, 'lidar_mesh').status_code == 201
+        _photos(client, scan_id)
+        drain(client)
+
+        failed = client.get(f'/api/scans/{scan_id}/textures').json()
+        assert failed['state'] == 'complete' and failed['build']['glb_url'] is None
+        assert failed['can_retry'] and 'test bake failure' in failed['error']
+        assert client.get(failed['build']['scan_glb_url']).status_code == 200
+
+        assert client.post(f'/api/scans/{scan_id}/textures', json={'revision': 0}).status_code == 202
+        drain(client)
+        again = client.get(f'/api/scans/{scan_id}/textures').json()
+        assert again['build']['glb_url'] is not None and not again['can_retry']
+        assert client.get(again['build']['glb_url']).status_code == 200
+        assert len(painted) == 1 and len(attempts) == 2
