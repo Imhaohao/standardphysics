@@ -28,12 +28,17 @@ final class AppModel {
     let account: AccountModel
     private let processor: any ScanProcessing
     private let journal: (any ScanJournaling)?
+    private let reportStore: (any ReportStoring)?
+    private let library: (any ScanLibrary)?
+    @ObservationIgnored private var hasLoadedStoredReports = false
 
     init(
         capture: any CaptureControlling,
         processor: any ScanProcessing,
         journal: (any ScanJournaling)? = nil,
         account: AccountModel = AccountModel(service: nil),
+        reportStore: (any ReportStoring)? = nil,
+        library: (any ScanLibrary)? = nil,
         unfinishedScans: [ScanManifest] = [],
         reports: [ScanReport] = []
     ) {
@@ -41,6 +46,8 @@ final class AppModel {
         self.processor = processor
         self.journal = journal
         self.account = account
+        self.reportStore = reportStore
+        self.library = library
         self.unfinishedScans = unfinishedScans
         self.reports = reports
     }
@@ -58,8 +65,60 @@ final class AppModel {
     }
 
     func refresh() async {
+        await loadStoredReports()
+        await refreshUnfinishedScans()
+        await syncServerReports()
+    }
+
+    private func refreshUnfinishedScans() async {
         guard let journal, let scans = try? await journal.unfinishedScans() else { return }
         unfinishedScans = scans.sorted { $0.startedAt > $1.startedAt }
+    }
+
+    /// Reports on disk join whatever is already in memory, once per launch.
+    private func loadStoredReports() async {
+        guard let reportStore, !hasLoadedStoredReports else { return }
+        hasLoadedStoredReports = true
+        let stored = await reportStore.loadAll()
+        let inMemory = Set(reports.map(\.scanID))
+        reports = ReportSync.newestFirst(reports + stored.filter { !inMemory.contains($0.scanID) })
+    }
+
+    /// Signed in, the account's checked scans join the list, including ones scanned on another
+    /// phone, and scans deleted elsewhere leave it.
+    private func syncServerReports() async {
+        guard let library, account.state.isSignedIn, let scans = try? await library.listScans() else { return }
+        var fetched: [ScanReport] = []
+        for scan in ReportSync.plan(local: reports, server: scans).toFetch {
+            if let report = await serverReport(for: scan, from: library) { fetched.append(report) }
+        }
+        let plan = ReportSync.plan(local: reports, server: scans)
+        let held = Set(plan.kept.compactMap(\.remoteScanID))
+        await commit(ReportSync.newestFirst(plan.kept + fetched.filter { !held.contains($0.remoteScanID ?? "") }))
+    }
+
+    private func serverReport(for scan: ScanResponse, from library: any ScanLibrary) async -> ScanReport? {
+        guard let assessment = try? await library.assessment(scanID: scan.id) else { return nil }
+        let scene = try? await library.sceneJSON(scanID: scan.id)
+        return ServerReports.scanReport(scan: scan, report: assessment, sceneJSON: scene)
+    }
+
+    /// Replaces the reports and writes only what changed to disk.
+    private func commit(_ updated: [ScanReport]) async {
+        let previous = Dictionary(reports.map { ($0.scanID, $0) }, uniquingKeysWith: { first, _ in first })
+        reports = updated
+        guard let reportStore else { return }
+        let keptIDs = Set(updated.map(\.scanID))
+        for report in updated where previous[report.scanID] != report {
+            try? await reportStore.save(report)
+        }
+        for scanID in previous.keys where !keptIDs.contains(scanID) {
+            try? await reportStore.delete(scanID: scanID)
+        }
+    }
+
+    private func replace(_ report: ScanReport) async {
+        await commit(reports.map { $0.scanID == report.scanID ? report : $0 })
     }
 
     func startNewScan() {
@@ -144,8 +203,7 @@ final class AppModel {
                 self?.processing?.stage = update.stage
                 self?.processing?.fraction = update.fraction
             }
-            reports.removeAll { $0.scanID == report.scanID }
-            reports.insert(report, at: 0)
+            await commit([report] + reports.filter { $0.scanID != report.scanID })
             processing = nil
             route = .results(report.scanID)
         } catch {

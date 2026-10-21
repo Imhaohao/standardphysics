@@ -22,6 +22,9 @@ struct HomeView: View {
             .padding(.vertical, Theme.Spacing.xs)
         }
         .task { await model.refresh() }
+        .onChange(of: model.account.state) { _, _ in
+            Task { await model.refresh() }
+        }
         .sheet(isPresented: Bindable(model.account).isSheetPresented) {
             AccountSheet(account: model.account)
                 .presentationDetents([.large])

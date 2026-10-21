@@ -125,6 +125,19 @@ actor APIClient: UploadAPI {
         try await send(APIRoutes.assessment(scanID: scanID))
     }
 
+    func listScans() async throws -> [ScanResponse] {
+        try await send(APIRoutes.listScans())
+    }
+
+    /// The scene as JSON text, in the shape `SceneSubjects` reads.
+    func sceneJSON(scanID: String) async throws -> String {
+        let scene = try await send(APIRoutes.scene(scanID: scanID))
+        guard let text = String(data: try WireCoding.encoder().encode(scene), encoding: .utf8) else {
+            throw APIError.malformedResponse
+        }
+        return text
+    }
+
     // MARK: Uploads
 
     func createUpload(scanID: String, body: CreateUploadBody, idempotencyKey: String) async throws -> UploadInfo {

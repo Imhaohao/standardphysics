@@ -102,16 +102,13 @@ final class ServerScanProcessor: ScanProcessing {
     static func scanReport(from report: Report, manifest: ScanManifest, roomNamesByID: [String: String] = [:]) -> ScanReport {
         let roomNames = manifest.rooms.map(\.name)
         let findings = report.findings.filter { $0.asFinding != nil }
-        var subjects: [String: ReportSubject] = [:]
-        for finding in findings where subjects[finding.subjectID] == nil {
-            subjects[finding.subjectID] = ReportSubject(
-                id: finding.subjectID, roomName: finding.roomID.flatMap { roomNamesByID[$0] } ?? ReportGrouping.unassignedRoom,
-                label: finding.title
-            )
+        let subjects = ServerReports.filling([:], for: findings) { finding in
+            finding.roomID.flatMap { roomNamesByID[$0] } ?? ReportGrouping.unassignedRoom
         }
         return ScanReport(
             scanID: manifest.scanID, name: manifest.name, completedAt: report.createdAt,
-            roomNames: roomNames, subjects: subjects, findings: findings.compactMap(\.asFinding)
+            roomNames: roomNames, subjects: subjects, findings: findings.compactMap(\.asFinding),
+            remoteScanID: manifest.remoteScanID ?? report.scanID
         )
     }
 }

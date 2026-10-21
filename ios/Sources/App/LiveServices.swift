@@ -44,7 +44,9 @@ final class LiveServices {
             capture: coordinator,
             processor: TimedProcessor(base: Self.makeProcessor(journal: journal, api: api, uploader: uploader, streamer: streamer)),
             journal: journal,
-            account: AccountModel(service: api)
+            account: AccountModel(service: api),
+            reportStore: FileReportStore(),
+            library: api
         )
         detection = LiveDetectionPipeline(detector: TimedDetector(base: CoreMLDetector())) { [weak coordinator] detections in
             await MainActor.run { coordinator?.ingest(detections) }

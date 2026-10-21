@@ -46,6 +46,14 @@ nonisolated enum SceneSubjects {
         return subjects
     }
 
+    /// The engine's room names in scene order, for a scan this phone has no manifest for.
+    static func roomNames(sceneJSON: String) -> [String] {
+        guard let data = sceneJSON.data(using: .utf8),
+              let scene = try? JSONDecoder().decode(Scene.self, from: data)
+        else { return [] }
+        return scene.rooms.map(\.name)
+    }
+
     static func label(for item: Item) -> String {
         let raw = item.category ?? item.kind ?? "Item"
         return raw.replacingOccurrences(of: "_", with: " ").capitalizedFirstLetter

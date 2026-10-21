@@ -3,6 +3,9 @@ import Foundation
 nonisolated enum HTTPMethod: String, Sendable {
     case get = "GET"
     case post = "POST"
+    case put = "PUT"
+    case patch = "PATCH"
+    case delete = "DELETE"
 }
 
 nonisolated struct Endpoint<Response: Decodable & Sendable>: Sendable {
@@ -52,8 +55,17 @@ nonisolated enum APIRoutes {
         )
     }
 
+    static func listScans() -> Endpoint<[ScanResponse]> {
+        Endpoint(method: .get, path: "\(apiPrefix)/scans", isIdempotent: true)
+    }
+
     static func assessment(scanID: String) -> Endpoint<Report> {
         Endpoint(method: .get, path: "\(apiPrefix)/scans/\(scanID)/assessment", isIdempotent: true)
+    }
+
+    /// The merged scene the server checked, used to name what each finding is about.
+    static func scene(scanID: String) -> Endpoint<JSONValue> {
+        Endpoint(method: .get, path: "\(apiPrefix)/scans/\(scanID)/scene", isIdempotent: true)
     }
 
     static func finishScan(scanID: String) -> Endpoint<Report> {
