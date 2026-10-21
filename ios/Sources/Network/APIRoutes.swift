@@ -74,6 +74,11 @@ nonisolated enum APIRoutes {
         Endpoint(method: .delete, path: "\(apiPrefix)/scans/\(scanID)", isIdempotent: true)
     }
 
+    /// Each call makes a new link; not retried, so a dropped response can't leave two behind.
+    static func createShare(scanID: String) -> Endpoint<ShareResponse> {
+        Endpoint(method: .post, path: "\(apiPrefix)/scans/\(scanID)/shares", isIdempotent: false)
+    }
+
     static func assessment(scanID: String) -> Endpoint<Report> {
         Endpoint(method: .get, path: "\(apiPrefix)/scans/\(scanID)/assessment", isIdempotent: true)
     }

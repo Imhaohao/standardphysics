@@ -143,6 +143,10 @@ actor APIClient: UploadAPI {
         _ = try await send(APIRoutes.deleteScan(scanID: scanID))
     }
 
+    func createShare(scanID: String) async throws -> ShareResponse {
+        try await send(APIRoutes.createShare(scanID: scanID))
+    }
+
     func answers(scanID: String) async throws -> [ServerAnswer] {
         try await send(APIRoutes.answers(scanID: scanID))
     }

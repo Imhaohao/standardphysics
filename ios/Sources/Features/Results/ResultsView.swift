@@ -11,6 +11,7 @@ struct ResultsView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
                         ResultsHeader(report: report) { model.goHome() }
+                        ReportSharing(report: report)
                         if let notice = model.notice {
                             NoticeBanner(message: notice) { model.dismissNotice() }
                         }
@@ -63,6 +64,43 @@ private struct ResultsHeader: View {
     private var checkedLine: String {
         let rooms = report.roomNames.count == 1 ? "1 room" : "\(report.roomNames.count) rooms"
         return "\(rooms), checked \(report.completedAt.formatted(date: .long, time: .omitted))"
+    }
+}
+
+/// The report as a PDF for anyone, and, for a server scan, a read-only web link.
+private struct ReportSharing: View {
+    @Environment(AppModel.self) private var model
+    let report: ScanReport
+    @State private var pdfURL: URL?
+    @State private var linkCopied = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+            if let pdfURL {
+                ShareLink(item: pdfURL) {
+                    ButtonLabel(title: "Share as PDF", systemImage: "square.and.arrow.up")
+                }
+                .buttonStyle(InkButtonStyle(variant: .secondary))
+            }
+            if model.canShareLink(for: report) {
+                Button { Task { await copyLink() } } label: {
+                    ButtonLabel(title: linkCopied ? "Link copied" : "Copy read-only link", systemImage: linkCopied ? "checkmark" : "link")
+                }
+                .buttonStyle(InkButtonStyle(variant: .secondary))
+                .sensoryFeedback(.success, trigger: linkCopied) { _, copied in copied }
+                Text("Anyone with the link can read this report, but they can't change it.")
+                    .font(Theme.Typography.caption)
+                    .foregroundStyle(Theme.Palette.inkMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .task(id: report) { pdfURL = try? ReportPDF.write(report) }
+    }
+
+    private func copyLink() async {
+        guard let url = await model.makeShareLink(for: report.scanID) else { return }
+        UIPasteboard.general.url = url
+        linkCopied = true
     }
 }
 

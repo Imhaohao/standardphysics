@@ -48,7 +48,8 @@ final class LiveServices {
             account: AccountModel(service: api),
             reportStore: FileReportStore(),
             library: api,
-            recheck: local
+            recheck: local,
+            webBaseURL: WebLinks.baseURL()
         )
         detection = LiveDetectionPipeline(detector: TimedDetector(base: CoreMLDetector())) { [weak coordinator] detections in
             await MainActor.run { coordinator?.ingest(detections) }

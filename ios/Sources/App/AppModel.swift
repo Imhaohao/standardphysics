@@ -33,6 +33,8 @@ final class AppModel {
     private let reportStore: (any ReportStoring)?
     private let library: (any ScanLibrary)?
     private let recheck: (any ReportRechecking)?
+    /// The web app, for read-only report links; nil hides them.
+    private let webBaseURL: URL?
     @ObservationIgnored private var hasLoadedStoredReports = false
 
     static let answerNotSent = "Your answer is saved on this phone, but it didn't reach the server, so the report hasn't been checked again yet. Check your connection and answer again."
@@ -45,6 +47,7 @@ final class AppModel {
         reportStore: (any ReportStoring)? = nil,
         library: (any ScanLibrary)? = nil,
         recheck: (any ReportRechecking)? = nil,
+        webBaseURL: URL? = nil,
         unfinishedScans: [ScanManifest] = [],
         reports: [ScanReport] = []
     ) {
@@ -55,6 +58,7 @@ final class AppModel {
         self.reportStore = reportStore
         self.library = library
         self.recheck = recheck
+        self.webBaseURL = webBaseURL
         self.unfinishedScans = unfinishedScans
         self.reports = reports
         account.onAccountDeleted = { [weak self] in await self?.forgetServerReports() }
@@ -209,6 +213,27 @@ final class AppModel {
 
     func dismissNotice() {
         notice = nil
+    }
+
+    // MARK: Sharing
+
+    static let linkNotMade = "We couldn't make a link right now. Check your connection and try again."
+
+    /// Links need the web app's address, a scan the server holds, and a signed-in owner.
+    func canShareLink(for report: ScanReport) -> Bool {
+        webBaseURL != nil && library != nil && report.remoteScanID != nil && account.state.isSignedIn
+    }
+
+    func makeShareLink(for scanID: UUID) async -> URL? {
+        guard let webBaseURL, let library, let remoteScanID = report(id: scanID)?.remoteScanID else { return nil }
+        do {
+            let share = try await library.createShare(scanID: remoteScanID)
+            notice = nil
+            return WebLinks.sharedReportURL(base: webBaseURL, token: share.token)
+        } catch {
+            notice = Self.linkNotMade
+            return nil
+        }
     }
 
     // MARK: Rename and delete

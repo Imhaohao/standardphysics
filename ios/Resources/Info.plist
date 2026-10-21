@@ -28,6 +28,8 @@
 	<string>$(SP_API_BASE_URL)</string>
 	<key>SPStorageHosts</key>
 	<string>$(SP_STORAGE_HOSTS)</string>
+	<key>SPWebBaseURL</key>
+	<string>$(SP_WEB_BASE_URL)</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Karla-Variable.ttf</string>

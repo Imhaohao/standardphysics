@@ -9,6 +9,7 @@ nonisolated protocol ScanLibrary: Sendable {
     func saveAnswers(scanID: String, answers: [AnswerUpdate]) async throws -> Report
     func renameScan(scanID: String, name: String) async throws -> ScanResponse
     func deleteScan(scanID: String) async throws
+    func createShare(scanID: String) async throws -> ShareResponse
 }
 
 extension APIClient: ScanLibrary {}

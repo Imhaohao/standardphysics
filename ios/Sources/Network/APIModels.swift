@@ -396,6 +396,17 @@ nonisolated struct RenameScanRequest: Encodable, Sendable {
     let name: String
 }
 
+/// A read-only link to one scan's report; the web app shows it at `/r/{token}`.
+nonisolated struct ShareResponse: Codable, Sendable, Equatable {
+    let token: String
+    let createdAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case token
+        case createdAt = "created_at"
+    }
+}
+
 nonisolated struct APIErrorBody: Decodable, Sendable {
     let error: String?
     let message: String?

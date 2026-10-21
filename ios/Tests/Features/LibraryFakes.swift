@@ -60,6 +60,11 @@ final class FakeScanLibrary: ScanLibrary, @unchecked Sendable {
         state.write { $0.deleted.append(scanID) }
     }
 
+    func createShare(scanID: String) async throws -> ShareResponse {
+        try check()
+        return ShareResponse(token: "tok_\(scanID.prefix(4))", createdAt: fixedNow)
+    }
+
     private func check() throws {
         if let failure = state.read({ $0.failure }) { throw failure }
     }
