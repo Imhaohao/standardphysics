@@ -1,6 +1,7 @@
 import { FileText, Broadcast } from "@phosphor-icons/react/dist/ssr";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ScanActions } from "@/components/shop/ScanActions";
 import { ShopHeader } from "@/components/shop/ShopHeader";
 import { ShopWorkspace } from "@/components/shop/ShopWorkspace";
 import { SheetPage } from "@/components/sheet/SheetPage";
@@ -31,6 +32,7 @@ export default async function ShopPage({ params }: PageProps<"/shops/[scanId]">)
             Read the full report
           </Link>
         )}
+        <ScanActions scanId={sheet.scan.id} name={sheet.scan.name} siteName={sheet.scan.site_name ?? null} />
       </ShopHeader>
       <p className="-mt-4 text-lg text-ink-muted">{scanStatusCopy(sheet)}</p>
       {sheet.scene ? (
