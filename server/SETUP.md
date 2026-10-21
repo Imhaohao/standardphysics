@@ -6,7 +6,7 @@ It needs three outside services, each free to start:
 
 | Service | What it does for us | Status |
 | --- | --- | --- |
-| Neon | The database: accounts, scans, rooms and findings | Connected (project `odd-field-89983844`, branch `production`) |
+| Neon | The database: accounts, scans, rooms and findings | Connected (project `restless-pond-73109557` in `aws-us-east-1`, next to Modal's servers) |
 | Cloudflare R2 | File storage: room scans and 3D meshes uploaded from the phone | Connected (bucket `standard-physics-scans`) |
 | Modal | Runs the server on the internet so the phone can reach it | Live at `https://tyadgirkar--sp-server-serve.us-east.modal.run`, sleeping when idle |
 
@@ -67,7 +67,7 @@ The phone uploads straight to R2 through short-lived links the server signs, so 
 2. Link this repository to the Neon project and create the config file `neon.ts`:
 
    ```sh
-   neon init -y --org-id org-plain-math-89839281 --project-id odd-field-89983844 --branch production --services postgres
+   neon init -y --org-id org-plain-math-89839281 --project-id restless-pond-73109557 --branch production --services postgres
    ```
 
    If a browser window opens asking you to sign in to Neon, finish signing in there.
@@ -81,9 +81,11 @@ The phone uploads straight to R2 through short-lived links the server signs, so 
 4. Copy the database address into the server's file too, so the server and Modal read everything from one place. Neon gives two addresses. The server needs the direct one, whose host does not contain `-pooler`, because the server's database migrations take a lock that Neon's pooler does not keep. In the Neon dashboard, open Connect, turn Connection pooling off, copy the connection string, and add this line to `server/.env.local` with `nano server/.env.local`:
 
    ```sh
-   DATABASE_URL=postgresql://neondb_owner:PASSWORD@ep-square-scene-ar6inxun.c-4.us-west-2.aws.neon.tech/neondb?sslmode=require
+   DATABASE_URL=postgresql://neondb_owner:PASSWORD@ep-old-paper-b86pzice.c-14.us-east-1.aws.neon.tech/neondb?sslmode=require
    DB_MAX_CONNECTIONS=5
    ```
+
+   Keep the database in the same region as the server. Modal runs this app in the US East, so the project lives in `aws-us-east-1`; with the database in Oregon every request crossed the country and took several times longer.
 
    `DB_MAX_CONNECTIONS=5` keeps the total under Neon's connection limit when Modal runs several copies of the server.
 
