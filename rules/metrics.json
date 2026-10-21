@@ -3820,7 +3820,7 @@
       ],
       "evidence": "photo",
       "fallback_evidence": [],
-      "derivation": "Door carries the CBC geometric symbol (circle men, triangle women, circle with triangle all-gender)."
+      "derivation": "Door carries the CBC geometric symbol (circle women, triangle men, circle with triangle all-gender)."
     },
     {
       "id": "toilet_room.geometric_symbol_center_height",
@@ -4643,6 +4643,42 @@
       "derivation": "Assistive listening system where audible communication is integral and amplification is provided."
     },
     {
+      "id": "assembly.companion_seat_shoulder_aligned",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Owner: in row seating, each companion seat sits beside its wheelchair space so a seated companion is shoulder to shoulder with the wheelchair user, the wheelchair's shoulder point being 36 in from the front of the space (802.3.1)."
+    },
+    {
+      "id": "assembly.companion_seat_same_floor_level",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Owner: the floor under each companion seat is at the same elevation as the floor of the wheelchair space it serves (802.3.1)."
+    },
+    {
+      "id": "assembly.companion_seat_equivalent",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Owner: companion seats are equivalent in size, quality, comfort and amenities to the seats around them; movable seats are allowed (802.3.2)."
+    },
+    {
       "id": "elevator.complies_407",
       "unit": "boolean",
       "value_type": "boolean",
@@ -4844,6 +4880,106 @@
       "derivation": "Every exit door required to have a tactile exit sign has one."
     },
     {
+      "id": "site.is_qualified_historic",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Owner: the building is listed in or eligible for listing in the National Register of Historic Places, or is designated as historic under a state or local law (the 2010 Standards 106.5 definition of a qualified historic building)."
+    },
+    {
+      "id": "site.has_two_way_communication",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Owner: an intercom, call box or other two-way communication system is provided that people use to get into the building or into a restricted area inside it (230.1)."
+    },
+    {
+      "id": "site.two_way_comm_audible_signal",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Owner: the two-way communication system gives an audible signal (a tone, ring or voice) when a call is placed or answered (708.2)."
+    },
+    {
+      "id": "site.two_way_comm_visual_signal",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Photo of the face of the intercom or call box: true when it has a light, screen or other visual indicator that shows the call status (708.2); the owner can confirm the indicator lights during a call."
+    },
+    {
+      "id": "site.two_way_comm_has_handset",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Owner: the two-way communication system has a corded handset (708.3)."
+    },
+    {
+      "id": "site.two_way_comm_handset_cord_length",
+      "unit": "in",
+      "value_type": "number",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Owner: length of the handset cord in inches, measured from where it leaves the unit to where it enters the handset, unstretched (708.3)."
+    },
+    {
+      "id": "site.has_security_glazing_counter",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Owner: a sales or service counter or teller window has security glass or another glazed screen between staff and the public (904.6)."
+    },
+    {
+      "id": "site.security_glazing_voice_method",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "site",
+      "applies_to": [
+        "site"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Owner: at each counter or window with security glazing, a way to talk through it is provided, such as a grille, slats, a talk-through baffle, an intercom, a handset or an assistive listening device (904.6)."
+    },
+    {
       "id": "floor.dropoff_height",
       "unit": "in",
       "value_type": "number",
@@ -4912,6 +5048,82 @@
       "derivation": "How far the entry door, in any position, encroaches into the required turning space (CBC 11B-603.2.3)."
     },
     {
+      "id": "toilet_room.is_all_gender",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "toilet_room",
+      "applies_to": [
+        "toilet_room"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Photo of the restroom entrance: true when the room is designated for use by any gender (a circle-and-triangle symbol or an all-gender sign); the owner can confirm."
+    },
+    {
+      "id": "toilet_room.all_gender_symbol",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "toilet_room",
+      "applies_to": [
+        "toilet_room"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Photo of the restroom entrance: true when it carries the CBC unisex geometric symbol, a 12 in circle with an equilateral triangle inscribed in it, vertex up (CBC 11B-703.7.2.6.3)."
+    },
+    {
+      "id": "toilet_room.all_gender_multi_user_sign",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "toilet_room",
+      "applies_to": [
+        "toilet_room"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Photo of the restroom entrance: true when a sign there reads ALL-GENDER MULTI-USER (CBC 11B-216.8.2)."
+    },
+    {
+      "id": "toilet_room.has_toilet_and_urinal_compartments",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "toilet_room",
+      "applies_to": [
+        "toilet_room"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Photo inside the restroom: true when it has both toilet compartments and urinal compartments (urinals enclosed by partitions and a door) (CBC 11B-216.8.3); the owner can confirm."
+    },
+    {
+      "id": "toilet_room.compartment_signs_name_fixture",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "toilet_room",
+      "applies_to": [
+        "toilet_room"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Photo of the compartment doors: true when every toilet and urinal compartment has a sign reading TOILET or URINAL for the fixture inside (CBC 11B-216.8.3)."
+    },
+    {
+      "id": "toilet_room.compartment_signs_without_pictogram",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "toilet_room",
+      "applies_to": [
+        "toilet_room"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Photo of the compartment doors: true when no compartment sign uses a pictogram to show the fixture type (CBC 11B-216.8.3)."
+    },
+    {
       "id": "route.kind",
       "unit": "enum",
       "value_type": "enum",
@@ -4958,6 +5170,50 @@
         "photo"
       ],
       "derivation": "Distance the front end of the side grab bar extends in front of the water closet (CBC 11B-604.5.1)."
+    },
+    {
+      "id": "grab_bar.cross_section_shape",
+      "unit": "enum",
+      "value_type": "enum",
+      "element": "grab_bar",
+      "applies_to": [
+        "grab_bar"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Photo of the bar end or profile: circular when the gripping surface is round in section, non_circular otherwise (oval, square, flat or shaped bars) (609.2).",
+      "enum_values": [
+        "circular",
+        "non_circular"
+      ]
+    },
+    {
+      "id": "grab_bar.cross_section_max_dimension",
+      "unit": "in",
+      "value_type": "number",
+      "element": "grab_bar",
+      "applies_to": [
+        "grab_bar"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Largest cross-section dimension of a non-circular grab bar, from a close photo of the bar end with a known scale; the owner can measure it with a ruler (609.2.2)."
+    },
+    {
+      "id": "grab_bar.cross_section_perimeter",
+      "unit": "in",
+      "value_type": "number",
+      "element": "grab_bar",
+      "applies_to": [
+        "grab_bar"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Owner: perimeter of a non-circular grab bar's cross section, measured by wrapping a flexible tape once around the gripping surface (609.2.2)."
     },
     {
       "id": "water_closet.front_maneuvering_depth",
@@ -5026,6 +5282,18 @@
         "photo"
       ],
       "derivation": "Fountain sits in an alcove or between wing walls so it does not protrude into the circulation path (CBC 11B-602.9)."
+    },
+    {
+      "id": "drinking_fountain.water_flow_height",
+      "unit": "in",
+      "value_type": "number",
+      "element": "drinking_fountain",
+      "applies_to": [
+        "drinking_fountain"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Owner: with the water running, height in inches of the top of the water stream above the spout outlet (602.6)."
     },
     {
       "id": "lavatory.centerline_from_side_wall",
@@ -5138,6 +5406,32 @@
       "derivation": "Length of the back support or wall the bench is affixed to."
     },
     {
+      "id": "bench.structural_250lbf",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "bench",
+      "applies_to": [
+        "bench"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Owner attestation: the bench seat, fasteners, mounting and supporting structure were designed or installed to take a 250 lbf vertical or horizontal force at any point without exceeding allowable stresses (903.6)."
+    },
+    {
+      "id": "bench.affixed_to_wall_or_floor",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "bench",
+      "applies_to": [
+        "bench"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [
+        "photo"
+      ],
+      "derivation": "Owner: the bench is fastened to the wall or the floor and is not free-standing (CBC 11B-903.6)."
+    },
+    {
       "id": "ramp.bottom_landing_length",
       "unit": "in",
       "value_type": "number",
@@ -5230,6 +5524,111 @@
       "evidence": "measured",
       "fallback_evidence": [],
       "derivation": "Tread depth of the stair flight the handrail serves (for the bottom extension check)."
+    },
+    {
+      "id": "handrail.top_sides_unobstructed",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "handrail",
+      "applies_to": [
+        "handrail"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Photo along the full run: true when the gripping surface is continuous along its length and nothing (newel posts, brackets, fasteners, wall returns) interrupts its top or sides (505.6)."
+    },
+    {
+      "id": "handrail.bottom_obstructed_fraction",
+      "unit": "ratio",
+      "value_type": "number",
+      "element": "handrail",
+      "applies_to": [
+        "handrail"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Fraction of the handrail's length whose underside is obstructed, from a photo of the full run: total length of brackets, posts or continuous mounting under the rail divided by the rail length (505.6). The owner can measure it instead."
+    },
+    {
+      "id": "handrail.has_projection_below",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "handrail",
+      "applies_to": [
+        "handrail"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Photo from the side: true when a horizontal projection (bracket arm, wall cap, ledge or rail) sits below the bottom of the gripping surface (505.6)."
+    },
+    {
+      "id": "handrail.projection_clearance_below",
+      "unit": "in",
+      "value_type": "number",
+      "element": "handrail",
+      "applies_to": [
+        "handrail"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Vertical clear distance from the bottom of the gripping surface to the top of the nearest horizontal projection below it, from a close side photo with a known scale; the owner can measure it with a tape (505.6)."
+    },
+    {
+      "id": "handrail.surfaces_free_of_sharp_or_abrasive",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "handrail",
+      "applies_to": [
+        "handrail",
+        "grab_bar"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Close photo: true when the gripping surface and the surfaces next to it (brackets, fittings, the wall behind) have rounded edges and no sharp or abrasive elements such as burrs, exposed screw tips or rough welds (505.8, 609.5)."
+    },
+    {
+      "id": "handrail.rotates_in_fittings",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "handrail",
+      "applies_to": [
+        "handrail"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Owner: the handrail turns or spins within its brackets when gripped and twisted (505.9)."
+    },
+    {
+      "id": "post_mounted_object.bottom_edge_below_80",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "post_mounted_object",
+      "applies_to": [
+        "post_mounted_object"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [
+        "owner"
+      ],
+      "derivation": "Photo of the post-mounted sign or object: true when its bottom edge is less than 80 in above the floor or ground (CBC 11B-307.3.1); the owner can measure it."
+    },
+    {
+      "id": "post_mounted_object.edges_eased",
+      "unit": "boolean",
+      "value_type": "boolean",
+      "element": "post_mounted_object",
+      "applies_to": [
+        "post_mounted_object"
+      ],
+      "evidence": "photo",
+      "fallback_evidence": [],
+      "derivation": "Close photo of the sign or object on the post: true when its edges are rounded or eased and its corners have a radius of 1/8 in minimum, with no square or sharp corners (CBC 11B-307.3.1)."
     }
   ]
 }

@@ -84,9 +84,11 @@
       "jurisdiction": "ADA2010",
       "section": "202.5",
       "title": "Alterations to qualified historic buildings",
-      "status": "deferred",
-      "rule_ids": [],
-      "reason": "Historic status is not captured yet; needs an owner question and alternate minimum rules."
+      "status": "covered",
+      "rule_ids": [
+        "ADA-202.5-historic-status"
+      ],
+      "reason": ""
     },
     {
       "jurisdiction": "ADA2010",
@@ -652,9 +654,11 @@
       "jurisdiction": "ADA2010",
       "section": "230",
       "title": "Two-way communication systems",
-      "status": "deferred",
-      "rule_ids": [],
-      "reason": "Entry intercoms are uncommon; needs an owner question and 708 photo checks."
+      "status": "covered",
+      "rule_ids": [
+        "ADA-230-two-way-comm-provided"
+      ],
+      "reason": ""
     },
     {
       "jurisdiction": "ADA2010",
@@ -1714,9 +1718,13 @@
       "jurisdiction": "ADA2010",
       "section": "505.6",
       "title": "Handrail gripping surface continuity",
-      "status": "deferred",
-      "rule_ids": [],
-      "reason": "Needs close-range geometry of brackets; photo rule pending."
+      "status": "covered",
+      "rule_ids": [
+        "ADA-505.6-top-sides-clear",
+        "ADA-505.6-bottom-obstruction",
+        "ADA-505.6-projection-clearance"
+      ],
+      "reason": ""
     },
     {
       "jurisdiction": "ADA2010",
@@ -1740,17 +1748,21 @@
       "jurisdiction": "ADA2010",
       "section": "505.8",
       "title": "Handrail surfaces",
-      "status": "deferred",
-      "rule_ids": [],
-      "reason": "Sharp edges need a photo rule; pending."
+      "status": "covered",
+      "rule_ids": [
+        "ADA-505.8-surfaces"
+      ],
+      "reason": ""
     },
     {
       "jurisdiction": "ADA2010",
       "section": "505.9",
       "title": "Handrail fittings",
-      "status": "deferred",
-      "rule_ids": [],
-      "reason": "Rotation needs an owner check; pending."
+      "status": "covered",
+      "rule_ids": [
+        "ADA-505.9-no-rotation"
+      ],
+      "reason": ""
     },
     {
       "jurisdiction": "ADA2010",
@@ -1846,9 +1858,11 @@
       "jurisdiction": "ADA2010",
       "section": "602.6",
       "title": "Drinking fountain water flow",
-      "status": "deferred",
-      "rule_ids": [],
-      "reason": "Needs the water running; photo/video rule pending."
+      "status": "covered",
+      "rule_ids": [
+        "ADA-602.6-water-flow"
+      ],
+      "reason": "Spout location is tested by 602.5; stream angle is not encoded."
     },
     {
       "jurisdiction": "ADA2010",
@@ -2183,9 +2197,12 @@
       "jurisdiction": "ADA2010",
       "section": "609.2.2",
       "title": "Non-circular grab bars",
-      "status": "deferred",
-      "rule_ids": [],
-      "reason": "Rare; photo measurement pending."
+      "status": "covered",
+      "rule_ids": [
+        "ADA-609.2.2-max-dimension",
+        "ADA-609.2.2-perimeter"
+      ],
+      "reason": ""
     },
     {
       "jurisdiction": "ADA2010",
@@ -2213,9 +2230,11 @@
       "jurisdiction": "ADA2010",
       "section": "609.5",
       "title": "Grab bar surface hazards",
-      "status": "deferred",
-      "rule_ids": [],
-      "reason": "Photo rule pending."
+      "status": "covered",
+      "rule_ids": [
+        "ADA-609.5-surface-hazards"
+      ],
+      "reason": ""
     },
     {
       "jurisdiction": "ADA2010",
@@ -2509,9 +2528,13 @@
       "jurisdiction": "ADA2010",
       "section": "708",
       "title": "Two-way communication systems (technical)",
-      "status": "deferred",
-      "rule_ids": [],
-      "reason": "See 230."
+      "status": "covered",
+      "rule_ids": [
+        "ADA-708.2-audible-signal",
+        "ADA-708.2-visual-signal",
+        "ADA-708.3-handset-cord"
+      ],
+      "reason": "708.4 (residential dwelling unit systems) is out of scope."
     },
     {
       "jurisdiction": "ADA2010",
@@ -2553,9 +2576,13 @@
       "jurisdiction": "ADA2010",
       "section": "802.3",
       "title": "Companion seats",
-      "status": "deferred",
-      "rule_ids": [],
-      "reason": "Owner question pending; assembly seating is rare in scope."
+      "status": "covered",
+      "rule_ids": [
+        "ADA-802.3.1-shoulder-alignment",
+        "ADA-802.3.1-same-level",
+        "ADA-802.3.2-equivalent"
+      ],
+      "reason": ""
     },
     {
       "jurisdiction": "ADA2010",
@@ -2761,9 +2788,11 @@
       "jurisdiction": "ADA2010",
       "section": "903.6",
       "title": "Bench structural strength",
-      "status": "deferred",
-      "rule_ids": [],
-      "reason": "Needs an owner attestation; pending."
+      "status": "covered",
+      "rule_ids": [
+        "ADA-903.6-strength"
+      ],
+      "reason": ""
     },
     {
       "jurisdiction": "ADA2010",
@@ -2872,9 +2901,11 @@
       "jurisdiction": "ADA2010",
       "section": "904.6",
       "title": "Security glazing at counters",
-      "status": "deferred",
-      "rule_ids": [],
-      "reason": "Voice communication method at teller glazing needs an owner question; pending."
+      "status": "covered",
+      "rule_ids": [
+        "ADA-904.6-security-glazing"
+      ],
+      "reason": ""
     },
     {
       "jurisdiction": "CBC11B",
@@ -2914,9 +2945,11 @@
       "jurisdiction": "CBC11B",
       "section": "11B-202.5",
       "title": "Alterations to qualified historic buildings",
-      "status": "deferred",
-      "rule_ids": [],
-      "reason": "Historic status is not captured yet; needs an owner question and alternate minimum rules."
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-202.5-historic-status"
+      ],
+      "reason": ""
     },
     {
       "jurisdiction": "CBC11B",
@@ -3312,17 +3345,23 @@
       "jurisdiction": "CBC11B",
       "section": "11B-216.8.2",
       "title": "All-gender multi-user facility signs",
-      "status": "deferred",
-      "rule_ids": [],
-      "reason": "Needs OCR of door text; photo rule pending."
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-216.8.2-all-gender-symbol",
+        "CBC-11B-216.8.2-all-gender-sign"
+      ],
+      "reason": ""
     },
     {
       "jurisdiction": "CBC11B",
       "section": "11B-216.8.3",
       "title": "Compartment labels URINAL/TOILET",
-      "status": "deferred",
-      "rule_ids": [],
-      "reason": "Needs OCR of door text; photo rule pending."
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-216.8.3-compartment-fixture-sign",
+        "CBC-11B-216.8.3-no-pictogram"
+      ],
+      "reason": ""
     },
     {
       "jurisdiction": "CBC11B",
@@ -3565,9 +3604,11 @@
       "jurisdiction": "CBC11B",
       "section": "11B-230",
       "title": "Two-way communication systems",
-      "status": "deferred",
-      "rule_ids": [],
-      "reason": "Entry intercoms are uncommon; needs an owner question and 708 photo checks."
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-230-two-way-comm-provided"
+      ],
+      "reason": ""
     },
     {
       "jurisdiction": "CBC11B",
@@ -3950,9 +3991,11 @@
       "jurisdiction": "CBC11B",
       "section": "11B-307.3.1",
       "title": "Post-mounted object edges",
-      "status": "deferred",
-      "rule_ids": [],
-      "reason": "Edge radius needs a close-up photo rule; pending."
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-307.3.1-eased-edges"
+      ],
+      "reason": ""
     },
     {
       "jurisdiction": "CBC11B",
@@ -4816,9 +4859,13 @@
       "jurisdiction": "CBC11B",
       "section": "11B-505.6",
       "title": "Handrail gripping surface continuity",
-      "status": "deferred",
-      "rule_ids": [],
-      "reason": "Needs close-range geometry of brackets; photo rule pending."
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-505.6-top-sides-clear",
+        "CBC-11B-505.6-bottom-obstruction",
+        "CBC-11B-505.6-projection-clearance"
+      ],
+      "reason": ""
     },
     {
       "jurisdiction": "CBC11B",
@@ -4842,17 +4889,21 @@
       "jurisdiction": "CBC11B",
       "section": "11B-505.8",
       "title": "Handrail surfaces",
-      "status": "deferred",
-      "rule_ids": [],
-      "reason": "Sharp edges need a photo rule; pending."
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-505.8-surfaces"
+      ],
+      "reason": ""
     },
     {
       "jurisdiction": "CBC11B",
       "section": "11B-505.9",
       "title": "Handrail fittings",
-      "status": "deferred",
-      "rule_ids": [],
-      "reason": "Rotation needs an owner check; pending."
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-505.9-no-rotation"
+      ],
+      "reason": ""
     },
     {
       "jurisdiction": "CBC11B",
@@ -4948,9 +4999,11 @@
       "jurisdiction": "CBC11B",
       "section": "11B-602.6",
       "title": "Drinking fountain water flow",
-      "status": "deferred",
-      "rule_ids": [],
-      "reason": "Needs the water running; photo/video rule pending."
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-602.6-water-flow"
+      ],
+      "reason": "Spout location is tested by 11B-602.5; stream angle is not encoded."
     },
     {
       "jurisdiction": "CBC11B",
@@ -5362,9 +5415,12 @@
       "jurisdiction": "CBC11B",
       "section": "11B-609.2.2",
       "title": "Non-circular grab bars",
-      "status": "deferred",
-      "rule_ids": [],
-      "reason": "Rare; photo measurement pending."
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-609.2.2-max-dimension",
+        "CBC-11B-609.2.2-perimeter"
+      ],
+      "reason": ""
     },
     {
       "jurisdiction": "CBC11B",
@@ -5392,9 +5448,11 @@
       "jurisdiction": "CBC11B",
       "section": "11B-609.5",
       "title": "Grab bar surface hazards",
-      "status": "deferred",
-      "rule_ids": [],
-      "reason": "Photo rule pending."
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-609.5-surface-hazards"
+      ],
+      "reason": ""
     },
     {
       "jurisdiction": "CBC11B",
@@ -5738,9 +5796,13 @@
       "jurisdiction": "CBC11B",
       "section": "11B-708",
       "title": "Two-way communication systems (technical)",
-      "status": "deferred",
-      "rule_ids": [],
-      "reason": "See 230."
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-708.2-audible-signal",
+        "CBC-11B-708.2-visual-signal",
+        "CBC-11B-708.3-handset-cord"
+      ],
+      "reason": "11B-708.4 (residential dwelling unit systems) is out of scope."
     },
     {
       "jurisdiction": "CBC11B",
@@ -5782,9 +5844,13 @@
       "jurisdiction": "CBC11B",
       "section": "11B-802.3",
       "title": "Companion seats",
-      "status": "deferred",
-      "rule_ids": [],
-      "reason": "Owner question pending; assembly seating is rare in scope."
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-802.3.1-shoulder-alignment",
+        "CBC-11B-802.3.1-same-level",
+        "CBC-11B-802.3.2-equivalent"
+      ],
+      "reason": ""
     },
     {
       "jurisdiction": "CBC11B",
@@ -6026,9 +6092,12 @@
       "jurisdiction": "CBC11B",
       "section": "11B-903.6",
       "title": "Bench structural strength",
-      "status": "deferred",
-      "rule_ids": [],
-      "reason": "Needs an owner attestation; pending."
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-903.6-strength",
+        "CBC-11B-903.6-affixed"
+      ],
+      "reason": ""
     },
     {
       "jurisdiction": "CBC11B",
@@ -6137,9 +6206,11 @@
       "jurisdiction": "CBC11B",
       "section": "11B-904.6",
       "title": "Security glazing at counters",
-      "status": "deferred",
-      "rule_ids": [],
-      "reason": "Voice communication method at teller glazing needs an owner question; pending."
+      "status": "covered",
+      "rule_ids": [
+        "CBC-11B-904.6-security-glazing"
+      ],
+      "reason": ""
     },
     {
       "jurisdiction": "CBC11B",
