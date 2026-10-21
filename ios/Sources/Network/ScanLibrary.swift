@@ -10,6 +10,9 @@ nonisolated protocol ScanLibrary: Sendable {
     func renameScan(scanID: String, name: String) async throws -> ScanResponse
     func deleteScan(scanID: String) async throws
     func createShare(scanID: String) async throws -> ShareResponse
+    /// Uploads a JPEG and returns its artifact id.
+    func uploadPhoto(jpeg: Data, scanID: String) async throws -> String
+    func answerFromPhoto(scanID: String, subjectID: String, metric: String, artifactID: String) async throws -> PhotoAnswerResponse
 }
 
 extension APIClient: ScanLibrary {}

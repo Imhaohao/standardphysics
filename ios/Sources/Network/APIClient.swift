@@ -143,6 +143,15 @@ actor APIClient: UploadAPI {
         _ = try await send(APIRoutes.deleteScan(scanID: scanID))
     }
 
+    func uploadPhoto(jpeg: Data, scanID: String) async throws -> String {
+        try await PhotoUploader(api: self, storage: URLSessionTransport()).upload(jpeg: jpeg, scanID: scanID)
+    }
+
+    func answerFromPhoto(scanID: String, subjectID: String, metric: String, artifactID: String) async throws -> PhotoAnswerResponse {
+        let body = PhotoAnswerRequest(subjectID: subjectID, metric: metric, artifactID: artifactID)
+        return try await send(APIRoutes.photoAnswer(scanID: scanID, body: body))
+    }
+
     func createShare(scanID: String) async throws -> ShareResponse {
         try await send(APIRoutes.createShare(scanID: scanID))
     }

@@ -93,6 +93,11 @@ nonisolated enum APIRoutes {
         Endpoint(method: .put, path: "\(apiPrefix)/scans/\(scanID)/answers", body: body, isIdempotent: true)
     }
 
+    /// Reads the photo with the server's vision model; not retried, since each try is a new read.
+    static func photoAnswer(scanID: String, body: PhotoAnswerRequest) -> Endpoint<PhotoAnswerResponse> {
+        Endpoint(method: .post, path: "\(apiPrefix)/scans/\(scanID)/photo-answers", body: body, isIdempotent: false, timeout: finishTimeout)
+    }
+
     /// The merged scene the server checked, used to name what each finding is about.
     static func scene(scanID: String) -> Endpoint<JSONValue> {
         Endpoint(method: .get, path: "\(apiPrefix)/scans/\(scanID)/scene", isIdempotent: true)

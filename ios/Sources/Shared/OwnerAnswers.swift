@@ -30,12 +30,17 @@ nonisolated struct OwnerAnswer: Codable, Sendable, Equatable {
     let value: AnswerValue
     /// The unit the owner answered in, for numbers.
     var unit: String?
+    /// "photo" when the server read the answer from a photo; nil or "owner" when typed or tapped.
+    var source: String?
+
+    static let photoSource = "photo"
 
     var key: String { OwnerQuestions.key(subjectID: subjectID, metric: metric) }
+    var isFromPhoto: Bool { source == Self.photoSource }
 
     enum CodingKeys: String, CodingKey {
         case subjectID = "subject_id"
-        case metric, value, unit
+        case metric, value, unit, source
     }
 }
 
@@ -68,13 +73,39 @@ nonisolated struct ServerAnswer: Decodable, Sendable, Equatable {
     let subjectID: String
     let metric: String
     let value: AnswerValue?
+    /// "owner" or "photo".
+    var source: String?
+    var confidence: Double?
+    var photoArtifactID: String?
 
     var asOwnerAnswer: OwnerAnswer? {
-        value.map { OwnerAnswer(subjectID: subjectID, metric: metric, value: $0) }
+        value.map { OwnerAnswer(subjectID: subjectID, metric: metric, value: $0, source: source) }
     }
 
     enum CodingKeys: String, CodingKey {
         case subjectID = "subject_id"
-        case metric, value
+        case metric, value, source, confidence
+        case photoArtifactID = "photo_artifact_id"
     }
+}
+
+/// `POST /v1/scans/{id}/photo-answers`: read the answer to one open ask from an uploaded photo.
+nonisolated struct PhotoAnswerRequest: Encodable, Sendable {
+    let subjectID: String
+    let metric: String
+    let artifactID: String
+
+    enum CodingKeys: String, CodingKey {
+        case subjectID = "subject_id"
+        case metric
+        case artifactID = "artifact_id"
+    }
+}
+
+/// `answered` is false when the photo was unclear; the report comes back either way.
+nonisolated struct PhotoAnswerResponse: Decodable, Sendable, Equatable {
+    let answered: Bool
+    let answer: AnswerValue?
+    let confidence: Double?
+    let report: Report
 }

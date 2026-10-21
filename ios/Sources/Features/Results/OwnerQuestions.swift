@@ -37,16 +37,19 @@ nonisolated enum OwnerQuestions {
     }
 
     /// Sets or, with nil, clears the owner's answer to `question`.
-    static func setting(_ value: AnswerValue?, for question: OwnerQuestion, in answers: [OwnerAnswer]) -> [OwnerAnswer] {
+    static func setting(
+        _ value: AnswerValue?, for question: OwnerQuestion, in answers: [OwnerAnswer], source: String? = nil
+    ) -> [OwnerAnswer] {
         let others = answers.filter { $0.key != question.id }
         guard let value else { return others }
         let unit = question.ask.unit.isEmpty ? nil : question.ask.unit
-        return others + [OwnerAnswer(subjectID: question.subjectID, metric: question.ask.metric, value: value, unit: unit)]
+        return others + [OwnerAnswer(subjectID: question.subjectID, metric: question.ask.metric, value: value, unit: unit, source: source)]
     }
 
-    /// Every stored answer, plus a `null` for the one just cleared, so the server drops it too.
+    /// Every answer the owner gave by hand, plus a `null` for the one just cleared, so the server
+    /// drops it too. Answers read from a photo already live on the server as photo answers.
     static func updates(for answers: [OwnerAnswer], clearing cleared: OwnerQuestion?) -> [AnswerUpdate] {
-        let current = answers.map { AnswerUpdate(subjectID: $0.subjectID, metric: $0.metric, value: $0.value) }
+        let current = answers.filter { !$0.isFromPhoto }.map { AnswerUpdate(subjectID: $0.subjectID, metric: $0.metric, value: $0.value) }
         guard let cleared else { return current }
         return current + [AnswerUpdate(subjectID: cleared.subjectID, metric: cleared.ask.metric, value: nil)]
     }

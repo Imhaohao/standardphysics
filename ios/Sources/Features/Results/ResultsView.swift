@@ -249,9 +249,68 @@ private struct AskQuestionView: View {
             AnswerControl(question: question, current: model.answer(to: question, inReport: reportID)) { value in
                 Task { await model.answer(question, with: value, inReport: reportID) }
             }
+            PhotoAnswerSection(question: question, reportID: reportID)
             Text(Citation.list(for: outcome))
                 .font(Theme.Typography.caption)
                 .foregroundStyle(Theme.Palette.inkMuted)
+        }
+    }
+}
+
+/// Where the rule would rather have a photo, the owner can take one and the server reads the
+/// answer from it. An unclear photo can be retaken; answering by hand always stays open.
+private struct PhotoAnswerSection: View {
+    @Environment(AppModel.self) private var model
+    let question: OwnerQuestion
+    let reportID: UUID
+    @State private var isShowingCamera = false
+    @State private var isReading = false
+    @State private var outcome: PhotoAnswerOutcome?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+            if CameraPicker.isAvailable && model.canAnswerWithPhoto(question, inReport: reportID) {
+                SecondaryButton(title: outcome == .unclear ? "Retake photo" : "Take a photo instead", systemImage: "camera") {
+                    isShowingCamera = true
+                }
+                .disabled(isReading)
+            }
+            if let message = PhotoAnswerCopy.message(for: outcome, isReading: isReading) {
+                HStack(spacing: Theme.Spacing.s) {
+                    if isReading { ProgressView().controlSize(.small) }
+                    Text(message)
+                        .font(Theme.Typography.callout)
+                        .foregroundStyle(outcome == .unclear ? Theme.Palette.attention : Theme.Palette.inkMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .accessibilityElement(children: .combine)
+            }
+        }
+        .fullScreenCover(isPresented: $isShowingCamera) {
+            CameraPicker { jpeg in
+                isShowingCamera = false
+                guard let jpeg else { return }
+                Task { await read(jpeg) }
+            }
+            .ignoresSafeArea()
+        }
+    }
+
+    private func read(_ jpeg: Data) async {
+        isReading = true
+        outcome = await model.answerWithPhoto(question, jpeg: jpeg, inReport: reportID)
+        isReading = false
+    }
+}
+
+enum PhotoAnswerCopy {
+    static func message(for outcome: PhotoAnswerOutcome?, isReading: Bool) -> String? {
+        if isReading { return "We're reading your photo. This takes a few seconds." }
+        switch outcome {
+        case .answered: return "We read the answer from your photo and checked the report again."
+        case .unclear: return "We couldn't tell from that photo. Take another with it filling the frame, or answer above by hand."
+        case .unavailable: return "We can't read photos yet, so answer above by hand for now."
+        case .failed, nil: return nil
         }
     }
 }

@@ -9,6 +9,15 @@ enum AppRoute: Equatable {
     case results(UUID)
 }
 
+enum PhotoAnswerOutcome: Equatable {
+    case answered
+    /// The server couldn't tell from the photo; retake it or answer by hand.
+    case unclear
+    /// The server can't read photos yet (409); answer by hand.
+    case unavailable
+    case failed
+}
+
 struct ProcessingState: Equatable {
     var stage: ProcessingStage = .uploading
     var fraction: Double = 0
@@ -322,6 +331,49 @@ final class AppModel {
         } catch {
             notice = Self.answerNotSent
         }
+    }
+
+    // MARK: Photo answers
+
+    static let photoNotSent = "We couldn't send that photo. Check your connection and try again, or answer by hand."
+
+    /// Turns false for the rest of the session once the server says it can't read photos yet.
+    private(set) var isPhotoReadingAvailable = true
+
+    /// Offered on a signed-in server scan when the rule says a photo would settle it.
+    func canAnswerWithPhoto(_ question: OwnerQuestion, inReport reportID: UUID) -> Bool {
+        question.ask.photo && isPhotoReadingAvailable && library != nil && account.state.isSignedIn
+            && report(id: reportID)?.remoteScanID != nil
+    }
+
+    /// Uploads the photo, asks the server to read the answer from it, and shows the re-checked
+    /// report. An unclear photo still returns the report, with the question left open.
+    func answerWithPhoto(_ question: OwnerQuestion, jpeg: Data, inReport reportID: UUID) async -> PhotoAnswerOutcome {
+        guard let library, let remoteScanID = report(id: reportID)?.remoteScanID else { return .failed }
+        do {
+            let artifactID = try await library.uploadPhoto(jpeg: jpeg, scanID: remoteScanID)
+            let result = try await library.answerFromPhoto(
+                scanID: remoteScanID, subjectID: question.subjectID, metric: question.ask.metric, artifactID: artifactID
+            )
+            await applyPhotoAnswer(result, to: question, inReport: reportID)
+            notice = nil
+            return result.answered ? .answered : .unclear
+        } catch APIError.conflict {
+            isPhotoReadingAvailable = false
+            return .unavailable
+        } catch {
+            notice = Self.photoNotSent
+            return .failed
+        }
+    }
+
+    private func applyPhotoAnswer(_ result: PhotoAnswerResponse, to question: OwnerQuestion, inReport reportID: UUID) async {
+        guard let current = report(id: reportID) else { return }
+        var updated = ServerReports.updating(current, with: result.report)
+        if result.answered, let value = result.answer {
+            updated.answers = OwnerQuestions.setting(value, for: question, in: updated.answers, source: OwnerAnswer.photoSource)
+        }
+        await replace(updated)
     }
 
     private func recheckOnPhone(_ report: ScanReport) async {

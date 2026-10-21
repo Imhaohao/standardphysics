@@ -10,6 +10,8 @@ final class FakeScanLibrary: ScanLibrary, @unchecked Sendable {
         var savedAnswers: [[AnswerUpdate]] = []
         var renamed: [String: String] = [:]
         var deleted: [String] = []
+        var photos: [Data] = []
+        var photoReading: AnswerValue?
         var failure: APIError?
     }
 
@@ -63,6 +65,24 @@ final class FakeScanLibrary: ScanLibrary, @unchecked Sendable {
     func createShare(scanID: String) async throws -> ShareResponse {
         try check()
         return ShareResponse(token: "tok_\(scanID.prefix(4))", createdAt: fixedNow)
+    }
+
+    var uploadedPhotos: [Data] { state.read { $0.photos } }
+
+    /// What the next photo read says: an answer, or nil for an unclear photo.
+    func readPhotosAs(_ value: AnswerValue?) { state.write { $0.photoReading = value } }
+
+    func uploadPhoto(jpeg: Data, scanID: String) async throws -> String {
+        try check()
+        state.write { $0.photos.append(jpeg) }
+        return "artifact-\(state.read { $0.photos.count })"
+    }
+
+    func answerFromPhoto(scanID: String, subjectID: String, metric: String, artifactID: String) async throws -> PhotoAnswerResponse {
+        try check()
+        let reading = state.read { $0.photoReading }
+        let report = LibraryFixtures.report(scanID: scanID, status: reading == nil ? .needsInfo : .pass)
+        return PhotoAnswerResponse(answered: reading != nil, answer: reading, confidence: reading == nil ? 0.2 : 0.9, report: report)
     }
 
     private func check() throws {
