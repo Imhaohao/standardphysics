@@ -26,8 +26,13 @@ export interface ElementQuestions {
 
 export const questionKey = (subjectId: string, metric: string) => JSON.stringify([subjectId, metric]);
 
+const ANSWERABLE: readonly string[] = ["boolean", "number", "integer", "enum"] satisfies AskValueType[];
+
+/** Questions whose answer this form can collect; anything else stays an open check. */
+export const isAnswerable = (ask: Ask | null | undefined): ask is Ask => !!ask && ANSWERABLE.includes(ask.value_type);
+
 function askingFinding(pair: FindingPair): (Finding & { ask: Ask }) | null {
-  const finding = [pair.governing, pair.ada, pair.cbc].find((candidate) => candidate?.status === "needs_info" && candidate.ask);
+  const finding = [pair.governing, pair.ada, pair.cbc].find((candidate) => candidate?.status === "needs_info" && isAnswerable(candidate.ask));
   return (finding as (Finding & { ask: Ask }) | undefined) ?? null;
 }
 
@@ -43,7 +48,7 @@ function questionsFor(group: ElementGroup): ElementQuestions {
   for (const pair of group.pairs.filter((candidate) => candidate.governing.status === "needs_info")) {
     const asking = askingFinding(pair);
     if (asking) {
-      const subjectId = asking.ask.subject_id ?? asking.subject_id;
+      const subjectId = asking.ask.subject_id;
       const key = questionKey(subjectId, asking.ask.metric);
       addTo(questions, key, pair, () => ({ key, subjectId, ask: asking.ask, checks: [] }));
     } else {
@@ -86,7 +91,7 @@ const PARSERS: Record<AskValueType, (raw: string, ask: Pick<Ask, "options">) => 
 export function parseAnswer(ask: Pick<Ask, "value_type" | "options">, raw: string): ParsedAnswer {
   const trimmed = raw.trim();
   if (!trimmed) return BLANK;
-  return PARSERS[ask.value_type](trimmed, ask);
+  return PARSERS[ask.value_type as AskValueType](trimmed, ask);
 }
 
 /** The answers to send for the drafts the owner filled in, or the reasons some of them can't be sent. */

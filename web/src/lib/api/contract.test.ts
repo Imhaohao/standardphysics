@@ -22,7 +22,7 @@ describe("API contract", () => {
 
   it("covers every route the client calls", () => {
     const paths = Object.keys((JSON.parse(readFileSync(SPEC, "utf8")) as { paths: Record<string, unknown> }).paths);
-    for (const route of ["/v1/auth/login", "/v1/auth/logout", "/v1/scans", "/v1/scans/{scan_id}", "/v1/scans/{scan_id}/scene", "/v1/scans/{scan_id}/assessment", "/v1/scans/{scan_id}/live", "/v1/scans/{scan_id}/live-ticket"]) {
+    for (const route of ["/v1/auth/login", "/v1/auth/logout", "/v1/scans", "/v1/scans/{scan_id}", "/v1/scans/{scan_id}/scene", "/v1/scans/{scan_id}/assessment", "/v1/scans/{scan_id}/live", "/v1/scans/{scan_id}/live-ticket", "/v1/auth/register", "/v1/me", "/v1/scans/{scan_id}/answers", "/v1/scans/{scan_id}/shares", "/v1/scans/{scan_id}/shares/{token}", "/v1/shared/{token}"]) {
       expect(paths).toContain(route);
     }
   });

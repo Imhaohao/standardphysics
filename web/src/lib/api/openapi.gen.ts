@@ -110,7 +110,7 @@ export interface paths {
         get: operations["me"];
         put?: never;
         post?: never;
-        delete?: never;
+        delete: operations["delete_me"];
         options?: never;
         head?: never;
         patch?: never;
@@ -141,6 +141,22 @@ export interface paths {
         };
         get: operations["get_scan"];
         put?: never;
+        post?: never;
+        delete: operations["delete_scan"];
+        options?: never;
+        head?: never;
+        patch: operations["update_scan"];
+        trace?: never;
+    };
+    "/v1/scans/{scan_id}/answers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_answers"];
+        put: operations["save_answers"];
         post?: never;
         delete?: never;
         options?: never;
@@ -228,6 +244,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/scans/{scan_id}/photo-answers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["answer_from_photo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/scans/{scan_id}/scene": {
         parameters: {
             query?: never;
@@ -239,6 +271,38 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/scans/{scan_id}/shares": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_shares"];
+        put?: never;
+        post: operations["create_share"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/scans/{scan_id}/shares/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete_share"];
         options?: never;
         head?: never;
         patch?: never;
@@ -324,10 +388,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/shared/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_shared_report"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        Answer: {
+            /** Format: date-time */
+            answered_at: string;
+            /** Format: double */
+            confidence: number;
+            metric: string;
+            /** Format: uuid */
+            photo_artifact_id?: string | null;
+            /** @description `owner` when typed in, `photo` when read from a photo by the vision model. */
+            source: string;
+            subject_id: string;
+            /** @description `true`/`false`, a number in the question's unit, or text. */
+            value: Record<string, never>;
+        };
+        AnswerInput: {
+            metric: string;
+            subject_id: string;
+            /** @description `null` removes the answer. */
+            value: Record<string, never>;
+        };
         AppleSignIn: {
             identity_token: string;
             /** @description The raw nonce; the identity token's `nonce` claim must be its hex SHA-256. */
@@ -353,6 +453,20 @@ export interface components {
             size_bytes: number;
             /** Format: uuid */
             upload_id: string;
+        };
+        Ask: {
+            metric: string;
+            /** @description Allowed values when `value_type` is `enum`. */
+            options: string[];
+            /** @description The rule wants a photo; the owner may still answer directly. */
+            photo: boolean;
+            prompt: string;
+            /** @description Record the answer on this subject (the site for site-wide questions). */
+            subject_id: string;
+            /** @description Unit a number answer is given in, e.g. `lbf` or `in`. */
+            unit: string;
+            /** @description `boolean`, `number`, `integer`, `enum` or `text`. */
+            value_type: string;
         };
         AuthResponse: {
             /** Format: date-time */
@@ -392,6 +506,7 @@ export interface components {
             message: string;
         };
         Finding: {
+            ask?: null | components["schemas"]["Ask"];
             counterpart?: string | null;
             evidence: string;
             jurisdiction: string;
@@ -436,6 +551,26 @@ export interface components {
             unit: string;
             /** Format: double */
             value?: number | null;
+        };
+        PhotoAnswerRequest: {
+            /**
+             * Format: uuid
+             * @description A completed upload of kind `photo` on this scan.
+             */
+            artifact_id: string;
+            metric: string;
+            subject_id: string;
+        };
+        PhotoAnswerResponse: {
+            answer?: Record<string, never> | null;
+            /**
+             * @description True when the photo settled the question; false when it was unclear and the owner
+             *     should answer or try another photo.
+             */
+            answered: boolean;
+            /** Format: double */
+            confidence: number;
+            report: components["schemas"]["Report"];
         };
         Point3: {
             /** Format: double */
@@ -490,6 +625,9 @@ export interface components {
             room_id: string;
             /** Format: int64 */
             seq?: number | null;
+        };
+        SaveAnswers: {
+            answers: components["schemas"]["AnswerInput"][];
         };
         Scan: {
             /** Format: date-time */
@@ -548,6 +686,18 @@ export interface components {
          * @enum {string}
          */
         Severity: "violation" | "advisory" | "info";
+        Share: {
+            /** Format: date-time */
+            created_at: string;
+            /** @description Put this in the web link: `/r/{token}`. */
+            token: string;
+        };
+        SharedReport: {
+            report: components["schemas"]["Report"];
+            scan: components["schemas"]["Scan"];
+            /** @description Merged sp-core Scene, or null when no room was captured. */
+            scene?: Record<string, never> | null;
+        };
         StageTimings: {
             /** Format: int64 */
             evaluation_ms: number;
@@ -577,6 +727,11 @@ export interface components {
             governing?: components["schemas"]["Governing"][];
             governing_counts?: components["schemas"]["StatusCounts"];
             total: components["schemas"]["StatusCounts"];
+        };
+        /** @description Fields left out stay as they are; `site_name: null` clears it. */
+        UpdateScan: {
+            name?: string | null;
+            site_name?: string | null;
         };
         Upload: {
             content_type: string;
@@ -820,6 +975,32 @@ export interface operations {
             };
         };
     };
+    delete_me: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The account, its sessions, scans and uploaded files are gone */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     list_scans: {
         parameters: {
             query?: never;
@@ -909,6 +1090,155 @@ export interface operations {
                 };
             };
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_scan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The scan, its report, answers, share links and uploaded files are gone */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    update_scan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateScan"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Scan"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_answers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Answer"][];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    save_answers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveAnswers"];
+            };
+        };
+        responses: {
+            /** @description The report re-evaluated with every saved answer */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Report"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The scan has not been finished yet */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1067,6 +1397,65 @@ export interface operations {
             };
         };
     };
+    answer_from_photo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhotoAnswerRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhotoAnswerResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The scan is not finished, or photo reading is not set up on this server */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The vision model did not give a usable reply */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     get_scene: {
         parameters: {
             query?: never;
@@ -1088,6 +1477,92 @@ export interface operations {
                 };
             };
             /** @description Not your scan, or no room has been captured yet */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_shares: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Share"][];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    create_share: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Share"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_share: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scan_id: string;
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1282,6 +1757,36 @@ export interface operations {
                     "application/json": components["schemas"]["PresignResponse"];
                 };
             };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_shared_report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SharedReport"];
+                };
+            };
+            /** @description Unknown or revoked link, or the scan has no report yet */
             404: {
                 headers: {
                     [name: string]: unknown;

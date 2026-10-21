@@ -6,7 +6,7 @@ import { groupByElement } from "./group";
 import { answersToSave, choicesFor, elementQuestions, parseAnswer, questionCount, questionKey, type OwnerQuestion } from "./questions";
 import type { Ask, Finding } from "./types";
 
-const latch: Ask = { metric: "door.has_latch", prompt: "Does this door have a latch?", value_type: "boolean", unit: "", options: [], photo: true };
+const latch: Ask = { metric: "door.has_latch", prompt: "Does this door have a latch?", value_type: "boolean", unit: "", options: [], photo: true, subject_id: "door" };
 
 function finding(overrides: Partial<Finding>): Finding {
   return { rule_id: "r", jurisdiction: "ADA2010", section: "404.2.3", title: "", subject_id: "door", status: "needs_info", measured: null, required: "", message: "", evidence: "", severity: "violation", ...overrides };
