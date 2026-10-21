@@ -16,12 +16,17 @@ struct HomeView: View {
                     .padding(.top, Theme.Spacing.s)
                 }
                 .scrollIndicators(.hidden)
-                .safeAreaInset(edge: .bottom) { startButton }
+                .safeAreaInset(edge: .bottom) {
+                    if model.canScan { startButton }
+                }
             }
             .padding(.horizontal, Theme.Spacing.s)
             .padding(.vertical, Theme.Spacing.xs)
         }
         .task { await model.refresh() }
+        .onChange(of: model.account.state) { _, _ in
+            Task { await model.refresh() }
+        }
         .sheet(isPresented: Bindable(model.account).isSheetPresented) {
             AccountSheet(account: model.account)
                 .presentationDetents([.large])
@@ -29,7 +34,12 @@ struct HomeView: View {
     }
 
     @ViewBuilder private var content: some View {
-        if model.unfinishedScans.isEmpty && model.reports.isEmpty {
+        if let notice = model.notice {
+            NoticeBanner(message: notice) { model.dismissNotice() }
+        }
+        if !model.canScan {
+            UnsupportedPhoneNotice(account: model.account)
+        } else if model.unfinishedScans.isEmpty && model.reports.isEmpty {
             HomeEmptyState()
         }
         if !model.unfinishedScans.isEmpty {
@@ -44,7 +54,7 @@ struct HomeView: View {
         if !model.reports.isEmpty {
             HomeSection(title: "Checked") {
                 ForEach(model.reports) { report in
-                    ReportRow(report: report) { model.openReport(report.scanID) }
+                    ReportRow(report: report)
                 }
             }
         }
@@ -128,10 +138,27 @@ private struct HomeSection<Content: View>: View {
 }
 
 private struct UnfinishedScanCard: View {
+    @Environment(AppModel.self) private var model
     let scan: ScanManifest
     let onContinue: () -> Void
+    @State private var isConfirmingDelete = false
 
     var body: some View {
+        card
+            .contextMenu {
+                Button("Delete scan", systemImage: "trash", role: .destructive) { isConfirmingDelete = true }
+            }
+            .alert("Delete this scan?", isPresented: $isConfirmingDelete) {
+                Button("Delete scan", role: .destructive) {
+                    Task { await model.deleteUnfinishedScan(scan.scanID) }
+                }
+                Button("Keep it", role: .cancel) {}
+            } message: {
+                Text(HomeCopy.deleteScanMessage(scan))
+            }
+    }
+
+    private var card: some View {
         Card(variant: .raised) {
             VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
@@ -177,36 +204,112 @@ struct RoomSlots: View {
     }
 }
 
+/// Opens the report on tap; a long press offers rename and delete.
 private struct ReportRow: View {
+    @Environment(AppModel.self) private var model
     let report: ScanReport
-    let action: () -> Void
+    @State private var isRenaming = false
+    @State private var draftName = ""
+    @State private var isConfirmingDelete = false
+
+    var body: some View {
+        Button { model.openReport(report.scanID) } label: { ReportRowLabel(report: report) }
+            .buttonStyle(.plain)
+            .contextMenu {
+                Button("Rename", systemImage: "pencil") {
+                    draftName = report.name
+                    isRenaming = true
+                }
+                Button("Delete report", systemImage: "trash", role: .destructive) { isConfirmingDelete = true }
+            }
+            .alert("Rename this report", isPresented: $isRenaming) {
+                TextField("Report name", text: $draftName)
+                Button("Save") {
+                    let name = draftName
+                    Task { await model.renameReport(report.scanID, to: name) }
+                }
+                Button("Cancel", role: .cancel) {}
+            }
+            .alert("Delete this report?", isPresented: $isConfirmingDelete) {
+                Button("Delete report", role: .destructive) {
+                    Task { await model.deleteReport(report.scanID) }
+                }
+                Button("Keep it", role: .cancel) {}
+            } message: {
+                Text(HomeCopy.deleteReportMessage(report))
+            }
+    }
+}
+
+nonisolated enum HomeCopy {
+    static func deleteReportMessage(_ report: ScanReport) -> String {
+        guard report.remoteScanID != nil else {
+            return "“\(report.name)” and the rooms behind it will be removed from this phone. You can't undo this."
+        }
+        return "“\(report.name)” will be removed from this phone and from your Standard Physics account. You can't undo this."
+    }
+
+    static func deleteScanMessage(_ scan: ScanManifest) -> String {
+        let rooms = scan.rooms.count == 1 ? "1 saved room" : "\(scan.rooms.count) saved rooms"
+        return "“\(scan.name)” and its \(rooms) will be removed from this phone. You can't undo this."
+    }
+}
+
+private struct ReportRowLabel: View {
+    let report: ScanReport
 
     var body: some View {
         let summary = ReportGrouping.summary(for: report)
-        Button(action: action) {
-            Card {
-                HStack(spacing: Theme.Spacing.m) {
-                    VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                        Text(report.name)
-                            .font(Theme.Typography.headline)
-                            .foregroundStyle(Theme.Palette.ink)
-                        Text(report.completedAt.formatted(date: .abbreviated, time: .omitted))
-                            .font(Theme.Typography.caption)
-                            .foregroundStyle(Theme.Palette.inkMuted)
+        Card {
+            HStack(spacing: Theme.Spacing.m) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                    Text(report.name)
+                        .font(Theme.Typography.headline)
+                        .foregroundStyle(Theme.Palette.ink)
+                    Text(report.completedAt.formatted(date: .abbreviated, time: .omitted))
+                        .font(Theme.Typography.caption)
+                        .foregroundStyle(Theme.Palette.inkMuted)
+                }
+                Spacer(minLength: Theme.Spacing.s)
+                if summary.toFix > 0 {
+                    StatusPill(tone: .fail, title: "\(summary.toFix) to fix")
+                } else {
+                    StatusPill(tone: .pass, title: "Nothing to fix")
+                }
+                Image(systemName: "chevron.right")
+                    .font(Theme.Typography.caption.weight(.bold))
+                    .foregroundStyle(Theme.Palette.inkFaint)
+            }
+        }
+    }
+}
+
+/// Shown instead of "Start a new scan" on a phone without LiDAR. Signing in still brings in the
+/// reports from scans made on another phone.
+private struct UnsupportedPhoneNotice: View {
+    let account: AccountModel
+
+    var body: some View {
+        Card(variant: .raised) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+                Label("This iPhone can't scan", systemImage: "iphone.slash")
+                    .font(Theme.Typography.title)
+                    .foregroundStyle(Theme.Palette.ink)
+                Text("Scanning measures your space with the LiDAR sensor, which only iPhone Pro and Pro Max models from iPhone 12 Pro onward have. This phone doesn't have one, so it can't start a scan.")
+                    .font(Theme.Typography.body)
+                    .foregroundStyle(Theme.Palette.inkMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+                if account.isAvailable && !account.state.isSignedIn {
+                    Text("You can still sign in here to read, answer and share the reports from scans you made on another iPhone.")
+                        .font(Theme.Typography.body)
+                        .foregroundStyle(Theme.Palette.inkMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                    PrimaryButton(title: "Sign in to see your reports", systemImage: "person.crop.circle") {
+                        account.isSheetPresented = true
                     }
-                    Spacer(minLength: Theme.Spacing.s)
-                    if summary.toFix > 0 {
-                        StatusPill(tone: .fail, title: "\(summary.toFix) to fix")
-                    } else {
-                        StatusPill(tone: .pass, title: "Nothing to fix")
-                    }
-                    Image(systemName: "chevron.right")
-                        .font(Theme.Typography.caption.weight(.bold))
-                        .foregroundStyle(Theme.Palette.inkFaint)
                 }
             }
         }
-        .buttonStyle(.plain)
     }
 }
 

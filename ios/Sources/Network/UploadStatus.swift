@@ -47,6 +47,8 @@ nonisolated enum UploadKind: String, Sendable {
     case worldMap = "world_map"
     case crop
     case artifact
+    /// A photo the owner took to answer a question.
+    case photo
 }
 
 nonisolated struct UploaderConfiguration: Sendable {

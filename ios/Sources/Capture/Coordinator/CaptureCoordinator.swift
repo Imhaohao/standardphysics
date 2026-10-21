@@ -128,6 +128,22 @@ final class CaptureCoordinator: CaptureControlling {
         await settle()
     }
 
+    /// The scan held open goes through the state machine's discard, so its `.deleteScan` effect
+    /// also stops the session; any other scan only has files on disk to remove.
+    func deleteScan(scanID: UUID) async {
+        if manifest?.scanID == scanID, state.activity != .idle {
+            await discardScan()
+            return
+        }
+        if manifest?.scanID == scanID { manifest = nil }
+        do {
+            try await dependencies.journal.delete(scanID: scanID)
+        } catch {
+            logger.error("Delete failed: \(error.localizedDescription)")
+        }
+        notify(.discarded(scanID: scanID))
+    }
+
     /// Feeds one batch of world-lifted detections to the room in progress.
     func ingest(_ batch: [Detection]) {
         guard case .scanning = phase else { return }

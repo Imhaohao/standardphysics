@@ -16,6 +16,9 @@ struct CaptureView<Camera: View>: View {
         // A stray finger near an edge shouldn't open Control Center mid-scan; a second swipe still does.
         .defersSystemGestures(on: .all)
         .persistentSystemOverlays(.hidden)
+        .sensoryFeedback(trigger: capture.phase) { old, new in
+            HapticMoment.forPhase(from: old, to: new)?.feedback
+        }
         .sheet(isPresented: roomFinishedBinding) {
             RoomFinishedSheet()
                 .environment(\.colorScheme, .light)

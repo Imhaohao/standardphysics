@@ -104,6 +104,12 @@ actor APIClient: UploadAPI {
         try await send(APIRoutes.me())
     }
 
+    /// The local token goes only once the server confirms the account is gone.
+    func deleteAccount() async throws {
+        _ = try await send(APIRoutes.deleteAccount())
+        tokenStore.clear()
+    }
+
     private func storeSession(from endpoint: Endpoint<AuthSession>) async throws -> AuthSession {
         let session = try await send(endpoint)
         try tokenStore.save(session.token)
@@ -123,6 +129,48 @@ actor APIClient: UploadAPI {
 
     func assessment(scanID: String) async throws -> Report {
         try await send(APIRoutes.assessment(scanID: scanID))
+    }
+
+    func listScans() async throws -> [ScanResponse] {
+        try await send(APIRoutes.listScans())
+    }
+
+    func renameScan(scanID: String, name: String) async throws -> ScanResponse {
+        try await send(APIRoutes.renameScan(scanID: scanID, body: RenameScanRequest(name: name)))
+    }
+
+    func deleteScan(scanID: String) async throws {
+        _ = try await send(APIRoutes.deleteScan(scanID: scanID))
+    }
+
+    func uploadPhoto(jpeg: Data, scanID: String) async throws -> String {
+        try await PhotoUploader(api: self, storage: URLSessionTransport()).upload(jpeg: jpeg, scanID: scanID)
+    }
+
+    func answerFromPhoto(scanID: String, subjectID: String, metric: String, artifactID: String) async throws -> PhotoAnswerResponse {
+        let body = PhotoAnswerRequest(subjectID: subjectID, metric: metric, artifactID: artifactID)
+        return try await send(APIRoutes.photoAnswer(scanID: scanID, body: body))
+    }
+
+    func createShare(scanID: String) async throws -> ShareResponse {
+        try await send(APIRoutes.createShare(scanID: scanID))
+    }
+
+    func answers(scanID: String) async throws -> [ServerAnswer] {
+        try await send(APIRoutes.answers(scanID: scanID))
+    }
+
+    func saveAnswers(scanID: String, answers: [AnswerUpdate]) async throws -> Report {
+        try await send(APIRoutes.saveAnswers(scanID: scanID, body: AnswersRequest(answers: answers)))
+    }
+
+    /// The scene as JSON text, in the shape `SceneSubjects` reads.
+    func sceneJSON(scanID: String) async throws -> String {
+        let scene = try await send(APIRoutes.scene(scanID: scanID))
+        guard let text = String(data: try WireCoding.encoder().encode(scene), encoding: .utf8) else {
+            throw APIError.malformedResponse
+        }
+        return text
     }
 
     // MARK: Uploads

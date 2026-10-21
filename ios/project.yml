@@ -65,13 +65,17 @@ targets:
       # Change the server here. Release must be https; Debug may use a local http server.
       # SP_STORAGE_HOSTS lists the hosts presigned upload URLs may point at; ".example.com"
       # also allows its subdomains.
+      # SP_WEB_BASE_URL is the web app (https), used for read-only report links at
+      # <base>/r/<token>. Left empty, the app hides "Copy read-only link".
       configs:
         Debug:
           SP_API_BASE_URL: https://tyadgirkar--sp-server-serve.us-east.modal.run
           SP_STORAGE_HOSTS: localhost 127.0.0.1 .r2.cloudflarestorage.com
+          SP_WEB_BASE_URL: ""
         Release:
           SP_API_BASE_URL: https://tyadgirkar--sp-server-serve.us-east.modal.run
           SP_STORAGE_HOSTS: 3a62492c4b6146cecd61f746a9ee2707.r2.cloudflarestorage.com
+          SP_WEB_BASE_URL: ""
     entitlements:
       path: Resources/StandardPhysics.entitlements
       properties:

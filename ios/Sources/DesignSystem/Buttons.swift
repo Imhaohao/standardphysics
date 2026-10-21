@@ -4,6 +4,10 @@ enum ButtonVariant {
     case primary
     case secondary
     case quiet
+    /// A quiet button for something that can't be undone, in the problem color.
+    case destructive
+
+    var isTextOnly: Bool { self == .quiet || self == .destructive }
 }
 
 /// What a control sits on. Over the camera, primary turns to paper and secondary to glass so
@@ -30,7 +34,7 @@ struct InkButtonStyle: ButtonStyle {
             .foregroundStyle(foreground)
             .padding(.horizontal, Theme.Spacing.m)
             .frame(minHeight: height)
-            .frame(maxWidth: variant == .quiet ? nil : .infinity)
+            .frame(maxWidth: variant.isTextOnly ? nil : .infinity)
             .background { surface }
             .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.control))
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
@@ -43,6 +47,7 @@ struct InkButtonStyle: ButtonStyle {
         case (.primary, .paper), (.secondary, .camera), (.quiet, .camera): Theme.Palette.sheet
         case (.primary, .camera), (.secondary, .paper): Theme.Palette.ink
         case (.quiet, .paper): Theme.Palette.accent
+        case (.destructive, _): Theme.Palette.problem
         }
     }
 
@@ -59,7 +64,7 @@ struct InkButtonStyle: ButtonStyle {
                 .overlay(shape.stroke(Theme.Elevation.ringColor, lineWidth: Theme.Stroke.hairline))
         case (.secondary, .camera):
             Color.clear.glassEffect(.regular.tint(Theme.Palette.camera.opacity(0.3)).interactive(), in: shape)
-        case (.quiet, _):
+        case (.quiet, _), (.destructive, _):
             Color.clear
         }
     }

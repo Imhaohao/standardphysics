@@ -7,6 +7,7 @@ struct InkTextField: View {
         case email
         case newPassword
         case password
+        case number
     }
 
     let label: String
@@ -44,6 +45,11 @@ struct InkTextField: View {
         case .password, .newPassword:
             SecureField(label, text: $text, prompt: Text(prompt ?? ""))
                 .textContentType(kind == .newPassword ? .newPassword : .password)
+        case .number:
+            TextField(label, text: $text, prompt: Text(prompt ?? ""))
+                .keyboardType(.decimalPad)
+                .font(Theme.Typography.measurement)
+                .monospacedDigit()
         }
     }
 }

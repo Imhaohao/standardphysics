@@ -20,6 +20,18 @@ final class OnDeviceScanProcessor: ScanProcessing {
     }
 
     func process(_ manifest: ScanManifest, onUpdate: @escaping (ProcessingUpdate) -> Void) async throws -> ScanReport {
+        try await process(manifest, answers: [], onUpdate: onUpdate)
+    }
+
+    /// Checks the scan again from its saved rooms, this time with what the owner answered.
+    func recheck(scanID: UUID, answers: [OwnerAnswer]) async throws -> ScanReport {
+        let manifest = try await journal.load(scanID: scanID)
+        return try await process(manifest, answers: answers) { _ in }
+    }
+
+    func process(
+        _ manifest: ScanManifest, answers: [OwnerAnswer], onUpdate: @escaping (ProcessingUpdate) -> Void
+    ) async throws -> ScanReport {
         guard !manifest.rooms.isEmpty else { throw OnDeviceProcessingError.noRooms }
         onUpdate(ProcessingUpdate(stage: .assembling, fraction: 0.1))
         let rooms = try await loadRooms(of: manifest)
@@ -29,6 +41,7 @@ final class OnDeviceScanProcessor: ScanProcessing {
         for room in rooms {
             _ = try await engine.evaluateRoom(capturedRoomJSON: room.json, detectedObjects: room.detectedObjects)
         }
+        try await engine.addOwnerAnswers(answers)
         let result = try await engine.evaluateScan()
 
         onUpdate(ProcessingUpdate(stage: .writing, fraction: 0.9))

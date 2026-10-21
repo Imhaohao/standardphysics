@@ -273,6 +273,7 @@ nonisolated struct ServerFinding: Codable, Sendable, Equatable, Identifiable {
     let evidence: String
     let location: Point3?
     let counterpart: String?
+    var ask: FindingAsk? = nil
 
     var id: String { "\(ruleID)#\(subjectID)" }
 
@@ -281,7 +282,7 @@ nonisolated struct ServerFinding: Codable, Sendable, Equatable, Identifiable {
         case jurisdiction, section, title
         case subjectID = "subject_id"
         case roomID = "room_id"
-        case status, severity, measured, required, message, evidence, location, counterpart
+        case status, severity, measured, required, message, evidence, location, counterpart, ask
     }
 
     /// Nil only for a jurisdiction this version of the app does not know yet.
@@ -291,7 +292,7 @@ nonisolated struct ServerFinding: Codable, Sendable, Equatable, Identifiable {
             ruleID: ruleID, jurisdiction: jurisdiction, section: section, subjectID: subjectID,
             status: status, measured: measured?.asMeasuredValue, required: required, message: message,
             title: title.isEmpty ? nil : title, severity: FindingSeverity(rawValue: severity),
-            counterpartRuleID: counterpart, range: measured?.asMeasuredRange
+            counterpartRuleID: counterpart, range: measured?.asMeasuredRange, ask: ask
         )
     }
 }
@@ -388,6 +389,21 @@ nonisolated struct Report: Codable, Sendable, Equatable {
         case createdAt = "created_at"
         case labelledByVision = "labelled_by_vision"
         case unlabelledObjects = "unlabelled_objects"
+    }
+}
+
+nonisolated struct RenameScanRequest: Encodable, Sendable {
+    let name: String
+}
+
+/// A read-only link to one scan's report; the web app shows it at `/r/{token}`.
+nonisolated struct ShareResponse: Codable, Sendable, Equatable {
+    let token: String
+    let createdAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case token
+        case createdAt = "created_at"
     }
 }
 

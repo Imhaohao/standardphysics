@@ -68,6 +68,9 @@ struct RootView<Camera: View>: View {
             }
         }
         .environment(model)
+        .sensoryFeedback(trigger: model.route) { old, new in
+            HapticMoment.forRoute(from: old, to: new)?.feedback
+        }
         .preferredColorScheme(model.route == .capture ? .dark : .light)
         .animation(Theme.Motion.settle, value: model.route)
     }

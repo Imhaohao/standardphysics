@@ -99,6 +99,31 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(model.unfinishedScans.map(\.name), ["Corner Deli"])
     }
 
+    func testFinishedReportsAreSavedAndComeBackAfterARelaunch() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "app-reports-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let capture = PreviewCaptureController(storedScans: [])
+        let model = AppModel(capture: capture, processor: RecordingProcessor(), reportStore: FileReportStore(root: root))
+        await model.beginScanning(name: "Corner Deli")
+        await model.finishRoom()
+        await model.finishScan()
+        let scanID = try XCTUnwrap(capture.manifest?.scanID)
+
+        let relaunched = AppModel(capture: PreviewCaptureController(storedScans: []), processor: RecordingProcessor(), reportStore: FileReportStore(root: root))
+        XCTAssertNil(relaunched.report(id: scanID))
+        await relaunched.refresh()
+        XCTAssertEqual(relaunched.report(id: scanID)?.name, "Corner Deli")
+    }
+
+    func testAPhoneWithoutLiDARNeverStartsAScan() {
+        let model = AppModel(capture: PreviewCaptureController(storedScans: []), processor: RecordingProcessor(), canScan: false)
+        model.startNewScan()
+        XCTAssertEqual(model.route, .home)
+        let staged = LaunchConfiguration.fromProcess(arguments: ["app", "-screen", "home-unsupported"])
+        XCTAssertFalse(staged.model.canScan)
+        XCTAssertTrue(staged.model.account.isAvailable, "signing in to see reports still works")
+    }
+
     func testScreenLaunchArgumentStagesTheRightState() {
         let relocalizing = LaunchConfiguration.fromProcess(arguments: ["app", "-screen", "relocalizing"])
         XCTAssertEqual(relocalizing.model.route, .capture)

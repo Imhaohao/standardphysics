@@ -3,6 +3,9 @@ import Foundation
 nonisolated enum HTTPMethod: String, Sendable {
     case get = "GET"
     case post = "POST"
+    case put = "PUT"
+    case patch = "PATCH"
+    case delete = "DELETE"
 }
 
 nonisolated struct Endpoint<Response: Decodable & Sendable>: Sendable {
@@ -43,6 +46,12 @@ nonisolated enum APIRoutes {
         Endpoint(method: .get, path: "\(apiPrefix)/me", isIdempotent: true)
     }
 
+    /// Removes the user, their sessions, scans and stored files. Not retried: a repeat after a
+    /// dropped response would only fail on the token the first one revoked.
+    static func deleteAccount() -> Endpoint<EmptyResponse> {
+        Endpoint(method: .delete, path: "\(apiPrefix)/me", isIdempotent: false)
+    }
+
     /// Safe to retry because the key is persisted before the first attempt; a repeat with the
     /// same key replays the first scan instead of making a second one.
     static func createScan(_ body: CreateScanRequest, idempotencyKey: String) -> Endpoint<ScanResponse> {
@@ -52,8 +61,46 @@ nonisolated enum APIRoutes {
         )
     }
 
+    static func listScans() -> Endpoint<[ScanResponse]> {
+        Endpoint(method: .get, path: "\(apiPrefix)/scans", isIdempotent: true)
+    }
+
+    static func renameScan(scanID: String, body: RenameScanRequest) -> Endpoint<ScanResponse> {
+        Endpoint(method: .patch, path: "\(apiPrefix)/scans/\(scanID)", body: body, isIdempotent: true)
+    }
+
+    /// Removes the scan's rows and stored files on the server.
+    static func deleteScan(scanID: String) -> Endpoint<EmptyResponse> {
+        Endpoint(method: .delete, path: "\(apiPrefix)/scans/\(scanID)", isIdempotent: true)
+    }
+
+    /// Each call makes a new link; not retried, so a dropped response can't leave two behind.
+    static func createShare(scanID: String) -> Endpoint<ShareResponse> {
+        Endpoint(method: .post, path: "\(apiPrefix)/scans/\(scanID)/shares", isIdempotent: false)
+    }
+
     static func assessment(scanID: String) -> Endpoint<Report> {
         Endpoint(method: .get, path: "\(apiPrefix)/scans/\(scanID)/assessment", isIdempotent: true)
+    }
+
+    static func answers(scanID: String) -> Endpoint<[ServerAnswer]> {
+        Endpoint(method: .get, path: "\(apiPrefix)/scans/\(scanID)/answers", isIdempotent: true)
+    }
+
+    /// Answers the server already holds are replaced, so sending the same set twice is harmless.
+    /// The response is the report checked again with the answers.
+    static func saveAnswers(scanID: String, body: AnswersRequest) -> Endpoint<Report> {
+        Endpoint(method: .put, path: "\(apiPrefix)/scans/\(scanID)/answers", body: body, isIdempotent: true)
+    }
+
+    /// Reads the photo with the server's vision model; not retried, since each try is a new read.
+    static func photoAnswer(scanID: String, body: PhotoAnswerRequest) -> Endpoint<PhotoAnswerResponse> {
+        Endpoint(method: .post, path: "\(apiPrefix)/scans/\(scanID)/photo-answers", body: body, isIdempotent: false, timeout: finishTimeout)
+    }
+
+    /// The merged scene the server checked, used to name what each finding is about.
+    static func scene(scanID: String) -> Endpoint<JSONValue> {
+        Endpoint(method: .get, path: "\(apiPrefix)/scans/\(scanID)/scene", isIdempotent: true)
     }
 
     static func finishScan(scanID: String) -> Endpoint<Report> {

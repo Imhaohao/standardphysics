@@ -37,8 +37,11 @@ nonisolated enum SampleData {
     static let restroomFindings: [Finding] = [
         pair("404.2.3", "door-restroom", title: "Door clear width", inches: 30.5, federal: ("≥ 32 in", .fail), california: ("≥ 32 in", .fail),
              message: "The doorway is 30.5 in clear. Swap in offset hinges or a wider door to reach 32 in."),
-        question("703.4.1", "door-restroom", "Is there a sign with raised letters and Braille on the wall beside the door's latch side?"),
+        question("703.4.1", "door-restroom", "Is there a sign with raised letters and Braille on the wall beside the door's latch side?",
+                 ask: FindingAsk(metric: "sign.braille_present", prompt: "Is there a sign with raised letters and Braille on the wall beside the door's latch side?", valueType: .boolean, photo: true)),
         question("404.2.7", "door-restroom", "Can you open the door with a closed fist, without gripping or twisting the handle?"),
+        question("404.2.9", "door-restroom", "How hard is the door to push open?",
+                 ask: FindingAsk(metric: "door.opening_force", prompt: "How many pounds of force does it take to push the door open? A door pull gauge reads this directly.", valueType: .number, unit: "lbf")),
         pair("604.2", "toilet-1", inches: 16.5, federal: ("16–18 in", .pass), california: ("17–18 in", .fail),
              message: "The middle of the toilet is 16.5 in from the side wall. Move it so the centre sits 17 to 18 in out."),
         pair("609.4", "grab-1", inches: 34, federal: ("33–36 in", .pass), california: ("33–36 in", .pass),
@@ -127,10 +130,10 @@ nonisolated enum SampleData {
         ]
     }
 
-    private static func question(_ section: String, _ subject: String, _ prompt: String) -> [Finding] {
+    private static func question(_ section: String, _ subject: String, _ prompt: String, ask: FindingAsk? = nil) -> [Finding] {
         [
-            Finding(ruleID: "ADA2010-\(section)", jurisdiction: .ada2010, section: section, subjectID: subject, status: .needsInfo, measured: nil, required: "Yes", message: prompt),
-            Finding(ruleID: "CBC11B-\(section)", jurisdiction: .cbc11b, section: "11B-\(section)", subjectID: subject, status: .needsInfo, measured: nil, required: "Yes", message: prompt),
+            Finding(ruleID: "ADA2010-\(section)", jurisdiction: .ada2010, section: section, subjectID: subject, status: .needsInfo, measured: nil, required: "Yes", message: prompt, ask: ask),
+            Finding(ruleID: "CBC11B-\(section)", jurisdiction: .cbc11b, section: "11B-\(section)", subjectID: subject, status: .needsInfo, measured: nil, required: "Yes", message: prompt, ask: ask),
         ]
     }
 }

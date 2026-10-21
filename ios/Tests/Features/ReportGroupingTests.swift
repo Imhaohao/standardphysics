@@ -62,8 +62,8 @@ final class ReportGroupingTests: XCTestCase {
 
         let restroom = sections[1]
         let door = restroom.objects.first { $0.subject.id == "door-restroom" }
-        XCTAssertEqual(door?.outcomes.count, 3)
-        XCTAssertEqual(door?.issues.map(\.status), [.fail, .needsInfo, .needsInfo])
+        XCTAssertEqual(door?.outcomes.count, 4)
+        XCTAssertEqual(door?.issues.map(\.status), [.fail, .needsInfo, .needsInfo, .needsInfo])
         XCTAssertEqual(restroom.objects.first?.worstSeverity, FindingStatus.fail.severity)
         XCTAssertEqual(restroom.passing.map(\.subject.label).sorted(), ["Rear grab bar", "Sink"])
     }
@@ -92,7 +92,7 @@ final class ReportGroupingTests: XCTestCase {
     }
 
     func testSummaryCountsEachRequirementOnce() {
-        XCTAssertEqual(ReportGrouping.summary(for: SampleData.completedReport), ReportSummary(toFix: 6, questions: 3, passing: 4))
+        XCTAssertEqual(ReportGrouping.summary(for: SampleData.completedReport), ReportSummary(toFix: 6, questions: 4, passing: 4))
     }
 
     func testUnknownSubjectsLandElsewhere() {

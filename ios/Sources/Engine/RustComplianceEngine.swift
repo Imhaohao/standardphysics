@@ -16,6 +16,8 @@ nonisolated enum ComplianceEngineError: Error, Equatable {
 /// Evaluates rooms as they are finished, then the whole scan, with the shared Rust engine.
 nonisolated protocol RoomComplianceEvaluating: Sendable {
     func evaluateRoom(capturedRoomJSON: Data, detectedObjects: [DetectedObject]) async throws -> [Finding]
+    /// Answers the owner gave, added to the scene as owner observations before `evaluateScan`.
+    func addOwnerAnswers(_ answers: [OwnerAnswer]) async throws
     func evaluateScan() async throws -> ComplianceReport
 }
 
@@ -23,6 +25,8 @@ extension RoomComplianceEvaluating {
     nonisolated func evaluateRoom(capturedRoomJSON: Data) async throws -> [Finding] {
         try await evaluateRoom(capturedRoomJSON: capturedRoomJSON, detectedObjects: [])
     }
+
+    nonisolated func addOwnerAnswers(_ answers: [OwnerAnswer]) async throws {}
 }
 
 nonisolated struct ComplianceReport: Sendable, Equatable {
@@ -76,6 +80,11 @@ actor RustComplianceEngine: RoomComplianceEvaluating {
         engine.sceneJson()
     }
 
+    func addOwnerAnswers(_ answers: [OwnerAnswer]) {
+        guard !answers.isEmpty else { return }
+        engine.addObservations(observations: answers.map(SpObservation.init))
+    }
+
     func evaluateScan() -> ComplianceReport {
         let report = engine.evaluateAll()
         let engineFindings = report.jurisdictions.flatMap(\.findings)
@@ -118,8 +127,47 @@ extension Finding {
             title: finding.title.isEmpty ? nil : finding.title,
             severity: FindingSeverity(rawValue: finding.severity),
             counterpartRuleID: finding.counterpart,
-            range: finding.measured.flatMap(MeasuredRange.init)
+            range: finding.measured.flatMap(MeasuredRange.init),
+            ask: finding.ask.map(FindingAsk.init)
         )
+    }
+}
+
+extension FindingAsk {
+    nonisolated init(_ ask: SpAsk) {
+        self.init(
+            metric: ask.metric,
+            prompt: ask.prompt,
+            valueType: AskValueType(rawValue: ask.valueType) ?? .unsupported,
+            unit: ask.unit,
+            options: ask.options,
+            photo: ask.photo
+        )
+    }
+}
+
+extension SpObservation {
+    /// One answer per subject and metric, so the id is stable and a second answer replaces the first.
+    nonisolated init(_ answer: OwnerAnswer) {
+        self.init(
+            id: "owner.\(answer.subjectID).\(answer.metric)",
+            subjectId: answer.subjectID,
+            metric: answer.metric,
+            value: SpObservationValue(answer.value),
+            unit: answer.unit,
+            source: .owner,
+            confidence: 1
+        )
+    }
+}
+
+extension SpObservationValue {
+    nonisolated init(_ value: AnswerValue) {
+        switch value {
+        case .bool(let flag): self = .bool(value: flag)
+        case .number(let number): self = .number(value: number)
+        case .text(let text): self = .text(value: text)
+        }
     }
 }
 

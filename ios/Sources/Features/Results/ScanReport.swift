@@ -9,16 +9,47 @@ nonisolated struct ReportSubject: Codable, Sendable, Equatable {
 
 nonisolated struct ScanReport: Codable, Sendable, Equatable, Identifiable {
     let scanID: UUID
-    let name: String
+    var name: String
     let completedAt: Date
     let roomNames: [String]
-    let subjects: [String: ReportSubject]
-    let findings: [Finding]
+    var subjects: [String: ReportSubject]
+    var findings: [Finding]
+    /// The server's id for this scan when the server checked it, so changes go back to it.
+    var remoteScanID: String? = nil
+    var answers: [OwnerAnswer] = []
 
     var id: UUID { scanID }
 
     func subject(for id: String) -> ReportSubject {
         subjects[id] ?? ReportSubject(id: id, roomName: ReportGrouping.unassignedRoom, label: id)
+    }
+
+    /// The same report checked again: new findings and any newly named subjects, while the
+    /// owner's name for it and their answers stay.
+    func rechecked(findings: [Finding], subjects newSubjects: [String: ReportSubject]) -> ScanReport {
+        var updated = self
+        updated.findings = findings
+        updated.subjects = subjects.merging(newSubjects) { _, fresh in fresh }
+        return updated
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case scanID, name, completedAt, roomNames, subjects, findings, remoteScanID, answers
+    }
+}
+
+extension ScanReport {
+    /// Reports saved before a field existed still load.
+    nonisolated init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        scanID = try container.decode(UUID.self, forKey: .scanID)
+        name = try container.decode(String.self, forKey: .name)
+        completedAt = try container.decode(Date.self, forKey: .completedAt)
+        roomNames = try container.decode([String].self, forKey: .roomNames)
+        subjects = try container.decode([String: ReportSubject].self, forKey: .subjects)
+        findings = try container.decode([Finding].self, forKey: .findings)
+        remoteScanID = try container.decodeIfPresent(String.self, forKey: .remoteScanID)
+        answers = try container.decodeIfPresent([OwnerAnswer].self, forKey: .answers) ?? []
     }
 }
 

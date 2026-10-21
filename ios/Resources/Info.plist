@@ -25,11 +25,13 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Standard Physics uses the camera and LiDAR to measure your space and check it against accessibility rules.</string>
+	<string>Standard Physics uses the camera and LiDAR to measure your space and check it against accessibility rules. When a question in your report can be settled with a photo, the camera takes that photo and it is sent with your scan.</string>
 	<key>SPAPIBaseURL</key>
 	<string>$(SP_API_BASE_URL)</string>
 	<key>SPStorageHosts</key>
 	<string>$(SP_STORAGE_HOSTS)</string>
+	<key>SPWebBaseURL</key>
+	<string>$(SP_WEB_BASE_URL)</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Karla-Variable.ttf</string>
