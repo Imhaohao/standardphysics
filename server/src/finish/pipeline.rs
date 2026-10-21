@@ -4,13 +4,14 @@ use anyhow::Result;
 use serde_json::json;
 use uuid::Uuid;
 
-use super::labelling::{run_label_stage, LabelStage};
+use super::labelling::{pending_observations, run_label_stage, LabelStage};
+use crate::answers::answer_observations;
 use crate::assessments::{self, NewAssessment};
-use crate::engine::SceneEngine;
+use crate::engine::{RoomInput, SceneEngine};
 use crate::findings::{needs_info_finding, summarize, EvaluationReport, Finding};
 use crate::jobs::queue::{enqueue, EnqueueOptions, JobKind};
 use crate::live::protocol::ServerMessage;
-use crate::live::rooms::{load_rooms, RoomState};
+use crate::live::rooms::{load_rooms, save_room_observations, RoomState};
 use crate::scans::models::{Report, StageTimings};
 use crate::state::AppState;
 
@@ -18,10 +19,18 @@ fn elapsed_ms(since: Instant) -> u64 {
     since.elapsed().as_millis() as u64
 }
 
-async fn evaluate_rooms(rooms: Vec<RoomState>) -> Result<EvaluationReport> {
+/// Owner answers are scene-wide observations, so they ride along with the first room.
+fn inputs_with_answers(rooms: &[RoomState], answers: Vec<serde_json::Value>) -> Vec<RoomInput> {
+    let mut inputs: Vec<_> = rooms.iter().map(RoomState::to_input).collect();
+    if let Some(first) = inputs.first_mut() {
+        first.observations.extend(answers);
+    }
+    inputs
+}
+
+async fn evaluate_rooms(inputs: Vec<RoomInput>) -> Result<EvaluationReport> {
     tokio::task::spawn_blocking(move || {
         let mut engine = SceneEngine::new()?;
-        let inputs: Vec<_> = rooms.iter().map(RoomState::to_input).collect();
         engine.load_rooms(&inputs)?;
         engine.evaluate_all()
     })
@@ -42,19 +51,63 @@ fn unresolved_findings(stage: &LabelStage) -> Vec<Finding> {
         .collect()
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Labelling {
+    Run,
+    /// Re-assessments keep the labels saved at finish and don't call the vision API again.
+    Reuse,
+}
+
+/// Labels come back on the in-memory rooms; save them so a later re-assessment keeps them.
+async fn save_labels(state: &AppState, scan_id: Uuid, rooms: &[RoomState]) -> Result<()> {
+    for room in rooms {
+        save_room_observations(&state.db, scan_id, room).await?;
+    }
+    Ok(())
+}
+
+async fn label_rooms(
+    state: &AppState,
+    scan_id: Uuid,
+    rooms: &mut [RoomState],
+    labelling: Labelling,
+) -> Result<LabelStage> {
+    if labelling == Labelling::Reuse {
+        return Ok(LabelStage {
+            labelled: 0,
+            unresolved: pending_observations(rooms),
+        });
+    }
+    let stage = run_label_stage(state, scan_id, rooms).await?;
+    if stage.labelled > 0 {
+        save_labels(state, scan_id, rooms).await?;
+    }
+    Ok(stage)
+}
+
 pub async fn run_finish(state: &AppState, scan_id: Uuid) -> Result<Report> {
+    assess(state, scan_id, Labelling::Run).await
+}
+
+/// Evaluate again with the latest owner answers, keeping the labels from finish.
+pub async fn run_reassessment(state: &AppState, scan_id: Uuid) -> Result<Report> {
+    assess(state, scan_id, Labelling::Reuse).await
+}
+
+async fn assess(state: &AppState, scan_id: Uuid, labelling: Labelling) -> Result<Report> {
     let total = Instant::now();
 
     let stage_start = Instant::now();
     let mut rooms = load_rooms(&state.db, scan_id).await?;
+    let answers = answer_observations(&state.db, scan_id).await?;
     let load_ms = elapsed_ms(stage_start);
 
     let stage_start = Instant::now();
-    let label_stage = run_label_stage(state, scan_id, &mut rooms).await?;
+    let label_stage = label_rooms(state, scan_id, &mut rooms, labelling).await?;
     let labelling_ms = elapsed_ms(stage_start);
 
     let stage_start = Instant::now();
-    let evaluation = evaluate_rooms(rooms).await?;
+    let evaluation = evaluate_rooms(inputs_with_answers(&rooms, answers)).await?;
     let mut findings = evaluation.findings;
     findings.extend(unresolved_findings(&label_stage));
     let evaluation_ms = elapsed_ms(stage_start);

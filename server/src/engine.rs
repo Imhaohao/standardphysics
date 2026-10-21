@@ -69,13 +69,25 @@ pub struct SceneEngine {
     scene_observations: BTreeMap<String, Observation>,
 }
 
+fn catalog() -> Option<&'static Catalog> {
+    static CATALOG: OnceLock<Option<Catalog>> = OnceLock::new();
+    CATALOG
+        .get_or_init(|| Catalog::from_json(METRICS_JSON).ok())
+        .as_ref()
+}
+
 pub fn object_categories() -> &'static [String] {
     static CATEGORIES: OnceLock<Vec<String>> = OnceLock::new();
     CATEGORIES.get_or_init(|| {
-        Catalog::from_json(METRICS_JSON)
-            .map(|c| c.object_categories.into_iter().map(|d| d.id).collect())
+        catalog()
+            .map(|c| c.object_categories.iter().map(|d| d.id.clone()).collect())
             .unwrap_or_default()
     })
+}
+
+/// The unit an answer to `metric` is recorded in, or `None` when the metric is not in the catalog.
+pub fn answer_unit(metric: &str) -> Option<String> {
+    catalog()?.metric(metric).map(|def| def.raw_unit.clone())
 }
 
 fn is_scene_observation(value: &Value) -> bool {

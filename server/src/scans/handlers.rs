@@ -4,7 +4,7 @@ use axum::response::Response;
 use axum::Json;
 use uuid::Uuid;
 
-use super::models::{CreateScan, Report, Scan};
+use super::models::{CreateScan, Report, Scan, UpdateScan};
 use super::repo;
 use crate::assessments;
 use crate::auth::AuthUser;
@@ -129,4 +129,55 @@ pub async fn get_scene(
         .await?
         .ok_or(ApiError::NotFound)?;
     Ok(Json(scene))
+}
+
+#[utoipa::path(
+    patch, path = "/v1/scans/{scan_id}", tag = "scans",
+    security(("bearer" = [])),
+    params(("scan_id" = Uuid, Path)),
+    request_body = UpdateScan,
+    responses((status = 200, body = Scan), (status = 400, body = ErrorBody), (status = 404, body = ErrorBody))
+)]
+pub async fn update_scan(
+    State(state): State<AppState>,
+    AuthUser(user_id): AuthUser,
+    Path(scan_id): Path<Uuid>,
+    Json(body): Json<UpdateScan>,
+) -> ApiResult<Json<Scan>> {
+    repo::get_owned_scan(&state.db, user_id, scan_id).await?;
+    let name = match body.name {
+        Some(raw) => Some(
+            clean_text(Some(raw), MAX_NAME_LEN)?
+                .ok_or_else(|| ApiError::bad_request("name cannot be empty"))?,
+        ),
+        None => None,
+    };
+    let site = body
+        .site_name
+        .map(|raw| clean_text(raw, MAX_NAME_LEN))
+        .transpose()?;
+    let scan = repo::rename_scan(
+        &state.db,
+        scan_id,
+        name.as_deref(),
+        site.as_ref().map(Option::as_deref),
+    )
+    .await?;
+    Ok(Json(scan))
+}
+
+#[utoipa::path(
+    delete, path = "/v1/scans/{scan_id}", tag = "scans",
+    security(("bearer" = [])),
+    params(("scan_id" = Uuid, Path)),
+    responses((status = 204, description = "The scan, its report, answers, share links and uploaded files are gone"), (status = 404, body = ErrorBody))
+)]
+pub async fn delete_scan(
+    State(state): State<AppState>,
+    AuthUser(user_id): AuthUser,
+    Path(scan_id): Path<Uuid>,
+) -> ApiResult<StatusCode> {
+    repo::get_owned_scan(&state.db, user_id, scan_id).await?;
+    crate::purge::delete_scan(&state.db, &state.storage, scan_id).await?;
+    Ok(StatusCode::NO_CONTENT)
 }

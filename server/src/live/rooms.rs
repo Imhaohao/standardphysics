@@ -112,3 +112,16 @@ pub async fn load_rooms(db: &PgPool, scan_id: Uuid) -> Result<Vec<RoomState>> {
         })
         .collect())
 }
+
+pub async fn save_room_observations(db: &PgPool, scan_id: Uuid, room: &RoomState) -> Result<()> {
+    sqlx::query(
+        "UPDATE scan_rooms SET observations = $3, updated_at = now()
+         WHERE scan_id = $1 AND room_id = $2",
+    )
+    .bind(scan_id)
+    .bind(&room.room_id)
+    .bind(Json(&room.observations))
+    .execute(db)
+    .await?;
+    Ok(())
+}

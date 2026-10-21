@@ -54,3 +54,33 @@ pub async fn set_status(db: &PgPool, scan_id: Uuid, status: &str) -> ApiResult<(
         .await?;
     Ok(())
 }
+
+pub async fn get_scan_by_id(db: &PgPool, scan_id: Uuid) -> ApiResult<Scan> {
+    let scan: Option<Scan> =
+        sqlx::query_as(&format!("SELECT {SCAN_COLUMNS} FROM scans WHERE id = $1"))
+            .bind(scan_id)
+            .fetch_optional(db)
+            .await?;
+    scan.ok_or(ApiError::NotFound)
+}
+
+pub async fn rename_scan(
+    db: &PgPool,
+    scan_id: Uuid,
+    name: Option<&str>,
+    site_name: Option<Option<&str>>,
+) -> ApiResult<Scan> {
+    let scan = sqlx::query_as(&format!(
+        "UPDATE scans SET name = COALESCE($2, name),
+                site_name = CASE WHEN $3 THEN $4 ELSE site_name END,
+                updated_at = now()
+         WHERE id = $1 RETURNING {SCAN_COLUMNS}"
+    ))
+    .bind(scan_id)
+    .bind(name)
+    .bind(site_name.is_some())
+    .bind(site_name.flatten())
+    .fetch_one(db)
+    .await?;
+    Ok(scan)
+}

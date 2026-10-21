@@ -138,3 +138,16 @@ pub async fn me(
         .ok_or(ApiError::Unauthorized)?;
     Ok(Json(user))
 }
+
+#[utoipa::path(
+    delete, path = "/v1/me", tag = "auth",
+    security(("bearer" = [])),
+    responses((status = 204, description = "The account, its sessions, scans and uploaded files are gone"), (status = 401, body = ErrorBody))
+)]
+pub async fn delete_me(
+    State(state): State<AppState>,
+    AuthUser(user_id): AuthUser,
+) -> ApiResult<StatusCode> {
+    crate::purge::delete_user(&state.db, &state.storage, user_id).await?;
+    Ok(StatusCode::NO_CONTENT)
+}

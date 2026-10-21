@@ -1,7 +1,7 @@
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 
-use crate::{auth, finish, health, live, scans, uploads};
+use crate::{answers, auth, finish, health, live, scans, shares, uploads};
 
 struct BearerAuth;
 
@@ -30,11 +30,20 @@ impl Modify for BearerAuth {
         auth::handlers::apple_sign_in,
         auth::handlers::logout,
         auth::handlers::me,
+        auth::handlers::delete_me,
         scans::handlers::create_scan,
         scans::handlers::list_scans,
         scans::handlers::get_scan,
         scans::handlers::get_assessment,
         scans::handlers::get_scene,
+        scans::handlers::update_scan,
+        scans::handlers::delete_scan,
+        answers::list_answers,
+        answers::save_answers,
+        shares::create_share,
+        shares::list_shares,
+        shares::delete_share,
+        shares::get_shared_report,
         finish::finish_scan,
         uploads::handlers::create_upload,
         uploads::handlers::upload_status,

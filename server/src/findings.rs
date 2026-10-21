@@ -56,6 +56,40 @@ pub struct Finding {
     pub severity: String,
     pub location: Option<Point3>,
     pub counterpart: Option<String>,
+    /// The owner question or photo request that would settle this `needs_info` finding.
+    /// ADA and CBC findings with the same `subject_id` and `metric` are one question.
+    #[serde(default)]
+    pub ask: Option<Ask>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema)]
+pub struct Ask {
+    /// Record the answer on this subject (the site for site-wide questions).
+    pub subject_id: String,
+    pub metric: String,
+    pub prompt: String,
+    /// `boolean`, `number`, `integer`, `enum` or `text`.
+    pub value_type: String,
+    /// Unit a number answer is given in, e.g. `lbf` or `in`.
+    pub unit: String,
+    /// Allowed values when `value_type` is `enum`.
+    pub options: Vec<String>,
+    /// The rule wants a photo; the owner may still answer directly.
+    pub photo: bool,
+}
+
+impl Ask {
+    fn from_core(a: &sp_core::rules::Ask) -> Self {
+        Self {
+            subject_id: a.subject_id.clone(),
+            metric: a.metric.clone(),
+            prompt: a.prompt.clone(),
+            value_type: a.value_type.clone(),
+            unit: a.unit.clone(),
+            options: a.options.clone(),
+            photo: a.photo,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
@@ -113,6 +147,7 @@ impl Finding {
                 z: p.z,
             }),
             counterpart: f.counterpart.clone(),
+            ask: f.ask.as_ref().map(Ask::from_core),
         }
     }
 }
@@ -188,5 +223,6 @@ pub fn needs_info_finding(rule_id: &str, subject_id: &str, message: &str) -> Fin
         severity: "info".to_string(),
         location: None,
         counterpart: None,
+        ask: None,
     }
 }

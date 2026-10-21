@@ -22,6 +22,22 @@ pub struct CreateScan {
     pub site_name: Option<String>,
 }
 
+/// Fields left out stay as they are; `site_name: null` clears it.
+#[derive(Deserialize, Serialize, ToSchema)]
+pub struct UpdateScan {
+    pub name: Option<String>,
+    #[serde(default, deserialize_with = "present_or_null")]
+    #[schema(value_type = Option<String>)]
+    pub site_name: Option<Option<String>>,
+}
+
+fn present_or_null<'de, D>(deserializer: D) -> Result<Option<Option<String>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Option::<String>::deserialize(deserializer).map(Some)
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct StageTimings {
     pub load_ms: u64,

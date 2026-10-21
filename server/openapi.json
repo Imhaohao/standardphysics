@@ -250,6 +250,32 @@
             "bearer": []
           }
         ]
+      },
+      "delete": {
+        "tags": [
+          "auth"
+        ],
+        "operationId": "delete_me",
+        "responses": {
+          "204": {
+            "description": "The account, its sessions, scans and uploaded files are gone"
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
       }
     },
     "/v1/scans": {
@@ -387,6 +413,230 @@
           },
           "404": {
             "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "scans"
+        ],
+        "operationId": "delete_scan",
+        "parameters": [
+          {
+            "name": "scan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The scan, its report, answers, share links and uploaded files are gone"
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "scans"
+        ],
+        "operationId": "update_scan",
+        "parameters": [
+          {
+            "name": "scan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateScan"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Scan"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/scans/{scan_id}/answers": {
+      "get": {
+        "tags": [
+          "answers"
+        ],
+        "operationId": "list_answers",
+        "parameters": [
+          {
+            "name": "scan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Answer"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "answers"
+        ],
+        "operationId": "save_answers",
+        "parameters": [
+          {
+            "name": "scan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveAnswers"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The report re-evaluated with every saved answer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Report"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The scan has not been finished yet",
             "content": {
               "application/json": {
                 "schema": {
@@ -677,6 +927,146 @@
           },
           "404": {
             "description": "Not your scan, or no room has been captured yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/scans/{scan_id}/shares": {
+      "get": {
+        "tags": [
+          "shares"
+        ],
+        "operationId": "list_shares",
+        "parameters": [
+          {
+            "name": "scan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Share"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "shares"
+        ],
+        "operationId": "create_share",
+        "parameters": [
+          {
+            "name": "scan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Share"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/scans/{scan_id}/shares/{token}": {
+      "delete": {
+        "tags": [
+          "shares"
+        ],
+        "operationId": "delete_share",
+        "parameters": [
+          {
+            "name": "scan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "404": {
+            "description": "",
             "content": {
               "application/json": {
                 "schema": {
@@ -1033,10 +1423,95 @@
           }
         ]
       }
+    },
+    "/v1/shared/{token}": {
+      "get": {
+        "tags": [
+          "shares"
+        ],
+        "operationId": "get_shared_report",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedReport"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown or revoked link, or the scan has no report yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "Answer": {
+        "type": "object",
+        "required": [
+          "subject_id",
+          "metric",
+          "value",
+          "answered_at"
+        ],
+        "properties": {
+          "answered_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "metric": {
+            "type": "string"
+          },
+          "subject_id": {
+            "type": "string"
+          },
+          "value": {
+            "type": "object",
+            "description": "`true`/`false`, a number in the question's unit, or text."
+          }
+        }
+      },
+      "AnswerInput": {
+        "type": "object",
+        "required": [
+          "subject_id",
+          "metric",
+          "value"
+        ],
+        "properties": {
+          "metric": {
+            "type": "string"
+          },
+          "subject_id": {
+            "type": "string"
+          },
+          "value": {
+            "type": "object",
+            "description": "`null` removes the answer."
+          }
+        }
+      },
       "AppleSignIn": {
         "type": "object",
         "required": [
@@ -1103,6 +1578,49 @@
           "upload_id": {
             "type": "string",
             "format": "uuid"
+          }
+        }
+      },
+      "Ask": {
+        "type": "object",
+        "required": [
+          "subject_id",
+          "metric",
+          "prompt",
+          "value_type",
+          "unit",
+          "options",
+          "photo"
+        ],
+        "properties": {
+          "metric": {
+            "type": "string"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Allowed values when `value_type` is `enum`."
+          },
+          "photo": {
+            "type": "boolean",
+            "description": "The rule wants a photo; the owner may still answer directly."
+          },
+          "prompt": {
+            "type": "string"
+          },
+          "subject_id": {
+            "type": "string",
+            "description": "Record the answer on this subject (the site for site-wide questions)."
+          },
+          "unit": {
+            "type": "string",
+            "description": "Unit a number answer is given in, e.g. `lbf` or `in`."
+          },
+          "value_type": {
+            "type": "string",
+            "description": "`boolean`, `number`, `integer`, `enum` or `text`."
           }
         }
       },
@@ -1269,6 +1787,17 @@
           "severity"
         ],
         "properties": {
+          "ask": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Ask",
+                "description": "The owner question or photo request that would settle this `needs_info` finding.\nADA and CBC findings with the same `subject_id` and `metric` are one question."
+              }
+            ]
+          },
           "counterpart": {
             "type": [
               "string",
@@ -1638,6 +2167,20 @@
           }
         }
       },
+      "SaveAnswers": {
+        "type": "object",
+        "required": [
+          "answers"
+        ],
+        "properties": {
+          "answers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnswerInput"
+            }
+          }
+        }
+      },
       "Scan": {
         "type": "object",
         "required": [
@@ -1857,6 +2400,45 @@
           "info"
         ]
       },
+      "Share": {
+        "type": "object",
+        "required": [
+          "token",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "token": {
+            "type": "string",
+            "description": "Put this in the web link: `/r/{token}`."
+          }
+        }
+      },
+      "SharedReport": {
+        "type": "object",
+        "required": [
+          "scan",
+          "report"
+        ],
+        "properties": {
+          "report": {
+            "$ref": "#/components/schemas/Report"
+          },
+          "scan": {
+            "$ref": "#/components/schemas/Scan"
+          },
+          "scene": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Merged sp-core Scene, or null when no room was captured."
+          }
+        }
+      },
       "StageTimings": {
         "type": "object",
         "required": [
@@ -1952,6 +2534,24 @@
           },
           "total": {
             "$ref": "#/components/schemas/StatusCounts"
+          }
+        }
+      },
+      "UpdateScan": {
+        "type": "object",
+        "description": "Fields left out stay as they are; `site_name: null` clears it.",
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "site_name": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },
