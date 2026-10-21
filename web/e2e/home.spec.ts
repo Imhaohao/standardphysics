@@ -27,3 +27,13 @@ test("the sign-in link leads to the sign-in form", async ({ page }) => {
   await page.getByRole("link", { name: "Sign in to see your shops" }).click();
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
 });
+
+test("a new owner creates an account from the sign-in form", async ({ page }) => {
+  await page.goto("/sign-in");
+  await page.getByRole("button", { name: "Create an account" }).click();
+  await expect(page.getByRole("heading", { name: "Create an account" })).toBeVisible();
+  await page.getByLabel("Email").fill("new-owner@example.com");
+  await page.getByLabel("Password").fill("a long password");
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page).toHaveURL(/\/shops$/);
+});
