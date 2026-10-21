@@ -15,7 +15,7 @@ final class RustComplianceEngineTests: XCTestCase {
             ruleId: "ADA-404", jurisdiction: "ADA2010", section: "404.2.3", title: "Door clear width", subjectId: "door",
             roomId: nil, status: .fail, measured: SpMeasured(text: "30 to 31 in", value: nil, lo: 30, hi: 31, unit: "in"),
             required: ">= 32 in", message: "Too narrow", evidence: "measured", severity: "violation", location: nil,
-            counterpart: nil
+            counterpart: nil, ask: nil
         )
         let finding = Finding(source)
         XCTAssertEqual(finding.title, "Door clear width")
@@ -28,7 +28,7 @@ final class RustComplianceEngineTests: XCTestCase {
         let source = SpFinding(
             ruleId: "x", jurisdiction: "SYSTEM", section: "", title: "", subjectId: "o", roomId: nil, status: .needsInfo,
             measured: nil, required: "", message: "m", evidence: "", severity: "info", location: nil,
-            counterpart: "CBC-x"
+            counterpart: "CBC-x", ask: nil
         )
         let finding = Finding(source)
         XCTAssertEqual(finding.jurisdiction, .system)
