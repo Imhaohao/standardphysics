@@ -1,7 +1,7 @@
 //! Swift-facing mirrors of the Scene and Finding types, with conversions to and from `sp-core`.
 
 use sp_core::geometry::{Polygon2, Vec2, Vec3};
-use sp_core::rules::{Finding, GoverningFinding, Report, Status};
+use sp_core::rules::{Ask, Finding, GoverningFinding, Report, Status};
 use sp_core::scene::{self, ObjectSource, ObservationSource, ObservationValue, OpeningKind, RoomKind};
 use std::collections::HashMap;
 
@@ -181,6 +181,33 @@ pub struct SpFinding {
     pub severity: String,
     pub location: Option<SpVec3>,
     pub counterpart: Option<String>,
+    pub ask: Option<SpAsk>,
+}
+
+/// The owner question or photo request that would settle a `needs_info` finding.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct SpAsk {
+    pub subject_id: String,
+    pub metric: String,
+    pub prompt: String,
+    pub value_type: String,
+    pub unit: String,
+    pub options: Vec<String>,
+    pub photo: bool,
+}
+
+impl From<Ask> for SpAsk {
+    fn from(a: Ask) -> Self {
+        Self {
+            subject_id: a.subject_id,
+            metric: a.metric,
+            prompt: a.prompt,
+            value_type: a.value_type,
+            unit: a.unit,
+            options: a.options,
+            photo: a.photo,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]
@@ -420,6 +447,7 @@ impl From<Finding> for SpFinding {
             severity: f.severity,
             location: f.location.map(Into::into),
             counterpart: f.counterpart,
+            ask: f.ask.map(Into::into),
         }
     }
 }

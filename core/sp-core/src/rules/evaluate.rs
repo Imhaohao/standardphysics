@@ -1,11 +1,12 @@
 //! Evaluate one rule against one subject.
 
-use super::finding::{Finding, MeasuredValue, Status};
+use super::finding::{Ask, Finding, MeasuredValue, Status};
 use super::model::{Answer, Comparison, Condition, Op, Operand, Rule, TableRow, Test, WhenUnknown};
 use crate::geometry::Vec3;
 use crate::metrics::subject::{Subject, SubjectRef};
 use crate::metrics::{
-    EvalContext, Extraction, LEVEL_FLOOR_ASSUMED, Measurement, Provenance, Value, format_number, resolve,
+    EvalContext, Extraction, LEVEL_FLOOR_ASSUMED, Measurement, MetricDef, Provenance, Value, ValueType, format_number,
+    resolve,
 };
 
 const ADVISORY: &str = "advisory";
@@ -23,11 +24,12 @@ struct Outcome {
     reason: Option<String>,
     location: Option<Vec3>,
     provenance: Option<String>,
+    ask: Option<Ask>,
 }
 
 impl Outcome {
     fn new(status: Status, required: String) -> Self {
-        Self { status, measured: None, required, reason: None, location: None, provenance: None }
+        Self { status, measured: None, required, reason: None, location: None, provenance: None, ask: None }
     }
 
     fn because(mut self, reason: impl Into<String>) -> Self {
@@ -60,15 +62,7 @@ impl<'a> Evaluator<'a> {
         let Some(def) = self.ctx.catalog.metric(metric_id) else {
             return Extraction::unknown(format!("metric {metric_id} is not in the catalog"));
         };
-        let is_site_metric = def.element == "site" || metric_id.starts_with("site.");
-        let target = if is_site_metric
-            && subject.reference != SubjectRef::Site
-            && !def.applies_to.iter().any(|t| subject.has_tag(t))
-        {
-            self.site
-        } else {
-            subject
-        };
+        let target = self.site_or(subject, def);
         let key = (target.id.clone(), metric_id.to_string());
         if let Some(hit) = self.cache.borrow().get(&key) {
             return hit.clone();
@@ -76,6 +70,21 @@ impl<'a> Evaluator<'a> {
         let value = resolve(self.ctx, target, def);
         self.cache.borrow_mut().insert(key, value.clone());
         value
+    }
+
+    fn site_or<'s>(&'s self, subject: &'s Subject, def: &MetricDef) -> &'s Subject {
+        let is_site_metric = def.element == "site" || def.id.starts_with("site.");
+        let belongs_to_site =
+            subject.reference != SubjectRef::Site && !def.applies_to.iter().any(|t| subject.has_tag(t));
+        if is_site_metric && belongs_to_site { self.site } else { subject }
+    }
+
+    /// The subject a metric is recorded on: the site for site metrics, else the subject itself.
+    fn metric_target<'s>(&'s self, subject: &'s Subject, metric_id: &str) -> &'s Subject {
+        match self.ctx.catalog.metric(metric_id) {
+            Some(def) => self.site_or(subject, def),
+            None => subject,
+        }
     }
 
     pub fn evaluate(&self, rule: &Rule, subject: &Subject) -> Finding {
@@ -162,7 +171,10 @@ impl<'a> Evaluator<'a> {
             Test::Presence { metric, expected } => {
                 self.compare(&equals(metric, Json::Bool(*expected)), &Unit::Boolean, None, subject)
             }
-            Test::Answer { metric, pass, .. } => self.answer(metric, pass, subject),
+            Test::Answer { metric, prompt, pass, photo } => {
+                let outcome = self.answer(metric, pass, subject);
+                self.with_ask(outcome, metric, prompt, *photo, subject)
+            }
             Test::Ratio { metric, basis, min_fraction, min_count, rounding } => {
                 self.required_count(metric, basis, subject, |n| {
                     ratio_requirement(n, *min_fraction, *min_count, rounding)
@@ -186,6 +198,24 @@ impl<'a> Evaluator<'a> {
         };
         let unit = self.ctx.catalog.metric(metric).map(|m| m.unit()).unwrap_or(Unit::Text);
         self.compare(&comparison, &unit, None, subject)
+    }
+
+    /// Attach the question to ask when the answer itself is what is missing.
+    fn with_ask(&self, mut outcome: Outcome, metric: &str, prompt: &str, photo: bool, subject: &Subject) -> Outcome {
+        let unanswered = outcome.status == Status::NeedsInfo && outcome.measured.is_none();
+        let Some(def) = self.ctx.catalog.metric(metric).filter(|_| unanswered) else {
+            return outcome;
+        };
+        outcome.ask = Some(Ask {
+            subject_id: self.metric_target(subject, metric).id.clone(),
+            metric: metric.to_string(),
+            prompt: prompt.to_string(),
+            value_type: value_type_name(&def.value_type).to_string(),
+            unit: def.raw_unit.clone(),
+            options: def.enum_values.clone(),
+            photo,
+        });
+        outcome
     }
 
     /// Compare a metric with the rule's limit in `unit`, widening the measurement by `tolerance`.
@@ -491,6 +521,17 @@ fn finding(rule: &Rule, subject: &Subject, outcome: Outcome) -> Finding {
         severity,
         location: outcome.location.or(subject.location),
         counterpart: rule.counterpart.clone(),
+        ask: outcome.ask,
+    }
+}
+
+fn value_type_name(value_type: &ValueType) -> &'static str {
+    match value_type {
+        ValueType::Number => "number",
+        ValueType::Integer => "integer",
+        ValueType::Boolean => "boolean",
+        ValueType::Enum => "enum",
+        ValueType::Other => "text",
     }
 }
 

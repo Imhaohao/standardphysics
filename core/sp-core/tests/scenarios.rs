@@ -375,3 +375,43 @@ fn separate_rooms_keep_their_own_findings() {
     let widths = findings.iter().filter(|f| f.rule_id == "ADA-404.2.3-clear-width").count();
     assert_eq!(widths, 2);
 }
+
+#[test]
+fn unanswered_owner_questions_carry_what_to_ask() {
+    let Some((_, findings)) = evaluate(vec![shop_with_door(0.92)]) else { return };
+    let asked: Vec<&Finding> = findings.iter().filter(|f| f.ask.is_some()).collect();
+    assert!(!asked.is_empty(), "a bare shop leaves owner questions open");
+    for f in &asked {
+        let ask = f.ask.as_ref().unwrap();
+        assert_eq!(f.status, Status::NeedsInfo, "{} asks but is {:?}", f.rule_id, f.status);
+        assert!(!ask.prompt.is_empty() && !ask.metric.is_empty(), "{} has an empty ask", f.rule_id);
+    }
+}
+
+#[test]
+fn an_owner_answer_settles_its_question() {
+    use sp_core::scene::{Observation, ObservationSource, ObservationValue};
+    let Some((_, findings)) = evaluate(vec![shop_with_door(0.92)]) else { return };
+    let question =
+        findings.iter().find(|f| f.ask.as_ref().is_some_and(|a| a.value_type == "boolean")).expect("a yes/no question");
+    let ask = question.ask.clone().unwrap();
+    let mut engine = common::repo_engine().unwrap();
+    engine.set_scene(Scene {
+        rooms: vec![shop_with_door(0.92)],
+        observations: vec![Observation {
+            id: "answer".into(),
+            subject_id: ask.subject_id.clone(),
+            metric: ask.metric.clone(),
+            value: ObservationValue::Bool(true),
+            unit: None,
+            source: ObservationSource::Owner,
+            confidence: 1.0,
+        }],
+        ..Scene::default()
+    });
+    engine.evaluate_all();
+    let after = engine.findings();
+    let settled = finding(&after, &question.rule_id, &question.subject_id);
+    assert!(settled.ask.is_none(), "{} still asks after an answer", settled.rule_id);
+    assert!(settled.measured.is_some());
+}

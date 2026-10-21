@@ -60,4 +60,20 @@ pub struct Finding {
     pub severity: String,
     pub location: Option<Vec3>,
     pub counterpart: Option<String>,
+    /// The owner question or photo request that would settle a `needs_info` finding.
+    #[serde(default)]
+    pub ask: Option<Ask>,
+}
+
+/// What to ask the owner so a missing answer can be recorded as an owner observation on
+/// `subject_id` under `metric`. ADA and CBC findings that share both ask the same question.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Ask {
+    pub subject_id: String,
+    pub metric: String,
+    pub prompt: String,
+    pub value_type: String,
+    pub unit: String,
+    pub options: Vec<String>,
+    pub photo: bool,
 }

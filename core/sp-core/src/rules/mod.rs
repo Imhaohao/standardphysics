@@ -6,7 +6,7 @@ mod model;
 mod report;
 
 pub use evaluate::Evaluator;
-pub use finding::{Finding, MeasuredValue, Status};
+pub use finding::{Ask, Finding, MeasuredValue, Status};
 pub use model::{
     ADA, Answer, CBC, Comparison, Condition, Op, Operand, Rule, RuleLoadError, RulePack, Scoping, Test, WhenUnknown,
 };
