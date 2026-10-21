@@ -1,4 +1,5 @@
 import ARKit
+import RoomPlan
 import SwiftUI
 
 /// The real app: one capture coordinator, the live overlay fed from it, the detector fed from
@@ -49,7 +50,8 @@ final class LiveServices {
             reportStore: FileReportStore(),
             library: api,
             recheck: local,
-            webBaseURL: WebLinks.baseURL()
+            webBaseURL: WebLinks.baseURL(),
+            canScan: RoomCaptureSession.isSupported
         )
         detection = LiveDetectionPipeline(detector: TimedDetector(base: CoreMLDetector())) { [weak coordinator] detections in
             await MainActor.run { coordinator?.ingest(detections) }

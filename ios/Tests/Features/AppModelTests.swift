@@ -115,6 +115,15 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(relaunched.report(id: scanID)?.name, "Corner Deli")
     }
 
+    func testAPhoneWithoutLiDARNeverStartsAScan() {
+        let model = AppModel(capture: PreviewCaptureController(storedScans: []), processor: RecordingProcessor(), canScan: false)
+        model.startNewScan()
+        XCTAssertEqual(model.route, .home)
+        let staged = LaunchConfiguration.fromProcess(arguments: ["app", "-screen", "home-unsupported"])
+        XCTAssertFalse(staged.model.canScan)
+        XCTAssertTrue(staged.model.account.isAvailable, "signing in to see reports still works")
+    }
+
     func testScreenLaunchArgumentStagesTheRightState() {
         let relocalizing = LaunchConfiguration.fromProcess(arguments: ["app", "-screen", "relocalizing"])
         XCTAssertEqual(relocalizing.model.route, .capture)

@@ -7,6 +7,7 @@ struct LaunchConfiguration {
         case home
         case homeEmpty = "home-empty"
         case homeSignedIn = "home-signed-in"
+        case homeUnsupported = "home-unsupported"
         case account
         case before
         case capture
@@ -42,9 +43,11 @@ struct LaunchConfiguration {
 
     static func staged(_ screen: Screen) -> LaunchConfiguration {
         let capture = PreviewCaptureController(snapshot: SampleSnapshot.jpeg())
-        let model = screen == .homeEmpty
-            ? AppModel(capture: capture, processor: PreviewScanProcessor())
-            : makeModel(capture: capture)
+        let model = switch screen {
+        case .homeEmpty: AppModel(capture: capture, processor: PreviewScanProcessor())
+        case .homeUnsupported: AppModel(capture: capture, processor: PreviewScanProcessor(), account: AccountModel(service: PreviewAccountService()), canScan: false)
+        default: makeModel(capture: capture)
+        }
         model.route = route(for: screen)
         stageCapture(capture, for: screen)
         if screen == .processing { model.stageProcessing() }
@@ -55,7 +58,7 @@ struct LaunchConfiguration {
 
     private static func route(for screen: Screen) -> AppRoute {
         switch screen {
-        case .home, .homeEmpty, .homeSignedIn, .account: .home
+        case .home, .homeEmpty, .homeSignedIn, .homeUnsupported, .account: .home
         case .before: .beforeYouScan
         case .capture, .tray, .paused, .relocalizing, .thermal, .roomFinished: .capture
         case .processing: .processing

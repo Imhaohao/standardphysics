@@ -37,6 +37,8 @@ final class AppModel {
 
     let capture: any CaptureControlling
     let account: AccountModel
+    /// False on a phone without LiDAR: it can't scan, but it can still show the account's reports.
+    let canScan: Bool
     private let processor: any ScanProcessing
     private let journal: (any ScanJournaling)?
     private let reportStore: (any ReportStoring)?
@@ -57,6 +59,7 @@ final class AppModel {
         library: (any ScanLibrary)? = nil,
         recheck: (any ReportRechecking)? = nil,
         webBaseURL: URL? = nil,
+        canScan: Bool = true,
         unfinishedScans: [ScanManifest] = [],
         reports: [ScanReport] = []
     ) {
@@ -68,6 +71,7 @@ final class AppModel {
         self.library = library
         self.recheck = recheck
         self.webBaseURL = webBaseURL
+        self.canScan = canScan
         self.unfinishedScans = unfinishedScans
         self.reports = reports
         account.onAccountDeleted = { [weak self] in await self?.forgetServerReports() }
@@ -153,6 +157,7 @@ final class AppModel {
     }
 
     func startNewScan() {
+        guard canScan else { return }
         route = .beforeYouScan
     }
 
