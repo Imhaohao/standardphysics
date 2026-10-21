@@ -28,6 +28,13 @@ test("the sign-in link leads to the sign-in form", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
 });
 
+test("every sheet links to the privacy policy", async ({ page }) => {
+  await page.goto("/sign-in");
+  await page.getByRole("link", { name: "Privacy policy" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Privacy policy" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "tyadgirkar@gmail.com" }).first()).toHaveAttribute("href", "mailto:tyadgirkar@gmail.com");
+});
+
 test("a new owner creates an account from the sign-in form", async ({ page }) => {
   await page.goto("/sign-in");
   await page.getByRole("button", { name: "Create an account" }).click();
