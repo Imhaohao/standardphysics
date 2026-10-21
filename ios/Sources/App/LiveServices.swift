@@ -40,13 +40,15 @@ final class LiveServices {
         coordinator.observer = streamer
         self.streamer = streamer
         self.uploader = uploader
+        let local = OnDeviceScanProcessor(journal: journal)
         appModel = AppModel(
             capture: coordinator,
-            processor: TimedProcessor(base: Self.makeProcessor(journal: journal, api: api, uploader: uploader, streamer: streamer)),
+            processor: TimedProcessor(base: Self.makeProcessor(local: local, journal: journal, api: api, uploader: uploader, streamer: streamer)),
             journal: journal,
             account: AccountModel(service: api),
             reportStore: FileReportStore(),
-            library: api
+            library: api,
+            recheck: local
         )
         detection = LiveDetectionPipeline(detector: TimedDetector(base: CoreMLDetector())) { [weak coordinator] detections in
             await MainActor.run { coordinator?.ingest(detections) }
@@ -66,9 +68,8 @@ final class LiveServices {
     }
 
     private static func makeProcessor(
-        journal: FileScanJournal, api: APIClient?, uploader: BackgroundUploader?, streamer: ScanStreamer?
+        local: OnDeviceScanProcessor, journal: FileScanJournal, api: APIClient?, uploader: BackgroundUploader?, streamer: ScanStreamer?
     ) -> any ScanProcessing {
-        let local = OnDeviceScanProcessor(journal: journal)
         let tokens = KeychainTokenStore()
         guard let api, let uploader else { return local }
         Task { await uploader.start() }

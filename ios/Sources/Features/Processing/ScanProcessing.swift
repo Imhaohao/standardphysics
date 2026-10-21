@@ -32,6 +32,13 @@ protocol ScanProcessing: AnyObject {
     func process(_ manifest: ScanManifest, onUpdate: @escaping (ProcessingUpdate) -> Void) async throws -> ScanReport
 }
 
+/// Checks a report checked on this phone again with the owner's answers.
+protocol ReportRechecking: AnyObject {
+    func recheck(scanID: UUID, answers: [OwnerAnswer]) async throws -> ScanReport
+}
+
+extension OnDeviceScanProcessor: ReportRechecking {}
+
 final class PreviewScanProcessor: ScanProcessing {
     private let stepDelay: Duration
     private let report: (ScanManifest) -> ScanReport

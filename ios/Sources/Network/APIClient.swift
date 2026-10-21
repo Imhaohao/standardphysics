@@ -129,6 +129,14 @@ actor APIClient: UploadAPI {
         try await send(APIRoutes.listScans())
     }
 
+    func answers(scanID: String) async throws -> [ServerAnswer] {
+        try await send(APIRoutes.answers(scanID: scanID))
+    }
+
+    func saveAnswers(scanID: String, answers: [AnswerUpdate]) async throws -> Report {
+        try await send(APIRoutes.saveAnswers(scanID: scanID, body: AnswersRequest(answers: answers)))
+    }
+
     /// The scene as JSON text, in the shape `SceneSubjects` reads.
     func sceneJSON(scanID: String) async throws -> String {
         let scene = try await send(APIRoutes.scene(scanID: scanID))

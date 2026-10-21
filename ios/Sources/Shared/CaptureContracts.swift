@@ -112,6 +112,56 @@ nonisolated struct MeasuredRange: Codable, Sendable, Equatable {
     let unit: String
 }
 
+nonisolated enum AskValueType: String, Codable, Sendable {
+    case boolean
+    case number
+    case integer
+    case choice = "enum"
+    /// A kind of answer this version of the app cannot collect; the question is not shown.
+    case unsupported
+
+    init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self = AskValueType(rawValue: raw) ?? .unsupported
+    }
+}
+
+/// What the owner can tell us to settle a `needs_info` finding, and the metric the answer is
+/// stored under. ADA and CBC twins share one ask, so it is asked once per subject and metric.
+nonisolated struct FindingAsk: Codable, Sendable, Equatable {
+    let metric: String
+    let prompt: String
+    let valueType: AskValueType
+    let unit: String
+    let options: [String]
+    /// The rule would rather have a photo; an answer from the owner still counts.
+    let photo: Bool
+
+    init(metric: String, prompt: String, valueType: AskValueType, unit: String = "", options: [String] = [], photo: Bool = false) {
+        self.metric = metric
+        self.prompt = prompt
+        self.valueType = valueType
+        self.unit = unit
+        self.options = options
+        self.photo = photo
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        metric = try container.decode(String.self, forKey: .metric)
+        prompt = try container.decode(String.self, forKey: .prompt)
+        valueType = try container.decode(AskValueType.self, forKey: .valueType)
+        unit = try container.decodeIfPresent(String.self, forKey: .unit) ?? ""
+        options = try container.decodeIfPresent([String].self, forKey: .options) ?? []
+        photo = try container.decodeIfPresent(Bool.self, forKey: .photo) ?? false
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case metric, prompt, unit, options, photo
+        case valueType = "value_type"
+    }
+}
+
 nonisolated struct Finding: Codable, Sendable, Equatable, Identifiable {
     let ruleID: String
     let jurisdiction: Jurisdiction
@@ -126,6 +176,8 @@ nonisolated struct Finding: Codable, Sendable, Equatable, Identifiable {
     /// The matching rule in the other jurisdiction, e.g. the CBC rule for an ADA one.
     let counterpartRuleID: String?
     let range: MeasuredRange?
+    /// Set when the finding needs an answer only the owner (or a photo) can give.
+    let ask: FindingAsk?
 
     var id: String { "\(ruleID)#\(subjectID)" }
     var isOwnerQuestion: Bool { jurisdiction == .system }
@@ -133,7 +185,8 @@ nonisolated struct Finding: Codable, Sendable, Equatable, Identifiable {
     init(
         ruleID: String, jurisdiction: Jurisdiction, section: String, subjectID: String, status: FindingStatus,
         measured: MeasuredValue?, required: String, message: String, title: String? = nil,
-        severity: FindingSeverity? = nil, counterpartRuleID: String? = nil, range: MeasuredRange? = nil
+        severity: FindingSeverity? = nil, counterpartRuleID: String? = nil, range: MeasuredRange? = nil,
+        ask: FindingAsk? = nil
     ) {
         self.ruleID = ruleID
         self.jurisdiction = jurisdiction
@@ -147,6 +200,7 @@ nonisolated struct Finding: Codable, Sendable, Equatable, Identifiable {
         self.severity = severity
         self.counterpartRuleID = counterpartRuleID
         self.range = range
+        self.ask = ask
     }
 
     /// Reports saved before these fields existed still load, and a severity this version does
@@ -165,13 +219,14 @@ nonisolated struct Finding: Codable, Sendable, Equatable, Identifiable {
         severity = try? container.decodeIfPresent(FindingSeverity.self, forKey: .severity)
         counterpartRuleID = try container.decodeIfPresent(String.self, forKey: .counterpartRuleID)
         range = try container.decodeIfPresent(MeasuredRange.self, forKey: .range)
+        ask = try? container.decodeIfPresent(FindingAsk.self, forKey: .ask)
     }
 
     enum CodingKeys: String, CodingKey {
         case ruleID = "rule_id"
         case jurisdiction, section
         case subjectID = "subject_id"
-        case status, measured, required, message, title, severity, range
+        case status, measured, required, message, title, severity, range, ask
         case counterpartRuleID = "counterpart_rule_id"
     }
 }

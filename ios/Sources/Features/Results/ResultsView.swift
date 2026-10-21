@@ -11,16 +11,44 @@ struct ResultsView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
                         ResultsHeader(report: report) { model.goHome() }
+                        if let notice = model.notice {
+                            NoticeBanner(message: notice) { model.dismissNotice() }
+                        }
                         ForEach(ReportGrouping.sections(for: report)) { section in
-                            RoomSectionView(section: section)
+                            RoomSectionView(section: section, reportID: reportID)
                         }
                     }
                     .padding(Theme.Spacing.m)
                     .padding(.bottom, Theme.Spacing.xl)
                     .frame(maxWidth: Theme.Size.readable, alignment: .leading)
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
         }
+    }
+}
+
+/// Something that didn't go through, with a way to put it away.
+struct NoticeBanner: View {
+    let message: String
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.s) {
+            Image(systemName: "exclamationmark.circle.fill")
+                .foregroundStyle(Theme.Palette.problem)
+                .accessibilityHidden(true)
+            Text(message)
+                .font(Theme.Typography.callout)
+                .foregroundStyle(Theme.Palette.ink)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: Theme.Spacing.s)
+            Button("Dismiss", action: onDismiss)
+                .buttonStyle(InkButtonStyle(variant: .quiet, height: Theme.Size.compactControl))
+        }
+        .padding(.leading, Theme.Spacing.s + 4)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous).fill(Theme.Palette.problemWash))
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -88,6 +116,7 @@ private struct FixCount: View {
 
 private struct RoomSectionView: View {
     let section: RoomSection
+    let reportID: UUID
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
@@ -96,7 +125,7 @@ private struct RoomSectionView: View {
                 .foregroundStyle(Theme.Palette.ink)
                 .accessibilityAddTraits(.isHeader)
             ForEach(section.objectsWithIssues) { group in
-                ObjectCard(group: group)
+                ObjectCard(group: group, reportID: reportID)
             }
             if !section.passing.isEmpty {
                 PassingList(items: section.passing)
@@ -107,6 +136,7 @@ private struct RoomSectionView: View {
 
 private struct ObjectCard: View {
     let group: ObjectGroup
+    let reportID: UUID
 
     var body: some View {
         Card(variant: .raised) {
@@ -115,15 +145,28 @@ private struct ObjectCard: View {
                     .font(Theme.Typography.headline)
                     .foregroundStyle(Theme.Palette.ink)
                 ForEach(group.issues) { outcome in
-                    if outcome.isOwnerQuestion {
-                        OwnerCheckView(outcome: outcome)
-                    } else if outcome.isQuestion {
-                        QuestionView(outcome: outcome)
-                    } else {
-                        IssueView(outcome: outcome)
-                    }
+                    IssueRow(outcome: outcome, reportID: reportID)
                 }
             }
+        }
+    }
+}
+
+/// A question the owner can answer comes first; then a check only the owner can do, a yes or no
+/// question, and finally a measured problem.
+private struct IssueRow: View {
+    let outcome: RuleOutcome
+    let reportID: UUID
+
+    var body: some View {
+        if let question = OwnerQuestions.question(for: outcome) {
+            AskQuestionView(outcome: outcome, question: question, reportID: reportID)
+        } else if outcome.isOwnerQuestion {
+            OwnerCheckView(outcome: outcome)
+        } else if outcome.isQuestion {
+            QuestionView(outcome: outcome)
+        } else {
+            IssueView(outcome: outcome)
         }
     }
 }
@@ -157,14 +200,125 @@ private struct QuestionView: View {
                 AnswerButton(title: "Yes", isSelected: model.answers[outcome.id] == true) { model.answer(outcome.id, yes: true) }
                 AnswerButton(title: "No", isSelected: model.answers[outcome.id] == false) { model.answer(outcome.id, yes: false) }
             }
-            Text(citations)
+            Text(Citation.list(for: outcome))
                 .font(Theme.Typography.caption)
                 .foregroundStyle(Theme.Palette.inkMuted)
         }
     }
+}
 
-    private var citations: String {
-        [outcome.federal, outcome.california].compactMap { $0 }.map(Citation.text(for:)).joined(separator: " and ")
+/// A question the rules need the owner to settle, with the control its kind of answer needs.
+private struct AskQuestionView: View {
+    @Environment(AppModel.self) private var model
+    let outcome: RuleOutcome
+    let question: OwnerQuestion
+    let reportID: UUID
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.s) {
+                Image(systemName: StatusTone.needsInfo.symbol)
+                    .foregroundStyle(Theme.Palette.attention)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                    if let title = outcome.governing.title {
+                        Text(title)
+                            .font(Theme.Typography.body.weight(.semibold))
+                            .foregroundStyle(Theme.Palette.ink)
+                    }
+                    Text(question.ask.prompt)
+                        .font(Theme.Typography.body)
+                        .foregroundStyle(Theme.Palette.ink)
+                }
+                .fixedSize(horizontal: false, vertical: true)
+            }
+            AnswerControl(question: question, current: model.answer(to: question, inReport: reportID)) { value in
+                Task { await model.answer(question, with: value, inReport: reportID) }
+            }
+            Text(Citation.list(for: outcome))
+                .font(Theme.Typography.caption)
+                .foregroundStyle(Theme.Palette.inkMuted)
+        }
+    }
+}
+
+private struct AnswerControl: View {
+    let question: OwnerQuestion
+    let current: AnswerValue?
+    let onAnswer: (AnswerValue?) -> Void
+
+    var body: some View {
+        switch question.ask.valueType {
+        case .boolean:
+            HStack(spacing: Theme.Spacing.s) {
+                choice("Yes", value: .bool(true))
+                choice("No", value: .bool(false))
+            }
+        case .choice:
+            VStack(spacing: Theme.Spacing.s) {
+                ForEach(question.ask.options, id: \.self) { option in
+                    choice(OwnerQuestions.optionTitle(option), value: .text(option))
+                }
+            }
+        case .number, .integer:
+            NumberAnswerField(ask: question.ask, current: current, onAnswer: onAnswer)
+        case .unsupported:
+            EmptyView()
+        }
+    }
+
+    /// Tapping the chosen answer again clears it.
+    private func choice(_ title: String, value: AnswerValue) -> some View {
+        AnswerButton(title: title, isSelected: current == value) {
+            onAnswer(current == value ? nil : value)
+        }
+    }
+}
+
+private struct NumberAnswerField: View {
+    let ask: FindingAsk
+    let current: AnswerValue?
+    let onAnswer: (AnswerValue?) -> Void
+    @State private var text = ""
+    @State private var problem: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+            InkTextField(label: label, text: $text, kind: .number, prompt: ask.valueType == .integer ? "0" : "0.0")
+            if let problem {
+                Text(problem)
+                    .font(Theme.Typography.callout)
+                    .foregroundStyle(Theme.Palette.problem)
+            }
+            SecondaryButton(title: isSaved ? "Answer saved" : "Save answer", systemImage: isSaved ? "checkmark" : nil, action: save)
+        }
+        .onAppear { text = OwnerQuestions.text(for: current) }
+        .onChange(of: current) { _, saved in text = OwnerQuestions.text(for: saved) }
+    }
+
+    private var label: String {
+        ask.unit.isEmpty ? "Your answer" : "Your answer in \(OwnerQuestions.unitName(ask.unit))"
+    }
+
+    private var isSaved: Bool {
+        current != nil && OwnerQuestions.numberValue(from: text, valueType: ask.valueType) == current
+    }
+
+    /// An empty field clears a saved answer.
+    private func save() {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else {
+            problem = nil
+            if current != nil { onAnswer(nil) }
+            return
+        }
+        guard let value = OwnerQuestions.numberValue(from: trimmed, valueType: ask.valueType) else {
+            problem = "Enter a number, like 5 or 4.5."
+            return
+        }
+        problem = nil
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        onAnswer(value)
     }
 }
 

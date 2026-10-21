@@ -63,6 +63,16 @@ nonisolated enum APIRoutes {
         Endpoint(method: .get, path: "\(apiPrefix)/scans/\(scanID)/assessment", isIdempotent: true)
     }
 
+    static func answers(scanID: String) -> Endpoint<[ServerAnswer]> {
+        Endpoint(method: .get, path: "\(apiPrefix)/scans/\(scanID)/answers", isIdempotent: true)
+    }
+
+    /// Answers the server already holds are replaced, so sending the same set twice is harmless.
+    /// The response is the report checked again with the answers.
+    static func saveAnswers(scanID: String, body: AnswersRequest) -> Endpoint<Report> {
+        Endpoint(method: .put, path: "\(apiPrefix)/scans/\(scanID)/answers", body: body, isIdempotent: true)
+    }
+
     /// The merged scene the server checked, used to name what each finding is about.
     static func scene(scanID: String) -> Endpoint<JSONValue> {
         Endpoint(method: .get, path: "\(apiPrefix)/scans/\(scanID)/scene", isIdempotent: true)

@@ -127,6 +127,13 @@ nonisolated enum Citation {
         }
     }
 
+    /// "ADA 2010 §404.2.7 and CBC 11B-404.2.7", or the governing finding's alone.
+    static func list(for outcome: RuleOutcome) -> String {
+        let findings = [outcome.federal, outcome.california].compactMap { $0 }
+        guard !findings.isEmpty else { return text(for: outcome.governing) }
+        return findings.map(text(for:)).joined(separator: " and ")
+    }
+
     static func jurisdictionName(_ jurisdiction: Jurisdiction) -> String {
         switch jurisdiction {
         case .ada2010: "Federal"

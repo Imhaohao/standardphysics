@@ -23,6 +23,8 @@ final class AppModel {
     private(set) var reports: [ScanReport]
     private(set) var processing: ProcessingState?
     private(set) var answers: [String: Bool] = [:]
+    /// Something that didn't go through, such as an answer the server didn't get.
+    private(set) var notice: String?
 
     let capture: any CaptureControlling
     let account: AccountModel
@@ -30,7 +32,10 @@ final class AppModel {
     private let journal: (any ScanJournaling)?
     private let reportStore: (any ReportStoring)?
     private let library: (any ScanLibrary)?
+    private let recheck: (any ReportRechecking)?
     @ObservationIgnored private var hasLoadedStoredReports = false
+
+    static let answerNotSent = "Your answer is saved on this phone, but it didn't reach the server, so the report hasn't been checked again yet. Check your connection and answer again."
 
     init(
         capture: any CaptureControlling,
@@ -39,6 +44,7 @@ final class AppModel {
         account: AccountModel = AccountModel(service: nil),
         reportStore: (any ReportStoring)? = nil,
         library: (any ScanLibrary)? = nil,
+        recheck: (any ReportRechecking)? = nil,
         unfinishedScans: [ScanManifest] = [],
         reports: [ScanReport] = []
     ) {
@@ -48,6 +54,7 @@ final class AppModel {
         self.account = account
         self.reportStore = reportStore
         self.library = library
+        self.recheck = recheck
         self.unfinishedScans = unfinishedScans
         self.reports = reports
     }
@@ -100,7 +107,10 @@ final class AppModel {
     private func serverReport(for scan: ScanResponse, from library: any ScanLibrary) async -> ScanReport? {
         guard let assessment = try? await library.assessment(scanID: scan.id) else { return nil }
         let scene = try? await library.sceneJSON(scanID: scan.id)
-        return ServerReports.scanReport(scan: scan, report: assessment, sceneJSON: scene)
+        var report = ServerReports.scanReport(scan: scan, report: assessment, sceneJSON: scene)
+        let stored = (try? await library.answers(scanID: scan.id)) ?? []
+        report.answers = stored.compactMap(\.asOwnerAnswer)
+        return report
     }
 
     /// Replaces the reports and writes only what changed to disk.
@@ -187,6 +197,53 @@ final class AppModel {
 
     func answer(_ outcomeID: String, yes: Bool) {
         answers[outcomeID] = yes
+    }
+
+    func dismissNotice() {
+        notice = nil
+    }
+
+    // MARK: Owner answers
+
+    func answer(to question: OwnerQuestion, inReport reportID: UUID) -> AnswerValue? {
+        report(id: reportID).flatMap { OwnerQuestions.answer(to: question, in: $0.answers)?.value }
+    }
+
+    /// Saves the answer with the report straight away, then has the report checked again: by the
+    /// server for a server scan, on the phone otherwise. A nil value clears the answer.
+    func answer(_ question: OwnerQuestion, with value: AnswerValue?, inReport reportID: UUID) async {
+        guard var report = report(id: reportID) else { return }
+        report.answers = OwnerQuestions.setting(value, for: question, in: report.answers)
+        await replace(report)
+        if let remoteScanID = report.remoteScanID {
+            await sendAnswers(of: report, to: remoteScanID, clearing: value == nil ? question : nil)
+        } else {
+            await recheckOnPhone(report)
+        }
+    }
+
+    private func sendAnswers(of report: ScanReport, to remoteScanID: String, clearing cleared: OwnerQuestion?) async {
+        guard let library else { return }
+        let updates = OwnerQuestions.updates(for: report.answers, clearing: cleared)
+        do {
+            let fresh = try await library.saveAnswers(scanID: remoteScanID, answers: updates)
+            await applyRecheck(of: report) { ServerReports.updating($0, with: fresh) }
+            notice = nil
+        } catch {
+            notice = Self.answerNotSent
+        }
+    }
+
+    private func recheckOnPhone(_ report: ScanReport) async {
+        guard let recheck, let fresh = try? await recheck.recheck(scanID: report.scanID, answers: report.answers) else { return }
+        await applyRecheck(of: report) { $0.rechecked(findings: fresh.findings, subjects: fresh.subjects) }
+    }
+
+    /// A check that comes back after the owner changed another answer is out of date; the check
+    /// for the later answers replaces the report instead.
+    private func applyRecheck(of sent: ScanReport, _ update: (ScanReport) -> ScanReport) async {
+        guard let current = report(id: sent.scanID), current.answers == sent.answers else { return }
+        await replace(update(current))
     }
 
     /// Freezes the processing screen part-way through, for previews and screenshots.

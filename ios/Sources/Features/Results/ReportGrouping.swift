@@ -5,7 +5,7 @@ nonisolated struct ObjectGroup: Sendable, Equatable, Identifiable {
     let outcomes: [RuleOutcome]
 
     var id: String { subject.id }
-    var issues: [RuleOutcome] { outcomes.filter(\.needsAttention) }
+    var issues: [RuleOutcome] { OwnerQuestions.deduplicated(outcomes.filter(\.needsAttention)) }
     var worstSeverity: Int { outcomes.map(\.status.severity).max() ?? 0 }
 }
 
@@ -55,7 +55,7 @@ nonisolated enum ReportGrouping {
         let outcomes = RuleComparison.outcomes(from: report.findings)
         return ReportSummary(
             toFix: outcomes.filter(\.isViolation).count,
-            questions: outcomes.filter(\.isQuestion).count,
+            questions: OwnerQuestions.deduplicated(outcomes.filter(\.isQuestion)).count,
             passing: outcomes.filter { $0.status == .pass && !$0.isOwnerQuestion }.count
         )
     }

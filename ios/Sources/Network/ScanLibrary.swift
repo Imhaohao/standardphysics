@@ -5,6 +5,8 @@ nonisolated protocol ScanLibrary: Sendable {
     func listScans() async throws -> [ScanResponse]
     func assessment(scanID: String) async throws -> Report
     func sceneJSON(scanID: String) async throws -> String
+    func answers(scanID: String) async throws -> [ServerAnswer]
+    func saveAnswers(scanID: String, answers: [AnswerUpdate]) async throws -> Report
 }
 
 extension APIClient: ScanLibrary {}
@@ -56,6 +58,25 @@ nonisolated enum ServerReports {
             scanID: UUID(uuidString: scan.id) ?? UUID(), name: scan.name, completedAt: report.createdAt,
             roomNames: roomNames, subjects: subjects, findings: findings.compactMap(\.asFinding), remoteScanID: scan.id
         )
+    }
+
+    /// The server's report after the owner answered, in place of the one shown.
+    static func updating(_ existing: ScanReport, with report: Report) -> ScanReport {
+        let findings = report.findings.filter { $0.asFinding != nil }
+        let knownRooms = roomNamesByRoomID(findings, subjects: existing.subjects)
+        let subjects = filling(existing.subjects, for: findings) { finding in
+            finding.roomID.flatMap { knownRooms[$0] } ?? ReportGrouping.unassignedRoom
+        }
+        return existing.rechecked(findings: findings.compactMap(\.asFinding), subjects: subjects)
+    }
+
+    /// A new subject goes in the room its neighbours on the same server room are already in.
+    private static func roomNamesByRoomID(_ findings: [ServerFinding], subjects: [String: ReportSubject]) -> [String: String] {
+        let pairs = findings.compactMap { finding -> (String, String)? in
+            guard let roomID = finding.roomID, let subject = subjects[finding.subjectID] else { return nil }
+            return (roomID, subject.roomName)
+        }
+        return Dictionary(pairs, uniquingKeysWith: { first, _ in first })
     }
 
     /// Adds a subject for every finding that has none, labelled with the finding's title.
