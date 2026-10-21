@@ -46,6 +46,12 @@ nonisolated enum APIRoutes {
         Endpoint(method: .get, path: "\(apiPrefix)/me", isIdempotent: true)
     }
 
+    /// Removes the user, their sessions, scans and stored files. Not retried: a repeat after a
+    /// dropped response would only fail on the token the first one revoked.
+    static func deleteAccount() -> Endpoint<EmptyResponse> {
+        Endpoint(method: .delete, path: "\(apiPrefix)/me", isIdempotent: false)
+    }
+
     /// Safe to retry because the key is persisted before the first attempt; a repeat with the
     /// same key replays the first scan instead of making a second one.
     static func createScan(_ body: CreateScanRequest, idempotencyKey: String) -> Endpoint<ScanResponse> {

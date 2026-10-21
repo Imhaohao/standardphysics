@@ -38,6 +38,7 @@ struct AccountSheet: View {
 private struct SignedInPanel: View {
     let account: AccountModel
     let email: String?
+    @State private var isConfirmingDelete = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.l) {
@@ -66,6 +67,25 @@ private struct SignedInPanel: View {
             SecondaryButton(title: "Sign out", systemImage: "rectangle.portrait.and.arrow.right") {
                 Task { await account.signOut() }
             }
+            Button(role: .destructive) { isConfirmingDelete = true } label: {
+                ButtonLabel(title: "Delete account", systemImage: "trash")
+            }
+            .buttonStyle(InkButtonStyle(variant: .destructive, height: Theme.Size.compactControl))
+            .frame(maxWidth: .infinity)
+            if let message = account.errorMessage {
+                Label(message, systemImage: "exclamationmark.circle.fill")
+                    .font(Theme.Typography.callout)
+                    .foregroundStyle(Theme.Palette.problem)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .alert("Delete your account?", isPresented: $isConfirmingDelete) {
+            Button("Delete account", role: .destructive) {
+                Task { await account.deleteAccount() }
+            }
+            Button("Keep my account", role: .cancel) {}
+        } message: {
+            Text("This permanently removes your account and every scan and report stored with it on our servers. You can't undo it. Reports checked only on this phone stay here.")
         }
     }
 }

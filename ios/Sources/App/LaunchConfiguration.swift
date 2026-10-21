@@ -85,6 +85,7 @@ nonisolated struct PreviewAccountService: AccountService {
     func signIn(appleIdentityToken: String, nonce: String) async throws -> AuthSession { session(nil) }
     func currentUser() async throws -> ServerUser { ServerUser(id: "preview", email: nil) }
     func signOut() async {}
+    func deleteAccount() async throws {}
 
     private func session(_ email: String?) -> AuthSession {
         AuthSession(token: "preview", expiresAt: .distantFuture, user: ServerUser(id: "preview", email: email))

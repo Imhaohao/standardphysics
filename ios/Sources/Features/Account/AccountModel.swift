@@ -9,6 +9,7 @@ nonisolated protocol AccountService: Sendable {
     func signIn(appleIdentityToken: String, nonce: String) async throws -> AuthSession
     func currentUser() async throws -> ServerUser
     func signOut() async
+    func deleteAccount() async throws
 }
 
 extension APIClient: AccountService {
@@ -40,6 +41,8 @@ final class AccountModel {
 
     @ObservationIgnored private let service: (any AccountService)?
     @ObservationIgnored private var sessionWatcher: Task<Void, Never>?
+    /// Runs once the server has deleted the account, to clear what the phone kept from it.
+    @ObservationIgnored var onAccountDeleted: (@MainActor () async -> Void)?
 
     var isAvailable: Bool { service != nil }
 
@@ -91,6 +94,24 @@ final class AccountModel {
         isWorking = false
         state = .signedOut
         errorMessage = nil
+    }
+
+    /// Deletes the account on the server for good, then signs out here. On failure the account
+    /// and everything on the phone stay as they were.
+    func deleteAccount() async {
+        guard let service else { return }
+        isWorking = true
+        errorMessage = nil
+        defer { isWorking = false }
+        do {
+            try await service.deleteAccount()
+        } catch {
+            errorMessage = (error as? APIError)?.userMessage ?? "We couldn't delete your account. Check your connection and try again."
+            return
+        }
+        state = .signedOut
+        isSheetPresented = false
+        await onAccountDeleted?()
     }
 
     /// Freezes a state for previews and screenshots.

@@ -104,6 +104,12 @@ actor APIClient: UploadAPI {
         try await send(APIRoutes.me())
     }
 
+    /// The local token goes only once the server confirms the account is gone.
+    func deleteAccount() async throws {
+        _ = try await send(APIRoutes.deleteAccount())
+        tokenStore.clear()
+    }
+
     private func storeSession(from endpoint: Endpoint<AuthSession>) async throws -> AuthSession {
         let session = try await send(endpoint)
         try tokenStore.save(session.token)

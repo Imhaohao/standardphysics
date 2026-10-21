@@ -57,6 +57,14 @@ final class AppModel {
         self.recheck = recheck
         self.unfinishedScans = unfinishedScans
         self.reports = reports
+        account.onAccountDeleted = { [weak self] in await self?.forgetServerReports() }
+    }
+
+    /// The account and its scans are gone from the server, so their copies leave the phone too.
+    /// Reports checked only on this phone stay.
+    func forgetServerReports() async {
+        await commit(reports.filter { $0.remoteScanID == nil })
+        if case .results(let scanID) = route, report(id: scanID) == nil { route = .home }
     }
 
     var completedRooms: Int {

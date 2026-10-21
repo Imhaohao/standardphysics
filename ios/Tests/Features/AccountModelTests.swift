@@ -51,6 +51,11 @@ final class AccountModelTests: XCTestCase {
         func currentUser() async throws -> ServerUser { user }
         func signOut() async { calls.append("logout") }
 
+        func deleteAccount() async throws {
+            calls.append("delete")
+            if let failure { throw failure }
+        }
+
         private func session() throws -> AuthSession {
             if let failure { throw failure }
             return AuthSession(token: "t", expiresAt: .distantFuture, user: user)
@@ -144,5 +149,44 @@ final class AccountModelTests: XCTestCase {
 
     func testWithoutAServerSignInIsUnavailable() {
         XCTAssertFalse(AccountModel(service: nil).isAvailable)
+    }
+
+    func testDeletingTheAccountSignsOutAndForgetsServerReports() async {
+        let service = FakeAccountService()
+        let account = AccountModel(service: service, state: .signedIn(email: "a@b.co"))
+        let serverReport = ServerReports.scanReport(scan: LibraryFixtures.scan(), report: LibraryFixtures.report(), sceneJSON: nil)
+        let model = AppModel(
+            capture: PreviewCaptureController(storedScans: []), processor: PreviewScanProcessor(), account: account,
+            reports: [serverReport, SampleData.completedReport]
+        )
+        model.openReport(serverReport.scanID)
+        account.isSheetPresented = true
+
+        await account.deleteAccount()
+
+        XCTAssertEqual(service.calls, ["delete"])
+        XCTAssertEqual(account.state, .signedOut)
+        XCTAssertFalse(account.isSheetPresented)
+        XCTAssertEqual(model.reports.map(\.scanID), [SampleData.completedReport.scanID], "reports checked only on this phone stay")
+        XCTAssertEqual(model.route, .home)
+    }
+
+    func testAFailedAccountDeleteChangesNothing() async {
+        let service = FakeAccountService()
+        service.failure = .offline
+        let account = AccountModel(service: service, state: .signedIn(email: "a@b.co"))
+        await account.deleteAccount()
+        XCTAssertEqual(account.state, .signedIn(email: "a@b.co"))
+        XCTAssertEqual(account.errorMessage, APIError.offline.userMessage)
+    }
+
+    func testDeletingTheAccountOnTheServerClearsTheToken() async throws {
+        let transport = ScriptedTransport([.success(HTTPResponse(status: 204, headers: [:], body: Data()))])
+        let store = InMemoryTokenStore(token: "t")
+        let client = APIClient(baseURL: URL(string: "https://api.test")!, tokenStore: store, transport: transport)
+        try await client.deleteAccount()
+        XCTAssertNil(store.token())
+        XCTAssertEqual(transport.requests.first?.httpMethod, "DELETE")
+        XCTAssertEqual(transport.requests.first?.url?.path, "/v1/me")
     }
 }
