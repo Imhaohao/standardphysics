@@ -179,19 +179,7 @@ impl Labeller {
         set
     }
 
-    async fn label_one(
-        &self,
-        storage: &Storage,
-        categories: &[String],
-        request: &LabelRequest,
-    ) -> Result<LabelResult> {
-        let bytes = storage.get_bytes(&request.crop_key).await?;
-        let data_uri = format!(
-            "data:{};base64,{}",
-            request.content_type,
-            STANDARD.encode(bytes)
-        );
-        let body = build_request_body(&self.cfg.model, categories, &data_uri);
+    async fn chat(&self, body: &Value) -> Result<String> {
         let reply: ChatResponse = self
             .http
             .post(format!(
@@ -200,24 +188,136 @@ impl Labeller {
             ))
             .bearer_auth(self.cfg.api_key.as_deref().unwrap_or_default())
             .timeout(self.cfg.request_timeout)
-            .json(&body)
+            .json(body)
             .send()
             .await?
             .error_for_status()?
             .json()
             .await?;
-        let content = reply
+        reply
             .choices
-            .first()
-            .map(|c| c.message.content.as_str())
-            .context("label reply had no choices")?;
-        let (category, confidence) = parse_label(content, categories)?;
+            .into_iter()
+            .next()
+            .map(|c| c.message.content)
+            .context("vision reply had no choices")
+    }
+
+    async fn image_data_uri(storage: &Storage, key: &str, content_type: &str) -> Result<String> {
+        let bytes = storage.get_bytes(key).await?;
+        Ok(format!(
+            "data:{content_type};base64,{}",
+            STANDARD.encode(bytes)
+        ))
+    }
+
+    async fn label_one(
+        &self,
+        storage: &Storage,
+        categories: &[String],
+        request: &LabelRequest,
+    ) -> Result<LabelResult> {
+        let data_uri =
+            Self::image_data_uri(storage, &request.crop_key, &request.content_type).await?;
+        let body = build_request_body(&self.cfg.model, categories, &data_uri);
+        let content = self.chat(&body).await?;
+        let (category, confidence) = parse_label(&content, categories)?;
         Ok(LabelResult {
             observation_id: request.observation_id.clone(),
             category,
             confidence,
         })
     }
+
+    /// Ask the model to answer one requirement question from a photo the owner took.
+    pub async fn read_photo(
+        &self,
+        storage: &Storage,
+        photo: &PhotoRef,
+        question: &PhotoQuestion,
+    ) -> Result<PhotoReading> {
+        if !self.is_enabled() {
+            return Err(anyhow!("photo reading is not configured"));
+        }
+        let data_uri = Self::image_data_uri(storage, &photo.key, &photo.content_type).await?;
+        let body = build_photo_request_body(&self.cfg.model, question, &data_uri);
+        parse_photo_reading(&self.chat(&body).await?, question)
+    }
+}
+
+const PHOTO_SYSTEM_PROMPT: &str = "You check one accessibility requirement from a photo of a \
+business interior, for an inspection screening. Answer only from what the photo shows. Reply \
+with a JSON object {\"answer\": <value>, \"confidence\": <number between 0 and 1>} and \
+nothing else. Use \"answer\": null when the photo does not show enough to answer.";
+
+pub struct PhotoRef {
+    pub key: String,
+    pub content_type: String,
+}
+
+pub struct PhotoQuestion {
+    pub prompt: String,
+    pub value_type: String,
+    pub unit: String,
+    pub options: Vec<String>,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct PhotoReading {
+    /// `None` when the model could not tell from the photo.
+    pub answer: Option<Value>,
+    pub confidence: f64,
+}
+
+fn answer_format(question: &PhotoQuestion) -> String {
+    match question.value_type.as_str() {
+        "boolean" => "The answer is true or false.".to_string(),
+        "enum" => format!("The answer is one of: {}.", question.options.join(", ")),
+        "number" | "integer" => format!("The answer is a number in {}.", question.unit),
+        _ => "The answer is a short piece of text.".to_string(),
+    }
+}
+
+pub fn build_photo_request_body(model: &str, question: &PhotoQuestion, data_uri: &str) -> Value {
+    json!({
+        "model": model,
+        "temperature": 0,
+        "response_format": {"type": "json_object"},
+        "messages": [
+            {"role": "system", "content": PHOTO_SYSTEM_PROMPT},
+            {"role": "user", "content": [
+                {"type": "text", "text": format!("{} {}", question.prompt, answer_format(question))},
+                {"type": "image_url", "image_url": {"url": data_uri}},
+            ]},
+        ],
+    })
+}
+
+fn answer_fits(answer: &Value, question: &PhotoQuestion) -> bool {
+    match question.value_type.as_str() {
+        "boolean" => answer.is_boolean(),
+        "number" | "integer" => answer.as_f64().is_some_and(f64::is_finite),
+        "enum" => answer
+            .as_str()
+            .is_some_and(|a| question.options.iter().any(|o| o == a)),
+        _ => answer.is_string(),
+    }
+}
+
+pub fn parse_photo_reading(content: &str, question: &PhotoQuestion) -> Result<PhotoReading> {
+    let value: Value =
+        serde_json::from_str(strip_code_fence(content)).context("photo reply was not JSON")?;
+    let confidence = value
+        .get("confidence")
+        .and_then(Value::as_f64)
+        .unwrap_or(0.5)
+        .clamp(0.0, 1.0);
+    let answer = value.get("answer").filter(|a| !a.is_null()).cloned();
+    if let Some(answer) = &answer {
+        if !answer_fits(answer, question) {
+            return Err(anyhow!("photo answer {answer} does not fit the question"));
+        }
+    }
+    Ok(PhotoReading { answer, confidence })
 }
 
 async fn collect_until(
@@ -271,5 +371,53 @@ mod tests {
         assert_eq!(body["model"], "m");
         let text = body["messages"][1]["content"][0]["text"].as_str().unwrap();
         assert!(text.contains("toilet, sink"));
+    }
+}
+
+#[cfg(test)]
+mod photo_tests {
+    use super::*;
+
+    fn question(value_type: &str) -> PhotoQuestion {
+        PhotoQuestion {
+            prompt: "Does the faucet have lever handles?".into(),
+            value_type: value_type.into(),
+            unit: "in".into(),
+            options: vec!["lever".into(), "knob".into()],
+        }
+    }
+
+    #[test]
+    fn photo_answers_must_fit_the_question() {
+        let yes = parse_photo_reading(r#"{"answer":true,"confidence":0.8}"#, &question("boolean"));
+        assert_eq!(
+            yes.unwrap(),
+            PhotoReading {
+                answer: Some(json!(true)),
+                confidence: 0.8
+            }
+        );
+        assert!(parse_photo_reading(r#"{"answer":"yes"}"#, &question("boolean")).is_err());
+        assert!(parse_photo_reading(r#"{"answer":"knob"}"#, &question("enum")).is_ok());
+        assert!(parse_photo_reading(r#"{"answer":"tap"}"#, &question("enum")).is_err());
+        assert!(parse_photo_reading(r#"{"answer":34.5}"#, &question("number")).is_ok());
+    }
+
+    #[test]
+    fn an_unclear_photo_gives_no_answer() {
+        let reading =
+            parse_photo_reading(r#"{"answer":null,"confidence":0.2}"#, &question("boolean"))
+                .unwrap();
+        assert_eq!(reading.answer, None);
+    }
+
+    #[test]
+    fn the_prompt_says_what_shape_the_answer_takes() {
+        let body = build_photo_request_body("m", &question("enum"), "data:image/jpeg;base64,AA");
+        let text = body["messages"][1]["content"][0]["text"].as_str().unwrap();
+        assert!(
+            text.ends_with("The answer is one of: lever, knob."),
+            "{text}"
+        );
     }
 }

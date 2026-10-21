@@ -53,9 +53,31 @@ pub struct LabelApi {
     pub in_flight: Arc<AtomicUsize>,
     pub max_in_flight: Arc<AtomicUsize>,
     pub calls: Arc<AtomicUsize>,
+    /// What photo questions get back; `null` means `{"answer": true, "confidence": 0.9}`.
+    pub photo_reply: Arc<std::sync::Mutex<Value>>,
 }
 
-async fn chat_completions(State(api): State<LabelApi>) -> Json<Value> {
+fn is_photo_question(body: &Value) -> bool {
+    body["messages"][0]["content"]
+        .as_str()
+        .is_some_and(|s| s.contains("requirement from a photo"))
+}
+
+fn photo_reply(api: &LabelApi) -> Json<Value> {
+    let configured = api.photo_reply.lock().unwrap().clone();
+    let reply = if configured.is_null() {
+        json!({"answer": true, "confidence": 0.9})
+    } else {
+        configured
+    };
+    Json(json!({"choices": [{"message": {"content": reply.to_string()}}]}))
+}
+
+async fn chat_completions(State(api): State<LabelApi>, Json(body): Json<Value>) -> Json<Value> {
+    if is_photo_question(&body) {
+        api.calls.fetch_add(1, Ordering::SeqCst);
+        return photo_reply(&api);
+    }
     api.calls.fetch_add(1, Ordering::SeqCst);
     let now = api.in_flight.fetch_add(1, Ordering::SeqCst) + 1;
     api.max_in_flight.fetch_max(now, Ordering::SeqCst);

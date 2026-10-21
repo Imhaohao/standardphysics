@@ -12,6 +12,7 @@ pub mod idempotency;
 pub mod jobs;
 pub mod live;
 pub mod openapi;
+pub mod photo_answers;
 pub mod purge;
 pub mod scans;
 pub mod shares;
@@ -88,6 +89,10 @@ fn report_routes() -> Router<AppState> {
         .route(
             "/scans/{scan_id}/answers",
             get(answers::list_answers).put(answers::save_answers),
+        )
+        .route(
+            "/scans/{scan_id}/photo-answers",
+            post(photo_answers::answer_from_photo),
         )
         .route(
             "/scans/{scan_id}/shares",

@@ -1,7 +1,7 @@
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 
-use crate::{answers, auth, finish, health, live, scans, shares, uploads};
+use crate::{answers, auth, finish, health, live, photo_answers, scans, shares, uploads};
 
 struct BearerAuth;
 
@@ -40,6 +40,7 @@ impl Modify for BearerAuth {
         scans::handlers::delete_scan,
         answers::list_answers,
         answers::save_answers,
+        photo_answers::answer_from_photo,
         shares::create_share,
         shares::list_shares,
         shares::delete_share,

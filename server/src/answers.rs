@@ -30,6 +30,10 @@ pub struct Answer {
     /// `true`/`false`, a number in the question's unit, or text.
     #[schema(value_type = Object)]
     pub value: sqlx::types::Json<Value>,
+    /// `owner` when typed in, `photo` when read from a photo by the vision model.
+    pub source: String,
+    pub confidence: f64,
+    pub photo_artifact_id: Option<Uuid>,
     pub answered_at: DateTime<Utc>,
 }
 
@@ -58,14 +62,15 @@ fn observation(answer: &Answer) -> Value {
         "metric": answer.metric,
         "value": answer.value.0,
         "unit": answer_unit(&answer.metric).filter(|u| !u.is_empty()),
-        "source": "owner",
-        "confidence": 1.0,
+        "source": answer.source,
+        "confidence": answer.confidence,
     })
 }
 
-async fn list(db: &PgPool, scan_id: Uuid) -> Result<Vec<Answer>> {
+pub(crate) async fn list(db: &PgPool, scan_id: Uuid) -> Result<Vec<Answer>> {
     Ok(sqlx::query_as(
-        "SELECT subject_id, metric, value, answered_at FROM scan_answers
+        "SELECT subject_id, metric, value, source, confidence, photo_artifact_id, answered_at
+         FROM scan_answers
          WHERE scan_id = $1 ORDER BY subject_id, metric",
     )
     .bind(scan_id)
@@ -94,16 +99,20 @@ fn check_value(value: &Value) -> ApiResult<()> {
     }
 }
 
-fn check_input(input: &AnswerInput) -> ApiResult<()> {
-    if input.subject_id.trim().is_empty() {
+pub(crate) fn check_known_metric(subject_id: &str, metric: &str) -> ApiResult<()> {
+    if subject_id.trim().is_empty() {
         return Err(ApiError::bad_request("subject_id is required"));
     }
-    if answer_unit(&input.metric).is_none() {
+    if answer_unit(metric).is_none() {
         return Err(ApiError::bad_request(format!(
-            "{} is not a known metric",
-            input.metric
+            "{metric} is not a known metric"
         )));
     }
+    Ok(())
+}
+
+fn check_input(input: &AnswerInput) -> ApiResult<()> {
+    check_known_metric(&input.subject_id, &input.metric)?;
     check_value(&input.value)
 }
 
@@ -124,7 +133,8 @@ async fn store(db: &PgPool, scan_id: Uuid, answers: &[AnswerInput]) -> Result<()
         sqlx::query(
             "INSERT INTO scan_answers (scan_id, subject_id, metric, value) VALUES ($1, $2, $3, $4)
              ON CONFLICT (scan_id, subject_id, metric)
-             DO UPDATE SET value = EXCLUDED.value, answered_at = now()",
+             DO UPDATE SET value = EXCLUDED.value, source = 'owner', confidence = 1,
+                           photo_artifact_id = NULL, answered_at = now()",
         )
         .bind(scan_id)
         .bind(&input.subject_id)

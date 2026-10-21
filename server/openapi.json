@@ -897,6 +897,92 @@
         ]
       }
     },
+    "/v1/scans/{scan_id}/photo-answers": {
+      "post": {
+        "tags": [
+          "answers"
+        ],
+        "operationId": "answer_from_photo",
+        "parameters": [
+          {
+            "name": "scan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhotoAnswerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoAnswerResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The scan is not finished, or photo reading is not set up on this server",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The vision model did not give a usable reply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/v1/scans/{scan_id}/scene": {
       "get": {
         "tags": [
@@ -1473,6 +1559,8 @@
           "subject_id",
           "metric",
           "value",
+          "source",
+          "confidence",
           "answered_at"
         ],
         "properties": {
@@ -1480,8 +1568,23 @@
             "type": "string",
             "format": "date-time"
           },
+          "confidence": {
+            "type": "number",
+            "format": "double"
+          },
           "metric": {
             "type": "string"
+          },
+          "photo_artifact_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "source": {
+            "type": "string",
+            "description": "`owner` when typed in, `photo` when read from a photo by the vision model."
           },
           "subject_id": {
             "type": "string"
@@ -1970,6 +2073,54 @@
               "null"
             ],
             "format": "double"
+          }
+        }
+      },
+      "PhotoAnswerRequest": {
+        "type": "object",
+        "required": [
+          "subject_id",
+          "metric",
+          "artifact_id"
+        ],
+        "properties": {
+          "artifact_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A completed upload of kind `photo` on this scan."
+          },
+          "metric": {
+            "type": "string"
+          },
+          "subject_id": {
+            "type": "string"
+          }
+        }
+      },
+      "PhotoAnswerResponse": {
+        "type": "object",
+        "required": [
+          "answered",
+          "confidence",
+          "report"
+        ],
+        "properties": {
+          "answer": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "answered": {
+            "type": "boolean",
+            "description": "True when the photo settled the question; false when it was unclear and the owner\nshould answer or try another photo."
+          },
+          "confidence": {
+            "type": "number",
+            "format": "double"
+          },
+          "report": {
+            "$ref": "#/components/schemas/Report"
           }
         }
       },

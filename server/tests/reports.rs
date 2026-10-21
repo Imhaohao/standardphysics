@@ -283,3 +283,93 @@ async fn deleting_the_account_removes_everything() {
         .await;
     assert_eq!(again.0, StatusCode::CREATED, "the email is free again");
 }
+
+async fn photo_question(app: &TestApp, token: &str) -> (String, Value, String) {
+    let (scan_id, report) = finished_scan(app, token, vec![]).await;
+    let question = report["findings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|f| f["ask"]["photo"] == true && f["ask"]["value_type"] == "boolean")
+        .cloned()
+        .expect("the report asks for at least one yes/no photo");
+    let photo = upload_artifact(app, token, &scan_id, "photo", b"jpeg-photo").await;
+    (scan_id, question, photo)
+}
+
+#[tokio::test]
+async fn a_clear_photo_answers_its_question() {
+    let app = TestApp::start().await;
+    let token = app.register("photo@example.com").await;
+    let (scan_id, question, photo) = photo_question(&app, &token).await;
+    let ask = &question["ask"];
+    let body =
+        json!({"subject_id": ask["subject_id"], "metric": ask["metric"], "artifact_id": photo});
+    let (status, reply) = app
+        .post(&token, &format!("/v1/scans/{scan_id}/photo-answers"), body)
+        .await;
+    assert_eq!(status, StatusCode::OK, "{reply}");
+    assert_eq!(reply["answered"], true);
+    let settled = finding_for(
+        &reply["report"],
+        &question["rule_id"],
+        &question["subject_id"],
+    );
+    assert!(settled["ask"].is_null(), "{settled}");
+    let (_, saved) = app
+        .get(&token, &format!("/v1/scans/{scan_id}/answers"))
+        .await;
+    assert_eq!(saved[0]["source"], "photo");
+    assert_eq!(saved[0]["photo_artifact_id"], photo.as_str());
+}
+
+#[tokio::test]
+async fn an_unclear_photo_leaves_the_question_open() {
+    let app = TestApp::start().await;
+    *app.label_api.photo_reply.lock().unwrap() = json!({"answer": true, "confidence": 0.3});
+    let token = app.register("blurry@example.com").await;
+    let (scan_id, question, photo) = photo_question(&app, &token).await;
+    let ask = &question["ask"];
+    let body =
+        json!({"subject_id": ask["subject_id"], "metric": ask["metric"], "artifact_id": photo});
+    let (status, reply) = app
+        .post(&token, &format!("/v1/scans/{scan_id}/photo-answers"), body)
+        .await;
+    assert_eq!(status, StatusCode::OK, "{reply}");
+    assert_eq!(reply["answered"], false);
+    let open = finding_for(
+        &reply["report"],
+        &question["rule_id"],
+        &question["subject_id"],
+    );
+    assert_eq!(open["ask"], question["ask"]);
+}
+
+#[tokio::test]
+async fn photo_answers_need_a_label_key_and_a_photo_artifact() {
+    let app = TestApp::start_with(TestOptions {
+        label_key: None,
+        ..TestOptions::default()
+    })
+    .await;
+    let token = app.register("nokey@example.com").await;
+    let (scan_id, question, photo) = photo_question(&app, &token).await;
+    let ask = &question["ask"];
+    let path = format!("/v1/scans/{scan_id}/photo-answers");
+    let body =
+        json!({"subject_id": ask["subject_id"], "metric": ask["metric"], "artifact_id": photo});
+    let (status, _) = app.post(&token, &path, body).await;
+    assert_eq!(status, StatusCode::CONFLICT);
+
+    let keyed = TestApp::start().await;
+    let token = keyed.register("mesh@example.com").await;
+    let (scan_id, question, _) = photo_question(&keyed, &token).await;
+    let mesh = upload_artifact(&keyed, &token, &scan_id, "mesh", b"not a photo").await;
+    let ask = &question["ask"];
+    let body =
+        json!({"subject_id": ask["subject_id"], "metric": ask["metric"], "artifact_id": mesh});
+    let (status, _) = keyed
+        .post(&token, &format!("/v1/scans/{scan_id}/photo-answers"), body)
+        .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+}
