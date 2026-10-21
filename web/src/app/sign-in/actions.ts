@@ -43,6 +43,19 @@ export async function signIn(_previous: SignInState, form: FormData): Promise<Si
   redirect("/shops");
 }
 
+/** Deletes the owner's account with every scan and file in it, then signs out. Resolves to an error if it failed. */
+export async function deleteAccount() {
+  const token = await sessionToken();
+  if (!token) redirect("/sign-in");
+  try {
+    await getApi(token).deleteAccount();
+  } catch {
+    return "We couldn't delete your account just now. Try again in a minute.";
+  }
+  (await cookies()).delete(SESSION_COOKIE);
+  redirect("/");
+}
+
 export async function signOut() {
   const token = await sessionToken();
   if (token) await getApi(token).logout().catch(() => undefined);

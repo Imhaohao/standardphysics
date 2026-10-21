@@ -3,6 +3,7 @@ import Link from "next/link";
 import { signOut } from "@/app/sign-in/actions";
 import { buttonClassName } from "@/components/ui/Button";
 import { SheetField } from "@/components/sheet/SheetField";
+import { DeleteAccount } from "./DeleteAccount";
 
 /** The title block in the sheet's corner. It carries the account, or the way in for someone without one. */
 export function HomeTitleBlock({ signedIn, className = "" }: { signedIn: boolean; className?: string }) {
@@ -54,6 +55,7 @@ function SignedInActions() {
             Sign out
           </button>
         </form>
+        <DeleteAccount />
       </div>
     </>
   );
