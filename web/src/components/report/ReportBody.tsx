@@ -55,6 +55,7 @@ export function ReportBody({ scanId, initialReport, initialAnswers = [], scene, 
     if (result.answers) setAnswers(result.answers);
     return result.error;
   };
+  const questionsTitle = readOnly ? "Questions for the owner" : "Questions for you";
   const clear = ({ answer }: GivenAnswer) => save([{ subject_id: answer.subject_id, metric: answer.metric, value: null }]);
 
   return (
@@ -62,7 +63,7 @@ export function ReportBody({ scanId, initialReport, initialAnswers = [], scene, 
       <dl data-ink-avoid className={`${SHEET_GRID_CLASS} border border-ink *:bg-paper sm:grid-cols-4`}>
         <SheetField label="Checked">{dateFormat.format(new Date(report.created_at))}</SheetField>
         <SheetField label="Needs fixing">{countWhere(groups, "fail")}</SheetField>
-        <SheetField label="Questions for you">{questionCount(elements)}</SheetField>
+        <SheetField label={questionsTitle}>{questionCount(elements)}</SheetField>
         <SheetField label="Meets every rule">{countWhere(groups, "pass")}</SheetField>
       </dl>
       <p className="max-w-3xl text-pretty text-ink-muted">
@@ -74,9 +75,9 @@ export function ReportBody({ scanId, initialReport, initialAnswers = [], scene, 
           <InkedPlan scene={scene} name="report" pins={pins} showNotes={false} className="drafting-grid h-[26rem] print:h-[22rem]" />
         </section>
       )}
-      <OwnerQuestions elements={elements} labels={labels} onSave={readOnly ? undefined : save} />
+      <OwnerQuestions title={questionsTitle} elements={elements} labels={labels} onSave={readOnly ? undefined : save} />
       {!readOnly && <GivenAnswers rows={given} onClear={clear} />}
-      <MeasuredElements groups={groups} labels={labels} />
+      <MeasuredElements groups={groups} labels={labels} questionsTitle={questionsTitle} />
       {children}
     </>
   );

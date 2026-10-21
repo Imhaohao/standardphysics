@@ -4,7 +4,7 @@ import type { ElementGroup } from "@/lib/findings/group";
 
 const measuredPairs = (group: ElementGroup) => group.pairs.filter((pair) => pair.governing.status !== "needs_info");
 
-function ElementSection({ group, label }: { group: ElementGroup; label: string | undefined }) {
+function ElementSection({ group, label, questionsTitle }: { group: ElementGroup; label: string | undefined; questionsTitle: string }) {
   const pairs = measuredPairs(group);
   const questions = group.pairs.length - pairs.length;
   return (
@@ -16,7 +16,7 @@ function ElementSection({ group, label }: { group: ElementGroup; label: string |
       <FindingPairTable pairs={pairs} />
       {questions > 0 && (
         <p className="px-4 py-3 text-sm text-ink-muted">
-          {questions === 1 ? "One more check on this needs" : `${questions} more checks on this need`} an answer from you, listed under Questions for you.
+          {questions === 1 ? "One more check on this needs" : `${questions} more checks on this need`} an answer, listed under {questionsTitle}.
         </p>
       )}
     </section>
@@ -24,7 +24,7 @@ function ElementSection({ group, label }: { group: ElementGroup; label: string |
 }
 
 /** Every element with at least one measured result, each requirement under both codes. */
-export function MeasuredElements({ groups, labels }: { groups: ElementGroup[]; labels: Map<string, string> }) {
+export function MeasuredElements({ groups, labels, questionsTitle }: { groups: ElementGroup[]; labels: Map<string, string>; questionsTitle: string }) {
   return (
     <section aria-labelledby="elements-heading" className="flex flex-col gap-6">
       <h2 id="elements-heading" className="heading-display text-3xl">
@@ -33,7 +33,7 @@ export function MeasuredElements({ groups, labels }: { groups: ElementGroup[]; l
       {groups
         .filter((group) => measuredPairs(group).length > 0)
         .map((group) => (
-          <ElementSection key={group.subjectId} group={group} label={labels.get(group.subjectId)} />
+          <ElementSection key={group.subjectId} group={group} label={labels.get(group.subjectId)} questionsTitle={questionsTitle} />
         ))}
     </section>
   );

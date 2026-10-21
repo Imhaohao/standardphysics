@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ApiError } from "@/lib/api/client";
-import type { Answer, AnswerInput, Report } from "@/lib/api/types";
+import type { Answer, AnswerInput, Report, Share } from "@/lib/api/types";
 import { scanChangesFrom } from "@/lib/scanNames";
 import { ownerApi } from "@/lib/session";
 
@@ -50,6 +50,24 @@ export async function saveAnswers(scanId: string, answers: unknown[]): Promise<S
   } catch (error) {
     return { report: null, answers: null, error: explain(error) };
   }
+}
+
+export type CreateShareResult = { share: Share; error: null } | { share: null; error: string };
+
+/** Makes a new read-only link to a scan's report. */
+export async function createShare(scanId: string): Promise<CreateShareResult> {
+  const { api } = await ownerApi();
+  try {
+    return { share: await api.createShare(scanId), error: null };
+  } catch (error) {
+    return { share: null, error: explain(error) };
+  }
+}
+
+/** Turns a read-only link off, so it shows nothing from then on. Resolves to an error to show, or null. */
+export async function stopSharing(scanId: string, token: string) {
+  const { api } = await ownerApi();
+  return attempt(() => api.deleteShare(scanId, token));
 }
 
 /** Renames a scan and its shop. Resolves to an error to show, or null. */

@@ -162,13 +162,13 @@ function AnswerForm({ elements, labels, onSave }: { elements: ElementQuestions[]
 }
 
 /** What we couldn't measure from the scan, asked plainly so the owner can answer from memory or a quick look. */
-export function OwnerQuestions({ elements, labels, onSave }: { elements: ElementQuestions[]; labels: Map<string, string>; onSave?: SaveAnswers }) {
+export function OwnerQuestions({ title, elements, labels, onSave }: { title: string; elements: ElementQuestions[]; labels: Map<string, string>; onSave?: SaveAnswers }) {
   if (elements.length === 0) return null;
   return (
     <section aria-labelledby="questions-heading" data-ink-avoid className="border border-ink bg-paper">
       <h2 id="questions-heading" className="heading-display flex items-center gap-2 border-b border-ink px-4 py-3 text-2xl">
         <Question size={24} weight="fill" aria-hidden className="text-attention" />
-        Questions for you
+        {title}
       </h2>
       {elements.some((entry) => entry.questions.some((question) => question.ask.photo)) && (
         <p className="flex items-start gap-2 border-b border-ink/20 px-4 py-3 text-sm text-ink-muted text-pretty">

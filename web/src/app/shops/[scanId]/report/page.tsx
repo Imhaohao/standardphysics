@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { PrintButton } from "@/components/report/PrintButton";
 import { ReportBody } from "@/components/report/ReportBody";
+import { ShareLinks } from "@/components/report/ShareLinks";
 import { SheetPage } from "@/components/sheet/SheetPage";
 import { ShopHeader } from "@/components/shop/ShopHeader";
 import { loadOwnedShop } from "@/lib/loadShop";
@@ -18,12 +19,13 @@ export default async function ReportPage({ params }: PageProps<"/shops/[scanId]/
   const { sheet } = await loadOwnedShop((await params).scanId);
   const { scan, scene, report } = sheet;
   const { api } = await ownerApi();
-  const answers = report ? await api.listAnswers(scan.id).catch(() => []) : [];
+  const [answers, shares] = report ? await Promise.all([api.listAnswers(scan.id).catch(() => []), api.listShares(scan.id).catch(() => [])]) : [[], []];
   return (
     <SheetPage className="flex flex-col gap-8">
       <ShopHeader backHref={sheet.href} backLabel={`Back to ${shopName(scan)}`} title={`Accessibility report for ${shopName(scan)}`}>
         <PrintButton />
       </ShopHeader>
+      {report && <ShareLinks scanId={scan.id} initialShares={shares} />}
       {report ? (
         <ReportBody scanId={scan.id} initialReport={report} initialAnswers={answers} scene={scene} />
       ) : (
