@@ -3,6 +3,7 @@ import Foundation
 import Vision
 
 /// Runs the bundled D-FINE Core ML detector through Vision. With no model in the bundle it reports nothing.
+/// Class ids are named by the labels in the model's metadata (see `DetectorLabels`).
 /// Vision stretches the frame to the model's square input, as in training, so the model's normalized
 /// boxes map straight back onto the captured image.
 actor CoreMLDetector {
@@ -15,29 +16,32 @@ actor CoreMLDetector {
         static let boxes = "boxes"
     }
 
+    private nonisolated struct LoadedModel {
+        let request: CoreMLRequest
+        let decoder: DetectorOutputDecoder
+    }
+
     private let bundle: Bundle
-    private let decoder: DetectorOutputDecoder
-    private var request: CoreMLRequest?
+    private let mapper: ClassMapper
+    private let minimumConfidence: Float
+    private var model: LoadedModel?
     private var hasAttemptedLoad = false
 
     init(bundle: Bundle = .main, mapper: ClassMapper = .standard, minimumConfidence: Float = defaultMinimumConfidence) {
         self.bundle = bundle
-        decoder = DetectorOutputDecoder(
-            labelsByClassID: ClassMapper.cocoLabelsByClassID,
-            mapper: mapper,
-            minimumConfidence: minimumConfidence
-        )
+        self.mapper = mapper
+        self.minimumConfidence = minimumConfidence
     }
 
     var isModelAvailable: Bool {
-        loadedRequest() != nil
+        loadedModel() != nil
     }
 
     func detect(pixelBuffer: CVPixelBufferWrapper) async throws -> [Detection] {
-        guard let request = loadedRequest() else { return [] }
-        let observations = try await request.perform(on: pixelBuffer.buffer, orientation: .up)
+        guard let model = loadedModel() else { return [] }
+        let observations = try await model.request.perform(on: pixelBuffer.buffer, orientation: .up)
         guard let output = Self.output(from: observations) else { return [] }
-        return decoder.detections(from: output)
+        return model.decoder.detections(from: output)
     }
 
     private static func output(from observations: [any VisionObservation]) -> DetectorOutput? {
@@ -52,23 +56,28 @@ actor CoreMLDetector {
         return DetectorOutput(scores: scores.scalars, classIDs: classIDs.scalars, boxes: boxes.scalars)
     }
 
-    private func loadedRequest() -> CoreMLRequest? {
-        if hasAttemptedLoad { return request }
+    private func loadedModel() -> LoadedModel? {
+        if hasAttemptedLoad { return model }
         hasAttemptedLoad = true
-        request = Self.makeRequest(bundle: bundle)
-        return request
+        model = makeLoadedModel()
+        return model
     }
 
-    private nonisolated static func makeRequest(bundle: Bundle) -> CoreMLRequest? {
-        guard let url = bundle.url(forResource: modelResourceName, withExtension: "mlmodelc") else { return nil }
+    private func makeLoadedModel() -> LoadedModel? {
+        guard let url = bundle.url(forResource: Self.modelResourceName, withExtension: "mlmodelc") else { return nil }
         let configuration = MLModelConfiguration()
         configuration.computeUnits = .all
-        guard let model = try? MLModel(contentsOf: url, configuration: configuration),
-              let container = try? CoreMLModelContainer(model: model)
+        guard let mlModel = try? MLModel(contentsOf: url, configuration: configuration),
+              let container = try? CoreMLModelContainer(model: mlModel)
         else { return nil }
         var request = CoreMLRequest(model: container)
         request.cropAndScaleAction = .scaleToFill
-        return request
+        let decoder = DetectorOutputDecoder(
+            labelsByClassID: DetectorLabels.labelsByClassID(of: mlModel),
+            mapper: mapper,
+            minimumConfidence: minimumConfidence
+        )
+        return LoadedModel(request: request, decoder: decoder)
     }
 }
 
