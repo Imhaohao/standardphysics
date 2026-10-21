@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { PrintButton } from "@/components/report/PrintButton";
 import { ReportBody } from "@/components/report/ReportBody";
+import { WhatWeChecked } from "@/components/report/WhatWeChecked";
+import { RULEPACK_COVERAGE } from "@/lib/coverage";
 import { ShareLinks } from "@/components/report/ShareLinks";
 import { SheetPage } from "@/components/sheet/SheetPage";
 import { ShopHeader } from "@/components/shop/ShopHeader";
@@ -27,7 +29,9 @@ export default async function ReportPage({ params }: PageProps<"/shops/[scanId]/
       </ShopHeader>
       {report && <ShareLinks scanId={scan.id} initialShares={shares} />}
       {report ? (
-        <ReportBody scanId={scan.id} initialReport={report} initialAnswers={answers} scene={scene} />
+        <ReportBody scanId={scan.id} initialReport={report} initialAnswers={answers} scene={scene}>
+          <WhatWeChecked coverage={RULEPACK_COVERAGE} />
+        </ReportBody>
       ) : (
         <p data-ink-avoid className="text-lg text-ink-muted">This shop hasn&rsquo;t been checked yet. The report appears here within a minute of the scan finishing.</p>
       )}

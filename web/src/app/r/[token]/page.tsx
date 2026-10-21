@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 import { PrintButton } from "@/components/report/PrintButton";
 import { ReportBody } from "@/components/report/ReportBody";
+import { WhatWeChecked } from "@/components/report/WhatWeChecked";
+import { RULEPACK_COVERAGE } from "@/lib/coverage";
 import { SheetPage } from "@/components/sheet/SheetPage";
 import { ShopHeader } from "@/components/shop/ShopHeader";
 import { getApi } from "@/lib/api/client";
@@ -33,7 +35,9 @@ export default async function SharedReportPage({ params }: PageProps<"/r/[token]
         </Link>
         . It stays up to date as they answer questions, and stops opening if they turn the link off.
       </p>
-      <ReportBody scanId={scan.id} initialReport={report} scene={scene} readOnly />
+      <ReportBody scanId={scan.id} initialReport={report} scene={scene} readOnly>
+        <WhatWeChecked coverage={RULEPACK_COVERAGE} />
+      </ReportBody>
     </SheetPage>
   );
 }

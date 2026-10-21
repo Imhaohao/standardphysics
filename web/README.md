@@ -18,10 +18,14 @@ pnpm dev:fixtures    # renders the bundled sample shop and never calls the API
 ## Pages
 
 - `/` is the home sheet. Signed out, it shows the sample shop and a sign-in link.
-- `/sign-in` stores the server's token in an httpOnly `sp_session` cookie.
+- `/sign-in` signs in or creates an account, and stores the server's token in an httpOnly `sp_session` cookie.
 - `/shops` lists the owner's scans.
-- `/shops/{id}` shows the 3D model and the inked plan with findings pinned in both.
-- `/shops/{id}/report` is the printable report, grouped by element, with ADA and CBC 11B side by side.
+- `/shops/{id}` shows the 3D model and the inked plan with findings pinned in both, with Rename and Delete scan.
+- `/shops/{id}/report` is the printable report, grouped by element, with ADA and CBC 11B side by side. Owners answer its questions there (`PUT /v1/scans/{id}/answers`), make read-only links, and see what the rulepack covers, read from `rules/coverage.json` at build time.
+- `/r/{token}` is a read-only report for anyone with the link, from `GET /v1/shared/{token}`.
+- `/privacy` is the privacy policy, linked under every sheet.
+
+`next.config.ts` sets the Turbopack root to the repo root so `rules/coverage.json` can be imported. In fixture mode, edits, answers and share links live in the server's memory until it restarts.
 - `/shops/{id}/live` follows `/v1/scans/{id}/live` and inks walls and doors as they arrive.
 
 All server calls go through `src/lib/api/client.ts`. Wire types are generated, never written by hand:

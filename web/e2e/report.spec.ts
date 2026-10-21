@@ -13,6 +13,11 @@ test("the findings report groups the sample shop by element with both codes side
   await expect(elements.getByText(/^§\d/).first()).toBeVisible();
   await expect(elements.getByText(/min$/).first()).toBeVisible();
 
+  const checked = page.getByRole("region", { name: "What we checked" });
+  await expect(checked.getByRole("row", { name: /^2010 ADA Standards \d+ \d+ \d+$/ })).toBeVisible();
+  await checked.getByText(/^See the \d+ sections we don’t check yet/).click();
+  await expect(checked.getByText("§11B-202.5")).toBeVisible();
+
   const plan = page.getByRole("region", { name: "Floor plan with numbered findings" });
   await expect(plan.getByText(/The plan measures \d+'-\d+" wide/)).toBeAttached();
   await expect.poll(() => inkedPixels(plan), { timeout: 20_000 }).toBeGreaterThan(5_000);
