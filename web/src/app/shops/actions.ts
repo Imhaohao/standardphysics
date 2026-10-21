@@ -3,11 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ApiError } from "@/lib/api/client";
-import type { AnswerInput, Report } from "@/lib/api/types";
+import type { Answer, AnswerInput, Report } from "@/lib/api/types";
 import { scanChangesFrom } from "@/lib/scanNames";
 import { ownerApi } from "@/lib/session";
 
-export type SaveAnswersResult = { report: Report; error: null } | { report: null; error: string };
+/** The re-evaluated report and, when sp-server lists them, the answers as they now stand. */
+export type SaveAnswersResult = { report: Report; answers: Answer[] | null; error: null } | { report: null; answers: null; error: string };
 
 const ANSWER_VALUE_TYPES = new Set(["boolean", "number", "string"]);
 
@@ -41,12 +42,13 @@ async function attempt(request: () => Promise<unknown>) {
 
 /** Stores the owner's answers and hands back the report re-evaluated with them. */
 export async function saveAnswers(scanId: string, answers: unknown[]): Promise<SaveAnswersResult> {
-  if (!answers.every(isAnswerInput)) return { report: null, error: "Some of those answers didn't come through. Reload the page and try again." };
+  if (!answers.every(isAnswerInput)) return { report: null, answers: null, error: "Some of those answers didn't come through. Reload the page and try again." };
   const { api } = await ownerApi();
   try {
-    return { report: await api.saveAnswers(scanId, answers), error: null };
+    const report = await api.saveAnswers(scanId, answers);
+    return { report, answers: await api.listAnswers(scanId).catch(() => null), error: null };
   } catch (error) {
-    return { report: null, error: explain(error) };
+    return { report: null, answers: null, error: explain(error) };
   }
 }
 

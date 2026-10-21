@@ -29,7 +29,7 @@ export function createFixtureApi(): Api {
   function recordAnswer(input: AnswerInput) {
     const key = answerKey(input.subject_id, input.metric);
     if (input.value === null) answers.delete(key);
-    else answers.set(key, { ...input, answered_at: new Date().toISOString() });
+    else answers.set(key, { ...input, answered_at: new Date().toISOString(), source: "owner", confidence: 1, photo_artifact_id: null });
   }
 
   return {

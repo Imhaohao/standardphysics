@@ -32,5 +32,11 @@ test("an owner answers a question and the report counts it", async ({ page }) =>
   await questions.getByRole("button", { name: "Save answers" }).click();
   await expect(questions.getByRole("status")).toHaveText("Saved your answer, and the report now counts it.");
   await expect(fireDoors).toHaveCount(asked - 1);
+
+  const given = page.getByRole("region", { name: "Your answers" });
+  await given.getByText("Your answers").click();
+  await expect(given.getByText("Is fire door").first()).toBeVisible();
   await page.screenshot({ path: "test-results/e2e/report-answered.png", fullPage: true });
+  await given.getByRole("button", { name: /^Clear your answer about is fire door/ }).first().click();
+  await expect(fireDoors).toHaveCount(asked);
 });

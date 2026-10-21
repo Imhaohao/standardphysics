@@ -3,10 +3,12 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { saveAnswers } from "@/app/shops/actions";
 import { InkedPlan } from "@/components/plan/InkedPlan";
+import { GivenAnswers } from "@/components/report/GivenAnswers";
 import { MeasuredElements } from "@/components/report/MeasuredElements";
 import { OwnerQuestions, type SaveAnswers } from "@/components/report/OwnerQuestions";
 import { SHEET_GRID_CLASS, SheetField } from "@/components/sheet/SheetField";
-import type { AnswerInput, Report } from "@/lib/api/types";
+import type { Answer, AnswerInput, Report } from "@/lib/api/types";
+import { givenAnswers, type GivenAnswer } from "@/lib/findings/answers";
 import { groupByElement, type ElementGroup } from "@/lib/findings/group";
 import { findingPins, pinLabels } from "@/lib/findings/pins";
 import { elementQuestions, questionCount } from "@/lib/findings/questions";
@@ -19,17 +21,22 @@ function countWhere(groups: ElementGroup[], status: ElementGroup["status"]) {
   return groups.filter((group) => group.status === status).length;
 }
 
-function useReportView(report: Report, scene: Scene | null) {
-  return useMemo(() => {
-    const groups = scene ? groupByElement(report.findings, indexSubjects(scene)) : [];
+function useReportView(report: Report, answers: Answer[], scene: Scene | null) {
+  const subjects = useMemo(() => (scene ? indexSubjects(scene) : null), [scene]);
+  const view = useMemo(() => {
+    const groups = subjects ? groupByElement(report.findings, subjects) : [];
     const pins = findingPins(groups);
     return { groups, pins, labels: pinLabels(pins), elements: elementQuestions(groups) };
-  }, [report, scene]);
+  }, [report, subjects]);
+  const given = useMemo(() => givenAnswers(answers, subjects ?? new Map()), [answers, subjects]);
+  return { ...view, given };
 }
 
 interface ReportBodyProps {
   scanId: string;
   initialReport: Report;
+  /** The answers already given. A shared link has none to show. */
+  initialAnswers?: Answer[];
   scene: Scene | null;
   /** A shared link shows the questions without a way to answer them. */
   readOnly?: boolean;
@@ -37,15 +44,18 @@ interface ReportBodyProps {
 }
 
 /** The report under its header. Answering a question replaces the report with the one sp-server re-evaluated. */
-export function ReportBody({ scanId, initialReport, scene, readOnly = false, children }: ReportBodyProps) {
+export function ReportBody({ scanId, initialReport, initialAnswers = [], scene, readOnly = false, children }: ReportBodyProps) {
   const [report, setReport] = useState(initialReport);
-  const { groups, pins, labels, elements } = useReportView(report, scene);
+  const [answers, setAnswers] = useState(initialAnswers);
+  const { groups, pins, labels, elements, given } = useReportView(report, answers, scene);
 
-  const save: SaveAnswers = async (answers: AnswerInput[]) => {
-    const result = await saveAnswers(scanId, answers);
+  const save: SaveAnswers = async (inputs: AnswerInput[]) => {
+    const result = await saveAnswers(scanId, inputs);
     if (result.report) setReport(result.report);
+    if (result.answers) setAnswers(result.answers);
     return result.error;
   };
+  const clear = ({ answer }: GivenAnswer) => save([{ subject_id: answer.subject_id, metric: answer.metric, value: null }]);
 
   return (
     <>
@@ -65,6 +75,7 @@ export function ReportBody({ scanId, initialReport, scene, readOnly = false, chi
         </section>
       )}
       <OwnerQuestions elements={elements} labels={labels} onSave={readOnly ? undefined : save} />
+      {!readOnly && <GivenAnswers rows={given} onClear={clear} />}
       <MeasuredElements groups={groups} labels={labels} />
       {children}
     </>

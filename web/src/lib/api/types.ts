@@ -37,6 +37,11 @@ export interface AnswerInput {
 
 export interface Answer extends AnswerInput {
   answered_at: string;
+  /** "photo" when sp-server read the answer from a photo the owner took in the app. */
+  source: "owner" | "photo";
+  /** 0 to 1. An owner's own answer is 1. */
+  confidence: number;
+  photo_artifact_id: string | null;
 }
 
 export interface ScanChanges {
