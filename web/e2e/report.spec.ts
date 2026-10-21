@@ -21,3 +21,16 @@ test("the findings report groups the sample shop by element with both codes side
   await page.emulateMedia({ media: "print" });
   await page.screenshot({ path: "test-results/e2e/report-print.png", fullPage: true });
 });
+
+test("an owner answers a question and the report counts it", async ({ page }) => {
+  await page.goto("/shops/sample-living-room/report");
+  const questions = page.getByRole("region", { name: "Questions for you" });
+  const fireDoors = questions.getByRole("group", { name: "Is this a rated fire door?" });
+  const asked = await fireDoors.count();
+  expect(asked).toBeGreaterThan(0);
+  await fireDoors.first().getByText("No", { exact: true }).click();
+  await questions.getByRole("button", { name: "Save answers" }).click();
+  await expect(questions.getByRole("status")).toHaveText("Saved your answer, and the report now counts it.");
+  await expect(fireDoors).toHaveCount(asked - 1);
+  await page.screenshot({ path: "test-results/e2e/report-answered.png", fullPage: true });
+});

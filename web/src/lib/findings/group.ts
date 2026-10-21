@@ -1,5 +1,4 @@
 import type { Subject } from "@/lib/scene/describe";
-import { ownerAsk } from "./format";
 import type { Finding, FindingStatus, StatusCounts } from "./types";
 
 /** Worse first: a failure outranks an open question, which outranks a pass. */
@@ -98,14 +97,4 @@ export function countStatuses(findings: readonly Finding[]): StatusCounts {
   const counts: StatusCounts = { pass: 0, fail: 0, needs_info: 0, not_applicable: 0 };
   for (const finding of findings) counts[finding.status] += 1;
   return counts;
-}
-
-/**
- * Open questions for the owner, one entry per element so each plan pin number appears once, and one question per
- * requirement so a question asked under both codes is asked once.
- */
-export function ownerQuestions(groups: readonly ElementGroup[]) {
-  return groups
-    .map((group) => ({ group, questions: group.pairs.filter((pair) => pair.governing.status === "needs_info").map((pair) => ({ pair, question: pair.governing.title, ask: ownerAsk(pair.governing) })) }))
-    .filter((entry) => entry.questions.length > 0);
 }

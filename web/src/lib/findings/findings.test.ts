@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { SAMPLE_FINDINGS, SAMPLE_SCENE } from "@/fixtures/sample";
 import { indexSubjects } from "@/lib/scene/describe";
 import { citation, formatMeasured, formatQuantity, formatRequirement, missingReason, ownerAsk } from "./format";
-import { countStatuses, groupByElement, ownerQuestions, sectionKey } from "./group";
+import { countStatuses, groupByElement, sectionKey } from "./group";
+import { elementQuestions } from "./questions";
 import { findingPins } from "./pins";
 import type { Finding } from "./types";
 
@@ -92,9 +93,9 @@ describe("grouping", () => {
   });
 
   it("asks each owner question once", () => {
-    const questions = ownerQuestions(groups);
+    const questions = elementQuestions(groups);
     expect(questions.map((entry) => entry.group.subjectId)).toEqual(["door"]);
-    expect(questions[0]!.questions.map((q) => [q.question, q.ask])).toEqual([["Door swing", "Tell us which way the door swings."]]);
+    expect(questions[0]!.openChecks.map((check) => [check.checks.map((pair) => pair.governing.title), check.ask])).toEqual([[["Door swing"], "Tell us which way the door swings."]]);
     expect(countStatuses(findings)).toEqual({ pass: 2, fail: 1, needs_info: 2, not_applicable: 1 });
   });
 
