@@ -52,6 +52,47 @@
       "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
     },
     {
+      "id": "CBC-11B-202.5-historic-status",
+      "jurisdiction": "CBC11B",
+      "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
+      "section": "11B-202.5",
+      "title": "Qualified historic building status",
+      "summary": "We ask whether the building is a qualified historic property, because in California its alterations follow the California Historical Building Code. The answer does not change any other finding here.",
+      "applies_to": [
+        "site"
+      ],
+      "scoping": {
+        "text": "Alterations to the building (remodel or tenant improvement).",
+        "when": {
+          "metric": "site.altered_since_2012",
+          "op": "==",
+          "value": true
+        },
+        "when_unknown": "not_applicable"
+      },
+      "test": {
+        "question": {
+          "metric": "site.is_qualified_historic",
+          "prompt": "Is the building listed in, or eligible for, the National Register of Historic Places, or designated as historic under a state or local law?",
+          "pass_answer": {
+            "op": "exists",
+            "value": true
+          }
+        }
+      },
+      "evidence": "owner",
+      "tolerance": null,
+      "severity": "advisory",
+      "source_url": "https://gocodebook.com/library/us/ca/ca-building-code/chapter-11b-accessibility-to-public-buildings-public-accommodations/section-11b-202-existing-buildings-and-facilities",
+      "source_kind": "transcription",
+      "notes": "Any answer passes; the finding records the status and changes no other rule. CBC 11B-202.5 sends alterations to a qualified historic building to the California Historical Building Code (Title 24, Part 8), and its exception is reserved. The CHBC's accessibility alternatives were not read for this rule, so none are encoded; a reviewer must apply them. Read from the gocodebook transcription of the 2025 CBC; needs checking against the official edition.",
+      "counterpart": "ADA-202.5-historic-status",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null,
+      "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
+    },
+    {
       "id": "CBC-11B-203.9-employee-areas",
       "jurisdiction": "CBC11B",
       "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
@@ -807,6 +848,194 @@
       "source_url": "https://gocodebook.com/library/us/ca/ca-building-code/chapter-11b-accessibility-to-public-buildings-public-accommodations/section-11b-216-signs",
       "source_kind": "transcription",
       "notes": "California-only requirement (11B-216.8.1, 11B-703.7.2.6). Single-user rooms must also be identified as all-gender under Health & Safety Code 118600.",
+      "counterpart": null,
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null,
+      "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
+    },
+    {
+      "id": "CBC-11B-216.8.2-all-gender-symbol",
+      "jurisdiction": "CBC11B",
+      "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
+      "section": "11B-216.8.2",
+      "title": "All-gender symbol on multi-user restroom",
+      "summary": "The entrance to an all-gender multi-user restroom must carry the unisex symbol, a circle with a triangle inside it.",
+      "applies_to": [
+        "toilet_room"
+      ],
+      "scoping": {
+        "text": "Multi-user toilet rooms designated all-gender.",
+        "when": {
+          "all": [
+            {
+              "metric": "toilet_room.is_single_user",
+              "op": "==",
+              "value": false
+            },
+            {
+              "metric": "toilet_room.is_all_gender",
+              "op": "==",
+              "value": true
+            }
+          ]
+        },
+        "when_unknown": "needs_info"
+      },
+      "test": {
+        "photo": {
+          "metric": "toilet_room.all_gender_symbol",
+          "prompt": "Photograph the restroom door straight on so the symbol on it can be seen.",
+          "expected": true
+        }
+      },
+      "evidence": "photo",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://gocodebook.com/library/us/ca/ca-building-code/chapter-11b-accessibility-to-public-buildings-public-accommodations/section-11b-216-signs",
+      "source_kind": "transcription",
+      "notes": "California-only requirement. The symbol is specified in 11B-703.7.2.6.3: a 12 in circle 1/4 in thick with an equilateral triangle inscribed in it, vertex up, each contrasting with its background. Read from the gocodebook transcription of the 2025 CBC; needs checking against the official edition.",
+      "counterpart": null,
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null,
+      "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
+    },
+    {
+      "id": "CBC-11B-216.8.2-all-gender-sign",
+      "jurisdiction": "CBC11B",
+      "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
+      "section": "11B-216.8.2",
+      "title": "ALL-GENDER MULTI-USER sign",
+      "summary": "An all-gender multi-user restroom must also have a sign that reads ALL-GENDER MULTI-USER.",
+      "applies_to": [
+        "toilet_room"
+      ],
+      "scoping": {
+        "text": "Multi-user toilet rooms designated all-gender.",
+        "when": {
+          "all": [
+            {
+              "metric": "toilet_room.is_single_user",
+              "op": "==",
+              "value": false
+            },
+            {
+              "metric": "toilet_room.is_all_gender",
+              "op": "==",
+              "value": true
+            }
+          ]
+        },
+        "when_unknown": "needs_info"
+      },
+      "test": {
+        "photo": {
+          "metric": "toilet_room.all_gender_multi_user_sign",
+          "prompt": "Photograph the sign beside the restroom door so its words can be read.",
+          "expected": true
+        }
+      },
+      "evidence": "photo",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://gocodebook.com/library/us/ca/ca-building-code/chapter-11b-accessibility-to-public-buildings-public-accommodations/section-11b-216-signs",
+      "source_kind": "transcription",
+      "notes": "California-only requirement. The sign must also comply with 11B-703.1 through 11B-703.5; the sign rules for tactile characters and braille check that on detected signs. Read from the gocodebook transcription of the 2025 CBC; needs checking against the official edition.",
+      "counterpart": null,
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null,
+      "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
+    },
+    {
+      "id": "CBC-11B-216.8.3-compartment-fixture-sign",
+      "jurisdiction": "CBC11B",
+      "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
+      "section": "11B-216.8.3",
+      "title": "TOILET or URINAL sign on each compartment",
+      "summary": "Where a restroom has both toilet and urinal compartments, each compartment must have a sign reading TOILET or URINAL.",
+      "applies_to": [
+        "toilet_room"
+      ],
+      "scoping": {
+        "text": "Toilet rooms with both toilet compartments and urinal compartments.",
+        "when": {
+          "all": [
+            {
+              "metric": "toilet_room.is_single_user",
+              "op": "==",
+              "value": false
+            },
+            {
+              "metric": "toilet_room.has_toilet_and_urinal_compartments",
+              "op": "==",
+              "value": true
+            }
+          ]
+        },
+        "when_unknown": "needs_info"
+      },
+      "test": {
+        "photo": {
+          "metric": "toilet_room.compartment_signs_name_fixture",
+          "prompt": "Photograph the row of compartment doors so the sign on each door can be read.",
+          "expected": true
+        }
+      },
+      "evidence": "photo",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://gocodebook.com/library/us/ca/ca-building-code/chapter-11b-accessibility-to-public-buildings-public-accommodations/section-11b-216-signs",
+      "source_kind": "transcription",
+      "notes": "California-only requirement. The signs must comply with 11B-703.1 through 11B-703.5. Exception: a sign with tactile characters may go on an in-swinging, self-closing door at compartments not required to comply with 11B-604 or 11B-605.5. Read from the gocodebook transcription of the 2025 CBC; needs checking against the official edition.",
+      "counterpart": null,
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null,
+      "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
+    },
+    {
+      "id": "CBC-11B-216.8.3-no-pictogram",
+      "jurisdiction": "CBC11B",
+      "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
+      "section": "11B-216.8.3",
+      "title": "No pictogram on compartment signs",
+      "summary": "Compartment signs must name the fixture in words; a pictogram of the fixture is not permitted.",
+      "applies_to": [
+        "toilet_room"
+      ],
+      "scoping": {
+        "text": "Toilet rooms with both toilet compartments and urinal compartments.",
+        "when": {
+          "all": [
+            {
+              "metric": "toilet_room.is_single_user",
+              "op": "==",
+              "value": false
+            },
+            {
+              "metric": "toilet_room.has_toilet_and_urinal_compartments",
+              "op": "==",
+              "value": true
+            }
+          ]
+        },
+        "when_unknown": "needs_info"
+      },
+      "test": {
+        "photo": {
+          "metric": "toilet_room.compartment_signs_without_pictogram",
+          "prompt": "Photograph a compartment door sign close up.",
+          "expected": true
+        }
+      },
+      "evidence": "photo",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://gocodebook.com/library/us/ca/ca-building-code/chapter-11b-accessibility-to-public-buildings-public-accommodations/section-11b-216-signs",
+      "source_kind": "transcription",
+      "notes": "California-only requirement. Read from the gocodebook transcription of the 2025 CBC; needs checking against the official edition.",
       "counterpart": null,
       "stricter_than": [],
       "verified_by": null,
@@ -2873,6 +3102,44 @@
       "source_kind": "transcription",
       "notes": "Same requirement as the 2010 ADA Standards.",
       "counterpart": "ADA-307.3-between-posts",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null,
+      "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
+    },
+    {
+      "id": "CBC-11B-307.3.1-eased-edges",
+      "jurisdiction": "CBC11B",
+      "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
+      "section": "11B-307.3.1",
+      "title": "Post-mounted sign edges rounded",
+      "summary": "Signs or objects on posts with their bottom edge below 80 in must have rounded or eased edges and corners with a 1/8 in radius minimum.",
+      "applies_to": [
+        "post_mounted_object"
+      ],
+      "scoping": {
+        "text": "Signs or objects on posts or pylons whose bottom edge is less than 80 in above the floor or ground.",
+        "when": {
+          "metric": "post_mounted_object.bottom_edge_below_80",
+          "op": "==",
+          "value": true
+        },
+        "when_unknown": "needs_info"
+      },
+      "test": {
+        "photo": {
+          "metric": "post_mounted_object.edges_eased",
+          "prompt": "Photograph the corners and edges of the sign or object on the post, close up.",
+          "expected": true
+        }
+      },
+      "evidence": "photo",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://gocodebook.com/library/us/ca/ca-building-code/chapter-11b-accessibility-to-public-buildings-public-accommodations/section-11b-307-protruding-objects",
+      "source_kind": "transcription",
+      "notes": "California-only requirement. Read from the gocodebook transcription of the 2025 CBC; needs checking against the official edition.",
+      "counterpart": null,
       "stricter_than": [],
       "verified_by": null,
       "verified_at": null,
@@ -7046,6 +7313,186 @@
       "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
     },
     {
+      "id": "CBC-11B-505.6-top-sides-clear",
+      "jurisdiction": "CBC11B",
+      "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
+      "section": "11B-505.6",
+      "title": "Handrail top and sides unobstructed",
+      "summary": "The handrail's gripping surface must be continuous along its length with nothing obstructing its top or sides.",
+      "applies_to": [
+        "handrail"
+      ],
+      "scoping": {
+        "text": "Applies to every subject in applies_to.",
+        "when": null,
+        "when_unknown": "needs_info"
+      },
+      "test": {
+        "photo": {
+          "metric": "handrail.top_sides_unobstructed",
+          "prompt": "Photograph the whole handrail from one end so the top and sides of the rail can be seen along its length.",
+          "expected": true
+        }
+      },
+      "evidence": "photo",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://gocodebook.com/library/us/ca/ca-building-code/chapter-11b-accessibility-to-public-buildings-public-accommodations/section-11b-505-handrails",
+      "source_kind": "transcription",
+      "notes": "Same requirement as the 2010 ADA Standards. Read from the gocodebook transcription of the 2025 CBC; needs checking against the official edition.",
+      "counterpart": "ADA-505.6-top-sides-clear",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null,
+      "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
+    },
+    {
+      "id": "CBC-11B-505.6-bottom-obstruction",
+      "jurisdiction": "CBC11B",
+      "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
+      "section": "11B-505.6",
+      "title": "Handrail bottom obstructed 20% max",
+      "summary": "Brackets or other supports may obstruct the bottom of the handrail for no more than 20 percent of its length.",
+      "applies_to": [
+        "handrail"
+      ],
+      "scoping": {
+        "text": "Applies to every subject in applies_to.",
+        "when": null,
+        "when_unknown": "needs_info"
+      },
+      "test": {
+        "photo": {
+          "metric": "handrail.bottom_obstructed_fraction",
+          "prompt": "Photograph the whole handrail from the side, low enough that the brackets under the rail can be seen.",
+          "expected": {
+            "op": "<=",
+            "value": 0.2
+          }
+        }
+      },
+      "evidence": "photo",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://gocodebook.com/library/us/ca/ca-building-code/chapter-11b-accessibility-to-public-buildings-public-accommodations/section-11b-505-handrails",
+      "source_kind": "transcription",
+      "notes": "Same requirement as the 2010 ADA Standards. Read from the gocodebook transcription of the 2025 CBC; needs checking against the official edition.",
+      "counterpart": "ADA-505.6-bottom-obstruction",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null,
+      "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
+    },
+    {
+      "id": "CBC-11B-505.6-projection-clearance",
+      "jurisdiction": "CBC11B",
+      "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
+      "section": "11B-505.6",
+      "title": "Projection 1 1/2 in min below handrail",
+      "summary": "Any horizontal projection below the handrail, such as a bracket arm or ledge, must sit at least 1 1/2 in below the bottom of the gripping surface.",
+      "applies_to": [
+        "handrail"
+      ],
+      "scoping": {
+        "text": "Handrails with a horizontal projection (bracket arm, cap or ledge) below the gripping surface.",
+        "when": {
+          "metric": "handrail.has_projection_below",
+          "op": "==",
+          "value": true
+        },
+        "when_unknown": "needs_info"
+      },
+      "test": {
+        "photo": {
+          "metric": "handrail.projection_clearance_below",
+          "prompt": "Photograph a handrail bracket from the side, close up, with a ruler or tape held next to the gap between the rail and the bracket arm.",
+          "expected": {
+            "op": ">=",
+            "value": 1.5
+          }
+        }
+      },
+      "evidence": "photo",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://gocodebook.com/library/us/ca/ca-building-code/chapter-11b-accessibility-to-public-buildings-public-accommodations/section-11b-505-handrails",
+      "source_kind": "transcription",
+      "notes": "Same requirement as the 2010 ADA Standards. Read from the gocodebook transcription of the 2025 CBC; needs checking against the official edition.",
+      "counterpart": "ADA-505.6-projection-clearance",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null,
+      "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
+    },
+    {
+      "id": "CBC-11B-505.8-surfaces",
+      "jurisdiction": "CBC11B",
+      "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
+      "section": "11B-505.8",
+      "title": "Handrail free of sharp edges",
+      "summary": "The handrail and the surfaces next to it must be free of sharp or abrasive elements and have rounded edges.",
+      "applies_to": [
+        "handrail"
+      ],
+      "scoping": {
+        "text": "Applies to every subject in applies_to.",
+        "when": null,
+        "when_unknown": "needs_info"
+      },
+      "test": {
+        "photo": {
+          "metric": "handrail.surfaces_free_of_sharp_or_abrasive",
+          "prompt": "Photograph the handrail brackets, ends and joints close up.",
+          "expected": true
+        }
+      },
+      "evidence": "photo",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://gocodebook.com/library/us/ca/ca-building-code/chapter-11b-accessibility-to-public-buildings-public-accommodations/section-11b-505-handrails",
+      "source_kind": "transcription",
+      "notes": "Same requirement as the 2010 ADA Standards. Read from the gocodebook transcription of the 2025 CBC; needs checking against the official edition.",
+      "counterpart": "ADA-505.8-surfaces",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null,
+      "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
+    },
+    {
+      "id": "CBC-11B-505.9-no-rotation",
+      "jurisdiction": "CBC11B",
+      "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
+      "section": "11B-505.9",
+      "title": "Handrails do not rotate",
+      "summary": "Handrails must not rotate within their fittings.",
+      "applies_to": [
+        "handrail"
+      ],
+      "scoping": {
+        "text": "Applies to every subject in applies_to.",
+        "when": null,
+        "when_unknown": "needs_info"
+      },
+      "test": {
+        "question": {
+          "metric": "handrail.rotates_in_fittings",
+          "prompt": "If you grip the handrail and twist, does it turn or spin in its brackets?",
+          "pass_answer": false
+        }
+      },
+      "evidence": "owner",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://gocodebook.com/library/us/ca/ca-building-code/chapter-11b-accessibility-to-public-buildings-public-accommodations/section-11b-505-handrails",
+      "source_kind": "transcription",
+      "notes": "Same requirement as the 2010 ADA Standards. Read from the gocodebook transcription of the 2025 CBC; needs checking against the official edition.",
+      "counterpart": "ADA-505.9-no-rotation",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null,
+      "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
+    },
+    {
       "id": "CBC-11B-505.10.1-ramp-extension",
       "jurisdiction": "CBC11B",
       "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
@@ -7263,6 +7710,47 @@
       "source_kind": "primary",
       "notes": "Same requirement as the 2010 ADA Standards. Checked against the ICC free public view of the 2025 CBC (Jan 2026 errata) on 2026-10-19.",
       "counterpart": "ADA-602.5-spout-location",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null,
+      "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
+    },
+    {
+      "id": "CBC-11B-602.6-water-flow",
+      "jurisdiction": "CBC11B",
+      "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
+      "section": "11B-602.6",
+      "title": "Water stream 4 in high min",
+      "summary": "The drinking fountain's stream must rise at least 4 in so a cup fits under it.",
+      "applies_to": [
+        "drinking_fountain"
+      ],
+      "scoping": {
+        "text": "Applies to every subject in applies_to.",
+        "when": {
+          "metric": "drinking_fountain.unit_role",
+          "op": "==",
+          "value": "wheelchair"
+        },
+        "when_unknown": "needs_info"
+      },
+      "test": {
+        "question": {
+          "metric": "drinking_fountain.water_flow_height",
+          "prompt": "With the water running, how many inches above the spout does the top of the stream reach? Hold a ruler beside it.",
+          "pass_answer": {
+            "op": ">=",
+            "value": 4
+          }
+        }
+      },
+      "evidence": "owner",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://gocodebook.com/library/us/ca/ca-building-code/chapter-11b-accessibility-to-public-buildings-public-accommodations/section-11b-602-drinking-fountains-and-bottle-filling-stations",
+      "source_kind": "transcription",
+      "notes": "Same requirement as the 2010 ADA Standards. The location limit is already tested by CBC-11B-602.5-spout-location; the stream-angle limits (30 and 15 degrees) are not encoded. Read from the gocodebook transcription of the 2025 CBC; needs checking against the official edition.",
+      "counterpart": "ADA-602.6-water-flow",
       "stricter_than": [],
       "verified_by": null,
       "verified_at": null,
@@ -8865,6 +9353,91 @@
       "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
     },
     {
+      "id": "CBC-11B-609.2.2-max-dimension",
+      "jurisdiction": "CBC11B",
+      "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
+      "section": "11B-609.2.2",
+      "title": "Non-circular grab bar 2 in max across",
+      "summary": "A non-circular grab bar's cross section must be 2 in maximum across.",
+      "applies_to": [
+        "grab_bar"
+      ],
+      "scoping": {
+        "text": "Grab bars with a non-circular cross section.",
+        "when": {
+          "metric": "grab_bar.cross_section_shape",
+          "op": "==",
+          "value": "non_circular"
+        },
+        "when_unknown": "not_applicable"
+      },
+      "test": {
+        "photo": {
+          "metric": "grab_bar.cross_section_max_dimension",
+          "prompt": "Photograph the end of the grab bar straight on, with a ruler held across it.",
+          "expected": {
+            "op": "<=",
+            "value": 2
+          }
+        }
+      },
+      "evidence": "photo",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://gocodebook.com/library/us/ca/ca-building-code/chapter-11b-accessibility-to-public-buildings-public-accommodations/section-11b-609-grab-bars",
+      "source_kind": "transcription",
+      "notes": "Same requirement as the 2010 ADA Standards. Read from the gocodebook transcription of the 2025 CBC; needs checking against the official edition.",
+      "counterpart": "ADA-609.2.2-max-dimension",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null,
+      "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
+    },
+    {
+      "id": "CBC-11B-609.2.2-perimeter",
+      "jurisdiction": "CBC11B",
+      "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
+      "section": "11B-609.2.2",
+      "title": "Non-circular grab bar perimeter 4-4.8 in",
+      "summary": "A non-circular grab bar's cross section must measure 4 in to 4.8 in around.",
+      "applies_to": [
+        "grab_bar"
+      ],
+      "scoping": {
+        "text": "Grab bars with a non-circular cross section.",
+        "when": {
+          "metric": "grab_bar.cross_section_shape",
+          "op": "==",
+          "value": "non_circular"
+        },
+        "when_unknown": "not_applicable"
+      },
+      "test": {
+        "question": {
+          "metric": "grab_bar.cross_section_perimeter",
+          "prompt": "Wrap a soft tape measure once around the grab bar: how many inches is it around?",
+          "pass_answer": {
+            "op": "between",
+            "value": [
+              4,
+              4.8
+            ]
+          }
+        }
+      },
+      "evidence": "owner",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://gocodebook.com/library/us/ca/ca-building-code/chapter-11b-accessibility-to-public-buildings-public-accommodations/section-11b-609-grab-bars",
+      "source_kind": "transcription",
+      "notes": "Same requirement as the 2010 ADA Standards. Read from the gocodebook transcription of the 2025 CBC; needs checking against the official edition.",
+      "counterpart": "ADA-609.2.2-perimeter",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null,
+      "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
+    },
+    {
       "id": "CBC-11B-609.3-wall-space",
       "jurisdiction": "CBC11B",
       "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
@@ -9017,6 +9590,40 @@
       "source_kind": "primary",
       "notes": "Same requirement as the 2010 ADA Standards. Checked against the ICC free public view of the 2025 CBC (Jan 2026 errata) on 2026-10-19.",
       "counterpart": "ADA-609.4-height",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null,
+      "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
+    },
+    {
+      "id": "CBC-11B-609.5-surface-hazards",
+      "jurisdiction": "CBC11B",
+      "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
+      "section": "11B-609.5",
+      "title": "Grab bar free of sharp edges",
+      "summary": "Grab bars and the wall or other surfaces next to them must be free of sharp or abrasive elements and have rounded edges.",
+      "applies_to": [
+        "grab_bar"
+      ],
+      "scoping": {
+        "text": "Applies to every subject in applies_to.",
+        "when": null,
+        "when_unknown": "needs_info"
+      },
+      "test": {
+        "photo": {
+          "metric": "handrail.surfaces_free_of_sharp_or_abrasive",
+          "prompt": "Photograph the grab bar's mounting flanges and the wall around them close up.",
+          "expected": true
+        }
+      },
+      "evidence": "photo",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://gocodebook.com/library/us/ca/ca-building-code/chapter-11b-accessibility-to-public-buildings-public-accommodations/section-11b-609-grab-bars",
+      "source_kind": "transcription",
+      "notes": "Same requirement as the 2010 ADA Standards. Read from the gocodebook transcription of the 2025 CBC; needs checking against the official edition.",
+      "counterpart": "ADA-609.5-surface-hazards",
       "stricter_than": [],
       "verified_by": null,
       "verified_at": null,
@@ -10053,6 +10660,120 @@
       "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
     },
     {
+      "id": "CBC-11B-802.3.1-shoulder-alignment",
+      "jurisdiction": "CBC11B",
+      "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
+      "section": "11B-802.3",
+      "title": "Companion seat shoulder alignment",
+      "summary": "In row seating, each companion seat must line up shoulder to shoulder with the wheelchair space beside it.",
+      "applies_to": [
+        "site"
+      ],
+      "scoping": {
+        "text": "Assembly areas with fixed audience seating and wheelchair spaces.",
+        "when": {
+          "metric": "site.has_assembly_seating",
+          "op": "==",
+          "value": true
+        },
+        "when_unknown": "not_applicable"
+      },
+      "test": {
+        "question": {
+          "metric": "assembly.companion_seat_shoulder_aligned",
+          "prompt": "In your rows of seats, is each companion seat right beside its wheelchair space, so the companion sits shoulder to shoulder with the wheelchair user?",
+          "pass_answer": true
+        }
+      },
+      "evidence": "owner",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://gocodebook.com/library/us/ca/ca-building-code/chapter-11b-accessibility-to-public-buildings-public-accommodations/section-11b-802-wheelchair-spaces-companion-seats-and-designated-aisle-seats-and-semi-ambulan",
+      "source_kind": "transcription",
+      "notes": "Same requirement as the 2010 ADA Standards. Read from the gocodebook transcription of the 2025 CBC; needs checking against the official edition.",
+      "counterpart": "ADA-802.3.1-shoulder-alignment",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null,
+      "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
+    },
+    {
+      "id": "CBC-11B-802.3.1-same-level",
+      "jurisdiction": "CBC11B",
+      "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
+      "section": "11B-802.3",
+      "title": "Companion seat on the same floor level",
+      "summary": "The floor under each companion seat must be at the same elevation as the wheelchair space it serves.",
+      "applies_to": [
+        "site"
+      ],
+      "scoping": {
+        "text": "Assembly areas with fixed audience seating and wheelchair spaces.",
+        "when": {
+          "metric": "site.has_assembly_seating",
+          "op": "==",
+          "value": true
+        },
+        "when_unknown": "not_applicable"
+      },
+      "test": {
+        "question": {
+          "metric": "assembly.companion_seat_same_floor_level",
+          "prompt": "Is the floor under each companion seat at the same level as the floor of the wheelchair space next to it?",
+          "pass_answer": true
+        }
+      },
+      "evidence": "owner",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://gocodebook.com/library/us/ca/ca-building-code/chapter-11b-accessibility-to-public-buildings-public-accommodations/section-11b-802-wheelchair-spaces-companion-seats-and-designated-aisle-seats-and-semi-ambulan",
+      "source_kind": "transcription",
+      "notes": "Same requirement as the 2010 ADA Standards. Read from the gocodebook transcription of the 2025 CBC; needs checking against the official edition.",
+      "counterpart": "ADA-802.3.1-same-level",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null,
+      "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
+    },
+    {
+      "id": "CBC-11B-802.3.2-equivalent",
+      "jurisdiction": "CBC11B",
+      "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
+      "section": "11B-802.3",
+      "title": "Companion seats equivalent to nearby seats",
+      "summary": "Companion seats must match the nearby seats in size, quality, comfort and amenities; they may be movable.",
+      "applies_to": [
+        "site"
+      ],
+      "scoping": {
+        "text": "Assembly areas with fixed audience seating and wheelchair spaces.",
+        "when": {
+          "metric": "site.has_assembly_seating",
+          "op": "==",
+          "value": true
+        },
+        "when_unknown": "not_applicable"
+      },
+      "test": {
+        "question": {
+          "metric": "assembly.companion_seat_equivalent",
+          "prompt": "Are the companion seats as large, comfortable and well equipped as the other seats around them?",
+          "pass_answer": true
+        }
+      },
+      "evidence": "owner",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://gocodebook.com/library/us/ca/ca-building-code/chapter-11b-accessibility-to-public-buildings-public-accommodations/section-11b-802-wheelchair-spaces-companion-seats-and-designated-aisle-seats-and-semi-ambulan",
+      "source_kind": "transcription",
+      "notes": "Same requirement as the 2010 ADA Standards. Read from the gocodebook transcription of the 2025 CBC; needs checking against the official edition.",
+      "counterpart": "ADA-802.3.2-equivalent",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null,
+      "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
+    },
+    {
       "id": "CBC-11B-803.2-turning",
       "jurisdiction": "CBC11B",
       "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
@@ -10502,6 +11223,82 @@
       "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
     },
     {
+      "id": "CBC-11B-903.6-strength",
+      "jurisdiction": "CBC11B",
+      "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
+      "section": "11B-903.6",
+      "title": "Bench holds 250 lbf",
+      "summary": "The bench, its fasteners and its mounting must take a 250 lb force pushed down or sideways at any point.",
+      "applies_to": [
+        "bench"
+      ],
+      "scoping": {
+        "text": "Applies to every subject in applies_to.",
+        "when": {
+          "room_kind_in": [
+            "fitting_room"
+          ]
+        },
+        "when_unknown": "apply"
+      },
+      "test": {
+        "question": {
+          "metric": "bench.structural_250lbf",
+          "prompt": "Was the bench, with its fasteners and mounting, built or installed to hold 250 pounds pressed down or sideways at any point?",
+          "pass_answer": true
+        }
+      },
+      "evidence": "owner",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://gocodebook.com/library/us/ca/ca-building-code/chapter-11b-accessibility-to-public-buildings-public-accommodations/section-11b-903-benches",
+      "source_kind": "transcription",
+      "notes": "The 250 lbf requirement matches the 2010 ADA Standards. CBC 11B-903.6 also requires benches to be affixed to the wall or floor, tested by CBC-11B-903.6-affixed. Read from the gocodebook transcription of the 2025 CBC; needs checking against the official edition.",
+      "counterpart": "ADA-903.6-strength",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null,
+      "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
+    },
+    {
+      "id": "CBC-11B-903.6-affixed",
+      "jurisdiction": "CBC11B",
+      "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
+      "section": "11B-903.6",
+      "title": "Bench affixed to wall or floor",
+      "summary": "In California, benches must be fastened to the wall or the floor.",
+      "applies_to": [
+        "bench"
+      ],
+      "scoping": {
+        "text": "Applies to every subject in applies_to.",
+        "when": {
+          "room_kind_in": [
+            "fitting_room"
+          ]
+        },
+        "when_unknown": "apply"
+      },
+      "test": {
+        "question": {
+          "metric": "bench.affixed_to_wall_or_floor",
+          "prompt": "Is the bench fastened to the wall or the floor, rather than free-standing?",
+          "pass_answer": true
+        }
+      },
+      "evidence": "owner",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://gocodebook.com/library/us/ca/ca-building-code/chapter-11b-accessibility-to-public-buildings-public-accommodations/section-11b-903-benches",
+      "source_kind": "transcription",
+      "notes": "California-only requirement. CBC 11B-903.6 adds the first sentence, 'Benches shall be affixed to the wall or floor', to the model 903.6 text. Read from the gocodebook transcription of the 2025 CBC; needs checking against the official edition.",
+      "counterpart": null,
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null,
+      "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
+    },
+    {
       "id": "CBC-11B-904.3.1-aisle-width",
       "jurisdiction": "CBC11B",
       "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
@@ -10932,6 +11729,216 @@
       "source_kind": "primary",
       "notes": "Same requirement as the 2010 ADA Standards. Official check 2026-10-19: the 2025 CBC text could not be retrieved (ICC Digital Codes renders client-side, the DSA Advisory Manual PDF reaches the fetcher truncated before Division 6, and DSA/ICC hosts were blocked from the shell), so this value is still from the transcription. The official DSA 'Code change summary 2025' lists no change to this section, which indicates the 2022 text carried forward; source_kind left as transcription. Checked against the ICC free public view of the 2025 CBC (Jan 2026 errata) on 2026-10-19.",
       "counterpart": "ADA-904.5.2-tray-slide",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null,
+      "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
+    },
+    {
+      "id": "CBC-11B-904.6-security-glazing",
+      "jurisdiction": "CBC11B",
+      "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
+      "section": "11B-904.6",
+      "title": "Voice communication through security glazing",
+      "summary": "Where a counter or teller window has security glass between staff and the public, a way to talk through it must be provided.",
+      "applies_to": [
+        "site"
+      ],
+      "scoping": {
+        "text": "Applies to every subject in applies_to.",
+        "when": null,
+        "when_unknown": "needs_info"
+      },
+      "test": {
+        "any_of": [
+          {
+            "question": {
+              "metric": "site.has_security_glazing_counter",
+              "prompt": "Do any of your counters or service windows have security glass between staff and customers?",
+              "pass_answer": false
+            }
+          },
+          {
+            "question": {
+              "metric": "site.security_glazing_voice_method",
+              "prompt": "At each counter or window with security glass, is there a way to talk through it, such as a speaking grille, slot, intercom or phone handset?",
+              "pass_answer": true
+            }
+          }
+        ]
+      },
+      "evidence": "owner",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://gocodebook.com/library/us/ca/ca-building-code/chapter-11b-accessibility-to-public-buildings-public-accommodations/section-11b-904-check-out-aisles-and-sales-and-service-counters",
+      "source_kind": "transcription",
+      "notes": "Same requirement as the 2010 ADA Standards. Read from the gocodebook transcription of the 2025 CBC; needs checking against the official edition.",
+      "counterpart": "ADA-904.6-security-glazing",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null,
+      "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
+    },
+    {
+      "id": "CBC-11B-230-two-way-comm-provided",
+      "jurisdiction": "CBC11B",
+      "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
+      "section": "11B-230",
+      "title": "Two-way communication system at an entrance",
+      "summary": "If people use an intercom or call box to get into the building or a restricted area, it must meet 708; we ask so those checks run.",
+      "applies_to": [
+        "site"
+      ],
+      "scoping": {
+        "text": "Applies to every subject in applies_to.",
+        "when": null,
+        "when_unknown": "needs_info"
+      },
+      "test": {
+        "question": {
+          "metric": "site.has_two_way_communication",
+          "prompt": "Do customers or visitors use an intercom, buzzer or call box to get into the building or into a locked area?",
+          "pass_answer": {
+            "op": "exists",
+            "value": true
+          }
+        }
+      },
+      "evidence": "owner",
+      "tolerance": null,
+      "severity": "advisory",
+      "source_url": "https://gocodebook.com/library/us/ca/ca-building-code/chapter-11b-accessibility-to-public-buildings-public-accommodations/section-11b-230-two-way-communication-systems",
+      "source_kind": "transcription",
+      "notes": "Same requirement as the 2010 ADA Standards. Read from the gocodebook transcription of the 2025 CBC; needs checking against the official edition.",
+      "counterpart": "ADA-230-two-way-comm-provided",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null,
+      "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
+    },
+    {
+      "id": "CBC-11B-708.2-audible-signal",
+      "jurisdiction": "CBC11B",
+      "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
+      "section": "11B-708",
+      "title": "Two-way communication gives an audible signal",
+      "summary": "The intercom or call box must give an audible signal as well as a visual one (708.2).",
+      "applies_to": [
+        "site"
+      ],
+      "scoping": {
+        "text": "Where a two-way communication system is provided to get into the building or a restricted area.",
+        "when": {
+          "metric": "site.has_two_way_communication",
+          "op": "==",
+          "value": true
+        },
+        "when_unknown": "not_applicable"
+      },
+      "test": {
+        "question": {
+          "metric": "site.two_way_comm_audible_signal",
+          "prompt": "When someone presses the call button on your intercom, does it make a sound, such as a ring, tone or voice?",
+          "pass_answer": true
+        }
+      },
+      "evidence": "owner",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://gocodebook.com/library/us/ca/ca-building-code/chapter-11b-accessibility-to-public-buildings-public-accommodations/section-11b-708-two-way-communication-systems",
+      "source_kind": "transcription",
+      "notes": "Same requirement as the 2010 ADA Standards. Read from the gocodebook transcription of the 2025 CBC; needs checking against the official edition.",
+      "counterpart": "ADA-708.2-audible-signal",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null,
+      "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
+    },
+    {
+      "id": "CBC-11B-708.2-visual-signal",
+      "jurisdiction": "CBC11B",
+      "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
+      "section": "11B-708",
+      "title": "Two-way communication gives a visual signal",
+      "summary": "The intercom or call box must give a visual signal as well as an audible one (708.2).",
+      "applies_to": [
+        "site"
+      ],
+      "scoping": {
+        "text": "Where a two-way communication system is provided to get into the building or a restricted area.",
+        "when": {
+          "metric": "site.has_two_way_communication",
+          "op": "==",
+          "value": true
+        },
+        "when_unknown": "not_applicable"
+      },
+      "test": {
+        "photo": {
+          "metric": "site.two_way_comm_visual_signal",
+          "prompt": "Photograph the front of the intercom or call box so any light or screen that shows a call is connected can be seen.",
+          "expected": true
+        }
+      },
+      "evidence": "photo",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://gocodebook.com/library/us/ca/ca-building-code/chapter-11b-accessibility-to-public-buildings-public-accommodations/section-11b-708-two-way-communication-systems",
+      "source_kind": "transcription",
+      "notes": "Same requirement as the 2010 ADA Standards. Read from the gocodebook transcription of the 2025 CBC; needs checking against the official edition.",
+      "counterpart": "ADA-708.2-visual-signal",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null,
+      "official_url": "https://codes.iccsafe.org/content/CABC2025P2"
+    },
+    {
+      "id": "CBC-11B-708.3-handset-cord",
+      "jurisdiction": "CBC11B",
+      "edition": "2025 California Building Code, Title 24 Part 2, Chapter 11B (effective 2026-01-01)",
+      "section": "11B-708",
+      "title": "Intercom handset cord 29 in min",
+      "summary": "If the intercom has a corded handset, the cord must be at least 29 in long (708.3).",
+      "applies_to": [
+        "site"
+      ],
+      "scoping": {
+        "text": "Where a two-way communication system is provided to get into the building or a restricted area.",
+        "when": {
+          "metric": "site.has_two_way_communication",
+          "op": "==",
+          "value": true
+        },
+        "when_unknown": "not_applicable"
+      },
+      "test": {
+        "any_of": [
+          {
+            "question": {
+              "metric": "site.two_way_comm_has_handset",
+              "prompt": "Does your intercom or call box have a handset on a cord that people pick up?",
+              "pass_answer": false
+            }
+          },
+          {
+            "question": {
+              "metric": "site.two_way_comm_handset_cord_length",
+              "prompt": "How many inches long is the handset cord, measured unstretched from the unit to the handset?",
+              "pass_answer": {
+                "op": ">=",
+                "value": 29
+              }
+            }
+          }
+        ]
+      },
+      "evidence": "owner",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://gocodebook.com/library/us/ca/ca-building-code/chapter-11b-accessibility-to-public-buildings-public-accommodations/section-11b-708-two-way-communication-systems",
+      "source_kind": "transcription",
+      "notes": "Same requirement as the 2010 ADA Standards. Read from the gocodebook transcription of the 2025 CBC; needs checking against the official edition.",
+      "counterpart": "ADA-708.3-handset-cord",
       "stricter_than": [],
       "verified_by": null,
       "verified_at": null,

@@ -119,6 +119,46 @@
       "verified_at": null
     },
     {
+      "id": "ADA-202.5-historic-status",
+      "jurisdiction": "ADA2010",
+      "edition": "2010 ADA Standards for Accessible Design (28 CFR part 36 subpart D / part 35.151)",
+      "section": "202.5",
+      "title": "Qualified historic building status",
+      "summary": "We ask whether the building is a qualified historic property so a reviewer knows whether historic-building alternatives could apply. The answer does not change any other finding here.",
+      "applies_to": [
+        "site"
+      ],
+      "scoping": {
+        "text": "Alterations to the building (remodel or tenant improvement).",
+        "when": {
+          "metric": "site.altered_since_2012",
+          "op": "==",
+          "value": true
+        },
+        "when_unknown": "not_applicable"
+      },
+      "test": {
+        "question": {
+          "metric": "site.is_qualified_historic",
+          "prompt": "Is the building listed in, or eligible for, the National Register of Historic Places, or designated as historic under a state or local law?",
+          "pass_answer": {
+            "op": "exists",
+            "value": true
+          }
+        }
+      },
+      "evidence": "owner",
+      "tolerance": null,
+      "severity": "advisory",
+      "source_url": "https://www.access-board.gov/ada/#ada-202_5",
+      "source_kind": "primary",
+      "notes": "Any answer passes; the finding records the status and changes no other rule. 202.5: alterations to a qualified historic building still comply with 202.3 and 202.4. Only where the State Historic Preservation Officer or the Advisory Council on Historic Preservation determines that compliance for accessible routes, entrances or toilet facilities would threaten or destroy the historic significance may these alternate minimums apply for that element: 206.2.1 Exception 1 (no more than one accessible route from a site arrival point to an accessible entrance), 206.2.3 Exception 7 (no accessible route required to stories above or below the accessible story), 206.4 Exception 2 (no more than one public entrance must comply; if none can, an unlocked non-public entrance, or a locked one with a notification system or remote monitoring), 213.2 Exception 2 (at least one toilet room for each sex complying with 603, or one unisex toilet room complying with 213.2.1). The rule does not apply these exceptions because they depend on that determination, not on historic status alone.",
+      "counterpart": "CBC-11B-202.5-historic-status",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null
+    },
+    {
       "id": "ADA-203.9-employee-areas",
       "jurisdiction": "ADA2010",
       "edition": "2010 ADA Standards for Accessible Design (28 CFR part 36 subpart D / part 35.151)",
@@ -6432,6 +6472,181 @@
       "verified_at": null
     },
     {
+      "id": "ADA-505.6-top-sides-clear",
+      "jurisdiction": "ADA2010",
+      "edition": "2010 ADA Standards for Accessible Design (28 CFR part 36 subpart D / part 35.151)",
+      "section": "505.6",
+      "title": "Handrail top and sides unobstructed",
+      "summary": "The handrail's gripping surface must be continuous along its length with nothing obstructing its top or sides.",
+      "applies_to": [
+        "handrail"
+      ],
+      "scoping": {
+        "text": "Applies to every subject in applies_to.",
+        "when": null,
+        "when_unknown": "needs_info"
+      },
+      "test": {
+        "photo": {
+          "metric": "handrail.top_sides_unobstructed",
+          "prompt": "Photograph the whole handrail from one end so the top and sides of the rail can be seen along its length.",
+          "expected": true
+        }
+      },
+      "evidence": "photo",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://www.access-board.gov/ada/#ada-505_6",
+      "source_kind": "primary",
+      "notes": "",
+      "counterpart": "CBC-11B-505.6-top-sides-clear",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null
+    },
+    {
+      "id": "ADA-505.6-bottom-obstruction",
+      "jurisdiction": "ADA2010",
+      "edition": "2010 ADA Standards for Accessible Design (28 CFR part 36 subpart D / part 35.151)",
+      "section": "505.6",
+      "title": "Handrail bottom obstructed 20% max",
+      "summary": "Brackets or other supports may obstruct the bottom of the handrail for no more than 20 percent of its length.",
+      "applies_to": [
+        "handrail"
+      ],
+      "scoping": {
+        "text": "Applies to every subject in applies_to.",
+        "when": null,
+        "when_unknown": "needs_info"
+      },
+      "test": {
+        "photo": {
+          "metric": "handrail.bottom_obstructed_fraction",
+          "prompt": "Photograph the whole handrail from the side, low enough that the brackets under the rail can be seen.",
+          "expected": {
+            "op": "<=",
+            "value": 0.2
+          }
+        }
+      },
+      "evidence": "photo",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://www.access-board.gov/ada/#ada-505_6",
+      "source_kind": "primary",
+      "notes": "505.6 Exception 1: along walking surfaces sloped 1:20 or less, the bottom may be obstructed along its entire length where the handrail is part of a crash rail or bumper guard; a reviewer applies that exception.",
+      "counterpart": "CBC-11B-505.6-bottom-obstruction",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null
+    },
+    {
+      "id": "ADA-505.6-projection-clearance",
+      "jurisdiction": "ADA2010",
+      "edition": "2010 ADA Standards for Accessible Design (28 CFR part 36 subpart D / part 35.151)",
+      "section": "505.6",
+      "title": "Projection 1 1/2 in min below handrail",
+      "summary": "Any horizontal projection below the handrail, such as a bracket arm or ledge, must sit at least 1 1/2 in below the bottom of the gripping surface.",
+      "applies_to": [
+        "handrail"
+      ],
+      "scoping": {
+        "text": "Handrails with a horizontal projection (bracket arm, cap or ledge) below the gripping surface.",
+        "when": {
+          "metric": "handrail.has_projection_below",
+          "op": "==",
+          "value": true
+        },
+        "when_unknown": "needs_info"
+      },
+      "test": {
+        "photo": {
+          "metric": "handrail.projection_clearance_below",
+          "prompt": "Photograph a handrail bracket from the side, close up, with a ruler or tape held next to the gap between the rail and the bracket arm.",
+          "expected": {
+            "op": ">=",
+            "value": 1.5
+          }
+        }
+      },
+      "evidence": "photo",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://www.access-board.gov/ada/#ada-505_6",
+      "source_kind": "primary",
+      "notes": "505.6 Exception 2: the 1 1/2 in may be reduced by 1/8 in for each 1/2 in of handrail perimeter beyond 4 in; not encoded, so a reviewer applies it to oversized rails. A reading within about 1/4 in of the limit should be confirmed with a tape.",
+      "counterpart": "CBC-11B-505.6-projection-clearance",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null
+    },
+    {
+      "id": "ADA-505.8-surfaces",
+      "jurisdiction": "ADA2010",
+      "edition": "2010 ADA Standards for Accessible Design (28 CFR part 36 subpart D / part 35.151)",
+      "section": "505.8",
+      "title": "Handrail free of sharp edges",
+      "summary": "The handrail and the surfaces next to it must be free of sharp or abrasive elements and have rounded edges.",
+      "applies_to": [
+        "handrail"
+      ],
+      "scoping": {
+        "text": "Applies to every subject in applies_to.",
+        "when": null,
+        "when_unknown": "needs_info"
+      },
+      "test": {
+        "photo": {
+          "metric": "handrail.surfaces_free_of_sharp_or_abrasive",
+          "prompt": "Photograph the handrail brackets, ends and joints close up.",
+          "expected": true
+        }
+      },
+      "evidence": "photo",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://www.access-board.gov/ada/#ada-505_8",
+      "source_kind": "primary",
+      "notes": "",
+      "counterpart": "CBC-11B-505.8-surfaces",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null
+    },
+    {
+      "id": "ADA-505.9-no-rotation",
+      "jurisdiction": "ADA2010",
+      "edition": "2010 ADA Standards for Accessible Design (28 CFR part 36 subpart D / part 35.151)",
+      "section": "505.9",
+      "title": "Handrails do not rotate",
+      "summary": "Handrails must not rotate within their fittings.",
+      "applies_to": [
+        "handrail"
+      ],
+      "scoping": {
+        "text": "Applies to every subject in applies_to.",
+        "when": null,
+        "when_unknown": "needs_info"
+      },
+      "test": {
+        "question": {
+          "metric": "handrail.rotates_in_fittings",
+          "prompt": "If you grip the handrail and twist, does it turn or spin in its brackets?",
+          "pass_answer": false
+        }
+      },
+      "evidence": "owner",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://www.access-board.gov/ada/#ada-505_9",
+      "source_kind": "primary",
+      "notes": "Rotation cannot be seen in a still photo, so this is an owner check.",
+      "counterpart": "CBC-11B-505.9-no-rotation",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null
+    },
+    {
       "id": "ADA-505.10.1-ramp-extension",
       "jurisdiction": "ADA2010",
       "edition": "2010 ADA Standards for Accessible Design (28 CFR part 36 subpart D / part 35.151)",
@@ -6631,6 +6846,46 @@
       "source_kind": "primary",
       "notes": "",
       "counterpart": "CBC-11B-602.5-spout-location",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null
+    },
+    {
+      "id": "ADA-602.6-water-flow",
+      "jurisdiction": "ADA2010",
+      "edition": "2010 ADA Standards for Accessible Design (28 CFR part 36 subpart D / part 35.151)",
+      "section": "602.6",
+      "title": "Water stream 4 in high min",
+      "summary": "The drinking fountain's stream must rise at least 4 in so a cup fits under it.",
+      "applies_to": [
+        "drinking_fountain"
+      ],
+      "scoping": {
+        "text": "Applies to every subject in applies_to.",
+        "when": {
+          "metric": "drinking_fountain.unit_role",
+          "op": "==",
+          "value": "wheelchair"
+        },
+        "when_unknown": "needs_info"
+      },
+      "test": {
+        "question": {
+          "metric": "drinking_fountain.water_flow_height",
+          "prompt": "With the water running, how many inches above the spout does the top of the stream reach? Hold a ruler beside it.",
+          "pass_answer": {
+            "op": ">=",
+            "value": 4
+          }
+        }
+      },
+      "evidence": "owner",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://www.access-board.gov/ada/#ada-602_6",
+      "source_kind": "primary",
+      "notes": "The 602.6 location limit (spout 5 in max from the front of the unit) is the same limit ADA-602.5-spout-location already tests, so it is not repeated. The stream-angle limits (30 degrees max for spouts less than 3 in from the front, 15 degrees max for 3 to 5 in) are not encoded because an owner cannot measure the angle reliably.",
+      "counterpart": "CBC-11B-602.6-water-flow",
       "stricter_than": [],
       "verified_by": null,
       "verified_at": null
@@ -7884,6 +8139,89 @@
       "verified_at": null
     },
     {
+      "id": "ADA-609.2.2-max-dimension",
+      "jurisdiction": "ADA2010",
+      "edition": "2010 ADA Standards for Accessible Design (28 CFR part 36 subpart D / part 35.151)",
+      "section": "609.2.2",
+      "title": "Non-circular grab bar 2 in max across",
+      "summary": "A non-circular grab bar's cross section must be 2 in maximum across.",
+      "applies_to": [
+        "grab_bar"
+      ],
+      "scoping": {
+        "text": "Grab bars with a non-circular cross section.",
+        "when": {
+          "metric": "grab_bar.cross_section_shape",
+          "op": "==",
+          "value": "non_circular"
+        },
+        "when_unknown": "not_applicable"
+      },
+      "test": {
+        "photo": {
+          "metric": "grab_bar.cross_section_max_dimension",
+          "prompt": "Photograph the end of the grab bar straight on, with a ruler held across it.",
+          "expected": {
+            "op": "<=",
+            "value": 2
+          }
+        }
+      },
+      "evidence": "photo",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://www.access-board.gov/ada/#ada-609_2_2",
+      "source_kind": "primary",
+      "notes": "",
+      "counterpart": "CBC-11B-609.2.2-max-dimension",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null
+    },
+    {
+      "id": "ADA-609.2.2-perimeter",
+      "jurisdiction": "ADA2010",
+      "edition": "2010 ADA Standards for Accessible Design (28 CFR part 36 subpart D / part 35.151)",
+      "section": "609.2.2",
+      "title": "Non-circular grab bar perimeter 4-4.8 in",
+      "summary": "A non-circular grab bar's cross section must measure 4 in to 4.8 in around.",
+      "applies_to": [
+        "grab_bar"
+      ],
+      "scoping": {
+        "text": "Grab bars with a non-circular cross section.",
+        "when": {
+          "metric": "grab_bar.cross_section_shape",
+          "op": "==",
+          "value": "non_circular"
+        },
+        "when_unknown": "not_applicable"
+      },
+      "test": {
+        "question": {
+          "metric": "grab_bar.cross_section_perimeter",
+          "prompt": "Wrap a soft tape measure once around the grab bar: how many inches is it around?",
+          "pass_answer": {
+            "op": "between",
+            "value": [
+              4,
+              4.8
+            ]
+          }
+        }
+      },
+      "evidence": "owner",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://www.access-board.gov/ada/#ada-609_2_2",
+      "source_kind": "primary",
+      "notes": "A perimeter cannot be read reliably from a photo, so the owner measures it with a tape.",
+      "counterpart": "CBC-11B-609.2.2-perimeter",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null
+    },
+    {
       "id": "ADA-609.3-wall-space",
       "jurisdiction": "ADA2010",
       "edition": "2010 ADA Standards for Accessible Design (28 CFR part 36 subpart D / part 35.151)",
@@ -8033,6 +8371,39 @@
       "source_kind": "primary",
       "notes": "",
       "counterpart": "CBC-11B-609.4-height",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null
+    },
+    {
+      "id": "ADA-609.5-surface-hazards",
+      "jurisdiction": "ADA2010",
+      "edition": "2010 ADA Standards for Accessible Design (28 CFR part 36 subpart D / part 35.151)",
+      "section": "609.5",
+      "title": "Grab bar free of sharp edges",
+      "summary": "Grab bars and the wall or other surfaces next to them must be free of sharp or abrasive elements and have rounded edges.",
+      "applies_to": [
+        "grab_bar"
+      ],
+      "scoping": {
+        "text": "Applies to every subject in applies_to.",
+        "when": null,
+        "when_unknown": "needs_info"
+      },
+      "test": {
+        "photo": {
+          "metric": "handrail.surfaces_free_of_sharp_or_abrasive",
+          "prompt": "Photograph the grab bar's mounting flanges and the wall around them close up.",
+          "expected": true
+        }
+      },
+      "evidence": "photo",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://www.access-board.gov/ada/#ada-609_5",
+      "source_kind": "primary",
+      "notes": "",
+      "counterpart": "CBC-11B-609.5-surface-hazards",
       "stricter_than": [],
       "verified_by": null,
       "verified_at": null
@@ -8737,6 +9108,117 @@
       "verified_at": null
     },
     {
+      "id": "ADA-802.3.1-shoulder-alignment",
+      "jurisdiction": "ADA2010",
+      "edition": "2010 ADA Standards for Accessible Design (28 CFR part 36 subpart D / part 35.151)",
+      "section": "802.3",
+      "title": "Companion seat shoulder alignment",
+      "summary": "In row seating, each companion seat must line up shoulder to shoulder with the wheelchair space beside it.",
+      "applies_to": [
+        "site"
+      ],
+      "scoping": {
+        "text": "Assembly areas with fixed audience seating and wheelchair spaces.",
+        "when": {
+          "metric": "site.has_assembly_seating",
+          "op": "==",
+          "value": true
+        },
+        "when_unknown": "not_applicable"
+      },
+      "test": {
+        "question": {
+          "metric": "assembly.companion_seat_shoulder_aligned",
+          "prompt": "In your rows of seats, is each companion seat right beside its wheelchair space, so the companion sits shoulder to shoulder with the wheelchair user?",
+          "pass_answer": true
+        }
+      },
+      "evidence": "owner",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://www.access-board.gov/ada/#ada-802_3_1",
+      "source_kind": "primary",
+      "notes": "802.3.1: the wheelchair space's shoulder alignment point is 36 in from the front of the space.",
+      "counterpart": "CBC-11B-802.3.1-shoulder-alignment",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null
+    },
+    {
+      "id": "ADA-802.3.1-same-level",
+      "jurisdiction": "ADA2010",
+      "edition": "2010 ADA Standards for Accessible Design (28 CFR part 36 subpart D / part 35.151)",
+      "section": "802.3",
+      "title": "Companion seat on the same floor level",
+      "summary": "The floor under each companion seat must be at the same elevation as the wheelchair space it serves.",
+      "applies_to": [
+        "site"
+      ],
+      "scoping": {
+        "text": "Assembly areas with fixed audience seating and wheelchair spaces.",
+        "when": {
+          "metric": "site.has_assembly_seating",
+          "op": "==",
+          "value": true
+        },
+        "when_unknown": "not_applicable"
+      },
+      "test": {
+        "question": {
+          "metric": "assembly.companion_seat_same_floor_level",
+          "prompt": "Is the floor under each companion seat at the same level as the floor of the wheelchair space next to it?",
+          "pass_answer": true
+        }
+      },
+      "evidence": "owner",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://www.access-board.gov/ada/#ada-802_3_1",
+      "source_kind": "primary",
+      "notes": "",
+      "counterpart": "CBC-11B-802.3.1-same-level",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null
+    },
+    {
+      "id": "ADA-802.3.2-equivalent",
+      "jurisdiction": "ADA2010",
+      "edition": "2010 ADA Standards for Accessible Design (28 CFR part 36 subpart D / part 35.151)",
+      "section": "802.3",
+      "title": "Companion seats equivalent to nearby seats",
+      "summary": "Companion seats must match the nearby seats in size, quality, comfort and amenities; they may be movable.",
+      "applies_to": [
+        "site"
+      ],
+      "scoping": {
+        "text": "Assembly areas with fixed audience seating and wheelchair spaces.",
+        "when": {
+          "metric": "site.has_assembly_seating",
+          "op": "==",
+          "value": true
+        },
+        "when_unknown": "not_applicable"
+      },
+      "test": {
+        "question": {
+          "metric": "assembly.companion_seat_equivalent",
+          "prompt": "Are the companion seats as large, comfortable and well equipped as the other seats around them?",
+          "pass_answer": true
+        }
+      },
+      "evidence": "owner",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://www.access-board.gov/ada/#ada-802_3_2",
+      "source_kind": "primary",
+      "notes": "",
+      "counterpart": "CBC-11B-802.3.2-equivalent",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null
+    },
+    {
       "id": "ADA-803.2-turning",
       "jurisdiction": "ADA2010",
       "edition": "2010 ADA Standards for Accessible Design (28 CFR part 36 subpart D / part 35.151)",
@@ -9042,6 +9524,43 @@
       "source_kind": "primary",
       "notes": "",
       "counterpart": "CBC-11B-903.5-bench-height",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null
+    },
+    {
+      "id": "ADA-903.6-strength",
+      "jurisdiction": "ADA2010",
+      "edition": "2010 ADA Standards for Accessible Design (28 CFR part 36 subpart D / part 35.151)",
+      "section": "903.6",
+      "title": "Bench holds 250 lbf",
+      "summary": "The bench, its fasteners and its mounting must take a 250 lb force pushed down or sideways at any point.",
+      "applies_to": [
+        "bench"
+      ],
+      "scoping": {
+        "text": "Applies to every subject in applies_to.",
+        "when": {
+          "room_kind_in": [
+            "fitting_room"
+          ]
+        },
+        "when_unknown": "apply"
+      },
+      "test": {
+        "question": {
+          "metric": "bench.structural_250lbf",
+          "prompt": "Was the bench, with its fasteners and mounting, built or installed to hold 250 pounds pressed down or sideways at any point?",
+          "pass_answer": true
+        }
+      },
+      "evidence": "owner",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://www.access-board.gov/ada/#ada-903_6",
+      "source_kind": "primary",
+      "notes": "Owner attestation; a reviewer may ask for the product rating or installation detail.",
+      "counterpart": "CBC-11B-903.6-strength",
       "stricter_than": [],
       "verified_by": null,
       "verified_at": null
@@ -9464,6 +9983,211 @@
       "source_kind": "primary",
       "notes": "",
       "counterpart": "CBC-11B-904.5.2-tray-slide",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null
+    },
+    {
+      "id": "ADA-904.6-security-glazing",
+      "jurisdiction": "ADA2010",
+      "edition": "2010 ADA Standards for Accessible Design (28 CFR part 36 subpart D / part 35.151)",
+      "section": "904.6",
+      "title": "Voice communication through security glazing",
+      "summary": "Where a counter or teller window has security glass between staff and the public, a way to talk through it must be provided.",
+      "applies_to": [
+        "site"
+      ],
+      "scoping": {
+        "text": "Applies to every subject in applies_to.",
+        "when": null,
+        "when_unknown": "needs_info"
+      },
+      "test": {
+        "any_of": [
+          {
+            "question": {
+              "metric": "site.has_security_glazing_counter",
+              "prompt": "Do any of your counters or service windows have security glass between staff and customers?",
+              "pass_answer": false
+            }
+          },
+          {
+            "question": {
+              "metric": "site.security_glazing_voice_method",
+              "prompt": "At each counter or window with security glass, is there a way to talk through it, such as a speaking grille, slot, intercom or phone handset?",
+              "pass_answer": true
+            }
+          }
+        ]
+      },
+      "evidence": "owner",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://www.access-board.gov/ada/#ada-904_6",
+      "source_kind": "primary",
+      "notes": "904.6 also requires any telephone handset provided there to comply with 704.3 (volume control); not encoded here. Advisory 904.6 lists assistive listening devices, grilles, slats, talk-through baffles, intercoms and handsets as voice communication methods.",
+      "counterpart": "CBC-11B-904.6-security-glazing",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null
+    },
+    {
+      "id": "ADA-230-two-way-comm-provided",
+      "jurisdiction": "ADA2010",
+      "edition": "2010 ADA Standards for Accessible Design (28 CFR part 36 subpart D / part 35.151)",
+      "section": "230",
+      "title": "Two-way communication system at an entrance",
+      "summary": "If people use an intercom or call box to get into the building or a restricted area, it must meet 708; we ask so those checks run.",
+      "applies_to": [
+        "site"
+      ],
+      "scoping": {
+        "text": "Applies to every subject in applies_to.",
+        "when": null,
+        "when_unknown": "needs_info"
+      },
+      "test": {
+        "question": {
+          "metric": "site.has_two_way_communication",
+          "prompt": "Do customers or visitors use an intercom, buzzer or call box to get into the building or into a locked area?",
+          "pass_answer": {
+            "op": "exists",
+            "value": true
+          }
+        }
+      },
+      "evidence": "owner",
+      "tolerance": null,
+      "severity": "advisory",
+      "source_url": "https://www.access-board.gov/ada/#ada-230_1",
+      "source_kind": "primary",
+      "notes": "230.1. Any answer passes; a yes turns on the 708 checks. Advisory 230.1 names office buildings and courthouses where admittance depends on such a system.",
+      "counterpart": "CBC-11B-230-two-way-comm-provided",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null
+    },
+    {
+      "id": "ADA-708.2-audible-signal",
+      "jurisdiction": "ADA2010",
+      "edition": "2010 ADA Standards for Accessible Design (28 CFR part 36 subpart D / part 35.151)",
+      "section": "708",
+      "title": "Two-way communication gives an audible signal",
+      "summary": "The intercom or call box must give an audible signal as well as a visual one (708.2).",
+      "applies_to": [
+        "site"
+      ],
+      "scoping": {
+        "text": "Where a two-way communication system is provided to get into the building or a restricted area.",
+        "when": {
+          "metric": "site.has_two_way_communication",
+          "op": "==",
+          "value": true
+        },
+        "when_unknown": "not_applicable"
+      },
+      "test": {
+        "question": {
+          "metric": "site.two_way_comm_audible_signal",
+          "prompt": "When someone presses the call button on your intercom, does it make a sound, such as a ring, tone or voice?",
+          "pass_answer": true
+        }
+      },
+      "evidence": "owner",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://www.access-board.gov/ada/#ada-708_2",
+      "source_kind": "primary",
+      "notes": "",
+      "counterpart": "CBC-11B-708.2-audible-signal",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null
+    },
+    {
+      "id": "ADA-708.2-visual-signal",
+      "jurisdiction": "ADA2010",
+      "edition": "2010 ADA Standards for Accessible Design (28 CFR part 36 subpart D / part 35.151)",
+      "section": "708",
+      "title": "Two-way communication gives a visual signal",
+      "summary": "The intercom or call box must give a visual signal as well as an audible one (708.2).",
+      "applies_to": [
+        "site"
+      ],
+      "scoping": {
+        "text": "Where a two-way communication system is provided to get into the building or a restricted area.",
+        "when": {
+          "metric": "site.has_two_way_communication",
+          "op": "==",
+          "value": true
+        },
+        "when_unknown": "not_applicable"
+      },
+      "test": {
+        "photo": {
+          "metric": "site.two_way_comm_visual_signal",
+          "prompt": "Photograph the front of the intercom or call box so any light or screen that shows a call is connected can be seen.",
+          "expected": true
+        }
+      },
+      "evidence": "photo",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://www.access-board.gov/ada/#ada-708_2",
+      "source_kind": "primary",
+      "notes": "Advisory 708.2: a light can show that assistance is on the way, and signs should explain what the visual signals mean.",
+      "counterpart": "CBC-11B-708.2-visual-signal",
+      "stricter_than": [],
+      "verified_by": null,
+      "verified_at": null
+    },
+    {
+      "id": "ADA-708.3-handset-cord",
+      "jurisdiction": "ADA2010",
+      "edition": "2010 ADA Standards for Accessible Design (28 CFR part 36 subpart D / part 35.151)",
+      "section": "708",
+      "title": "Intercom handset cord 29 in min",
+      "summary": "If the intercom has a corded handset, the cord must be at least 29 in long (708.3).",
+      "applies_to": [
+        "site"
+      ],
+      "scoping": {
+        "text": "Where a two-way communication system is provided to get into the building or a restricted area.",
+        "when": {
+          "metric": "site.has_two_way_communication",
+          "op": "==",
+          "value": true
+        },
+        "when_unknown": "not_applicable"
+      },
+      "test": {
+        "any_of": [
+          {
+            "question": {
+              "metric": "site.two_way_comm_has_handset",
+              "prompt": "Does your intercom or call box have a handset on a cord that people pick up?",
+              "pass_answer": false
+            }
+          },
+          {
+            "question": {
+              "metric": "site.two_way_comm_handset_cord_length",
+              "prompt": "How many inches long is the handset cord, measured unstretched from the unit to the handset?",
+              "pass_answer": {
+                "op": ">=",
+                "value": 29
+              }
+            }
+          }
+        ]
+      },
+      "evidence": "owner",
+      "tolerance": null,
+      "severity": "violation",
+      "source_url": "https://www.access-board.gov/ada/#ada-708_3",
+      "source_kind": "primary",
+      "notes": "708.4 (residential dwelling unit systems) is out of scope for small businesses.",
+      "counterpart": "CBC-11B-708.3-handset-cord",
       "stricter_than": [],
       "verified_by": null,
       "verified_at": null
