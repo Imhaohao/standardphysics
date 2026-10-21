@@ -257,7 +257,7 @@ final class AppModel {
 
     func renameReport(_ scanID: UUID, to name: String) async {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, var report = report(id: scanID), report.name != trimmed else { return }
+        guard !trimmed.isEmpty, var report = self.report(id: scanID), report.name != trimmed else { return }
         if let remoteScanID = report.remoteScanID {
             let renamed = await runOnServer(failure: Self.renameNotSent) { _ = try await $0.renameScan(scanID: remoteScanID, name: trimmed) }
             guard renamed else { return }
@@ -268,7 +268,7 @@ final class AppModel {
 
     /// A server scan is deleted on the account first, so a failure leaves both copies in place.
     func deleteReport(_ scanID: UUID) async {
-        guard let report = report(id: scanID) else { return }
+        guard let report = self.report(id: scanID) else { return }
         if let remoteScanID = report.remoteScanID {
             let deleted = await runOnServer(failure: Self.deleteNotSent) { try await $0.deleteScan(scanID: remoteScanID) }
             guard deleted else { return }
@@ -316,7 +316,7 @@ final class AppModel {
     /// Saves the answer with the report straight away, then has the report checked again: by the
     /// server for a server scan, on the phone otherwise. A nil value clears the answer.
     func answer(_ question: OwnerQuestion, with value: AnswerValue?, inReport reportID: UUID) async {
-        guard var report = report(id: reportID) else { return }
+        guard var report = self.report(id: reportID) else { return }
         report.answers = OwnerQuestions.setting(value, for: question, in: report.answers)
         await replace(report)
         if let remoteScanID = report.remoteScanID {
