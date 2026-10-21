@@ -8,6 +8,8 @@ final class FakeScanLibrary: ScanLibrary, @unchecked Sendable {
         var scans: [ScanResponse] = []
         var reports: [String: Report] = [:]
         var savedAnswers: [[AnswerUpdate]] = []
+        var renamed: [String: String] = [:]
+        var deleted: [String] = []
         var failure: APIError?
     }
 
@@ -42,6 +44,20 @@ final class FakeScanLibrary: ScanLibrary, @unchecked Sendable {
         try check()
         state.write { $0.savedAnswers.append(answers) }
         return LibraryFixtures.report(scanID: scanID, status: .pass)
+    }
+
+    var renamed: [String: String] { state.read { $0.renamed } }
+    var deleted: [String] { state.read { $0.deleted } }
+
+    func renameScan(scanID: String, name: String) async throws -> ScanResponse {
+        try check()
+        state.write { $0.renamed[scanID] = name }
+        return LibraryFixtures.scan(scanID, name: name)
+    }
+
+    func deleteScan(scanID: String) async throws {
+        try check()
+        state.write { $0.deleted.append(scanID) }
     }
 
     private func check() throws {

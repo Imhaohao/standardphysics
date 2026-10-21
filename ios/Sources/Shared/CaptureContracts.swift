@@ -294,4 +294,6 @@ protocol CaptureControlling: AnyObject, Observable {
     func startNextRoom()
     func finishScan() async
     func discardScan() async
+    /// Removes a saved scan and its files, whether or not it is the one currently open.
+    func deleteScan(scanID: UUID) async
 }

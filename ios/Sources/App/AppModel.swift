@@ -203,6 +203,63 @@ final class AppModel {
         notice = nil
     }
 
+    // MARK: Rename and delete
+
+    static let renameNotSent = "We couldn't rename this on your account, so the old name stays for now. Check your connection and try again."
+    static let deleteNotSent = "We couldn't delete this from your account, so it's still here. Check your connection and try again."
+
+    func renameReport(_ scanID: UUID, to name: String) async {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, var report = report(id: scanID), report.name != trimmed else { return }
+        if let remoteScanID = report.remoteScanID {
+            let renamed = await runOnServer(failure: Self.renameNotSent) { _ = try await $0.renameScan(scanID: remoteScanID, name: trimmed) }
+            guard renamed else { return }
+        }
+        report.name = trimmed
+        await replace(report)
+    }
+
+    /// A server scan is deleted on the account first, so a failure leaves both copies in place.
+    func deleteReport(_ scanID: UUID) async {
+        guard let report = report(id: scanID) else { return }
+        if let remoteScanID = report.remoteScanID {
+            let deleted = await runOnServer(failure: Self.deleteNotSent) { try await $0.deleteScan(scanID: remoteScanID) }
+            guard deleted else { return }
+        }
+        await capture.deleteScan(scanID: scanID)
+        await commit(reports.filter { $0.scanID != scanID })
+        if route == .results(scanID) { route = .home }
+    }
+
+    /// An unfinished scan is gone from the phone whatever the server says; the server's half of it
+    /// was never checked, so a failed delete there costs nothing.
+    func deleteUnfinishedScan(_ scanID: UUID) async {
+        guard let scan = unfinishedScans.first(where: { $0.scanID == scanID }) else { return }
+        await capture.deleteScan(scanID: scanID)
+        unfinishedScans.removeAll { $0.scanID == scanID }
+        if let remoteScanID = scan.remoteScanID, let library {
+            try? await library.deleteScan(scanID: remoteScanID)
+        }
+    }
+
+    /// True when the server did it, or the scan was already gone from the account.
+    private func runOnServer(failure: String, _ work: (any ScanLibrary) async throws -> Void) async -> Bool {
+        guard let library else {
+            notice = failure
+            return false
+        }
+        do {
+            try await work(library)
+        } catch APIError.notFound {
+            return true
+        } catch {
+            notice = failure
+            return false
+        }
+        notice = nil
+        return true
+    }
+
     // MARK: Owner answers
 
     func answer(to question: OwnerQuestion, inReport reportID: UUID) -> AnswerValue? {

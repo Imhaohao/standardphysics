@@ -129,6 +129,14 @@ actor APIClient: UploadAPI {
         try await send(APIRoutes.listScans())
     }
 
+    func renameScan(scanID: String, name: String) async throws -> ScanResponse {
+        try await send(APIRoutes.renameScan(scanID: scanID, body: RenameScanRequest(name: name)))
+    }
+
+    func deleteScan(scanID: String) async throws {
+        _ = try await send(APIRoutes.deleteScan(scanID: scanID))
+    }
+
     func answers(scanID: String) async throws -> [ServerAnswer] {
         try await send(APIRoutes.answers(scanID: scanID))
     }

@@ -32,6 +32,9 @@ struct HomeView: View {
     }
 
     @ViewBuilder private var content: some View {
+        if let notice = model.notice {
+            NoticeBanner(message: notice) { model.dismissNotice() }
+        }
         if model.unfinishedScans.isEmpty && model.reports.isEmpty {
             HomeEmptyState()
         }
@@ -47,7 +50,7 @@ struct HomeView: View {
         if !model.reports.isEmpty {
             HomeSection(title: "Checked") {
                 ForEach(model.reports) { report in
-                    ReportRow(report: report) { model.openReport(report.scanID) }
+                    ReportRow(report: report)
                 }
             }
         }
@@ -131,10 +134,27 @@ private struct HomeSection<Content: View>: View {
 }
 
 private struct UnfinishedScanCard: View {
+    @Environment(AppModel.self) private var model
     let scan: ScanManifest
     let onContinue: () -> Void
+    @State private var isConfirmingDelete = false
 
     var body: some View {
+        card
+            .contextMenu {
+                Button("Delete scan", systemImage: "trash", role: .destructive) { isConfirmingDelete = true }
+            }
+            .alert("Delete this scan?", isPresented: $isConfirmingDelete) {
+                Button("Delete scan", role: .destructive) {
+                    Task { await model.deleteUnfinishedScan(scan.scanID) }
+                }
+                Button("Keep it", role: .cancel) {}
+            } message: {
+                Text(HomeCopy.deleteScanMessage(scan))
+            }
+    }
+
+    private var card: some View {
         Card(variant: .raised) {
             VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
@@ -180,36 +200,83 @@ struct RoomSlots: View {
     }
 }
 
+/// Opens the report on tap; a long press offers rename and delete.
 private struct ReportRow: View {
+    @Environment(AppModel.self) private var model
     let report: ScanReport
-    let action: () -> Void
+    @State private var isRenaming = false
+    @State private var draftName = ""
+    @State private var isConfirmingDelete = false
+
+    var body: some View {
+        Button { model.openReport(report.scanID) } label: { ReportRowLabel(report: report) }
+            .buttonStyle(.plain)
+            .contextMenu {
+                Button("Rename", systemImage: "pencil") {
+                    draftName = report.name
+                    isRenaming = true
+                }
+                Button("Delete report", systemImage: "trash", role: .destructive) { isConfirmingDelete = true }
+            }
+            .alert("Rename this report", isPresented: $isRenaming) {
+                TextField("Report name", text: $draftName)
+                Button("Save") {
+                    let name = draftName
+                    Task { await model.renameReport(report.scanID, to: name) }
+                }
+                Button("Cancel", role: .cancel) {}
+            }
+            .alert("Delete this report?", isPresented: $isConfirmingDelete) {
+                Button("Delete report", role: .destructive) {
+                    Task { await model.deleteReport(report.scanID) }
+                }
+                Button("Keep it", role: .cancel) {}
+            } message: {
+                Text(HomeCopy.deleteReportMessage(report))
+            }
+    }
+}
+
+nonisolated enum HomeCopy {
+    static func deleteReportMessage(_ report: ScanReport) -> String {
+        guard report.remoteScanID != nil else {
+            return "“\(report.name)” and the rooms behind it will be removed from this phone. You can't undo this."
+        }
+        return "“\(report.name)” will be removed from this phone and from your Standard Physics account. You can't undo this."
+    }
+
+    static func deleteScanMessage(_ scan: ScanManifest) -> String {
+        let rooms = scan.rooms.count == 1 ? "1 saved room" : "\(scan.rooms.count) saved rooms"
+        return "“\(scan.name)” and its \(rooms) will be removed from this phone. You can't undo this."
+    }
+}
+
+private struct ReportRowLabel: View {
+    let report: ScanReport
 
     var body: some View {
         let summary = ReportGrouping.summary(for: report)
-        Button(action: action) {
-            Card {
-                HStack(spacing: Theme.Spacing.m) {
-                    VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                        Text(report.name)
-                            .font(Theme.Typography.headline)
-                            .foregroundStyle(Theme.Palette.ink)
-                        Text(report.completedAt.formatted(date: .abbreviated, time: .omitted))
-                            .font(Theme.Typography.caption)
-                            .foregroundStyle(Theme.Palette.inkMuted)
-                    }
-                    Spacer(minLength: Theme.Spacing.s)
-                    if summary.toFix > 0 {
-                        StatusPill(tone: .fail, title: "\(summary.toFix) to fix")
-                    } else {
-                        StatusPill(tone: .pass, title: "Nothing to fix")
-                    }
-                    Image(systemName: "chevron.right")
-                        .font(Theme.Typography.caption.weight(.bold))
-                        .foregroundStyle(Theme.Palette.inkFaint)
+        Card {
+            HStack(spacing: Theme.Spacing.m) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                    Text(report.name)
+                        .font(Theme.Typography.headline)
+                        .foregroundStyle(Theme.Palette.ink)
+                    Text(report.completedAt.formatted(date: .abbreviated, time: .omitted))
+                        .font(Theme.Typography.caption)
+                        .foregroundStyle(Theme.Palette.inkMuted)
                 }
+                Spacer(minLength: Theme.Spacing.s)
+                if summary.toFix > 0 {
+                    StatusPill(tone: .fail, title: "\(summary.toFix) to fix")
+                } else {
+                    StatusPill(tone: .pass, title: "Nothing to fix")
+                }
+                Image(systemName: "chevron.right")
+                    .font(Theme.Typography.caption.weight(.bold))
+                    .foregroundStyle(Theme.Palette.inkFaint)
             }
         }
-        .buttonStyle(.plain)
     }
 }
 

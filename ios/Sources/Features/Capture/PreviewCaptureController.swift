@@ -83,6 +83,13 @@ final class PreviewCaptureController: CaptureControlling {
         phase = .idle
     }
 
+    func deleteScan(scanID: UUID) async {
+        storedScans[scanID] = nil
+        guard manifest?.scanID == scanID else { return }
+        manifest = nil
+        phase = .idle
+    }
+
     /// Puts the controller straight into `phase` with believable surroundings, for previews.
     func stage(_ phase: CapturePhase, roomsSaved: Int = 1) {
         var manifest = SampleData.unfinishedManifest(roomsSaved: roomsSaved)

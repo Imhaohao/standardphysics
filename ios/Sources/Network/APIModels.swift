@@ -392,6 +392,10 @@ nonisolated struct Report: Codable, Sendable, Equatable {
     }
 }
 
+nonisolated struct RenameScanRequest: Encodable, Sendable {
+    let name: String
+}
+
 nonisolated struct APIErrorBody: Decodable, Sendable {
     let error: String?
     let message: String?

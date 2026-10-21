@@ -59,6 +59,15 @@ nonisolated enum APIRoutes {
         Endpoint(method: .get, path: "\(apiPrefix)/scans", isIdempotent: true)
     }
 
+    static func renameScan(scanID: String, body: RenameScanRequest) -> Endpoint<ScanResponse> {
+        Endpoint(method: .patch, path: "\(apiPrefix)/scans/\(scanID)", body: body, isIdempotent: true)
+    }
+
+    /// Removes the scan's rows and stored files on the server.
+    static func deleteScan(scanID: String) -> Endpoint<EmptyResponse> {
+        Endpoint(method: .delete, path: "\(apiPrefix)/scans/\(scanID)", isIdempotent: true)
+    }
+
     static func assessment(scanID: String) -> Endpoint<Report> {
         Endpoint(method: .get, path: "\(apiPrefix)/scans/\(scanID)/assessment", isIdempotent: true)
     }
