@@ -6,7 +6,7 @@ import Foundation
 nonisolated struct ClassMapper: Sendable {
     static let obstacle = "obstacle"
 
-    /// The detector's 80 COCO class ids in order, spelled the way `coco` below expects.
+    /// The 80 COCO class ids in order, for a model whose metadata declares no labels.
     static let cocoLabelsByClassID = [
         "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat", "traffic light",
         "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep", "cow",
@@ -32,6 +32,11 @@ nonisolated struct ClassMapper: Sendable {
         "oven": "oven",
         "bed": "bed",
         "potted plant": obstacle,
+        // The published D-FINE COCO weights spell four classes the Pascal VOC way.
+        "sofa": "sofa",
+        "diningtable": "table",
+        "tvmonitor": "television",
+        "pottedplant": obstacle,
         "suitcase": obstacle,
         "backpack": obstacle,
         "handbag": obstacle,
@@ -50,7 +55,22 @@ nonisolated struct ClassMapper: Sendable {
         "threshold": "threshold",
     ])
 
-    static let standard = coco.merging(accessibilityFixtures)
+    /// Open Images and extra-dataset labels that `ios/scripts/train-detector.sh` teaches the detector.
+    static let accessibility = ClassMapper(categoriesByLabel: [
+        "door handle": "door_hardware",
+        "light switch": "light_switch",
+        "power plugs and sockets": "outlet",
+        "soap dispenser": "dispenser",
+        "paper towel": "dispenser",
+        "toilet paper": "toilet_paper_dispenser",
+        "hand dryer": "hand_dryer",
+        "mirror": "mirror",
+        "countertop": "counter",
+        "grab bar": "grab_bar",
+        "sign": "sign",
+    ])
+
+    static let standard = coco.merging(accessibilityFixtures).merging(accessibility)
 
     /// Categories the rules engine knows, i.e. every mapped id except `obstacle`.
     static let engineCategories = Set(standard.categoriesByLabel.values).subtracting([obstacle])

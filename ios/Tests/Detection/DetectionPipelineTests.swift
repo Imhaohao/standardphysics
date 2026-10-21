@@ -23,6 +23,37 @@ final class ClassMapperTests: XCTestCase {
         XCTAssertEqual(ClassMapper.standard.category(for: "door hardware"), "door_hardware")
         XCTAssertNil(ClassMapper.coco.category(for: "grab bar"))
     }
+
+    func testFineTunedAccessibilityLabelsMapToCatalogCategories() {
+        let expected = [
+            "door handle": "door_hardware",
+            "light switch": "light_switch",
+            "power plugs and sockets": "outlet",
+            "soap dispenser": "dispenser",
+            "paper towel": "dispenser",
+            "toilet paper": "toilet_paper_dispenser",
+            "hand dryer": "hand_dryer",
+            "mirror": "mirror",
+            "countertop": "counter",
+            "grab bar": "grab_bar",
+            "sign": "sign",
+            "sink": "sink",
+            "toilet": "toilet",
+        ]
+        for (label, category) in expected {
+            XCTAssertEqual(ClassMapper.standard.category(for: label), category, label)
+        }
+        XCTAssertEqual(ClassMapper.standard.category(for: "Door Handle"), "door_hardware")
+        XCTAssertTrue(Set(expected.values).isSubset(of: ClassMapper.engineCategories))
+    }
+
+    func testPublishedCocoWeightsSpellingsMapLikeCocoNames() {
+        let mapper = ClassMapper.standard
+        XCTAssertEqual(mapper.category(for: "sofa"), mapper.category(for: "couch"))
+        XCTAssertEqual(mapper.category(for: "diningtable"), mapper.category(for: "dining table"))
+        XCTAssertEqual(mapper.category(for: "tvmonitor"), mapper.category(for: "tv"))
+        XCTAssertEqual(mapper.category(for: "pottedplant"), mapper.category(for: "potted plant"))
+    }
 }
 
 final class FrameThrottlerTests: XCTestCase {

@@ -1,0 +1,28 @@
+# Python tools behind ios/scripts/export-detector.sh and ios/scripts/train-detector.sh.
+# Both scripts install this folder into their own venv, so every version is pinned here once.
+[project]
+name = "sp-detector"
+version = "1.0.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "coremltools==9.0",
+  "torch==2.7.0",
+  "transformers==4.57.1",
+  "safetensors",
+  "pillow",
+  "numpy<2.4",
+]
+
+[project.optional-dependencies]
+train = [
+  "fiftyone==1.22.1",
+  "pycocotools==2.0.11",
+  "scipy==1.16.3",
+]
+
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["sp_detector"]
