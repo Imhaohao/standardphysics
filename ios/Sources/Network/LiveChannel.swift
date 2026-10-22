@@ -30,7 +30,7 @@ actor LiveChannel {
     private let pongTimeout: Duration
     private let sleep: Sleeper
     private let maximumConsecutiveFailures: Int
-    private let logger = Logger(subsystem: "com.tarunyadgirkar.standardphysics", category: "live")
+    private let logger = Logger(subsystem: "com.standardphysics.capture", category: "live")
 
     private var runTask: Task<Void, Never>?
     private var activeConnection: (any WebSocketConnection)?

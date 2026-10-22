@@ -25,7 +25,7 @@ final class ARSessionHost: ARSessionHosting {
     let events: AsyncStream<ARHostEvent>
 
     private let relay: ARSessionEventRelay
-    private let delegateQueue = DispatchQueue(label: "com.tarunyadgirkar.standardphysics.ar-delegate", qos: .userInteractive)
+    private let delegateQueue = DispatchQueue(label: "com.standardphysics.capture.ar-delegate", qos: .userInteractive)
     private var configuration: ARWorldTrackingConfiguration?
     private var hasRun = false
 

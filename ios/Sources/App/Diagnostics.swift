@@ -7,7 +7,7 @@ nonisolated final class Diagnostics: Sendable {
     static let shared = Diagnostics()
     static let fileName = "diagnostics.jsonl"
 
-    private let queue = DispatchQueue(label: "com.tarunyadgirkar.standardphysics.diagnostics", qos: .utility)
+    private let queue = DispatchQueue(label: "com.standardphysics.capture.diagnostics", qos: .utility)
     private let url: URL
 
     init(directory: URL = URL.applicationSupportDirectory) {

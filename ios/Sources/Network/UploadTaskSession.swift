@@ -26,7 +26,7 @@ nonisolated protocol UploadTaskSession: Sendable {
 }
 
 nonisolated final class URLSessionUploadDriver: NSObject, UploadTaskSession, URLSessionTaskDelegate, @unchecked Sendable {
-    static let defaultIdentifier = "com.tarunyadgirkar.standardphysics.upload"
+    static let defaultIdentifier = "com.standardphysics.capture.upload"
 
     let events: AsyncStream<UploadTaskEvent>
     private let continuation: AsyncStream<UploadTaskEvent>.Continuation

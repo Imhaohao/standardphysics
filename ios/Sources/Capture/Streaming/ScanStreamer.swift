@@ -62,7 +62,7 @@ final class ScanStreamer: CaptureObserving, RoomDelivering {
     private let dependencies: Dependencies
     private var session: Session?
     private var chain: Task<Void, Never>?
-    private let logger = Logger(subsystem: "com.tarunyadgirkar.standardphysics", category: "streaming")
+    private let logger = Logger(subsystem: "com.standardphysics.capture", category: "streaming")
 
     init(dependencies: Dependencies) {
         self.dependencies = dependencies

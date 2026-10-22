@@ -1,6 +1,6 @@
 name: StandardPhysics
 options:
-  bundleIdPrefix: com.tarunyadgirkar
+  bundleIdPrefix: com.standardphysics
   deploymentTarget:
     iOS: "26.0"
   createIntermediateGroups: true
@@ -8,7 +8,7 @@ options:
 
 settings:
   base:
-    DEVELOPMENT_TEAM: 5AKJYZ7USP
+    DEVELOPMENT_TEAM: K4Z2L5279D
     CODE_SIGN_STYLE: Automatic
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
@@ -31,7 +31,7 @@ targets:
         embed: false
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.tarunyadgirkar.standardphysics.engine
+        PRODUCT_BUNDLE_IDENTIFIER: com.standardphysics.capture.engine
         GENERATE_INFOPLIST_FILE: YES
         SWIFT_VERSION: "5.0"
         SWIFT_STRICT_CONCURRENCY: minimal
@@ -59,7 +59,7 @@ targets:
       - target: SPEngineKit
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.tarunyadgirkar.standardphysics
+        PRODUCT_BUNDLE_IDENTIFIER: com.standardphysics.capture
         INFOPLIST_FILE: Resources/Info.plist
         TARGETED_DEVICE_FAMILY: "1"
       # Change the server here. Release must be https; Debug may use a local http server.
@@ -87,7 +87,7 @@ targets:
       - target: StandardPhysics
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.tarunyadgirkar.standardphysics.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.standardphysics.capture.tests
         GENERATE_INFOPLIST_FILE: YES
         TEST_HOST: $(BUILT_PRODUCTS_DIR)/StandardPhysics.app/StandardPhysics
         BUNDLE_LOADER: $(TEST_HOST)

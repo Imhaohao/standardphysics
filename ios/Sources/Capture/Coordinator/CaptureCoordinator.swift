@@ -51,7 +51,7 @@ final class CaptureCoordinator: CaptureControlling {
     @ObservationIgnored private var listeners: [Task<Void, Never>] = []
     @ObservationIgnored private var observers: [any NSObjectProtocol] = []
     @ObservationIgnored private var stateWaiters: [StateWaiter] = []
-    @ObservationIgnored private let logger = Logger(subsystem: "com.tarunyadgirkar.standardphysics", category: "capture")
+    @ObservationIgnored private let logger = Logger(subsystem: "com.standardphysics.capture", category: "capture")
 
     init(dependencies: CaptureDependencies) {
         self.dependencies = dependencies

@@ -48,7 +48,7 @@
 	</array>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
-		<string>com.tarunyadgirkar.standardphysics.upload</string>
+		<string>com.standardphysics.capture.upload</string>
 	</array>
 	<key>UILaunchScreen</key>
 	<dict/>

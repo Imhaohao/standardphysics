@@ -17,7 +17,7 @@ nonisolated final class KeychainTokenStore: TokenStoring {
     private let service: String
     private let account: String
 
-    init(service: String = "com.tarunyadgirkar.standardphysics.api", account: String = "access-token") {
+    init(service: String = "com.standardphysics.capture.api", account: String = "access-token") {
         self.service = service
         self.account = account
     }
