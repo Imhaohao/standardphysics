@@ -8,7 +8,8 @@ use uuid::Uuid;
 use crate::engine::object_categories;
 use crate::live::rooms::RoomState;
 use crate::state::AppState;
-use crate::vision::{group_by_id, LabelRequest};
+use crate::vision::{group_by_id, LabelRequest, LabelResult};
+use crate::vision_cache::{self, cache_key};
 
 #[derive(Debug, Clone)]
 pub struct PendingObservation {
@@ -54,17 +55,23 @@ pub fn pending_observations(rooms: &[RoomState]) -> Vec<PendingObservation> {
         .collect()
 }
 
+struct CropLocation {
+    key: String,
+    content_type: String,
+    sha256: String,
+}
+
 async fn crop_locations(
     db: &PgPool,
     scan_id: Uuid,
     pending: &[PendingObservation],
-) -> Result<HashMap<Uuid, (String, String)>> {
+) -> Result<HashMap<Uuid, CropLocation>> {
     let ids: Vec<Uuid> = pending.iter().filter_map(|p| p.crop_artifact_id).collect();
     if ids.is_empty() {
         return Ok(HashMap::new());
     }
-    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
-        "SELECT id, s3_key, content_type FROM artifacts WHERE scan_id = $1 AND id = ANY($2)",
+    let rows: Vec<(Uuid, String, String, String)> = sqlx::query_as(
+        "SELECT id, s3_key, content_type, sha256 FROM artifacts WHERE scan_id = $1 AND id = ANY($2)",
     )
     .bind(scan_id)
     .bind(&ids)
@@ -72,22 +79,32 @@ async fn crop_locations(
     .await?;
     Ok(rows
         .into_iter()
-        .map(|(id, key, content_type)| (id, (key, content_type)))
+        .map(|(id, key, content_type, sha256)| {
+            (
+                id,
+                CropLocation {
+                    key,
+                    content_type,
+                    sha256,
+                },
+            )
+        })
         .collect())
 }
 
 fn label_requests(
     pending: &[PendingObservation],
-    locations: &HashMap<Uuid, (String, String)>,
+    locations: &HashMap<Uuid, CropLocation>,
 ) -> Vec<LabelRequest> {
     pending
         .iter()
         .filter_map(|p| {
-            let (key, content_type) = locations.get(&p.crop_artifact_id?)?;
+            let crop = locations.get(&p.crop_artifact_id?)?;
             Some(LabelRequest {
                 observation_id: p.observation_id.clone(),
-                crop_key: key.clone(),
-                content_type: content_type.clone(),
+                crop_key: crop.key.clone(),
+                content_type: crop.content_type.clone(),
+                image_sha256: crop.sha256.clone(),
             })
         })
         .collect()
@@ -110,15 +127,7 @@ pub async fn run_label_stage(
     }
     let locations = crop_locations(&state.db, scan_id, &pending).await?;
     let requests = label_requests(&pending, &locations);
-    let categories = object_categories();
-    let outcome = state
-        .labeller
-        .label_all(&state.storage, categories, requests)
-        .await;
-    if outcome.deadline_hit {
-        tracing::warn!(%scan_id, missing = outcome.unlabelled.len(), "vision labelling hit its deadline");
-    }
-    let labels = group_by_id(outcome.labelled);
+    let labels = label_with_cache(state, scan_id, requests).await?;
     let mut stage = LabelStage::default();
     for item in pending {
         let label = labels.get(&item.observation_id);
@@ -131,6 +140,63 @@ pub async fn run_label_stage(
         }
     }
     Ok(stage)
+}
+
+fn label_cache_key(model: &str, categories: &[String], request: &LabelRequest) -> String {
+    cache_key(&["label", model, &categories.join(","), &request.image_sha256])
+}
+
+fn cached_label(reply: &Value, observation_id: &str) -> Option<LabelResult> {
+    Some(LabelResult {
+        observation_id: observation_id.to_string(),
+        category: reply.get("category")?.as_str()?.to_string(),
+        confidence: reply.get("confidence")?.as_f64()?,
+    })
+}
+
+/// Labels from the cache first; only crops never seen before go to the model.
+async fn label_with_cache(
+    state: &AppState,
+    scan_id: Uuid,
+    requests: Vec<LabelRequest>,
+) -> Result<HashMap<String, LabelResult>> {
+    let categories = object_categories();
+    let model = state.labeller.model().to_string();
+    let key_of = |r: &LabelRequest| label_cache_key(&model, categories, r);
+    let keys: Vec<String> = requests.iter().map(key_of).collect();
+    let cached = vision_cache::lookup(&state.db, &keys).await?;
+    let (hits, misses): (Vec<_>, Vec<_>) = requests
+        .into_iter()
+        .partition(|r| cached.contains_key(&key_of(r)));
+    let mut results: Vec<LabelResult> = hits
+        .iter()
+        .filter_map(|r| cached_label(&cached[&key_of(r)], &r.observation_id))
+        .collect();
+    let keys_by_id: HashMap<String, String> = misses
+        .iter()
+        .map(|r| (r.observation_id.clone(), key_of(r)))
+        .collect();
+    let outcome = state
+        .labeller
+        .label_all(&state.storage, categories, misses)
+        .await;
+    if outcome.deadline_hit {
+        tracing::warn!(%scan_id, missing = outcome.unlabelled.len(), "vision labelling hit its deadline");
+    }
+    let fresh: Vec<(String, Value)> = outcome
+        .labelled
+        .iter()
+        .filter_map(|l| {
+            let key = keys_by_id.get(&l.observation_id)?.clone();
+            Some((
+                key,
+                json!({"category": l.category, "confidence": l.confidence}),
+            ))
+        })
+        .collect();
+    vision_cache::store(&state.db, &fresh).await?;
+    results.extend(outcome.labelled);
+    Ok(group_by_id(results))
 }
 
 fn apply_label_to_rooms(

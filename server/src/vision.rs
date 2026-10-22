@@ -23,6 +23,7 @@ pub struct LabelRequest {
     pub observation_id: String,
     pub crop_key: String,
     pub content_type: String,
+    pub image_sha256: String,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -115,6 +116,10 @@ impl Labeller {
 
     pub fn is_enabled(&self) -> bool {
         self.cfg.api_key.is_some()
+    }
+
+    pub fn model(&self) -> &str {
+        &self.cfg.model
     }
 
     pub fn deadline(&self) -> Duration {
@@ -252,6 +257,7 @@ nothing else. Use \"answer\": null when the photo does not show enough to answer
 pub struct PhotoRef {
     pub key: String,
     pub content_type: String,
+    pub sha256: String,
 }
 
 pub struct PhotoQuestion {

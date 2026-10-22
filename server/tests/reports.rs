@@ -373,3 +373,67 @@ async fn photo_answers_need_a_label_key_and_a_photo_artifact() {
         .await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
 }
+
+async fn finish_with_crop(app: &TestApp, token: &str, crop_bytes: &[u8]) -> Value {
+    let scan_id = app.create_scan(token).await;
+    let crop = upload_artifact(app, token, &scan_id, "crop", crop_bytes).await;
+    let mut phone = connect_live(app, token, &scan_id, "writer").await;
+    next_of_type(&mut phone, "hello").await;
+    let room = door_room_at("r1", 0.9, 1);
+    let observation = json!({"id": "o1", "crop_artifact_id": crop,
+        "center": {"x": 1.0, "y": 0.5, "z": 1.0}, "size": {"x": 0.5, "y": 1.0, "z": 0.5}});
+    send_json(
+        &mut phone,
+        json!({"type": "room", "room_id": room["identifier"], "final": true,
+        "captured_room": room, "observations": [observation]}),
+    )
+    .await;
+    next_of_type(&mut phone, "findings").await;
+    let (status, report) = app
+        .post(token, &format!("/v1/scans/{scan_id}/finish"), json!({}))
+        .await;
+    assert_eq!(status, StatusCode::OK, "{report}");
+    report
+}
+
+#[tokio::test]
+async fn the_same_crop_is_labelled_once_across_scans() {
+    let app = TestApp::start().await;
+    let token = app.register("cache@example.com").await;
+    let first = finish_with_crop(&app, &token, b"same-jpeg").await;
+    assert_eq!(first["labelled_by_vision"], 1);
+    assert_eq!(app.label_api.calls.load(Ordering::SeqCst), 1);
+
+    let again = finish_with_crop(&app, &token, b"same-jpeg").await;
+    assert_eq!(again["labelled_by_vision"], 1);
+    assert_eq!(
+        app.label_api.calls.load(Ordering::SeqCst),
+        1,
+        "served from the cache"
+    );
+
+    finish_with_crop(&app, &token, b"other-jpeg").await;
+    assert_eq!(app.label_api.calls.load(Ordering::SeqCst), 2);
+}
+
+#[tokio::test]
+async fn the_same_photo_is_read_once() {
+    let app = TestApp::start().await;
+    let token = app.register("photocache@example.com").await;
+    for _ in 0..2 {
+        let (scan_id, question, photo) = photo_question(&app, &token).await;
+        let ask = &question["ask"];
+        let body =
+            json!({"subject_id": ask["subject_id"], "metric": ask["metric"], "artifact_id": photo});
+        let (status, reply) = app
+            .post(&token, &format!("/v1/scans/{scan_id}/photo-answers"), body)
+            .await;
+        assert_eq!(status, StatusCode::OK, "{reply}");
+        assert_eq!(reply["answered"], true);
+    }
+    assert_eq!(
+        app.label_api.calls.load(Ordering::SeqCst),
+        1,
+        "the second scan's identical photo came from the cache"
+    );
+}

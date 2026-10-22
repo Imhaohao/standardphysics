@@ -156,10 +156,30 @@ The address `api.standardphysics.app` still points at the old v1 server. Once th
 
 | Variable | What it turns on |
 | --- | --- |
-| `LABEL_API_KEY` | Names objects the phone could not identify, using an image model (OpenRouter by default). Without it those objects become questions for the owner. |
+| `LABEL_API_KEY` | Names objects the phone could not identify, using an image model (see "Turning on the photo AI" below). Without it those objects become questions for the owner. |
 | `LOG_FORMAT=json` | Structured logs, already set inside the container |
 
 The full list of settings is in `server/README.md`.
+
+### Turning on the photo AI (Gemini 3.8 Flash, free tier)
+
+The AI names objects the phone couldn't identify and answers photo questions such as "Does the faucet have lever handles?". Google's free tier costs nothing, but Google may use what you send it to improve its products, and it has daily limits. Answers are cached by a hash of the photo, so the same photo is never sent twice.
+
+1. Go to https://aistudio.google.com/apikey, sign in with your Google account and click **Create API key**. Don't add a billing account, so it stays free.
+2. Open `server/.env.local` in a text editor and add these four lines, pasting your key after the `=`:
+   ```
+   LABEL_API_BASE=https://generativelanguage.googleapis.com/v1beta/openai
+   LABEL_MODEL=gemini-3.8-flash
+   LABEL_CONCURRENCY=4
+   LABEL_API_KEY=
+   ```
+3. Send the new settings to Modal and redeploy (from the repository folder):
+   ```sh
+   modal secret create sp-server --from-dotenv server/.env.local --force
+   MIN_CONTAINERS=0 modal deploy server/deploy/modal_app.py
+   ```
+
+Never paste the key into a chat.
 
 ## When something goes wrong
 

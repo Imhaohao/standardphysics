@@ -20,6 +20,7 @@ pub mod state;
 pub mod storage;
 pub mod uploads;
 pub mod vision;
+pub mod vision_cache;
 
 use axum::extract::DefaultBodyLimit;
 use axum::routing::{delete, get, post};

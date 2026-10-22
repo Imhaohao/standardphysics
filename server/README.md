@@ -81,6 +81,10 @@ The contract is `openapi.json` (also served at `GET /v1/openapi.json`). Everythi
 - Share links: `POST|GET /v1/scans/{id}/shares`, `DELETE /v1/scans/{id}/shares/{token}`. `GET /v1/shared/{token}` needs no auth and returns `{scan, report, scene}`; the web page is `/r/{token}`.
 - Health: `/health`, `/health/ready` (database + bucket).
 
+## Vision cache
+
+Every vision reply (object label or photo answer) is stored in `vision_cache` under a SHA-256 of the model, the question and the image's SHA-256, so identical crops and photos are never sent to the model twice, across scans and users.
+
 ## Finish pipeline
 
 `POST /v1/scans/{id}/finish`: load rooms, vision-label uncategorised crops (bounded parallelism, hard deadline), evaluate with a fresh engine, store the assessment, enqueue `texture_bake`, push `report` to subscribers. Objects the labeller did not resolve in time yield `needs_info` findings (`label.unresolved`) and never block. Per-stage timings are logged (`finish pipeline timings`) and returned in `report.timings`.
