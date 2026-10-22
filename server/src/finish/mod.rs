@@ -1,5 +1,6 @@
 pub mod labelling;
 pub mod pipeline;
+pub mod relabel;
 
 use axum::extract::{Path, State};
 use axum::Json;

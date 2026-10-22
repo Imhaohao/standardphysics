@@ -6,6 +6,7 @@ use std::sync::OnceLock;
 use anyhow::{anyhow, Context, Result};
 use serde_json::{json, Value};
 use sp_core::metrics::Catalog;
+use sp_core::overrides;
 use sp_core::roomplan::{detect_connections, import_captured_json};
 use sp_core::scene::{Object, ObjectSource, Observation, Room, Scene};
 use sp_core::Engine;
@@ -34,8 +35,100 @@ fn build_room(input: &RoomInput, catalog: &Catalog) -> Result<Option<Room>> {
         return Ok(None);
     };
     let mut room = room_from_capture(input, capture)?;
+    apply_vision_relabels(&mut room, &input.observations, catalog);
     add_detector_objects(&mut room, &input.observations, catalog);
     Ok(Some(room))
+}
+
+/// The answer the owner gives to correct an object's category (see `sp_core::overrides`).
+pub const CATEGORY_OVERRIDE_METRIC: &str = overrides::CATEGORY_OVERRIDE_METRIC;
+
+/// The choices offered for [`CATEGORY_OVERRIDE_METRIC`].
+pub fn category_choices() -> Vec<String> {
+    overrides::choice_labels()
+}
+
+/// A RoomPlan object as the scanner reported it, before any relabel.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ScannedObject {
+    pub room_id: String,
+    pub category: String,
+    /// Metres above the floor.
+    pub top_height: f64,
+    /// Metres along the object's longer horizontal side.
+    pub width: f64,
+    pub center: [f64; 3],
+}
+
+/// Every RoomPlan object in the captured rooms, by object id. Rooms that do not import are skipped.
+pub fn scanned_objects(inputs: &[RoomInput]) -> BTreeMap<String, ScannedObject> {
+    let rooms = inputs
+        .iter()
+        .filter_map(|input| Some((input, input.captured_room.as_ref()?)))
+        .filter_map(|(input, capture)| room_from_capture(input, capture).ok());
+    rooms
+        .flat_map(|room| {
+            let room_id = room.id.clone();
+            room.objects
+                .into_iter()
+                .map(move |o| (o.id.clone(), scanned_object(&room_id, &o)))
+        })
+        .collect()
+}
+
+fn scanned_object(room_id: &str, object: &Object) -> ScannedObject {
+    ScannedObject {
+        room_id: room_id.to_string(),
+        category: object.category.clone(),
+        top_height: object.top_height,
+        width: object.size.x.max(object.size.z),
+        center: [object.center.x, object.center.y, object.center.z],
+    }
+}
+
+/// `(object id, category)` of a relabel the vision model was confident about.
+fn vision_relabel(value: &Value) -> Option<(&str, &str)> {
+    let object_id = value.get("relabel_object_id")?.as_str()?;
+    let category = value.get("relabel_category")?.as_str()?;
+    Some((object_id, category))
+}
+
+fn relabel_object(object: &mut Object, category: &str, value: &Value) {
+    if object.category != category {
+        object
+            .attributes
+            .insert("scanned_category".into(), object.category.clone());
+    }
+    object.category = category.to_string();
+    object
+        .attributes
+        .insert("label_source".into(), "vision".into());
+    if let Some(built_in) = value.get("built_in").and_then(Value::as_bool) {
+        object
+            .attributes
+            .insert("built_in".into(), built_in.to_string());
+    }
+    if let Some(confidence) = value.get("label_confidence").and_then(Value::as_f64) {
+        object
+            .attributes
+            .insert("label_confidence".into(), format!("{confidence:.2}"));
+    }
+}
+
+/// RoomPlan calls ordering counters `storage` and built-in benches `sofa`; a confident vision
+/// relabel replaces the category before any rule sees the object.
+fn apply_vision_relabels(room: &mut Room, observations: &[Value], catalog: &Catalog) {
+    for value in observations {
+        let Some((object_id, category)) = vision_relabel(value) else {
+            continue;
+        };
+        if !catalog.is_known_category(category) {
+            continue;
+        }
+        if let Some(object) = room.objects.iter_mut().find(|o| o.id == object_id) {
+            relabel_object(object, category, value);
+        }
+    }
 }
 
 fn scene_from_inputs(inputs: &[RoomInput], catalog: &Catalog) -> Result<Scene> {
@@ -52,6 +145,7 @@ fn scene_from_inputs(inputs: &[RoomInput], catalog: &Catalog) -> Result<Scene> {
         .filter(|v| is_scene_observation(v))
         .filter_map(|v| serde_json::from_value(v.clone()).ok())
         .collect();
+    overrides::apply_category_overrides(&mut scene, &|c| catalog.is_known_category(c));
     Ok(scene)
 }
 

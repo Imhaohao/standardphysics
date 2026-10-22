@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::time::Instant;
 
 use anyhow::Result;
@@ -5,9 +6,10 @@ use serde_json::json;
 use uuid::Uuid;
 
 use super::labelling::{pending_observations, run_label_stage, LabelStage};
+use super::relabel;
 use crate::answers::answer_observations;
 use crate::assessments::{self, NewAssessment};
-use crate::engine::{RoomInput, SceneEngine};
+use crate::engine::{scanned_objects, RoomInput, ScannedObject, SceneEngine};
 use crate::findings::{needs_info_finding, summarize, EvaluationReport, Finding};
 use crate::jobs::queue::{enqueue, EnqueueOptions, JobKind};
 use crate::live::protocol::ServerMessage;
@@ -51,6 +53,18 @@ fn unresolved_findings(stage: &LabelStage) -> Vec<Finding> {
         .collect()
 }
 
+/// Findings the server adds to the engine's: unidentified crops and objects to ask the owner about.
+fn labelling_findings(
+    stage: &LabelStage,
+    rooms: &[RoomState],
+    answers: &[serde_json::Value],
+    scanned: &BTreeMap<String, ScannedObject>,
+) -> Vec<Finding> {
+    let mut findings = unresolved_findings(stage);
+    findings.extend(relabel::questions(rooms, answers, scanned));
+    findings
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Labelling {
     Run,
@@ -66,10 +80,12 @@ async fn save_labels(state: &AppState, scan_id: Uuid, rooms: &[RoomState]) -> Re
     Ok(())
 }
 
+/// Detector crops and RoomPlan relabels go to the model side by side, under one deadline each.
 async fn label_rooms(
     state: &AppState,
     scan_id: Uuid,
     rooms: &mut [RoomState],
+    scanned: &BTreeMap<String, ScannedObject>,
     labelling: Labelling,
 ) -> Result<LabelStage> {
     if labelling == Labelling::Reuse {
@@ -78,8 +94,15 @@ async fn label_rooms(
             unresolved: pending_observations(rooms),
         });
     }
-    let stage = run_label_stage(state, scan_id, rooms).await?;
-    if stage.labelled > 0 {
+    let jobs = relabel::prepare(state, scan_id, rooms, scanned).await?;
+    let (stage, relabels) = tokio::join!(
+        run_label_stage(state, scan_id, rooms),
+        relabel::fetch(state, scan_id, jobs)
+    );
+    let mut stage = stage?;
+    let relabelled = relabel::apply(rooms, &relabels?);
+    stage.labelled += relabelled.applied;
+    if stage.labelled > 0 || relabelled.changed > 0 {
         save_labels(state, scan_id, rooms).await?;
     }
     Ok(stage)
@@ -100,16 +123,19 @@ async fn assess(state: &AppState, scan_id: Uuid, labelling: Labelling) -> Result
     let stage_start = Instant::now();
     let mut rooms = load_rooms(&state.db, scan_id).await?;
     let answers = answer_observations(&state.db, scan_id).await?;
+    let inputs: Vec<RoomInput> = rooms.iter().map(RoomState::to_input).collect();
+    let scanned = scanned_objects(&inputs);
     let load_ms = elapsed_ms(stage_start);
 
     let stage_start = Instant::now();
-    let label_stage = label_rooms(state, scan_id, &mut rooms, labelling).await?;
+    let label_stage = label_rooms(state, scan_id, &mut rooms, &scanned, labelling).await?;
+    let extra = labelling_findings(&label_stage, &rooms, &answers, &scanned);
     let labelling_ms = elapsed_ms(stage_start);
 
     let stage_start = Instant::now();
     let evaluation = evaluate_rooms(inputs_with_answers(&rooms, answers)).await?;
     let mut findings = evaluation.findings;
-    findings.extend(unresolved_findings(&label_stage));
+    findings.extend(extra);
     let evaluation_ms = elapsed_ms(stage_start);
 
     let stage_start = Instant::now();
@@ -170,6 +196,6 @@ pub async fn after_finish(state: &AppState, report: &Report) -> Result<()> {
 
 pub async fn merged_scene(db: &sqlx::PgPool, scan_id: Uuid) -> Result<Option<serde_json::Value>> {
     let rooms = load_rooms(db, scan_id).await?;
-    let inputs: Vec<_> = rooms.iter().map(RoomState::to_input).collect();
+    let inputs = inputs_with_answers(&rooms, answer_observations(db, scan_id).await?);
     tokio::task::spawn_blocking(move || crate::engine::assemble_scene(&inputs)).await?
 }

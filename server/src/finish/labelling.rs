@@ -8,7 +8,7 @@ use uuid::Uuid;
 use crate::engine::object_categories;
 use crate::live::rooms::RoomState;
 use crate::state::AppState;
-use crate::vision::{group_by_id, LabelRequest, LabelResult};
+use crate::vision::{group_by_id, LabelQuestion, LabelRequest, LabelResult};
 use crate::vision_cache::{self, cache_key};
 
 #[derive(Debug, Clone)]
@@ -31,12 +31,17 @@ fn has_category(observation: &Value) -> bool {
         .is_some_and(|c| !c.is_empty())
 }
 
-fn crop_artifact_id(observation: &Value) -> Option<Uuid> {
+pub(crate) fn crop_artifact_id(observation: &Value) -> Option<Uuid> {
     observation.get("crop_artifact_id")?.as_str()?.parse().ok()
 }
 
+/// A request to check a RoomPlan object's category; `finish::relabel` handles it.
+pub fn is_relabel(observation: &Value) -> bool {
+    observation.get("relabel_object_id").is_some()
+}
+
 fn needs_label(observation: &Value) -> bool {
-    !has_category(observation) && observation.get("metric").is_none()
+    !has_category(observation) && observation.get("metric").is_none() && !is_relabel(observation)
 }
 
 pub fn pending_observations(rooms: &[RoomState]) -> Vec<PendingObservation> {
@@ -55,18 +60,18 @@ pub fn pending_observations(rooms: &[RoomState]) -> Vec<PendingObservation> {
         .collect()
 }
 
-struct CropLocation {
-    key: String,
-    content_type: String,
-    sha256: String,
+pub(crate) struct CropLocation {
+    pub key: String,
+    pub content_type: String,
+    pub sha256: String,
 }
 
-async fn crop_locations(
+/// Where this scan's crops are stored; ids that belong to another scan are left out.
+pub(crate) async fn crop_locations(
     db: &PgPool,
     scan_id: Uuid,
-    pending: &[PendingObservation],
+    ids: Vec<Uuid>,
 ) -> Result<HashMap<Uuid, CropLocation>> {
-    let ids: Vec<Uuid> = pending.iter().filter_map(|p| p.crop_artifact_id).collect();
     if ids.is_empty() {
         return Ok(HashMap::new());
     }
@@ -105,6 +110,7 @@ fn label_requests(
                 crop_key: crop.key.clone(),
                 content_type: crop.content_type.clone(),
                 image_sha256: crop.sha256.clone(),
+                context: String::new(),
             })
         })
         .collect()
@@ -125,9 +131,12 @@ pub async fn run_label_stage(
     if pending.is_empty() {
         return Ok(LabelStage::default());
     }
-    let locations = crop_locations(&state.db, scan_id, &pending).await?;
+    let crop_ids = pending.iter().filter_map(|p| p.crop_artifact_id).collect();
+    let locations = crop_locations(&state.db, scan_id, crop_ids).await?;
     let requests = label_requests(&pending, &locations);
-    let labels = label_with_cache(state, scan_id, requests).await?;
+    let categories = object_categories();
+    let labels =
+        label_with_cache(state, scan_id, LabelQuestion::Object, categories, requests).await?;
     let mut stage = LabelStage::default();
     for item in pending {
         let label = labels.get(&item.observation_id);
@@ -142,8 +151,26 @@ pub async fn run_label_stage(
     Ok(stage)
 }
 
-fn label_cache_key(model: &str, categories: &[String], request: &LabelRequest) -> String {
-    cache_key(&["label", model, &categories.join(","), &request.image_sha256])
+/// Bump when the relabel prompt changes, so old replies are not reused for a new question.
+const RELABEL_PROMPT_VERSION: &str = "relabel-v1";
+
+fn label_cache_key(
+    question: LabelQuestion,
+    model: &str,
+    categories: &[String],
+    request: &LabelRequest,
+) -> String {
+    let categories = categories.join(",");
+    match question {
+        LabelQuestion::Object => cache_key(&["label", model, &categories, &request.image_sha256]),
+        LabelQuestion::Relabel => cache_key(&[
+            RELABEL_PROMPT_VERSION,
+            model,
+            &categories,
+            &request.context,
+            &request.image_sha256,
+        ]),
+    }
 }
 
 fn cached_label(reply: &Value, observation_id: &str) -> Option<LabelResult> {
@@ -151,18 +178,28 @@ fn cached_label(reply: &Value, observation_id: &str) -> Option<LabelResult> {
         observation_id: observation_id.to_string(),
         category: reply.get("category")?.as_str()?.to_string(),
         confidence: reply.get("confidence")?.as_f64()?,
+        built_in: reply.get("built_in").and_then(Value::as_bool),
     })
 }
 
+fn cache_entry(label: &LabelResult) -> Value {
+    let mut entry = json!({"category": label.category, "confidence": label.confidence});
+    if let Some(built_in) = label.built_in {
+        entry["built_in"] = json!(built_in);
+    }
+    entry
+}
+
 /// Labels from the cache first; only crops never seen before go to the model.
-async fn label_with_cache(
+pub(crate) async fn label_with_cache(
     state: &AppState,
     scan_id: Uuid,
+    question: LabelQuestion,
+    categories: &[String],
     requests: Vec<LabelRequest>,
 ) -> Result<HashMap<String, LabelResult>> {
-    let categories = object_categories();
     let model = state.labeller.model().to_string();
-    let key_of = |r: &LabelRequest| label_cache_key(&model, categories, r);
+    let key_of = |r: &LabelRequest| label_cache_key(question, &model, categories, r);
     let keys: Vec<String> = requests.iter().map(key_of).collect();
     let cached = vision_cache::lookup(&state.db, &keys).await?;
     let (hits, misses): (Vec<_>, Vec<_>) = requests
@@ -178,21 +215,15 @@ async fn label_with_cache(
         .collect();
     let outcome = state
         .labeller
-        .label_all(&state.storage, categories, misses)
+        .label_all(&state.storage, question, categories, misses)
         .await;
     if outcome.deadline_hit {
-        tracing::warn!(%scan_id, missing = outcome.unlabelled.len(), "vision labelling hit its deadline");
+        tracing::warn!(%scan_id, ?question, missing = outcome.unlabelled.len(), "vision labelling hit its deadline");
     }
     let fresh: Vec<(String, Value)> = outcome
         .labelled
         .iter()
-        .filter_map(|l| {
-            let key = keys_by_id.get(&l.observation_id)?.clone();
-            Some((
-                key,
-                json!({"category": l.category, "confidence": l.confidence}),
-            ))
-        })
+        .filter_map(|l| Some((keys_by_id.get(&l.observation_id)?.clone(), cache_entry(l))))
         .collect();
     vision_cache::store(&state.db, &fresh).await?;
     results.extend(outcome.labelled);
@@ -233,6 +264,7 @@ mod tests {
             json!({"id": "a", "category": "toilet"}),
             json!({"id": "b", "crop_artifact_id": "00000000-0000-0000-0000-000000000001"}),
             json!({"id": "c", "category": ""}),
+            json!({"id": "relabel-x", "relabel_object_id": "X"}),
         ]);
         let pending = pending_observations(&[room]);
         let ids: Vec<_> = pending.iter().map(|p| p.observation_id.as_str()).collect();

@@ -18,12 +18,32 @@ const SYSTEM_PROMPT: &str = "You label cropped photos of objects found in commer
 for an accessibility inspection. Reply with a JSON object {\"category\": <one of the allowed \
 categories>, \"confidence\": <number between 0 and 1>} and nothing else.";
 
+const RELABEL_SYSTEM_PROMPT: &str = "You check what an object in a business interior is, for \
+an accessibility inspection. A room scanner has already guessed its category, and that guess is \
+often wrong for counters and built-in seating, so decide from the photo. A sales_counter or \
+service_counter is where customers order, pay or are served; a dining_table or bar_counter is \
+where people sit to eat or drink; a work_surface is a desk or counter people work at. built_in \
+is true when the object is fixed to the floor or a wall, like a banquette or a fixed counter. \
+Reply with a JSON object {\"category\": <one of the allowed categories>, \"built_in\": <true \
+or false>, \"confidence\": <number between 0 and 1>} and nothing else.";
+
+/// What the model is asked about a crop.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LabelQuestion {
+    /// A detector crop with no category yet.
+    Object,
+    /// A RoomPlan object whose category may be wrong; the reply also says whether it is built in.
+    Relabel,
+}
+
 #[derive(Clone, Debug)]
 pub struct LabelRequest {
     pub observation_id: String,
     pub crop_key: String,
     pub content_type: String,
     pub image_sha256: String,
+    /// What the scanner already knows about the object, added to the question.
+    pub context: String,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -31,6 +51,8 @@ pub struct LabelResult {
     pub observation_id: String,
     pub category: String,
     pub confidence: f64,
+    /// Only answered for [`LabelQuestion::Relabel`].
+    pub built_in: Option<bool>,
 }
 
 #[derive(Debug, Default)]
@@ -76,6 +98,27 @@ pub fn build_request_body(model: &str, categories: &[String], data_uri: &str) ->
     })
 }
 
+pub fn build_relabel_request_body(
+    model: &str,
+    categories: &[String],
+    context: &str,
+    data_uri: &str,
+) -> Value {
+    let text = format!("Allowed categories: {}. {context}", categories.join(", "));
+    json!({
+        "model": model,
+        "temperature": 0,
+        "response_format": {"type": "json_object"},
+        "messages": [
+            {"role": "system", "content": RELABEL_SYSTEM_PROMPT},
+            {"role": "user", "content": [
+                {"type": "text", "text": text.trim_end()},
+                {"type": "image_url", "image_url": {"url": data_uri}},
+            ]},
+        ],
+    })
+}
+
 fn strip_code_fence(content: &str) -> &str {
     let trimmed = content.trim();
     let without_open = trimmed
@@ -106,6 +149,41 @@ pub fn parse_label(content: &str, categories: &[String]) -> Result<(String, f64)
     Ok((category, confidence.clamp(0.0, 1.0)))
 }
 
+/// A relabel reply: the category, whether the object is built in, and the confidence.
+pub fn parse_relabel(content: &str, categories: &[String]) -> Result<(String, Option<bool>, f64)> {
+    let (category, confidence) = parse_label(content, categories)?;
+    let value: Value = serde_json::from_str(strip_code_fence(content))?;
+    let built_in = value.get("built_in").and_then(Value::as_bool);
+    Ok((category, built_in, confidence))
+}
+
+fn request_body(
+    question: LabelQuestion,
+    model: &str,
+    categories: &[String],
+    request: &LabelRequest,
+    data_uri: &str,
+) -> Value {
+    match question {
+        LabelQuestion::Object => build_request_body(model, categories, data_uri),
+        LabelQuestion::Relabel => {
+            build_relabel_request_body(model, categories, &request.context, data_uri)
+        }
+    }
+}
+
+fn parse_reply(
+    question: LabelQuestion,
+    content: &str,
+    categories: &[String],
+) -> Result<(String, Option<bool>, f64)> {
+    match question {
+        LabelQuestion::Object => parse_label(content, categories)
+            .map(|(category, confidence)| (category, None, confidence)),
+        LabelQuestion::Relabel => parse_relabel(content, categories),
+    }
+}
+
 impl Labeller {
     pub fn new(cfg: LabelConfig) -> Self {
         Self {
@@ -129,6 +207,7 @@ impl Labeller {
     pub async fn label_all(
         &self,
         storage: &Storage,
+        question: LabelQuestion,
         categories: &[String],
         requests: Vec<LabelRequest>,
     ) -> LabelOutcome {
@@ -140,7 +219,7 @@ impl Labeller {
             };
         }
         let deadline = Instant::now() + self.cfg.deadline;
-        let mut set = self.spawn_label_tasks(storage, categories, requests);
+        let mut set = self.spawn_label_tasks(storage, question, categories, requests);
         let (labelled, deadline_hit) = collect_until(&mut set, deadline).await;
         set.abort_all();
         let done: Vec<&str> = labelled.iter().map(|l| l.observation_id.as_str()).collect();
@@ -159,6 +238,7 @@ impl Labeller {
     fn spawn_label_tasks(
         &self,
         storage: &Storage,
+        question: LabelQuestion,
         categories: &[String],
         requests: Vec<LabelRequest>,
     ) -> JoinSet<Option<LabelResult>> {
@@ -172,7 +252,10 @@ impl Labeller {
             let categories = Arc::clone(&categories);
             set.spawn(async move {
                 let _permit = permits.acquire_owned().await.ok()?;
-                match labeller.label_one(&storage, &categories, &request).await {
+                match labeller
+                    .label_one(&storage, question, &categories, &request)
+                    .await
+                {
                     Ok(result) => Some(result),
                     Err(err) => {
                         tracing::warn!(error = %err, id = %request.observation_id, "label failed");
@@ -218,18 +301,20 @@ impl Labeller {
     async fn label_one(
         &self,
         storage: &Storage,
+        question: LabelQuestion,
         categories: &[String],
         request: &LabelRequest,
     ) -> Result<LabelResult> {
         let data_uri =
             Self::image_data_uri(storage, &request.crop_key, &request.content_type).await?;
-        let body = build_request_body(&self.cfg.model, categories, &data_uri);
+        let body = request_body(question, &self.cfg.model, categories, request, &data_uri);
         let content = self.chat(&body).await?;
-        let (category, confidence) = parse_label(&content, categories)?;
+        let (category, built_in, confidence) = parse_reply(question, &content, categories)?;
         Ok(LabelResult {
             observation_id: request.observation_id.clone(),
             category,
             confidence,
+            built_in,
         })
     }
 
@@ -369,6 +454,32 @@ mod tests {
     fn rejects_unknown_category_and_prose() {
         assert!(parse_label(r#"{"category":"lamp"}"#, &categories()).is_err());
         assert!(parse_label("it is a toilet", &categories()).is_err());
+    }
+
+    #[test]
+    fn relabel_replies_say_whether_the_object_is_built_in() {
+        let reply = r#"{"category":"sink","built_in":true,"confidence":0.7}"#;
+        let parsed = parse_relabel(reply, &categories()).unwrap();
+        assert_eq!(parsed, ("sink".to_string(), Some(true), 0.7));
+        let unsure = parse_relabel(r#"{"category":"toilet"}"#, &categories()).unwrap();
+        assert_eq!(unsure, ("toilet".to_string(), None, 0.5));
+    }
+
+    #[test]
+    fn relabel_body_carries_the_scanner_context() {
+        let body = build_relabel_request_body(
+            "m",
+            &categories(),
+            "The scanner called it storage.",
+            "data:image/jpeg;base64,AAAA",
+        );
+        let system = body["messages"][0]["content"].as_str().unwrap();
+        assert!(system.contains("built_in"));
+        let text = body["messages"][1]["content"][0]["text"].as_str().unwrap();
+        assert_eq!(
+            text,
+            "Allowed categories: toilet, sink. The scanner called it storage."
+        );
     }
 
     #[test]

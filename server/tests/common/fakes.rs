@@ -55,12 +55,40 @@ pub struct LabelApi {
     pub calls: Arc<AtomicUsize>,
     /// What photo questions get back; `null` means `{"answer": true, "confidence": 0.9}`.
     pub photo_reply: Arc<std::sync::Mutex<Value>>,
+    /// What relabel questions get back; `null` means a confident built-in sales counter.
+    pub relabel_reply: Arc<std::sync::Mutex<Value>>,
+    pub relabel_calls: Arc<AtomicUsize>,
+    /// The user text of the last relabel question.
+    pub last_relabel_text: Arc<std::sync::Mutex<String>>,
+}
+
+fn system_prompt_has(body: &Value, phrase: &str) -> bool {
+    body["messages"][0]["content"]
+        .as_str()
+        .is_some_and(|s| s.contains(phrase))
 }
 
 fn is_photo_question(body: &Value) -> bool {
-    body["messages"][0]["content"]
+    system_prompt_has(body, "requirement from a photo")
+}
+
+fn is_relabel_question(body: &Value) -> bool {
+    system_prompt_has(body, "has already guessed its category")
+}
+
+fn relabel_reply(api: &LabelApi, body: &Value) -> Json<Value> {
+    api.relabel_calls.fetch_add(1, Ordering::SeqCst);
+    let text = body["messages"][1]["content"][0]["text"]
         .as_str()
-        .is_some_and(|s| s.contains("requirement from a photo"))
+        .unwrap_or_default();
+    *api.last_relabel_text.lock().unwrap() = text.to_string();
+    let configured = api.relabel_reply.lock().unwrap().clone();
+    let reply = if configured.is_null() {
+        json!({"category": "sales_counter", "built_in": true, "confidence": 0.9})
+    } else {
+        configured
+    };
+    Json(json!({"choices": [{"message": {"content": reply.to_string()}}]}))
 }
 
 fn photo_reply(api: &LabelApi) -> Json<Value> {
@@ -77,6 +105,10 @@ async fn chat_completions(State(api): State<LabelApi>, Json(body): Json<Value>) 
     if is_photo_question(&body) {
         api.calls.fetch_add(1, Ordering::SeqCst);
         return photo_reply(&api);
+    }
+    if is_relabel_question(&body) {
+        api.calls.fetch_add(1, Ordering::SeqCst);
+        return relabel_reply(&api, &body);
     }
     api.calls.fetch_add(1, Ordering::SeqCst);
     let now = api.in_flight.fetch_add(1, Ordering::SeqCst) + 1;
