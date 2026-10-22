@@ -54,6 +54,10 @@
     {
       "id": "operable_part",
       "description": "Operable part of an element (309)"
+    },
+    {
+      "id": "object",
+      "description": "Any object in the scene; holds owner corrections to what it is"
     }
   ],
   "object_categories": [
@@ -5629,6 +5633,25 @@
       "evidence": "photo",
       "fallback_evidence": [],
       "derivation": "Close photo of the sign or object on the post: true when its edges are rounded or eased and its corners have a radius of 1/8 in minimum, with no square or sharp corners (CBC 11B-307.3.1)."
+    },
+    {
+      "id": "object.category_override",
+      "unit": "enum",
+      "value_type": "enum",
+      "element": "object",
+      "applies_to": [
+        "object"
+      ],
+      "evidence": "owner",
+      "fallback_evidence": [],
+      "derivation": "Owner: what a scanned object really is, asked when RoomPlan's category (e.g. storage for an ordering counter) could be wrong and the vision check is unsure. The answer replaces the object's category before any rule runs; \"Something else\" keeps the scanned category.",
+      "enum_values": [
+        "A counter where customers order or pay",
+        "A table people sit at",
+        "Storage or shelving",
+        "A built-in bench",
+        "Something else"
+      ]
     }
   ]
 }

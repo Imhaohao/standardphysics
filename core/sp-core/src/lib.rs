@@ -6,6 +6,7 @@ pub mod geometry;
 pub mod grid;
 pub mod mesh;
 pub mod metrics;
+pub mod overrides;
 pub mod roomplan;
 pub mod routes;
 pub mod rules;

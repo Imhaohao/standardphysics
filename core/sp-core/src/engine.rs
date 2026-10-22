@@ -6,6 +6,7 @@ use crate::metrics::subject::{
     SITE_ID, Subject, SubjectRef, Tagging, enumerate_subjects, room_subjects, route_subjects, site_subject,
 };
 use crate::metrics::{Catalog, EvalContext, SubjectOutcome};
+use crate::overrides::{apply_category_overrides, apply_to_room};
 use crate::roomplan::detect_connections;
 use crate::rules::{Evaluator, Finding, Report, Rule, RuleLoadError, RulePack, Status};
 use crate::scene::{Room, Scene};
@@ -75,7 +76,8 @@ impl Engine {
     }
 
     /// Replace the scene; nothing is evaluated until [`Engine::evaluate_all`].
-    pub fn set_scene(&mut self, scene: Scene) {
+    pub fn set_scene(&mut self, mut scene: Scene) {
+        apply_category_overrides(&mut scene, &|c| self.catalog.is_known_category(c));
         self.scene = scene;
         self.analyses.clear();
         self.findings.clear();
@@ -94,7 +96,8 @@ impl Engine {
 
     /// Add or replace one room (live scanning) and re-evaluate only its storey and the site.
     /// Returns the findings of the re-evaluated subjects.
-    pub fn update_room(&mut self, room: Room) -> Vec<Finding> {
+    pub fn update_room(&mut self, mut room: Room) -> Vec<Finding> {
+        apply_to_room(&mut room, &self.scene.observations, &|c| self.catalog.is_known_category(c));
         let storey = room.storey;
         let previous_storey = self.scene.room(&room.id).map(|r| r.storey);
         self.scene.upsert_room(room);
