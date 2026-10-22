@@ -10,7 +10,7 @@ enum RepoFixtures {
     }
 
     static func room(_ name: String = "test1") throws -> Data {
-        try Data(contentsOf: root.appending(path: "datasets/phone/\(name)/room.json"))
+        try Data(contentsOf: root.appending(path: "fixtures/phone/\(name)/room.json"))
     }
 
     /// test1's floor sits at this world Y; a fridge standing on it in the empty corner by the door.

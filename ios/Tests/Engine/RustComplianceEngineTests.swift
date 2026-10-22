@@ -7,7 +7,7 @@ final class RustComplianceEngineTests: XCTestCase {
         let repoRoot = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
             .deletingLastPathComponent().deletingLastPathComponent()
-        return try Data(contentsOf: repoRoot.appendingPathComponent("datasets/phone/test1/room.json"))
+        return try Data(contentsOf: repoRoot.appendingPathComponent("fixtures/phone/test1/room.json"))
     }
 
     func testEngineFindingsCarryTitleSeverityAndRange() {

@@ -18,7 +18,7 @@ fn repo_file(relative: &str) -> String {
 }
 
 pub fn apple_capture(name: &str) -> String {
-    repo_file(&format!("packages/fixtures/standardphysics_fixtures/data/real/{name}"))
+    repo_file(&format!("fixtures/roomplan/{name}"))
 }
 
 /// The engine over the repo's catalog and both rulepacks.

@@ -17,7 +17,7 @@ final class OnDeviceScanProcessorTests: XCTestCase {
         let repoRoot = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
             .deletingLastPathComponent().deletingLastPathComponent()
-        return try Data(contentsOf: repoRoot.appending(path: "datasets/phone/\(name)/room.json"))
+        return try Data(contentsOf: repoRoot.appending(path: "fixtures/phone/\(name)/room.json"))
     }
 
     private func savedScan(rooms: [(String, String)]) async throws -> (FileScanJournal, ScanManifest) {

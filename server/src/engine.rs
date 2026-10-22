@@ -212,7 +212,7 @@ impl SceneEngine {
 mod tests {
     use super::*;
 
-    const ROOM_JSON: &str = include_str!("../../datasets/phone/test1/room.json");
+    const ROOM_JSON: &str = include_str!("../../fixtures/phone/test1/room.json");
 
     /// Exactly what the iOS app sends for a detector object (`DetectedObject` encoded as JSON).
     fn phone_detector_observation() -> Value {

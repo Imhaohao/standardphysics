@@ -12,7 +12,7 @@ pub fn read(relative: &str) -> Option<String> {
 }
 
 pub fn fixture(name: &str) -> String {
-    read(&format!("packages/fixtures/standardphysics_fixtures/data/real/{name}")).expect("fixture present")
+    read(&format!("fixtures/roomplan/{name}")).expect("fixture present")
 }
 
 /// The engine over the repo's rules, or `None` (with a message) while rules/ is not written yet.

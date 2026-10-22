@@ -147,7 +147,7 @@ mod tests {
     #[test]
     fn imports_apple_sample_through_the_binding() {
         let rooms =
-            import_roomplan(read("packages/fixtures/standardphysics_fixtures/data/real/apple_bedroom3.room.json"))
+            import_roomplan(read("fixtures/roomplan/apple_bedroom3.room.json"))
                 .unwrap();
         assert_eq!(rooms.len(), 1);
         assert_eq!(rooms[0].openings.iter().filter(|o| o.kind == SpOpeningKind::Door).count(), 2);
@@ -162,7 +162,7 @@ mod tests {
         let packs = vec![read("rules/ada2010.json"), read("rules/cbc11b.json")];
         let engine = SpEngine::new(catalog, packs).unwrap();
         let rooms =
-            import_roomplan(read("packages/fixtures/standardphysics_fixtures/data/real/apple_livingroom.room.json"))
+            import_roomplan(read("fixtures/roomplan/apple_livingroom.room.json"))
                 .unwrap();
         let findings = engine.update_room(rooms[0].clone());
         assert!(!findings.is_empty());
@@ -179,7 +179,7 @@ mod tests {
         };
         let packs = vec![read("rules/ada2010.json"), read("rules/cbc11b.json")];
         let engine = SpEngine::new(catalog, packs).unwrap();
-        let capture = read("packages/fixtures/standardphysics_fixtures/data/real/apple_livingroom.room.json");
+        let capture = read("fixtures/roomplan/apple_livingroom.room.json");
         let findings = engine.update_roomplan_room(capture).unwrap();
         let paired: Vec<_> = findings.iter().filter(|f| f.counterpart.is_some()).collect();
         assert!(!paired.is_empty(), "some findings pair an ADA rule with its CBC counterpart");
@@ -193,7 +193,7 @@ mod tests {
             return;
         };
         let engine = SpEngine::new(catalog, vec![read("rules/ada2010.json")]).unwrap();
-        let capture = read("packages/fixtures/standardphysics_fixtures/data/real/apple_bedroom3.room.json");
+        let capture = read("fixtures/roomplan/apple_bedroom3.room.json");
         let error = engine.update_roomplan_room_with_mesh(capture, b"not a mesh".to_vec()).unwrap_err();
         assert!(matches!(error, SpError::InvalidInput { .. }));
         let empty = ScanMesh { floor_y: 0.0, parts: vec![] }.to_bytes();
