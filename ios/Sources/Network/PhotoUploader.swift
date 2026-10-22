@@ -13,11 +13,11 @@ nonisolated struct PhotoUploader: Sendable {
     var policy = StorageHostPolicy.fromInfoPlist()
     var partSize = 8 * 1024 * 1024
 
-    /// Returns the stored photo's artifact id.
-    func upload(jpeg: Data, scanID: String) async throws -> String {
+    /// Returns the stored photo's artifact id. Relabel crops use the same flow with `kind: .crop`.
+    func upload(jpeg: Data, scanID: String, kind: UploadKind = .photo) async throws -> String {
         guard !jpeg.isEmpty else { throw UploadError.emptyFile }
         let body = CreateUploadBody(
-            kind: UploadKind.photo.rawValue, filename: "photo-\(UUID().uuidString).jpg", contentType: Self.contentType,
+            kind: kind.rawValue, filename: "\(kind.rawValue)-\(UUID().uuidString).jpg", contentType: Self.contentType,
             sizeBytes: Int64(jpeg.count), partSize: partSize
         )
         let upload = try await api.createUpload(scanID: scanID, body: body, idempotencyKey: UUID().uuidString)

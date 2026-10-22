@@ -11,6 +11,12 @@ nonisolated protocol ScanFileUploading: Sendable {
     func discardUnfinished(scanID: String, kind: UploadKind) async
 }
 
+/// Uploads one crop in the foreground and returns its artifact id, which the room's relabel
+/// observation needs straight away.
+nonisolated protocol CropUploading: Sendable {
+    func uploadCrop(jpeg: Data, scanID: String) async throws -> String
+}
+
 nonisolated protocol LiveRoomChannel: Sendable {
     var messages: AsyncStream<LiveMessage> { get }
     func open() async
@@ -30,6 +36,7 @@ nonisolated enum ScanStreamingError: Error, Equatable {
 }
 
 extension APIClient: RemoteScanCreating {}
+extension APIClient: CropUploading {}
 extension BackgroundUploader: ScanFileUploading {}
 extension LiveChannel: LiveRoomChannel {}
 
@@ -48,6 +55,9 @@ final class ScanStreamer: CaptureObserving, RoomDelivering {
         var createRetryDelay: Duration = .seconds(2)
         var deliveryTimeout: Duration = .seconds(20)
         var sleep: Sleeper = DefaultSleeper.sleep
+        /// `nil` leaves RoomPlan's categories unchecked.
+        var cropUploader: (any CropUploading)?
+        var cropUploadBudget: Duration = .seconds(15)
     }
 
     private static let deliveryPollInterval: Duration = .milliseconds(100)
@@ -129,6 +139,18 @@ final class ScanStreamer: CaptureObserving, RoomDelivering {
         } catch {
             logger.error("Room upload could not be queued: \(String(describing: type(of: error)))")
         }
+        if await uploadRelabelCrops(forRoomAt: url, remoteScanID: remoteScanID) {
+            await send(roomFile: url, index: roomIndex)
+        }
+    }
+
+    /// Returns true when new crops reached the server, so the room should be sent again with them.
+    private func uploadRelabelCrops(forRoomAt url: URL, remoteScanID: String) async -> Bool {
+        guard let uploader = dependencies.cropUploader else { return false }
+        let uploaded = await RelabelCropUploads.uploadPending(
+            forRoomAt: url, scanID: remoteScanID, uploader: uploader, budget: dependencies.cropUploadBudget
+        )
+        return uploaded > 0
     }
 
     private func uploadMesh(of manifest: ScanManifest) async {
@@ -201,7 +223,8 @@ final class ScanStreamer: CaptureObserving, RoomDelivering {
         do {
             let data = try Data(contentsOf: url)
             let roomID = RoomIdentity.roomID(capturedRoomJSON: data, fileName: url.lastPathComponent)
-            let observations = DetectedObjectFile.objects(forRoomAt: url).compactMap(\.observation)
+            let detected = DetectedObjectFile.objects(forRoomAt: url).compactMap(\.observation)
+            let observations = detected + (RelabelCropFile.load(forRoomAt: url)?.observations ?? [])
             await channel.sendRoom(RoomUpdate(
                 roomID: roomID, isFinal: true, capturedRoom: try JSONValue(jsonData: data), observations: observations
             ))
@@ -215,7 +238,11 @@ final class ScanStreamer: CaptureObserving, RoomDelivering {
     private func resendRooms(of manifest: ScanManifest) async {
         let directory = dependencies.directory(manifest.scanID)
         for record in manifest.rooms.sorted(by: { $0.index < $1.index }) {
-            await send(roomFile: directory.appending(path: record.capturedRoomFile), index: record.index)
+            let url = directory.appending(path: record.capturedRoomFile)
+            if let remoteScanID = session?.remoteScanID {
+                _ = await uploadRelabelCrops(forRoomAt: url, remoteScanID: remoteScanID)
+            }
+            await send(roomFile: url, index: record.index)
         }
     }
 

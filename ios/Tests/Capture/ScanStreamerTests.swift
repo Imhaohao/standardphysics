@@ -53,6 +53,19 @@ private actor FakeChannel: LiveRoomChannel {
     nonisolated func deliver(_ message: LiveMessage) { continuation.yield(message) }
 }
 
+private final class StreamerCropUploader: CropUploading, @unchecked Sendable {
+    private let state = Locked<[String]>([])
+    var scanIDs: [String] { state.read { $0 } }
+
+    func uploadCrop(jpeg: Data, scanID: String) async throws -> String {
+        let count = state.write { ids -> Int in
+            ids.append(scanID)
+            return ids.count
+        }
+        return "crop-artifact-\(count)"
+    }
+}
+
 @MainActor
 private final class FakeLink: CaptureLinking {
     var createKeys: [String] = []
@@ -86,7 +99,7 @@ final class ScanStreamerTests: XCTestCase {
         try? FileManager.default.removeItem(at: directory)
     }
 
-    private func makeStreamer() -> ScanStreamer {
+    private func makeStreamer(cropUploader: (any CropUploading)? = nil) -> ScanStreamer {
         ScanStreamer(dependencies: ScanStreamer.Dependencies(
             creator: creator,
             uploader: uploader,
@@ -99,7 +112,8 @@ final class ScanStreamerTests: XCTestCase {
             directory: { [unowned self] _ in directory },
             createRetryDelay: .zero,
             deliveryTimeout: .milliseconds(300),
-            sleep: { _ in await Task.yield() }
+            sleep: { _ in await Task.yield() },
+            cropUploader: cropUploader
         ))
     }
 
@@ -203,6 +217,34 @@ final class ScanStreamerTests: XCTestCase {
         XCTAssertEqual(sent.roomID, "room-0", "the room id rule is unchanged")
         XCTAssertEqual(sent.observations, [try XCTUnwrap(fridge.observation)])
         XCTAssertEqual(uploader.calls.map(\.file), ["room-0.json"], "the server does not take the sidecar as an upload")
+    }
+
+    func testRelabelCropsAreUploadedAndTheRoomIsSentAgainWithThem() async throws {
+        let crops = StreamerCropUploader()
+        let streamer = makeStreamer(cropUploader: crops)
+        let empty = try manifest()
+        streamer.capture(link, reached: .started(empty))
+        let saved = try manifest(rooms: 1)
+        try Data([0xFF, 0xD8]).write(to: directory.appending(path: "room-0.relabel-0.jpg"))
+        let file = RelabelCropFile(entries: [.init(objectID: "COUNTER-1", cropFile: "room-0.relabel-0.jpg")])
+        try file.encoded().write(to: directory.appending(path: "room-0.relabel.json"))
+        let withRoom = ScanManifest(
+            scanID: empty.scanID, name: empty.name, startedAt: empty.startedAt, phase: saved.phase, rooms: saved.rooms,
+            meshFile: "mesh.spm", remoteScanID: "remote-1"
+        )
+        streamer.capture(link, reached: .roomSaved(index: 0, manifest: withRoom))
+        await streamer.settle()
+
+        let sent = await channels[0].sent
+        XCTAssertEqual(sent.count, 2, "sent at once, then again once the crop has an artifact")
+        XCTAssertEqual(sent.first?.observations, [])
+        XCTAssertEqual(sent.last?.observations, [.object([
+            "id": .string("relabel-COUNTER-1"),
+            "relabel_object_id": .string("COUNTER-1"),
+            "crop_artifact_id": .string("crop-artifact-1"),
+        ])])
+        XCTAssertEqual(crops.scanIDs, ["remote-1"])
+        XCTAssertEqual(uploader.calls.map(\.file), ["room-0.json"], "crops do not go through the background queue")
     }
 
     func testLiveRoomAndUploadedRoomShareOneServerID() async throws {

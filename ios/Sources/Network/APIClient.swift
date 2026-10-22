@@ -147,6 +147,10 @@ actor APIClient: UploadAPI {
         try await PhotoUploader(api: self, storage: URLSessionTransport()).upload(jpeg: jpeg, scanID: scanID)
     }
 
+    func uploadCrop(jpeg: Data, scanID: String) async throws -> String {
+        try await PhotoUploader(api: self, storage: URLSessionTransport()).upload(jpeg: jpeg, scanID: scanID, kind: .crop)
+    }
+
     func answerFromPhoto(scanID: String, subjectID: String, metric: String, artifactID: String) async throws -> PhotoAnswerResponse {
         let body = PhotoAnswerRequest(subjectID: subjectID, metric: metric, artifactID: artifactID)
         return try await send(APIRoutes.photoAnswer(scanID: scanID, body: body))

@@ -97,6 +97,26 @@ final class FileScanJournalProtectionTests: XCTestCase {
         XCTAssertEqual(reloaded.rooms.count, 1, "the sidecar is never adopted as a room")
     }
 
+    func testRelabelCropsAreListedNextToTheirRoomAndGoWithTheHeavyFiles() async throws {
+        let journal = FileScanJournal(root: root)
+        let scan = try await journal.create(name: "Cafe")
+        _ = try await journal.appendRoom(scanID: scan.scanID, capturedRoomJSON: Data("{}".utf8), name: "Room 1")
+        let crop = RelabelCrop(objectID: "COUNTER-1", jpeg: Data([0xFF, 0xD8, 0xFF]))
+        try await journal.saveRelabelCrops([crop], scanID: scan.scanID, roomIndex: 0)
+
+        let roomURL = journal.directory(for: scan.scanID).appending(path: ScanFiles.room(0))
+        let file = try XCTUnwrap(RelabelCropFile.load(forRoomAt: roomURL))
+        XCTAssertEqual(file.entries, [.init(objectID: "COUNTER-1", cropFile: "0.relabel-0.jpg")])
+        let cropURL = RelabelCropFile.cropURL(of: file.entries[0], forRoomAt: roomURL)
+        XCTAssertEqual(try Data(contentsOf: cropURL), crop.jpeg)
+        let reloaded = try await FileScanJournal(root: root).load(scanID: scan.scanID)
+        XCTAssertEqual(reloaded.rooms.count, 1, "crops are never adopted as rooms")
+
+        try await journal.releaseHeavyFiles(scanID: scan.scanID)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: cropURL.path))
+        XCTAssertNil(RelabelCropFile.load(forRoomAt: roomURL))
+    }
+
     func testScansFolderIsExcludedFromBackup() async throws {
         let journal = FileScanJournal(root: root)
         _ = try await journal.create(name: "Shop")

@@ -16,6 +16,8 @@ nonisolated protocol ScanStore: ScanJournaling, ScanRetaining {
     func saveFrameLog(_ log: FrameLog, scanID: UUID) async throws
     /// Detector objects for a saved room, in `rooms/<n>.detections.json`.
     func saveDetectedObjects(_ objects: [DetectedObject], scanID: UUID, roomIndex: Int) async throws
+    /// Photo crops of doubtful RoomPlan objects, listed in `rooms/<n>.relabel.json`.
+    func saveRelabelCrops(_ crops: [RelabelCrop], scanID: UUID, roomIndex: Int) async throws
 }
 
 nonisolated enum ScanJournalError: Error, Equatable {
@@ -35,6 +37,10 @@ nonisolated enum ScanFiles {
 
     static func room(_ index: Int) -> String { "\(roomsDirectory)/\(index).json" }
     static func detections(_ index: Int) -> String { DetectedObjectFile.path(forRoomFile: room(index)) }
+    static func relabel(_ index: Int) -> String { RelabelCropFile.path(forRoomFile: room(index)) }
+    static func relabelCrop(_ room: Int, _ crop: Int) -> String {
+        RelabelCropFile.cropPath(forRoomFile: Self.room(room), index: crop)
+    }
 }
 
 /// `Application Support/Scans/<uuid>/`. Every file is written atomically and rooms are written
@@ -143,6 +149,19 @@ actor FileScanJournal: ScanStore {
         try writer.write(try encoder.encode(DetectedObjectFile(objects: objects)), to: url(scanID, ScanFiles.detections(roomIndex)))
     }
 
+    /// Crops first, then the file that lists them, so a listed crop is always on disk.
+    func saveRelabelCrops(_ crops: [RelabelCrop], scanID: UUID, roomIndex: Int) async throws {
+        let roomFileName = (ScanFiles.room(roomIndex) as NSString).lastPathComponent
+        var entries: [RelabelCropFile.Entry] = []
+        for (index, crop) in crops.enumerated() {
+            try writer.write(crop.jpeg, to: url(scanID, ScanFiles.relabelCrop(roomIndex, index)), protection: .complete)
+            entries.append(RelabelCropFile.Entry(
+                objectID: crop.objectID, cropFile: RelabelCropFile.cropPath(forRoomFile: roomFileName, index: index)
+            ))
+        }
+        try writer.write(try RelabelCropFile(entries: entries).encoded(), to: url(scanID, ScanFiles.relabel(roomIndex)))
+    }
+
     /// Once the server holds the finished scan, the mesh, world map and camera snapshot only
     /// take up space and carry a picture of the shop, so they go. Rooms and the manifest stay.
     func releaseHeavyFiles(scanID: UUID) async throws {
@@ -150,10 +169,20 @@ actor FileScanJournal: ScanStore {
         for file in ScanFiles.heavy {
             try? FileManager.default.removeItem(at: url(scanID, file))
         }
+        manifest.rooms.forEach { removeRelabelCrops(forRoomAt: url(scanID, $0.capturedRoomFile)) }
         manifest.meshFile = nil
         manifest.worldMapFile = nil
         manifest.relocalizationSnapshotFile = nil
         try write(manifest)
+    }
+
+    /// Relabel crops are photos of the shop too, so they go with the other heavy files.
+    private func removeRelabelCrops(forRoomAt roomURL: URL) {
+        guard let file = RelabelCropFile.load(forRoomAt: roomURL) else { return }
+        for entry in file.entries {
+            try? FileManager.default.removeItem(at: RelabelCropFile.cropURL(of: entry, forRoomAt: roomURL))
+        }
+        try? FileManager.default.removeItem(at: RelabelCropFile.url(forRoomAt: roomURL))
     }
 
     func delete(scanID: UUID) async throws {

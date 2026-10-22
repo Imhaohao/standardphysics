@@ -35,6 +35,9 @@ final class CaptureCoordinator: CaptureControlling {
 
     @ObservationIgnored var onRoomFinished: (@Sendable (_ capturedRoomJSON: Data, _ detectedObjects: [DetectedObject]) async throws -> [Finding])?
 
+    /// Photo crops of the finished room's doubtful RoomPlan objects, for the server to relabel.
+    @ObservationIgnored var makeRelabelCrops: (@Sendable (_ capturedRoomJSON: Data) async -> [RelabelCrop])?
+
     var liveElements: [LiveElement] { finishedRoomElements + currentRoomElements }
     var provisionalFindings: [Finding] {
         FindingMerge.preferringServer(onDevice: onDeviceFindings, server: serverFindings)
@@ -388,6 +391,7 @@ final class CaptureCoordinator: CaptureControlling {
             return
         }
         let detectedObjects = await persistDetectedObjects(scanID: scanID, index: index, roomJSON: roomJSON)
+        await persistRelabelCrops(scanID: scanID, index: index, roomJSON: roomJSON)
         finishedRoomElements += currentRoomElements
         currentRoomElements = []
         if let manifest { notify(.roomSaved(index: index, manifest: manifest)) }
@@ -408,6 +412,19 @@ final class CaptureCoordinator: CaptureControlling {
         }
         Diagnostics.shared.record("room_detector_objects", ["count": Double(finished.objects.count)])
         return finished.objects
+    }
+
+    /// Saved before the room is announced, so the streamer finds the crops when it sends the room.
+    private func persistRelabelCrops(scanID: UUID, index: Int, roomJSON: Data) async {
+        guard let makeRelabelCrops else { return }
+        let crops = await makeRelabelCrops(roomJSON)
+        guard !crops.isEmpty else { return }
+        do {
+            try await dependencies.journal.saveRelabelCrops(crops, scanID: scanID, roomIndex: index)
+        } catch {
+            logger.error("Relabel crops were not saved: \(error.localizedDescription)")
+        }
+        Diagnostics.shared.record("room_relabel_crops", ["count": Double(crops.count)])
     }
 
     private func evaluate(_ roomJSON: Data, detectedObjects: [DetectedObject]) {

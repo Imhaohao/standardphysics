@@ -12,6 +12,7 @@ final class LiveServices {
     let sceneModel = LiveSceneModel()
     let appModel: AppModel
     private let detection: LiveDetectionPipeline
+    private let keyframes: KeyframeRecorder
     private let streamer: ScanStreamer?
     let uploader: BackgroundUploader?
     private var frameFeed: Task<Void, Never>?
@@ -34,6 +35,13 @@ final class LiveServices {
             ])
             return findings
         }
+        let keyframes = KeyframeRecorder()
+        coordinator.makeRelabelCrops = { roomJSON in
+            defer { keyframes.reset() }
+            guard let room = CapturedRoomGeometry(capturedRoomJSON: roomJSON) else { return [] }
+            return await RelabelCropper.crops(for: room, keyframes: keyframes.recent())
+        }
+        self.keyframes = keyframes
         self.coordinator = coordinator
         let api = try? APIClient.fromInfoPlist()
         let uploader = api.flatMap { try? BackgroundUploader.makeDefault(api: $0) }
@@ -66,7 +74,8 @@ final class LiveServices {
             uploader: uploader,
             makeChannel: { LiveChannel.forScan($0, api: api) },
             isSignedIn: { tokens.token() != nil },
-            directory: { journal.directory(for: $0) }
+            directory: { journal.directory(for: $0) },
+            cropUploader: api
         ))
     }
 
@@ -127,6 +136,7 @@ final class LiveServices {
     private func feedCurrentFrame() {
         guard case .scanning = coordinator.phase, let frame = coordinator.arSession?.currentFrame else { return }
         detection.consider(frame)
+        keyframes.consider(frame)
     }
 }
 

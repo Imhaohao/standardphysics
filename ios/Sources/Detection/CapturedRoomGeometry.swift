@@ -9,6 +9,8 @@ nonisolated struct CapturedRoomGeometry: Sendable, Equatable {
         let category: String
         let transform: simd_float4x4
         let dimensions: SIMD3<Float>
+        /// RoomPlan's identifier as the JSON spells it, which is also the sp-core object id.
+        var identifier: String = ""
     }
 
     /// World Y of the floor: the lowest captured floor, else the lowest wall bottom, else the lowest object bottom.
@@ -59,6 +61,7 @@ private nonisolated struct RawRoom: Decodable {
 }
 
 private nonisolated struct RawSurface: Decodable {
+    let identifier: String?
     let category: [String: EmptyValue]?
     let dimensions: [Float]?
     let transform: [Float]?
@@ -86,7 +89,8 @@ private nonisolated struct RawSurface: Decodable {
     var planned: CapturedRoomGeometry.PlannedObject? {
         guard let matrix, let size, let roomPlanCase = category?.keys.first else { return nil }
         return CapturedRoomGeometry.PlannedObject(
-            category: CapturedRoomGeometry.snakeCase(roomPlanCase), transform: matrix, dimensions: size
+            category: CapturedRoomGeometry.snakeCase(roomPlanCase), transform: matrix, dimensions: size,
+            identifier: identifier ?? ""
         )
     }
 }
